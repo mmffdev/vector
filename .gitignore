@@ -8,3 +8,4 @@ backend/server
 .DS_Store
 tsconfig.tsbuildinfo
 local-assets/backups/
+local-assets/security-flags.jsonl
