@@ -121,11 +121,19 @@ Planned enhancements include a listener for GitHub commit messages. When a devel
 
 ## 11. Planned Layer: OKRs
 
-Objectives and Key Results are a planned addition to the portfolio stack. The exact position (above Portfolio, under Product, or orthogonal to the hierarchy as a cross-cutting link) and the shape (Objective-only vs Objective → Key Result → item ladder) are yet to be finalised. This note exists so the OKR layer is not overlooked during backlog design — the item tables should not be frozen until the OKR position is decided, because items will need to ladder up to an Objective or Key Result.
+Objectives and Key Results are a planned addition to the portfolio stack, scheduled for near the end of the build. OKRs will live in their own model and **reference back** to existing artefacts (features, stories, products, and so on) rather than sitting inside the artefact hierarchy. This reverse-reference design means the current schema requires no changes to accommodate OKRs — artefact tables stay as they are, and the OKR tables land later as an additive layer that points at artefact UUIDs. Position (above Portfolio, under Product, or fully orthogonal) and shape (Objective-only vs Objective → Key Result → artefact ladder) will be finalised when the OKR work begins.
 
 ## 12. Planned Paid Tier: Multi-Division Config
 
 For tenants that operate multiple sub-divisions under one corporate umbrella (e.g. a holding company like News Corp running "The Sun" and "The Times" as separate mastheads), a paid-tier feature is planned that allows configuration — tag vocabularies, artefact hierarchy, workflow states, and key-number sequences — to be scoped **per sub-division** rather than per tenant. Each sub-division gets its own ring-fenced config root so that, for example, "The Sun" can rename `US` to `STORY` and begin issuing `STORY-00000001` independently of "The Times". Default tenants retain a single tenant-scoped configuration. This note exists so the base schema is not designed in a way that closes the door on per-division scoping later — a nullable config-root pointer can be added to the item-type and state tables as a non-breaking migration when the feature is built.
+
+## 13. Planned Layer: Centralised Logging & Observability
+
+A dedicated observability layer is planned, built on **Grafana Cloud** (a company account is already provisioned). Application logs, infrastructure metrics, and request traces from both hosted and on‑premise deployments will stream to a single Grafana front‑end — **Loki** for logs, **Prometheus/Mimir** for metrics, and **Tempo** for traces — using OpenTelemetry as the ingest format so the wire protocol stays identical across deployment modes.
+
+Grafana Cloud was selected over traditional enterprise SIEM products (Splunk, Datadog, Sumo Logic) because it satisfies the same procurement and audit controls — **SOC 2 Type II, ISO 27001, HIPAA BAA, PCI‑DSS** — at a substantially lower price point, stores data on immutable object storage for tamper‑evident long‑term retention, and is built on genuinely open‑source components (Loki, Grafana, Tempo, Mimir). That open‑source foundation preserves an exit path: if the hosted service ever becomes unsuitable, the same stack can be self‑hosted on existing infrastructure with no change to application‑side instrumentation.
+
+Deployment‑mode behaviour: hosted tenants forward directly to the central Grafana Cloud tenant; on‑premise customers may either forward to the same central tenant, run their own Grafana stack locally, or keep logs entirely inside their environment — all three paths use identical OpenTelemetry agents and require no schema changes. SSO/SAML, SCIM user provisioning, RBAC, and audit logs are provided by Grafana Cloud natively and align with the **Trust No One** posture defined in §8.
 
 ---
 

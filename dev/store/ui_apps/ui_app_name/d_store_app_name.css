@@ -1,0 +1,10 @@
+/* Scoped styles for ui_app_name — prefix every class with .ui-app-name__ */
+
+.ui-app-name {
+  display: block;
+}
+
+.ui-app-name__placeholder {
+  color: var(--ink-3);
+  font-size: 14px;
+}
