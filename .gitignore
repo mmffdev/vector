@@ -1,6 +1,5 @@
 node_modules/
 .next/
-backend/server
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
