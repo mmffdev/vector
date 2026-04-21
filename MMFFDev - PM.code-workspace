@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../Downloads/nextjs/app"
+		}
+	],
+	"settings": {
+		"DockerRun.DisableAutoGenerateConfig": true
+	}
+}

@@ -1,0 +1,192 @@
+package users
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/audit"
+	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/email"
+	"github.com/mmffdev/vector-backend/internal/models"
+)
+
+var (
+	ErrDuplicateEmail = errors.New("user with that email already exists in tenant")
+	ErrNotFound       = errors.New("not found")
+)
+
+type Service struct {
+	Pool   *pgxpool.Pool
+	Audit  *audit.Logger
+	Mailer email.Sender
+}
+
+func New(pool *pgxpool.Pool, audit *audit.Logger, mailer email.Sender) *Service {
+	return &Service{Pool: pool, Audit: audit, Mailer: mailer}
+}
+
+type CreateInput struct {
+	Email    string
+	Role     models.Role
+	TenantID uuid.UUID
+}
+
+// Create makes a new account with a random hashed placeholder password and
+// issues a password_resets token; the user sets their real password via the link.
+func (s *Service) Create(ctx context.Context, in CreateInput, createdBy uuid.UUID, ip string) (*models.User, string, error) {
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+
+	// Placeholder password — user must reset via the emailed link.
+	buf := make([]byte, 24)
+	if _, err := rand.Read(buf); err != nil {
+		return nil, "", err
+	}
+	placeholder := hex.EncodeToString(buf)
+	hash, err := auth.HashPassword(placeholder)
+	if err != nil {
+		return nil, "", err
+	}
+
+	u := &models.User{}
+	err = s.Pool.QueryRow(ctx, `
+		INSERT INTO users (tenant_id, email, password_hash, role, force_password_change)
+		VALUES ($1, $2, $3, $4, TRUE)
+		RETURNING id, tenant_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
+		in.TenantID, email, hash, string(in.Role),
+	).Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		if strings.Contains(err.Error(), "users_email_tenant_unique") {
+			return nil, "", ErrDuplicateEmail
+		}
+		return nil, "", err
+	}
+
+	// Issue initial reset token.
+	raw, tokHash, err := auth.GenerateRefreshToken()
+	if err != nil {
+		return nil, "", err
+	}
+	exp := time.Now().Add(24 * time.Hour) // longer window for initial setup
+	if _, err := s.Pool.Exec(ctx, `
+		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+		VALUES ($1, $2, $3, $4)`, u.ID, tokHash, exp, nilIfEmpty(ip)); err != nil {
+		return nil, "", err
+	}
+	link := os.Getenv("FRONTEND_ORIGIN") + "/login/reset/confirm?token=" + raw
+	_ = s.Mailer.SendResetLink(u.Email, link)
+
+	s.Audit.Log(ctx, audit.Entry{
+		UserID: &createdBy, TenantID: &u.TenantID,
+		Action: "user.created", Resource: strPtr("user"), ResourceID: strPtr(u.ID.String()),
+		IPAddress: nilIfEmpty(ip),
+		Metadata:  map[string]any{"email": u.Email, "role": u.Role},
+	})
+	return u, link, nil
+}
+
+func (s *Service) List(ctx context.Context, tenantID uuid.UUID) ([]models.User, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT id, tenant_id, email, role, is_active, last_login, auth_method,
+		       force_password_change, password_changed_at, created_at, updated_at
+		FROM users WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []models.User{}
+	for rows.Next() {
+		u := models.User{}
+		if err := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.LastLogin,
+			&u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, nil
+}
+
+type UpdateInput struct {
+	Role     *models.Role
+	IsActive *bool
+}
+
+func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actor uuid.UUID, ip string) error {
+	sets := []string{}
+	args := []any{}
+	i := 1
+	if in.Role != nil {
+		sets = append(sets, "role = $"+itoa(i))
+		args = append(args, string(*in.Role))
+		i++
+	}
+	if in.IsActive != nil {
+		sets = append(sets, "is_active = $"+itoa(i))
+		args = append(args, *in.IsActive)
+		i++
+	}
+	if len(sets) == 0 {
+		return nil
+	}
+	args = append(args, id)
+	_, err := s.Pool.Exec(ctx,
+		"UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = $"+itoa(i), args...,
+	)
+	if err != nil {
+		return err
+	}
+
+	action := "user.updated"
+	if in.IsActive != nil && !*in.IsActive {
+		action = "user.deactivated"
+	}
+	s.Audit.Log(ctx, audit.Entry{
+		UserID: &actor, Action: action,
+		Resource: strPtr("user"), ResourceID: strPtr(id.String()),
+		IPAddress: nilIfEmpty(ip),
+	})
+	return nil
+}
+
+func (s *Service) FindByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	u := &models.User{}
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, tenant_id, email, role, is_active, created_at, updated_at
+		FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
+	if err == pgx.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	return u, err
+}
+
+func strPtr(s string) *string    { return &s }
+func nilIfEmpty(s string) *string { if s == "" { return nil }; return &s }
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	neg := i < 0
+	if neg {
+		i = -i
+	}
+	buf := [20]byte{}
+	pos := len(buf)
+	for i > 0 {
+		pos--
+		buf[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	if neg {
+		pos--
+		buf[pos] = '-'
+	}
+	return string(buf[pos:])
+}
