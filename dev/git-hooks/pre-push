@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# git pre-push hook — Channel A of backup-on-push.
+# Tracked source; .git/hooks/pre-push is a symlink to this file.
+# Never blocks the push: downstream script always exits 0, but we also
+# guard with `|| true` so any accidental non-zero never stops git.
+
+"$(git rev-parse --show-toplevel)/dev/scripts/backup-on-push.sh" --channel git || true
+exit 0
