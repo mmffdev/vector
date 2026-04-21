@@ -1,41 +1,16 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working in this repository.
+Guidance for Claude Code in this repo.
 
 ## Working practices
 
 Load the relevant guide only when the task touches that area — keeps this file small.
 
-- **Styling / CSS / new UI components** → read [`docs/css-guide.md`](../docs/css-guide.md) before writing or modifying styles. BEM-lite naming, no inline styles, no Tailwind, no CSS-in-JS. All rules live in `app/globals.css`.
+**Authoring rule (hard):** every entry in this file is one line. If it needs more, it goes in a child doc under `docs/c_*.md` and this file gets only the pointer. No exceptions — not for commands, not for shortcuts, not for "just this once". If you catch yourself writing a second line, stop and move it.
 
-## Custom Commands
-
-### npmrun
-When the user writes **`<npmrun>`**, prompt to run the dev server:
-```bash
-cd /Users/rick/Documents/MMFFDev-Projects/MMFFDev\ -\ PM && npm run dev
-```
-
-This starts the Next.js development server on `http://localhost:3000`.
-
-## Section Shortcuts
-
-### `<user>`
-The shipped product — what customers see. Includes all user-facing features, role-based access (user, padmin, gadmin), and the main app UI.
-
-**Location:** `app/(user)/` route group
-
-### `<gadmin>`
-Global admin controls. Superusers manage tenants, delegate scopes to product admins, and configure system-wide settings (SSO/LDAP, custom fields, workflows).
-
-**Location:** Admin section within `<user>` app (role-gated)
-
-### `<padmin>`
-Product admin — role-based access within `<user>`. Product Leads manage their assigned portfolios and projects with permissions delegated by `<gadmin>`.
-
-**Location:** Admin section within `<user>` app (role-gated)
-
-### `<dev>`
-Ringfenced dev tooling. Completely independent folder with its own services, APIs, styles, and components. Embedded as a plug-and-play plugin in `<user>` via code reference. Detachable without touching core product.
-
-**Location:** `dev/` folder (separate from app)
+- **Styling / CSS / new UI components** → [`docs/css-guide.md`](../docs/css-guide.md) — BEM-lite, no inline styles, rules in `app/globals.css`.
+- **Database backup (`<backupsql>`)** → [`docs/c_db-backup.md`](../docs/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
+- **Dev server (`<npmrun>`)** → [`docs/c_npmrun.md`](../docs/c_npmrun.md) — start Next.js on `:3000`.
+- **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
+- **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.
+</content>

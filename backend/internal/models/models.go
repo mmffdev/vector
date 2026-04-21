@@ -54,14 +54,14 @@ type PasswordReset struct {
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
-type UserProjectPermission struct {
-	ID         uuid.UUID  `json:"id"`
-	UserID     uuid.UUID  `json:"user_id"`
-	ProjectID  uuid.UUID  `json:"project_id"`
-	CanView    bool       `json:"can_view"`
-	CanEdit    bool       `json:"can_edit"`
-	CanAdmin   bool       `json:"can_admin"`
-	GrantedBy  *uuid.UUID `json:"granted_by,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+type UserWorkspacePermission struct {
+	ID          uuid.UUID  `json:"id"`
+	UserID      uuid.UUID  `json:"user_id"`
+	WorkspaceID uuid.UUID  `json:"workspace_id"`
+	CanView     bool       `json:"can_view"`
+	CanEdit     bool       `json:"can_edit"`
+	CanAdmin    bool       `json:"can_admin"`
+	GrantedBy   *uuid.UUID `json:"granted_by,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }

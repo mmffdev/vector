@@ -2,7 +2,7 @@
 
 :root {
   --sidebar-width: 220px;
-  --topbar-height: 64px;
+  --app-header-wrapper-height: 64px;
 
   --radius-sm: 0;
   --radius-md: 0;
@@ -73,7 +73,7 @@ body {
   font-size: 15px;
   line-height: 1.5;
   color: var(--ink-1);
-  background: var(--bg);
+  background: var(--surface);
 }
 
 a {
@@ -99,34 +99,40 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-rows: var(--topbar-height) 1fr auto;
+  grid-template-rows: var(--app-header-wrapper-height) 1fr auto;
   height: 100vh;
 }
 
-.app-body {
+.app-content-container {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
 }
 
-.app-content-wrapper {
+.app-viewport-container {
   display: flex;
   flex-direction: column;
 }
 
-.page-header-bar {
+.page-wrapper {
   padding: 20px 24px;
   flex-shrink: 0;
 }
 
-.sidebar {
+.app-sidebar-container {
   border-right: 1px solid var(--line-1);
-  background: var(--surface);
+  background: transparent;
   overflow-y: auto;
   padding: 20px 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.topbar {
-  border-bottom: 1px solid var(--line-1);
+.sidebar-dev-group {
+  margin-top: auto;
+}
+
+.app-header-wrapper {
+  border-bottom: 3px solid var(--line-1);
   background: var(--surface);
   display: flex;
   align-items: center;
@@ -135,9 +141,9 @@ button {
   gap: 16px;
 }
 
-.main-content {
+.page-content-wrapper {
   overflow-y: auto;
-  background: var(--bg);
+  background: transparent;
 }
 
 .page-header {
@@ -170,7 +176,9 @@ button {
 }
 
 .sidebar-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 10px 16px;
   color: var(--ink-2);
   font-size: 14px;
@@ -218,14 +226,12 @@ button {
 .empty-state {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   min-height: 300px;
   gap: 12px;
-  padding: 24px;
   background: var(--surface);
   border-radius: var(--radius-md);
-  border: 1px solid var(--line-1);
 }
 
 .empty-state h3 {
@@ -239,8 +245,8 @@ button {
   color: var(--ink-3);
 }
 
-.footer {
-  border-top: 1px solid var(--line-1);
+.app-footer {
+  border-top: 3px solid var(--line-1);
   background: var(--surface);
   padding: 16px 24px;
   font-size: 12px;
@@ -250,32 +256,35 @@ button {
   align-items: center;
 }
 
-.footer-left {
+.app-footer--role-gadmin { border-top-color: #ef4444; }
+.app-footer--role-padmin { border-top-color: #a855f7; }
+
+.app-footer-left {
   display: flex;
   gap: 24px;
 }
 
-.footer-link {
+.app-footer-link {
   color: var(--ink-3);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
-.footer-link:hover {
+.app-footer-link:hover {
   color: var(--ink-2);
 }
 
-.footer__sep {
+.app-footer__sep {
   margin: 0 12px;
   color: var(--ink-3);
 }
 
 @media (max-width: 900px) {
-  .app-body {
+  .app-content-container {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
+  .app-sidebar-container {
     display: none;
   }
 }
@@ -716,30 +725,33 @@ button {
 /* ============================================================
    Topbar internals
    ============================================================ */
-.topbar__brand {
+.app-header-wrapper--role-gadmin { border-bottom-color: #ef4444; }
+.app-header-wrapper--role-padmin { border-bottom-color: #a855f7; }
+
+.app-header-wrapper__brand {
   font-size: 16px;
   font-weight: 700;
   color: var(--ink-1);
 }
 
-.topbar__center {
+.app-header-wrapper__center {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.topbar__actions {
+.app-header-wrapper__actions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.topbar__email {
+.app-header-wrapper__email {
   font-size: 14px;
   color: var(--ink-2);
 }
 
-.topbar__theme-toggle {
+.app-header-wrapper__theme-toggle {
   background: var(--line-1);
   color: var(--ink-2);
   padding: 6px 10px;
@@ -749,7 +761,7 @@ button {
   cursor: pointer;
 }
 
-.topbar__icon-btn {
+.app-header-wrapper__icon-btn {
   position: relative;
   display: flex;
   align-items: center;
@@ -764,12 +776,12 @@ button {
   transition: color 0.15s, background 0.15s;
 }
 
-.topbar__icon-btn:hover {
+.app-header-wrapper__icon-btn:hover {
   color: var(--ink-1);
   background: var(--line-1);
 }
 
-.topbar__badge {
+.app-header-wrapper__badge {
   position: absolute;
   top: 2px;
   right: 2px;
@@ -785,7 +797,7 @@ button {
   text-align: center;
 }
 
-.topbar__avatar {
+.app-header-wrapper__avatar {
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -801,7 +813,7 @@ button {
   transition: opacity 0.15s;
 }
 
-.topbar__avatar:hover {
+.app-header-wrapper__avatar:hover {
   opacity: 0.85;
 }
 

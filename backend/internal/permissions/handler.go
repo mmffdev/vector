@@ -16,11 +16,11 @@ type Handler struct{ Svc *Service }
 func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
 
 type grantReq struct {
-	UserID    uuid.UUID `json:"user_id"`
-	ProjectID uuid.UUID `json:"project_id"`
-	CanView   bool      `json:"can_view"`
-	CanEdit   bool      `json:"can_edit"`
-	CanAdmin  bool      `json:"can_admin"`
+	UserID      uuid.UUID `json:"user_id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	CanView     bool      `json:"can_view"`
+	CanEdit     bool      `json:"can_edit"`
+	CanAdmin    bool      `json:"can_admin"`
 }
 
 func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +31,7 @@ func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := h.Svc.Grant(r.Context(), GrantInput{
-		UserID: req.UserID, ProjectID: req.ProjectID,
+		UserID: req.UserID, WorkspaceID: req.WorkspaceID,
 		CanView: req.CanView, CanEdit: req.CanEdit, CanAdmin: req.CanAdmin,
 	}, actor.ID, clientIP(r))
 	if err != nil {
@@ -71,13 +71,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, out)
 		return
 	}
-	if pid := q.Get("project_id"); pid != "" {
-		id, err := uuid.Parse(pid)
+	if wid := q.Get("workspace_id"); wid != "" {
+		id, err := uuid.Parse(wid)
 		if err != nil {
-			http.Error(w, "bad project_id", http.StatusBadRequest)
+			http.Error(w, "bad workspace_id", http.StatusBadRequest)
 			return
 		}
-		out, err := h.Svc.ListForProject(r.Context(), id)
+		out, err := h.Svc.ListForWorkspace(r.Context(), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -85,7 +85,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, out)
 		return
 	}
-	http.Error(w, "user_id or project_id required", http.StatusBadRequest)
+	http.Error(w, "user_id or workspace_id required", http.StatusBadRequest)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

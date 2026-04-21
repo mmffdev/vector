@@ -50,11 +50,11 @@ Single source of truth for styling. Read this before adding CSS.
 These are the canonical components. If you need something similar, extend with a modifier rather than inventing a new block.
 
 ### Layout (existing)
-- `.app-shell`, `.app-body`, `.app-content-wrapper`
+- `.app-shell`, `.app-content-container`, `.app-viewport-container`
 - `.page-header`, `.page-header__subtitle`, `.page-body`
 
 ### Navigation (existing)
-- `.sidebar`, `.sidebar__item`, `.sidebar__item--active`, `.sidebar__section`
+- `.app-sidebar-container`, `.sidebar-item`, `.sidebar-section`, `.sidebar-dev-group`
 - `.topbar`, `.topbar__brand`, `.topbar__actions`
 - `.footer`, `.footer__link`
 
@@ -158,7 +158,7 @@ Toggle these via React based on state. Keep CSS selectors stable.
 
 ## Responsive
 
-Mobile breakpoint is `900px` (see existing `.app-body` rule). Use the same breakpoint for new responsive rules to keep behaviour consistent.
+Mobile breakpoint is `900px` (see existing `.app-content-container` rule). Use the same breakpoint for new responsive rules to keep behaviour consistent.
 
 ```css
 @media (max-width: 900px) { /* ... */ }

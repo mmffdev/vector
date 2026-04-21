@@ -7,3 +7,4 @@ backend/server
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+local-assets/backups/

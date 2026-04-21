@@ -2,8 +2,13 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/app/components/Sidebar";
-import Topbar from "@/app/components/Topbar";
+import AppShell from "@/app/components/AppShell";
+import AppViewport from "@/app/components/AppViewport";
+import PageWrapper from "@/app/components/PageWrapper";
+import AppSidebar_2 from "@/app/components/AppSidebar_2";
+import AppFooter from "@/app/components/AppFooter";
+import AppHeader from "@/app/components/AppHeader";
+import AppContent from "@/app/components/AppContent";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -24,25 +29,16 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   if (loading || !user || user.force_password_change) return null;
 
   return (
-    <div className="app-shell">
-      <Topbar />
-      <div className="app-body">
-        <Sidebar />
-        <div className="app-content-wrapper">
-          <div className="page-header-bar">{children}</div>
-          <main className="main-content"></main>
-        </div>
-      </div>
-      <footer className="footer">
-        <div className="footer-left">
-          <span>&copy; 2026 MMFFDev. All rights reserved.</span>
-        </div>
-        <div>
-          <a href="#" className="footer-link">Terms</a>
-          <span className="footer__sep">·</span>
-          <a href="#" className="footer-link">Privacy</a>
-        </div>
-      </footer>
-    </div>
+    <AppShell className="app-shell">
+      <AppHeader />
+      <AppContent className="app-content-container">
+        <AppSidebar_2 />
+        <AppViewport className="app-viewport-container">
+          <PageWrapper className="page-wrapper">{children}</PageWrapper>
+          <main className="page-content-wrapper"></main>
+        </AppViewport>
+      </AppContent>
+      <AppFooter />
+    </AppShell>
   );
 }

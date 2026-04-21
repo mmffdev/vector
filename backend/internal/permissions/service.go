@@ -19,34 +19,34 @@ func New(pool *pgxpool.Pool, a *audit.Logger) *Service {
 }
 
 type GrantInput struct {
-	UserID    uuid.UUID
-	ProjectID uuid.UUID
-	CanView   bool
-	CanEdit   bool
-	CanAdmin  bool
+	UserID      uuid.UUID
+	WorkspaceID uuid.UUID
+	CanView     bool
+	CanEdit     bool
+	CanAdmin    bool
 }
 
-func (s *Service) Grant(ctx context.Context, in GrantInput, actor uuid.UUID, ip string) (*models.UserProjectPermission, error) {
-	p := &models.UserProjectPermission{}
+func (s *Service) Grant(ctx context.Context, in GrantInput, actor uuid.UUID, ip string) (*models.UserWorkspacePermission, error) {
+	p := &models.UserWorkspacePermission{}
 	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO user_project_permissions (user_id, project_id, can_view, can_edit, can_admin, granted_by)
+		INSERT INTO user_workspace_permissions (user_id, workspace_id, can_view, can_edit, can_admin, granted_by)
 		VALUES ($1,$2,$3,$4,$5,$6)
-		ON CONFLICT (user_id, project_id) DO UPDATE
+		ON CONFLICT (user_id, workspace_id) DO UPDATE
 		  SET can_view = EXCLUDED.can_view,
 		      can_edit = EXCLUDED.can_edit,
 		      can_admin = EXCLUDED.can_admin,
 		      granted_by = EXCLUDED.granted_by,
 		      updated_at = NOW()
-		RETURNING id, user_id, project_id, can_view, can_edit, can_admin, granted_by, created_at, updated_at`,
-		in.UserID, in.ProjectID, in.CanView, in.CanEdit, in.CanAdmin, actor,
-	).Scan(&p.ID, &p.UserID, &p.ProjectID, &p.CanView, &p.CanEdit, &p.CanAdmin, &p.GrantedBy, &p.CreatedAt, &p.UpdatedAt)
+		RETURNING id, user_id, workspace_id, can_view, can_edit, can_admin, granted_by, created_at, updated_at`,
+		in.UserID, in.WorkspaceID, in.CanView, in.CanEdit, in.CanAdmin, actor,
+	).Scan(&p.ID, &p.UserID, &p.WorkspaceID, &p.CanView, &p.CanEdit, &p.CanAdmin, &p.GrantedBy, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
-	pid := p.ProjectID.String()
+	wid := p.WorkspaceID.String()
 	s.Audit.Log(ctx, audit.Entry{
 		UserID: &actor, Action: "permission.granted",
-		Resource: strPtr("project"), ResourceID: &pid,
+		Resource: strPtr("workspace"), ResourceID: &wid,
 		IPAddress: nilIfEmpty(ip),
 		Metadata: map[string]any{
 			"target_user": in.UserID, "can_view": in.CanView, "can_edit": in.CanEdit, "can_admin": in.CanAdmin,
@@ -56,31 +56,31 @@ func (s *Service) Grant(ctx context.Context, in GrantInput, actor uuid.UUID, ip 
 }
 
 func (s *Service) Revoke(ctx context.Context, id uuid.UUID, actor uuid.UUID, ip string) error {
-	_, err := s.Pool.Exec(ctx, `DELETE FROM user_project_permissions WHERE id = $1`, id)
+	_, err := s.Pool.Exec(ctx, `DELETE FROM user_workspace_permissions WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
 	rid := id.String()
 	s.Audit.Log(ctx, audit.Entry{
 		UserID: &actor, Action: "permission.revoked",
-		Resource: strPtr("user_project_permission"), ResourceID: &rid,
+		Resource: strPtr("user_workspace_permission"), ResourceID: &rid,
 		IPAddress: nilIfEmpty(ip),
 	})
 	return nil
 }
 
-func (s *Service) ListForUser(ctx context.Context, userID uuid.UUID) ([]models.UserProjectPermission, error) {
+func (s *Service) ListForUser(ctx context.Context, userID uuid.UUID) ([]models.UserWorkspacePermission, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, user_id, project_id, can_view, can_edit, can_admin, granted_by, created_at, updated_at
-		FROM user_project_permissions WHERE user_id = $1`, userID)
+		SELECT id, user_id, workspace_id, can_view, can_edit, can_admin, granted_by, created_at, updated_at
+		FROM user_workspace_permissions WHERE user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []models.UserProjectPermission{}
+	out := []models.UserWorkspacePermission{}
 	for rows.Next() {
-		p := models.UserProjectPermission{}
-		if err := rows.Scan(&p.ID, &p.UserID, &p.ProjectID, &p.CanView, &p.CanEdit, &p.CanAdmin, &p.GrantedBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		p := models.UserWorkspacePermission{}
+		if err := rows.Scan(&p.ID, &p.UserID, &p.WorkspaceID, &p.CanView, &p.CanEdit, &p.CanAdmin, &p.GrantedBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -88,18 +88,18 @@ func (s *Service) ListForUser(ctx context.Context, userID uuid.UUID) ([]models.U
 	return out, nil
 }
 
-func (s *Service) ListForProject(ctx context.Context, projectID uuid.UUID) ([]models.UserProjectPermission, error) {
+func (s *Service) ListForWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]models.UserWorkspacePermission, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, user_id, project_id, can_view, can_edit, can_admin, granted_by, created_at, updated_at
-		FROM user_project_permissions WHERE project_id = $1`, projectID)
+		SELECT id, user_id, workspace_id, can_view, can_edit, can_admin, granted_by, created_at, updated_at
+		FROM user_workspace_permissions WHERE workspace_id = $1`, workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []models.UserProjectPermission{}
+	out := []models.UserWorkspacePermission{}
 	for rows.Next() {
-		p := models.UserProjectPermission{}
-		if err := rows.Scan(&p.ID, &p.UserID, &p.ProjectID, &p.CanView, &p.CanEdit, &p.CanAdmin, &p.GrantedBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		p := models.UserWorkspacePermission{}
+		if err := rows.Scan(&p.ID, &p.UserID, &p.WorkspaceID, &p.CanView, &p.CanEdit, &p.CanAdmin, &p.GrantedBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
