@@ -1,5 +1,6 @@
 "use client";
 
+import { usePageHeaderState } from "@/app/contexts/PageHeaderContext";
 import { useTheme } from "@/app/hooks/useTheme";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
 
@@ -9,22 +10,29 @@ const roleLabels: Record<Role, string> = {
   gadmin: "GADMIN",
 };
 
-export default function AppHeader() {
+export default function PageHeaderBar() {
+  const header = usePageHeaderState();
   const { theme, toggle, mounted } = useTheme();
   const { user, logout } = useAuth();
 
   return (
-    <header className={`app-header-wrapper app-header-wrapper--role-${user?.role ?? "user"}`}>
-      <div className="app-header-wrapper__center">
+    <header className="page-header">
+      <div className="page-header__left">
+        <h1 className="page-header__title">
+          Vector <span className="prefix prefix-pink">+</span> {header?.title}
+        </h1>
+        {header?.breadcrumbs && <div className="page-header__breadcrumbs">{header.breadcrumbs}</div>}
+      </div>
+
+      <div className="page-header__actions">
+        {header?.actions}
+
         {user && (
           <span className="role-badge" title="Your role (read-only)">
             {roleLabels[user.role]}
           </span>
         )}
-      </div>
 
-      <div className="app-header-wrapper__actions">
-        {/* Notifications */}
         <button className="app-header-wrapper__icon-btn" title="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -33,7 +41,6 @@ export default function AppHeader() {
           <span className="app-header-wrapper__badge">3+</span>
         </button>
 
-        {/* Settings */}
         <button className="app-header-wrapper__icon-btn" title="Settings">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -41,7 +48,6 @@ export default function AppHeader() {
           </svg>
         </button>
 
-        {/* Theme toggle */}
         {mounted && (
           <button
             onClick={toggle}
@@ -52,7 +58,6 @@ export default function AppHeader() {
           </button>
         )}
 
-        {/* Avatar */}
         <button className="app-header-wrapper__avatar" title={user?.email ?? ""} onClick={logout}>
           {user?.email ? user.email.slice(0, 2).toUpperCase() : "??"}
         </button>

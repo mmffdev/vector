@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
@@ -52,9 +52,28 @@ const devItems: NavItem[] = [
   },
 ];
 
+const STORAGE_KEY = "sidebar-collapsed";
+
 export default function AppSidebar_2() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+  const [peeked, setPeeked] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === "true") setCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-sidebar-collapsed", collapsed ? "true" : "false");
+    localStorage.setItem(STORAGE_KEY, collapsed ? "true" : "false");
+  }, [collapsed]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-sidebar-peeked", peeked ? "true" : "false");
+  }, [peeked]);
+
   if (!user) return null;
   const role = user.role;
 
@@ -62,46 +81,49 @@ export default function AppSidebar_2() {
   const visibleAdminItems = adminItems.filter((item) => item.roles.includes(role));
   const visibleDevItems = devItems.filter((item) => item.roles.includes(role));
 
-  return (
-    <sideBar_2 className="app-sidebar-container">
-      <div className="sidebar-section">Workspace</div>
-      {visibleNavItems.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
-        >
-          {item.icon}{item.label}
-        </Link>
-      ))}
+  const open = !collapsed || peeked;
 
-      {visibleAdminItems.length > 0 && (
-        <>
-          <div className="sidebar-section">Admin</div>
-          {visibleAdminItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar-item ${pathname === item.href ? "active" : ""}`}
-            >
-              {item.icon}{item.label}
-            </Link>
-          ))}
-        </>
-      )}
+  const renderItem = (item: NavItem, exact = false) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      className={`sidebar-item ${(exact ? pathname === item.href : pathname.includes(item.href)) ? "active" : ""}`}
+      title={!open ? item.label : undefined}
+    >
+      {item.icon}
+      <span className="sidebar-item__label">{item.label}</span>
+    </Link>
+  );
+
+  return (
+    <sideBar_2
+      className="app-sidebar-container"
+      data-collapsed={collapsed ? "true" : "false"}
+      data-open={open ? "true" : "false"}
+      onMouseEnter={() => { if (collapsed) setPeeked(true); }}
+      onMouseLeave={() => { if (peeked) setPeeked(false); }}
+    >
+      <button
+        type="button"
+        className="sidebar-collapse-toggle"
+        onClick={() => {
+          setCollapsed((c) => !c);
+          setPeeked(false);
+        }}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+
+      {visibleNavItems.map((item) => renderItem(item))}
+      {visibleAdminItems.map((item) => renderItem(item, true))}
 
       {visibleDevItems.length > 0 && (
         <div className="sidebar-dev-group">
-          <div className="sidebar-section">Dev</div>
-          {visibleDevItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {visibleDevItems.map((item) => renderItem(item))}
         </div>
       )}
     </sideBar_2>

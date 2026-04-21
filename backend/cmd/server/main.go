@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,15 +30,23 @@ import (
 func main() {
 	_ = godotenv.Load(".env.local")
 
-	// Prod safety: in production, COOKIE_SECURE MUST be true and FRONTEND_ORIGIN
-	// MUST be https://. Dev (APP_ENV unset or "development") skips these checks.
-	if os.Getenv("APP_ENV") == "production" {
+	// Prod safety: APP_ENV MUST be set explicitly. In production,
+	// COOKIE_SECURE MUST be true and FRONTEND_ORIGIN MUST be https://.
+	appEnv := os.Getenv("APP_ENV")
+	switch appEnv {
+	case "":
+		log.Fatal("APP_ENV must be set explicitly (development|production)")
+	case "production":
 		if os.Getenv("COOKIE_SECURE") != "true" {
 			log.Fatal("APP_ENV=production requires COOKIE_SECURE=true")
 		}
-		if origin := os.Getenv("FRONTEND_ORIGIN"); origin == "" || origin[:8] != "https://" {
+		if origin := os.Getenv("FRONTEND_ORIGIN"); !strings.HasPrefix(origin, "https://") {
 			log.Fatal("APP_ENV=production requires FRONTEND_ORIGIN to start with https://")
 		}
+	case "development":
+		log.Println("⚠ APP_ENV=development — cookie/origin guards relaxed; DO NOT run this in production")
+	default:
+		log.Fatalf("APP_ENV=%q invalid; must be development or production", appEnv)
 	}
 
 	ctx := context.Background()
@@ -83,7 +92,7 @@ func main() {
 		r.Post("/refresh", authH.Refresh)
 		r.Post("/logout", authH.Logout)
 		r.With(httprate.LimitByIP(3, time.Hour)).Post("/password-reset", authH.PasswordReset)
-		r.Post("/password-reset/confirm", authH.PasswordResetConfirm)
+		r.With(httprate.LimitByIP(10, time.Minute)).Post("/password-reset/confirm", authH.PasswordResetConfirm)
 
 		r.Group(func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
@@ -126,7 +135,7 @@ func main() {
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
-		port = "8080"
+		port = "5100"
 	}
 
 	srv := &http.Server{

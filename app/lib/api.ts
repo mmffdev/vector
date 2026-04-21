@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
 let _accessToken: string | null = null;
 

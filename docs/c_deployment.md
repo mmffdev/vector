@@ -37,7 +37,7 @@ Only one runtime container today:
 
 - **`mmff-ops-postgres`** — Postgres 16. Bound to host loopback only; never exposed to the public internet. Reached from the laptop via SSH tunnel (see [c_ssh.md](c_ssh.md)).
 
-Frontend/backend processes run outside Docker today (`npm run dev` for the frontend — see [c_npmrun.md](c_npmrun.md); Go binary for the backend). This will change when we package for on-prem distribution.
+Frontend/backend processes run outside Docker today (`npm run dev` for the frontend — see [c_npm.md](c_npm.md); Go binary for the backend). This will change when we package for on-prem distribution.
 
 ## Environments
 

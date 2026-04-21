@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { AuthFooter } from "@/app/components/AuthFooter";
 
 export default function ChangePasswordPage() {
   const { user, loading, refresh } = useAuth();
@@ -22,8 +23,10 @@ export default function ChangePasswordPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (pwd !== pwd2) return setErr("Passwords do not match.");
+    if (!current) return setErr("Please enter your current password.");
+    if (!pwd) return setErr("Please enter a new password.");
     if (pwd.length < 12) return setErr("Password must be at least 12 characters.");
+    if (pwd !== pwd2) return setErr("Passwords do not match.");
     setBusy(true);
     try {
       await api("/api/auth/change-password", {
@@ -43,8 +46,10 @@ export default function ChangePasswordPage() {
 
   return (
     <div className="auth-page">
-      <form onSubmit={onSubmit} className="auth-card auth-card--wide">
-        <h1 className="auth-card__title">Set a new password</h1>
+      <form onSubmit={onSubmit} className="auth-card auth-card--wide" noValidate>
+        <h1 className="auth-card__title">
+          <span className="prefix prefix-pink">+++</span> Set a new password
+        </h1>
         <p className="auth-card__subtitle">
           Your account requires a password change before continuing.
         </p>
@@ -55,7 +60,6 @@ export default function ChangePasswordPage() {
             autoComplete="current-password"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
-            required
             className="form__input"
           />
         </label>
@@ -66,7 +70,6 @@ export default function ChangePasswordPage() {
             autoComplete="new-password"
             value={pwd}
             onChange={(e) => setPwd(e.target.value)}
-            required
             className="form__input"
           />
         </label>
@@ -77,16 +80,18 @@ export default function ChangePasswordPage() {
             autoComplete="new-password"
             value={pwd2}
             onChange={(e) => setPwd2(e.target.value)}
-            required
             className="form__input"
           />
         </label>
-        <p className="form__hint">Min 12 characters, at least one letter and one digit.</p>
-        {err && <div className="form__error">{err}</div>}
+        <p className="form__hint">Minimum 12 characters, at least one letter and one digit.</p>
+        <div className={`auth-card__error-slot${err ? " is-visible" : ""}`} role="alert" aria-live="polite">
+          {err}
+        </div>
         <button type="submit" disabled={busy} className="btn btn--primary btn--block">
           {busy ? "Saving…" : "Update password"}
         </button>
       </form>
+      <AuthFooter />
     </div>
   );
 }

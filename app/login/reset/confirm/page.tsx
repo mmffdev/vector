@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/app/lib/api";
+import { AuthFooter } from "@/app/components/AuthFooter";
 
 function ConfirmForm() {
   const router = useRouter();
@@ -18,8 +19,9 @@ function ConfirmForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (pwd !== pwd2) return setErr("Passwords do not match.");
+    if (!pwd) return setErr("Please enter a new password.");
     if (pwd.length < 12) return setErr("Password must be at least 12 characters.");
+    if (pwd !== pwd2) return setErr("Passwords do not match.");
     setBusy(true);
     try {
       await api("/api/auth/password-reset/confirm", {
@@ -36,12 +38,24 @@ function ConfirmForm() {
   }
 
   if (!token) {
-    return <p className="auth-card__subtitle">Missing token.</p>;
+    return (
+      <form className="auth-card" noValidate>
+        <h1 className="auth-card__title">
+          <span className="prefix prefix-pink">+++</span> Missing token
+        </h1>
+        <p className="auth-card__subtitle">
+          This reset link is invalid or incomplete. Request a new one.
+        </p>
+        <Link href="/login/reset" className="auth-card__link">Request a new link</Link>
+      </form>
+    );
   }
 
   return (
-    <form onSubmit={onSubmit} className="auth-card">
-      <h1 className="auth-card__title">Set a new password</h1>
+    <form onSubmit={onSubmit} className="auth-card" noValidate>
+      <h1 className="auth-card__title">
+        <span className="prefix prefix-pink">+++</span> Set password
+      </h1>
       <label className="form__label">
         New password
         <input
@@ -49,7 +63,6 @@ function ConfirmForm() {
           autoComplete="new-password"
           value={pwd}
           onChange={(e) => setPwd(e.target.value)}
-          required
           className="form__input"
         />
       </label>
@@ -60,12 +73,13 @@ function ConfirmForm() {
           autoComplete="new-password"
           value={pwd2}
           onChange={(e) => setPwd2(e.target.value)}
-          required
           className="form__input"
         />
       </label>
-      <p className="form__hint">Min 12 characters, at least one letter and one digit.</p>
-      {err && <div className="form__error">{err}</div>}
+      <p className="form__hint">Minimum 12 characters, at least one letter and one digit.</p>
+      <div className={`auth-card__error-slot${err ? " is-visible" : ""}`} role="alert" aria-live="polite">
+        {err}
+      </div>
       <button type="submit" disabled={busy} className="btn btn--primary btn--block">
         {busy ? "Saving…" : "Set password"}
       </button>
@@ -80,6 +94,7 @@ export default function ResetConfirmPage() {
       <Suspense fallback={null}>
         <ConfirmForm />
       </Suspense>
+      <AuthFooter />
     </div>
   );
 }

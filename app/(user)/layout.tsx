@@ -7,8 +7,8 @@ import AppViewport from "@/app/components/AppViewport";
 import PageWrapper from "@/app/components/PageWrapper";
 import AppSidebar_2 from "@/app/components/AppSidebar_2";
 import AppFooter from "@/app/components/AppFooter";
-import AppHeader from "@/app/components/AppHeader";
-import AppContent from "@/app/components/AppContent";
+import PageHeaderBar from "@/app/components/PageHeaderBar";
+import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -29,16 +29,20 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   if (loading || !user || user.force_password_change) return null;
 
   return (
-    <AppShell className="app-shell">
-      <AppHeader />
-      <AppContent className="app-content-container">
-        <AppSidebar_2 />
-        <AppViewport className="app-viewport-container">
-          <PageWrapper className="page-wrapper">{children}</PageWrapper>
-          <main className="page-content-wrapper"></main>
-        </AppViewport>
-      </AppContent>
-      <AppFooter />
-    </AppShell>
+    <PageHeaderProvider>
+      <div className="app-root">
+        <PageHeaderBar />
+        <AppShell className="app-shell">
+          <AppSidebar_2 />
+          <div className="app-main-column">
+            <AppViewport className="app-viewport-container">
+              <PageWrapper className="page-wrapper">{children}</PageWrapper>
+              <main className="page-content-wrapper"></main>
+            </AppViewport>
+            <AppFooter />
+          </div>
+        </AppShell>
+      </div>
+    </PageHeaderProvider>
   );
 }

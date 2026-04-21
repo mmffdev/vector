@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, ApiError } from "@/app/contexts/AuthContext";
+import { AuthFooter } from "@/app/components/AuthFooter";
 
 function LoginForm() {
   const { login } = useAuth();
@@ -19,6 +20,8 @@ function LoginForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (!email) return setErr("Please enter your email.");
+    if (!password) return setErr("Please enter your password.");
     setBusy(true);
     try {
       const u = await login(email, password);
@@ -34,9 +37,9 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="auth-card">
+    <form onSubmit={onSubmit} className="auth-card" noValidate>
       <h1 className="auth-card__title">
-        <span className="prefix-pink">+++</span> Vector
+        <span className="prefix prefix-pink">+++</span> VECTOR 方向
       </h1>
       <label className="form__label">
         Email
@@ -45,7 +48,6 @@ function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          required
           className="form__input"
         />
       </label>
@@ -56,11 +58,17 @@ function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
           className="form__input"
         />
       </label>
-      {err && <div className="form__error">{err}</div>}
+      <div className={`auth-card__error-slot${err ? " is-visible" : ""}`} role="alert" aria-live="polite">
+        {err}
+      </div>
+      <div className="auth-card__notice">
+        <p>WARNING: Unauthorised access to this system is prohibited and will be subject to legal action. By accessing this system, you accept that your activities may be monitored if unauthorised use is suspected.</p>
+        <p>This login page uses only strictly necessary cookies. For more information, please see our Cookie Policy.</p>
+        <p>By proceeding to log in, you confirm your understanding.</p>
+      </div>
       <button type="submit" disabled={busy} className="btn btn--primary btn--block">
         {busy ? "Signing in…" : "Sign in"}
       </button>
@@ -75,6 +83,7 @@ export default function LoginPage() {
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>
+      <AuthFooter />
     </div>
   );
 }

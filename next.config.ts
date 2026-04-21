@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const isProd = process.env.NODE_ENV === "production";
 
 // CSP: allow self + inline styles (Next.js injects some), connect-src to API backend.
-const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'" + (isProd ? "" : " 'unsafe-eval'"),
