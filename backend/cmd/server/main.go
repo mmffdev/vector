@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -69,6 +72,7 @@ func main() {
 		MaxAge:           300,
 	}))
 	r.Use(security.Headers)
+	r.Use(security.BodyLimit)
 	r.Use(security.CSRF)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
@@ -124,6 +128,36 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, r))
+
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Printf("listening on :%s", port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	select {
+	case err := <-serverErr:
+		log.Fatalf("server error: %v", err)
+	case <-shutdownCtx.Done():
+		log.Println("shutdown signal received, draining...")
+		drainCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(drainCtx); err != nil {
+			log.Printf("graceful shutdown failed: %v", err)
+		}
+	}
 }

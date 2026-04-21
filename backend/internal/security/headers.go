@@ -14,6 +14,7 @@ func Headers(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
+		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		if os.Getenv("COOKIE_SECURE") == "true" {
 			h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}

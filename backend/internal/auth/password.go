@@ -27,6 +27,17 @@ func VerifyPassword(hash, raw string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(raw)) == nil
 }
 
+// equalizeResetTiming burns ~one bcrypt-compare worth of CPU so that
+// password-reset requests for non-existent emails take roughly the same wall
+// time as requests for real accounts. Not a perfect shield (DB round-trip,
+// email send, etc. still differ) but closes the obvious timing channel.
+func equalizeResetTiming() {
+	// Pre-computed bcrypt hash of "dummy-password-for-timing" at cost=12.
+	// Comparing any password against it exercises the same code path as login.
+	const dummyHash = "$2a$12$r24o6xhRwtQaglFFemLY.OkBab3GrkAFZY5/ffGZ3bGshWnRSWRx2"
+	_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte("timing-equalizer"))
+}
+
 func ValidatePassword(raw, email string) error {
 	if len(raw) < 12 {
 		return ErrWeakPassword

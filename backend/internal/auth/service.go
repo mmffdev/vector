@@ -267,6 +267,9 @@ func (s *Service) RequestPasswordReset(ctx context.Context, emailIn, ip string) 
 	u, err := s.FindUserByEmail(ctx, emailIn)
 	if err != nil {
 		// Silent: respond 200 either way to avoid email enumeration.
+		// Burn comparable bcrypt time so response timing doesn't reveal whether
+		// the account exists. Cost matches login's VerifyPassword path.
+		equalizeResetTiming()
 		return nil
 	}
 	raw, hash, err := GenerateRefreshToken()
