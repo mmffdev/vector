@@ -37,7 +37,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           <div className="app-main-column">
             <AppViewport className="app-viewport-container">
               <PageWrapper className="page-wrapper">{children}</PageWrapper>
-              <main className="page-content-wrapper"></main>
             </AppViewport>
             <AppFooter />
           </div>

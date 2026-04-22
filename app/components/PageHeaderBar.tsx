@@ -38,7 +38,6 @@ export default function PageHeaderBar() {
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-          <span className="app-header-wrapper__badge">3+</span>
         </button>
 
         <button className="app-header-wrapper__icon-btn" title="Settings">
@@ -48,13 +47,39 @@ export default function PageHeaderBar() {
           </svg>
         </button>
 
+        <button className="app-header-wrapper__icon-btn" title="Help" aria-label="Help">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </button>
+
         {mounted && (
           <button
             onClick={toggle}
             className="app-header-wrapper__icon-btn"
             title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
           >
-            {theme === "light" ? "🌙" : "☀️"}
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <rect
+                x="0.5"
+                y="0.5"
+                width="19"
+                height="19"
+                fill={theme === "light" ? "#ffffff" : "#000000"}
+                stroke={theme === "light" ? "#000000" : "#ffffff"}
+                strokeWidth="1"
+              />
+              <rect
+                x="3.5"
+                y="3.5"
+                width="13"
+                height="13"
+                fill={theme === "light" ? "#000000" : "#ffffff"}
+              />
+            </svg>
           </button>
         )}
 

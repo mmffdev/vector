@@ -7,14 +7,25 @@
   --radius-md: 0;
 
   --hot-pink: #ec4899;
+  --paper: #fffefa;
+  --cream: #f5f3ee;
 }
 
 :root[data-sidebar-collapsed="true"] {
   --sidebar-width: var(--sidebar-width-collapsed);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 :root[data-theme="light"] {
-  --bg: #f0eee9;
+  --bg: var(--cream);
   --surface: #f0eee9;
   --surface-alt: #e8e5de;
 
@@ -103,6 +114,7 @@ button {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 .app-shell {
@@ -350,7 +362,6 @@ button {
   justify-content: flex-start;
   min-height: 300px;
   gap: 12px;
-  background: var(--surface);
   border-radius: var(--radius-md);
 }
 
@@ -547,18 +558,21 @@ button {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  background: var(--paper);
 }
 
 .form__row {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  
 }
 
 .form__label {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  font-family: var(--font-mono), ui-monospace, 'JetBrains Mono', monospace;
   font-size: 13px;
   color: var(--ink-2);
 }
@@ -571,7 +585,7 @@ button {
   border: 1px solid #666;
   background: var(--surface);
   color: var(--ink-1);
-  font-family: inherit;
+  font-family: var(--font-mono), ui-monospace, 'JetBrains Mono', monospace;
   font-size: 14px;
   border-radius: var(--radius-sm);
 }
@@ -821,7 +835,7 @@ button {
   width: 340px;
   max-width: 100%;
   padding: 28px;
-  background: var(--surface);
+  background: var(--paper);
   border: 1px solid #666;
   border-radius: var(--radius-sm);
 }
@@ -853,6 +867,7 @@ button {
 .auth-card__notice {
   font-size: 11px;
   color: var(--ink-2);
+  background: #f5f3ee;
   padding: 5px;
   text-align: left;
   border: 1px solid #666;
@@ -956,11 +971,11 @@ button {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--accent);
-  color: #1f1f1f;
+  background: transparent;
+  color: var(--ink-1);
   font-size: 12px;
   font-weight: 700;
-  border: none;
+  border: 1px solid var(--ink-1);
   cursor: pointer;
   display: flex;
   align-items: center;

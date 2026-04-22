@@ -42,7 +42,7 @@ function LoginForm() {
         <span className="prefix prefix-pink">+++</span> VECTOR 方向
       </h1>
       <label className="form__label">
-        Email
+        [1] Email
         <input
           type="email"
           autoComplete="email"
@@ -52,7 +52,7 @@ function LoginForm() {
         />
       </label>
       <label className="form__label">
-        Password
+        [2] Password
         <input
           type="password"
           autoComplete="current-password"

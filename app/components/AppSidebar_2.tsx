@@ -96,12 +96,16 @@ export default function AppSidebar_2() {
   );
 
   return (
-    <sideBar_2
+    <nav
+      id="app-sidebar-nav"
+      aria-label="Primary"
       className="app-sidebar-container"
       data-collapsed={collapsed ? "true" : "false"}
       data-open={open ? "true" : "false"}
       onMouseEnter={() => { if (collapsed) setPeeked(true); }}
       onMouseLeave={() => { if (peeked) setPeeked(false); }}
+      onFocus={() => { if (collapsed) setPeeked(true); }}
+      onBlur={(e) => { if (peeked && !e.currentTarget.contains(e.relatedTarget as Node)) setPeeked(false); }}
     >
       <button
         type="button"
@@ -112,6 +116,8 @@ export default function AppSidebar_2() {
         }}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-expanded={!collapsed}
+        aria-controls="app-sidebar-nav"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="15 18 9 12 15 6" />
@@ -126,6 +132,6 @@ export default function AppSidebar_2() {
           {visibleDevItems.map((item) => renderItem(item))}
         </div>
       )}
-    </sideBar_2>
+    </nav>
   );
 }
