@@ -334,6 +334,14 @@ button {
   font-weight: 500;
 }
 
+.sidebar-item--button {
+  background: transparent;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .sidebar-section {
   margin-top: 28px;
   padding: 0 24px;
@@ -696,6 +704,104 @@ button {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
+}
+
+/* ============================================================
+   Nav manage modal
+   ============================================================ */
+.nav-manage__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.nav-manage__pane {
+  border: 1px solid var(--line-1);
+  padding: 12px;
+  min-height: 240px;
+}
+
+.nav-manage__pane-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  margin: 0 0 10px;
+}
+
+.nav-manage__empty {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.nav-manage__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-manage__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-1);
+  background: var(--surface);
+}
+
+.nav-manage__label {
+  font-size: 13px;
+  color: var(--ink-1);
+}
+
+.nav-manage__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-manage__btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--line-1);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nav-manage__btn:hover:not(:disabled) {
+  color: var(--ink-1);
+  border-color: var(--ink-3);
+}
+
+.nav-manage__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav-manage__btn--active {
+  color: #ff2e93;
+  border-color: #ff2e93;
+}
+
+.nav-manage__btn--danger:hover:not(:disabled) {
+  color: #c44;
+  border-color: #c44;
+}
+
+.nav-manage__error {
+  font-size: 13px;
+  color: #c44;
+  margin: 0 0 12px;
 }
 
 /* ============================================================

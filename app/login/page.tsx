@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, ApiError } from "@/app/contexts/AuthContext";
 import { AuthFooter } from "@/app/components/AuthFooter";
+import { api } from "@/app/lib/api";
 
 function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
   const search = useSearchParams();
-  const redirectTo = search.get("redirect") ?? "/dashboard";
+  const explicitRedirect = search.get("redirect");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +26,20 @@ function LoginForm() {
     setBusy(true);
     try {
       const u = await login(email, password);
-      router.push(u.force_password_change ? "/change-password" : redirectTo);
+      if (u.force_password_change) {
+        router.push("/change-password");
+      } else if (explicitRedirect) {
+        router.push(explicitRedirect);
+      } else {
+        let dest = "/dashboard";
+        try {
+          const res = await api<{ href: string }>("/api/nav/start-page");
+          if (res.href) dest = res.href;
+        } catch {
+          // fall through to /dashboard
+        }
+        router.push(dest);
+      }
     } catch (e) {
       const status = e instanceof ApiError ? e.status : 0;
       if (status === 423) setErr("Account locked. Try again later.");
