@@ -313,6 +313,10 @@ button {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+.app-sidebar-container .sidebar-item:first-of-type {
+  margin-top: 8px;
+}
+
 .sidebar-item > svg {
   flex-shrink: 0;
   width: 16px;

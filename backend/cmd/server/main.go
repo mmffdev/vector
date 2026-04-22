@@ -22,6 +22,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/email"
 	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/security"
 	"github.com/mmffdev/vector-backend/internal/users"
@@ -68,6 +69,9 @@ func main() {
 	permsSvc := permissions.New(pool, auditLog)
 	permsH := permissions.NewHandler(permsSvc)
 
+	navSvc := nav.New(pool)
+	navH := nav.NewHandler(navSvc)
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -104,6 +108,18 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Get("/me", authH.Me)
 		})
+	})
+
+	// ---- /api/nav ----
+	r.Route("/api/nav", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+
+		r.Get("/catalogue", navH.Catalogue)
+		r.Get("/prefs", navH.GetPrefs)
+		r.Put("/prefs", navH.PutPrefs)
+		r.Delete("/prefs", navH.DeletePrefs)
+		r.Get("/start-page", navH.StartPage)
 	})
 
 	// ---- /api/admin ----

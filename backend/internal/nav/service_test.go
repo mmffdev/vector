@@ -1,0 +1,307 @@
+package nav
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+)
+
+// Integration tests hit the real Postgres via the SSH tunnel on :5434.
+// Per repo convention, we do not mock the DB.
+//
+// Each test creates its own tenant + user, exercises the service, and
+// leaves rows behind for incidental inspection; ON DELETE CASCADE on
+// user_nav_prefs + users means dropping the test user wipes all prefs.
+// We explicitly delete the test tenant at the end to keep the remote
+// DB tidy.
+
+func testPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+
+	// Walk up from this test file to backend/.env.local
+	// (tests run with CWD = package dir)
+	for _, rel := range []string{".env.local", "../../.env.local"} {
+		abs, _ := filepath.Abs(rel)
+		if _, err := os.Stat(abs); err == nil {
+			_ = godotenv.Load(abs)
+			break
+		}
+	}
+
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+	)
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Skipf("cannot open pool (tunnel down?): %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Skipf("cannot ping DB (tunnel down?): %v", err)
+	}
+	return pool
+}
+
+// mkFixtures creates a throwaway tenant + user, returns their IDs and a
+// cleanup func. Placeholder password hash is a valid bcrypt string for
+// "test" — meaningless, we never log this user in.
+func mkFixtures(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func()) {
+	t.Helper()
+	ctx := context.Background()
+
+	suffix := uuid.NewString()[:8]
+	var tenantID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id`,
+		"nav-test-"+suffix, "nav-test-"+suffix).Scan(&tenantID)
+	if err != nil {
+		t.Fatalf("insert tenant: %v", err)
+	}
+
+	var userID uuid.UUID
+	err = pool.QueryRow(ctx, `
+		INSERT INTO users (tenant_id, email, password_hash, role)
+		VALUES ($1, $2, $3, 'user') RETURNING id`,
+		tenantID, "nav-test-"+suffix+"@example.com",
+		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd").Scan(&userID)
+	if err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+
+	cleanup := func() {
+		// ON DELETE CASCADE on users.tenant_id is RESTRICT, so we delete
+		// user first, then tenant. user_nav_prefs cascades from users.
+		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+			t.Logf("cleanup user: %v", err)
+		}
+		if _, err := pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenantID); err != nil {
+			t.Logf("cleanup tenant: %v", err)
+		}
+	}
+	return tenantID, userID, cleanup
+}
+
+func TestReplacePrefs_HappyPath(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	ctx := context.Background()
+
+	startKey := "my-vista"
+	err := svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+		{ItemKey: "my-vista", Position: 1},
+		{ItemKey: "portfolio", Position: 2},
+	}, &startKey)
+	if err != nil {
+		t.Fatalf("ReplacePrefs: %v", err)
+	}
+
+	rows, err := svc.GetPrefs(ctx, userID, tenantID)
+	if err != nil {
+		t.Fatalf("GetPrefs: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("want 3 rows, got %d", len(rows))
+	}
+	if rows[0].ItemKey != "dashboard" || rows[0].Position != 0 {
+		t.Errorf("row 0 mismatch: %+v", rows[0])
+	}
+	if rows[1].ItemKey != "my-vista" || !rows[1].IsStartPage {
+		t.Errorf("row 1 should be start page: %+v", rows[1])
+	}
+
+	href, ok, err := svc.GetStartPageHref(ctx, userID, tenantID)
+	if err != nil || !ok {
+		t.Fatalf("start page lookup: ok=%v err=%v", ok, err)
+	}
+	if href != "/my-vista" {
+		t.Errorf("want href /my-vista, got %s", href)
+	}
+}
+
+func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+		{ItemKey: "dev", Position: 0},
+	}, nil)
+	if !errors.Is(err, ErrNotPinnable) {
+		t.Fatalf("want ErrNotPinnable, got %v", err)
+	}
+}
+
+func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+		{ItemKey: "does-not-exist", Position: 0},
+	}, nil)
+	if !errors.Is(err, ErrUnknownItemKey) {
+		t.Fatalf("want ErrUnknownItemKey, got %v", err)
+	}
+}
+
+func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	startKey := "planning"
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+	}, &startKey)
+	if !errors.Is(err, ErrStartPageNotPinned) {
+		t.Fatalf("want ErrStartPageNotPinned, got %v", err)
+	}
+}
+
+func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+		{ItemKey: "my-vista", Position: 2},
+	}, nil)
+	if !errors.Is(err, ErrBadPositions) {
+		t.Fatalf("want ErrBadPositions, got %v", err)
+	}
+}
+
+func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+		{ItemKey: "dashboard", Position: 1},
+	}, nil)
+	if !errors.Is(err, ErrDuplicateKey) {
+		t.Fatalf("want ErrDuplicateKey, got %v", err)
+	}
+}
+
+func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	ctx := context.Background()
+
+	// First write: 3 items.
+	if err := svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+		{ItemKey: "my-vista", Position: 1},
+		{ItemKey: "portfolio", Position: 2},
+	}, nil); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+
+	// Second write: 2 items, different set.
+	if err := svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+		{ItemKey: "backlog", Position: 0},
+		{ItemKey: "planning", Position: 1},
+	}, nil); err != nil {
+		t.Fatalf("second write: %v", err)
+	}
+
+	rows, _ := svc.GetPrefs(ctx, userID, tenantID)
+	if len(rows) != 2 {
+		t.Fatalf("want 2 rows after overwrite, got %d", len(rows))
+	}
+	if rows[0].ItemKey != "backlog" || rows[1].ItemKey != "planning" {
+		t.Errorf("unexpected rows: %+v", rows)
+	}
+}
+
+func TestDeletePrefs_WipesRows(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	ctx := context.Background()
+
+	_ = svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+	}, nil)
+
+	if err := svc.DeletePrefs(ctx, userID, tenantID); err != nil {
+		t.Fatalf("DeletePrefs: %v", err)
+	}
+	rows, _ := svc.GetPrefs(ctx, userID, tenantID)
+	if len(rows) != 0 {
+		t.Fatalf("want 0 rows after delete, got %d", len(rows))
+	}
+}
+
+func TestGetStartPageHref_NoneSet(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	_, ok, err := svc.GetStartPageHref(context.Background(), userID, tenantID)
+	if err != nil {
+		t.Fatalf("GetStartPageHref: %v", err)
+	}
+	if ok {
+		t.Fatal("want ok=false when no start page set")
+	}
+}
+
+func TestCatalogFor_RoleFiltering(t *testing.T) {
+	// Unit-level; no DB needed.
+	userEntries := CatalogFor("user")
+	for _, e := range userEntries {
+		if e.Key == "admin" {
+			t.Fatal("user role should not see admin entry")
+		}
+	}
+	padminEntries := CatalogFor("padmin")
+	foundAdmin := false
+	for _, e := range padminEntries {
+		if e.Key == "admin" {
+			foundAdmin = true
+		}
+	}
+	if !foundAdmin {
+		t.Fatal("padmin should see admin entry")
+	}
+}
