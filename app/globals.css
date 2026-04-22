@@ -221,6 +221,33 @@ button {
   margin-top: auto;
 }
 
+.sidebar-reorder-banner {
+  margin: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-reorder-banner__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.sidebar-reorder-banner__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn--small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 .app-header-wrapper {
   background: transparent;
   display: flex;
@@ -313,7 +340,8 @@ button {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.app-sidebar-container .sidebar-item:first-of-type {
+.app-sidebar-container > .sidebar-item:first-of-type,
+.app-sidebar-container > .sidebar-item-wrap:first-of-type {
   margin-top: 8px;
 }
 
@@ -340,6 +368,56 @@ button {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.sidebar-item-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.app-sidebar-container .sidebar-item-wrap:first-of-type {
+  margin-top: 8px;
+}
+
+.sidebar-item-wrap .sidebar-item {
+  flex: 1;
+}
+
+.sidebar-item__drag {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: #ff2e93;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  opacity: 0.5;
+  transition: opacity 120ms;
+  touch-action: none;
+}
+
+.sidebar-item-wrap:hover .sidebar-item__drag,
+.sidebar-item__drag:focus-visible {
+  opacity: 1;
+}
+
+.sidebar-item__drag > svg {
+  display: block;
+}
+
+.sidebar-item__drag:hover {
+  color: #ff2e93;
+}
+
+.sidebar-item__drag:active {
+  cursor: grabbing;
 }
 
 .sidebar-section {
@@ -802,6 +880,46 @@ button {
   font-size: 13px;
   color: #c44;
   margin: 0 0 12px;
+}
+
+.nav-manage__drag {
+  width: 20px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--ink-3);
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.nav-manage__drag:hover {
+  color: var(--ink-1);
+}
+
+.nav-manage__drag:active {
+  cursor: grabbing;
+}
+
+.nav-manage__count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-left: 6px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.nav-manage__notice {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-1);
+  background: var(--surface);
 }
 
 /* ============================================================

@@ -1,6 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import {
@@ -20,6 +37,78 @@ interface StagedRow {
   isStartPage: boolean;
 }
 
+const MAX_PINNED = 20;
+
+function PinnedRow({
+  entry,
+  onUnpin,
+  onToggleStart,
+}: {
+  entry: NavCatalogEntry & { isStartPage: boolean };
+  onUnpin: () => void;
+  onToggleStart: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: entry.key });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} className="nav-manage__row">
+      <button
+        type="button"
+        className="nav-manage__drag"
+        aria-label={`Reorder ${entry.label}`}
+        title="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="9" cy="6" r="1.5" />
+          <circle cx="15" cy="6" r="1.5" />
+          <circle cx="9" cy="12" r="1.5" />
+          <circle cx="15" cy="12" r="1.5" />
+          <circle cx="9" cy="18" r="1.5" />
+          <circle cx="15" cy="18" r="1.5" />
+        </svg>
+      </button>
+      <span className="nav-manage__label">{entry.label}</span>
+      <div className="nav-manage__actions">
+        <button
+          type="button"
+          className={`nav-manage__btn ${entry.isStartPage ? "nav-manage__btn--active" : ""}`}
+          onClick={onToggleStart}
+          aria-label={entry.isStartPage ? `Unset ${entry.label} as start page` : `Set ${entry.label} as start page`}
+          aria-pressed={entry.isStartPage}
+          title={entry.isStartPage ? "Start page (click to unset)" : "Set as start page"}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={entry.isStartPage ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <path d="M9 22V12h6v10" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="nav-manage__btn nav-manage__btn--danger"
+          onClick={onUnpin}
+          aria-label={`Unpin ${entry.label}`}
+          title="Unpin"
+        >×</button>
+      </div>
+    </li>
+  );
+}
+
 export default function NavManageModal({ open, onClose }: Props) {
   const { user } = useAuth();
   const { prefs, save, reset } = useNavPrefs();
@@ -27,7 +116,6 @@ export default function NavManageModal({ open, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Hydrate staged state from current prefs whenever the modal opens.
   useEffect(() => {
     if (!open) return;
     const rows = prefs
@@ -57,21 +145,21 @@ export default function NavManageModal({ open, onClose }: Props) {
     [staged],
   );
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   if (!open) return null;
 
-  const move = (index: number, delta: number) => {
-    const next = staged.slice();
-    const target = index + delta;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setStaged(next);
-  };
+  const atCap = staged.length >= MAX_PINNED;
 
   const unpin = (key: string) => {
     setStaged((cur) => cur.filter((r) => r.key !== key));
   };
 
   const pin = (key: string) => {
+    if (atCap) return;
     setStaged((cur) => [...cur, { key, isStartPage: false }]);
   };
 
@@ -79,6 +167,17 @@ export default function NavManageModal({ open, onClose }: Props) {
     setStaged((cur) =>
       cur.map((r) => ({ ...r, isStartPage: r.key === key ? !r.isStartPage : false })),
     );
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setStaged((cur) => {
+      const from = cur.findIndex((r) => r.key === active.id);
+      const to = cur.findIndex((r) => r.key === over.id);
+      if (from < 0 || to < 0) return cur;
+      return arrayMove(cur, from, to);
+    });
   };
 
   const handleSave = async () => {
@@ -127,55 +226,26 @@ export default function NavManageModal({ open, onClose }: Props) {
         <div className="modal__body">
           <div className="nav-manage__panes">
             <section className="nav-manage__pane" aria-label="Pinned">
-              <h3 className="nav-manage__pane-title">Pinned</h3>
+              <h3 className="nav-manage__pane-title">
+                Pinned <span className="nav-manage__count">{staged.length}/{MAX_PINNED}</span>
+              </h3>
               {pinnedEntries.length === 0 ? (
                 <p className="nav-manage__empty">No items pinned — the sidebar falls back to defaults.</p>
               ) : (
-                <ul className="nav-manage__list">
-                  {pinnedEntries.map((e, i) => (
-                    <li key={e.key} className="nav-manage__row">
-                      <span className="nav-manage__label">{e.label}</span>
-                      <div className="nav-manage__actions">
-                        <button
-                          type="button"
-                          className="nav-manage__btn"
-                          onClick={() => move(i, -1)}
-                          disabled={i === 0}
-                          aria-label={`Move ${e.label} up`}
-                          title="Move up"
-                        >↑</button>
-                        <button
-                          type="button"
-                          className="nav-manage__btn"
-                          onClick={() => move(i, 1)}
-                          disabled={i === pinnedEntries.length - 1}
-                          aria-label={`Move ${e.label} down`}
-                          title="Move down"
-                        >↓</button>
-                        <button
-                          type="button"
-                          className={`nav-manage__btn ${e.isStartPage ? "nav-manage__btn--active" : ""}`}
-                          onClick={() => setStart(e.key)}
-                          aria-label={e.isStartPage ? `Unset ${e.label} as start page` : `Set ${e.label} as start page`}
-                          aria-pressed={e.isStartPage}
-                          title={e.isStartPage ? "Start page (click to unset)" : "Set as start page"}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill={e.isStartPage ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                            <path d="M9 22V12h6v10" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          className="nav-manage__btn nav-manage__btn--danger"
-                          onClick={() => unpin(e.key)}
-                          aria-label={`Unpin ${e.label}`}
-                          title="Unpin"
-                        >×</button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={pinnedEntries.map((e) => e.key)} strategy={verticalListSortingStrategy}>
+                    <ul className="nav-manage__list">
+                      {pinnedEntries.map((e) => (
+                        <PinnedRow
+                          key={e.key}
+                          entry={e}
+                          onUnpin={() => unpin(e.key)}
+                          onToggleStart={() => setStart(e.key)}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
               )}
             </section>
 
@@ -193,8 +263,9 @@ export default function NavManageModal({ open, onClose }: Props) {
                           type="button"
                           className="nav-manage__btn"
                           onClick={() => pin(e.key)}
+                          disabled={atCap}
                           aria-label={`Pin ${e.label}`}
-                          title="Pin"
+                          title={atCap ? `Pinned limit (${MAX_PINNED}) reached` : "Pin"}
                         >+</button>
                       </div>
                     </li>
@@ -204,6 +275,7 @@ export default function NavManageModal({ open, onClose }: Props) {
             </section>
           </div>
 
+          {atCap && <p className="nav-manage__notice">Pinned limit reached — unpin an item to add another.</p>}
           {error && <p className="nav-manage__error" role="alert">{error}</p>}
 
           <div className="modal__actions">
@@ -232,6 +304,4 @@ export default function NavManageModal({ open, onClose }: Props) {
   );
 }
 
-// Keep NAV_CATALOG reference live to avoid an unused-import warning if
-// the file is tree-shaken down the line. Harmless.
 void NAV_CATALOG;

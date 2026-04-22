@@ -3,6 +3,23 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import {
@@ -20,8 +37,6 @@ const Icon = ({ d, d2 }: { d: string; d2?: string }) => (
   </svg>
 );
 
-// Icon resolution by catalogue key. Kept local — swap to a <NavIcon />
-// component if this grows past ~a dozen.
 function IconFor({ iconKey }: { iconKey: string }) {
   switch (iconKey) {
     case "home":      return <Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" d2="M9 22V12h6v10" />;
@@ -39,8 +54,6 @@ function IconFor({ iconKey }: { iconKey: string }) {
 
 const STORAGE_KEY = "sidebar-collapsed";
 
-// Resolve the items to render: permitted ∩ pinned.
-// Falls back to catalogue defaults when the user has no prefs row.
 function resolveRenderedItems(role: Role, pinnedKeys: string[]): NavCatalogEntry[] {
   if (pinnedKeys.length === 0) {
     return defaultPinnedFor(role);
@@ -51,13 +64,63 @@ function resolveRenderedItems(role: Role, pinnedKeys: string[]): NavCatalogEntry
     .filter((e) => e.roles.includes(role));
 }
 
+function SortableSidebarItem({
+  item,
+  pathname,
+  open,
+}: {
+  item: NavCatalogEntry;
+  pathname: string;
+  open: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="sidebar-item-wrap">
+      <button
+        type="button"
+        className="sidebar-item__drag"
+        aria-label={`Reorder ${item.label}`}
+        title="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <svg width="12" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="9" cy="6" r="1.5" />
+          <circle cx="15" cy="6" r="1.5" />
+          <circle cx="9" cy="12" r="1.5" />
+          <circle cx="15" cy="12" r="1.5" />
+          <circle cx="9" cy="18" r="1.5" />
+          <circle cx="15" cy="18" r="1.5" />
+        </svg>
+      </button>
+      <Link
+        href={item.href}
+        className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
+        title={!open ? item.label : undefined}
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
+      >
+        <IconFor iconKey={item.icon} />
+        <span className="sidebar-item__label">{item.label}</span>
+      </Link>
+    </div>
+  );
+}
+
 export default function AppSidebar_2() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { prefs } = useNavPrefs();
+  const { prefs, save } = useNavPrefs();
   const [collapsed, setCollapsed] = useState(false);
   const [peeked, setPeeked] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+  const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -80,32 +143,59 @@ export default function AppSidebar_2() {
     [prefs],
   );
 
-  const renderedItems = useMemo(
+  const baseRenderedItems = useMemo(
     () => (role ? resolveRenderedItems(role, pinnedKeys) : []),
     [role, pinnedKeys],
   );
 
-  // Dev group is never pinnable; always rendered from catalogue when role allows.
+  const renderedItems = useMemo(() => {
+    if (!draftOrder) return baseRenderedItems;
+    const byKey = new Map(baseRenderedItems.map((i) => [i.key, i]));
+    return draftOrder
+      .map((k) => byKey.get(k))
+      .filter((i): i is NavCatalogEntry => !!i);
+  }, [baseRenderedItems, draftOrder]);
+
   const visibleDevItems = useMemo(
     () => (role ? NAV_CATALOG.filter((e) => !e.pinnable && e.roles.includes(role)) : []),
     [role],
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   if (!user) return null;
 
   const open = !collapsed || peeked;
 
-  const renderItem = (item: NavCatalogEntry) => (
-    <Link
-      key={item.key}
-      href={item.href}
-      className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
-      title={!open ? item.label : undefined}
-    >
-      <IconFor iconKey={item.icon} />
-      <span className="sidebar-item__label">{item.label}</span>
-    </Link>
-  );
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const current = draftOrder ?? baseRenderedItems.map((i) => i.key);
+    const from = current.indexOf(String(active.id));
+    const to = current.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    setDraftOrder(arrayMove(current, from, to));
+  };
+
+  const acceptOrder = async () => {
+    if (!draftOrder) return;
+    setCommitting(true);
+    try {
+      const startKey = prefs.find((p) => p.is_start_page)?.item_key ?? null;
+      await save({
+        pinned: draftOrder.map((k, i) => ({ item_key: k, position: i })),
+        start_page_key: startKey,
+      });
+      setDraftOrder(null);
+    } finally {
+      setCommitting(false);
+    }
+  };
+
+  const undoOrder = () => setDraftOrder(null);
 
   return (
     <nav
@@ -136,7 +226,33 @@ export default function AppSidebar_2() {
         </svg>
       </button>
 
-      {renderedItems.map(renderItem)}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={renderedItems.map((i) => i.key)} strategy={verticalListSortingStrategy}>
+          {renderedItems.map((item) => (
+            <SortableSidebarItem key={item.key} item={item} pathname={pathname} open={open} />
+          ))}
+        </SortableContext>
+      </DndContext>
+
+      {draftOrder && (
+        <div className="sidebar-reorder-banner" role="status" aria-live="polite">
+          <p className="sidebar-reorder-banner__text">You have changed the order of your navigation.</p>
+          <div className="sidebar-reorder-banner__actions">
+            <button
+              type="button"
+              className="btn btn--primary btn--small"
+              onClick={acceptOrder}
+              disabled={committing}
+            >{committing ? "Saving…" : "Accept"}</button>
+            <button
+              type="button"
+              className="btn btn--ghost btn--small"
+              onClick={undoOrder}
+              disabled={committing}
+            >Undo</button>
+          </div>
+        </div>
+      )}
 
       <button
         type="button"
@@ -151,7 +267,17 @@ export default function AppSidebar_2() {
 
       {visibleDevItems.length > 0 && (
         <div className="sidebar-dev-group">
-          {visibleDevItems.map(renderItem)}
+          {visibleDevItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
+              title={!open ? item.label : undefined}
+            >
+              <IconFor iconKey={item.icon} />
+              <span className="sidebar-item__label">{item.label}</span>
+            </Link>
+          ))}
         </div>
       )}
 
