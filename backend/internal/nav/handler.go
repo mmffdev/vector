@@ -14,13 +14,21 @@ func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
 
 type catalogueResp struct {
 	Catalogue []CatalogEntry `json:"catalogue"`
+	Tags      []TagGroup     `json:"tags"`
 }
 
-// GET /api/nav/catalogue — catalogue filtered by caller's role.
+// GET /api/nav/catalogue — catalogue filtered by caller's role, plus tag groups.
 func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	entries := CatalogFor(u.Role)
-	writeJSON(w, http.StatusOK, catalogueResp{Catalogue: entries})
+	reg, err := h.Svc.Registry.Get(r.Context())
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, catalogueResp{
+		Catalogue: reg.CatalogFor(u.Role),
+		Tags:      reg.Tags(),
+	})
 }
 
 type prefsResp struct {
@@ -59,7 +67,8 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrStartPageNotPinned),
 			errors.Is(err, ErrBadPositions),
 			errors.Is(err, ErrDuplicateKey),
-			errors.Is(err, ErrTooManyPinned):
+			errors.Is(err, ErrTooManyPinned),
+			errors.Is(err, ErrBadGrouping):
 			// Generic 400 — do not echo the offending key back to the client.
 			http.Error(w, "invalid request", http.StatusBadRequest)
 			return

@@ -69,7 +69,14 @@ func main() {
 	permsSvc := permissions.New(pool, auditLog)
 	permsH := permissions.NewHandler(permsSvc)
 
-	navSvc := nav.New(pool)
+	// Page registry: cached DB-backed catalogue. 60s TTL trades a tiny
+	// window of staleness after an admin change for near-zero read cost.
+	// Prime at startup so a broken DB fails fast here, not on first request.
+	navRegistry := nav.NewCachedRegistry(pool, 60*time.Second)
+	if _, err := navRegistry.Load(ctx); err != nil {
+		log.Fatalf("nav registry: initial load: %v", err)
+	}
+	navSvc := nav.New(pool, navRegistry)
 	navH := nav.NewHandler(navSvc)
 
 	r := chi.NewRouter()

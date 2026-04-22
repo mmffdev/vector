@@ -24,13 +24,17 @@ var (
 	ErrDuplicateKey       = errors.New("duplicate item_key in pinned list")
 	ErrRoleForbidden      = errors.New("role may not pin this item_key")
 	ErrTooManyPinned      = errors.New("too many pinned items")
+	ErrBadGrouping        = errors.New("items sharing a tag must be contiguous")
 )
 
 type Service struct {
-	Pool *pgxpool.Pool
+	Pool     *pgxpool.Pool
+	Registry *CachedRegistry
 }
 
-func New(pool *pgxpool.Pool) *Service { return &Service{Pool: pool} }
+func New(pool *pgxpool.Pool, registry *CachedRegistry) *Service {
+	return &Service{Pool: pool, Registry: registry}
+}
 
 type PrefRow struct {
 	ItemKey     string `json:"item_key"`
@@ -82,7 +86,11 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UU
 	if err != nil {
 		return "", false, err
 	}
-	entry, ok := Find(key)
+	reg, err := s.Registry.Get(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	entry, ok := reg.Find(key)
 	if !ok {
 		// Stale key — catalogue changed after prefs were written. Caller falls back.
 		return "", false, nil
@@ -99,24 +107,29 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UU
 //
 // Validation:
 //   - len(pinned) <= MaxPinned
-//   - every item_key exists in static catalogue (entity keys deferred to Phase 3)
+//   - every item_key exists in the registry (entity keys deferred to Phase 3)
 //   - every item_key is pinnable
 //   - every item_key is permitted by the caller's role
 //   - no duplicate item_keys
 //   - positions form contiguous 0..N-1
+//   - items sharing a tag_enum are contiguous in position order
 //   - start_page_key, if non-nil, is in the pinned list and pinnable
 func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, role models.Role, pinned []PinnedInput, startPageKey *string) error {
 	if len(pinned) > MaxPinned {
 		return fmt.Errorf("%w: %d > %d", ErrTooManyPinned, len(pinned), MaxPinned)
 	}
-	if err := validatePinned(pinned, role); err != nil {
+	reg, err := s.Registry.Get(ctx)
+	if err != nil {
+		return err
+	}
+	if err := validatePinned(reg, pinned, role); err != nil {
 		return err
 	}
 	if startPageKey != nil {
-		if !IsPinnable(*startPageKey) {
+		if !reg.IsPinnable(*startPageKey) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrNotPinnable, *startPageKey)
 		}
-		entry, _ := Find(*startPageKey)
+		entry, _ := reg.Find(*startPageKey)
 		if !roleAllowed(role, entry.Roles) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
@@ -177,11 +190,14 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) e
 	return err
 }
 
-func validatePinned(pinned []PinnedInput, role models.Role) error {
+func validatePinned(reg *Registry, pinned []PinnedInput, role models.Role) error {
 	seen := make(map[string]struct{}, len(pinned))
 	positions := make(map[int]struct{}, len(pinned))
+	// Build a position-indexed tag list so we can verify group contiguity
+	// without mutating the caller's slice.
+	tagByPos := make(map[int]string, len(pinned))
 	for _, p := range pinned {
-		entry, ok := Find(p.ItemKey)
+		entry, ok := reg.Find(p.ItemKey)
 		if !ok {
 			return fmt.Errorf("%w: %s", ErrUnknownItemKey, p.ItemKey)
 		}
@@ -196,11 +212,26 @@ func validatePinned(pinned []PinnedInput, role models.Role) error {
 		}
 		seen[p.ItemKey] = struct{}{}
 		positions[p.Position] = struct{}{}
+		tagByPos[p.Position] = entry.TagEnum
 	}
 	for i := 0; i < len(pinned); i++ {
 		if _, ok := positions[i]; !ok {
 			return ErrBadPositions
 		}
+	}
+	// Contiguity: walk positions in order, once a tag has been "closed"
+	// (i.e. the sequence moved to a different tag) it must not reappear.
+	closed := make(map[string]struct{}, len(pinned))
+	var prevTag string
+	for i := 0; i < len(pinned); i++ {
+		tag := tagByPos[i]
+		if i > 0 && tag != prevTag {
+			closed[prevTag] = struct{}{}
+		}
+		if _, wasClosed := closed[tag]; wasClosed {
+			return fmt.Errorf("%w: %s", ErrBadGrouping, tag)
+		}
+		prevTag = tag
 	}
 	return nil
 }
