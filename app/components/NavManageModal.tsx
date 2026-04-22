@@ -18,14 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
-import {
-  NAV_CATALOG,
-  catalogFor,
-  findCatalogEntry,
-  type NavCatalogEntry,
-} from "@/app/lib/navCatalog";
+import { useNavPrefs, type NavCatalogEntry } from "@/app/contexts/NavPrefsContext";
 
 interface Props {
   open: boolean;
@@ -110,8 +103,7 @@ function PinnedRow({
 }
 
 export default function NavManageModal({ open, onClose }: Props) {
-  const { user } = useAuth();
-  const { prefs, save, reset } = useNavPrefs();
+  const { prefs, save, reset, catalogue, findEntry } = useNavPrefs();
   const [staged, setStaged] = useState<StagedRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,23 +118,21 @@ export default function NavManageModal({ open, onClose }: Props) {
     setError(null);
   }, [open, prefs]);
 
-  const role = user?.role;
-
+  // Catalogue is already role-filtered by the server.
   const pool = useMemo<NavCatalogEntry[]>(() => {
-    if (!role) return [];
     const stagedKeys = new Set(staged.map((r) => r.key));
-    return catalogFor(role).filter((e) => e.pinnable && !stagedKeys.has(e.key));
-  }, [role, staged]);
+    return catalogue.filter((e) => e.pinnable && !stagedKeys.has(e.key));
+  }, [catalogue, staged]);
 
   const pinnedEntries = useMemo<(NavCatalogEntry & { isStartPage: boolean })[]>(
     () =>
       staged
         .map((r) => {
-          const e = findCatalogEntry(r.key);
+          const e = findEntry(r.key);
           return e ? { ...e, isStartPage: r.isStartPage } : null;
         })
         .filter((e): e is NavCatalogEntry & { isStartPage: boolean } => !!e),
-    [staged],
+    [staged, findEntry],
   );
 
   const sensors = useSensors(
@@ -304,4 +294,3 @@ export default function NavManageModal({ open, onClose }: Props) {
   );
 }
 
-void NAV_CATALOG;

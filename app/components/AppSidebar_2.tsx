@@ -20,14 +20,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useAuth, type Role } from "@/app/contexts/AuthContext";
-import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
-import {
-  NAV_CATALOG,
-  type NavCatalogEntry,
-  defaultPinnedFor,
-  findCatalogEntry,
-} from "@/app/lib/navCatalog";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { useNavPrefs, type NavCatalogEntry } from "@/app/contexts/NavPrefsContext";
 import NavManageModal from "@/app/components/NavManageModal";
 
 const Icon = ({ d, d2 }: { d: string; d2?: string }) => (
@@ -53,16 +47,6 @@ function IconFor({ iconKey }: { iconKey: string }) {
 }
 
 const STORAGE_KEY = "sidebar-collapsed";
-
-function resolveRenderedItems(role: Role, pinnedKeys: string[]): NavCatalogEntry[] {
-  if (pinnedKeys.length === 0) {
-    return defaultPinnedFor(role);
-  }
-  return pinnedKeys
-    .map((k) => findCatalogEntry(k))
-    .filter((e): e is NavCatalogEntry => !!e)
-    .filter((e) => e.roles.includes(role));
-}
 
 function SortableSidebarItem({
   item,
@@ -115,7 +99,7 @@ function SortableSidebarItem({
 export default function AppSidebar_2() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { prefs, save } = useNavPrefs();
+  const { prefs, save, catalogue, findEntry, defaultPinned } = useNavPrefs();
   const [collapsed, setCollapsed] = useState(false);
   const [peeked, setPeeked] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -136,17 +120,21 @@ export default function AppSidebar_2() {
     document.documentElement.setAttribute("data-sidebar-peeked", peeked ? "true" : "false");
   }, [peeked]);
 
-  const role = user?.role;
-
   const pinnedKeys = useMemo(
     () => prefs.slice().sort((a, b) => a.position - b.position).map((p) => p.item_key),
     [prefs],
   );
 
-  const baseRenderedItems = useMemo(
-    () => (role ? resolveRenderedItems(role, pinnedKeys) : []),
-    [role, pinnedKeys],
-  );
+  // Catalogue arrives role-filtered from the server, so no need to re-gate
+  // by role on the client. Unknown pinned keys (e.g. a catalogue entry
+  // retired since the user pinned it) drop out silently.
+  const baseRenderedItems = useMemo<NavCatalogEntry[]>(() => {
+    if (catalogue.length === 0) return [];
+    if (pinnedKeys.length === 0) return defaultPinned;
+    return pinnedKeys
+      .map((k) => findEntry(k))
+      .filter((e): e is NavCatalogEntry => !!e);
+  }, [catalogue, pinnedKeys, defaultPinned, findEntry]);
 
   const renderedItems = useMemo(() => {
     if (!draftOrder) return baseRenderedItems;
@@ -156,9 +144,10 @@ export default function AppSidebar_2() {
       .filter((i): i is NavCatalogEntry => !!i);
   }, [baseRenderedItems, draftOrder]);
 
+  // Server has already filtered by role, so we just drop pinnable entries.
   const visibleDevItems = useMemo(
-    () => (role ? NAV_CATALOG.filter((e) => !e.pinnable && e.roles.includes(role)) : []),
-    [role],
+    () => catalogue.filter((e) => !e.pinnable),
+    [catalogue],
   );
 
   const sensors = useSensors(
