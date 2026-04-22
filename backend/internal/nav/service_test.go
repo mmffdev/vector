@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+
+	"github.com/mmffdev/vector-backend/internal/models"
 )
 
 // Integration tests hit the real Postgres via the SSH tunnel on :5434.
@@ -103,7 +105,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 	ctx := context.Background()
 
 	startKey := "my-vista"
-	err := svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+	err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -126,7 +128,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Errorf("row 1 should be start page: %+v", rows[1])
 	}
 
-	href, ok, err := svc.GetStartPageHref(ctx, userID, tenantID)
+	href, ok, err := svc.GetStartPageHref(ctx, userID, tenantID, models.RoleUser)
 	if err != nil || !ok {
 		t.Fatalf("start page lookup: ok=%v err=%v", ok, err)
 	}
@@ -142,7 +144,7 @@ func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 	defer cleanup()
 
 	svc := New(pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dev", Position: 0},
 	}, nil)
 	if !errors.Is(err, ErrNotPinnable) {
@@ -157,7 +159,7 @@ func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 	defer cleanup()
 
 	svc := New(pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "does-not-exist", Position: 0},
 	}, nil)
 	if !errors.Is(err, ErrUnknownItemKey) {
@@ -173,7 +175,7 @@ func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 
 	svc := New(pool)
 	startKey := "planning"
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, &startKey)
 	if !errors.Is(err, ErrStartPageNotPinned) {
@@ -188,7 +190,7 @@ func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 	defer cleanup()
 
 	svc := New(pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 2},
 	}, nil)
@@ -204,7 +206,7 @@ func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 	defer cleanup()
 
 	svc := New(pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "dashboard", Position: 1},
 	}, nil)
@@ -223,7 +225,7 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	ctx := context.Background()
 
 	// First write: 3 items.
-	if err := svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -232,7 +234,7 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	}
 
 	// Second write: 2 items, different set.
-	if err := svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "backlog", Position: 0},
 		{ItemKey: "planning", Position: 1},
 	}, nil); err != nil {
@@ -257,7 +259,7 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 	svc := New(pool)
 	ctx := context.Background()
 
-	_ = svc.ReplacePrefs(ctx, userID, tenantID, []PinnedInput{
+	_ = svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, nil)
 
@@ -277,12 +279,71 @@ func TestGetStartPageHref_NoneSet(t *testing.T) {
 	defer cleanup()
 
 	svc := New(pool)
-	_, ok, err := svc.GetStartPageHref(context.Background(), userID, tenantID)
+	_, ok, err := svc.GetStartPageHref(context.Background(), userID, tenantID, models.RoleUser)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}
 	if ok {
 		t.Fatal("want ok=false when no start page set")
+	}
+}
+
+func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+		{ItemKey: "admin", Position: 0},
+	}, nil)
+	if !errors.Is(err, ErrRoleForbidden) {
+		t.Fatalf("want ErrRoleForbidden, got %v", err)
+	}
+}
+
+func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	pinned := make([]PinnedInput, MaxPinned+1)
+	for i := range pinned {
+		pinned[i] = PinnedInput{ItemKey: "dashboard", Position: i}
+	}
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, pinned, nil)
+	if !errors.Is(err, ErrTooManyPinned) {
+		t.Fatalf("want ErrTooManyPinned, got %v", err)
+	}
+}
+
+func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	tenantID, userID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	ctx := context.Background()
+
+	// Seed as padmin with admin as start page.
+	startKey := "admin"
+	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RolePAdmin, []PinnedInput{
+		{ItemKey: "admin", Position: 0},
+	}, &startKey); err != nil {
+		t.Fatalf("seed as padmin: %v", err)
+	}
+
+	// Now query as a 'user' (role demoted) — must silently fall back.
+	_, ok, err := svc.GetStartPageHref(ctx, userID, tenantID, models.RoleUser)
+	if err != nil {
+		t.Fatalf("GetStartPageHref: %v", err)
+	}
+	if ok {
+		t.Fatal("want ok=false when role no longer permits stored start page")
 	}
 }
 

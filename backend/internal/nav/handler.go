@@ -48,17 +48,20 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req putPrefsReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, req.Pinned, req.StartPageKey); err != nil {
+	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, u.Role, req.Pinned, req.StartPageKey); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
+			errors.Is(err, ErrRoleForbidden),
 			errors.Is(err, ErrStartPageNotPinned),
 			errors.Is(err, ErrBadPositions),
-			errors.Is(err, ErrDuplicateKey):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			errors.Is(err, ErrDuplicateKey),
+			errors.Is(err, ErrTooManyPinned):
+			// Generic 400 — do not echo the offending key back to the client.
+			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -85,7 +88,7 @@ type startPageResp struct {
 // GET /api/nav/start-page — resolved href, falls back to /dashboard.
 func (h *Handler) StartPage(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.TenantID)
+	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.TenantID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

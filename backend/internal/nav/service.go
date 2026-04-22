@@ -8,14 +8,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/mmffdev/vector-backend/internal/models"
 )
 
+// MaxPinned caps the server-side pinned list length. Mirrors MAX_PINNED in
+// the frontend modal — client enforcement is cosmetic; this is the real gate.
+const MaxPinned = 20
+
 var (
-	ErrUnknownItemKey    = errors.New("unknown item_key")
-	ErrNotPinnable       = errors.New("item_key is not pinnable")
+	ErrUnknownItemKey     = errors.New("unknown item_key")
+	ErrNotPinnable        = errors.New("item_key is not pinnable")
 	ErrStartPageNotPinned = errors.New("start_page_key must be present in pinned list")
-	ErrBadPositions      = errors.New("positions must be contiguous 0..N-1")
-	ErrDuplicateKey      = errors.New("duplicate item_key in pinned list")
+	ErrBadPositions       = errors.New("positions must be contiguous 0..N-1")
+	ErrDuplicateKey       = errors.New("duplicate item_key in pinned list")
+	ErrRoleForbidden      = errors.New("role may not pin this item_key")
+	ErrTooManyPinned      = errors.New("too many pinned items")
 )
 
 type Service struct {
@@ -60,8 +68,9 @@ func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]P
 }
 
 // GetStartPageHref resolves the start page for (user, tenant, profile=NULL).
-// Returns ("", false) if no start page set.
-func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UUID) (string, bool, error) {
+// Returns ("", false) if no start page set OR the caller's current role no
+// longer permits the stored item (e.g. demotion since prefs were written).
+func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UUID, role models.Role) (string, bool, error) {
 	var key string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT item_key FROM user_nav_prefs
@@ -78,6 +87,10 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UU
 		// Stale key — catalogue changed after prefs were written. Caller falls back.
 		return "", false, nil
 	}
+	if !roleAllowed(role, entry.Roles) {
+		// Role no longer permits this item — silently fall back, don't leak existence.
+		return "", false, nil
+	}
 	return entry.Href, true, nil
 }
 
@@ -85,18 +98,27 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UU
 // this user's prefs for (tenant, profile=NULL). Hard-delete on unpin.
 //
 // Validation:
+//   - len(pinned) <= MaxPinned
 //   - every item_key exists in static catalogue (entity keys deferred to Phase 3)
 //   - every item_key is pinnable
+//   - every item_key is permitted by the caller's role
 //   - no duplicate item_keys
 //   - positions form contiguous 0..N-1
 //   - start_page_key, if non-nil, is in the pinned list and pinnable
-func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, pinned []PinnedInput, startPageKey *string) error {
-	if err := validatePinned(pinned); err != nil {
+func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, role models.Role, pinned []PinnedInput, startPageKey *string) error {
+	if len(pinned) > MaxPinned {
+		return fmt.Errorf("%w: %d > %d", ErrTooManyPinned, len(pinned), MaxPinned)
+	}
+	if err := validatePinned(pinned, role); err != nil {
 		return err
 	}
 	if startPageKey != nil {
 		if !IsPinnable(*startPageKey) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrNotPinnable, *startPageKey)
+		}
+		entry, _ := Find(*startPageKey)
+		if !roleAllowed(role, entry.Roles) {
+			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
 		found := false
 		for _, p := range pinned {
@@ -155,15 +177,19 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) e
 	return err
 }
 
-func validatePinned(pinned []PinnedInput) error {
+func validatePinned(pinned []PinnedInput, role models.Role) error {
 	seen := make(map[string]struct{}, len(pinned))
 	positions := make(map[int]struct{}, len(pinned))
 	for _, p := range pinned {
-		if _, ok := Find(p.ItemKey); !ok {
+		entry, ok := Find(p.ItemKey)
+		if !ok {
 			return fmt.Errorf("%w: %s", ErrUnknownItemKey, p.ItemKey)
 		}
-		if !IsPinnable(p.ItemKey) {
+		if !entry.Pinnable {
 			return fmt.Errorf("%w: %s", ErrNotPinnable, p.ItemKey)
+		}
+		if !roleAllowed(role, entry.Roles) {
+			return fmt.Errorf("%w: %s", ErrRoleForbidden, p.ItemKey)
 		}
 		if _, dup := seen[p.ItemKey]; dup {
 			return fmt.Errorf("%w: %s", ErrDuplicateKey, p.ItemKey)

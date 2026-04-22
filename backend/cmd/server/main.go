@@ -114,6 +114,10 @@ func main() {
 	r.Route("/api/nav", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		// 120 requests/min/IP across all nav routes — comfortably above
+		// normal UI churn (load + a handful of PUTs per session), blocks
+		// authed-session abuse.
+		r.Use(httprate.LimitByIP(120, time.Minute))
 
 		r.Get("/catalogue", navH.Catalogue)
 		r.Get("/prefs", navH.GetPrefs)
