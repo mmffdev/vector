@@ -18,9 +18,8 @@ type Handler struct{ Svc *Service }
 func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
 
 type createReq struct {
-	Email    string      `json:"email"`
-	Role     models.Role `json:"role"`
-	TenantID uuid.UUID   `json:"tenant_id"`
+	Email string      `json:"email"`
+	Role  models.Role `json:"role"`
 }
 
 type createResp struct {
@@ -38,10 +37,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Role == "" {
 		req.Role = models.RoleUser
 	}
-	if req.TenantID == uuid.Nil {
-		req.TenantID = actor.TenantID
-	}
-	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, TenantID: req.TenantID}, actor.Role, actor.ID, clientIP(r))
+	// Tenant always comes from the verified session, never the payload.
+	// See c_security.md#input-comes-from-the-session-not-the-payload.
+	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, TenantID: actor.TenantID}, actor.Role, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrDuplicateEmail) {
 			http.Error(w, err.Error(), http.StatusConflict)
