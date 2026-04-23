@@ -2,6 +2,7 @@
 
 import { useTheme } from "@/app/hooks/useTheme";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
+import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 
 const roleLabels: Record<Role, string> = {
   user: "USER",
@@ -52,10 +53,7 @@ export default function AppHeader() {
           </button>
         )}
 
-        {/* Avatar — dropdown wires in at step 6 (UserAvatarMenu) */}
-        <button className="app-header-wrapper__avatar" title={user?.email ?? ""}>
-          {user?.email ? user.email.slice(0, 2).toUpperCase() : "??"}
-        </button>
+        <UserAvatarMenu />
       </div>
     </header>
   );

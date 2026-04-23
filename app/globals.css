@@ -1286,6 +1286,74 @@ button {
 }
 
 /* ============================================================
+   Avatar dropdown menu (header → UserAvatarMenu)
+   Reuses .sidebar-item for link rows so nav & menu stay in sync.
+   ============================================================ */
+.avatar-menu {
+  position: relative;
+}
+
+.avatar-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 8px 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-menu__header {
+  padding: 6px 16px 10px 16px;
+  border-bottom: 1px solid var(--line-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.avatar-menu__email {
+  font-size: 13px;
+  color: var(--ink-1);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.avatar-menu__role {
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.avatar-menu__group {
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-menu__group + .avatar-menu__group {
+  border-top: 1px solid var(--line-1);
+}
+
+.avatar-menu__group-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 2px 16px 4px 16px;
+}
+
+.avatar-menu__item {
+  /* inherits .sidebar-item base; local tweak: no leading sidebar margin */
+  padding: 0 16px;
+}
+
+/* ============================================================
    Placeholder (empty-state variant used inside tab panels)
    ============================================================ */
 .placeholder {
