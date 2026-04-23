@@ -9,7 +9,7 @@ Four tables in `mmff_vector` carry app-enforced polymorphic FKs (`entity_stakeho
 | `entity_stakeholders` (`entity_kind` + `entity_id`) | `company_roadmap`, `workspace`, `portfolio`, `product` | none (dormant) | orphans on parent archive/delete |
 | `item_type_states` (`item_type_kind` + `item_type_id`) | `portfolio_item_types`, `execution_item_types` | none (dormant) | orphans on type archive |
 | `item_state_history` (`item_type_kind` + `item_id`) | `portfolio_item`, `execution_item` *(parent tables not yet built)* | none (dormant) | orphans once item tables ship |
-| `page_entity_refs` (`entity_kind` + `entity_id`) | `workspace`, `portfolio`, `product` | `backend/internal/nav/bookmarks.go` | **no archive cleanup wired** |
+| `page_entity_refs` (`entity_kind` + `entity_id`) | `portfolio`, `product` *(workspace not implemented — CHECK rejects it)* | `backend/internal/nav/bookmarks.go` | **no archive cleanup wired** |
 
 ## Five hard rules
 
@@ -67,7 +67,7 @@ func (s *EntityRefService) DeleteByParent(ctx context.Context, tx pgx.Tx, kind E
 | Parent kind | Child tables to clean |
 |---|---|
 | `company_roadmap` | `entity_stakeholders` |
-| `workspace` | `entity_stakeholders`, `page_entity_refs` |
+| `workspace` | `entity_stakeholders` *(only — `page_entity_refs` does not accept workspace)* |
 | `portfolio` | `entity_stakeholders`, `page_entity_refs` |
 | `product` | `entity_stakeholders`, `page_entity_refs` |
 | `portfolio_item_types` | `item_type_states` |

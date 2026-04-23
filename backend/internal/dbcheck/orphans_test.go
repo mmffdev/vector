@@ -66,12 +66,16 @@ func TestNoPolymorphicOrphans(t *testing.T) {
 				)`,
 		},
 		{
+			// page_entity_refs CHECK is {portfolio, product} only —
+			// workspace bookmarks are not implemented (see
+			// backend/internal/nav/bookmarks.go EntityKind constants).
+			// If workspace bookmarking lands later, both the CHECK and
+			// this quadrant must grow together.
 			name: "page_entity_refs",
 			sql: `
 				SELECT count(*) FROM page_entity_refs per
 				WHERE NOT EXISTS (
-				  SELECT 1 FROM workspace w  WHERE per.entity_kind = 'workspace' AND per.entity_id = w.id
-				  UNION ALL SELECT 1 FROM portfolio p  WHERE per.entity_kind = 'portfolio' AND per.entity_id = p.id
+				  SELECT 1 FROM portfolio p  WHERE per.entity_kind = 'portfolio' AND per.entity_id = p.id
 				  UNION ALL SELECT 1 FROM product   pr WHERE per.entity_kind = 'product'   AND per.entity_id = pr.id
 				)`,
 		},
