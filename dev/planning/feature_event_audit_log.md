@@ -1,6 +1,6 @@
 # Feature — Event audit log (per-tenant append-only history)
 
-Status: **proposal / not started.** Captures the design discussion from the 2026-04-23 session so the reasoning is recoverable later.
+Status: **proposal / partially committed.** Full design captured 2026-04-23. Portfolio-stack lifecycle work (migration 017 onwards) creates a minimal `events` table as a placeholder — just enough columns to record stack `proposed`/`rejected`/`locked`/`support_unlocked` events — with the full hash-chain / WORM / verifier build landing additively in a later phase. Events written before hash-chain rollout will be re-hashed in a one-time pass.
 
 The shape under consideration: a single per-tenant append-only `events` table that records every meaningful change in the system (work item updates, status transitions, role changes, page edits, etc.), with polymorphic references back to the affected entity. Reading an entity's history is a filter on that entity's `(kind, id)`. The model is borrowed from event sourcing / Datomic, but implemented in plain Postgres.
 
