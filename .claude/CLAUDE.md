@@ -29,4 +29,5 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<librarian>`** → [`docs/c_librarian.md`](../docs/c_librarian.md) — run after major updates to sync docs with code and flag security issues.
 - **Make UI app (`<makeapp> -<name> -<scope>`)** → [`docs/c_make-app.md`](../docs/c_make-app.md) — scaffold a user-facing app in `app/store/ui_apps/ui_app_<name>/` with manifest, index, css, and registry entry.
 - **Make dev UI app (`<makedevapp> -<name> -<scope>`)** → [`docs/c_make-dev-app.md`](../docs/c_make-dev-app.md) — scaffold a developer-only app in `dev/store/ui_apps/ui_app_<name>/` with manifest, index, css (no registry).
+- **Selenium Grid UI (`<seleniumup>`)** → [`docs/c_selenium.md`](../docs/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
 

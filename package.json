@@ -6,7 +6,8 @@
     "dev": "next dev -p 5101",
     "build": "next build",
     "start": "next start -p 5101",
-    "lint": "next lint"
+    "lint": "next lint",
+    "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -20,6 +21,8 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/selenium-webdriver": "^4.1.28",
+    "selenium-webdriver": "^4.27.0",
     "typescript": "^5"
   }
 }
