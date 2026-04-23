@@ -19,6 +19,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/email"
 	"github.com/mmffdev/vector-backend/internal/models"
@@ -78,7 +79,9 @@ func main() {
 	}
 	navSvc := nav.New(pool, navRegistry)
 	navBookmarks := nav.NewBookmarks(pool, navRegistry)
-	navH := nav.NewHandler(navSvc, navBookmarks)
+	customPagesSvc := custompages.New(pool)
+	customPagesH := custompages.NewHandler(customPagesSvc)
+	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 
@@ -138,6 +141,19 @@ func main() {
 		r.Delete("/bookmark", navH.UnpinBookmark)
 		r.Get("/bookmark/check", navH.CheckBookmark)
 		r.Get("/entities", navEntitiesH.List)
+	})
+
+	// ---- /api/custom-pages ----
+	r.Route("/api/custom-pages", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", customPagesH.List)
+		r.Post("/", customPagesH.Create)
+		r.Get("/{id}", customPagesH.Get)
+		r.Patch("/{id}", customPagesH.Patch)
+		r.Delete("/{id}", customPagesH.Delete)
 	})
 
 	// ---- /api/admin ----

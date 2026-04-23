@@ -1,20 +1,27 @@
 package nav
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/custompages"
+	"github.com/mmffdev/vector-backend/internal/models"
 )
 
 type Handler struct {
-	Svc       *Service
-	Bookmarks *Bookmarks
+	Svc         *Service
+	Bookmarks   *Bookmarks
+	CustomPages *custompages.Service
 }
 
-func NewHandler(s *Service, b *Bookmarks) *Handler { return &Handler{Svc: s, Bookmarks: b} }
+func NewHandler(s *Service, b *Bookmarks, cp *custompages.Service) *Handler {
+	return &Handler{Svc: s, Bookmarks: b, CustomPages: cp}
+}
 
 type catalogueResp struct {
 	Catalogue []CatalogEntry `json:"catalogue"`
@@ -22,6 +29,8 @@ type catalogueResp struct {
 }
 
 // GET /api/nav/catalogue — catalogue filtered by caller's role, plus tag groups.
+// User-authored custom pages are merged in as kind="user_custom" entries
+// keyed "custom:<page.id>" with href "/p/<page.id>".
 func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	reg, err := h.Svc.Registry.Get(r.Context())
@@ -29,8 +38,19 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	cat := reg.CatalogFor(u.Role, u.TenantID)
+
+	extras, err := h.customPageEntriesFor(r.Context(), u.ID, u.TenantID, u.Role)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	for _, e := range extras {
+		cat = append(cat, e)
+	}
+
 	writeJSON(w, http.StatusOK, catalogueResp{
-		Catalogue: reg.CatalogFor(u.Role, u.TenantID),
+		Catalogue: cat,
 		Tags:      reg.Tags(),
 	})
 }
@@ -70,7 +90,12 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, u.Role, req.Pinned, req.StartPageKey, req.Groups); err != nil {
+	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.TenantID, u.Role)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
@@ -209,6 +234,38 @@ func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, bookmarkCheckResp{Pinned: pinned})
+}
+
+// customPageEntriesFor returns the caller's custom pages as synthetic
+// CatalogEntry rows keyed "custom:<page.id>". The map lets prefs validation
+// resolve user_custom keys that aren't in the shared registry.
+func (h *Handler) customPageEntriesFor(
+	ctx context.Context,
+	userID, tenantID uuid.UUID,
+	role models.Role,
+) (map[string]CatalogEntry, error) {
+	if h.CustomPages == nil {
+		return nil, nil
+	}
+	pages, err := h.CustomPages.ListPagesOnly(ctx, userID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]CatalogEntry, len(pages))
+	for _, p := range pages {
+		key := fmt.Sprintf("custom:%s", p.ID)
+		out[key] = CatalogEntry{
+			Key:      key,
+			Label:    p.Label,
+			Href:     fmt.Sprintf("/p/%s", p.ID),
+			Kind:     KindUserCustom,
+			Roles:    []models.Role{role},
+			Pinnable: true,
+			Icon:     p.Icon,
+			TagEnum:  "personal",
+		}
+	}
+	return out, nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

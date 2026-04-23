@@ -198,6 +198,7 @@ func (s *Service) ReplacePrefs(
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
+	extraEntries map[string]CatalogEntry,
 ) error {
 	if len(pinned) > MaxPinned {
 		return fmt.Errorf("%w: %d > %d", ErrTooManyPinned, len(pinned), MaxPinned)
@@ -276,14 +277,26 @@ func (s *Service) ReplacePrefs(
 		}
 	}
 
-	if err := validatePinned(reg, translated, role, knownGroupIDs); err != nil {
+	lookup := func(key string) (CatalogEntry, bool) {
+		if e, ok := reg.Find(key); ok {
+			return e, true
+		}
+		if extraEntries != nil {
+			if e, ok := extraEntries[key]; ok {
+				return e, true
+			}
+		}
+		return CatalogEntry{}, false
+	}
+
+	if err := validatePinned(lookup, translated, role, knownGroupIDs); err != nil {
 		return err
 	}
 	if startPageKey != nil {
-		if !reg.IsPinnable(*startPageKey) {
+		entry, ok := lookup(*startPageKey)
+		if !ok || !entry.Pinnable {
 			return fmt.Errorf("%w: start_page_key=%s", ErrNotPinnable, *startPageKey)
 		}
-		entry, _ := reg.Find(*startPageKey)
 		if !roleAllowed(role, entry.Roles) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
@@ -388,11 +401,11 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) e
 }
 
 // validatePinned enforces the rule set described on ReplacePrefs.
-//   - reg: the catalogue snapshot
+//   - lookup: resolves an item_key to its catalogue entry (registry + custom pages)
 //   - role: caller's role
 //   - knownGroupIDs: canonical UUIDs of groups in the same payload
 func validatePinned(
-	reg *Registry,
+	lookup func(string) (CatalogEntry, bool),
 	pinned []PinnedInput,
 	role models.Role,
 	knownGroupIDs map[string]struct{},
@@ -407,7 +420,7 @@ func validatePinned(
 	topLevelPositions := make(map[int]struct{}, len(pinned))
 
 	for _, p := range pinned {
-		entry, ok := reg.Find(p.ItemKey)
+		entry, ok := lookup(p.ItemKey)
 		if !ok {
 			return fmt.Errorf("%w: %s", ErrUnknownItemKey, p.ItemKey)
 		}
