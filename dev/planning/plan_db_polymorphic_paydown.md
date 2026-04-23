@@ -42,14 +42,14 @@ Tick boxes as work lands. Each item is small enough to commit independently. Upd
 
 Vocabulary and dispatch enforcement at the Postgres layer. App code is one line of defence; this is the second.
 
-- [ ] **1.1** Migration: add or tighten `CHECK` constraints on `entity_kind` / `item_type_kind` columns to match the documented vocabulary exactly. No silent acceptance of new kinds without a migration.
-- [ ] **1.2** Migration: write `dispatch_polymorphic_parent(kind text, id uuid)` plpgsql function — looks up the parent table by kind, returns `(tenant_id uuid, archived_at timestamptz)` or raises `foreign_key_violation` if the parent is missing. One function, used by all dispatch triggers.
-- [ ] **1.3** Migration: `BEFORE INSERT OR UPDATE` trigger on `entity_stakeholders` that calls the dispatch function and asserts `parent.tenant_id = NEW.tenant_id`. Reject otherwise.
-- [ ] **1.4** Same trigger pattern for `page_entity_refs`. (Even though `bookmarks.go` already pre-validates, the trigger is defence in depth — and protects future writers we haven't built yet.)
-- [ ] **1.5** Same trigger pattern for `item_type_states`. (Dormant, but cheap to add now.)
-- [ ] **1.6** **Skip** `item_state_history` trigger until the parent tables (`portfolio_item`, `execution_item`) exist. Add a comment in the migration explaining the gap.
-- [ ] **1.7** Test: lifecycle integration tests per relationship — insert with valid parent (passes), insert with missing parent (rejected), insert with cross-tenant parent (rejected as not-found), insert with archived parent (rejected). Pattern after `backend/internal/nav/service_test.go`.
-- [ ] **1.8** Confirm canary still passes after triggers land.
+- [x] **1.1** Migration: add or tighten `CHECK` constraints on `entity_kind` / `item_type_kind` columns to match the documented vocabulary exactly. **Result (2026-04-23):** verified existing CHECKs already match the corrected doc post-0.5; no tightening needed. `entity_stakeholders` = `{company_roadmap, workspace, portfolio, product}`; `item_type_states` = `{portfolio, execution}`; `page_entity_refs` = `{portfolio, product}`.
+- [x] **1.2** Migration: write `dispatch_polymorphic_parent(kind text, id uuid)` plpgsql function — looks up the parent table by kind, returns `(tenant_id uuid, archived_at timestamptz)` or raises `foreign_key_violation` if the parent is missing. **Shipped in [013_polymorphic_dispatch_triggers.sql](../../db/schema/013_polymorphic_dispatch_triggers.sql).** Two dispatch fns: `dispatch_polymorphic_parent` (entity_stakeholders/page_entity_refs vocab) and `dispatch_item_type_parent` (item_type_states vocab — the latter has its own kind enum `{portfolio, execution}` aliasing different parent tables).
+- [x] **1.3** Migration: `BEFORE INSERT OR UPDATE` trigger on `entity_stakeholders` that calls the dispatch function and asserts `parent.tenant_id = NEW.tenant_id`. Reject otherwise. **Shipped.**
+- [x] **1.4** Same trigger pattern for `page_entity_refs`. (Even though `bookmarks.go` already pre-validates, the trigger is defence in depth — and protects future writers we haven't built yet.) **Shipped — also rejects writes against pages with NULL tenant.**
+- [x] **1.5** Same trigger pattern for `item_type_states`. (Dormant, but cheap to add now.) **Shipped.**
+- [x] **1.6** **Skip** `item_state_history` trigger until the parent tables (`portfolio_item`, `execution_item`) exist. Add a comment in the migration explaining the gap. **Comment added at end of migration 013.**
+- [ ] **1.7** Test: lifecycle integration tests per relationship — insert with valid parent (passes), insert with missing parent (rejected), insert with cross-tenant parent (rejected as not-found), insert with archived parent (rejected). Pattern after `backend/internal/nav/service_test.go`. **Note:** ad-hoc psql verification (2026-04-23) covered 7 cases across `entity_stakeholders` and `item_type_states` (bogus kind, missing parent, valid parent, archived parent, cross-kind) — all green. Go-level tests still owed for CI coverage.
+- [x] **1.8** Confirm canary still passes after triggers land. **Result (2026-04-23):** `TestNoPolymorphicOrphans` green across all three live relationships (item_state_history skipped — no parent tables).
 
 ### Phase 2 — Go service layer (~1 day)
 
