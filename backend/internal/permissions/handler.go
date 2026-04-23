@@ -2,6 +2,7 @@ package permissions
 
 import (
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"strings"
@@ -33,8 +34,12 @@ func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 	p, err := h.Svc.Grant(r.Context(), GrantInput{
 		UserID: req.UserID, WorkspaceID: req.WorkspaceID,
 		CanView: req.CanView, CanEdit: req.CanEdit, CanAdmin: req.CanAdmin,
-	}, actor.ID, clientIP(r))
+	}, actor.TenantID, actor.ID, clientIP(r))
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -48,7 +53,11 @@ func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.Revoke(r.Context(), id, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Revoke(r.Context(), id, actor.TenantID, actor.ID, clientIP(r)); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -56,6 +65,7 @@ func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	actor := auth.UserFromCtx(r.Context())
 	q := r.URL.Query()
 	if uid := q.Get("user_id"); uid != "" {
 		id, err := uuid.Parse(uid)
@@ -63,7 +73,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad user_id", http.StatusBadRequest)
 			return
 		}
-		out, err := h.Svc.ListForUser(r.Context(), id)
+		out, err := h.Svc.ListForUser(r.Context(), id, actor.TenantID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -77,8 +87,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad workspace_id", http.StatusBadRequest)
 			return
 		}
-		out, err := h.Svc.ListForWorkspace(r.Context(), id)
+		out, err := h.Svc.ListForWorkspace(r.Context(), id, actor.TenantID)
 		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
