@@ -30,20 +30,49 @@ export interface PrefRow {
   item_key: string;
   position: number;
   is_start_page: boolean;
+  parent_item_key: string | null;
+  group_id: string | null;
 }
 
-interface PrefsResp { prefs: PrefRow[]; }
+// User-created primary group (Phase: sub-pages + custom groups).
+export interface NavCustomGroup {
+  id: string;
+  label: string;
+  position: number;
+}
+
+interface PrefsResp {
+  prefs: PrefRow[];
+  groups: NavCustomGroup[];
+}
 interface CatalogueResp { catalogue: NavCatalogEntry[]; tags: NavTagGroup[]; }
 
+export interface PutPrefsPinnedRow {
+  item_key: string;
+  position: number;
+  parent_item_key?: string | null;
+  group_id?: string | null;
+}
+
+// Custom group payload may carry a synthetic id ("new:<uuid>") for
+// rows created in the editor; the server returns canonical ids on save.
+export interface PutPrefsGroupRow {
+  id: string;
+  label: string;
+  position: number;
+}
+
 export interface PutPrefsBody {
-  pinned: { item_key: string; position: number }[];
+  pinned: PutPrefsPinnedRow[];
   start_page_key: string | null;
+  groups?: PutPrefsGroupRow[];
 }
 
 export type EntityKind = "portfolio" | "product";
 
 interface NavPrefsState {
   prefs: PrefRow[];
+  customGroups: NavCustomGroup[];
   catalogue: NavCatalogEntry[];
   tags: NavTagGroup[];
   loading: boolean;
@@ -51,14 +80,10 @@ interface NavPrefsState {
   refetch: () => Promise<void>;
   save: (body: PutPrefsBody) => Promise<void>;
   reset: () => Promise<void>;
-  // Lookups — resolve a key against the catalogue the server gave us.
-  // Callers should not reach past these; the catalogue is the authority.
   findEntry: (key: string) => NavCatalogEntry | undefined;
   isPinnable: (key: string) => boolean;
   defaultPinned: NavCatalogEntry[];
   tagByEnum: (enumKey: string) => NavTagGroup | undefined;
-  // Entity bookmarks — pin/unpin a portfolio or product. The server is the
-  // source of truth; both methods refetch so the sidebar picks up the change.
   isBookmarked: (kind: EntityKind, id: string) => boolean;
   bookmark: (kind: EntityKind, id: string) => Promise<void>;
   unbookmark: (kind: EntityKind, id: string) => Promise<void>;
@@ -69,6 +94,7 @@ const Ctx = createContext<NavPrefsState | null>(null);
 export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<PrefRow[]>([]);
+  const [customGroups, setCustomGroups] = useState<NavCustomGroup[]>([]);
   const [catalogue, setCatalogue] = useState<NavCatalogEntry[]>([]);
   const [tags, setTags] = useState<NavTagGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +103,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   const refetch = useCallback(async () => {
     if (!user) {
       setPrefs([]);
+      setCustomGroups([]);
       setCatalogue([]);
       setTags([]);
       setLoading(false);
@@ -90,11 +117,13 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
         api<CatalogueResp>("/api/nav/catalogue"),
       ]);
       setPrefs(prefsRes.prefs ?? []);
+      setCustomGroups(prefsRes.groups ?? []);
       setCatalogue(catRes.catalogue ?? []);
       setTags(catRes.tags ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load nav");
       setPrefs([]);
+      setCustomGroups([]);
       setCatalogue([]);
       setTags([]);
     } finally {
@@ -189,7 +218,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value: NavPrefsState = {
-    prefs, catalogue, tags, loading, error,
+    prefs, customGroups, catalogue, tags, loading, error,
     refetch, save, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
     isBookmarked, bookmark, unbookmark,

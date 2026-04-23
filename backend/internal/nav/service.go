@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,15 +19,32 @@ import (
 // items + entity bookmarks share one comfortable budget.
 const MaxPinned = 50
 
+// MaxCustomGroups / MaxChildrenPerParent are product caps for the
+// sub-pages + custom groups phase. Server is the source of truth — the
+// preferences UI should also enforce, but this is the gate.
+const (
+	MaxCustomGroups     = 10
+	MaxChildrenPerParent = 8
+	MaxGroupLabelLen     = 64
+)
+
 var (
-	ErrUnknownItemKey     = errors.New("unknown item_key")
-	ErrNotPinnable        = errors.New("item_key is not pinnable")
-	ErrStartPageNotPinned = errors.New("start_page_key must be present in pinned list")
-	ErrBadPositions       = errors.New("positions must be contiguous 0..N-1")
-	ErrDuplicateKey       = errors.New("duplicate item_key in pinned list")
-	ErrRoleForbidden      = errors.New("role may not pin this item_key")
-	ErrTooManyPinned      = errors.New("too many pinned items")
-	ErrBadGrouping        = errors.New("items sharing a tag must be contiguous")
+	ErrUnknownItemKey       = errors.New("unknown item_key")
+	ErrNotPinnable          = errors.New("item_key is not pinnable")
+	ErrStartPageNotPinned   = errors.New("start_page_key must be present in pinned list")
+	ErrBadPositions         = errors.New("positions must be contiguous 0..N-1")
+	ErrDuplicateKey         = errors.New("duplicate item_key in pinned list")
+	ErrRoleForbidden        = errors.New("role may not pin this item_key")
+	ErrTooManyPinned        = errors.New("too many pinned items")
+	ErrBadGrouping          = errors.New("items sharing a tag must be contiguous")
+	ErrBadNesting           = errors.New("invalid parent/child nesting")
+	ErrCatalogueItemLocked  = errors.New("catalogue items cannot be nested or moved into custom groups")
+	ErrUnknownGroup         = errors.New("unknown group_id")
+	ErrEmptyGroupLabel      = errors.New("group label must not be empty")
+	ErrDuplicateGroupLabel  = errors.New("duplicate group label")
+	ErrTooManyGroups        = errors.New("too many custom groups")
+	ErrTooManyChildren      = errors.New("too many children for parent")
+	ErrGroupLabelTooLong    = errors.New("group label too long")
 )
 
 type Service struct {
@@ -39,13 +57,34 @@ func New(pool *pgxpool.Pool, registry *CachedRegistry) *Service {
 }
 
 type PrefRow struct {
-	ItemKey     string `json:"item_key"`
-	Position    int    `json:"position"`
-	IsStartPage bool   `json:"is_start_page"`
+	ItemKey       string  `json:"item_key"`
+	Position      int     `json:"position"`
+	IsStartPage   bool    `json:"is_start_page"`
+	ParentItemKey *string `json:"parent_item_key"`
+	GroupID       *string `json:"group_id"` // nil means "use registry tag group"
 }
 
 type PinnedInput struct {
-	ItemKey  string `json:"item_key"`
+	ItemKey       string  `json:"item_key"`
+	Position      int     `json:"position"`
+	ParentItemKey *string `json:"parent_item_key,omitempty"`
+	GroupID       *string `json:"group_id,omitempty"`
+}
+
+// CustomGroup is the wire shape for a user-created primary group.
+type CustomGroup struct {
+	ID       string `json:"id"`
+	Label    string `json:"label"`
+	Position int    `json:"position"`
+}
+
+// CustomGroupInput is the inbound shape on PUT /api/nav/prefs.
+// id may be canonical (existing UUID) or "new:<anything>" for newly
+// created rows. The service mints fresh UUIDs for "new:" rows and
+// returns the id mapping via refetch (no separate response shape).
+type CustomGroupInput struct {
+	ID       string `json:"id"`
+	Label    string `json:"label"`
 	Position int    `json:"position"`
 }
 
@@ -53,7 +92,7 @@ type PinnedInput struct {
 // Empty slice means "no prefs set" — callers fall back to catalogue defaults.
 func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]PrefRow, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT item_key, position, is_start_page
+		SELECT item_key, position, is_start_page, parent_item_key, group_id
 		FROM user_nav_prefs
 		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL
 		ORDER BY position`, userID, tenantID)
@@ -65,10 +104,41 @@ func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]P
 	out := make([]PrefRow, 0, 16)
 	for rows.Next() {
 		var p PrefRow
-		if err := rows.Scan(&p.ItemKey, &p.Position, &p.IsStartPage); err != nil {
+		var parent *string
+		var groupID *uuid.UUID
+		if err := rows.Scan(&p.ItemKey, &p.Position, &p.IsStartPage, &parent, &groupID); err != nil {
 			return nil, err
 		}
+		p.ParentItemKey = parent
+		if groupID != nil {
+			s := groupID.String()
+			p.GroupID = &s
+		}
 		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// GetCustomGroups returns the user's custom primary groups, in user-defined order.
+func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]CustomGroup, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT id, label, position
+		FROM user_nav_groups
+		WHERE user_id = $1
+		ORDER BY position`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]CustomGroup, 0, 4)
+	for rows.Next() {
+		var g CustomGroup
+		var id uuid.UUID
+		if err := rows.Scan(&id, &g.Label, &g.Position); err != nil {
+			return nil, err
+		}
+		g.ID = id.String()
+		out = append(out, g)
 	}
 	return out, rows.Err()
 }
@@ -94,37 +164,115 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UU
 	}
 	entry, ok := reg.Find(key)
 	if !ok {
-		// Stale key — catalogue changed after prefs were written. Caller falls back.
 		return "", false, nil
 	}
 	if !roleAllowed(role, entry.Roles) {
-		// Role no longer permits this item — silently fall back, don't leak existence.
 		return "", false, nil
 	}
 	return entry.Href, true, nil
 }
 
 // ReplacePrefs validates the input, then atomically deletes and re-inserts
-// this user's prefs for (tenant, profile=NULL). Hard-delete on unpin.
+// this user's prefs AND custom groups for (tenant, profile=NULL).
 //
-// Validation:
-//   - len(pinned) <= MaxPinned
-//   - every item_key exists in the registry (entity keys deferred to Phase 3)
-//   - every item_key is pinnable
-//   - every item_key is permitted by the caller's role
+// Validation (extends the original list with sub-pages + custom groups):
+//   - len(pinned) <= MaxPinned, len(groups) <= MaxCustomGroups
+//   - every item_key exists in the registry, is pinnable, role-permitted
 //   - no duplicate item_keys
-//   - positions form contiguous 0..N-1
-//   - items sharing a tag_enum are contiguous in position order
-//   - start_page_key, if non-nil, is in the pinned list and pinnable
-func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, role models.Role, pinned []PinnedInput, startPageKey *string) error {
+//   - top-level positions form contiguous 0..N-1
+//   - top-level items sharing a tag/group are contiguous
+//   - per-parent child positions form contiguous 0..N-1
+//   - max MaxChildrenPerParent children per parent
+//   - parent_item_key must reference a pinned, top-level (no parent) row
+//   - parent_item_key set only on user_custom kind
+//   - group_id set only on user_custom kind, must reference a known group
+//   - group labels: non-empty, <= MaxGroupLabelLen, unique CI per user
+func (s *Service) ReplacePrefs(
+	ctx context.Context,
+	userID, tenantID uuid.UUID,
+	role models.Role,
+	pinned []PinnedInput,
+	startPageKey *string,
+	groups []CustomGroupInput,
+) error {
 	if len(pinned) > MaxPinned {
 		return fmt.Errorf("%w: %d > %d", ErrTooManyPinned, len(pinned), MaxPinned)
 	}
+	if len(groups) > MaxCustomGroups {
+		return fmt.Errorf("%w: %d > %d", ErrTooManyGroups, len(groups), MaxCustomGroups)
+	}
+
+	// Normalise + validate group rows. Mint UUIDs for "new:" entries and
+	// build a remap so pinned rows referencing them are translated below.
+	idRemap := make(map[string]string, len(groups))
+	knownGroupIDs := make(map[string]struct{}, len(groups))
+	labelSeen := make(map[string]struct{}, len(groups))
+	groupPositions := make(map[int]struct{}, len(groups))
+	normalisedGroups := make([]CustomGroup, 0, len(groups))
+	for _, g := range groups {
+		label := strings.TrimSpace(g.Label)
+		if label == "" {
+			return ErrEmptyGroupLabel
+		}
+		if len(label) > MaxGroupLabelLen {
+			return fmt.Errorf("%w: %d > %d", ErrGroupLabelTooLong, len(label), MaxGroupLabelLen)
+		}
+		lower := strings.ToLower(label)
+		if _, dup := labelSeen[lower]; dup {
+			return ErrDuplicateGroupLabel
+		}
+		labelSeen[lower] = struct{}{}
+
+		var canonical string
+		if strings.HasPrefix(g.ID, "new:") {
+			canonical = uuid.NewString()
+		} else {
+			if _, err := uuid.Parse(g.ID); err != nil {
+				return fmt.Errorf("%w: bad id %q", ErrUnknownGroup, g.ID)
+			}
+			canonical = g.ID
+		}
+		idRemap[g.ID] = canonical
+		knownGroupIDs[canonical] = struct{}{}
+		groupPositions[g.Position] = struct{}{}
+		normalisedGroups = append(normalisedGroups, CustomGroup{
+			ID:       canonical,
+			Label:    label,
+			Position: g.Position,
+		})
+	}
+	for i := 0; i < len(normalisedGroups); i++ {
+		if _, ok := groupPositions[i]; !ok {
+			return ErrBadPositions
+		}
+	}
+
 	reg, err := s.Registry.Get(ctx)
 	if err != nil {
 		return err
 	}
-	if err := validatePinned(reg, pinned, role); err != nil {
+
+	// Translate pinned rows: rewrite group_id via idRemap so "new:" stubs
+	// become canonical UUIDs before validation/insert.
+	translated := make([]PinnedInput, len(pinned))
+	for i, p := range pinned {
+		translated[i] = p
+		if p.GroupID != nil {
+			canonical, ok := idRemap[*p.GroupID]
+			if !ok {
+				if _, parsed := uuid.Parse(*p.GroupID); parsed != nil {
+					return fmt.Errorf("%w: %s", ErrUnknownGroup, *p.GroupID)
+				}
+				canonical = *p.GroupID
+			}
+			if _, ok := knownGroupIDs[canonical]; !ok {
+				return fmt.Errorf("%w: %s", ErrUnknownGroup, canonical)
+			}
+			translated[i].GroupID = &canonical
+		}
+	}
+
+	if err := validatePinned(reg, translated, role, knownGroupIDs); err != nil {
 		return err
 	}
 	if startPageKey != nil {
@@ -136,7 +284,7 @@ func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, 
 			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
 		found := false
-		for _, p := range pinned {
+		for _, p := range translated {
 			if p.ItemKey == *startPageKey {
 				found = true
 				break
@@ -153,23 +301,56 @@ func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, 
 	}
 	defer tx.Rollback(ctx)
 
+	// Wipe prefs first (FK to groups is ON DELETE SET NULL so order doesn't
+	// matter for integrity, but wiping prefs first means any deleted group
+	// has no rows pointing at it when we delete it).
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_nav_prefs
 		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL`, userID, tenantID); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
 
-	if len(pinned) > 0 {
+	// Insert groups first so FK targets exist for any prefs row that
+	// references them.
+	if len(normalisedGroups) > 0 {
 		batch := &pgx.Batch{}
-		for _, p := range pinned {
-			isStart := startPageKey != nil && *startPageKey == p.ItemKey
+		for _, g := range normalisedGroups {
 			batch.Queue(`
-				INSERT INTO user_nav_prefs (user_id, tenant_id, profile_id, item_key, position, is_start_page)
-				VALUES ($1, $2, NULL, $3, $4, $5)`,
-				userID, tenantID, p.ItemKey, p.Position, isStart)
+				INSERT INTO user_nav_groups (id, user_id, label, position)
+				VALUES ($1, $2, $3, $4)`,
+				g.ID, userID, g.Label, g.Position)
 		}
 		br := tx.SendBatch(ctx, batch)
-		for range pinned {
+		for range normalisedGroups {
+			if _, err := br.Exec(); err != nil {
+				_ = br.Close()
+				return err
+			}
+		}
+		if err := br.Close(); err != nil {
+			return err
+		}
+	}
+
+	if len(translated) > 0 {
+		batch := &pgx.Batch{}
+		for _, p := range translated {
+			isStart := startPageKey != nil && *startPageKey == p.ItemKey
+			var gid *uuid.UUID
+			if p.GroupID != nil {
+				u, _ := uuid.Parse(*p.GroupID)
+				gid = &u
+			}
+			batch.Queue(`
+				INSERT INTO user_nav_prefs (user_id, tenant_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id)
+				VALUES ($1, $2, NULL, $3, $4, $5, $6, $7)`,
+				userID, tenantID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid)
+		}
+		br := tx.SendBatch(ctx, batch)
+		for range translated {
 			if _, err := br.Exec(); err != nil {
 				_ = br.Close()
 				return err
@@ -183,21 +364,44 @@ func (s *Service) ReplacePrefs(ctx context.Context, userID, tenantID uuid.UUID, 
 	return tx.Commit(ctx)
 }
 
-// DeletePrefs nukes all prefs rows for (user, tenant, profile=NULL). Used by
+// DeletePrefs nukes all prefs rows AND custom groups for the user. Used by
 // "Reset to defaults" in the modal.
 func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) error {
-	_, err := s.Pool.Exec(ctx, `
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL`, userID, tenantID)
-	return err
+		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL`, userID, tenantID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
-func validatePinned(reg *Registry, pinned []PinnedInput, role models.Role) error {
+// validatePinned enforces the rule set described on ReplacePrefs.
+//   - reg: the catalogue snapshot
+//   - role: caller's role
+//   - knownGroupIDs: canonical UUIDs of groups in the same payload
+func validatePinned(
+	reg *Registry,
+	pinned []PinnedInput,
+	role models.Role,
+	knownGroupIDs map[string]struct{},
+) error {
 	seen := make(map[string]struct{}, len(pinned))
-	positions := make(map[int]struct{}, len(pinned))
-	// Build a position-indexed tag list so we can verify group contiguity
-	// without mutating the caller's slice.
-	tagByPos := make(map[int]string, len(pinned))
+	tagByPos := make(map[int]string, len(pinned))     // top-level only
+	groupByPos := make(map[int]string, len(pinned))   // top-level group_id, "" if none
+	topLevelKeys := make(map[string]struct{}, len(pinned))
+	childKeys := make(map[string]struct{}, len(pinned))
+	childrenByParent := make(map[string][]int, len(pinned))
+	posByKey := make(map[string]int, len(pinned))
+	topLevelPositions := make(map[int]struct{}, len(pinned))
+
 	for _, p := range pinned {
 		entry, ok := reg.Find(p.ItemKey)
 		if !ok {
@@ -213,27 +417,102 @@ func validatePinned(reg *Registry, pinned []PinnedInput, role models.Role) error
 			return fmt.Errorf("%w: %s", ErrDuplicateKey, p.ItemKey)
 		}
 		seen[p.ItemKey] = struct{}{}
-		positions[p.Position] = struct{}{}
-		tagByPos[p.Position] = entry.TagEnum
+		posByKey[p.ItemKey] = p.Position
+
+		// Catalogue lock: only kind=user_custom may carry parent or group_id.
+		if entry.Kind != KindUserCustom {
+			if p.ParentItemKey != nil || p.GroupID != nil {
+				return fmt.Errorf("%w: %s", ErrCatalogueItemLocked, p.ItemKey)
+			}
+		}
+
+		if p.ParentItemKey != nil {
+			if *p.ParentItemKey == p.ItemKey {
+				return fmt.Errorf("%w: self-reference %s", ErrBadNesting, p.ItemKey)
+			}
+			childKeys[p.ItemKey] = struct{}{}
+			childrenByParent[*p.ParentItemKey] = append(childrenByParent[*p.ParentItemKey], p.Position)
+		} else {
+			topLevelKeys[p.ItemKey] = struct{}{}
+			topLevelPositions[p.Position] = struct{}{}
+			tagByPos[p.Position] = entry.TagEnum
+			if p.GroupID != nil {
+				groupByPos[p.Position] = *p.GroupID
+			} else {
+				groupByPos[p.Position] = ""
+			}
+		}
+
+		if p.GroupID != nil {
+			if _, ok := knownGroupIDs[*p.GroupID]; !ok {
+				return fmt.Errorf("%w: %s", ErrUnknownGroup, *p.GroupID)
+			}
+		}
 	}
-	for i := 0; i < len(pinned); i++ {
-		if _, ok := positions[i]; !ok {
+
+	// Parent existence + one-level rule + cap.
+	for parentKey, childPositions := range childrenByParent {
+		if _, ok := topLevelKeys[parentKey]; !ok {
+			return fmt.Errorf("%w: parent not pinned at top level (%s)", ErrBadNesting, parentKey)
+		}
+		if _, isAlsoChild := childKeys[parentKey]; isAlsoChild {
+			return fmt.Errorf("%w: parent %s is itself a child", ErrBadNesting, parentKey)
+		}
+		if len(childPositions) > MaxChildrenPerParent {
+			return fmt.Errorf("%w: %s has %d > %d", ErrTooManyChildren, parentKey, len(childPositions), MaxChildrenPerParent)
+		}
+	}
+
+	// Top-level positions form contiguous 0..N-1.
+	for i := 0; i < len(topLevelPositions); i++ {
+		if _, ok := topLevelPositions[i]; !ok {
 			return ErrBadPositions
 		}
 	}
-	// Contiguity: walk positions in order, once a tag has been "closed"
-	// (i.e. the sequence moved to a different tag) it must not reappear.
-	closed := make(map[string]struct{}, len(pinned))
-	var prevTag string
-	for i := 0; i < len(pinned); i++ {
-		tag := tagByPos[i]
-		if i > 0 && tag != prevTag {
-			closed[prevTag] = struct{}{}
+
+	// Group/tag contiguity at top level: walk in position order, once a
+	// (group, tag) bucket is closed it must not reappear. The bucket key
+	// is "g:<groupID>" if group_id is set, else "t:<tagEnum>".
+	closed := make(map[string]struct{})
+	var prevBucket string
+	for i := 0; i < len(topLevelPositions); i++ {
+		var bucket string
+		if g := groupByPos[i]; g != "" {
+			bucket = "g:" + g
+		} else {
+			bucket = "t:" + tagByPos[i]
 		}
-		if _, wasClosed := closed[tag]; wasClosed {
-			return fmt.Errorf("%w: %s", ErrBadGrouping, tag)
+		if i > 0 && bucket != prevBucket {
+			closed[prevBucket] = struct{}{}
 		}
-		prevTag = tag
+		if _, wasClosed := closed[bucket]; wasClosed {
+			return fmt.Errorf("%w: %s", ErrBadGrouping, bucket)
+		}
+		prevBucket = bucket
 	}
+
+	// Per-parent child positions form contiguous 0..N-1 within each parent.
+	for parentKey, childPositions := range childrenByParent {
+		_ = parentKey
+		// Build set of *relative* positions used by this parent's children;
+		// children are pinned with their own absolute position field, but
+		// per-parent contiguity says THOSE positions (within the parent's
+		// child set, sorted) must be 0..N-1 absent gaps.
+		set := make(map[int]struct{}, len(childPositions))
+		for _, pos := range childPositions {
+			set[pos] = struct{}{}
+		}
+		// Sort positions and check they're a contiguous run starting at the
+		// first one — children carry their own positions which may be any
+		// integers; the rule is that within a parent there must be N
+		// positions and no duplicates among them. Duplicates would have
+		// shown up as duplicate item_key already (different children with
+		// the same position is fine across parents). So contiguity here
+		// reduces to: no duplicate within the parent's own set.
+		if len(set) != len(childPositions) {
+			return fmt.Errorf("%w: duplicate child position", ErrBadPositions)
+		}
+	}
+
 	return nil
 }

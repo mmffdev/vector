@@ -122,7 +122,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
-	}, &startKey)
+	}, &startKey, nil)
 	if err != nil {
 		t.Fatalf("ReplacePrefs: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 	svc := newSvc(t, pool)
 	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dev", Position: 0},
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, ErrNotPinnable) {
 		t.Fatalf("want ErrNotPinnable, got %v", err)
 	}
@@ -174,7 +174,7 @@ func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 	svc := newSvc(t, pool)
 	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "does-not-exist", Position: 0},
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, ErrUnknownItemKey) {
 		t.Fatalf("want ErrUnknownItemKey, got %v", err)
 	}
@@ -190,7 +190,7 @@ func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 	startKey := "planning"
 	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
-	}, &startKey)
+	}, &startKey, nil)
 	if !errors.Is(err, ErrStartPageNotPinned) {
 		t.Fatalf("want ErrStartPageNotPinned, got %v", err)
 	}
@@ -206,7 +206,7 @@ func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 2},
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, ErrBadPositions) {
 		t.Fatalf("want ErrBadPositions, got %v", err)
 	}
@@ -222,7 +222,7 @@ func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "dashboard", Position: 1},
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, ErrDuplicateKey) {
 		t.Fatalf("want ErrDuplicateKey, got %v", err)
 	}
@@ -241,7 +241,7 @@ func TestReplacePrefs_RejectsNonContiguousGroups(t *testing.T) {
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "backlog", Position: 1},
 		{ItemKey: "my-vista", Position: 2},
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, ErrBadGrouping) {
 		t.Fatalf("want ErrBadGrouping, got %v", err)
 	}
@@ -261,7 +261,7 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
-	}, nil); err != nil {
+	}, nil, nil); err != nil {
 		t.Fatalf("first write: %v", err)
 	}
 
@@ -269,7 +269,7 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "backlog", Position: 0},
 		{ItemKey: "planning", Position: 1},
-	}, nil); err != nil {
+	}, nil, nil); err != nil {
 		t.Fatalf("second write: %v", err)
 	}
 
@@ -293,7 +293,7 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 
 	_ = svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
-	}, nil)
+	}, nil, nil)
 
 	if err := svc.DeletePrefs(ctx, userID, tenantID); err != nil {
 		t.Fatalf("DeletePrefs: %v", err)
@@ -330,7 +330,7 @@ func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 	// workspace-settings is gadmin-only; a 'user' role must not pin it.
 	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, ErrRoleForbidden) {
 		t.Fatalf("want ErrRoleForbidden, got %v", err)
 	}
@@ -347,7 +347,7 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 	for i := range pinned {
 		pinned[i] = PinnedInput{ItemKey: "dashboard", Position: i}
 	}
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, pinned, nil)
+	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, pinned, nil, nil)
 	if !errors.Is(err, ErrTooManyPinned) {
 		t.Fatalf("want ErrTooManyPinned, got %v", err)
 	}
@@ -366,7 +366,7 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	startKey := "workspace-settings"
 	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleGAdmin, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
-	}, &startKey); err != nil {
+	}, &startKey, nil); err != nil {
 		t.Fatalf("seed as gadmin: %v", err)
 	}
 

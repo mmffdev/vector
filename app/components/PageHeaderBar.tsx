@@ -4,6 +4,7 @@ import { usePageHeaderState } from "@/app/contexts/PageHeaderContext";
 import { useTheme } from "@/app/hooks/useTheme";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
+import { toTitleCase } from "@/app/lib/titleCase";
 
 const roleLabels: Record<Role, string> = {
   user: "USER",
@@ -20,7 +21,7 @@ export default function PageHeaderBar() {
     <header className="page-header">
       <div className="page-header__left">
         <h1 className="page-header__title">
-          Vector <span className="prefix prefix-pink">+</span> {header?.title}
+          Vector <span className="prefix prefix-pink">+</span> {header?.title ? toTitleCase(header.title) : null}
         </h1>
         {header?.breadcrumbs && <div className="page-header__breadcrumbs">{header.breadcrumbs}</div>}
       </div>

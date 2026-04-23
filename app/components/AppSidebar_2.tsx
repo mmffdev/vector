@@ -3,28 +3,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
   useNavPrefs,
   type NavCatalogEntry,
   type NavTagGroup,
+  type NavCustomGroup,
 } from "@/app/contexts/NavPrefsContext";
 
 const Icon = ({ d, d2 }: { d: string; d2?: string }) => (
@@ -48,113 +32,70 @@ function IconFor({ iconKey }: { iconKey: string }) {
     case "pin":       return <Icon d="M12 17v5M9 10.76A2 2 0 0 1 8 9V4h8v5a2 2 0 0 1-1 1.76l-1 .58a2 2 0 0 0-1 1.76V17H10v-3.9a2 2 0 0 0-1-1.76z" />;
     case "folder":    return <Icon d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />;
     case "package":   return <Icon d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />;
+    case "pencil":    return <Icon d="M12 20h9" d2="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />;
     default:          return <Icon d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />;
   }
 }
 
 const STORAGE_KEY = "sidebar-collapsed";
 
-// Typed DnD ids: we share one DndContext across two dimensions of reorder.
-// `item:<key>` drags an individual nav item within its group.
-// `group:<enum>` drags a whole group relative to other groups.
-const itemId = (key: string) => `item:${key}`;
-const groupId = (enumKey: string) => `group:${enumKey}`;
-
 const isActivePath = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
-function SortableSidebarItem({
+// Render-only item. Hover-flyout if it has children.
+function SidebarItem({
   item,
   pathname,
   open,
+  childItems,
 }: {
   item: NavCatalogEntry;
   pathname: string;
   open: boolean;
+  childItems: NavCatalogEntry[];
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: itemId(item.key) });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  const hasChildren = childItems.length > 0;
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+
+  const label = hasChildren ? `${item.label} (${childItems.length})` : item.label;
+
   return (
-    <div ref={setNodeRef} style={style} className="sidebar-item-wrap">
-      <button
-        type="button"
-        className="sidebar-item__drag"
-        aria-label={`Reorder ${item.label}`}
-        title="Drag to reorder"
-        {...attributes}
-        {...listeners}
-      >
-        <svg width="12" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="9" cy="6" r="1.5" />
-          <circle cx="15" cy="6" r="1.5" />
-          <circle cx="9" cy="12" r="1.5" />
-          <circle cx="15" cy="12" r="1.5" />
-          <circle cx="9" cy="18" r="1.5" />
-          <circle cx="15" cy="18" r="1.5" />
-        </svg>
-      </button>
+    <div
+      className={`sidebar-item-wrap ${hasChildren ? "sidebar-item-wrap--has-flyout" : ""}`}
+      onMouseEnter={() => hasChildren && setFlyoutOpen(true)}
+      onMouseLeave={() => hasChildren && setFlyoutOpen(false)}
+      onFocus={() => hasChildren && setFlyoutOpen(true)}
+      onBlur={(e) => {
+        if (hasChildren && !e.currentTarget.contains(e.relatedTarget as Node)) {
+          setFlyoutOpen(false);
+        }
+      }}
+    >
       <Link
         href={item.href}
         className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
-        title={!open ? item.label : undefined}
-        draggable={false}
-        onDragStart={(e) => e.preventDefault()}
+        title={!open ? label : undefined}
       >
         <IconFor iconKey={item.icon} />
-        <span className="sidebar-item__label">{item.label}</span>
+        <span className="sidebar-item__label">{label}</span>
       </Link>
-    </div>
-  );
-}
 
-function SortableGroup({
-  tag,
-  items,
-  pathname,
-  open,
-}: {
-  tag: NavTagGroup;
-  items: NavCatalogEntry[];
-  pathname: string;
-  open: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: groupId(tag.enum) });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-  };
-  return (
-    <div ref={setNodeRef} style={style} className="sidebar-group">
-      <div className="sidebar-group__heading-row">
-        <button
-          type="button"
-          className="sidebar-group__drag"
-          aria-label={`Reorder ${tag.label} group`}
-          title="Drag group to reorder"
-          {...attributes}
-          {...listeners}
-        >
-          <svg width="12" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <circle cx="9" cy="6" r="1.5" />
-            <circle cx="15" cy="6" r="1.5" />
-            <circle cx="9" cy="12" r="1.5" />
-            <circle cx="15" cy="12" r="1.5" />
-            <circle cx="9" cy="18" r="1.5" />
-            <circle cx="15" cy="18" r="1.5" />
-          </svg>
-        </button>
-        <span className="sidebar-group__heading">{tag.label}</span>
-      </div>
-      <SortableContext items={items.map((i) => itemId(i.key))} strategy={verticalListSortingStrategy}>
-        {items.map((item) => (
-          <SortableSidebarItem key={item.key} item={item} pathname={pathname} open={open} />
-        ))}
-      </SortableContext>
+      {hasChildren && flyoutOpen && (
+        <div className="sidebar-flyout" role="menu" aria-label={`${item.label} sub-pages`}>
+          <div className="sidebar-flyout__heading">{item.label}</div>
+          {childItems.map((child) => (
+            <Link
+              key={child.key}
+              href={child.href}
+              className={`sidebar-item sidebar-item--flyout ${isActivePath(pathname, child.href) ? "active" : ""}`}
+              role="menuitem"
+            >
+              <IconFor iconKey={child.icon} />
+              <span className="sidebar-item__label">{child.label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -162,16 +103,9 @@ function SortableGroup({
 export default function AppSidebar_2() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { prefs, save, catalogue, findEntry, defaultPinned, tagByEnum, tags } = useNavPrefs();
+  const { prefs, customGroups, catalogue, findEntry, defaultPinned, tagByEnum } = useNavPrefs();
   const [collapsed, setCollapsed] = useState(false);
   const [peeked, setPeeked] = useState(false);
-  // Draft order is { groupOrder: enum[], itemsByGroup: { [enum]: key[] } }.
-  // Null = no pending edit; sidebar reflects server state directly.
-  const [draftOrder, setDraftOrder] = useState<{
-    groupOrder: string[];
-    itemsByGroup: Record<string, string[]>;
-  } | null>(null);
-  const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -187,52 +121,112 @@ export default function AppSidebar_2() {
     document.documentElement.setAttribute("data-sidebar-peeked", peeked ? "true" : "false");
   }, [peeked]);
 
-  const pinnedKeys = useMemo(
-    () => prefs.slice().sort((a, b) => a.position - b.position).map((p) => p.item_key),
+  // Sort prefs by position once; resolve catalogue entries.
+  const sortedPrefs = useMemo(
+    () => prefs.slice().sort((a, b) => a.position - b.position),
     [prefs],
   );
 
-  // Catalogue is already role-filtered by the server. Unknown pinned keys
-  // (catalogue entries retired since a user pinned them) drop out silently.
-  const baseRenderedItems = useMemo<NavCatalogEntry[]>(() => {
-    if (catalogue.length === 0) return [];
-    if (pinnedKeys.length === 0) return defaultPinned;
-    return pinnedKeys
-      .map((k) => findEntry(k))
-      .filter((e): e is NavCatalogEntry => !!e);
-  }, [catalogue, pinnedKeys, defaultPinned, findEntry]);
-
-  // Derive server-side grouping: preserve the order items appear in
-  // baseRenderedItems — server has already enforced contiguity, so
-  // first-appearance of each tag_enum is authoritative group order.
-  const baseGrouping = useMemo(() => {
-    const groupOrder: string[] = [];
-    const itemsByGroup: Record<string, string[]> = {};
-    for (const item of baseRenderedItems) {
-      const tagEnum = item.tagEnum || "personal";
-      if (!(tagEnum in itemsByGroup)) {
-        groupOrder.push(tagEnum);
-        itemsByGroup[tagEnum] = [];
-      }
-      itemsByGroup[tagEnum].push(item.key);
+  // Index children of each parent_item_key, in position order.
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, NavCatalogEntry[]>();
+    for (const p of sortedPrefs) {
+      if (!p.parent_item_key) continue;
+      const e = findEntry(p.item_key);
+      if (!e) continue;
+      const list = map.get(p.parent_item_key) ?? [];
+      list.push(e);
+      map.set(p.parent_item_key, list);
     }
-    return { groupOrder, itemsByGroup };
-  }, [baseRenderedItems]);
+    return map;
+  }, [sortedPrefs, findEntry]);
 
-  const effectiveGrouping = draftOrder ?? baseGrouping;
+  // Top-level items (no parent), with their resolved catalogue entry,
+  // pref row (for group_id), and child list.
+  type Rendered = {
+    entry: NavCatalogEntry;
+    groupId: string | null; // custom group id or null
+    children: NavCatalogEntry[];
+  };
 
-  const itemByKey = useMemo(() => {
-    const m = new Map<string, NavCatalogEntry>();
-    for (const e of baseRenderedItems) m.set(e.key, e);
-    return m;
-  }, [baseRenderedItems]);
+  const baseRendered: Rendered[] = useMemo(() => {
+    if (catalogue.length === 0) return [];
+    if (sortedPrefs.length === 0) {
+      // Fallback to defaults when user has no prefs at all.
+      return defaultPinned.map((entry) => ({
+        entry,
+        groupId: null,
+        children: [],
+      }));
+    }
+    const out: Rendered[] = [];
+    for (const p of sortedPrefs) {
+      if (p.parent_item_key) continue;
+      const entry = findEntry(p.item_key);
+      if (!entry) continue;
+      out.push({
+        entry,
+        groupId: p.group_id ?? null,
+        children: childrenByParent.get(p.item_key) ?? [],
+      });
+    }
+    return out;
+  }, [catalogue, sortedPrefs, defaultPinned, findEntry, childrenByParent]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  // Build the render groups: system tag groups + custom groups, in
+  // first-appearance order based on top-level prefs. Custom groups
+  // are placed by their position relative to system groups via the
+  // first item that references them (custom groups have no anchor
+  // otherwise). If a custom group has no items it still renders as
+  // an empty header — so empty custom groups are visible to the user.
+  type RenderGroup =
+    | { kind: "tag"; tag: NavTagGroup; items: Rendered[] }
+    | { kind: "custom"; group: NavCustomGroup; items: Rendered[] };
 
-  // Server filters by role; dev items are just the non-pinnable entries.
+  const renderGroups: RenderGroup[] = useMemo(() => {
+    const tagBuckets: Record<string, Rendered[]> = {};
+    const customBuckets: Record<string, Rendered[]> = {};
+    const order: Array<{ kind: "tag" | "custom"; key: string }> = [];
+
+    const note = (kind: "tag" | "custom", key: string) => {
+      if (!order.find((o) => o.kind === kind && o.key === key)) {
+        order.push({ kind, key });
+      }
+    };
+
+    for (const r of baseRendered) {
+      if (r.groupId) {
+        (customBuckets[r.groupId] ??= []).push(r);
+        note("custom", r.groupId);
+      } else {
+        const tagEnum = r.entry.tagEnum || "personal";
+        (tagBuckets[tagEnum] ??= []).push(r);
+        note("tag", tagEnum);
+      }
+    }
+
+    // Append any custom groups that have no items yet, sorted by their own position.
+    const seenCustom = new Set(order.filter((o) => o.kind === "custom").map((o) => o.key));
+    const emptyCustom = customGroups
+      .filter((g) => !seenCustom.has(g.id))
+      .sort((a, b) => a.position - b.position);
+    for (const g of emptyCustom) order.push({ kind: "custom", key: g.id });
+
+    const out: RenderGroup[] = [];
+    for (const o of order) {
+      if (o.kind === "tag") {
+        const tag = tagByEnum(o.key);
+        if (!tag) continue;
+        out.push({ kind: "tag", tag, items: tagBuckets[o.key] ?? [] });
+      } else {
+        const group = customGroups.find((g) => g.id === o.key);
+        if (!group) continue;
+        out.push({ kind: "custom", group, items: customBuckets[o.key] ?? [] });
+      }
+    }
+    return out;
+  }, [baseRendered, customGroups, tagByEnum]);
+
   const visibleDevItems = useMemo(
     () => catalogue.filter((e) => !e.pinnable),
     [catalogue],
@@ -241,102 +235,6 @@ export default function AppSidebar_2() {
   if (!user) return null;
 
   const open = !collapsed || peeked;
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const activeId = String(active.id);
-    const overId = String(over.id);
-
-    // Group-level drag: both endpoints must be groups.
-    if (activeId.startsWith("group:") && overId.startsWith("group:")) {
-      const current = effectiveGrouping;
-      const activeEnum = activeId.slice("group:".length);
-      const overEnum = overId.slice("group:".length);
-      const from = current.groupOrder.indexOf(activeEnum);
-      const to = current.groupOrder.indexOf(overEnum);
-      if (from < 0 || to < 0) return;
-      setDraftOrder({
-        groupOrder: arrayMove(current.groupOrder, from, to),
-        itemsByGroup: current.itemsByGroup,
-      });
-      return;
-    }
-
-    // Item-level drag: reject if the drop target is in a different group
-    // (server rejects cross-group pins anyway — don't let the UI show it).
-    if (activeId.startsWith("item:") && overId.startsWith("item:")) {
-      const current = effectiveGrouping;
-      const activeKey = activeId.slice("item:".length);
-      const overKey = overId.slice("item:".length);
-
-      const findOwnerGroup = (key: string) =>
-        Object.entries(current.itemsByGroup).find(([, keys]) => keys.includes(key))?.[0];
-
-      const activeGroup = findOwnerGroup(activeKey);
-      const overGroup = findOwnerGroup(overKey);
-      if (!activeGroup || !overGroup || activeGroup !== overGroup) return;
-
-      const groupItems = current.itemsByGroup[activeGroup];
-      const from = groupItems.indexOf(activeKey);
-      const to = groupItems.indexOf(overKey);
-      if (from < 0 || to < 0 || from === to) return;
-      setDraftOrder({
-        groupOrder: current.groupOrder,
-        itemsByGroup: {
-          ...current.itemsByGroup,
-          [activeGroup]: arrayMove(groupItems, from, to),
-        },
-      });
-      return;
-    }
-    // Mixed (item vs group) drops are ignored — they're not a valid intent.
-  };
-
-  const flattenDraft = (d: { groupOrder: string[]; itemsByGroup: Record<string, string[]> }) => {
-    const out: string[] = [];
-    for (const g of d.groupOrder) {
-      for (const k of d.itemsByGroup[g] ?? []) out.push(k);
-    }
-    return out;
-  };
-
-  const acceptOrder = async () => {
-    if (!draftOrder) return;
-    setCommitting(true);
-    try {
-      const flat = flattenDraft(draftOrder);
-      const startKey = prefs.find((p) => p.is_start_page)?.item_key ?? null;
-      await save({
-        pinned: flat.map((k, i) => ({ item_key: k, position: i })),
-        start_page_key: startKey,
-      });
-      setDraftOrder(null);
-    } finally {
-      setCommitting(false);
-    }
-  };
-
-  const undoOrder = () => setDraftOrder(null);
-
-  // Lookups for render.
-  const renderedGroups: { tag: NavTagGroup; items: NavCatalogEntry[] }[] = effectiveGrouping.groupOrder
-    .map((enumKey) => {
-      const tag = tagByEnum(enumKey);
-      if (!tag) return null;
-      const items = (effectiveGrouping.itemsByGroup[enumKey] ?? [])
-        .map((k) => itemByKey.get(k))
-        .filter((i): i is NavCatalogEntry => !!i);
-      if (items.length === 0) return null;
-      return { tag, items };
-    })
-    .filter((g): g is { tag: NavTagGroup; items: NavCatalogEntry[] } => !!g);
-
-  // Fallback: if a pinned entry somewhere references a tag we don't know
-  // about, surface its own label so we don't silently drop pins. Hitting
-  // this branch means the catalogue drifted from page_tags — worth logging
-  // upstream but we still render rather than 404ing the user's sidebar.
-  void tags;
 
   return (
     <nav
@@ -350,59 +248,54 @@ export default function AppSidebar_2() {
       onFocus={() => { if (collapsed) setPeeked(true); }}
       onBlur={(e) => { if (peeked && !e.currentTarget.contains(e.relatedTarget as Node)) setPeeked(false); }}
     >
-      <button
-        type="button"
-        className="sidebar-collapse-toggle"
-        onClick={() => {
-          setCollapsed((c) => !c);
-          setPeeked(false);
-        }}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        aria-expanded={!collapsed}
-        aria-controls="app-sidebar-nav"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-      </button>
-
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext
-          items={renderedGroups.map((g) => groupId(g.tag.enum))}
-          strategy={verticalListSortingStrategy}
+      <div className="sidebar-toolbar">
+        <button
+          type="button"
+          className="sidebar-collapse-toggle"
+          onClick={() => {
+            setCollapsed((c) => !c);
+            setPeeked(false);
+          }}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          aria-controls="app-sidebar-nav"
         >
-          {renderedGroups.map((g) => (
-            <SortableGroup
-              key={g.tag.enum}
-              tag={g.tag}
-              items={g.items}
-              pathname={pathname}
-              open={open}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <Link
+          href="/preferences/navigation"
+          className="sidebar-edit-toggle"
+          title="Edit navigation"
+          aria-label="Edit navigation"
+        >
+          <IconFor iconKey="pencil" />
+        </Link>
+      </div>
 
-      {draftOrder && (
-        <div className="sidebar-reorder-banner" role="status" aria-live="polite">
-          <p className="sidebar-reorder-banner__text">You have changed the order of your navigation.</p>
-          <div className="sidebar-reorder-banner__actions">
-            <button
-              type="button"
-              className="btn btn--primary btn--small"
-              onClick={acceptOrder}
-              disabled={committing}
-            >{committing ? "Saving…" : "Accept"}</button>
-            <button
-              type="button"
-              className="btn btn--ghost btn--small"
-              onClick={undoOrder}
-              disabled={committing}
-            >Undo</button>
+      {renderGroups.map((g) => {
+        if (g.items.length === 0 && g.kind === "tag") return null;
+        const heading = g.kind === "tag" ? g.tag.label : g.group.label;
+        const key = g.kind === "tag" ? `tag:${g.tag.enum}` : `custom:${g.group.id}`;
+        return (
+          <div key={key} className={`sidebar-group ${g.kind === "custom" ? "sidebar-group--custom" : ""}`}>
+            <div className="sidebar-group__heading-row">
+              <span className="sidebar-group__heading">{heading}</span>
+            </div>
+            {g.items.map((r) => (
+              <SidebarItem
+                key={r.entry.key}
+                item={r.entry}
+                pathname={pathname}
+                open={open}
+                childItems={r.children}
+              />
+            ))}
           </div>
-        </div>
-      )}
+        );
+      })}
 
       <Link
         href="/preferences/navigation"

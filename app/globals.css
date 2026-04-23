@@ -163,9 +163,15 @@ button {
   --sidebar-width: 220px;
 }
 
-.sidebar-collapse-toggle {
-  align-self: flex-start;
+.sidebar-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 8px 24px 0 18px;
+}
+
+.sidebar-collapse-toggle,
+.sidebar-edit-toggle {
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -177,15 +183,23 @@ button {
   color: var(--ink-2);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.25s ease;
+  text-decoration: none;
 }
 
-.sidebar-collapse-toggle:hover {
+.sidebar-collapse-toggle:hover,
+.sidebar-edit-toggle:hover {
   background: #cccccc;
   color: var(--ink-1);
 }
 
 .app-sidebar-container[data-collapsed="true"] .sidebar-collapse-toggle {
   transform: rotate(180deg);
+}
+
+/* When the sidebar is collapsed the edit pencil hides — single-action
+   target only when the rail is wide enough to make sense. */
+.app-sidebar-container[data-open="false"] .sidebar-edit-toggle {
+  display: none;
 }
 
 .sidebar-item__label {
@@ -221,26 +235,45 @@ button {
   margin-top: auto;
 }
 
-.sidebar-reorder-banner {
-  margin: 8px 12px;
-  padding: 10px 12px;
+/* Hover-flyout for parent items with sub-pages. Render-only; the
+   parent label gains a (N) suffix in the markup. */
+.sidebar-item-wrap--has-flyout {
+  position: relative;
+}
+
+.sidebar-flyout {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--bg);
   border: 1px solid var(--line-1);
-  background: var(--surface);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-.sidebar-reorder-banner__text {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--ink-2);
+.sidebar-flyout__heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 4px 12px 6px;
 }
 
-.sidebar-reorder-banner__actions {
-  display: flex;
-  gap: 6px;
+.sidebar-item--flyout {
+  padding: 0 12px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.sidebar-group--custom .sidebar-group__heading {
+  color: var(--hot-pink);
 }
 
 .btn--small {
@@ -384,42 +417,6 @@ button {
   flex: 1;
 }
 
-.sidebar-item__drag {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 40px;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: none;
-  color: #ff2e93;
-  cursor: grab;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-  opacity: 0.5;
-  transition: opacity 120ms;
-  touch-action: none;
-}
-
-.sidebar-item-wrap:hover .sidebar-item__drag,
-.sidebar-item__drag:focus-visible {
-  opacity: 1;
-}
-
-.sidebar-item__drag > svg {
-  display: block;
-}
-
-.sidebar-item__drag:hover {
-  color: #ff2e93;
-}
-
-.sidebar-item__drag:active {
-  cursor: grabbing;
-}
-
 .sidebar-group {
   display: flex;
   flex-direction: column;
@@ -437,42 +434,6 @@ button {
   margin: 0 0 4px 0;
 }
 
-.sidebar-group__drag {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 24px;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: none;
-  color: #ff2e93;
-  cursor: grab;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-  opacity: 0;
-  transition: opacity 120ms;
-  touch-action: none;
-}
-
-.sidebar-group__heading-row:hover .sidebar-group__drag,
-.sidebar-group__drag:focus-visible {
-  opacity: 0.8;
-}
-
-.sidebar-group__drag:hover {
-  opacity: 1;
-}
-
-.sidebar-group__drag:active {
-  cursor: grabbing;
-}
-
-.sidebar-group__drag > svg {
-  display: block;
-}
-
 .sidebar-group__heading {
   flex: 1;
   font-size: 11px;
@@ -485,8 +446,7 @@ button {
 
 /* When sidebar is collapsed, the group heading is decorative noise — hide
    the label but keep the group spacing intact so items don't mash together. */
-:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-group__heading,
-:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-group__drag {
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-group__heading {
   display: none;
 }
 
@@ -1649,6 +1609,51 @@ button {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid var(--line-1);
+}
+
+/* Sub-pages + custom groups editor extras */
+.nav-prefs__group--custom > .nav-prefs__group-heading-row > .nav-prefs__group-heading {
+  color: var(--accent-pink, #ff0080);
+}
+.nav-prefs__group-rename {
+  flex: 1;
+  font: inherit;
+  color: var(--ink-1);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.nav-prefs__group-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.nav-prefs__list--over,
+.nav-prefs__children--over {
+  outline: 2px dashed var(--accent-1, #6aa6ff);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.nav-prefs__parent-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-prefs__children {
+  list-style: none;
+  margin: 0 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-prefs__children-empty {
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 6px 8px;
+  border: 1px dashed var(--line-2);
+  border-radius: 4px;
 }
 
 /* ============================================================

@@ -36,10 +36,11 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 }
 
 type prefsResp struct {
-	Prefs []PrefRow `json:"prefs"`
+	Prefs  []PrefRow     `json:"prefs"`
+	Groups []CustomGroup `json:"groups"`
 }
 
-// GET /api/nav/prefs — this user's prefs for their current tenant.
+// GET /api/nav/prefs — this user's prefs + custom groups for their current tenant.
 func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.TenantID)
@@ -47,15 +48,21 @@ func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, prefsResp{Prefs: rows})
+	groups, err := h.Svc.GetCustomGroups(r.Context(), u.ID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, prefsResp{Prefs: rows, Groups: groups})
 }
 
 type putPrefsReq struct {
-	Pinned       []PinnedInput `json:"pinned"`
-	StartPageKey *string       `json:"start_page_key"`
+	Pinned       []PinnedInput      `json:"pinned"`
+	StartPageKey *string            `json:"start_page_key"`
+	Groups       []CustomGroupInput `json:"groups"`
 }
 
-// PUT /api/nav/prefs — replace this user's prefs.
+// PUT /api/nav/prefs — replace this user's prefs and custom groups atomically.
 func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req putPrefsReq
@@ -63,7 +70,7 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, u.Role, req.Pinned, req.StartPageKey); err != nil {
+	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, u.Role, req.Pinned, req.StartPageKey, req.Groups); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
@@ -72,7 +79,15 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrBadPositions),
 			errors.Is(err, ErrDuplicateKey),
 			errors.Is(err, ErrTooManyPinned),
-			errors.Is(err, ErrBadGrouping):
+			errors.Is(err, ErrBadGrouping),
+			errors.Is(err, ErrBadNesting),
+			errors.Is(err, ErrCatalogueItemLocked),
+			errors.Is(err, ErrUnknownGroup),
+			errors.Is(err, ErrEmptyGroupLabel),
+			errors.Is(err, ErrDuplicateGroupLabel),
+			errors.Is(err, ErrTooManyGroups),
+			errors.Is(err, ErrTooManyChildren),
+			errors.Is(err, ErrGroupLabelTooLong):
 			// Generic 400 — do not echo the offending key back to the client.
 			http.Error(w, "invalid request", http.StatusBadRequest)
 			return

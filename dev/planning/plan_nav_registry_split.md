@@ -397,3 +397,168 @@ Stop and confirm with user before:
 - Starting step 4 (sidebar grouping) — UX-heavy, want eyes on draft behaviour
 - Starting step 7 (preferences page) — same reason, biggest UX surface
 - Final push — review commit message and scope
+
+---
+
+## Next Phase — Sub-pages + Custom Primary Groups
+
+> Status: brief, not yet planned in detail. Adds two related capabilities on top of the registry/grouping work above.
+
+> **Editing model change for this phase:** all drag/reorder affordances are removed from the live sidebar. The preferences modal/page becomes the **single source** of nav order, grouping, and nesting. The sidebar is render-only — no drag handles, no drop targets, no inline reorder. This applies to *all* prior drag behaviour (item-level and group-level both), not just the new sub-page/custom-group features.
+
+### Goals
+
+1. **Sub-pages (one-level nesting).** From the preferences modal/page, a user can drag any available page **onto** another pinned page to make it a child. Children render in the sidebar as a flyout panel anchored to the parent. Parent label gains a count: e.g. `Planning (3)`.
+2. **User-created primary groups.** From the same preferences page (inside the "Available pages" box), the user can create their own groups for the primary navigation. Each custom group is rename-inline-able, removable, and draggable like any other group.
+
+Both features are **per-user navigation customisation** — no schema visibility to other users. They sit on top of the existing pin/tag/order model.
+
+### Locked rules (from brief)
+
+- **One level of nesting only.** Once a page becomes a child, no further pages can be nested beneath it. Drop-as-child affordance disabled when the target is already a child.
+- **Catalogue/primary items are locked to their base system groups.** Planning, Portfolio, Dashboard, etc. cannot be moved into custom groups, cannot be nested as children, and cannot be turned into children of each other. Their group placement is fixed by the registry's tag mapping.
+- **Only custom (user-created) pages can be nested.** Children in any flyout are always custom pages. Catalogue items can be **parents** (e.g. `Planning (3)` with 3 custom-page children), but cannot themselves become children.
+- **Custom groups contain only custom pages.** Since catalogue items are locked to their system groups, custom groups are exclusively a home for the user's own custom pages.
+- **Primary count display.** A parent with N children renders its label as `<Label> (N)` in the sidebar. Hover reveals the flyout containing the children in user-defined order.
+- **Custom group affordances (in the modal).** Inline rename, remove (×), and drag handle on each custom group header. System tag groups remain rename-locked, removal-locked, and order-locked relative to each other (system group order comes from `page_tags.default_order`). Custom groups are draggable; they can be reordered relative to one another and positioned before/after system groups.
+- **Sidebar is render-only.** All drag handles (item and group level) are removed from the live sidebar. The preferences page is the sole editor.
+- **Editor entry point.** A pencil/edit affordance lives in the sidebar next to the existing collapse-in/out button, opening `/preferences/navigation` directly.
+
+### Schema impact
+
+#### Sub-pages
+
+`user_nav_prefs` gains a parent reference:
+
+```sql
+ALTER TABLE user_nav_prefs
+    ADD COLUMN parent_item_key TEXT NULL;
+
+-- parent_item_key is intentionally TEXT, not an FK: item_keys are
+-- synthetic (entity:product:<uuid>, page:<id>, ...) and span multiple
+-- source tables. Orphan-cleanup lives in the validator on every write.
+--
+-- One-level rule enforced server-side: if A.parent_item_key IS NOT NULL,
+-- then no row B may have B.parent_item_key = A.item_key.
+-- Catalogue-lock rule: only rows whose item_key resolves to a custom page
+-- (pages.kind = 'user_custom') may have parent_item_key set.
+```
+
+Position semantics:
+- `position` for a child is its order **within its parent's flyout** (0..N-1, contiguous per-parent).
+- `position` for a top-level item remains its order within its group.
+
+Validator additions (`validatePinned`):
+- Reject `parent_item_key` pointing at a non-pinned key.
+- Reject `parent_item_key` pointing at a key that itself has a `parent_item_key` (no two-deep nesting).
+- Reject `parent_item_key` self-reference.
+- Reject `parent_item_key` set on any row whose page is not `kind = 'user_custom'` (catalogue items cannot be children).
+- Reject any `group_id` set on a row whose page is not `kind = 'user_custom'` (catalogue items cannot be moved into custom groups).
+- Within each parent: contiguous positions starting at 0.
+- New errors: `ErrBadNesting`, `ErrCatalogueItemLocked`.
+
+#### Custom primary groups
+
+New table for user-defined groups:
+
+```sql
+CREATE TABLE user_nav_groups (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label       CITEXT NOT NULL,             -- case-insensitive uniqueness within user
+    position    INT NOT NULL,                -- group order within the user's sidebar
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_nav_groups_user ON user_nav_groups(user_id);
+CREATE UNIQUE INDEX uq_user_nav_groups_user_label ON user_nav_groups(user_id, label);
+-- If CITEXT is undesirable, drop it for TEXT and use:
+--   CREATE UNIQUE INDEX ... ON user_nav_groups(user_id, LOWER(label));
+```
+
+`user_nav_prefs` gains an optional override for which group an item lives in:
+
+```sql
+ALTER TABLE user_nav_prefs
+    ADD COLUMN group_id UUID NULL REFERENCES user_nav_groups(id) ON DELETE SET NULL;
+```
+
+Resolution rule:
+- If `group_id IS NOT NULL` → item is in that custom group (custom pages only — see validator). The page's underlying `tag_enum` is **retained** on the page record; `group_id` only overrides *placement*.
+- Else → item is in its registry tag group (current behaviour, applies to catalogue items always).
+
+When a custom group is deleted, `ON DELETE SET NULL` returns its members to whatever default the registry would have placed them in — i.e. their original `tag_enum` becomes the placement again. For catalogue items the column is never set anyway.
+
+### Backend impact
+
+- Extend `Service.GetPrefs` / `ReplacePrefs` to round-trip `parent_item_key`, `group_id`, and the `user_nav_groups` rows for the caller.
+- New endpoints (or extend `PUT /api/nav/prefs` payload):
+  - `PUT /api/nav/prefs` payload grows: `{ pinned: [...], groups: [{id, label, position}, ...] }`. Single atomic write covers both.
+- Validator handles all rules above plus per-parent contiguity and per-group contiguity.
+- Validator enforces server-side caps (UI also enforces, but server is the source of truth): max **10 custom groups per user**, max **8 children per parent**.
+- Errors: `ErrBadNesting`, `ErrCatalogueItemLocked`, `ErrUnknownGroup`, `ErrEmptyGroupLabel`, `ErrDuplicateGroupLabel` (case-insensitive within user), `ErrTooManyGroups`, `ErrTooManyChildren`.
+
+### Frontend impact
+
+#### Preferences page
+
+- Pinned area renders system tag groups (fixed order, fixed membership for catalogue items) plus user custom groups (draggable, contain only custom pages).
+- "Available pages" box gains a **+ New group** affordance at the top. Creates an empty custom group; user types label inline; appears immediately in the pinned area.
+- Each custom-group header has: drag handle, inline editable label, remove (×). System group headers are inert (no drag, no rename, no remove).
+- Drag rules in the modal:
+  - **Catalogue items** can only be reordered within their fixed system group (existing within-group reorder).
+  - **Custom pages** can be dragged: between custom groups, into/out of pinned, onto a parent (catalogue or custom) to nest, within a flyout to reorder children.
+  - Drop-as-child target highlights only appear when the source is a custom page and the target is not already a child.
+- Visual cues distinguish "drop will nest" vs "drop will reorder" (different highlight/indicator).
+- Parent count badge `(N)` shown beside parent labels in both the modal and the sidebar.
+
+#### Sidebar
+
+- Parent items render with `(N)` suffix. Trigger pattern: **hover-to-open flyout** (no click-to-pin needed — drag is gone, so hover is unambiguous; keyboard users get focus-open via tab as a follow-on if needed).
+- Flyout positioned to the right of the sidebar, anchored to the parent row, contained within viewport.
+- Children styled as compact list items inside the flyout — same item CSS as the sidebar items, with a `.flyout` modifier.
+- Flyout closes on mouse-leave / Escape / navigation.
+- **No drag in the live sidebar.** All previous drag handles (item-level and group-level) are removed; sidebar is render-only. Editing happens exclusively in the preferences page.
+- **Edit entry point.** A pencil/edit icon button sits next to the existing sidebar collapse-in/out button, linking directly to `/preferences/navigation`. Same icon-button styling as its neighbour.
+
+### Decisions locked (from follow-up)
+
+| # | Decision | Notes |
+|---|---|---|
+| 1 | Catalogue/primary items locked to their base system groups | Cannot move into custom groups; cannot be nested. |
+| 2 | Only custom pages can be nested as children | Catalogue items can be parents, never children. |
+| 3 | Cascade role visibility | Parent gadmin-only → child hidden for everyone else, regardless of child's own role. |
+| 4 | Caps: max 10 custom groups, max 8 children per parent | Provisional — revisit after UX testing. |
+| 5 | Sidebar flyout opens on hover | All sidebar drag removed, so hover is unambiguous. |
+| 6 | Editor entry point: pencil button next to sidebar collapse button | Direct link to `/preferences/navigation`. |
+
+### Still-open (lower priority — defer to UX pass)
+
+- **Counting badge style.** `(3)` plain text vs small pill.
+- **Custom group label rules.** Length cap (suggest 1–24 chars), duplicate-with-system-name handling.
+- **Avatar dropdown nesting.** Probably stays flat — confirm during build.
+
+### Implementation order (rough)
+
+Sequenced after the current plan ships. **Drag rip lands first** — smallest, most isolated change; gets the regression out of the way as a clean revertable commit before piling features on top. No install base to protect, current drag UX already rejected, modal-first model is industry-standard (Notion sidebars, Slack channel sections, Linear views).
+
+1. Schema migration: add `parent_item_key`, `group_id`, `user_nav_groups` table.
+   - `parent_item_key TEXT` is intentionally **not** an FK — item keys are synthetic (`entity:product:<uuid>`, `page:<id>`); orphan-cleanup lives in the validator.
+   - `user_nav_groups.label` uses `CITEXT` (or partial unique index on `LOWER(label)`) for case-insensitive uniqueness within `user_id`.
+2. **Rip sidebar drag — sidebar becomes render-only.** Remove all drag handles (item and group level), drop targets, dnd-kit wiring. Add the pencil/edit button next to the existing collapse-in/out button, linking to `/preferences/navigation`. Lands as one isolated "remove dead code" commit; one-revert escape hatch if the modal-only model needs revisiting.
+3. Backend validator + service changes; extend payloads; new errors. Tests.
+   - Validator enforces server-side caps: max 10 custom groups, max 8 children per parent.
+   - `group_id` overrides `tag_enum` for placement; the tag stays on the page record (used as fallback if the custom group is deleted).
+4. Sidebar: render `(N)` on parents, flyout component, role-cascading visibility (parent role gates child render, regardless of child's own role).
+5. Preferences page: custom group create/rename/remove, drag-to-nest, drag-into-custom-group.
+6. End-to-end manual test across user/padmin/gadmin including reset-to-defaults behaviour.
+7. Commit + push.
+
+### Out of scope for this next phase
+
+- Sharing custom groups between users.
+- Nesting beyond one level.
+- Custom-group icons / colours.
+- Sub-pages from the avatar dropdown.
+- Tenant-wide custom groups pushed by gadmin.
