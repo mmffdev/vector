@@ -21,6 +21,10 @@ import (
 var (
 	ErrDuplicateEmail = errors.New("user with that email already exists in tenant")
 	ErrNotFound       = errors.New("not found")
+	// ErrRoleCeiling is returned when the actor tries to act on a target
+	// whose current role outranks them, OR tries to assign a role that
+	// outranks them. Maps to HTTP 403. See feedback_role_ceiling.md.
+	ErrRoleCeiling = errors.New("role ceiling: cannot act on or assign a role above your own")
 )
 
 type Service struct {
@@ -41,7 +45,14 @@ type CreateInput struct {
 
 // Create makes a new account with a random hashed placeholder password and
 // issues a password_resets token; the user sets their real password via the link.
-func (s *Service) Create(ctx context.Context, in CreateInput, createdBy uuid.UUID, ip string) (*models.User, string, error) {
+//
+// actorRole is the role of the caller, used to enforce the role ceiling
+// (cannot create an account whose role outranks you). See
+// feedback_role_ceiling.md.
+func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.Role, createdBy uuid.UUID, ip string) (*models.User, string, error) {
+	if in.Role.Rank() > actorRole.Rank() {
+		return nil, "", ErrRoleCeiling
+	}
 	email := strings.ToLower(strings.TrimSpace(in.Email))
 
 	// Placeholder password — user must reset via the emailed link.
@@ -118,7 +129,38 @@ type UpdateInput struct {
 	IsActive *bool
 }
 
-func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actor uuid.UUID, ip string) error {
+// Update mutates a user's role and/or is_active flag.
+//
+// actorRole and actorTenant come from the verified session, never the
+// payload. Pre-flight checks (in order):
+//   1. Target must exist in actor's tenant — otherwise ErrNotFound
+//      (cross-tenant existence is hidden).
+//   2. Target's CURRENT role must not outrank actor — otherwise
+//      ErrRoleCeiling (a padmin cannot poke a gadmin record).
+//   3. If a NEW role is requested, it must not outrank actor —
+//      otherwise ErrRoleCeiling (no privilege escalation).
+// See feedback_role_ceiling.md.
+func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actorRole models.Role, actorTenant, actor uuid.UUID, ip string) error {
+	var (
+		targetTenant uuid.UUID
+		targetRole   models.Role
+	)
+	err := s.Pool.QueryRow(ctx,
+		`SELECT tenant_id, role FROM users WHERE id = $1`, id,
+	).Scan(&targetTenant, &targetRole)
+	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if targetRole.Rank() > actorRole.Rank() {
+		return ErrRoleCeiling
+	}
+	if in.Role != nil && in.Role.Rank() > actorRole.Rank() {
+		return ErrRoleCeiling
+	}
+
 	sets := []string{}
 	args := []any{}
 	i := 1
@@ -136,7 +178,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		return nil
 	}
 	args = append(args, id)
-	_, err := s.Pool.Exec(ctx,
+	_, err = s.Pool.Exec(ctx,
 		"UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = $"+itoa(i), args...,
 	)
 	if err != nil {
@@ -155,11 +197,13 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	return nil
 }
 
-func (s *Service) FindByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+// FindByID returns the user iff they belong to actorTenant. Cross-tenant
+// existence is hidden — same ErrNotFound either way.
+func (s *Service) FindByID(ctx context.Context, id, actorTenant uuid.UUID) (*models.User, error) {
 	u := &models.User{}
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id, tenant_id, email, role, is_active, created_at, updated_at
-		FROM users WHERE id = $1`, id,
+		FROM users WHERE id = $1 AND tenant_id = $2`, id, actorTenant,
 	).Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound

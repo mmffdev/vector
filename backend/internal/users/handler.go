@@ -41,10 +41,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.TenantID == uuid.Nil {
 		req.TenantID = actor.TenantID
 	}
-	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, TenantID: req.TenantID}, actor.ID, clientIP(r))
+	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, TenantID: req.TenantID}, actor.Role, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrDuplicateEmail) {
 			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		if errors.Is(err, ErrRoleCeiling) {
+			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -80,7 +84,15 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.Update(r.Context(), id, UpdateInput{Role: req.Role, IsActive: req.IsActive}, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Update(r.Context(), id, UpdateInput{Role: req.Role, IsActive: req.IsActive}, actor.Role, actor.TenantID, actor.ID, clientIP(r)); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, ErrRoleCeiling) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

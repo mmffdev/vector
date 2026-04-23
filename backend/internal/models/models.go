@@ -14,6 +14,22 @@ const (
 	RoleGAdmin Role = "gadmin"
 )
 
+// Rank returns the role's position in the privilege hierarchy.
+// Higher rank = more privileged. Use Rank to compare roles for the
+// "role ceiling" rule: an admin can only act on accounts at or below
+// their own rank. See feedback_role_ceiling.md.
+func (r Role) Rank() int {
+	switch r {
+	case RoleGAdmin:
+		return 30
+	case RolePAdmin:
+		return 20
+	case RoleUser:
+		return 10
+	}
+	return 0
+}
+
 type User struct {
 	ID                  uuid.UUID  `json:"id"`
 	TenantID            uuid.UUID  `json:"tenant_id"`
