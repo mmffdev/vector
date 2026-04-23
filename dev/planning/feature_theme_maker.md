@@ -1,6 +1,6 @@
 # Feature — Theme maker (custom user themes)
 
-Status: **proposal / not started.** Captures the design from the 2026-04-23 session, informed by a research pass over `app/globals.css`, `docs/css-guide.md`, the `useTheme` hook, and `NavPrefsContext`.
+Status: **TODO — parked.** Design captured from the 2026-04-23 session, informed by a research pass over `app/globals.css`, `docs/css-guide.md`, the `useTheme` hook, and `NavPrefsContext`. Do not start implementation until the user explicitly asks for it.
 
 A user-facing **Theme** page that lets a person (or a tenant admin) customise Vector's appearance to match a corporate identity or personal taste. Save, edit, remove, reset. Built on the CSS-variable foundation already in place — most of the work is **exposing what we already have** plus closing tokenisation gaps.
 
