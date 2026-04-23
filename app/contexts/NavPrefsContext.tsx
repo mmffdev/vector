@@ -32,6 +32,7 @@ export interface PrefRow {
   is_start_page: boolean;
   parent_item_key: string | null;
   group_id: string | null;
+  icon_override: string | null;
 }
 
 // User-created primary group (Phase: sub-pages + custom groups).
@@ -52,6 +53,7 @@ export interface PutPrefsPinnedRow {
   position: number;
   parent_item_key?: string | null;
   group_id?: string | null;
+  icon_override?: string | null;
 }
 
 // Custom group payload may carry a synthetic id ("new:<uuid>") for

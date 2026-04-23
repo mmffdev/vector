@@ -61,7 +61,8 @@ type PrefRow struct {
 	Position      int     `json:"position"`
 	IsStartPage   bool    `json:"is_start_page"`
 	ParentItemKey *string `json:"parent_item_key"`
-	GroupID       *string `json:"group_id"` // nil means "use registry tag group"
+	GroupID       *string `json:"group_id"`       // nil means "use registry tag group"
+	IconOverride  *string `json:"icon_override"`  // nil means "use registry default"
 }
 
 type PinnedInput struct {
@@ -69,6 +70,7 @@ type PinnedInput struct {
 	Position      int     `json:"position"`
 	ParentItemKey *string `json:"parent_item_key,omitempty"`
 	GroupID       *string `json:"group_id,omitempty"`
+	IconOverride  *string `json:"icon_override,omitempty"`
 }
 
 // CustomGroup is the wire shape for a user-created primary group.
@@ -92,7 +94,7 @@ type CustomGroupInput struct {
 // Empty slice means "no prefs set" — callers fall back to catalogue defaults.
 func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]PrefRow, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT item_key, position, is_start_page, parent_item_key, group_id
+		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
 		FROM user_nav_prefs
 		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL
 		ORDER BY position`, userID, tenantID)
@@ -106,7 +108,8 @@ func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]P
 		var p PrefRow
 		var parent *string
 		var groupID *uuid.UUID
-		if err := rows.Scan(&p.ItemKey, &p.Position, &p.IsStartPage, &parent, &groupID); err != nil {
+		var iconOverride *string
+		if err := rows.Scan(&p.ItemKey, &p.Position, &p.IsStartPage, &parent, &groupID, &iconOverride); err != nil {
 			return nil, err
 		}
 		p.ParentItemKey = parent
@@ -114,6 +117,7 @@ func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]P
 			s := groupID.String()
 			p.GroupID = &s
 		}
+		p.IconOverride = iconOverride
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -194,6 +198,7 @@ func (s *Service) ReplacePrefs(
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
+	extraEntries map[string]CatalogEntry,
 ) error {
 	if len(pinned) > MaxPinned {
 		return fmt.Errorf("%w: %d > %d", ErrTooManyPinned, len(pinned), MaxPinned)
@@ -272,14 +277,26 @@ func (s *Service) ReplacePrefs(
 		}
 	}
 
-	if err := validatePinned(reg, translated, role, knownGroupIDs); err != nil {
+	lookup := func(key string) (CatalogEntry, bool) {
+		if e, ok := reg.Find(key); ok {
+			return e, true
+		}
+		if extraEntries != nil {
+			if e, ok := extraEntries[key]; ok {
+				return e, true
+			}
+		}
+		return CatalogEntry{}, false
+	}
+
+	if err := validatePinned(lookup, translated, role, knownGroupIDs); err != nil {
 		return err
 	}
 	if startPageKey != nil {
-		if !reg.IsPinnable(*startPageKey) {
+		entry, ok := lookup(*startPageKey)
+		if !ok || !entry.Pinnable {
 			return fmt.Errorf("%w: start_page_key=%s", ErrNotPinnable, *startPageKey)
 		}
-		entry, _ := reg.Find(*startPageKey)
 		if !roleAllowed(role, entry.Roles) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
@@ -345,9 +362,9 @@ func (s *Service) ReplacePrefs(
 				gid = &u
 			}
 			batch.Queue(`
-				INSERT INTO user_nav_prefs (user_id, tenant_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id)
-				VALUES ($1, $2, NULL, $3, $4, $5, $6, $7)`,
-				userID, tenantID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid)
+				INSERT INTO user_nav_prefs (user_id, tenant_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
+				VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8)`,
+				userID, tenantID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range translated {
@@ -384,11 +401,11 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) e
 }
 
 // validatePinned enforces the rule set described on ReplacePrefs.
-//   - reg: the catalogue snapshot
+//   - lookup: resolves an item_key to its catalogue entry (registry + custom pages)
 //   - role: caller's role
 //   - knownGroupIDs: canonical UUIDs of groups in the same payload
 func validatePinned(
-	reg *Registry,
+	lookup func(string) (CatalogEntry, bool),
 	pinned []PinnedInput,
 	role models.Role,
 	knownGroupIDs map[string]struct{},
@@ -403,7 +420,7 @@ func validatePinned(
 	topLevelPositions := make(map[int]struct{}, len(pinned))
 
 	for _, p := range pinned {
-		entry, ok := reg.Find(p.ItemKey)
+		entry, ok := lookup(p.ItemKey)
 		if !ok {
 			return fmt.Errorf("%w: %s", ErrUnknownItemKey, p.ItemKey)
 		}

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, setApiToken } from "@/app/lib/api";
+import { purgeDraftsFor } from "@/app/lib/draftStore";
 
 export type Role = "user" | "padmin" | "gadmin";
 
@@ -81,16 +82,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    const departingId = user?.id ?? null;
     try {
       await api("/api/auth/logout", { method: "POST" });
     } catch {
       // ignore
     }
+    if (departingId) {
+      // Purge drafts owned by the signing-out user so they're never
+      // visible if a different user signs in on the same browser.
+      try { await purgeDraftsFor(departingId); } catch { /* IDB unavailable; ignore */ }
+    }
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
     router.push("/login");
-  }, [router]);
+  }, [router, user]);
 
   return (
     <Ctx.Provider value={{ user, loading, login, logout, refresh, setUser }}>

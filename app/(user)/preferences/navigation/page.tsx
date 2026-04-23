@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -29,6 +29,9 @@ import {
   type PutPrefsPinnedRow,
   type PutPrefsGroupRow,
 } from "@/app/contexts/NavPrefsContext";
+import { createCustomPage } from "@/app/lib/customPages";
+import { useDraft } from "@/app/hooks/useDraft";
+import DraftBanner from "@/app/components/DraftBanner";
 
 const MAX_PINNED = 50;
 const MAX_CUSTOM_GROUPS = 10;
@@ -65,7 +68,16 @@ interface DraftState {
   childrenByParent: Record<string, string[]>; // parentKey -> ordered child keys
   customGroups: DraftGroup[];
   startPageKey: string | null;
+  // Per-item icon override; missing key means "use catalogue default".
+  iconOverrides: Record<string, string>;
 }
+
+// Icons the user can pick. Mirrors the cases in app/components/NavIcon.tsx
+// (excluding "default", which is the fallback the catalogue can't choose).
+const ICON_CHOICES: string[] = [
+  "home", "eye", "briefcase", "star", "clipboard", "list",
+  "warning", "cog", "wrench", "pin", "folder", "package", "pencil",
+];
 
 const itemDragId = (k: string) => `item:${k}`;
 const groupHeaderDragId = (id: string) => `gheader:${id}`;
@@ -78,6 +90,7 @@ function nextSyntheticId(): string {
 
 function PinnedRow({
   entry,
+  iconKey,
   isStart,
   onUnpin,
   onToggleStart,
@@ -85,6 +98,7 @@ function PinnedRow({
   draggable,
 }: {
   entry: NavCatalogEntry;
+  iconKey: string;
   isStart: boolean;
   onUnpin: () => void;
   onToggleStart: () => void;
@@ -127,11 +141,11 @@ function PinnedRow({
           title="Change icon"
           onClick={onPickIcon}
         >
-          <NavIcon iconKey={entry.icon} />
+          <NavIcon iconKey={iconKey} />
         </button>
       ) : (
         <span className="nav-prefs__icon" aria-hidden="true">
-          <NavIcon iconKey={entry.icon} />
+          <NavIcon iconKey={iconKey} />
         </span>
       )}
       <span className="nav-prefs__label">{entry.label}</span>
@@ -161,23 +175,83 @@ function PinnedRow({
   );
 }
 
+// Inline icon picker shown directly under the row that opened it.
+function IconPicker({
+  currentIcon,
+  hasOverride,
+  onChoose,
+  onClear,
+  onClose,
+}: {
+  currentIcon: string;
+  hasOverride: boolean;
+  onChoose: (icon: string) => void;
+  onClear?: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="nav-prefs__picker" role="group" aria-label="Select Icon">
+      <span className="nav-prefs__picker-label">Select Icon</span>
+      <div className="nav-prefs__picker-grid">
+        {ICON_CHOICES.map((ic) => (
+          <button
+            key={ic}
+            type="button"
+            className={`nav-prefs__picker-btn ${ic === currentIcon ? "nav-prefs__picker-btn--active" : ""}`}
+            aria-label={`Use ${ic} icon`}
+            aria-pressed={ic === currentIcon}
+            title={ic}
+            onClick={() => { onChoose(ic); onClose(); }}
+          >
+            <NavIcon iconKey={ic} />
+          </button>
+        ))}
+      </div>
+      <div className="nav-prefs__picker-actions">
+        {hasOverride && onClear && (
+          <button
+            type="button"
+            className="nav-prefs__btn"
+            onClick={() => { onClear(); onClose(); }}
+            title="Use the default icon for this page"
+          >Reset</button>
+        )}
+        <button
+          type="button"
+          className="nav-prefs__btn"
+          onClick={onClose}
+          aria-label="Close icon picker"
+        >Close</button>
+      </div>
+    </div>
+  );
+}
+
 // Children list shown beneath a parent when expanded.
 function ChildrenList({
   parentKey,
   childKeys,
   startPageKey,
   findEntry,
+  iconOverrides,
+  pickerKey,
   onUnpin,
   onToggleStart,
   onPickIcon,
+  onSetIcon,
+  onClearIcon,
 }: {
   parentKey: string;
   childKeys: string[];
   startPageKey: string | null;
   findEntry: (k: string) => NavCatalogEntry | undefined;
+  iconOverrides: Record<string, string>;
+  pickerKey: string | null;
   onUnpin: (k: string) => void;
   onToggleStart: (k: string) => void;
   onPickIcon?: (k: string) => void;
+  onSetIcon?: (k: string, icon: string) => void;
+  onClearIcon?: (k: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `parent:${parentKey}` });
   return (
@@ -186,25 +260,37 @@ function ChildrenList({
       className={`nav-prefs__children ${isOver ? "nav-prefs__children--over" : ""}`}
     >
       <SortableContext items={childKeys.map(itemDragId)} strategy={verticalListSortingStrategy}>
-        {childKeys.length === 0 && (
-          <li className="nav-prefs__children-empty">Drag a custom page here to nest it.</li>
-        )}
         {childKeys.map((ck) => {
           const e = findEntry(ck);
           if (!e) return null;
+          const ik = iconOverrides[ck] ?? e.icon;
           return (
-            <PinnedRow
-              key={ck}
-              entry={e}
-              isStart={startPageKey === ck}
-              onUnpin={() => onUnpin(ck)}
-              onToggleStart={() => onToggleStart(ck)}
-              onPickIcon={onPickIcon ? () => onPickIcon(ck) : undefined}
-              draggable
-            />
+            <Fragment key={ck}>
+              <PinnedRow
+                entry={e}
+                iconKey={ik}
+                isStart={startPageKey === ck}
+                onUnpin={() => onUnpin(ck)}
+                onToggleStart={() => onToggleStart(ck)}
+                onPickIcon={onPickIcon ? () => onPickIcon(ck) : undefined}
+                draggable
+              />
+              {pickerKey === ck && onSetIcon && (
+                <li className="nav-prefs__picker-row">
+                  <IconPicker
+                    currentIcon={ik}
+                    hasOverride={ck in iconOverrides}
+                    onChoose={(icon) => onSetIcon(ck, icon)}
+                    onClear={onClearIcon ? () => onClearIcon(ck) : undefined}
+                    onClose={() => onPickIcon && onPickIcon(ck)}
+                  />
+                </li>
+              )}
+            </Fragment>
           );
         })}
       </SortableContext>
+      <li className="nav-prefs__children-empty">Drag a custom page here to nest it.</li>
     </ul>
   );
 }
@@ -217,9 +303,13 @@ function BucketBlock({
   childrenByParent,
   startPageKey,
   findEntry,
+  iconOverrides,
+  pickerKey,
   onUnpin,
   onToggleStart,
   onPickIcon,
+  onSetIcon,
+  onClearIcon,
   onRename,
   onRemoveGroup,
   isCustom,
@@ -230,9 +320,13 @@ function BucketBlock({
   childrenByParent: Record<string, string[]>;
   startPageKey: string | null;
   findEntry: (k: string) => NavCatalogEntry | undefined;
+  iconOverrides: Record<string, string>;
+  pickerKey: string | null;
   onUnpin: (k: string) => void;
   onToggleStart: (k: string) => void;
   onPickIcon?: (k: string) => void;
+  onSetIcon?: (k: string, icon: string) => void;
+  onClearIcon?: (k: string) => void;
   onRename?: (label: string) => void;
   onRemoveGroup?: () => void;
   isCustom: boolean;
@@ -340,6 +434,7 @@ function BucketBlock({
             const entry = findEntry(it.key);
             if (!entry) return null;
             const childKeys = childrenByParent[it.key] ?? [];
+            const ik = iconOverrides[it.key] ?? entry.icon;
             // All top-level items can be reordered. Catalogue items are
             // locked to their tag bucket / can't be nested — onDragEnd
             // enforces that, but they still drag-sort within their bucket.
@@ -347,20 +442,34 @@ function BucketBlock({
               <div key={it.key} className="nav-prefs__parent-wrap">
                 <PinnedRow
                   entry={entry}
+                  iconKey={ik}
                   isStart={startPageKey === it.key}
                   onUnpin={() => onUnpin(it.key)}
                   onToggleStart={() => onToggleStart(it.key)}
                   onPickIcon={onPickIcon ? () => onPickIcon(it.key) : undefined}
                   draggable
                 />
+                {pickerKey === it.key && onSetIcon && (
+                  <IconPicker
+                    currentIcon={ik}
+                    hasOverride={it.key in iconOverrides}
+                    onChoose={(icon) => onSetIcon(it.key, icon)}
+                    onClear={onClearIcon ? () => onClearIcon(it.key) : undefined}
+                    onClose={() => onPickIcon && onPickIcon(it.key)}
+                  />
+                )}
                 <ChildrenList
                   parentKey={it.key}
                   childKeys={childKeys}
                   startPageKey={startPageKey}
                   findEntry={findEntry}
+                  iconOverrides={iconOverrides}
+                  pickerKey={pickerKey}
                   onUnpin={onUnpin}
                   onToggleStart={onToggleStart}
                   onPickIcon={onPickIcon}
+                  onSetIcon={onSetIcon}
+                  onClearIcon={onClearIcon}
                 />
               </div>
             );
@@ -374,12 +483,24 @@ function BucketBlock({
 export default function NavPreferencesPage() {
   const { user } = useAuth();
   const {
-    prefs, customGroups, save, reset, catalogue,
+    prefs, customGroups, save, reset, catalogue, refetch,
     defaultPinned, findEntry, tagByEnum, tags,
   } = useNavPrefs();
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const [newPageLabel, setNewPageLabel] = useState("");
+  const [creatingPage, setCreatingPage] = useState(false);
+  const [createPageErr, setCreatePageErr] = useState<string | null>(null);
+
+  // Draft persistence for the "New custom page" form. The draft only
+  // tracks the label (the icon picker isn't part of this form). Save is
+  // 500ms-debounced; clear() runs only on a 2xx response from the server.
+  const newPageDraft = useDraft<{ label: string }>(
+    { formKey: "nav.custom-page.create", initial: { label: "" } },
+    (vals) => setNewPageLabel(vals.label ?? ""),
+  );
 
   // Hydrate draft from server state. Both tag buckets and custom buckets
   // are produced in first-appearance order (matching sidebar logic), with
@@ -434,12 +555,18 @@ export default function NavPreferencesPage() {
       orderSeen.push(b);
     }
 
+    const iconOverrides: Record<string, string> = {};
+    for (const p of prefs) {
+      if (p.icon_override) iconOverrides[p.item_key] = p.icon_override;
+    }
+
     setDraft({
       bucketOrder: orderSeen,
       itemsByBucket,
       childrenByParent,
       customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position })),
       startPageKey,
+      iconOverrides,
     });
     setError(null);
   }, [prefs, customGroups, defaultPinned, findEntry]);
@@ -501,7 +628,9 @@ export default function NavPreferencesPage() {
       ...draft,
       itemsByBucket: { ...draft.itemsByBucket },
       childrenByParent: { ...draft.childrenByParent },
+      iconOverrides: { ...draft.iconOverrides },
     };
+    delete next.iconOverrides[key];
     // Remove if it's a top-level item.
     let removed = false;
     for (const b of next.bucketOrder) {
@@ -535,6 +664,29 @@ export default function NavPreferencesPage() {
 
   const toggleStart = (key: string) => {
     setDraft({ ...draft, startPageKey: draft.startPageKey === key ? null : key });
+  };
+
+  const togglePicker = (key: string) => {
+    setPickerKey((cur) => (cur === key ? null : key));
+  };
+
+  const setIconOverride = (key: string, icon: string) => {
+    const entry = findEntry(key);
+    // If chosen icon equals catalogue default, treat as a clear.
+    if (entry && entry.icon === icon) {
+      clearIconOverride(key);
+      return;
+    }
+    setDraft({
+      ...draft,
+      iconOverrides: { ...draft.iconOverrides, [key]: icon },
+    });
+  };
+
+  const clearIconOverride = (key: string) => {
+    const next = { ...draft.iconOverrides };
+    delete next[key];
+    setDraft({ ...draft, iconOverrides: next });
   };
 
   const addCustomGroup = () => {
@@ -793,6 +945,11 @@ export default function NavPreferencesPage() {
         promoteChildToTopLevel(aKey, aOwner.parent, oOwner.bucket, toIdx);
         return;
       }
+      // Drop onto an existing child row → nest under that row's parent.
+      if (oOwner.parent) {
+        nestUnderParent(aKey, oOwner.parent);
+        return;
+      }
     }
   };
 
@@ -800,10 +957,13 @@ export default function NavPreferencesPage() {
     setSaving(true);
     setError(null);
     try {
-      // Flatten: walk bucketOrder; for each top-level item emit it then its
-      // children, all carrying a global running position.
+      // Flatten: walk bucketOrder; top-level rows carry a contiguous 0..N-1
+      // position counter. Children carry a per-parent 0..M-1 counter — the
+      // server validates top-level contiguity and per-parent uniqueness
+      // separately, and a single shared counter would leave gaps at the top
+      // level whenever any parent has children.
       const pinned: PutPrefsPinnedRow[] = [];
-      let pos = 0;
+      let topPos = 0;
       for (const bucket of draft.bucketOrder) {
         const items = draft.itemsByBucket[bucket] ?? [];
         const isCustom = bucket.startsWith("group:");
@@ -813,18 +973,21 @@ export default function NavPreferencesPage() {
           if (!entry) continue;
           pinned.push({
             item_key: it.key,
-            position: pos++,
+            position: topPos++,
             parent_item_key: null,
             group_id: entry.kind === "user_custom" ? groupId : null,
+            icon_override: draft.iconOverrides[it.key] ?? null,
           });
+          let childPos = 0;
           for (const ck of draft.childrenByParent[it.key] ?? []) {
             const childEntry = findEntry(ck);
             if (!childEntry) continue;
             pinned.push({
               item_key: ck,
-              position: pos++,
+              position: childPos++,
               parent_item_key: it.key,
               group_id: null,
+              icon_override: draft.iconOverrides[ck] ?? null,
             });
           }
         }
@@ -926,8 +1089,13 @@ export default function NavPreferencesPage() {
                       childrenByParent={draft.childrenByParent}
                       startPageKey={draft.startPageKey}
                       findEntry={findEntry}
+                      iconOverrides={draft.iconOverrides}
+                      pickerKey={pickerKey}
                       onUnpin={unpin}
                       onToggleStart={toggleStart}
+                      onPickIcon={togglePicker}
+                      onSetIcon={setIconOverride}
+                      onClearIcon={clearIconOverride}
                       onRename={isCustom && groupId ? (label) => renameGroup(groupId, label) : undefined}
                       onRemoveGroup={isCustom && groupId ? () => removeGroup(groupId) : undefined}
                       isCustom={isCustom}
@@ -936,6 +1104,65 @@ export default function NavPreferencesPage() {
                 })}
               </SortableContext>
             )}
+          </section>
+
+          <section className="nav-prefs__pane nav-prefs__pane--new-page" aria-label="New custom page">
+            <header className="nav-prefs__pane-header">
+              <h2 className="nav-prefs__pane-title">New custom page</h2>
+            </header>
+            <p className="nav-prefs__new-page-card-hint">
+              Holds timeline, board, or list views. Appears under <strong>Personal</strong>.
+            </p>
+            {newPageDraft.restored && (
+              <DraftBanner
+                savedAt={newPageDraft.restored.savedAt}
+                onRestore={newPageDraft.restored.apply}
+                onDiscard={newPageDraft.restored.dismiss}
+              />
+            )}
+            <form
+              className="nav-prefs__new-page"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const label = newPageLabel.trim();
+                if (!label || creatingPage) return;
+                setCreatingPage(true);
+                setCreatePageErr(null);
+                try {
+                  await createCustomPage(label);
+                  // Server confirmed write — only now is it safe to drop
+                  // the draft. On any error the draft stays so the user
+                  // can retry without retyping.
+                  await newPageDraft.clear();
+                  setNewPageLabel("");
+                  await refetch();
+                } catch {
+                  setCreatePageErr("Could not create page (duplicate label or cap reached).");
+                } finally {
+                  setCreatingPage(false);
+                }
+              }}
+            >
+              <input
+                className="nav-prefs__new-page-input"
+                placeholder="New page name…"
+                value={newPageLabel}
+                onChange={(e) => {
+                  setNewPageLabel(e.target.value);
+                  newPageDraft.save({ label: e.target.value });
+                }}
+                maxLength={64}
+                disabled={creatingPage}
+              />
+              <button
+                type="submit"
+                className="nav-prefs__new-page-btn"
+                disabled={!newPageLabel.trim() || creatingPage}
+              >
+                {creatingPage ? "Creating…" : "+ New page"}
+              </button>
+            </form>
+            {createPageErr && <p className="nav-prefs__error" role="alert">{createPageErr}</p>}
           </section>
 
           <section className="nav-prefs__pane" aria-label="Available">
@@ -973,15 +1200,6 @@ export default function NavPreferencesPage() {
           </section>
         </DndContext>
 
-        <section className="nav-prefs__pane nav-prefs__pane--custom" aria-label="Your custom pages">
-          <header className="nav-prefs__pane-header">
-            <h2 className="nav-prefs__pane-title">Your custom pages</h2>
-          </header>
-          <p className="nav-prefs__empty">
-            Coming soon — build your own pages from charts, reports, and widgets.
-            Once created, drag them into a custom group or onto another page to nest.
-          </p>
-        </section>
       </div>
 
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}

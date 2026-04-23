@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -20,17 +20,40 @@ const isActivePath = (pathname: string, href: string) =>
 // Render-only item. Hover-flyout if it has children.
 function SidebarItem({
   item,
+  iconKey,
   pathname,
   open,
   childItems,
+  childIconByKey,
 }: {
   item: NavCatalogEntry;
+  iconKey: string;
   pathname: string;
   open: boolean;
   childItems: NavCatalogEntry[];
+  childIconByKey: Record<string, string>;
 }) {
   const hasChildren = childItems.length > 0;
   const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const [flyoutPos, setFlyoutPos] = useState<{ top: number; left: number } | null>(null);
+  const rowRef = useRef<HTMLAnchorElement | null>(null);
+
+  // Anchor the fixed-position flyout to the parent row. Using `fixed`
+  // escapes the sidebar's overflow:hidden clipping context.
+  useEffect(() => {
+    if (!flyoutOpen || !rowRef.current) return;
+    const update = () => {
+      const r = rowRef.current?.getBoundingClientRect();
+      if (r) setFlyoutPos({ top: r.top - 1, left: r.right });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [flyoutOpen]);
 
   const label = hasChildren ? `${item.label} (${childItems.length})` : item.label;
 
@@ -47,17 +70,22 @@ function SidebarItem({
       }}
     >
       <Link
+        ref={rowRef}
         href={item.href}
         className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
         title={!open ? label : undefined}
       >
-        <IconFor iconKey={item.icon} />
+        <IconFor iconKey={iconKey} />
         <span className="sidebar-item__label">{label}</span>
       </Link>
 
-      {hasChildren && flyoutOpen && (
-        <div className="sidebar-flyout" role="menu" aria-label={`${item.label} sub-pages`}>
-          <div className="sidebar-flyout__heading">{item.label}</div>
+      {hasChildren && flyoutOpen && flyoutPos && (
+        <div
+          className="sidebar-flyout"
+          role="menu"
+          aria-label={`${item.label} sub-pages`}
+          style={{ top: flyoutPos.top, left: flyoutPos.left }}
+        >
           {childItems.map((child) => (
             <Link
               key={child.key}
@@ -65,7 +93,7 @@ function SidebarItem({
               className={`sidebar-item sidebar-item--flyout ${isActivePath(pathname, child.href) ? "active" : ""}`}
               role="menuitem"
             >
-              <IconFor iconKey={child.icon} />
+              <IconFor iconKey={childIconByKey[child.key] ?? child.icon} />
               <span className="sidebar-item__label">{child.label}</span>
             </Link>
           ))}
@@ -101,6 +129,13 @@ export default function AppSidebar_2() {
     () => prefs.slice().sort((a, b) => a.position - b.position),
     [prefs],
   );
+
+  // Per-item icon overrides from user_nav_prefs.icon_override.
+  const iconOverrideByKey = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const p of prefs) if (p.icon_override) m[p.item_key] = p.icon_override;
+    return m;
+  }, [prefs]);
 
   // Index children of each parent_item_key, in position order.
   const childrenByParent = useMemo(() => {
@@ -263,9 +298,11 @@ export default function AppSidebar_2() {
               <SidebarItem
                 key={r.entry.key}
                 item={r.entry}
+                iconKey={iconOverrideByKey[r.entry.key] ?? r.entry.icon}
                 pathname={pathname}
                 open={open}
                 childItems={r.children}
+                childIconByKey={iconOverrideByKey}
               />
             ))}
           </div>
