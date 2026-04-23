@@ -162,6 +162,17 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 		return "", err
 	}
 
+	// Serialise concurrent Pin/Unpin for this user so the cap COUNT
+	// reflects all in-flight transactions. Without this lock two parallel
+	// Pin calls both read COUNT < cap and both insert, breaching MaxPinned.
+	// hashtextextended → bigint key into pg_advisory_xact_lock; lock is
+	// released at commit/rollback automatically.
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended('nav-pin:'||$1::text, 0))`,
+		userID); err != nil {
+		return "", err
+	}
+
 	// Cap: count existing bookmarks for this user before adding.
 	// Cheap COUNT — the unique index on (user, tenant, profile, item_key)
 	// makes the scan tight.

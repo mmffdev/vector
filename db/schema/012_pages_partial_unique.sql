@@ -7,6 +7,13 @@
 
 BEGIN;
 
+-- Take an exclusive table lock so the dedupe DML and the subsequent
+-- CREATE UNIQUE INDEX run with no concurrent inserts. Without this, a
+-- Pin landing between the DELETE and the CREATE INDEX would re-create
+-- a duplicate that the new partial index then rejects, failing the
+-- migration. Cheap — pages is a small table.
+LOCK TABLE pages IN ACCESS EXCLUSIVE MODE;
+
 -- 1. Dedupe existing duplicates: keep the oldest pages row per
 --    (key_enum, tenant_id) where created_by IS NULL; rewire dependents,
 --    delete losers.
