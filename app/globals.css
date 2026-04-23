@@ -45,6 +45,15 @@
   --good: #10b981;
   --warn: #f59e0b;
   --error: #ef4444;
+
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-alt);
+  --accent-1: var(--accent);
+  --accent-pink: var(--hot-pink);
+  --border-1: var(--line-1);
+
+  --nav-item-hover-bg: #cccccc;
+  --nav-item-active-bg: #cccccc;
 }
 
 :root[data-theme="dark"] {
@@ -68,6 +77,15 @@
   --good: #10b981;
   --warn: #f59e0b;
   --error: #ef4444;
+
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-alt);
+  --accent-1: var(--accent);
+  --accent-pink: var(--hot-pink);
+  --border-1: var(--line-1);
+
+  --nav-item-hover-bg: #cccccc;
+  --nav-item-active-bg: #cccccc;
 }
 
 * {
@@ -188,7 +206,7 @@ button {
 
 .sidebar-collapse-toggle:hover,
 .sidebar-edit-toggle:hover {
-  background: #cccccc;
+  background: var(--nav-item-hover-bg);
   color: var(--ink-1);
 }
 
@@ -376,12 +394,12 @@ button {
 }
 
 .sidebar-item:hover {
-  background: #cccccc;
+  background: var(--nav-item-hover-bg);
   color: var(--ink-1);
 }
 
 .sidebar-item.active {
-  background: #cccccc;
+  background: var(--nav-item-active-bg);
   color: var(--ink-1);
   font-weight: 500;
 }
@@ -455,7 +473,7 @@ button {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: #000000;
+  color: var(--ink-2);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -569,7 +587,7 @@ button {
 .btn--primary {
   background: transparent;
   color: var(--ink-1);
-  border: 1px solid #666;
+  border: 1px solid var(--line-1);
 }
 
 .btn--primary:hover:not(:disabled) {
@@ -748,7 +766,7 @@ button {
 .form__textarea {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #666;
+  border: 1px solid var(--line-1);
   background: var(--surface);
   color: var(--ink-1);
   font-family: var(--font-mono), ui-monospace, 'JetBrains Mono', monospace;
@@ -943,18 +961,18 @@ button {
 }
 
 .nav-manage__btn--active {
-  color: #ff2e93;
-  border-color: #ff2e93;
+  color: var(--hot-pink);
+  border-color: var(--hot-pink);
 }
 
 .nav-manage__btn--danger:hover:not(:disabled) {
-  color: #c44;
-  border-color: #c44;
+  color: var(--error);
+  border-color: var(--error);
 }
 
 .nav-manage__error {
   font-size: 13px;
-  color: #c44;
+  color: var(--error);
   margin: 0 0 12px;
 }
 
@@ -1140,7 +1158,7 @@ button {
   max-width: 100%;
   padding: 28px;
   background: var(--paper);
-  border: 1px solid #666;
+  border: 1px solid var(--line-1);
   border-radius: var(--radius-sm);
 }
 
@@ -1171,10 +1189,10 @@ button {
 .auth-card__notice {
   font-size: 11px;
   color: var(--ink-2);
-  background: #f5f3ee;
+  background: var(--paper);
   padding: 5px;
   text-align: left;
-  border: 1px solid #666;
+  border: 1px solid var(--line-1);
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
@@ -1263,7 +1281,7 @@ button {
   height: 18px;
   padding: 0 4px;
   background: var(--accent);
-  color: #1f1f1f;
+  color: var(--ink-1);
   font-size: 10px;
   font-weight: 700;
   line-height: 18px;
