@@ -18,7 +18,7 @@ if [ -n "$found" ]; then
   echo "next dev already running → $found"
 else
   : > /tmp/mmff-next.log
-  nohup npm run dev >/tmp/mmff-next.log 2>&1 &
+  nohup npm run dev -- -p 5101 >/tmp/mmff-next.log 2>&1 &
   npid=$!
   echo "started npm run dev (pid $npid); waiting for listener..."
   for _ in $(seq 1 60); do

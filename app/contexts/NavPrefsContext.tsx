@@ -139,8 +139,13 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       catalogue
         .filter((e) => e.defaultPinned)
         .slice()
-        .sort((a, b) => a.defaultOrder - b.defaultOrder),
-    [catalogue],
+        .sort((a, b) => {
+          const ta = tagByEnumMap.get(a.tagEnum)?.defaultOrder ?? 99;
+          const tb = tagByEnumMap.get(b.tagEnum)?.defaultOrder ?? 99;
+          if (ta !== tb) return ta - tb;
+          return a.defaultOrder - b.defaultOrder;
+        }),
+    [catalogue, tagByEnumMap],
   );
 
   const value: NavPrefsState = {
