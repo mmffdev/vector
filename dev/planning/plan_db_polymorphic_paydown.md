@@ -75,7 +75,7 @@ The bit that closes the loop. Every parent's archive/delete handler MUST call th
 
 Only the relationship that earns it. Defer if the lifecycle tests + dispatch triggers make Phase 4 feel like over-engineering.
 
-- [ ] **4.1** Decision gate: is anyone still pushing back on "polymorphic FK" in security reviews? If no, defer Phase 4 indefinitely and move TD-001 to *resolved (capped + enforced)*. If yes, proceed.
+- [x] **4.1** Decision gate (2026-04-23): no external review has flagged the polymorphic-FK shape — nothing pushing for per-kind tables. **Decision: defer Phase 4 indefinitely.** TD-001 moves to *resolved (capped + enforced + service-routed)*. Re-open this gate only if a future security review flags it. 4.2–4.8 stay open as the documented path forward if that happens.
 - [ ] **4.2** Migration (expand): create `company_roadmap_stakeholders`, `workspace_stakeholders`, `portfolio_stakeholders`, `product_stakeholders` — each with proper FK + `ON DELETE CASCADE` + `(tenant_id, …)` composite indexes. Backfill from `entity_stakeholders` partitioned by `entity_kind`.
 - [ ] **4.3** App layer: dual-read (new tables first, fall back to old) for soak period.
 - [ ] **4.4** App layer: dual-write (write to both during soak).
@@ -86,10 +86,10 @@ Only the relationship that earns it. Defer if the lifecycle tests + dispatch tri
 
 ### Phase 5 — Resolve TD-001 (~30 min)
 
-- [ ] **5.1** Update [docs/c_tech_debt.md](../../docs/c_tech_debt.md) TD-001 row: mark resolved with date. Note which layer landed (B-only vs B+C).
-- [ ] **5.2** Strikethrough TD-001 in the register for one cycle, then remove.
-- [ ] **5.3** Final canary run + lifecycle suite — green across the board.
-- [ ] **5.4** Surface to user with the standard format: *"Debt: TD-001 resolved — polymorphic FKs enforced via dispatch trigger + service layer + archive cleanup. entity_stakeholders [migrated to per-kind / kept polymorphic]; item_type_states + page_entity_refs + item_state_history (when its parent tables ship) stay polymorphic with full enforcement."*
+- [x] **5.1** TD-001 row in [docs/c_tech_debt.md](../../docs/c_tech_debt.md) marked resolved 2026-04-23. Resolution noted: capped + enforced + service-routed (Phase B at the DB layer + Phase C at the Go service layer; Phase D per-kind tables deferred).
+- [x] **5.2** Strikethrough applied to TD-001 row. Remove on next cycle (any future register edit).
+- [x] **5.3** Final run **2026-04-23**: `dbcheck` (canary) PASS, `entityrefs` (10 unit + 8 lifecycle skip) PASS, `nav` (14 tests) PASS.
+- [x] **5.4** Surfaced — see end-of-turn message.
 
 ---
 

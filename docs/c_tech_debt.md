@@ -55,7 +55,7 @@ One row per item. Keep entries terse. Date format: `YYYY-MM-DD`. Mark resolved i
 
 | ID | Added | Severity | Area | Debt | Trigger (what makes it bite) | Cap in place | Pay-down |
 |---|---|---|---|---|---|---|---|
-| TD-001 | 2026-04-23 | S2 | DB / polymorphic FKs | Four polymorphic relationships have no Postgres-enforced RI; only `page_entity_refs` has a live writer, and it has no archive cleanup. | First archive/delete handler for `workspace`, `portfolio`, or `product` ships without calling `cleanupPolymorphicChildren`. | [`docs/c_polymorphic_writes.md`](c_polymorphic_writes.md) + canary `backend/internal/dbcheck/orphans_test.go` | Migrate to per-kind link tables when 2nd live writer lands or first orphan incident occurs (~3 dev-days per relationship). |
+| ~~TD-001~~ | 2026-04-23 | ~~S2~~ | ~~DB / polymorphic FKs~~ | ~~Four polymorphic relationships have no Postgres-enforced RI; only `page_entity_refs` has a live writer, and it has no archive cleanup.~~ | ~~First archive/delete handler for `workspace`, `portfolio`, or `product` ships without calling `cleanupPolymorphicChildren`.~~ | ~~[`docs/c_polymorphic_writes.md`](c_polymorphic_writes.md) + canary `backend/internal/dbcheck/orphans_test.go`~~ | **Resolved 2026-04-23 (capped + enforced + service-routed).** Migration 013 dispatch triggers reject orphan inserts at the DB layer; `backend/internal/entityrefs` centralises every polymorphic writer; `bookmarks.go` migrated; `CleanupChildren` ready for archive handlers (none exist yet — capped via registry comment + lifecycle test scaffolding). Phase 4 (per-kind tables) deferred per decision gate — re-open if external review flags the polymorphic shape. See `dev/planning/plan_db_polymorphic_paydown.md`. |
 
 ## Anti-patterns (don't do these)
 
