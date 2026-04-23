@@ -1,6 +1,6 @@
 # App Router layout
 
-> Last verified: 2026-04-23
+> Last verified: 2026-04-23 (post-PR-4)
 
 How pages are organised, how role gating works, and the contract every page must honour.
 
@@ -35,16 +35,16 @@ Sidebar items are derived from:
 3. The user's personal nav prefs (`user_nav_prefs` rows) — pinned items, position, nesting (`parent_item_key`), and custom group assignment (`group_id`).
 4. User-created custom groups (`user_nav_groups`) — label + position per user; items route to them via `user_nav_prefs.group_id`.
 5. Entity bookmarks (`page_entity_refs` + `pages` with `kind='entity'`) — portfolios and products pinned via `POST /api/nav/bookmark`; sit in the `bookmarks` tag group at the top of the sidebar.
-6. Static route manifests for the `<dev>` section (mounted only when present).
+6. User custom pages (`user_custom_pages` rows) — merged into the catalogue by `nav.CatalogueWithCustom`; each appears with `kind="user_custom"`, `item_key="custom:<id>"`, route `/p/<id>`. See [`c_c_custom_pages.md`](c_c_custom_pages.md).
+7. Static route manifests for the `<dev>` section (mounted only when present).
 
 Rule: never hardcode a sidebar item that isn't also gated by role + permission. A user who can't access a page should not see its link.
 
-## URL routing for work items
+## URL routing for work items and custom pages
 
-Two forms, canonical and friendly alias:
-
-- **Canonical:** `/item/<uuid>` — permanent, survives all renames.
-- **Alias:** `/item/US-00000347` — parses tag + key_num, 301s to the UUID.
+- **Work items (canonical):** `/item/<uuid>` — permanent, survives all renames.
+- **Work items (alias):** `/item/US-00000347` — parses tag + key_num, 301s to the UUID.
+- **Custom pages:** `/p/<page-uuid>` — UUID of the `user_custom_pages` row; `?vid=<view-id>` selects a non-default view.
 
 Full details in [c_url-routing.md](c_url-routing.md).
 
@@ -55,6 +55,10 @@ Full details in [c_url-routing.md](c_url-routing.md).
 - Component catalog and token list in [css-guide.md](css-guide.md).
 
 Inline-style migration is complete (2026-04-21). If `grep -R "style={{" app/` surfaces new hits, add the missing block to the catalog — do not regress.
+
+## Form drafts
+
+Forms that involve meaningful user input may use the IDB-backed draft system. The entry point is `app/hooks/useDraft.ts`. Keys are scoped to `${userId}:${formKey}:${scopeKey}` so drafts never cross user boundaries. Drafts for a signing-out user are purged in `AuthContext.logout`. Sensitive fields (passwords, OTP, card numbers) are excluded by `app/lib/draftClassifier.ts` (default-deny). Full contract in [`c_c_form_drafts.md`](c_c_form_drafts.md).
 
 ## Adding a page — checklist
 

@@ -1,4 +1,6 @@
-# URL routing for work items
+# URL routing for work items and custom pages
+
+> Last verified: 2026-04-23
 
 Work item URLs come in two forms. One is canonical and survives all renames; the other is a friendly alias that redirects.
 
@@ -28,6 +30,18 @@ Humans read `US-00000347`, so that's what shows in tables, badges, breadcrumbs, 
 
 When a tag is changed (e.g. `US` → `STORY`), stale aliases (`/item/US-00000347`) should return a friendly "this item is now `STORY-00000347`" page with a link, not a 404. Lookup: "was this (tag, key_num) ever valid for this tenant?" Cheapest answer is a small `item_key_alias` table written at rename time; deferred until first rename ships. Not needed for MVP.
 
+## Custom-page route
+
+```
+/p/<uuid>
+```
+
+User-authored custom pages live at `/p/<page-id>` where `<page-id>` is the UUID primary key of the `user_custom_pages` row. This route is served by `app/(user)/p/[id]/page.tsx`. A `?vid=<view-id>` query parameter selects a non-default view within the page; omitting it renders the view at `position = 0`.
+
+The catalogue entry for a custom page has `item_key = "custom:<page.id>"` and `href = "/p/<page.id>"`. There is no tag-alias form — custom pages are never renamed in a way that changes the UUID.
+
+Full details in [`docs/c_c_custom_pages.md`](c_c_custom_pages.md).
+
 ## What this does NOT need from the DB
 
-Nothing new. `execution_item_types.tag` and `portfolio_item_types.tag` are the current-tag source. `key_num` is immutable by design. The UUID is the primary key of the item row.
+Nothing new for work items. `execution_item_types.tag` and `portfolio_item_types.tag` are the current-tag source. `key_num` is immutable by design. The UUID is the primary key of the item row.

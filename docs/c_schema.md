@@ -1,6 +1,6 @@
 # Database schema — golden source
 
-> Last verified live: 2026-04-23 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-23 post-PR-3 to add migration 013 and update invariant 7.
+> Last verified live: 2026-04-23 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-23 post-PR-4 to add migrations 014–016 and the `user_custom_pages` / `user_custom_page_views` tables.
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
@@ -41,6 +41,7 @@ These rules are the contract; every query/handler/migration honours them.
 | Workflow states | `canonical_states`, `item_type_states`, `item_type_transition_edges` |
 | Page registry | `pages`, `page_tags`, `page_roles`, `page_entity_refs` |
 | User navigation | `user_nav_prefs`, `user_nav_groups` |
+| User custom pages | `user_custom_pages`, `user_custom_page_views` |
 
 ---
 
@@ -417,6 +418,44 @@ User-defined nav buckets (custom groups). Items live in `user_nav_prefs.group_id
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | |
 
+### `user_custom_pages`
+
+User-authored container pages (migration 016). Each page owns one or more views (timeline / board / list). The page surfaces in the nav catalogue as `kind="user_custom"` with `item_key="custom:<id>"` and `href="/p/<id>"`. Max 50 pages per user/tenant. No soft-archive; hard delete cascades to views. See [`docs/c_c_custom_pages.md`](c_c_custom_pages.md).
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `user_id`* | uuid | no | — | → `users.id` (CASCADE) |
+| `tenant_id`* | uuid | no | — | → `tenants.id` (CASCADE) |
+| `label`* | text | no | — | trimmed; CHECK `length > 0` |
+| `icon`* | text | no | `'folder'` | icon key |
+| `created_at`* | timestamptz | no | `now()` | |
+| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+
+Constraints:
+- `UNIQUE (user_id, tenant_id, label)` — label unique per owner within tenant.
+- Index `idx_user_custom_pages_owner ON (user_id, tenant_id)`.
+
+### `user_custom_page_views`
+
+Render modes within a `user_custom_pages` row. Enum `custom_view_kind` ∈ {`timeline`, `board`, `list`}. The view at `position = 0` is the default; `?vid=<view_id>` selects others. Max 8 views per page.
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `page_id`* | uuid | no | — | → `user_custom_pages.id` (CASCADE) |
+| `label`* | text | no | — | CHECK `length > 0` |
+| `kind`* | custom_view_kind | no | — | `timeline`, `board`, or `list` |
+| `position`* | int | no | — | unique per page (DEFERRABLE) |
+| `config`* | jsonb | no | `'{}'` | view-level settings |
+| `created_at`* | timestamptz | no | `now()` | |
+| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+
+Constraints:
+- `UNIQUE (page_id, position)` DEFERRABLE INITIALLY DEFERRED.
+- `UNIQUE (page_id, label)`.
+- Index `idx_user_custom_page_views_page ON (page_id, position)`.
+
 ---
 
 ## Foreign-key map (delete rules)
@@ -470,6 +509,11 @@ sessions.user_id               → users.id              (CASCADE)
 
 tenant_sequence.tenant_id      → tenants.id            (RESTRICT)
 
+user_custom_pages.user_id      → users.id              (CASCADE)
+user_custom_pages.tenant_id    → tenants.id            (CASCADE)
+
+user_custom_page_views.page_id → user_custom_pages.id  (CASCADE)
+
 user_nav_groups.user_id        → users.id              (CASCADE)
 
 user_nav_prefs.user_id         → users.id              (CASCADE)
@@ -510,6 +554,9 @@ Pattern summary:
 011_nav_subpages_custom_groups.sql -- user_nav_groups + parent_item_key/group_id on user_nav_prefs
 012_pages_partial_unique.sql       -- 3 partial unique indexes on pages (system / shared / user-custom)
 013_polymorphic_dispatch_triggers.sql -- dispatch fn + BEFORE INSERT/UPDATE triggers on entity_stakeholders, page_entity_refs, item_type_states (TD-001 Phase 1 defence-in-depth)
+014_page_theme.sql                    -- page-level theme column (details in migration file)
+015_user_nav_icon_override.sql        -- per-user icon override on user_nav_prefs
+016_user_custom_pages.sql             -- user_custom_pages + user_custom_page_views + custom_view_kind enum
 ```
 
 ## Naming conventions

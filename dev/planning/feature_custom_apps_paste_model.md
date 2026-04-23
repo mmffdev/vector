@@ -4,7 +4,7 @@ Status: **proposal / not started.** Captures the design discussion from the 2026
 
 Reference model: Rally's "Custom HTML App" — admin opens a page, picks "Custom HTML App," pastes a self-contained HTML/JS document into a text box, saves. The paste becomes the app, rendered in an iframe on that page. No external hosting, no build step, no marketplace.
 
-The schema already anticipates this: `pages.kind = 'user_custom'` exists in `db/schema/009_page_registry.sql` but is currently unused.
+The schema slot `pages.kind = 'user_custom'` is now in use: migration `016_user_custom_pages.sql` (PR #4) introduced `user_custom_pages` + `user_custom_page_views` tables and the backend service `backend/internal/custompages/`. Those custom pages are currently plain label + view-kind containers (timeline/board/list). This proposal would extend that foundation so a page can contain a paste-in HTML/JS app as one of its view kinds.
 
 ## Why this shape
 
@@ -100,6 +100,6 @@ Two to three weeks per phase if focused, longer in the background. Phases 0–1 
 
 ## Pointers
 
-- Schema slot: `db/schema/009_page_registry.sql` — `pages.kind='user_custom'`.
+- Schema foundation: `db/schema/016_user_custom_pages.sql` — `user_custom_pages` + `user_custom_page_views` (shipped PR #4). Backend: `backend/internal/custompages/`. Frontend route: `app/(user)/p/[id]/page.tsx`.
 - Existing UI-app scaffolding (internal, not the same thing): `app/store/ui_apps/` via `<makeapp>` shortcut — see `docs/c_make-app.md`.
 - Reference for Rally's model: https://rally1.rallydev.com/docs/en-us/saas/apps/2.1/doc/index.html#!/guide/getting_started
