@@ -43,8 +43,9 @@ DELETE FROM page_entity_refs
 DELETE FROM entity_stakeholders WHERE tenant_id IN (SELECT id FROM _perm_test_tenants);
 
 -- States and their dependents (this is the orphan source).
-DELETE FROM portfolio_item_state    WHERE tenant_id IN (SELECT id FROM _perm_test_tenants);
-DELETE FROM execution_item_state    WHERE tenant_id IN (SELECT id FROM _perm_test_tenants);
+-- portfolio_item_state / execution_item_state don't exist yet — the parent
+-- portfolio_item / execution_item tables haven't been built. Skip them
+-- (item_state_history is also dormant for the same reason).
 DELETE FROM item_type_transition_edges WHERE tenant_id IN (SELECT id FROM _perm_test_tenants);
 DELETE FROM item_type_states        WHERE tenant_id IN (SELECT id FROM _perm_test_tenants);
 DELETE FROM portfolio_item_types    WHERE tenant_id IN (SELECT id FROM _perm_test_tenants);
