@@ -26,7 +26,7 @@ Four tables in `mmff_vector` carry app-enforced polymorphic FKs (`entity_stakeho
 
 ## Go pattern
 
-The shared writer lives in `backend/internal/entityrefs` — every polymorphic insert and every parent-archive cleanup MUST route through it so the rules are expressed once and tested once. Pass an open `pgx.Tx` so the caller controls the transaction boundary; the service does no `Begin/Commit` of its own.
+The shared writer lives in `backend/internal/entityrefs` — every polymorphic insert and every parent-archive cleanup MUST route through it so the rules are expressed once and tested once. Pass an open `pgx.Tx` so the caller controls the transaction boundary; the service does no `Begin/Commit` of its own. Full service reference: [`c_c_entityrefs_service.md`](c_c_entityrefs_service.md).
 
 Surface (see `backend/internal/entityrefs/service.go`):
 
@@ -43,16 +43,16 @@ Reference implementation: `backend/internal/nav/bookmarks.go` `Pin` — uses `Re
 
 `entityrefs.Service.CleanupChildren(ctx, tx, kind, id)` iterates every polymorphic table whose vocabulary accepts `kind` and runs `DELETE … WHERE <kind-col> = $1 AND <id-col> = $2`. The map (see `childRelationshipsFor` in `backend/internal/entityrefs/service.go`):
 
-| Parent kind | Child tables to clean |
-|---|---|
-| `company_roadmap` | `entity_stakeholders` |
-| `workspace` | `entity_stakeholders` *(only — `page_entity_refs` does not accept workspace)* |
-| `portfolio` | `entity_stakeholders`, `page_entity_refs` |
-| `product` | `entity_stakeholders`, `page_entity_refs` |
-| `portfolio_item_types` | `item_type_states` |
-| `execution_item_types` | `item_type_states` |
-| `portfolio_item` *(future)* | `item_state_history` |
-| `execution_item` *(future)* | `item_state_history` |
+| Parent kind | Child tables to clean | Handled by `CleanupChildren`? |
+|---|---|---|
+| `company_roadmap` | `entity_stakeholders` | yes |
+| `workspace` | `entity_stakeholders` *(only — `page_entity_refs` does not accept workspace)* | yes |
+| `portfolio` | `entity_stakeholders`, `page_entity_refs` | yes |
+| `product` | `entity_stakeholders`, `page_entity_refs` | yes |
+| `portfolio_item_types` | `item_type_states` | **no** — `item_type_states` cleanup is not yet wired into `CleanupChildren`; first type-archive handler must add it |
+| `execution_item_types` | `item_type_states` | **no** — same as above |
+| `portfolio_item` *(future)* | `item_state_history` | **no** — parent table not yet built |
+| `execution_item` *(future)* | `item_state_history` | **no** — parent table not yet built |
 
 `item_state_history` is append-only (UPDATE/DELETE rejected by trigger) — adding the cleanup call requires either lifting the trigger for cleanup-context deletes or a soft-tombstone column. Decide when item tables ship.
 

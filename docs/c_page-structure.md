@@ -1,6 +1,6 @@
 # App Router layout
 
-> Last verified: 2026-04-21
+> Last verified: 2026-04-23
 
 How pages are organised, how role gating works, and the contract every page must honour.
 
@@ -31,8 +31,11 @@ Pages supply their own `.page-header` + `.page-body` — don't reinvent the chro
 Sidebar items are derived from:
 
 1. The user's `role` (from `users.role` — `user`, `padmin`, `gadmin`).
-2. For padmins: rows in `user_workspace_permissions` (`can_view` / `can_edit` / `can_admin` per workspace).
-3. Static route manifests for the `<dev>` section (mounted only when present).
+2. The page registry (`pages` / `page_tags` / `page_roles` tables) — DB-backed catalogue served via `GET /api/nav/catalogue`; cached server-side at 60 s TTL.
+3. The user's personal nav prefs (`user_nav_prefs` rows) — pinned items, position, nesting (`parent_item_key`), and custom group assignment (`group_id`).
+4. User-created custom groups (`user_nav_groups`) — label + position per user; items route to them via `user_nav_prefs.group_id`.
+5. Entity bookmarks (`page_entity_refs` + `pages` with `kind='entity'`) — portfolios and products pinned via `POST /api/nav/bookmark`; sit in the `bookmarks` tag group at the top of the sidebar.
+6. Static route manifests for the `<dev>` section (mounted only when present).
 
 Rule: never hardcode a sidebar item that isn't also gated by role + permission. A user who can't access a page should not see its link.
 

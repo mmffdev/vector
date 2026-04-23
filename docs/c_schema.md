@@ -1,6 +1,6 @@
 # Database schema — golden source
 
-> Last verified live: 2026-04-23 against `mmff_vector` (snapshot taken via tunnel).
+> Last verified live: 2026-04-23 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-23 post-PR-3 to add migration 013 and update invariant 7.
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
@@ -24,7 +24,7 @@ These rules are the contract; every query/handler/migration honours them.
 4. **Per-tenant key counters.** `tenant_sequence(tenant_id, scope)` hands out monotonic `key_num` values. Gaps are permitted (archived numbers never reused). Lock pattern: `SELECT next_num … FOR UPDATE; UPDATE … SET next_num = next_num + 1`.
 5. **`updated_at` is trigger-maintained.** Tables with an `updated_at` column have a `BEFORE UPDATE` trigger calling `set_updated_at()`. Handlers never set it explicitly.
 6. **Append-only history.** `item_state_history` rejects UPDATE and DELETE via trigger. `audit_log` is append-only by convention.
-7. **Polymorphic FKs are app-enforced.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, and `page_entity_refs.entity_id` point at different tables depending on a `*_kind` discriminator. The DB enforces the vocabulary (CHECK); the app enforces referential integrity.
+7. **Polymorphic FKs — layered enforcement.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, and `page_entity_refs.entity_id` point at different tables depending on a `*_kind` discriminator. The DB enforces the vocabulary (CHECK); migration 013 dispatch triggers enforce parent existence + tenant match + non-archived parent on INSERT/UPDATE for three of the four tables (`item_state_history` deferred — parent tables not yet built). The Go `entityrefs` service is the required writer path for the other three. See [`c_polymorphic_writes.md`](c_polymorphic_writes.md).
 
 ---
 
@@ -509,6 +509,7 @@ Pattern summary:
 010_nav_entity_bookmarks.sql       -- entity-key catalogue support for pinning portfolio entities
 011_nav_subpages_custom_groups.sql -- user_nav_groups + parent_item_key/group_id on user_nav_prefs
 012_pages_partial_unique.sql       -- 3 partial unique indexes on pages (system / shared / user-custom)
+013_polymorphic_dispatch_triggers.sql -- dispatch fn + BEFORE INSERT/UPDATE triggers on entity_stakeholders, page_entity_refs, item_type_states (TD-001 Phase 1 defence-in-depth)
 ```
 
 ## Naming conventions
