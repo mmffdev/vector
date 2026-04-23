@@ -168,6 +168,17 @@ func (s *Service) InsertPageEntityRef(ctx context.Context, tx pgx.Tx, pageID uui
 // Returns the total number of rows deleted across all child tables for
 // the kind, mostly so callers can log it. Unknown kinds return
 // ErrUnknownEntityKind without touching the database.
+//
+// REGISTRY of archive handlers (TD-001 Phase 3, audit 2026-04-23):
+//   - workspace        — no Go handler exists yet
+//   - portfolio        — no Go handler exists yet
+//   - product          — no Go handler exists yet
+//   - company_roadmap  — no Go handler exists yet (auto-created, may
+//                        never be archived per c_schema.md)
+// Each future handler MUST call CleanupChildren in the same tx as its
+// archive UPDATE. The dispatch trigger (migration 013) cannot enforce
+// this — it only catches inserts. The canary TestNoPolymorphicOrphans
+// is the post-deploy backstop.
 func (s *Service) CleanupChildren(ctx context.Context, tx pgx.Tx, kind EntityKind, id uuid.UUID) (int64, error) {
 	rels, ok := childRelationshipsFor(kind)
 	if !ok {
