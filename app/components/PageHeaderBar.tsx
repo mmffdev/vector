@@ -3,6 +3,7 @@
 import { usePageHeaderState } from "@/app/contexts/PageHeaderContext";
 import { useTheme } from "@/app/hooks/useTheme";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
+import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 
 const roleLabels: Record<Role, string> = {
   user: "USER",
@@ -13,7 +14,7 @@ const roleLabels: Record<Role, string> = {
 export default function PageHeaderBar() {
   const header = usePageHeaderState();
   const { theme, toggle, mounted } = useTheme();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header className="page-header">
@@ -83,9 +84,7 @@ export default function PageHeaderBar() {
           </button>
         )}
 
-        <button className="app-header-wrapper__avatar" title={user?.email ?? ""} onClick={logout}>
-          {user?.email ? user.email.slice(0, 2).toUpperCase() : "??"}
-        </button>
+        <UserAvatarMenu />
       </div>
     </header>
   );

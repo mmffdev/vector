@@ -169,32 +169,41 @@ function SortableGroupBlock({
 
 export default function NavPreferencesPage() {
   const { user } = useAuth();
-  const { prefs, save, reset, catalogue, findEntry, tagByEnum, tags } = useNavPrefs();
+  const { prefs, save, reset, catalogue, defaultPinned, findEntry, tagByEnum, tags } = useNavPrefs();
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Rehydrate draft from server prefs whenever prefs change and we don't
-  // already have a draft diverging from the server.
+  // already have a draft diverging from the server. If the user has no
+  // saved prefs yet, seed from defaultPinned so the page reflects what the
+  // sidebar actually renders (sidebar uses the same fallback).
   useEffect(() => {
-    const sortedPrefs = prefs.slice().sort((a, b) => a.position - b.position);
     const groupOrder: string[] = [];
     const itemsByGroup: Record<string, DraftItem[]> = {};
     let startPageKey: string | null = null;
-    for (const p of sortedPrefs) {
-      if (p.is_start_page) startPageKey = p.item_key;
-      const entry = findEntry(p.item_key);
-      if (!entry) continue; // entry retired from catalogue — drop silently
-      const tagEnum = entry.tagEnum || "personal";
+    const pushEntry = (key: string, tagEnumRaw: string) => {
+      const tagEnum = tagEnumRaw || "personal";
       if (!(tagEnum in itemsByGroup)) {
         groupOrder.push(tagEnum);
         itemsByGroup[tagEnum] = [];
       }
-      itemsByGroup[tagEnum].push({ key: p.item_key });
+      itemsByGroup[tagEnum].push({ key });
+    };
+    if (prefs.length === 0) {
+      for (const entry of defaultPinned) pushEntry(entry.key, entry.tagEnum);
+    } else {
+      const sortedPrefs = prefs.slice().sort((a, b) => a.position - b.position);
+      for (const p of sortedPrefs) {
+        if (p.is_start_page) startPageKey = p.item_key;
+        const entry = findEntry(p.item_key);
+        if (!entry) continue; // entry retired from catalogue — drop silently
+        pushEntry(p.item_key, entry.tagEnum);
+      }
     }
     setDraft({ groupOrder, itemsByGroup, startPageKey });
     setError(null);
-  }, [prefs, findEntry]);
+  }, [prefs, defaultPinned, findEntry]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),

@@ -57,6 +57,9 @@ const STORAGE_KEY = "sidebar-collapsed";
 const itemId = (key: string) => `item:${key}`;
 const groupId = (enumKey: string) => `group:${enumKey}`;
 
+const isActivePath = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
+
 function SortableSidebarItem({
   item,
   pathname,
@@ -93,7 +96,7 @@ function SortableSidebarItem({
       </button>
       <Link
         href={item.href}
-        className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
+        className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
         title={!open ? item.label : undefined}
         draggable={false}
         onDragStart={(e) => e.preventDefault()}
@@ -414,7 +417,7 @@ export default function AppSidebar_2() {
             <Link
               key={item.key}
               href={item.href}
-              className={`sidebar-item ${pathname.includes(item.href) ? "active" : ""}`}
+              className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
               title={!open ? item.label : undefined}
             >
               <IconFor iconKey={item.icon} />
