@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
+import { NavIcon } from "@/app/components/NavIcon";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
   useNavPrefs,
@@ -80,12 +81,14 @@ function PinnedRow({
   isStart,
   onUnpin,
   onToggleStart,
+  onPickIcon,
   draggable,
 }: {
   entry: NavCatalogEntry;
   isStart: boolean;
   onUnpin: () => void;
   onToggleStart: () => void;
+  onPickIcon?: () => void;
   draggable: boolean;
 }) {
   const sortable = useSortable({ id: itemDragId(entry.key), disabled: !draggable });
@@ -115,6 +118,21 @@ function PinnedRow({
             <circle cx="15" cy="18" r="1.5" />
           </svg>
         </button>
+      )}
+      {onPickIcon ? (
+        <button
+          type="button"
+          className="nav-prefs__icon"
+          aria-label={`Change icon for ${entry.label}`}
+          title="Change icon"
+          onClick={onPickIcon}
+        >
+          <NavIcon iconKey={entry.icon} />
+        </button>
+      ) : (
+        <span className="nav-prefs__icon" aria-hidden="true">
+          <NavIcon iconKey={entry.icon} />
+        </span>
       )}
       <span className="nav-prefs__label">{entry.label}</span>
       <div className="nav-prefs__actions">
@@ -151,6 +169,7 @@ function ChildrenList({
   findEntry,
   onUnpin,
   onToggleStart,
+  onPickIcon,
 }: {
   parentKey: string;
   childKeys: string[];
@@ -158,6 +177,7 @@ function ChildrenList({
   findEntry: (k: string) => NavCatalogEntry | undefined;
   onUnpin: (k: string) => void;
   onToggleStart: (k: string) => void;
+  onPickIcon?: (k: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `parent:${parentKey}` });
   return (
@@ -179,6 +199,7 @@ function ChildrenList({
               isStart={startPageKey === ck}
               onUnpin={() => onUnpin(ck)}
               onToggleStart={() => onToggleStart(ck)}
+              onPickIcon={onPickIcon ? () => onPickIcon(ck) : undefined}
               draggable
             />
           );
@@ -198,6 +219,7 @@ function BucketBlock({
   findEntry,
   onUnpin,
   onToggleStart,
+  onPickIcon,
   onRename,
   onRemoveGroup,
   isCustom,
@@ -210,6 +232,7 @@ function BucketBlock({
   findEntry: (k: string) => NavCatalogEntry | undefined;
   onUnpin: (k: string) => void;
   onToggleStart: (k: string) => void;
+  onPickIcon?: (k: string) => void;
   onRename?: (label: string) => void;
   onRemoveGroup?: () => void;
   isCustom: boolean;
@@ -317,7 +340,9 @@ function BucketBlock({
             const entry = findEntry(it.key);
             if (!entry) return null;
             const childKeys = childrenByParent[it.key] ?? [];
-            const draggable = entry.kind === "user_custom";
+            // All top-level items can be reordered. Catalogue items are
+            // locked to their tag bucket / can't be nested — onDragEnd
+            // enforces that, but they still drag-sort within their bucket.
             return (
               <div key={it.key} className="nav-prefs__parent-wrap">
                 <PinnedRow
@@ -325,7 +350,8 @@ function BucketBlock({
                   isStart={startPageKey === it.key}
                   onUnpin={() => onUnpin(it.key)}
                   onToggleStart={() => onToggleStart(it.key)}
-                  draggable={draggable || childKeys.length > 0}
+                  onPickIcon={onPickIcon ? () => onPickIcon(it.key) : undefined}
+                  draggable
                 />
                 <ChildrenList
                   parentKey={it.key}
@@ -334,6 +360,7 @@ function BucketBlock({
                   findEntry={findEntry}
                   onUnpin={onUnpin}
                   onToggleStart={onToggleStart}
+                  onPickIcon={onPickIcon}
                 />
               </div>
             );

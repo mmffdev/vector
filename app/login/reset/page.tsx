@@ -34,7 +34,7 @@ export default function ResetRequestPage() {
     <div className="auth-page">
       <form onSubmit={onSubmit} className="auth-card" noValidate>
         <h1 className="auth-card__title">
-          <span className="prefix prefix-pink">+++</span> Reset password
+          [01] <span className="prefix prefix-pink">+++</span> Reset password
         </h1>
         {sent ? (
           <p className="auth-card__subtitle">

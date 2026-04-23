@@ -356,7 +356,7 @@ button {
 }
 
 .page-body {
-  padding: 24px;
+  padding: 8px 24px 24px;
 }
 
 .sidebar-item {
@@ -426,21 +426,29 @@ button {
   margin-top: 14px;
 }
 
+/* First group sits below the toolbar with the same vertical breathing
+   room the page card has below the toolbar buttons on the right, so the
+   first heading lines up with the page title across the rail. */
+.sidebar-toolbar + .sidebar-group {
+  margin-top: 28px;
+}
+
 .sidebar-group__heading-row {
   position: relative;
   display: flex;
   align-items: center;
   min-height: 24px;
   margin: 0 0 4px 0;
+  padding: 0 24px;
 }
 
 .sidebar-group__heading {
   flex: 1;
-  font-size: 11px;
+  font-size: 12.1px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--hot-pink);
   padding: 0;
 }
 
@@ -1535,6 +1543,21 @@ button {
 
 .nav-prefs__drag:active {
   cursor: grabbing;
+}
+
+.nav-prefs__icon {
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-prefs__icon:hover {
+  color: var(--ink-1);
 }
 
 .nav-prefs__label {
