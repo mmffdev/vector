@@ -1,6 +1,8 @@
 # Feature — Form drafts via IndexedDB
 
-Status: **proposal / not started.** Captures the design from the 2026-04-23 session.
+Status: **Phase 0 + Phase 1 shipped** (commit `abf9f9b`, PR #4, merged 2026-04-23). Phase 2+ still to come.
+
+> Last verified: 2026-04-23
 
 Auto-save the contents of every non-trivial form to the user's browser as they type, so a tab crash, accidental navigation, session expiry, or laptop sleep doesn't lose what they were writing. Restoration is opt-in via a small banner — never silently overwrites a fresh form.
 
@@ -46,7 +48,7 @@ The hook walks the form once on mount, classifies each field, and skips the disq
 ### Storage
 
 - One IndexedDB database per origin: `vector-drafts`.
-- One object store: `forms`, keyed by `formKey`.
+- One object store: `forms`, keyed by the compound string `${userId}:${formKey}:${scopeKey ?? "_"}`.
 - Value shape:
   ```json
   {
@@ -58,23 +60,24 @@ The hook walks the form once on mount, classifies each field, and skips the disq
     "schemaVersion": 1
   }
   ```
-- `formKey` is a stable string the form declares (e.g. `page.create`, `item.edit`, `comment.reply`).
-- `scopeKey` disambiguates multiple instances of the same form on different parents (e.g. one comment-reply draft per item).
-- `userId` is recorded so a draft saved by user A is **not** restored if user B is later signed in on the same browser. (Belt-and-braces for shared devices.)
+- `formKey` is a stable string the form declares (e.g. `nav.custom-page.create`, `item.edit`, `comment.reply`).
+- `scopeKey` disambiguates multiple instances of the same form on different parents (e.g. one comment-reply draft per item). Defaults to `"_"` in the IDB key when `null`.
+- `userId` is recorded so a draft saved by user A is **not** restored if user B is later signed in on the same browser. (Belt-and-braces for shared devices.) It is part of the IDB key so cross-user reads are structurally impossible.
 
 ### Hook
 
 ```ts
-const { values, save, clear, restored } = useDraft<MyForm>({
-  formKey: 'page.create',
-  scopeKey: workspaceId,
-  initial: { name: '', body: '' },
-});
+const { save, clear, restored } = useDraft<MyForm>(
+  { formKey: 'page.create', scopeKey: workspaceId, initial: { name: '', body: '' } },
+  (values) => { /* called when user clicks Restore — apply values into controlled state */ },
+);
 ```
+
+The hook takes two arguments: the config object and an `onApply` callback. The callback is what the form calls to load restored values into its controlled state. Values are not returned from the hook; they are managed inside the form as normal controlled-input state.
 
 - `save(partialValues)` — debounced 500ms.
 - `clear()` — call on successful submit.
-- `restored: { savedAt, dismiss, apply } | null` — if a draft exists, exposed to the form so it can render the restoration banner.
+- `restored: { savedAt, dismiss, apply } | null` — if a draft exists on mount, exposed to the form so it can render the restoration banner. `apply()` calls `onApply` and clears `restored`. `dismiss()` deletes the draft and clears `restored`.
 
 ### UX
 
@@ -106,11 +109,10 @@ Drafting is **default-off, opt-in per form, with an explicit `formKey`**. Three 
 Every form that wants drafting adds 2-3 lines: import + hook call + restoration banner JSX.
 
 ```tsx
-const { values, save, clear, restored } = useDraft({
-  formKey: 'page.create',
-  scopeKey: workspaceId,
-  initial: { name: '', body: '' },
-});
+const { save, clear, restored } = useDraft(
+  { formKey: 'page.create', scopeKey: workspaceId, initial: { name: '', body: '' } },
+  (values) => setFormValues(values),  // onApply — set controlled state
+);
 ```
 
 Pro: explicit; you can grep for `useDraft` and see exactly which forms persist. Con: every form needs a touch.
@@ -129,9 +131,9 @@ Document-level event listener that auto-saves any keystroke. **Wrong answer** be
 
 ### What's truly sitewide
 Three pieces of shared infrastructure, written once:
-- IDB wrapper (~30 lines, or a thin layer over `idb-keyval`).
-- Field classifier (walks `type` + `autocomplete` + `data-no-draft`).
-- Logout hook that purges all drafts for the signing-out user.
+- IDB wrapper (`app/lib/draftStore.ts` — ~138 lines, hand-rolled; `idb-keyval` was considered but the hand-rolled version was simpler to own and has no dependency).
+- Field classifier (`app/lib/draftClassifier.ts` — pure, DOM-free, unit-tested under `node --test`).
+- Logout hook that purges all drafts for the signing-out user (wired in `AuthContext`).
 
 Per-form cost: ~5 lines × ~30 forms = ~150 lines across the product. Modest.
 
@@ -169,8 +171,8 @@ async function handleSubmit(values) {
 
 ## Phasing
 
-- **Phase 0 — primitives.** `useDraft` hook + IDB wrapper (use `idb-keyval` to avoid hand-rolling the IDB API). Single test form behind a dev flag to validate the round-trip.
-- **Phase 1 — first user-facing form.** Wire to "Create page" form (high-value, well-bounded). Banner UX shipped here.
+- **Phase 0 — primitives.** DONE (commit `abf9f9b`). `useDraft` hook (`app/hooks/useDraft.ts`), IDB wrapper (`app/lib/draftStore.ts`, hand-rolled), field classifier (`app/lib/draftClassifier.ts`). Note: shipped without a dev-flag test form; Phase 0 and Phase 1 landed together in a single commit.
+- **Phase 1 — first user-facing form.** DONE (commit `abf9f9b`). Wired into the "Create custom page" form on the nav preferences page (`formKey: "nav.custom-page.create"`). `DraftBanner` component (`app/components/DraftBanner.tsx`) ships here. Logout purge wired in `AuthContext`.
 - **Phase 2 — work-item forms.** Create item, edit item description, item comments. Each is a one-line addition once the hook exists.
 - **Phase 3 — coverage.** Audit remaining forms; any that meet the "what gets drafted" criteria get the hook. Track in the technical-debt register if a form is intentionally skipped.
 - **Phase 4 (only if needed) — cross-tab coordination.** If a user has the same form open in two tabs, the second tab should know the first tab is editing. Use `BroadcastChannel` to broadcast saves; if a tab receives a save it didn't originate, it shows a "this form is being edited in another tab" notice. Defer until reported.
@@ -195,5 +197,6 @@ async function handleSubmit(values) {
 ## Pointers
 
 - IndexedDB tier rationale: [`feature_event_audit_log.md`](feature_event_audit_log.md) — three-tier storage discipline (RDBMS / object storage / browser local).
-- Hook author's reference for IndexedDB API ergonomics: [`idb-keyval`](https://github.com/jakearchibald/idb-keyval) — pick this or write a 30-line equivalent.
+- Shipped IDB wrapper: `app/lib/draftStore.ts` — hand-rolled, no third-party dependency.
+- Shipped classifier: `app/lib/draftClassifier.ts` — pure, unit-tested in `e2e/drafts/classifier.spec.mjs`.
 - Field-classification reference: HTML `autocomplete` token list (WHATWG spec) — the `cc-*`, `one-time-code`, and `current-password` / `new-password` tokens are the load-bearing ones.

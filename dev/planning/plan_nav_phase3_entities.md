@@ -1,9 +1,10 @@
 # Plan — Nav Phase 3: Entity-Key Catalogue
 
 > Created: 2026-04-23
-> Status: draft
+> Status: **shipped** (commit `6f3e555`, 2026-04-23). Terminology changed during implementation: "pin" → "bookmark" throughout.
 > Related: `plan_nav_registry_split.md` (Phases 1–4 + Phase 8 verification shipped)
 > Schema baseline: migration `009_page_registry.sql` already includes `pages.kind = 'entity'`
+> Last verified: 2026-04-23
 
 ---
 
@@ -29,9 +30,9 @@ The star also appears on portfolio/product list rows as a hover affordance, so u
 
 ### Where pinned entities sit in the sidebar
 
-New tag group: **`pinned_entities`** with `display_name = "Pinned"`, `default_order = 0` (above `Personal`), `is_admin_menu = FALSE`.
+New tag group: **`bookmarks`** with `display_name = "Bookmarks"`, `default_order = 0` (above `Personal`), `is_admin_menu = FALSE`. *(Plan called this `pinned_entities` / "Pinned"; shipped as `bookmarks` / "Bookmarks".)*
 
-Rationale: keeping pinned entities separate from `Planning` means the static `Portfolio` page index and a user's pinned portfolios don't collide visually. Order within the group is the user's drag order, same as static pinned items.
+Rationale: keeping bookmarked entities separate from `Planning` means the static `Portfolio` page index and a user's bookmarked portfolios don't collide visually. Order within the group is the user's drag order, same as static pinned items.
 
 ### Display label and icon
 
@@ -57,22 +58,23 @@ Entity rows inherit role visibility from the entity's existing access rules, not
 
 ## Schema additions
 
-Single new migration: `010_nav_entity_pins.sql`. No existing tables modified.
+Single new migration: `010_nav_entity_bookmarks.sql`. No existing tables modified. *(Plan called this `010_nav_entity_pins.sql`; name changed to "bookmarks" during implementation.)*
 
 ```sql
 BEGIN;
 
--- New tag group for pinned entities. Sits above Personal.
+-- New tag group for entity bookmarks. Sits above Personal.
+-- Shipped as tag_enum='bookmarks', display_name='Bookmarks' (plan said 'pinned_entities'/'Pinned').
 INSERT INTO page_tags (tag_enum, display_name, default_order, is_admin_menu) VALUES
-    ('pinned_entities', 'Pinned', -1, FALSE);
+    ('bookmarks', 'Bookmarks', -1, FALSE);
 
 -- Bump existing tag default_orders so pinned_entities = 0 mathematically
 -- without a negative number leaking into the API. Choosing -1 then
 -- normalizing here keeps the seed migration intact for fresh installs.
 UPDATE page_tags SET default_order = default_order + 1
-  WHERE tag_enum != 'pinned_entities';
+  WHERE tag_enum != 'bookmarks';
 UPDATE page_tags SET default_order = 0
-  WHERE tag_enum = 'pinned_entities';
+  WHERE tag_enum = 'bookmarks';
 
 -- Track the entity backing each entity-kind page. Lets the catalogue
 -- query JOIN to portfolio/product to get the live name and check archive.
@@ -99,29 +101,28 @@ COMMIT;
 
 ## Backend changes
 
-### New service: `nav.EntityPins`
+### New service: `nav.Bookmarks`
 
-Single source of truth for pinning. Three methods:
+Single source of truth for entity bookmarking. *(Plan called this `nav.EntityPins`; shipped as `nav.Bookmarks`.)* Three methods:
 
 ```go
-type EntityPins interface {
+type Bookmarks interface {
     // Pin creates the pages row + page_entity_refs row + user_nav_prefs row
     // in a single transaction. Idempotent — re-pinning is a no-op.
     Pin(ctx, userID uuid.UUID, kind string, entityID uuid.UUID) error
 
     // Unpin removes the user_nav_prefs row. Leaves pages + page_entity_refs
-    // intact so other users keep their pins for the same entity.
+    // intact so other users keep their bookmarks for the same entity.
     Unpin(ctx, userID uuid.UUID, kind string, entityID uuid.UUID) error
 
-    // ListPinnedFor returns the entity-kind pages this user has pinned,
-    // already filtered by access rule and archive state.
-    ListPinnedFor(ctx, userID uuid.UUID) ([]EntityPage, error)
+    // IsPinned returns whether this user has bookmarked the entity.
+    IsPinned(ctx, userID uuid.UUID, kind string, entityID uuid.UUID) (bool, error)
 }
 ```
 
 Pin flow:
 1. Check caller has access to the entity (re-uses existing portfolio/product service access checks).
-2. Get-or-create the `pages` row for this entity (`key_enum = "entity:<kind>:<id>"`, `kind = "entity"`, `tag_enum = "pinned_entities"`, `pinnable = TRUE`, `default_pinned = FALSE`, `tenant_id = entity.tenant_id`).
+2. Get-or-create the `pages` row for this entity (`key_enum = "entity:<kind>:<id>"`, `kind = "entity"`, `tag_enum = "bookmarks"`, `pinnable = TRUE`, `default_pinned = FALSE`, `tenant_id = entity.tenant_id`).
 3. Get-or-create the `page_entity_refs` row.
 4. Insert `user_nav_prefs` row at the end of the user's `pinned_entities` group (compute next position).
 5. All four ops in one tx; rollback on any failure.
@@ -162,13 +163,15 @@ Cache: existing 60s registry cache stays for static rows; entity rows skip the c
 
 ### REST endpoints
 
+*(Plan used `/api/nav/pin`; shipped as `/api/nav/bookmark`.)*
+
 ```
-POST   /api/nav/pin       { kind: "portfolio" | "product", entity_id: uuid }   → 204
-DELETE /api/nav/pin       { kind: "portfolio" | "product", entity_id: uuid }   → 204
-GET    /api/nav/pin/check?kind=...&entity_id=...                                → { pinned: bool }
+POST   /api/nav/bookmark       { kind: "portfolio" | "product", entity_id: uuid }   → 204
+DELETE /api/nav/bookmark       { kind: "portfolio" | "product", entity_id: uuid }   → 204
+GET    /api/nav/bookmark/check?kind=...&entity_id=...                                → { pinned: bool }
 ```
 
-The `/check` endpoint is what the entity detail page hits to render the star's filled/outline state on first load.
+The `/check` endpoint is what the entity detail page hits to render the `PinButton`'s filled/outline state on first load.
 
 ### Audit
 
@@ -183,16 +186,18 @@ Same audit logger as user.created etc.
 
 ### New context method
 
-`NavPrefsContext` gains:
+`NavPrefsContext` gains (shipped with bookmark terminology):
 ```typescript
-isPinned(kind: "portfolio" | "product", entityID: string): boolean
-pin(kind: "portfolio" | "product", entityID: string): Promise<void>
-unpin(kind: "portfolio" | "product", entityID: string): Promise<void>
+isBookmarked(kind: "portfolio" | "product", entityID: string): boolean
+bookmark(kind: "portfolio" | "product", entityID: string): Promise<void>
+unbookmark(kind: "portfolio" | "product", entityID: string): Promise<void>
 ```
 
-`isPinned` is synchronous against the in-memory `prefs` array (matching `key_enum = "entity:<kind>:<id>"`). Pin/unpin POST then refetch.
+`isBookmarked` is synchronous against the in-memory `prefs` array (matching `key_enum = "entity:<kind>:<id>"`). Bookmark/unbookmark POST then refetch.
 
-### `<PinStar>` component
+### `<PinButton>` component
+
+*(Plan called this `<PinStar>`; shipped as `<PinButton>` in `app/components/PinButton.tsx`.)*
 
 Reusable, used on:
 - `/portfolio/<id>` page header (right-aligned, next to title)
@@ -201,16 +206,16 @@ Reusable, used on:
 - product list rows on hover
 
 ```tsx
-<PinStar kind="portfolio" entityID={p.id} />
+<PinButton kind="portfolio" id={p.id} />
 ```
 
-Internal: reads `isPinned`, calls `pin`/`unpin` on click, optimistic update with rollback on error.
+Internal: reads `isBookmarked`, calls `bookmark`/`unbookmark` on click, optimistic update with rollback on error.
 
 ### Sidebar rendering
 
 No change to the rendering loop — `pinned_entities` is just another tag group. The catalogue already returns the right shape; the sidebar already groups by `tagEnum`. Group header reads "Pinned" automatically from `page_tags.display_name`.
 
-The only sidebar-side adjustment: when the group is empty (user hasn't pinned anything), hide the group header. Static groups always show their header even when empty (per Phase 2 design); the Pinned group is the exception because empty-state of "you have no pinned items" looks like dead UI.
+The only sidebar-side adjustment: when the group is empty (user hasn't bookmarked anything), hide the group header. Static groups always show their header even when empty (per Phase 2 design); the Bookmarks group is the exception because an empty "Bookmarks" looks like dead UI.
 
 ### Empty-pins onboarding hint
 
@@ -229,8 +234,8 @@ First-time users with zero pinned entities: small `?` icon next to the sidebar P
 | Last user unpins a portfolio | The `pages` and `page_entity_refs` rows linger. Acceptable garbage; can be GC'd later by a "pages with zero referencing prefs" cron if it grows. |
 | Portfolio renamed | Next catalogue fetch (sidebar load or refetch on save) shows new name. |
 | Portfolio deleted | FK cascade removes `page_entity_refs` row → catalogue JOIN excludes it → sidebar drops it. Pref row goes orphan but harmless. |
-| 20-pin cap | Existing `MaxPinned = 20` cap covers entity pins too — they share the `user_nav_prefs` table. Worth flagging in the pin button's disabled state when at cap. |
-| Contiguity rule | Entity pins are all in the `pinned_entities` group, so they're naturally contiguous. No special handling. |
+| Pin cap | Cap raised from 20 → 50 (`nav.MaxPinned = 50`) to accommodate entity bookmarks alongside static pinned items. Worth flagging in the button's disabled state when at cap. |
+| Contiguity rule | Entity bookmarks are all in the `bookmarks` group, so they're naturally contiguous. No special handling. |
 
 ---
 
@@ -244,14 +249,14 @@ First-time users with zero pinned entities: small `?` icon next to the sidebar P
 
 ## Implementation order
 
-1. **Migration `010_nav_entity_pins.sql`** — drafted above. Apply, verify on dev DB.
-2. **Backend service `nav.EntityPins`** — Pin/Unpin/ListPinnedFor + access checks. Unit tests for tenant isolation, archive filtering, idempotency, 20-cap.
+1. **Migration `010_nav_entity_bookmarks.sql`** — drafted above. Apply, verify on dev DB.
+2. **Backend service `nav.Bookmarks`** — Pin/Unpin/IsPinned + access checks. Unit tests for tenant isolation, archive filtering, idempotency, 50-cap.
 3. **Catalogue query extension** — second SELECT branch + merge. Test that static catalogue still returns identical results when caller has zero entity pins.
-4. **REST handlers** — `POST /api/nav/pin`, `DELETE /api/nav/pin`, `GET /api/nav/pin/check`. Wire to audit. 403 on access violation, not 400.
-5. **Frontend context** — `isPinned` / `pin` / `unpin` on `NavPrefsContext`. Refetch wiring.
-6. **`<PinStar>` component** — visual + click handler + optimistic update.
-7. **Wire star into portfolio + product detail pages** — header placement, list-row hover.
-8. **Sidebar tweak** — hide empty `pinned_entities` group header.
+4. **REST handlers** — `POST /api/nav/bookmark`, `DELETE /api/nav/bookmark`, `GET /api/nav/bookmark/check`. Wire to audit. 403 on access violation, not 400.
+5. **Frontend context** — `isBookmarked` / `bookmark` / `unbookmark` on `NavPrefsContext`. Refetch wiring.
+6. **`<PinButton>` component** — visual + click handler + optimistic update.
+7. **Wire button into portfolio + product detail pages** — header placement, list-row hover.
+8. **Sidebar tweak** — hide empty `bookmarks` group header.
 9. **End-to-end manual test** — pin/unpin/archive/rename/delete/access-loss flows across roles.
 10. **Commit + push.**
 
@@ -279,8 +284,9 @@ Confirm with user before:
 
 - Pinning individual work items (`/item/<uuid>`)
 - Pinning saved filters / list views
-- Custom user-authored pages (`pages.kind = 'user_custom'`)
 - Per-entity icon picker
 - Onboarding hint for first-time users
 - Garbage collection of orphan `pages` rows
-- Manage-pins view in `/preferences/navigation`
+- Manage-bookmarks view in `/preferences/navigation`
+
+> Note: custom user-authored pages (`pages.kind = 'user_custom'`) shipped in PR #4 alongside this plan (migration `016_user_custom_pages.sql`, service `backend/internal/custompages/`, route `/p/[id]`).

@@ -24,7 +24,7 @@ The plan below addresses all three. It is staged so that each stage lands indepe
 
 **In scope:**
 
-- Schema changes to every migration-visible table (001–009).
+- Schema changes to every migration-visible table (001–016 as of 2026-04-23).
 - New tables: `roles`, `permissions`, `role_permissions`, `user_roles`, `data_classification`, `consents`, `deletion_requests`, `icons` (future), `pii` split tables.
 - New migration infrastructure: expand-contract discipline, `pgroll` adoption, CI linting of DDL.
 - Postgres extensions: `pgcrypto` (have), `pgaudit`, `pgsodium` (or an app-level envelope), partitioning.
@@ -59,7 +59,7 @@ Grouped by severity — severity is what a SOC 2 / banking auditor would assign,
 | H3 | **Bcrypt cost 12.** Acceptable as legacy; **Argon2id** is the 2025–2026 OWASP default. Procurement questionnaires (SIG, CAIQ v4) ask the algorithm by name. | [001_init.sql:36](../../db/schema/001_init.sql#L36) | Not an automatic fail but routinely flagged. Also: no upgrade path — PHC string format not in use. |
 | H4 | **PII columns unencrypted and unclassified.** `users.email`, `sessions.ip_address`, `sessions.user_agent`, `audit_log.ip_address`, `password_resets.requested_ip`. No `data_classification` metadata. | Migrations 001, 002. | Banks ask for column-level classification and encryption inventory. IP addresses are PII under GDPR. |
 | H5 | **No GDPR Article 17 machinery.** Soft-archive (`archived_at IS NOT NULL`) does not satisfy right-to-erasure. No `deletion_requests` table, no crypto-shred procedure, no backup-replay registry. | Entire schema. | Any EU customer's DPA will require this in writing before signature. |
-| H6 | **Polymorphic FKs not enforced at DB layer.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, `item_type_transition_edges.from_state_id` pairing. | [004_portfolio_stack.sql:165-177](../../db/schema/004_portfolio_stack.sql#L165), [006_states.sql:127-141](../../db/schema/006_states.sql#L127) | Auditors ask "prove referential integrity of tenant-scoped data." "App layer enforces it" is a high finding against NIST 800-53 AU-10. |
+| H6 | **Polymorphic FKs not enforced at DB layer.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, `item_type_transition_edges.from_state_id` pairing. **Partially addressed:** migration `013_polymorphic_dispatch_triggers.sql` adds dispatch triggers on `entity_stakeholders`, `item_type_states`, and `page_entity_refs`. `item_state_history` still unguarded (its parent item tables don't yet exist). | [004_portfolio_stack.sql:165-177](../../db/schema/004_portfolio_stack.sql#L165), [006_states.sql:127-141](../../db/schema/006_states.sql#L127) | Auditors ask "prove referential integrity of tenant-scoped data." "App layer enforces it" is a high finding against NIST 800-53 AU-10. |
 | H7 | **Password hash seeded in migration file.** `$2b$12$N9qo8uL…` is checked in. Harmless in dev; shipping to production with this exact hash would be catastrophic. | [001_init.sql:123](../../db/schema/001_init.sql#L123) | Any static analysis sweep flags this. Need an explicit first-deploy rotation ceremony. |
 
 ### 3.2 Medium — break at scale
@@ -422,7 +422,7 @@ Research briefings that informed this plan (two independent agent passes):
 - ProBackup — [GDPR deletion requests and backups](https://www.probackup.io/blog/gdpr-and-backups-how-to-handle-deletion-requests)
 
 **Internal references:**
-- Schema migrations: [db/schema/001_init.sql](../../db/schema/001_init.sql) through [db/schema/009_page_registry.sql](../../db/schema/009_page_registry.sql)
+- Schema migrations: [db/schema/001_init.sql](../../db/schema/001_init.sql) through [db/schema/016_user_custom_pages.sql](../../db/schema/016_user_custom_pages.sql) (016 as of 2026-04-23)
 - Existing planning: [plan_nav_registry_split.md](./plan_nav_registry_split.md), [feature_global_alerts.md](./feature_global_alerts.md), [feature_ldap_yamldap_adoption.md](./feature_ldap_yamldap_adoption.md)
 
 ---

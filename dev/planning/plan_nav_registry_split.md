@@ -1,8 +1,9 @@
 # Plan — Nav Registry + Admin Page Split
 
 > Created: 2026-04-23
-> Status: approved brief, not yet started
+> Status: **shipped** — all items below ticked. See commit range `835dc69`–`38389e3`.
 > Related: memory `project_nav_status.md` (Phases 1–4 + security shipped at ec474b9)
+> Last verified: 2026-04-23
 
 ---
 
@@ -11,21 +12,21 @@
 Tick off as features ship. Granular steps live in "Implementation order" below.
 
 - [x] DB-backed page registry (`pages`, `page_tags`, `page_roles`) with seed migration
-- [ ] Role ceiling enforcement on account management (service-layer, 403 on violation)
-- [ ] Backend catalogue served from registry (`/api/nav/catalogue` returns `tags` + `tagEnum`)
-- [ ] Grouping contiguity rule in `validatePinned` (+ `ErrBadGrouping`)
-- [ ] Frontend catalogue switched to runtime fetch (delete `navCatalog.ts`)
-- [ ] Sidebar grouped rendering with always-on headings
-- [ ] Group-level drag (reorder whole groups; items stay within their group)
-- [ ] Workspace Settings page (gadmin-only; inherits user management)
-- [ ] Portfolio Settings page (padmin + gadmin; scaffold only)
-- [ ] Account Settings page (all users; scaffold only)
-- [ ] `/admin` route redirected to `/workspace-settings`
-- [ ] Avatar dropdown menu (auto-populated from `is_admin_menu` tags)
-- [ ] `/preferences/navigation` full-page replacement for the modal
-- [ ] Custom user pages — stub section only
-- [ ] End-to-end manual test across user / padmin / gadmin
-- [ ] Commit + push
+- [x] Role ceiling enforcement on account management (service-layer, 403 on violation)
+- [x] Backend catalogue served from registry (`/api/nav/catalogue` returns `tags` + `tagEnum`)
+- [x] Grouping contiguity rule in `validatePinned` (+ `ErrBadGrouping`)
+- [x] Frontend catalogue switched to runtime fetch (delete `navCatalog.ts`)
+- [x] Sidebar grouped rendering with always-on headings
+- [x] Group-level drag (reorder whole groups; items stay within their group)
+- [x] Workspace Settings page (gadmin-only; inherits user management)
+- [x] Portfolio Settings page (padmin + gadmin; scaffold only)
+- [x] Account Settings page (all users; scaffold only)
+- [x] `/admin` route redirected to `/workspace-settings`
+- [x] Avatar dropdown menu (auto-populated from `is_admin_menu` tags)
+- [x] `/preferences/navigation` full-page replacement for the modal
+- [x] Custom user pages — full create/manage flow shipped (not stub-only; see PR #4 and migration `016_user_custom_pages.sql`)
+- [x] End-to-end manual test across user / padmin / gadmin
+- [x] Commit + push
 
 ---
 
@@ -115,9 +116,9 @@ Flat list today becomes grouped-with-headings. Every group header shows regardle
 
 Single **Save** button commits everything atomically via a single PUT.
 
-### Custom user pages — STUB ONLY
+### Custom user pages — shipped as full create/manage flow
 
-Schema accommodates (`pages.kind = 'user_custom'`, `pages.created_by = user_id`, visible only to creator). UI at `/preferences/navigation` shows a placeholder section labelled "Your custom pages (coming soon)". No create/edit flow. Full feature waits on the not-yet-built app catalogue (charts, reports, widgets).
+Schema accommodates (`pages.kind = 'user_custom'`, `pages.created_by = user_id`, visible only to creator). The plan called for a stub "coming soon" placeholder; what shipped (PR #4) is a full create/rename/delete flow inside `/preferences/navigation`, backed by `user_custom_pages` + `user_custom_page_views` tables (migration `016_user_custom_pages.sql`), backend service `backend/internal/custompages/`, and frontend route `/p/[id]`. The "not-yet-built app catalogue" note remains relevant for Phase 2 content (charts, reports, widgets inside a custom page view).
 
 ---
 
@@ -284,14 +285,9 @@ Clickable avatar → dropdown anchored to top-right. Renders pages where `tagEnu
 
 Full page replacing the existing modal. All pinnable pages listed, grouped by tag. Same dnd-kit patterns as sidebar. Start-page radio. "Save" commits via PUT. "Reset to defaults" uses existing DELETE endpoint.
 
-Stub section at the bottom:
-
-```tsx
-<section className="nav-prefs__custom">
-  <h3>Your custom pages</h3>
-  <p>Coming soon — build your own pages from charts, reports, and widgets.</p>
-</section>
-```
+Custom pages section (shipped as full create/manage flow, not a stub):
+- Inline "New page" form with draft persistence (`useDraft`, `DraftBanner`).
+- Create, rename, delete custom pages backed by `/api/custom-pages`.
 
 ### `app/components/AppHeader.tsx` — wire avatar
 
