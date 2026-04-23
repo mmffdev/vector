@@ -26,43 +26,22 @@ Four tables in `mmff_vector` carry app-enforced polymorphic FKs (`entity_stakeho
 
 ## Go pattern
 
-Sketch — mirrors `backend/internal/nav/bookmarks.go`. Pass an open `pgx.Tx` so the caller controls the transaction boundary; the service does no `Begin/Commit` of its own.
+The shared writer lives in `backend/internal/entityrefs` — every polymorphic insert and every parent-archive cleanup MUST route through it so the rules are expressed once and tested once. Pass an open `pgx.Tx` so the caller controls the transaction boundary; the service does no `Begin/Commit` of its own.
 
-```go
-type EntityRefService struct{ Pool *pgxpool.Pool }
+Surface (see `backend/internal/entityrefs/service.go`):
 
-// Insert validates the parent (tenant fence + archive check + FOR UPDATE)
-// and writes the polymorphic row in the same tx. Loader picks the table
-// from kind — caller passes only an opaque (kind, id) reference.
-func (s *EntityRefService) Insert(ctx context.Context, tx pgx.Tx, kind EntityKind, id uuid.UUID, callerTenant uuid.UUID, pageID uuid.UUID) error {
-    table, ok := parentTableFor(kind) // hard-coded enum → never user input
-    if !ok { return ErrUnknownEntityKind }
-    var tenantID uuid.UUID
-    var archived *time.Time
-    err := tx.QueryRow(ctx, fmt.Sprintf(
-        `SELECT tenant_id, archived_at FROM %s WHERE id = $1 FOR UPDATE`, table), id,
-    ).Scan(&tenantID, &archived)
-    if errors.Is(err, pgx.ErrNoRows) || tenantID != callerTenant { return ErrEntityNotFound }
-    if err != nil { return err }
-    if archived != nil { return ErrEntityArchived }
-    _, err = tx.Exec(ctx, `
-        INSERT INTO page_entity_refs (page_id, entity_kind, entity_id)
-        VALUES ($1, $2, $3) ON CONFLICT (entity_kind, entity_id) DO NOTHING`,
-        pageID, string(kind), id)
-    return err
-}
+- `LoadParent(ctx, tx, kind, id, callerTenant) (parentTenant, error)` — pre-flight `SELECT … FOR UPDATE` on the parent. Returns `ErrUnknownEntityKind`, `ErrEntityNotFound` (also for cross-tenant — existence is sensitive), or `ErrEntityArchived`. Used internally by every `Insert*`; exposed for callers that need the tenant for downstream work (e.g. `bookmarks.go` uses it to build a tenant-scoped page).
+- `InsertEntityStakeholder(ctx, tx, kind, entityID, userID, callerTenant, role) (id, error)` — validates parent, then inserts (idempotent on the unique tuple).
+- `InsertPageEntityRef(ctx, tx, pageID, kind, entityID, callerTenant) error` — validates parent, then inserts (idempotent on `(entity_kind, entity_id)`). Vocabulary narrower than `EntityKind`: only `KindPortfolio | KindProduct` — `KindWorkspace` returns `ErrUnknownEntityKind`.
+- `CleanupChildren(ctx, tx, kind, id) (rowsDeleted, error)` — deletes from every polymorphic child table whose vocabulary accepts `kind`. Called from every parent's archive/delete handler inside the same tx as the archive UPDATE. Source of truth for the registry is the table below.
 
-// DeleteByParent wipes every polymorphic child row pointing at (kind, id).
-// Called from the parent's archive/delete handler.
-func (s *EntityRefService) DeleteByParent(ctx context.Context, tx pgx.Tx, kind EntityKind, id uuid.UUID) error {
-    _, err := tx.Exec(ctx, `DELETE FROM page_entity_refs WHERE entity_kind = $1 AND entity_id = $2`, string(kind), id)
-    return err
-}
-```
+The writer's contract: callers build their own outer transaction, call `LoadParent` (or one of the `Insert*` methods which call it for them), do whatever else they need, commit. The dispatch trigger from migration 013 is a backstop — if a future writer bypasses this service, the trigger still rejects bad inserts at the database layer.
+
+Reference implementation: `backend/internal/nav/bookmarks.go` `Pin` — uses `Refs.InsertPageEntityRef` for the polymorphic backlink, keeps its own `loadEntity` for the bookmark-specific name fetch.
 
 ## Cleanup registry
 
-`cleanupPolymorphicChildren(ctx, tx, kind, id)` iterates every polymorphic table whose vocabulary accepts `kind` and runs `DELETE … WHERE <kind-col> = $1 AND <id-col> = $2`. The map:
+`entityrefs.Service.CleanupChildren(ctx, tx, kind, id)` iterates every polymorphic table whose vocabulary accepts `kind` and runs `DELETE … WHERE <kind-col> = $1 AND <id-col> = $2`. The map (see `childRelationshipsFor` in `backend/internal/entityrefs/service.go`):
 
 | Parent kind | Child tables to clean |
 |---|---|
@@ -103,4 +82,6 @@ Two layers — both hit real Postgres via the tunnel; pattern after `backend/int
 
 ## Open gap (as of 2026-04-23)
 
-`backend/internal/nav/bookmarks.go` is the only live writer. Its insert side is correct (tenant fence, archive check, transactional, idempotent `ON CONFLICT`). Its **archive side does not exist** — there is currently no handler that archives or deletes a workspace/portfolio/product. The first such handler shipped MUST call `cleanupPolymorphicChildren(tx, kind, id)` (or the inline `DELETE FROM page_entity_refs WHERE entity_kind=$1 AND entity_id=$2`) inside its transaction. Until then the canary will pass purely because no parent ever goes away.
+`backend/internal/nav/bookmarks.go` is the only live writer. Its insert side now routes through `entityrefs.Service` (Phase 2.2 of TD-001 pay-down). Migration 013 added BEFORE INSERT/UPDATE dispatch triggers as defence in depth — orphans cannot be inserted at all, regardless of which writer is used.
+
+The remaining gap is the **archive side**: no handler currently archives or deletes a workspace/portfolio/product. The first such handler shipped MUST call `Refs.CleanupChildren(ctx, tx, kind, id)` inside its transaction, before the parent UPDATE. The dispatch trigger does not enforce this — it only catches inserts. The canary `TestNoPolymorphicOrphans` will catch a forgotten cleanup call post-deploy as a backstop. See [Phase 3 of `dev/planning/plan_db_polymorphic_paydown.md`](../dev/planning/plan_db_polymorphic_paydown.md).

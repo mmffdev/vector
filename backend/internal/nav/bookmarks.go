@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/mmffdev/vector-backend/internal/entityrefs"
 	"github.com/mmffdev/vector-backend/internal/models"
 )
 
@@ -26,10 +27,14 @@ func (k EntityKind) Valid() bool {
 	return k == EntityKindPortfolio || k == EntityKindProduct
 }
 
+// Re-export the polymorphic sentinels so existing handler code that
+// switches on nav.ErrEntityNotFound etc. keeps working unchanged. The
+// underlying value lives in entityrefs and is shared across every
+// polymorphic writer.
 var (
-	ErrUnknownEntityKind = errors.New("unknown entity_kind")
-	ErrEntityNotFound    = errors.New("entity not found or not visible")
-	ErrEntityArchived    = errors.New("entity is archived")
+	ErrUnknownEntityKind = entityrefs.ErrUnknownEntityKind
+	ErrEntityNotFound    = entityrefs.ErrEntityNotFound
+	ErrEntityArchived    = entityrefs.ErrEntityArchived
 	ErrBookmarkCap       = errors.New("bookmark cap reached")
 )
 
@@ -37,13 +42,19 @@ var (
 // with Service rather than being folded into it because the surface is
 // distinct (single-entity ops vs. bulk pref replace) and the concerns
 // are different (entity access checks vs. catalogue/role validation).
+//
+// Polymorphic concerns (parent existence, tenant fence, archive
+// rejection, page_entity_refs writes) delegate to entityrefs.Service —
+// the same service every other writer uses, so the rules are expressed
+// once. See docs/c_polymorphic_writes.md.
 type Bookmarks struct {
 	Pool     *pgxpool.Pool
 	Registry *CachedRegistry
+	Refs     *entityrefs.Service
 }
 
 func NewBookmarks(pool *pgxpool.Pool, registry *CachedRegistry) *Bookmarks {
-	return &Bookmarks{Pool: pool, Registry: registry}
+	return &Bookmarks{Pool: pool, Registry: registry, Refs: entityrefs.New(pool)}
 }
 
 // itemKey returns the canonical item_key / pages.key_enum for an entity.
@@ -185,13 +196,14 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 		return "", err
 	}
 
-	// Polymorphic backlink — one row per real entity.
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_entity_refs (page_id, entity_kind, entity_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (entity_kind, entity_id) DO NOTHING`,
-		pageID, string(kind), entityID,
-	); err != nil {
+	// Polymorphic backlink — one row per real entity. Delegated to
+	// entityrefs so the parent-existence + tenant + archive checks (and
+	// the eventual move to per-kind tables in TD-001 Phase 4) live in one
+	// place. loadEntity above already performed the same checks; the
+	// duplicate inside InsertPageEntityRef is cheap (FOR UPDATE on a row
+	// we've just selected) and keeps writers obliged to route through
+	// the shared service.
+	if err := b.Refs.InsertPageEntityRef(ctx, tx, pageID, entityrefs.EntityKind(kind), entityID, callerTenant); err != nil {
 		return "", err
 	}
 
