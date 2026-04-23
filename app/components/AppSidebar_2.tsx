@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -35,6 +35,25 @@ function SidebarItem({
 }) {
   const hasChildren = childItems.length > 0;
   const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const [flyoutPos, setFlyoutPos] = useState<{ top: number; left: number } | null>(null);
+  const rowRef = useRef<HTMLAnchorElement | null>(null);
+
+  // Anchor the fixed-position flyout to the parent row. Using `fixed`
+  // escapes the sidebar's overflow:hidden clipping context.
+  useEffect(() => {
+    if (!flyoutOpen || !rowRef.current) return;
+    const update = () => {
+      const r = rowRef.current?.getBoundingClientRect();
+      if (r) setFlyoutPos({ top: r.top - 1, left: r.right });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [flyoutOpen]);
 
   const label = hasChildren ? `${item.label} (${childItems.length})` : item.label;
 
@@ -51,6 +70,7 @@ function SidebarItem({
       }}
     >
       <Link
+        ref={rowRef}
         href={item.href}
         className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
         title={!open ? label : undefined}
@@ -59,9 +79,13 @@ function SidebarItem({
         <span className="sidebar-item__label">{label}</span>
       </Link>
 
-      {hasChildren && flyoutOpen && (
-        <div className="sidebar-flyout" role="menu" aria-label={`${item.label} sub-pages`}>
-          <div className="sidebar-flyout__heading">{item.label}</div>
+      {hasChildren && flyoutOpen && flyoutPos && (
+        <div
+          className="sidebar-flyout"
+          role="menu"
+          aria-label={`${item.label} sub-pages`}
+          style={{ top: flyoutPos.top, left: flyoutPos.left }}
+        >
           {childItems.map((child) => (
             <Link
               key={child.key}

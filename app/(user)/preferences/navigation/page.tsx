@@ -29,6 +29,9 @@ import {
   type PutPrefsPinnedRow,
   type PutPrefsGroupRow,
 } from "@/app/contexts/NavPrefsContext";
+import { createCustomPage } from "@/app/lib/customPages";
+import { useDraft } from "@/app/hooks/useDraft";
+import DraftBanner from "@/app/components/DraftBanner";
 
 const MAX_PINNED = 50;
 const MAX_CUSTOM_GROUPS = 10;
@@ -257,9 +260,6 @@ function ChildrenList({
       className={`nav-prefs__children ${isOver ? "nav-prefs__children--over" : ""}`}
     >
       <SortableContext items={childKeys.map(itemDragId)} strategy={verticalListSortingStrategy}>
-        {childKeys.length === 0 && (
-          <li className="nav-prefs__children-empty">Drag a custom page here to nest it.</li>
-        )}
         {childKeys.map((ck) => {
           const e = findEntry(ck);
           if (!e) return null;
@@ -290,6 +290,7 @@ function ChildrenList({
           );
         })}
       </SortableContext>
+      <li className="nav-prefs__children-empty">Drag a custom page here to nest it.</li>
     </ul>
   );
 }
@@ -482,13 +483,24 @@ function BucketBlock({
 export default function NavPreferencesPage() {
   const { user } = useAuth();
   const {
-    prefs, customGroups, save, reset, catalogue,
+    prefs, customGroups, save, reset, catalogue, refetch,
     defaultPinned, findEntry, tagByEnum, tags,
   } = useNavPrefs();
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const [newPageLabel, setNewPageLabel] = useState("");
+  const [creatingPage, setCreatingPage] = useState(false);
+  const [createPageErr, setCreatePageErr] = useState<string | null>(null);
+
+  // Draft persistence for the "New custom page" form. The draft only
+  // tracks the label (the icon picker isn't part of this form). Save is
+  // 500ms-debounced; clear() runs only on a 2xx response from the server.
+  const newPageDraft = useDraft<{ label: string }>(
+    { formKey: "nav.custom-page.create", initial: { label: "" } },
+    (vals) => setNewPageLabel(vals.label ?? ""),
+  );
 
   // Hydrate draft from server state. Both tag buckets and custom buckets
   // are produced in first-appearance order (matching sidebar logic), with
@@ -933,6 +945,11 @@ export default function NavPreferencesPage() {
         promoteChildToTopLevel(aKey, aOwner.parent, oOwner.bucket, toIdx);
         return;
       }
+      // Drop onto an existing child row → nest under that row's parent.
+      if (oOwner.parent) {
+        nestUnderParent(aKey, oOwner.parent);
+        return;
+      }
     }
   };
 
@@ -940,10 +957,13 @@ export default function NavPreferencesPage() {
     setSaving(true);
     setError(null);
     try {
-      // Flatten: walk bucketOrder; for each top-level item emit it then its
-      // children, all carrying a global running position.
+      // Flatten: walk bucketOrder; top-level rows carry a contiguous 0..N-1
+      // position counter. Children carry a per-parent 0..M-1 counter — the
+      // server validates top-level contiguity and per-parent uniqueness
+      // separately, and a single shared counter would leave gaps at the top
+      // level whenever any parent has children.
       const pinned: PutPrefsPinnedRow[] = [];
-      let pos = 0;
+      let topPos = 0;
       for (const bucket of draft.bucketOrder) {
         const items = draft.itemsByBucket[bucket] ?? [];
         const isCustom = bucket.startsWith("group:");
@@ -953,17 +973,18 @@ export default function NavPreferencesPage() {
           if (!entry) continue;
           pinned.push({
             item_key: it.key,
-            position: pos++,
+            position: topPos++,
             parent_item_key: null,
             group_id: entry.kind === "user_custom" ? groupId : null,
             icon_override: draft.iconOverrides[it.key] ?? null,
           });
+          let childPos = 0;
           for (const ck of draft.childrenByParent[it.key] ?? []) {
             const childEntry = findEntry(ck);
             if (!childEntry) continue;
             pinned.push({
               item_key: ck,
-              position: pos++,
+              position: childPos++,
               parent_item_key: it.key,
               group_id: null,
               icon_override: draft.iconOverrides[ck] ?? null,
@@ -1085,6 +1106,65 @@ export default function NavPreferencesPage() {
             )}
           </section>
 
+          <section className="nav-prefs__pane nav-prefs__pane--new-page" aria-label="New custom page">
+            <header className="nav-prefs__pane-header">
+              <h2 className="nav-prefs__pane-title">New custom page</h2>
+            </header>
+            <p className="nav-prefs__new-page-card-hint">
+              Holds timeline, board, or list views. Appears under <strong>Personal</strong>.
+            </p>
+            {newPageDraft.restored && (
+              <DraftBanner
+                savedAt={newPageDraft.restored.savedAt}
+                onRestore={newPageDraft.restored.apply}
+                onDiscard={newPageDraft.restored.dismiss}
+              />
+            )}
+            <form
+              className="nav-prefs__new-page"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const label = newPageLabel.trim();
+                if (!label || creatingPage) return;
+                setCreatingPage(true);
+                setCreatePageErr(null);
+                try {
+                  await createCustomPage(label);
+                  // Server confirmed write — only now is it safe to drop
+                  // the draft. On any error the draft stays so the user
+                  // can retry without retyping.
+                  await newPageDraft.clear();
+                  setNewPageLabel("");
+                  await refetch();
+                } catch {
+                  setCreatePageErr("Could not create page (duplicate label or cap reached).");
+                } finally {
+                  setCreatingPage(false);
+                }
+              }}
+            >
+              <input
+                className="nav-prefs__new-page-input"
+                placeholder="New page name…"
+                value={newPageLabel}
+                onChange={(e) => {
+                  setNewPageLabel(e.target.value);
+                  newPageDraft.save({ label: e.target.value });
+                }}
+                maxLength={64}
+                disabled={creatingPage}
+              />
+              <button
+                type="submit"
+                className="nav-prefs__new-page-btn"
+                disabled={!newPageLabel.trim() || creatingPage}
+              >
+                {creatingPage ? "Creating…" : "+ New page"}
+              </button>
+            </form>
+            {createPageErr && <p className="nav-prefs__error" role="alert">{createPageErr}</p>}
+          </section>
+
           <section className="nav-prefs__pane" aria-label="Available">
             <header className="nav-prefs__pane-header">
               <h2 className="nav-prefs__pane-title">Available</h2>
@@ -1120,15 +1200,6 @@ export default function NavPreferencesPage() {
           </section>
         </DndContext>
 
-        <section className="nav-prefs__pane nav-prefs__pane--custom" aria-label="Your custom pages">
-          <header className="nav-prefs__pane-header">
-            <h2 className="nav-prefs__pane-title">Your custom pages</h2>
-          </header>
-          <p className="nav-prefs__empty">
-            Coming soon — build your own pages from charts, reports, and widgets.
-            Once created, drag them into a custom group or onto another page to nest.
-          </p>
-        </section>
       </div>
 
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
