@@ -49,9 +49,12 @@ export default function UserAvatarMenu() {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Group pages whose tag is flagged is_admin_menu, role-filtered by the
-  // server's catalogue. Ordering: tag.defaultOrder, then entry.defaultOrder.
+  // server's catalogue. The `admin_settings` tag (Workspace/Portfolio
+  // Settings) lives in the header cog dropdown — exclude it here.
   const groupedAdminPages = useMemo(() => {
-    const adminTagEnums = new Set(tags.filter((t) => t.isAdminMenu).map((t) => t.enum));
+    const adminTagEnums = new Set(
+      tags.filter((t) => t.isAdminMenu && t.enum !== "admin_settings").map((t) => t.enum),
+    );
     const byTag = new Map<string, NavCatalogEntry[]>();
     for (const entry of catalogue) {
       if (!adminTagEnums.has(entry.tagEnum)) continue;
@@ -60,7 +63,7 @@ export default function UserAvatarMenu() {
       byTag.set(entry.tagEnum, list);
     }
     const orderedTags = tags
-      .filter((t) => t.isAdminMenu && byTag.has(t.enum))
+      .filter((t) => t.isAdminMenu && t.enum !== "admin_settings" && byTag.has(t.enum))
       .slice()
       .sort((a, b) => a.defaultOrder - b.defaultOrder);
     return orderedTags.map((tag) => ({
