@@ -420,6 +420,76 @@ button {
   cursor: grabbing;
 }
 
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-group + .sidebar-group {
+  margin-top: 14px;
+}
+
+.sidebar-group__heading-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 0 0 4px 0;
+}
+
+.sidebar-group__drag {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: #ff2e93;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  opacity: 0;
+  transition: opacity 120ms;
+  touch-action: none;
+}
+
+.sidebar-group__heading-row:hover .sidebar-group__drag,
+.sidebar-group__drag:focus-visible {
+  opacity: 0.8;
+}
+
+.sidebar-group__drag:hover {
+  opacity: 1;
+}
+
+.sidebar-group__drag:active {
+  cursor: grabbing;
+}
+
+.sidebar-group__drag > svg {
+  display: block;
+}
+
+.sidebar-group__heading {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 0;
+}
+
+/* When sidebar is collapsed, the group heading is decorative noise — hide
+   the label but keep the group spacing intact so items don't mash together. */
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-group__heading,
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-group__drag {
+  display: none;
+}
+
 .sidebar-section {
   margin-top: 28px;
   padding: 0 24px;

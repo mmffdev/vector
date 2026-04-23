@@ -11,7 +11,7 @@ const roleLabels: Record<Role, string> = {
 
 export default function AppHeader() {
   const { theme, toggle, mounted } = useTheme();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header className={`app-header-wrapper app-header-wrapper--role-${user?.role ?? "user"}`}>
@@ -52,8 +52,8 @@ export default function AppHeader() {
           </button>
         )}
 
-        {/* Avatar */}
-        <button className="app-header-wrapper__avatar" title={user?.email ?? ""} onClick={logout}>
+        {/* Avatar — dropdown wires in at step 6 (UserAvatarMenu) */}
+        <button className="app-header-wrapper__avatar" title={user?.email ?? ""}>
           {user?.email ? user.email.slice(0, 2).toUpperCase() : "??"}
         </button>
       </div>

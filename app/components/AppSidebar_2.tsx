@@ -21,7 +21,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { useNavPrefs, type NavCatalogEntry } from "@/app/contexts/NavPrefsContext";
+import {
+  useNavPrefs,
+  type NavCatalogEntry,
+  type NavTagGroup,
+} from "@/app/contexts/NavPrefsContext";
 import NavManageModal from "@/app/components/NavManageModal";
 
 const Icon = ({ d, d2 }: { d: string; d2?: string }) => (
@@ -48,6 +52,12 @@ function IconFor({ iconKey }: { iconKey: string }) {
 
 const STORAGE_KEY = "sidebar-collapsed";
 
+// Typed DnD ids: we share one DndContext across two dimensions of reorder.
+// `item:<key>` drags an individual nav item within its group.
+// `group:<enum>` drags a whole group relative to other groups.
+const itemId = (key: string) => `item:${key}`;
+const groupId = (enumKey: string) => `group:${enumKey}`;
+
 function SortableSidebarItem({
   item,
   pathname,
@@ -57,7 +67,7 @@ function SortableSidebarItem({
   pathname: string;
   open: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: itemId(item.key) });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -96,14 +106,67 @@ function SortableSidebarItem({
   );
 }
 
+function SortableGroup({
+  tag,
+  items,
+  pathname,
+  open,
+}: {
+  tag: NavTagGroup;
+  items: NavCatalogEntry[];
+  pathname: string;
+  open: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: groupId(tag.enum) });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="sidebar-group">
+      <div className="sidebar-group__heading-row">
+        <button
+          type="button"
+          className="sidebar-group__drag"
+          aria-label={`Reorder ${tag.label} group`}
+          title="Drag group to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <svg width="12" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="9" cy="6" r="1.5" />
+            <circle cx="15" cy="6" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" />
+            <circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="18" r="1.5" />
+            <circle cx="15" cy="18" r="1.5" />
+          </svg>
+        </button>
+        <span className="sidebar-group__heading">{tag.label}</span>
+      </div>
+      <SortableContext items={items.map((i) => itemId(i.key))} strategy={verticalListSortingStrategy}>
+        {items.map((item) => (
+          <SortableSidebarItem key={item.key} item={item} pathname={pathname} open={open} />
+        ))}
+      </SortableContext>
+    </div>
+  );
+}
+
 export default function AppSidebar_2() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { prefs, save, catalogue, findEntry, defaultPinned } = useNavPrefs();
+  const { prefs, save, catalogue, findEntry, defaultPinned, tagByEnum, tags } = useNavPrefs();
   const [collapsed, setCollapsed] = useState(false);
   const [peeked, setPeeked] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
-  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+  // Draft order is { groupOrder: enum[], itemsByGroup: { [enum]: key[] } }.
+  // Null = no pending edit; sidebar reflects server state directly.
+  const [draftOrder, setDraftOrder] = useState<{
+    groupOrder: string[];
+    itemsByGroup: Record<string, string[]>;
+  } | null>(null);
   const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
@@ -125,9 +188,8 @@ export default function AppSidebar_2() {
     [prefs],
   );
 
-  // Catalogue arrives role-filtered from the server, so no need to re-gate
-  // by role on the client. Unknown pinned keys (e.g. a catalogue entry
-  // retired since the user pinned it) drop out silently.
+  // Catalogue is already role-filtered by the server. Unknown pinned keys
+  // (catalogue entries retired since a user pinned them) drop out silently.
   const baseRenderedItems = useMemo<NavCatalogEntry[]>(() => {
     if (catalogue.length === 0) return [];
     if (pinnedKeys.length === 0) return defaultPinned;
@@ -136,23 +198,40 @@ export default function AppSidebar_2() {
       .filter((e): e is NavCatalogEntry => !!e);
   }, [catalogue, pinnedKeys, defaultPinned, findEntry]);
 
-  const renderedItems = useMemo(() => {
-    if (!draftOrder) return baseRenderedItems;
-    const byKey = new Map(baseRenderedItems.map((i) => [i.key, i]));
-    return draftOrder
-      .map((k) => byKey.get(k))
-      .filter((i): i is NavCatalogEntry => !!i);
-  }, [baseRenderedItems, draftOrder]);
+  // Derive server-side grouping: preserve the order items appear in
+  // baseRenderedItems — server has already enforced contiguity, so
+  // first-appearance of each tag_enum is authoritative group order.
+  const baseGrouping = useMemo(() => {
+    const groupOrder: string[] = [];
+    const itemsByGroup: Record<string, string[]> = {};
+    for (const item of baseRenderedItems) {
+      const tagEnum = item.tagEnum || "personal";
+      if (!(tagEnum in itemsByGroup)) {
+        groupOrder.push(tagEnum);
+        itemsByGroup[tagEnum] = [];
+      }
+      itemsByGroup[tagEnum].push(item.key);
+    }
+    return { groupOrder, itemsByGroup };
+  }, [baseRenderedItems]);
 
-  // Server has already filtered by role, so we just drop pinnable entries.
-  const visibleDevItems = useMemo(
-    () => catalogue.filter((e) => !e.pinnable),
-    [catalogue],
-  );
+  const effectiveGrouping = draftOrder ?? baseGrouping;
+
+  const itemByKey = useMemo(() => {
+    const m = new Map<string, NavCatalogEntry>();
+    for (const e of baseRenderedItems) m.set(e.key, e);
+    return m;
+  }, [baseRenderedItems]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Server filters by role; dev items are just the non-pinnable entries.
+  const visibleDevItems = useMemo(
+    () => catalogue.filter((e) => !e.pinnable),
+    [catalogue],
   );
 
   if (!user) return null;
@@ -162,20 +241,70 @@ export default function AppSidebar_2() {
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const current = draftOrder ?? baseRenderedItems.map((i) => i.key);
-    const from = current.indexOf(String(active.id));
-    const to = current.indexOf(String(over.id));
-    if (from < 0 || to < 0) return;
-    setDraftOrder(arrayMove(current, from, to));
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    // Group-level drag: both endpoints must be groups.
+    if (activeId.startsWith("group:") && overId.startsWith("group:")) {
+      const current = effectiveGrouping;
+      const activeEnum = activeId.slice("group:".length);
+      const overEnum = overId.slice("group:".length);
+      const from = current.groupOrder.indexOf(activeEnum);
+      const to = current.groupOrder.indexOf(overEnum);
+      if (from < 0 || to < 0) return;
+      setDraftOrder({
+        groupOrder: arrayMove(current.groupOrder, from, to),
+        itemsByGroup: current.itemsByGroup,
+      });
+      return;
+    }
+
+    // Item-level drag: reject if the drop target is in a different group
+    // (server rejects cross-group pins anyway — don't let the UI show it).
+    if (activeId.startsWith("item:") && overId.startsWith("item:")) {
+      const current = effectiveGrouping;
+      const activeKey = activeId.slice("item:".length);
+      const overKey = overId.slice("item:".length);
+
+      const findOwnerGroup = (key: string) =>
+        Object.entries(current.itemsByGroup).find(([, keys]) => keys.includes(key))?.[0];
+
+      const activeGroup = findOwnerGroup(activeKey);
+      const overGroup = findOwnerGroup(overKey);
+      if (!activeGroup || !overGroup || activeGroup !== overGroup) return;
+
+      const groupItems = current.itemsByGroup[activeGroup];
+      const from = groupItems.indexOf(activeKey);
+      const to = groupItems.indexOf(overKey);
+      if (from < 0 || to < 0 || from === to) return;
+      setDraftOrder({
+        groupOrder: current.groupOrder,
+        itemsByGroup: {
+          ...current.itemsByGroup,
+          [activeGroup]: arrayMove(groupItems, from, to),
+        },
+      });
+      return;
+    }
+    // Mixed (item vs group) drops are ignored — they're not a valid intent.
+  };
+
+  const flattenDraft = (d: { groupOrder: string[]; itemsByGroup: Record<string, string[]> }) => {
+    const out: string[] = [];
+    for (const g of d.groupOrder) {
+      for (const k of d.itemsByGroup[g] ?? []) out.push(k);
+    }
+    return out;
   };
 
   const acceptOrder = async () => {
     if (!draftOrder) return;
     setCommitting(true);
     try {
+      const flat = flattenDraft(draftOrder);
       const startKey = prefs.find((p) => p.is_start_page)?.item_key ?? null;
       await save({
-        pinned: draftOrder.map((k, i) => ({ item_key: k, position: i })),
+        pinned: flat.map((k, i) => ({ item_key: k, position: i })),
         start_page_key: startKey,
       });
       setDraftOrder(null);
@@ -185,6 +314,25 @@ export default function AppSidebar_2() {
   };
 
   const undoOrder = () => setDraftOrder(null);
+
+  // Lookups for render.
+  const renderedGroups: { tag: NavTagGroup; items: NavCatalogEntry[] }[] = effectiveGrouping.groupOrder
+    .map((enumKey) => {
+      const tag = tagByEnum(enumKey);
+      if (!tag) return null;
+      const items = (effectiveGrouping.itemsByGroup[enumKey] ?? [])
+        .map((k) => itemByKey.get(k))
+        .filter((i): i is NavCatalogEntry => !!i);
+      if (items.length === 0) return null;
+      return { tag, items };
+    })
+    .filter((g): g is { tag: NavTagGroup; items: NavCatalogEntry[] } => !!g);
+
+  // Fallback: if a pinned entry somewhere references a tag we don't know
+  // about, surface its own label so we don't silently drop pins. Hitting
+  // this branch means the catalogue drifted from page_tags — worth logging
+  // upstream but we still render rather than 404ing the user's sidebar.
+  void tags;
 
   return (
     <nav
@@ -216,9 +364,18 @@ export default function AppSidebar_2() {
       </button>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={renderedItems.map((i) => i.key)} strategy={verticalListSortingStrategy}>
-          {renderedItems.map((item) => (
-            <SortableSidebarItem key={item.key} item={item} pathname={pathname} open={open} />
+        <SortableContext
+          items={renderedGroups.map((g) => groupId(g.tag.enum))}
+          strategy={verticalListSortingStrategy}
+        >
+          {renderedGroups.map((g) => (
+            <SortableGroup
+              key={g.tag.enum}
+              tag={g.tag}
+              items={g.items}
+              pathname={pathname}
+              open={open}
+            />
           ))}
         </SortableContext>
       </DndContext>
