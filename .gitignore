@@ -5,3 +5,6 @@ node_modules/
 tsconfig.tsbuildinfo
 local-assets/backups/
 local-assets/security-flags.jsonl
+.playwright-mcp/
+.claude/scheduled_tasks.lock
+prefs-nav-*.png

@@ -1,0 +1,78 @@
+# Technical debt — standing rule and register
+
+This is a **standing instruction** for Claude Code in this repo. Read it on any task that:
+
+- adds a new abstraction, table, polymorphic relationship, or cross-cutting pattern
+- touches code already flagged in the register below
+- does a refactor, schema change, or architectural decision
+- delivers a workaround, "TODO", or anything labelled "we'll fix this later"
+
+If none of those apply, you do not need to load this doc.
+
+## The standing rule
+
+Every task **maintains the debt register**. That means three obligations, in order:
+
+1. **Identify** — when you spot debt during a task (smell, workaround, missing cleanup, latent foot-gun, brittle invariant), name it. Don't keep it in your head.
+2. **Measure** — give it a severity (S1/S2/S3) and a trigger (the event that turns latent debt into pain). Severity and trigger are the only fields that matter; everything else is colour.
+3. **Recommend** — record the cheapest action that caps the debt (doc + canary + lint), and the action that pays it down (refactor + migration). Caps go in immediately; pay-downs wait for the trigger.
+
+The rule is **not** "fix all debt now". The rule is **debt is never invisible**. Visible debt is bounded; invisible debt compounds.
+
+## Severity scale
+
+| Severity | Meaning | Response |
+|---|---|---|
+| **S1 — bleeding** | Causing incidents now, or will on the next deploy/handler/feature | Fix in the same PR. No exceptions. |
+| **S2 — latent** | Dormant but the trigger is foreseeable (next archive handler, second writer, first prod tenant, etc.) | Cap immediately (doc + canary + comment at the trigger site). Schedule pay-down before trigger fires. |
+| **S3 — structural** | Slow tax on every future change in this area | Cap with the register entry. Pay down when the area is touched for another reason, or when a second symptom appears. |
+
+## What "cap" means
+
+A cap is a cheap, mechanical safeguard that makes the debt visible the moment it bites:
+
+- **Doc** — a leaf under `docs/c_*.md` describing the rule, the why, and the trigger
+- **Canary** — a test that fails when the latent condition becomes real (orphan rows, missing handler, drifted schema, etc.)
+- **Lint / comment / assertion** — at the most likely future-edit site, a comment or runtime check that surfaces the rule when someone touches it
+- **Register entry** — the row below, so future-Claude finds it without re-deriving
+
+Caps cost hours, not days. If the cap costs days, it's not a cap — it's the pay-down, and you're doing it for the wrong reason.
+
+## Process per task
+
+When you finish a task, before reporting back:
+
+1. **Did this task introduce debt?** If yes, add an entry below.
+2. **Did this task touch debt already in the register?** If yes, either pay it down (and remove the entry) or update the entry with what you learned.
+3. **Did the trigger fire on any S2 entry?** If yes, raise it to S1 and address before merging.
+4. **Recommend** — if any S2/S3 entry has crossed its trigger condition during this work, surface it to the user in your final message: "While doing X, I noticed entry N's trigger has fired — recommend pay-down now."
+
+Do not silently fix every S3 you see — most are correctly deferred. Do surface them when you're already in the area.
+
+## Register
+
+One row per item. Keep entries terse. Date format: `YYYY-MM-DD`. Mark resolved items with `~~strikethrough~~` and a resolved-on date for one cycle, then remove.
+
+| ID | Added | Severity | Area | Debt | Trigger (what makes it bite) | Cap in place | Pay-down |
+|---|---|---|---|---|---|---|---|
+| TD-001 | 2026-04-23 | S2 | DB / polymorphic FKs | Four polymorphic relationships have no Postgres-enforced RI; only `page_entity_refs` has a live writer, and it has no archive cleanup. | First archive/delete handler for `workspace`, `portfolio`, or `product` ships without calling `cleanupPolymorphicChildren`. | [`docs/c_polymorphic_writes.md`](c_polymorphic_writes.md) + canary `backend/internal/dbcheck/orphans_test.go` | Migrate to per-kind link tables when 2nd live writer lands or first orphan incident occurs (~3 dev-days per relationship). |
+
+## Anti-patterns (don't do these)
+
+- **Silent fix.** Resolving debt without removing the register entry — future-Claude will assume it's still latent and add a duplicate cap.
+- **Over-capping.** Building elaborate guards for S3 debt that has no trigger in sight. Caps are for S1/S2; S3 gets a register entry and that's it.
+- **Pay-down at first sight.** Refactoring a polymorphic relationship "while you're in there" on an unrelated task. Pay-downs are scheduled, not opportunistic, unless the trigger has fired.
+- **TODO comments without a register entry.** A TODO in code is debt that isn't measured. Either add the register entry or do the work.
+- **"We'll come back to it."** Either it's S1 (do it now), S2 (cap it now, schedule pay-down), or S3 (register it). There's no fourth option.
+
+## How to surface to the user
+
+When you add or escalate a register entry during a task, end your reply with a one-line debt note:
+
+> **Debt:** added TD-007 (S2) — bookmark cache lacks invalidation on tenant rename. Capped with doc; pay-down deferred until tenant rename ships.
+
+When a trigger fires:
+
+> **Debt trigger:** TD-001's pay-down condition met (second polymorphic writer landing in this PR). Recommend migrating `entity_stakeholders` to per-kind tables before merge.
+
+Short, factual, no ceremony. The user decides whether to act.
