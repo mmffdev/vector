@@ -1679,6 +1679,60 @@ button {
   border-radius: 4px;
 }
 
+.nav-prefs__picker-row {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.nav-prefs__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin: 4px 0 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+}
+.nav-prefs__picker-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.nav-prefs__picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: 6px;
+}
+.nav-prefs__picker-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--surface-1);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.nav-prefs__picker-btn:hover {
+  color: var(--ink-1);
+  border-color: var(--line-1);
+}
+.nav-prefs__picker-btn--active {
+  border-color: var(--accent-1);
+  color: var(--accent-1);
+  background: var(--surface-1);
+}
+.nav-prefs__picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 /* ============================================================
    Utilities
    ============================================================ */

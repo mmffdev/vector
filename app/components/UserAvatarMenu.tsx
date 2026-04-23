@@ -14,12 +14,24 @@ function Icon({ d, d2 }: { d: string; d2?: string }) {
   );
 }
 
+function ThemeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2"  y="2"  width="9" height="9" fill="var(--theme-icon-tl, #e53935)" />
+      <rect x="13" y="2"  width="9" height="9" fill="var(--theme-icon-tr, #1e88e5)" />
+      <rect x="2"  y="13" width="9" height="9" fill="var(--theme-icon-bl, #fdd835)" />
+      <rect x="13" y="13" width="9" height="9" fill="var(--theme-icon-br, #43a047)" />
+    </svg>
+  );
+}
+
 function IconFor({ iconKey }: { iconKey: string }) {
   switch (iconKey) {
     case "home":      return <Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" d2="M9 22V12h6v10" />;
     case "briefcase": return <Icon d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" d2="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />;
     case "cog":       return <Icon d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />;
     case "wrench":    return <Icon d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />;
+    case "theme":     return <ThemeIcon />;
     default:          return <Icon d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />;
   }
 }
