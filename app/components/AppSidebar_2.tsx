@@ -26,7 +26,6 @@ import {
   type NavCatalogEntry,
   type NavTagGroup,
 } from "@/app/contexts/NavPrefsContext";
-import NavManageModal from "@/app/components/NavManageModal";
 
 const Icon = ({ d, d2 }: { d: string; d2?: string }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -160,7 +159,6 @@ export default function AppSidebar_2() {
   const { prefs, save, catalogue, findEntry, defaultPinned, tagByEnum, tags } = useNavPrefs();
   const [collapsed, setCollapsed] = useState(false);
   const [peeked, setPeeked] = useState(false);
-  const [manageOpen, setManageOpen] = useState(false);
   // Draft order is { groupOrder: enum[], itemsByGroup: { [enum]: key[] } }.
   // Null = no pending edit; sidebar reflects server state directly.
   const [draftOrder, setDraftOrder] = useState<{
@@ -400,16 +398,15 @@ export default function AppSidebar_2() {
         </div>
       )}
 
-      <button
-        type="button"
-        className="sidebar-item sidebar-item--button"
-        onClick={() => setManageOpen(true)}
+      <Link
+        href="/preferences/navigation"
+        className="sidebar-item"
         title={!open ? "Manage navigation" : undefined}
         aria-label="Manage navigation"
       >
         <IconFor iconKey="cog" />
         <span className="sidebar-item__label">Manage nav</span>
-      </button>
+      </Link>
 
       {visibleDevItems.length > 0 && (
         <div className="sidebar-dev-group">
@@ -426,8 +423,6 @@ export default function AppSidebar_2() {
           ))}
         </div>
       )}
-
-      <NavManageModal open={manageOpen} onClose={() => setManageOpen(false)} />
     </nav>
   );
 }

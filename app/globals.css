@@ -1382,6 +1382,229 @@ button {
 }
 
 /* ============================================================
+   Navigation preferences page (/preferences/navigation)
+   ============================================================ */
+.nav-prefs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .nav-prefs {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .nav-prefs__pane--custom {
+    grid-column: 1 / -1;
+  }
+}
+
+.nav-prefs__pane {
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nav-prefs__pane-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-1);
+}
+
+.nav-prefs__pane-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-1);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nav-prefs__count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.nav-prefs__empty {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.nav-prefs__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-prefs__group + .nav-prefs__group {
+  margin-top: 8px;
+}
+
+.nav-prefs__group-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.nav-prefs__group-drag {
+  background: transparent;
+  border: none;
+  color: var(--ink-3);
+  cursor: grab;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-prefs__group-drag:hover {
+  color: var(--ink-1);
+}
+
+.nav-prefs__group-drag:active {
+  cursor: grabbing;
+}
+
+.nav-prefs__group-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.nav-prefs__group-heading-row--static {
+  padding-left: 4px;
+}
+
+.nav-prefs__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-prefs__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+}
+
+.nav-prefs__row:hover {
+  background: var(--surface-alt);
+}
+
+.nav-prefs__drag {
+  background: transparent;
+  border: none;
+  color: var(--ink-3);
+  cursor: grab;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-prefs__drag:hover {
+  color: var(--ink-1);
+}
+
+.nav-prefs__drag:active {
+  cursor: grabbing;
+}
+
+.nav-prefs__label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-1);
+}
+
+.nav-prefs__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-prefs__btn {
+  background: transparent;
+  border: 1px solid var(--line-1);
+  color: var(--ink-2);
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+.nav-prefs__btn:hover:not(:disabled) {
+  background: var(--surface-alt);
+  color: var(--ink-1);
+}
+
+.nav-prefs__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav-prefs__btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.nav-prefs__btn--active:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.nav-prefs__btn--danger:hover:not(:disabled) {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.nav-prefs__notice {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin: 12px 0 0 0;
+}
+
+.nav-prefs__error {
+  font-size: 13px;
+  color: var(--error);
+  margin: 12px 0 0 0;
+}
+
+.nav-prefs__actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-1);
+}
+
+/* ============================================================
    Utilities
    ============================================================ */
 .u-mono {
