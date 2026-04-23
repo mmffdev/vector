@@ -431,8 +431,6 @@ export default function NavPreferencesPage() {
   }, [draft]);
 
   // "Available" pool: pinnable catalogue entries not already pinned anywhere.
-  // Defensive dedupe by key — older catalogue rows occasionally surface twice
-  // when an entity was upserted before the unique-index fix landed.
   const pool = useMemo<NavCatalogEntry[]>(() => {
     if (!draft) return [];
     const pinnedKeys = new Set<string>();
@@ -442,19 +440,14 @@ export default function NavPreferencesPage() {
     for (const cks of Object.values(draft.childrenByParent)) {
       for (const ck of cks) pinnedKeys.add(ck);
     }
-    const seen = new Set<string>();
-    const out: NavCatalogEntry[] = [];
-    for (const e of catalogue) {
-      if (!e.pinnable || pinnedKeys.has(e.key) || seen.has(e.key)) continue;
-      seen.add(e.key);
-      out.push(e);
-    }
-    return out.sort((a, b) => {
-      const ta = tagByEnum(a.tagEnum)?.defaultOrder ?? 99;
-      const tb = tagByEnum(b.tagEnum)?.defaultOrder ?? 99;
-      if (ta !== tb) return ta - tb;
-      return a.defaultOrder - b.defaultOrder;
-    });
+    return catalogue
+      .filter((e) => e.pinnable && !pinnedKeys.has(e.key))
+      .sort((a, b) => {
+        const ta = tagByEnum(a.tagEnum)?.defaultOrder ?? 99;
+        const tb = tagByEnum(b.tagEnum)?.defaultOrder ?? 99;
+        if (ta !== tb) return ta - tb;
+        return a.defaultOrder - b.defaultOrder;
+      });
   }, [draft, catalogue, tagByEnum]);
 
   if (!user || !draft) return null;

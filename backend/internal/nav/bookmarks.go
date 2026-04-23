@@ -166,16 +166,18 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 		return "", fmt.Errorf("%w: %d >= %d", ErrBookmarkCap, current, MaxPinned)
 	}
 
-	// Get-or-create pages row. ON CONFLICT on (key_enum, tenant_id, created_by)
-	// — for entity rows created_by is NULL so the unique index treats them
-	// as one shared page per entity per tenant.
+	// Get-or-create pages row. The partial unique index
+	// pages_unique_key_shared_tenant covers (key_enum, tenant_id) WHERE
+	// created_by IS NULL, so two consecutive Pin calls collapse onto the
+	// same row instead of duplicating it (NULL-distinct semantics on the
+	// old plain UNIQUE constraint produced phantom duplicates).
 	var pageID uuid.UUID
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind,
 		                   pinnable, default_pinned, default_order,
 		                   created_by, tenant_id)
 		VALUES ($1, $2, $3, $4, 'bookmarks', 'entity', TRUE, FALSE, 0, NULL, $5)
-		ON CONFLICT (key_enum, tenant_id, created_by) DO UPDATE
+		ON CONFLICT (key_enum, tenant_id) WHERE created_by IS NULL AND tenant_id IS NOT NULL DO UPDATE
 		  SET label = EXCLUDED.label, updated_at = NOW()
 		RETURNING id`,
 		key, name, hrefFor(kind, entityID), iconFor(kind), entityTenant,
