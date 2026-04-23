@@ -390,13 +390,13 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 		t.Fatalf("registry get: %v", err)
 	}
 
-	userEntries := reg.CatalogFor("user")
+	userEntries := reg.CatalogFor("user", uuid.Nil)
 	for _, e := range userEntries {
 		if e.Key == "workspace-settings" {
 			t.Fatal("user role should not see workspace-settings entry")
 		}
 	}
-	gadminEntries := reg.CatalogFor("gadmin")
+	gadminEntries := reg.CatalogFor("gadmin", uuid.Nil)
 	foundWS := false
 	for _, e := range gadminEntries {
 		if e.Key == "workspace-settings" {

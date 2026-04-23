@@ -14,7 +14,9 @@ import (
 
 // MaxPinned caps the server-side pinned list length. Mirrors MAX_PINNED in
 // the frontend modal — client enforcement is cosmetic; this is the real gate.
-const MaxPinned = 20
+// Raised from 20 to 50 alongside entity bookmarks (Phase 3) so pinned static
+// items + entity bookmarks share one comfortable budget.
+const MaxPinned = 50
 
 var (
 	ErrUnknownItemKey     = errors.New("unknown item_key")

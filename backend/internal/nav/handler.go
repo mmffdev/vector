@@ -5,12 +5,16 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
-type Handler struct{ Svc *Service }
+type Handler struct {
+	Svc       *Service
+	Bookmarks *Bookmarks
+}
 
-func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
+func NewHandler(s *Service, b *Bookmarks) *Handler { return &Handler{Svc: s, Bookmarks: b} }
 
 type catalogueResp struct {
 	Catalogue []CatalogEntry `json:"catalogue"`
@@ -26,7 +30,7 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, catalogueResp{
-		Catalogue: reg.CatalogFor(u.Role),
+		Catalogue: reg.CatalogFor(u.Role, u.TenantID),
 		Tags:      reg.Tags(),
 	})
 }
@@ -106,6 +110,90 @@ func (h *Handler) StartPage(w http.ResponseWriter, r *http.Request) {
 		href = "/dashboard"
 	}
 	writeJSON(w, http.StatusOK, startPageResp{Href: href})
+}
+
+type bookmarkReq struct {
+	EntityKind string    `json:"entity_kind"`
+	EntityID   uuid.UUID `json:"entity_id"`
+}
+
+type bookmarkResp struct {
+	ItemKey string `json:"item_key"`
+}
+
+// POST /api/nav/bookmark — pin an entity for the caller.
+func (h *Handler) PinBookmark(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req bookmarkReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.TenantID, u.Role, EntityKind(req.EntityKind), req.EntityID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrUnknownEntityKind):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrEntityNotFound):
+			// 404 doesn't leak existence — same response either way.
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrEntityArchived):
+			http.Error(w, "archived", http.StatusConflict)
+		case errors.Is(err, ErrBookmarkCap):
+			http.Error(w, "cap reached", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, bookmarkResp{ItemKey: key})
+}
+
+// DELETE /api/nav/bookmark — unpin an entity for the caller.
+// Body shape mirrors PinBookmark to keep the client surface symmetric.
+func (h *Handler) UnpinBookmark(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req bookmarkReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Bookmarks.Unpin(r.Context(), u.ID, u.TenantID, EntityKind(req.EntityKind), req.EntityID); err != nil {
+		switch {
+		case errors.Is(err, ErrUnknownEntityKind):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type bookmarkCheckResp struct {
+	Pinned bool `json:"pinned"`
+}
+
+// GET /api/nav/bookmark/check?entity_kind=...&entity_id=... — drives pin button state.
+func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	q := r.URL.Query()
+	kind := EntityKind(q.Get("entity_kind"))
+	id, err := uuid.Parse(q.Get("entity_id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	pinned, err := h.Bookmarks.IsPinned(r.Context(), u.ID, u.TenantID, kind, id)
+	if err != nil {
+		if errors.Is(err, ErrUnknownEntityKind) {
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, bookmarkCheckResp{Pinned: pinned})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

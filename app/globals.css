@@ -646,6 +646,53 @@ button {
   font-size: 14px;
 }
 
+.pin-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pin-button--pinned {
+  color: var(--accent-pink, var(--ink-1));
+}
+
+.entity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entity-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--line-1);
+  border-radius: 6px;
+  background: var(--surface-1);
+}
+
+.entity-list__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entity-list__kind {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+}
+
+.entity-list__name {
+  font-size: 14px;
+  color: var(--ink-1);
+}
+
 .btn--block {
   width: 100%;
 }

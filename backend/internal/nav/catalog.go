@@ -5,7 +5,10 @@
 // go through a *Registry snapshot — not package-level globals.
 package nav
 
-import "github.com/mmffdev/vector-backend/internal/models"
+import (
+	"github.com/google/uuid"
+	"github.com/mmffdev/vector-backend/internal/models"
+)
 
 type NavItemKind string
 
@@ -26,6 +29,10 @@ type CatalogEntry struct {
 	DefaultOrder  int           `json:"defaultOrder"`
 	Icon          string        `json:"icon"`
 	TagEnum       string        `json:"tagEnum"`
+	// TenantID is non-nil only for entity pages. The handler uses it to
+	// filter the catalogue to the caller's tenant so a user never sees
+	// another tenant's entity bookmarks.
+	TenantID *uuid.UUID `json:"-"`
 }
 
 func roleAllowed(r models.Role, allowed []models.Role) bool {

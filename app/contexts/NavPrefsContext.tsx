@@ -40,6 +40,8 @@ export interface PutPrefsBody {
   start_page_key: string | null;
 }
 
+export type EntityKind = "portfolio" | "product";
+
 interface NavPrefsState {
   prefs: PrefRow[];
   catalogue: NavCatalogEntry[];
@@ -55,6 +57,11 @@ interface NavPrefsState {
   isPinnable: (key: string) => boolean;
   defaultPinned: NavCatalogEntry[];
   tagByEnum: (enumKey: string) => NavTagGroup | undefined;
+  // Entity bookmarks — pin/unpin a portfolio or product. The server is the
+  // source of truth; both methods refetch so the sidebar picks up the change.
+  isBookmarked: (kind: EntityKind, id: string) => boolean;
+  bookmark: (kind: EntityKind, id: string) => Promise<void>;
+  unbookmark: (kind: EntityKind, id: string) => Promise<void>;
 }
 
 const Ctx = createContext<NavPrefsState | null>(null);
@@ -148,10 +155,44 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     [catalogue, tagByEnumMap],
   );
 
+  const entityKey = useCallback(
+    (kind: EntityKind, id: string) => `entity:${kind}:${id}`,
+    [],
+  );
+
+  const isBookmarked = useCallback(
+    (kind: EntityKind, id: string) =>
+      prefs.some((p) => p.item_key === entityKey(kind, id)),
+    [prefs, entityKey],
+  );
+
+  const bookmark = useCallback(
+    async (kind: EntityKind, id: string) => {
+      await api("/api/nav/bookmark", {
+        method: "POST",
+        body: JSON.stringify({ entity_kind: kind, entity_id: id }),
+      });
+      await refetch();
+    },
+    [refetch],
+  );
+
+  const unbookmark = useCallback(
+    async (kind: EntityKind, id: string) => {
+      await api("/api/nav/bookmark", {
+        method: "DELETE",
+        body: JSON.stringify({ entity_kind: kind, entity_id: id }),
+      });
+      await refetch();
+    },
+    [refetch],
+  );
+
   const value: NavPrefsState = {
     prefs, catalogue, tags, loading, error,
     refetch, save, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
+    isBookmarked, bookmark, unbookmark,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

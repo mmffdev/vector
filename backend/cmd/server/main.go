@@ -77,7 +77,10 @@ func main() {
 		log.Fatalf("nav registry: initial load: %v", err)
 	}
 	navSvc := nav.New(pool, navRegistry)
-	navH := nav.NewHandler(navSvc)
+	navBookmarks := nav.NewBookmarks(pool, navRegistry)
+	navH := nav.NewHandler(navSvc, navBookmarks)
+	navEntitiesSvc := nav.NewEntitiesService(pool)
+	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -131,6 +134,10 @@ func main() {
 		r.Put("/prefs", navH.PutPrefs)
 		r.Delete("/prefs", navH.DeletePrefs)
 		r.Get("/start-page", navH.StartPage)
+		r.Post("/bookmark", navH.PinBookmark)
+		r.Delete("/bookmark", navH.UnpinBookmark)
+		r.Get("/bookmark/check", navH.CheckBookmark)
+		r.Get("/entities", navEntitiesH.List)
 	})
 
 	// ---- /api/admin ----
