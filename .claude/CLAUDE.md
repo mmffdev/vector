@@ -23,6 +23,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Bash commands** → [`docs/c_bash.md`](../docs/c_bash.md) — verified commands only; grouped by domain.
 - **Postgres ops** → [`docs/c_postgresql.md`](../docs/c_postgresql.md) — tunnel, pg_dump, psql, migrations.
 - **Postgres introspection cookbook** → [`docs/c_c_db_playbook.md`](../docs/c_c_db_playbook.md) — copy-paste queries for columns/FKs/constraints/triggers + backfill verification recipes + rename-audit checklist.
+- **Adminer web DB UI** → [`docs/c_c_adminer.md`](../docs/c_c_adminer.md) — Adminer container on the server, reached via tunnel at `http://localhost:8081`; login crib + lifecycle.
+- **Laptop bootstrap (`./dev/scripts/bootstrap_laptop.sh`)** → [`docs/c_laptop_bootstrap.md`](../docs/c_laptop_bootstrap.md) — clone+pull+go: links auto-memory, runs ssh_manager, optional LaunchAgent for auto-tunnel.
 - **SSH reference** → [`docs/c_ssh.md`](../docs/c_ssh.md) — host aliases, key, tunnel lifecycle.
 - **Deployment context** → [`docs/c_deployment.md`](../docs/c_deployment.md) — hosted vs on-prem, Docker container, DB name.
 - **App Router layout** → [`docs/c_page-structure.md`](../docs/c_page-structure.md) — route groups, role gating, PageShell.

@@ -33,12 +33,13 @@ Host mmffdev-pg
   HostName mmffdev.com
   User root
   LocalForward 5434 localhost:5432
+  LocalForward 8081 localhost:8081
   ServerAliveInterval 30
   ServerAliveCountMax 3
   ExitOnForwardFailure yes
 ```
 
-Use: `ssh -N -f mmffdev-pg` to open the tunnel. `ExitOnForwardFailure yes` means if port 5434 is already taken locally, `ssh` exits with an error instead of silently connecting without the forward.
+Use: `ssh -N -f mmffdev-pg` to open the tunnel. `ExitOnForwardFailure yes` means if either forwarded port is already taken locally, `ssh` exits with an error instead of silently connecting without the forward. Forwards: `5434 → server:5432` (Postgres) and `8081 → server:8081` (Adminer — see [c_c_adminer.md](c_c_adminer.md)).
 
 ### `mmffdev-admin` — interactive / one-off root shell
 
