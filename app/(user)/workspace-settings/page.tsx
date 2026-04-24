@@ -8,7 +8,7 @@ import { api, ApiError } from "@/app/lib/api";
 
 interface AdminUser {
   id: string;
-  tenant_id: string;
+  subscription_id: string;
   email: string;
   role: Role;
   is_active: boolean;

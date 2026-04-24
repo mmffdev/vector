@@ -75,41 +75,41 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func())
 	ctx := context.Background()
 
 	suffix := uuid.NewString()[:8]
-	var tenantID uuid.UUID
+	var subscriptionID uuid.UUID
 	err := pool.QueryRow(ctx, `
-		INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id`,
-		"nav-test-"+suffix, "nav-test-"+suffix).Scan(&tenantID)
+		INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
+		"nav-test-"+suffix, "nav-test-"+suffix).Scan(&subscriptionID)
 	if err != nil {
 		t.Fatalf("insert tenant: %v", err)
 	}
 
 	var userID uuid.UUID
 	err = pool.QueryRow(ctx, `
-		INSERT INTO users (tenant_id, email, password_hash, role)
+		INSERT INTO users (subscription_id, email, password_hash, role)
 		VALUES ($1, $2, $3, 'user') RETURNING id`,
-		tenantID, "nav-test-"+suffix+"@example.com",
+		subscriptionID, "nav-test-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd").Scan(&userID)
 	if err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
 
 	cleanup := func() {
-		// ON DELETE CASCADE on users.tenant_id is RESTRICT, so we delete
+		// ON DELETE CASCADE on users.subscription_id is RESTRICT, so we delete
 		// user first, then tenant. user_nav_prefs cascades from users.
 		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
 			t.Logf("cleanup user: %v", err)
 		}
-		if _, err := pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenantID); err != nil {
+		if _, err := pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, subscriptionID); err != nil {
 			t.Logf("cleanup tenant: %v", err)
 		}
 	}
-	return tenantID, userID, cleanup
+	return subscriptionID, userID, cleanup
 }
 
 func TestReplacePrefs_HappyPath(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
@@ -118,7 +118,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 	// dashboard + my-vista share tag 'personal'; portfolio is 'planning'.
 	// Order the pinned list so same-tag items stay contiguous.
 	startKey := "my-vista"
-	err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -127,7 +127,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Fatalf("ReplacePrefs: %v", err)
 	}
 
-	rows, err := svc.GetPrefs(ctx, userID, tenantID)
+	rows, err := svc.GetPrefs(ctx, userID, subscriptionID)
 	if err != nil {
 		t.Fatalf("GetPrefs: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Errorf("row 1 should be start page: %+v", rows[1])
 	}
 
-	href, ok, err := svc.GetStartPageHref(ctx, userID, tenantID, models.RoleUser)
+	href, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, models.RoleUser)
 	if err != nil || !ok {
 		t.Fatalf("start page lookup: ok=%v err=%v", ok, err)
 	}
@@ -153,11 +153,11 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dev", Position: 0},
 	}, nil, nil)
 	if !errors.Is(err, ErrNotPinnable) {
@@ -168,11 +168,11 @@ func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "does-not-exist", Position: 0},
 	}, nil, nil)
 	if !errors.Is(err, ErrUnknownItemKey) {
@@ -183,12 +183,12 @@ func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	startKey := "planning"
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, &startKey, nil)
 	if !errors.Is(err, ErrStartPageNotPinned) {
@@ -199,11 +199,11 @@ func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 2},
 	}, nil, nil)
@@ -215,11 +215,11 @@ func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "dashboard", Position: 1},
 	}, nil, nil)
@@ -231,13 +231,13 @@ func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 func TestReplacePrefs_RejectsNonContiguousGroups(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	// dashboard(personal), backlog(planning), my-vista(personal) —
 	// the 'personal' tag is split by a 'planning' item in the middle.
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "backlog", Position: 1},
 		{ItemKey: "my-vista", Position: 2},
@@ -250,14 +250,14 @@ func TestReplacePrefs_RejectsNonContiguousGroups(t *testing.T) {
 func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
 	// First write: 3 items — dashboard+my-vista (personal), portfolio (planning).
-	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -266,14 +266,14 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	}
 
 	// Second write: 2 items, both 'planning' tag.
-	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "backlog", Position: 0},
 		{ItemKey: "planning", Position: 1},
 	}, nil, nil); err != nil {
 		t.Fatalf("second write: %v", err)
 	}
 
-	rows, _ := svc.GetPrefs(ctx, userID, tenantID)
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID)
 	if len(rows) != 2 {
 		t.Fatalf("want 2 rows after overwrite, got %d", len(rows))
 	}
@@ -285,20 +285,20 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 func TestDeletePrefs_WipesRows(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
-	_ = svc.ReplacePrefs(ctx, userID, tenantID, models.RoleUser, []PinnedInput{
+	_ = svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, nil, nil)
 
-	if err := svc.DeletePrefs(ctx, userID, tenantID); err != nil {
+	if err := svc.DeletePrefs(ctx, userID, subscriptionID); err != nil {
 		t.Fatalf("DeletePrefs: %v", err)
 	}
-	rows, _ := svc.GetPrefs(ctx, userID, tenantID)
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID)
 	if len(rows) != 0 {
 		t.Fatalf("want 0 rows after delete, got %d", len(rows))
 	}
@@ -307,11 +307,11 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 func TestGetStartPageHref_NoneSet(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	_, ok, err := svc.GetStartPageHref(context.Background(), userID, tenantID, models.RoleUser)
+	_, ok, err := svc.GetStartPageHref(context.Background(), userID, subscriptionID, models.RoleUser)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}
@@ -323,12 +323,12 @@ func TestGetStartPageHref_NoneSet(t *testing.T) {
 func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	// workspace-settings is gadmin-only; a 'user' role must not pin it.
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
 	}, nil, nil)
 	if !errors.Is(err, ErrRoleForbidden) {
@@ -339,7 +339,7 @@ func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
@@ -347,7 +347,7 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 	for i := range pinned {
 		pinned[i] = PinnedInput{ItemKey: "dashboard", Position: i}
 	}
-	err := svc.ReplacePrefs(context.Background(), userID, tenantID, models.RoleUser, pinned, nil, nil)
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, pinned, nil, nil)
 	if !errors.Is(err, ErrTooManyPinned) {
 		t.Fatalf("want ErrTooManyPinned, got %v", err)
 	}
@@ -356,7 +356,7 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	tenantID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
@@ -364,14 +364,14 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 
 	// Seed as gadmin with workspace-settings as start page.
 	startKey := "workspace-settings"
-	if err := svc.ReplacePrefs(ctx, userID, tenantID, models.RoleGAdmin, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleGAdmin, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
 	}, &startKey, nil); err != nil {
 		t.Fatalf("seed as gadmin: %v", err)
 	}
 
 	// Now query as a 'user' (role demoted) — must silently fall back.
-	_, ok, err := svc.GetStartPageHref(ctx, userID, tenantID, models.RoleUser)
+	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, models.RoleUser)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}

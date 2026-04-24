@@ -23,7 +23,7 @@ type listResp struct {
 // GET /api/custom-pages — list this user's pages (no views).
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	pages, err := h.Svc.ListPagesOnly(r.Context(), u.ID, u.TenantID)
+	pages, err := h.Svc.ListPagesOnly(r.Context(), u.ID, u.SubscriptionID)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -39,7 +39,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	page, err := h.Svc.Get(r.Context(), u.ID, u.TenantID, id)
+	page, err := h.Svc.Get(r.Context(), u.ID, u.SubscriptionID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -64,7 +64,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	page, err := h.Svc.Create(r.Context(), u.ID, u.TenantID, req.Label, req.Icon)
+	page, err := h.Svc.Create(r.Context(), u.ID, u.SubscriptionID, req.Label, req.Icon)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrEmptyLabel),
@@ -98,7 +98,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	page, err := h.Svc.Patch(r.Context(), u.ID, u.TenantID, id, PatchInput{Label: req.Label, Icon: req.Icon})
+	page, err := h.Svc.Patch(r.Context(), u.ID, u.SubscriptionID, id, PatchInput{Label: req.Label, Icon: req.Icon})
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
@@ -124,7 +124,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.Delete(r.Context(), u.ID, u.TenantID, id); err != nil {
+	if err := h.Svc.Delete(r.Context(), u.ID, u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return

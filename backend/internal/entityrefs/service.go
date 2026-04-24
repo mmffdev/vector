@@ -83,33 +83,33 @@ func New(pool *pgxpool.Pool) *Service {
 // and ErrEntityArchived if the row exists but is archived.
 //
 // Callers pass in their open pgx.Tx so the row lock is held until
-// their commit/rollback. Returns the parent's tenant_id (always equal
-// to callerTenant on success — exposed so writers that derive other
+// their commit/rollback. Returns the parent's subscription_id (always equal
+// to callerSubscription on success — exposed so writers that derive other
 // values from it don't need a second read).
-func (s *Service) LoadParent(ctx context.Context, tx pgx.Tx, kind EntityKind, id uuid.UUID, callerTenant uuid.UUID) (parentTenant uuid.UUID, err error) {
+func (s *Service) LoadParent(ctx context.Context, tx pgx.Tx, kind EntityKind, id uuid.UUID, callerSubscription uuid.UUID) (parentSubscription uuid.UUID, err error) {
 	table, ok := parentTableFor(kind)
 	if !ok {
 		return uuid.Nil, ErrUnknownEntityKind
 	}
-	var tenantID uuid.UUID
+	var subscriptionID uuid.UUID
 	var archived *time.Time
 	// table is a hard-coded enum, not user input — safe to interpolate.
 	row := tx.QueryRow(ctx, fmt.Sprintf(
-		`SELECT tenant_id, archived_at FROM %s WHERE id = $1 FOR UPDATE`, table), id)
-	if err := row.Scan(&tenantID, &archived); err != nil {
+		`SELECT subscription_id, archived_at FROM %s WHERE id = $1 FOR UPDATE`, table), id)
+	if err := row.Scan(&subscriptionID, &archived); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, ErrEntityNotFound
 		}
 		return uuid.Nil, err
 	}
-	if tenantID != callerTenant {
+	if subscriptionID != callerSubscription {
 		// Don't leak existence — same error as not-found.
 		return uuid.Nil, ErrEntityNotFound
 	}
 	if archived != nil {
 		return uuid.Nil, ErrEntityArchived
 	}
-	return tenantID, nil
+	return subscriptionID, nil
 }
 
 // InsertEntityStakeholder writes one row to entity_stakeholders after
@@ -120,17 +120,17 @@ func (s *Service) LoadParent(ctx context.Context, tx pgx.Tx, kind EntityKind, id
 // Idempotent on (entity_kind, entity_id, user_id, role) per the
 // stakeholder_unique constraint — re-inserting the same triple is a
 // no-op (returns the existing id).
-func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind EntityKind, entityID, userID, callerTenant uuid.UUID, role string) (uuid.UUID, error) {
-	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerTenant); err != nil {
+func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind EntityKind, entityID, userID, callerSubscription uuid.UUID, role string) (uuid.UUID, error) {
+	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerSubscription); err != nil {
 		return uuid.Nil, err
 	}
 	var id uuid.UUID
 	err := tx.QueryRow(ctx, `
-		INSERT INTO entity_stakeholders (tenant_id, entity_kind, entity_id, user_id, role)
+		INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (entity_kind, entity_id, user_id, role) DO UPDATE SET role = EXCLUDED.role
 		RETURNING id`,
-		callerTenant, string(kind), entityID, userID, role,
+		callerSubscription, string(kind), entityID, userID, role,
 	).Scan(&id)
 	return id, err
 }
@@ -141,14 +141,14 @@ func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind E
 // page_entity_refs accepts a narrower vocabulary than the type allows:
 // {portfolio, product} only — workspace bookmarking is not implemented
 // (CHECK rejects it). Passing KindWorkspace returns ErrUnknownEntityKind.
-func (s *Service) InsertPageEntityRef(ctx context.Context, tx pgx.Tx, pageID uuid.UUID, kind EntityKind, entityID, callerTenant uuid.UUID) error {
+func (s *Service) InsertPageEntityRef(ctx context.Context, tx pgx.Tx, pageID uuid.UUID, kind EntityKind, entityID, callerSubscription uuid.UUID) error {
 	switch kind {
 	case KindPortfolio, KindProduct:
 		// allowed
 	default:
 		return ErrUnknownEntityKind
 	}
-	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerTenant); err != nil {
+	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerSubscription); err != nil {
 		return err
 	}
 	_, err := tx.Exec(ctx, `

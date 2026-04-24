@@ -34,7 +34,7 @@ func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 	p, err := h.Svc.Grant(r.Context(), GrantInput{
 		UserID: req.UserID, WorkspaceID: req.WorkspaceID,
 		CanView: req.CanView, CanEdit: req.CanEdit, CanAdmin: req.CanAdmin,
-	}, actor.TenantID, actor.ID, clientIP(r))
+	}, actor.SubscriptionID, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -53,7 +53,7 @@ func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.Revoke(r.Context(), id, actor.TenantID, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Revoke(r.Context(), id, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -73,7 +73,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad user_id", http.StatusBadRequest)
 			return
 		}
-		out, err := h.Svc.ListForUser(r.Context(), id, actor.TenantID)
+		out, err := h.Svc.ListForUser(r.Context(), id, actor.SubscriptionID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -87,7 +87,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad workspace_id", http.StatusBadRequest)
 			return
 		}
-		out, err := h.Svc.ListForWorkspace(r.Context(), id, actor.TenantID)
+		out, err := h.Svc.ListForWorkspace(r.Context(), id, actor.SubscriptionID)
 		if err != nil {
 			if errors.Is(err, ErrNotFound) {
 				http.Error(w, "not found", http.StatusNotFound)

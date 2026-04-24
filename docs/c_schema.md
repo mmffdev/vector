@@ -1,6 +1,6 @@
 # Database schema — golden source
 
-> Last verified live: 2026-04-23 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-23 post-PR-4 to add migrations 014–016 and the `user_custom_pages` / `user_custom_page_views` tables.
+> Last verified live: 2026-04-24 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-24 post Phase-0 (`mmff_library` adoption) for migrations 017 (`tenants → subscriptions` rename), 018 (`subscriptions.tier`), 019 (`pending_library_cleanup_jobs`).
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
@@ -18,13 +18,13 @@ If you find drift, re-run the snapshot at the bottom of this file and update.
 
 These rules are the contract; every query/handler/migration honours them.
 
-1. **Tenant isolation by row.** Every business table carries `tenant_id UUID NOT NULL REFERENCES tenants(id)`. Every read path MUST filter by the session's tenant. A query that forgets `WHERE tenant_id = $1` is a data leak.
+1. **Subscription isolation by row.** Every business table carries `subscription_id UUID NOT NULL REFERENCES subscriptions(id)`. Every read path MUST filter by the session's subscription. A query that forgets `WHERE subscription_id = $1` is a data leak. (Renamed from `tenant_id`/`tenants` in migration 017; the JWT layer dual-accepts the old `tenant_id` claim for one release.)
 2. **Soft-archive only.** Business rows expose `archived_at TIMESTAMPTZ` and are never hard-deleted (SoW §7 audit-trail requirement). `WHERE archived_at IS NULL` is the live-row predicate; partial indexes (`… WHERE archived_at IS NULL`) accelerate it.
 3. **UUIDs are the identity.** Primary keys are `UUID DEFAULT gen_random_uuid()` (`pgcrypto`). Human-readable references (`US-00000347`) are rendered at display time from `key_num` + the current tag on `*_item_types`; they are NOT stored on work items.
-4. **Per-tenant key counters.** `tenant_sequence(tenant_id, scope)` hands out monotonic `key_num` values. Gaps are permitted (archived numbers never reused). Lock pattern: `SELECT next_num … FOR UPDATE; UPDATE … SET next_num = next_num + 1`.
+4. **Per-subscription key counters.** `subscription_sequence(subscription_id, scope)` hands out monotonic `key_num` values. Gaps are permitted (archived numbers never reused). Lock pattern: `SELECT next_num … FOR UPDATE; UPDATE … SET next_num = next_num + 1`.
 5. **`updated_at` is trigger-maintained.** Tables with an `updated_at` column have a `BEFORE UPDATE` trigger calling `set_updated_at()`. Handlers never set it explicitly.
 6. **Append-only history.** `item_state_history` rejects UPDATE and DELETE via trigger. `audit_log` is append-only by convention.
-7. **Polymorphic FKs — layered enforcement.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, and `page_entity_refs.entity_id` point at different tables depending on a `*_kind` discriminator. The DB enforces the vocabulary (CHECK); migration 013 dispatch triggers enforce parent existence + tenant match + non-archived parent on INSERT/UPDATE for three of the four tables (`item_state_history` deferred — parent tables not yet built). The Go `entityrefs` service is the required writer path for the other three. See [`c_polymorphic_writes.md`](c_polymorphic_writes.md).
+7. **Polymorphic FKs — layered enforcement.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, and `page_entity_refs.entity_id` point at different tables depending on a `*_kind` discriminator. The DB enforces the vocabulary (CHECK); migration 013 dispatch triggers enforce parent existence + subscription match + non-archived parent on INSERT/UPDATE for three of the four tables (`item_state_history` deferred — parent tables not yet built). The Go `entityrefs` service is the required writer path for the other three. See [`c_polymorphic_writes.md`](c_polymorphic_writes.md).
 
 ---
 
@@ -32,16 +32,17 @@ These rules are the contract; every query/handler/migration honours them.
 
 | Domain | Tables |
 |---|---|
-| Tenancy & auth | `tenants`, `users`, `sessions`, `password_resets` |
+| Subscription & auth | `subscriptions`, `users`, `sessions`, `password_resets` |
 | ACL | `user_workspace_permissions` |
 | Audit & history | `audit_log`, `item_state_history` |
-| Numbering | `tenant_sequence` |
+| Numbering | `subscription_sequence` |
 | Portfolio stack | `company_roadmap`, `workspace`, `portfolio`, `product`, `entity_stakeholders` |
 | Item type catalogues | `portfolio_item_types`, `execution_item_types` |
 | Workflow states | `canonical_states`, `item_type_states`, `item_type_transition_edges` |
 | Page registry | `pages`, `page_tags`, `page_roles`, `page_entity_refs` |
 | User navigation | `user_nav_prefs`, `user_nav_groups` |
 | User custom pages | `user_custom_pages`, `user_custom_page_views` |
+| Library reconciliation | `pending_library_cleanup_jobs` |
 
 ---
 
@@ -49,9 +50,9 @@ These rules are the contract; every query/handler/migration honours them.
 
 Notation: `pk` = primary key. `→ table.col (rule)` = FK target with ON DELETE rule. `*` after a column name = NOT NULL.
 
-### `tenants`
+### `subscriptions`
 
-The root of multi-tenancy. Every business row pivots off a `tenant_id`.
+The root of multi-subscription isolation. Every business row pivots off a `subscription_id`. (Renamed from `tenants` in migration 017; migration 018 added `tier`.)
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -59,17 +60,18 @@ The root of multi-tenancy. Every business row pivots off a `tenant_id`.
 | `name`* | text | no | — | |
 | `slug`* | text | no | — | |
 | `is_active`* | bool | no | `true` | |
+| `tier`* | text | no | `'pro'` | CHECK in (`free`,`pro`,`enterprise`); drives `mmff_library` entitlements |
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
 
 ### `users`
 
-Identity. One row per human; tied to one tenant.
+Identity. One row per human; tied to one subscription.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `email`* | text | no | — | unique |
 | `password_hash`* | text | no | — | bcrypt |
 | `role`* | enum `user_role` | no | `'user'` | `gadmin` / `padmin` / `user` |
@@ -142,7 +144,7 @@ Append-only action log. NULL `user_id` = anonymous/system.
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
 | `user_id` | uuid | yes | — | → `users.id` (SET NULL) |
-| `tenant_id` | uuid | yes | — | → `tenants.id` (SET NULL) |
+| `subscription_id` | uuid | yes | — | → `subscriptions.id` (SET NULL) |
 | `action`* | text | no | — | e.g. `auth.login`, `user.created` |
 | `resource` | text | yes | — | e.g. `user`, `workspace` |
 | `resource_id` | text | yes | — | uuid or other id, free-form |
@@ -150,13 +152,13 @@ Append-only action log. NULL `user_id` = anonymous/system.
 | `ip_address` | inet | yes | — | |
 | `created_at`* | timestamptz | no | `now()` | |
 
-### `tenant_sequence`
+### `subscription_sequence`
 
-Per-tenant monotonic counters keyed by `scope` (e.g. `'workspace'`, `'portfolio'`).
+Per-subscription monotonic counters keyed by `scope` (e.g. `'workspace'`, `'portfolio'`). (Renamed from `tenant_sequence` in migration 017.)
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT). pk part. |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT). pk part. |
 | `scope`* | text | no | — | pk part |
 | `next_num`* | bigint | no | `1` | next allocation |
 | `updated_at`* | timestamptz | no | `now()` | |
@@ -168,8 +170,8 @@ The top of the portfolio stack. Owner user is RESTRICT-protected.
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
-| `key_num`* | bigint | no | — | unique within tenant |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
+| `key_num`* | bigint | no | — | unique within subscription |
 | `name`* | text | no | — | |
 | `owner_user_id`* | uuid | no | — | → `users.id` (RESTRICT) |
 | `archived_at` | timestamptz | yes | — | soft-archive |
@@ -183,9 +185,9 @@ A division/area of work under a `company_roadmap`.
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `company_roadmap_id`* | uuid | no | — | → `company_roadmap.id` (RESTRICT) |
-| `key_num`* | bigint | no | — | unique within tenant |
+| `key_num`* | bigint | no | — | unique within subscription |
 | `name`* | text | no | — | |
 | `owner_user_id`* | uuid | no | — | → `users.id` (RESTRICT) |
 | `archived_at` | timestamptz | yes | — | |
@@ -199,7 +201,7 @@ A grouping of products inside a workspace.
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `workspace_id`* | uuid | no | — | → `workspace.id` (RESTRICT) |
 | `type_id` | uuid | yes | — | → `portfolio_item_types.id` (catalogue lookup) |
 | `key_num`* | bigint | no | — | |
@@ -216,7 +218,7 @@ The smallest portfolio-stack node — a product/service. Optionally nests under 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `workspace_id`* | uuid | no | — | → `workspace.id` (RESTRICT) |
 | `parent_portfolio_id` | uuid | yes | — | → `portfolio.id` (RESTRICT) |
 | `type_id` | uuid | yes | — | catalogue lookup |
@@ -234,7 +236,7 @@ Polymorphic ownership/role grants on portfolio entities. `entity_kind` ∈ {`com
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `entity_kind`* | text | no | — | CHECK against vocabulary |
 | `entity_id`* | uuid | no | — | app-enforced FK |
 | `user_id`* | uuid | no | — | → `users.id` (RESTRICT) |
@@ -243,12 +245,12 @@ Polymorphic ownership/role grants on portfolio entities. `entity_kind` ∈ {`com
 
 ### `portfolio_item_types`
 
-Per-tenant catalogue of portfolio-stack node types (the catalogue, not instances).
+Per-subscription catalogue of portfolio-stack node types (the catalogue, not instances).
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `name`* | text | no | — | display name |
 | `tag`* | text | no | — | short tag (e.g. `WS`, `PT`); used in human IDs |
 | `sort_order`* | int | no | `0` | |
@@ -258,12 +260,12 @@ Per-tenant catalogue of portfolio-stack node types (the catalogue, not instances
 
 ### `execution_item_types`
 
-Per-tenant catalogue of work-item types (user-story, task, …). Same shape as portfolio_item_types.
+Per-subscription catalogue of work-item types (user-story, task, …). Same shape as portfolio_item_types.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `name`* | text | no | — | |
 | `tag`* | text | no | — | |
 | `sort_order`* | int | no | `0` | |
@@ -273,7 +275,7 @@ Per-tenant catalogue of work-item types (user-story, task, …). Same shape as p
 
 ### `canonical_states`
 
-Global vocabulary of workflow state semantics. Seeded once; not per-tenant.
+Global vocabulary of workflow state semantics. Seeded once; not per-subscription.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -285,12 +287,12 @@ Global vocabulary of workflow state semantics. Seeded once; not per-tenant.
 
 ### `item_type_states`
 
-Per-(tenant, item-type) state instances. `item_type_kind` ∈ {`portfolio`, `execution`}.
+Per-(subscription, item-type) state instances. `item_type_kind` ∈ {`portfolio`, `execution`}.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `item_type_id`* | uuid | no | — | app-enforced FK based on kind |
 | `item_type_kind`* | text | no | — | CHECK |
 | `name`* | text | no | — | |
@@ -307,7 +309,7 @@ Allowed transitions between `item_type_states` for a given item-type.
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `item_type_id`* | uuid | no | — | app-enforced FK |
 | `item_type_kind`* | text | no | — | |
 | `from_state_id`* | uuid | no | — | → `item_type_states.id` (RESTRICT) |
@@ -321,7 +323,7 @@ Append-only state-change journal. UPDATE/DELETE rejected by trigger.
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (RESTRICT) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `item_id`* | uuid | no | — | app-enforced FK to item table |
 | `item_type_id`* | uuid | no | — | |
 | `item_type_kind`* | text | no | — | |
@@ -332,7 +334,7 @@ Append-only state-change journal. UPDATE/DELETE rejected by trigger.
 
 ### `pages`
 
-Page-registry catalogue. System pages have `tenant_id`/`created_by` NULL; tenant-shared have `tenant_id` set; user-custom have both `tenant_id` and `created_by` set. Uniqueness enforced by three partial indexes (see migration 012).
+Page-registry catalogue. System pages have `subscription_id`/`created_by` NULL; subscription-shared have `subscription_id` set; user-custom have both `subscription_id` and `created_by` set. Uniqueness enforced by three partial indexes (see migration 012).
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -347,7 +349,7 @@ Page-registry catalogue. System pages have `tenant_id`/`created_by` NULL; tenant
 | `default_pinned`* | bool | no | `false` | |
 | `default_order`* | int | no | `0` | |
 | `created_by` | uuid | yes | — | → `users.id` (CASCADE). NULL = system/shared |
-| `tenant_id` | uuid | yes | — | → `tenants.id` (CASCADE). NULL = global system page |
+| `subscription_id` | uuid | yes | — | → `subscriptions.id` (CASCADE). NULL = global system page |
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | |
 
@@ -390,7 +392,7 @@ A user's personalised sidebar — pinned items, ordering, optional grouping & ne
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
 | `user_id`* | uuid | no | — | → `users.id` (CASCADE) |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (CASCADE) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (CASCADE) |
 | `profile_id` | uuid | yes | — | reserved for Phase 5 named profiles; MVP writes NULL |
 | `item_key`* | text | no | — | catalogue key (matches `pages.key_enum` or static id) |
 | `position`* | int | no | — | order within parent/group/tag |
@@ -401,9 +403,9 @@ A user's personalised sidebar — pinned items, ordering, optional grouping & ne
 | `updated_at`* | timestamptz | no | `now()` | |
 
 Constraints:
-- `UNIQUE (user_id, tenant_id, profile_id, item_key)`
-- `UNIQUE (user_id, tenant_id, profile_id, position)` DEFERRABLE INITIALLY DEFERRED
-- Partial unique index `(user_id, tenant_id, profile_id) WHERE is_start_page = TRUE`
+- `UNIQUE (user_id, subscription_id, profile_id, item_key)`
+- `UNIQUE (user_id, subscription_id, profile_id, position)` DEFERRABLE INITIALLY DEFERRED
+- Partial unique index `(user_id, subscription_id, profile_id) WHERE is_start_page = TRUE`
 
 ### `user_nav_groups`
 
@@ -420,21 +422,43 @@ User-defined nav buckets (custom groups). Items live in `user_nav_prefs.group_id
 
 ### `user_custom_pages`
 
-User-authored container pages (migration 016). Each page owns one or more views (timeline / board / list). The page surfaces in the nav catalogue as `kind="user_custom"` with `item_key="custom:<id>"` and `href="/p/<id>"`. Max 50 pages per user/tenant. No soft-archive; hard delete cascades to views. See [`docs/c_c_custom_pages.md`](c_c_custom_pages.md).
+User-authored container pages (migration 016). Each page owns one or more views (timeline / board / list). The page surfaces in the nav catalogue as `kind="user_custom"` with `item_key="custom:<id>"` and `href="/p/<id>"`. Max 50 pages per user/subscription. No soft-archive; hard delete cascades to views. See [`docs/c_c_custom_pages.md`](c_c_custom_pages.md).
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
 | `user_id`* | uuid | no | — | → `users.id` (CASCADE) |
-| `tenant_id`* | uuid | no | — | → `tenants.id` (CASCADE) |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (CASCADE) |
 | `label`* | text | no | — | trimmed; CHECK `length > 0` |
 | `icon`* | text | no | `'folder'` | icon key |
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
 
 Constraints:
-- `UNIQUE (user_id, tenant_id, label)` — label unique per owner within tenant.
-- Index `idx_user_custom_pages_owner ON (user_id, tenant_id)`.
+- `UNIQUE (user_id, subscription_id, label)` — label unique per owner within subscription.
+- Index `idx_user_custom_pages_owner ON (user_id, subscription_id)`.
+
+### `pending_library_cleanup_jobs`
+
+Postgres-backed work queue for cross-DB cleanup of `mmff_library`-derived entities (migration 019). The archive saga can't span two Postgres databases atomically, so writers enqueue here in the same txn as the archive UPDATE; a worker drains via `SELECT ... FOR UPDATE SKIP LOCKED` and DELETE-on-success / retry-with-backoff on failure (see `dev/planning/feature_library_db_and_portfolio_presets_v3.md` §4).
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
+| `job_kind`* | text | no | — | CHECK in (`preset_archive_propagation`, `template_instance_unlink`, `library_mirror_purge`) |
+| `payload`* | jsonb | no | — | worker-specific (entity ids, library refs) |
+| `status`* | text | no | `'pending'` | CHECK in (`pending`, `dead`) |
+| `attempts`* | int | no | `0` | CHECK ≥ 0 |
+| `max_attempts`* | int | no | `8` | CHECK > 0; row moves to `dead` once exceeded |
+| `last_error` | text | yes | — | populated on failed claim |
+| `visible_at`* | timestamptz | no | `now()` | claim gate; bumped on retry with exp backoff |
+| `created_at`* | timestamptz | no | `now()` | |
+| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+
+Indexes:
+- `idx_pending_library_cleanup_jobs_claimable ON (visible_at) WHERE status = 'pending'` — hot path for worker poll.
+- `idx_pending_library_cleanup_jobs_dead ON (subscription_id, updated_at DESC) WHERE status = 'dead'` — ops dead-letter view.
 
 ### `user_custom_page_views`
 
@@ -464,75 +488,77 @@ Reading: `child.col → parent.col (RULE)` means "when parent row is deleted, do
 
 ```
 audit_log.user_id              → users.id              (SET NULL)
-audit_log.tenant_id            → tenants.id            (SET NULL)
+audit_log.subscription_id      → subscriptions.id      (SET NULL)
 
-company_roadmap.tenant_id      → tenants.id            (RESTRICT)
-company_roadmap.owner_user_id  → users.id              (RESTRICT)
+company_roadmap.subscription_id  → subscriptions.id    (RESTRICT)
+company_roadmap.owner_user_id    → users.id            (RESTRICT)
 
-entity_stakeholders.tenant_id  → tenants.id            (RESTRICT)
-entity_stakeholders.user_id    → users.id              (RESTRICT)
+entity_stakeholders.subscription_id → subscriptions.id (RESTRICT)
+entity_stakeholders.user_id      → users.id            (RESTRICT)
 
-execution_item_types.tenant_id → tenants.id            (RESTRICT)
+execution_item_types.subscription_id → subscriptions.id (RESTRICT)
 
-item_state_history.tenant_id        → tenants.id            (RESTRICT)
-item_state_history.from_state_id    → item_type_states.id   (RESTRICT)
-item_state_history.to_state_id      → item_type_states.id   (RESTRICT)
-item_state_history.transitioned_by  → users.id              (RESTRICT)
+item_state_history.subscription_id  → subscriptions.id     (RESTRICT)
+item_state_history.from_state_id    → item_type_states.id  (RESTRICT)
+item_state_history.to_state_id      → item_type_states.id  (RESTRICT)
+item_state_history.transitioned_by  → users.id             (RESTRICT)
 
-item_type_states.tenant_id           → tenants.id            (RESTRICT)
+item_type_states.subscription_id     → subscriptions.id      (RESTRICT)
 item_type_states.canonical_code      → canonical_states.code (RESTRICT)
 
-item_type_transition_edges.tenant_id      → tenants.id          (RESTRICT)
-item_type_transition_edges.from_state_id  → item_type_states.id (RESTRICT)
-item_type_transition_edges.to_state_id    → item_type_states.id (RESTRICT)
+item_type_transition_edges.subscription_id → subscriptions.id    (RESTRICT)
+item_type_transition_edges.from_state_id   → item_type_states.id (RESTRICT)
+item_type_transition_edges.to_state_id     → item_type_states.id (RESTRICT)
 
 page_entity_refs.page_id       → pages.id              (CASCADE)
 page_roles.page_id             → pages.id              (CASCADE)
 pages.tag_enum                 → page_tags.tag_enum    (NO ACTION)
 pages.created_by               → users.id              (CASCADE)
-pages.tenant_id                → tenants.id            (CASCADE)
+pages.subscription_id          → subscriptions.id      (CASCADE)
 
 password_resets.user_id        → users.id              (CASCADE)
 
-portfolio.tenant_id            → tenants.id            (RESTRICT)
+pending_library_cleanup_jobs.subscription_id → subscriptions.id (RESTRICT)
+
+portfolio.subscription_id      → subscriptions.id      (RESTRICT)
 portfolio.workspace_id         → workspace.id          (RESTRICT)
 portfolio.owner_user_id        → users.id              (RESTRICT)
 
-portfolio_item_types.tenant_id → tenants.id            (RESTRICT)
+portfolio_item_types.subscription_id → subscriptions.id (RESTRICT)
 
-product.tenant_id              → tenants.id            (RESTRICT)
+product.subscription_id        → subscriptions.id      (RESTRICT)
 product.workspace_id           → workspace.id          (RESTRICT)
 product.parent_portfolio_id    → portfolio.id          (RESTRICT)
 product.owner_user_id          → users.id              (RESTRICT)
 
 sessions.user_id               → users.id              (CASCADE)
 
-tenant_sequence.tenant_id      → tenants.id            (RESTRICT)
+subscription_sequence.subscription_id → subscriptions.id (RESTRICT)
 
-user_custom_pages.user_id      → users.id              (CASCADE)
-user_custom_pages.tenant_id    → tenants.id            (CASCADE)
+user_custom_pages.user_id          → users.id          (CASCADE)
+user_custom_pages.subscription_id  → subscriptions.id  (CASCADE)
 
 user_custom_page_views.page_id → user_custom_pages.id  (CASCADE)
 
 user_nav_groups.user_id        → users.id              (CASCADE)
 
-user_nav_prefs.user_id         → users.id              (CASCADE)
-user_nav_prefs.tenant_id       → tenants.id            (CASCADE)
-user_nav_prefs.group_id        → user_nav_groups.id    (SET NULL)
+user_nav_prefs.user_id           → users.id              (CASCADE)
+user_nav_prefs.subscription_id   → subscriptions.id      (CASCADE)
+user_nav_prefs.group_id          → user_nav_groups.id    (SET NULL)
 
 user_workspace_permissions.user_id      → users.id     (CASCADE)
 user_workspace_permissions.workspace_id → workspace.id (CASCADE)
 user_workspace_permissions.granted_by   → users.id     (SET NULL)
 
-users.tenant_id                → tenants.id            (RESTRICT)
+users.subscription_id          → subscriptions.id      (RESTRICT)
 
-workspace.tenant_id            → tenants.id            (RESTRICT)
+workspace.subscription_id      → subscriptions.id      (RESTRICT)
 workspace.company_roadmap_id   → company_roadmap.id    (RESTRICT)
 workspace.owner_user_id        → users.id              (RESTRICT)
 ```
 
 Pattern summary:
-- **Auth/session/log/nav/page-children: CASCADE** — when a user, tenant, or page goes, take their dependent rows with them.
+- **Auth/session/log/nav/page-children: CASCADE** — when a user, subscription, or page goes, take their dependent rows with them.
 - **Portfolio stack: RESTRICT** — never silently drop owners or hierarchy. You must explicitly reassign / archive first.
 - **`granted_by`, `audit_log`: SET NULL** — preserve the audit row even after the actor is deleted.
 
@@ -541,10 +567,10 @@ Pattern summary:
 ## Migration order
 
 ```
-001_init.sql                       -- pgcrypto, user_role enum, tenants, users, sessions, audit_log
+001_init.sql                       -- pgcrypto, user_role enum, tenants (pre-rename), users, sessions, audit_log
 002_auth_permissions.sql           -- user extensions, password_resets, user_project_permissions (pre-rename)
 003_mfa_scaffold.sql               -- MFA columns on users (dormant)
-004_portfolio_stack.sql            -- tenant_sequence, company_roadmap, workspace, portfolio, product, entity_stakeholders
+004_portfolio_stack.sql            -- tenant_sequence (pre-rename), company_roadmap, workspace, portfolio, product, entity_stakeholders
 005_item_types.sql                 -- portfolio_item_types, execution_item_types + name-lock trigger
 006_states.sql                     -- canonical_states seed, item_type_states, item_type_transition_edges, item_state_history
 007_rename_permissions.sql         -- user_project_permissions → user_workspace_permissions + FK
@@ -557,13 +583,16 @@ Pattern summary:
 014_page_theme.sql                    -- page-level theme column (details in migration file)
 015_user_nav_icon_override.sql        -- per-user icon override on user_nav_prefs
 016_user_custom_pages.sql             -- user_custom_pages + user_custom_page_views + custom_view_kind enum
+017_subscriptions_rename.sql          -- tenants → subscriptions, tenant_id → subscription_id, tenant_sequence → subscription_sequence; FKs/indexes/triggers/dispatch fns updated in same tx (TD-LIB-001 Phase 0)
+018_subscription_tier.sql             -- subscriptions.tier TEXT NOT NULL DEFAULT 'pro' CHECK in (free,pro,enterprise) — drives mmff_library entitlements (TD-LIB-002)
+019_pending_library_cleanup_jobs.sql  -- cross-DB cleanup work queue for the archive saga (TD-LIB-003)
 ```
 
 ## Naming conventions
 
-- Tables: singular (`workspace`, `portfolio`) — rows are entities, not collections.
-- FKs: `<target>_id` (e.g. `tenant_id`, `workspace_id`, `owner_user_id`).
-- Unique key-num constraints: `<table>_key_unique UNIQUE (tenant_id, key_num)`.
+- Tables: singular (`workspace`, `portfolio`) — but `subscriptions` is plural for historical reasons (renamed from `tenants` in migration 017; the singular form `subscription` reads as a column reference).
+- FKs: `<target>_id` (e.g. `subscription_id`, `workspace_id`, `owner_user_id`).
+- Unique key-num constraints: `<table>_key_unique UNIQUE (subscription_id, key_num)`.
 - Indexes: `idx_<table>_<columns>`; active-row partials: `idx_<table>_active`.
 - Update triggers: `trg_<table>_updated_at`.
 

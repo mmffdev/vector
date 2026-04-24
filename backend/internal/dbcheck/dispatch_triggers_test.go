@@ -30,14 +30,14 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		defer tx.Rollback(ctx)
 
-		var userID, tenantID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id, tenant_id FROM users LIMIT 1`).Scan(&userID, &tenantID); err != nil {
+		var userID, subscriptionID uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id, subscription_id FROM users LIMIT 1`).Scan(&userID, &subscriptionID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (tenant_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
 			VALUES ($1, 'workspace', gen_random_uuid(), $2, 'test')`,
-			tenantID, userID)
+			subscriptionID, userID)
 		assertFKViolation(t, err)
 	})
 
@@ -48,8 +48,8 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		defer tx.Rollback(ctx)
 
-		var wsID, wsTenant uuid.UUID
-		err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant)
+		var wsID, wsSubscription uuid.UUID
+		err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription)
 		if err == pgx.ErrNoRows {
 			t.Skip("no live workspace in DB — cannot exercise valid-insert path")
 		}
@@ -57,15 +57,15 @@ func TestDispatchTriggers(t *testing.T) {
 			t.Fatalf("seed workspace: %v", err)
 		}
 		var userID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id = $1 LIMIT 1`, wsTenant).Scan(&userID); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE subscription_id = $1 LIMIT 1`, wsSubscription).Scan(&userID); err != nil {
 			if err := tx.QueryRow(ctx, `SELECT id FROM users LIMIT 1`).Scan(&userID); err != nil {
 				t.Fatalf("seed user: %v", err)
 			}
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (tenant_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
 			VALUES ($1, 'workspace', $2, $3, 'test_dispatch_lifecycle')`,
-			wsTenant, wsID, userID)
+			wsSubscription, wsID, userID)
 		if err != nil {
 			t.Fatalf("valid workspace parent insert rejected: %v", err)
 		}
@@ -78,8 +78,8 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		defer tx.Rollback(ctx)
 
-		var wsID, wsTenant uuid.UUID
-		err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant)
+		var wsID, wsSubscription uuid.UUID
+		err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription)
 		if err == pgx.ErrNoRows {
 			t.Skip("no live workspace in DB — cannot exercise archive-rejection path")
 		}
@@ -94,9 +94,9 @@ func TestDispatchTriggers(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (tenant_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
 			VALUES ($1, 'workspace', $2, $3, 'test_dispatch_archived')`,
-			wsTenant, wsID, userID)
+			wsSubscription, wsID, userID)
 		assertFKViolation(t, err)
 	})
 
@@ -107,8 +107,8 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		defer tx.Rollback(ctx)
 
-		var wsID, wsTenant uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant); err != nil {
+		var wsID, wsSubscription uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription); err != nil {
 			if err == pgx.ErrNoRows {
 				t.Skip("no live workspace in DB")
 			}
@@ -116,17 +116,17 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		// Synthesise a foreign tenant + foreign user
 		var foreignTenant, foreignUser uuid.UUID
-		if err := tx.QueryRow(ctx, `INSERT INTO tenants (name, slug) VALUES ('disp-test-'||gen_random_uuid(), 'disp-test-'||gen_random_uuid()) RETURNING id`).Scan(&foreignTenant); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO subscriptions (name, slug) VALUES ('disp-test-'||gen_random_uuid(), 'disp-test-'||gen_random_uuid()) RETURNING id`).Scan(&foreignTenant); err != nil {
 			t.Fatalf("seed foreign tenant: %v", err)
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO users (tenant_id, email, password_hash, role)
+			INSERT INTO users (subscription_id, email, password_hash, role)
 			VALUES ($1, 'disp-test-'||gen_random_uuid()||'@example.com', 'x', 'user')
 			RETURNING id`, foreignTenant).Scan(&foreignUser); err != nil {
 			t.Fatalf("seed foreign user: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (tenant_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
 			VALUES ($1, 'workspace', $2, $3, 'test_dispatch_cross_tenant')`,
 			foreignTenant, wsID, foreignUser)
 		assertFKViolation(t, err)
@@ -140,7 +140,7 @@ func TestDispatchTriggers(t *testing.T) {
 		defer tx.Rollback(ctx)
 
 		var pitID, pitTenant uuid.UUID
-		err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM portfolio_item_types WHERE archived_at IS NULL LIMIT 1`).Scan(&pitID, &pitTenant)
+		err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM portfolio_item_types WHERE archived_at IS NULL LIMIT 1`).Scan(&pitID, &pitTenant)
 		if err == pgx.ErrNoRows {
 			t.Skip("no live portfolio_item_types in DB")
 		}
@@ -148,7 +148,7 @@ func TestDispatchTriggers(t *testing.T) {
 			t.Fatalf("seed portfolio_item_types: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO item_type_states (tenant_id, item_type_id, item_type_kind, name, canonical_code, sort_order)
+			INSERT INTO item_type_states (subscription_id, item_type_id, item_type_kind, name, canonical_code, sort_order)
 			VALUES ($1, $2, 'portfolio', 'test_dispatch_state', 'defined', 99)`,
 			pitTenant, pitID)
 		if err != nil {
@@ -163,16 +163,16 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		defer tx.Rollback(ctx)
 
-		var tenantID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT tenant_id FROM portfolio_item_types LIMIT 1`).Scan(&tenantID); err != nil {
-			if err := tx.QueryRow(ctx, `SELECT id FROM tenants LIMIT 1`).Scan(&tenantID); err != nil {
+		var subscriptionID uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT subscription_id FROM portfolio_item_types LIMIT 1`).Scan(&subscriptionID); err != nil {
+			if err := tx.QueryRow(ctx, `SELECT id FROM subscriptions LIMIT 1`).Scan(&subscriptionID); err != nil {
 				t.Fatalf("seed tenant: %v", err)
 			}
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO item_type_states (tenant_id, item_type_id, item_type_kind, name, canonical_code, sort_order)
+			INSERT INTO item_type_states (subscription_id, item_type_id, item_type_kind, name, canonical_code, sort_order)
 			VALUES ($1, gen_random_uuid(), 'portfolio', 'test_dispatch_missing', 'defined', 99)`,
-			tenantID)
+			subscriptionID)
 		assertFKViolation(t, err)
 	})
 
@@ -184,7 +184,7 @@ func TestDispatchTriggers(t *testing.T) {
 		defer tx.Rollback(ctx)
 
 		var pitID, pitTenant uuid.UUID
-		err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM portfolio_item_types WHERE archived_at IS NULL LIMIT 1`).Scan(&pitID, &pitTenant)
+		err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM portfolio_item_types WHERE archived_at IS NULL LIMIT 1`).Scan(&pitID, &pitTenant)
 		if err == pgx.ErrNoRows {
 			t.Skip("no live portfolio_item_types in DB")
 		}
@@ -194,7 +194,7 @@ func TestDispatchTriggers(t *testing.T) {
 		// portfolio_item_types id used with execution kind — execution
 		// dispatch looks at execution_item_types, won't find it.
 		_, err = tx.Exec(ctx, `
-			INSERT INTO item_type_states (tenant_id, item_type_id, item_type_kind, name, canonical_code, sort_order)
+			INSERT INTO item_type_states (subscription_id, item_type_id, item_type_kind, name, canonical_code, sort_order)
 			VALUES ($1, $2, 'execution', 'test_dispatch_crosskind', 'defined', 99)`,
 			pitTenant, pitID)
 		assertFKViolation(t, err)
@@ -210,8 +210,8 @@ func TestDispatchTriggers(t *testing.T) {
 		// Seed a tenant-scoped page so the trigger's NULL-tenant guard
 		// doesn't fire first — we want to exercise the parent-missing
 		// branch specifically.
-		var tenantID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id FROM tenants LIMIT 1`).Scan(&tenantID); err != nil {
+		var subscriptionID uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id FROM subscriptions LIMIT 1`).Scan(&subscriptionID); err != nil {
 			t.Fatalf("seed tenant: %v", err)
 		}
 		// page_tags has a fixed FK vocabulary; pick any existing tag.
@@ -222,9 +222,9 @@ func TestDispatchTriggers(t *testing.T) {
 		var pageID uuid.UUID
 		suffix := uuid.NewString()[:8]
 		err = tx.QueryRow(ctx, `
-			INSERT INTO pages (tenant_id, key_enum, label, href, icon, tag_enum, kind)
+			INSERT INTO pages (subscription_id, key_enum, label, href, icon, tag_enum, kind)
 			VALUES ($1, $2, 'dispatch-test', '/dispatch-test', 'bookmark', $3, 'entity')
-			RETURNING id`, tenantID, "dispatch-test-"+suffix, tagEnum).Scan(&pageID)
+			RETURNING id`, subscriptionID, "dispatch-test-"+suffix, tagEnum).Scan(&pageID)
 		if err != nil {
 			t.Fatalf("seed page: %v", err)
 		}

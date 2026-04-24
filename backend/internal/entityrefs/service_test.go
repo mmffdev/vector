@@ -142,8 +142,8 @@ func TestLoadParent_CrossTenantHidesAsNotFound(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 
-	var wsID, wsTenant uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant)
+	var wsID, wsSubscription uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription)
 	if err == pgx.ErrNoRows {
 		t.Skip("no live workspace in DB")
 	}
@@ -170,8 +170,8 @@ func TestLoadParent_ArchivedRejected(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 
-	var wsID, wsTenant uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant)
+	var wsID, wsSubscription uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription)
 	if err == pgx.ErrNoRows {
 		t.Skip("no live workspace in DB")
 	}
@@ -183,7 +183,7 @@ func TestLoadParent_ArchivedRejected(t *testing.T) {
 	}
 
 	svc := New(pool)
-	_, err = svc.LoadParent(ctx, tx, KindWorkspace, wsID, wsTenant)
+	_, err = svc.LoadParent(ctx, tx, KindWorkspace, wsID, wsSubscription)
 	if !errors.Is(err, ErrEntityArchived) {
 		t.Fatalf("expected ErrEntityArchived, got %v", err)
 	}
@@ -199,8 +199,8 @@ func TestLoadParent_HappyPath(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 
-	var wsID, wsTenant uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant)
+	var wsID, wsSubscription uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription)
 	if err == pgx.ErrNoRows {
 		t.Skip("no live workspace in DB")
 	}
@@ -209,12 +209,12 @@ func TestLoadParent_HappyPath(t *testing.T) {
 	}
 
 	svc := New(pool)
-	got, err := svc.LoadParent(ctx, tx, KindWorkspace, wsID, wsTenant)
+	got, err := svc.LoadParent(ctx, tx, KindWorkspace, wsID, wsSubscription)
 	if err != nil {
 		t.Fatalf("LoadParent: %v", err)
 	}
-	if got != wsTenant {
-		t.Fatalf("LoadParent returned tenant %v, want %v", got, wsTenant)
+	if got != wsSubscription {
+		t.Fatalf("LoadParent returned tenant %v, want %v", got, wsSubscription)
 	}
 }
 
@@ -246,27 +246,27 @@ func TestCleanupChildren_DeletesPortfolioStakeholdersAndPageRefs(t *testing.T) {
 
 	// Find a portfolio (any tenant) we can synthesise stakeholder +
 	// page_entity_refs rows for, all rolled back at end of test.
-	var portID, portTenant uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM portfolio LIMIT 1`).Scan(&portID, &portTenant)
+	var portID, portSubscription uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM portfolio LIMIT 1`).Scan(&portID, &portSubscription)
 	if err == pgx.ErrNoRows {
 		// Seed a minimal portfolio inside the tx so the test still runs
 		// on DBs without one. portfolio requires
-		// (tenant_id, workspace_id, key_num, name, owner_user_id) — all
+		// (subscription_id, workspace_id, key_num, name, owner_user_id) — all
 		// NOT NULL with no defaults. Anchor on an existing workspace +
 		// user so foreign keys hold.
-		var wsID, wsTenant, ownerID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant); err != nil {
+		var wsID, wsSubscription, ownerID uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription); err != nil {
 			t.Skipf("no live workspace in DB to anchor portfolio seed: %v", err)
 		}
-		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id = $1 LIMIT 1`, wsTenant).Scan(&ownerID); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE subscription_id = $1 LIMIT 1`, wsSubscription).Scan(&ownerID); err != nil {
 			t.Skipf("no user in workspace tenant to own seeded portfolio: %v", err)
 		}
 		err = tx.QueryRow(ctx, `
-			INSERT INTO portfolio (tenant_id, workspace_id, name, owner_user_id, key_num)
+			INSERT INTO portfolio (subscription_id, workspace_id, name, owner_user_id, key_num)
 			VALUES ($1, $2, 'cleanup-test-'||gen_random_uuid(), $3,
-			        COALESCE((SELECT max(key_num) + 1 FROM portfolio WHERE tenant_id = $1), 1))
-			RETURNING id, tenant_id`,
-			wsTenant, wsID, ownerID).Scan(&portID, &portTenant)
+			        COALESCE((SELECT max(key_num) + 1 FROM portfolio WHERE subscription_id = $1), 1))
+			RETURNING id, subscription_id`,
+			wsSubscription, wsID, ownerID).Scan(&portID, &portSubscription)
 		if err != nil {
 			t.Skipf("cannot seed portfolio (schema may differ): %v", err)
 		}
@@ -276,15 +276,15 @@ func TestCleanupChildren_DeletesPortfolioStakeholdersAndPageRefs(t *testing.T) {
 
 	// Seed a stakeholder row pointing at this portfolio.
 	var userID uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id = $1 LIMIT 1`, portTenant).Scan(&userID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE subscription_id = $1 LIMIT 1`, portSubscription).Scan(&userID); err != nil {
 		if err := tx.QueryRow(ctx, `SELECT id FROM users LIMIT 1`).Scan(&userID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO entity_stakeholders (tenant_id, entity_kind, entity_id, user_id, role)
+		INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
 		VALUES ($1, 'portfolio', $2, $3, 'cleanup-test')`,
-		portTenant, portID, userID); err != nil {
+		portSubscription, portID, userID); err != nil {
 		t.Fatalf("seed stakeholder: %v", err)
 	}
 
@@ -296,9 +296,9 @@ func TestCleanupChildren_DeletesPortfolioStakeholdersAndPageRefs(t *testing.T) {
 	var pageID uuid.UUID
 	suffix := uuid.NewString()[:8]
 	err = tx.QueryRow(ctx, `
-		INSERT INTO pages (tenant_id, key_enum, label, href, icon, tag_enum, kind)
+		INSERT INTO pages (subscription_id, key_enum, label, href, icon, tag_enum, kind)
 		VALUES ($1, $2, 'cleanup-test', '/cleanup-test', 'folder', $3, 'entity')
-		RETURNING id`, portTenant, "cleanup-test-"+suffix, tagEnum).Scan(&pageID)
+		RETURNING id`, portSubscription, "cleanup-test-"+suffix, tagEnum).Scan(&pageID)
 	if err != nil {
 		t.Fatalf("seed page: %v", err)
 	}
@@ -373,18 +373,18 @@ func TestInsertEntityStakeholder_HappyPathAndIdempotent(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 
-	var wsID, wsTenant uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant); err != nil {
+	var wsID, wsSubscription uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription); err != nil {
 		t.Skipf("no live workspace in DB: %v", err)
 	}
 	var userID uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id = $1 LIMIT 1`, wsTenant).Scan(&userID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE subscription_id = $1 LIMIT 1`, wsSubscription).Scan(&userID); err != nil {
 		t.Skipf("no user in workspace tenant: %v", err)
 	}
 
 	svc := New(pool)
 
-	id1, err := svc.InsertEntityStakeholder(ctx, tx, KindWorkspace, wsID, userID, wsTenant, "test-insert-happy")
+	id1, err := svc.InsertEntityStakeholder(ctx, tx, KindWorkspace, wsID, userID, wsSubscription, "test-insert-happy")
 	if err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
@@ -394,7 +394,7 @@ func TestInsertEntityStakeholder_HappyPathAndIdempotent(t *testing.T) {
 
 	// Idempotent: same (entity_kind, entity_id, user_id, role) tuple
 	// must collapse onto the existing row, not error and not duplicate.
-	id2, err := svc.InsertEntityStakeholder(ctx, tx, KindWorkspace, wsID, userID, wsTenant, "test-insert-happy")
+	id2, err := svc.InsertEntityStakeholder(ctx, tx, KindWorkspace, wsID, userID, wsSubscription, "test-insert-happy")
 	if err != nil {
 		t.Fatalf("second insert (idempotent path): %v", err)
 	}
@@ -424,16 +424,16 @@ func TestInsertEntityStakeholder_RejectsCrossTenant(t *testing.T) {
 	}
 	defer tx.Rollback(ctx)
 
-	var wsID, wsTenant uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant); err != nil {
+	var wsID, wsSubscription uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription); err != nil {
 		t.Skipf("no live workspace in DB: %v", err)
 	}
 	var foreignTenant, foreignUser uuid.UUID
-	if err := tx.QueryRow(ctx, `INSERT INTO tenants (name, slug) VALUES ('insert-xt-'||gen_random_uuid(), 'insert-xt-'||gen_random_uuid()) RETURNING id`).Scan(&foreignTenant); err != nil {
+	if err := tx.QueryRow(ctx, `INSERT INTO subscriptions (name, slug) VALUES ('insert-xt-'||gen_random_uuid(), 'insert-xt-'||gen_random_uuid()) RETURNING id`).Scan(&foreignTenant); err != nil {
 		t.Fatalf("seed foreign tenant: %v", err)
 	}
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO users (tenant_id, email, password_hash, role)
+		INSERT INTO users (subscription_id, email, password_hash, role)
 		VALUES ($1, 'insert-xt-'||gen_random_uuid()||'@example.com', 'x', 'user')
 		RETURNING id`, foreignTenant).Scan(&foreignUser); err != nil {
 		t.Fatalf("seed foreign user: %v", err)
@@ -457,21 +457,21 @@ func TestInsertPageEntityRef_HappyPathAndIdempotent(t *testing.T) {
 	defer tx.Rollback(ctx)
 
 	// Anchor on a real portfolio (page_entity_refs vocab is portfolio|product).
-	var portID, portTenant uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id, tenant_id FROM portfolio WHERE archived_at IS NULL LIMIT 1`).Scan(&portID, &portTenant)
+	var portID, portSubscription uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id, subscription_id FROM portfolio WHERE archived_at IS NULL LIMIT 1`).Scan(&portID, &portSubscription)
 	if err == pgx.ErrNoRows {
-		var wsID, wsTenant, ownerID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id, tenant_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsTenant); err != nil {
+		var wsID, wsSubscription, ownerID uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id, subscription_id FROM workspace WHERE archived_at IS NULL LIMIT 1`).Scan(&wsID, &wsSubscription); err != nil {
 			t.Skipf("no live workspace to anchor portfolio seed: %v", err)
 		}
-		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE tenant_id = $1 LIMIT 1`, wsTenant).Scan(&ownerID); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE subscription_id = $1 LIMIT 1`, wsSubscription).Scan(&ownerID); err != nil {
 			t.Skipf("no user in workspace tenant: %v", err)
 		}
 		err = tx.QueryRow(ctx, `
-			INSERT INTO portfolio (tenant_id, workspace_id, name, owner_user_id, key_num)
+			INSERT INTO portfolio (subscription_id, workspace_id, name, owner_user_id, key_num)
 			VALUES ($1, $2, 'insert-pref-'||gen_random_uuid(), $3,
-			        COALESCE((SELECT max(key_num) + 1 FROM portfolio WHERE tenant_id = $1), 1))
-			RETURNING id, tenant_id`, wsTenant, wsID, ownerID).Scan(&portID, &portTenant)
+			        COALESCE((SELECT max(key_num) + 1 FROM portfolio WHERE subscription_id = $1), 1))
+			RETURNING id, subscription_id`, wsSubscription, wsID, ownerID).Scan(&portID, &portSubscription)
 		if err != nil {
 			t.Skipf("cannot seed portfolio: %v", err)
 		}
@@ -487,20 +487,20 @@ func TestInsertPageEntityRef_HappyPathAndIdempotent(t *testing.T) {
 	var pageID uuid.UUID
 	suffix := uuid.NewString()[:8]
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO pages (tenant_id, key_enum, label, href, icon, tag_enum, kind)
+		INSERT INTO pages (subscription_id, key_enum, label, href, icon, tag_enum, kind)
 		VALUES ($1, $2, 'insert-pref', '/insert-pref', 'folder', $3, 'entity')
-		RETURNING id`, portTenant, "insert-pref-"+suffix, tagEnum).Scan(&pageID); err != nil {
+		RETURNING id`, portSubscription, "insert-pref-"+suffix, tagEnum).Scan(&pageID); err != nil {
 		t.Fatalf("seed page: %v", err)
 	}
 
 	svc := New(pool)
 
-	if err := svc.InsertPageEntityRef(ctx, tx, pageID, KindPortfolio, portID, portTenant); err != nil {
+	if err := svc.InsertPageEntityRef(ctx, tx, pageID, KindPortfolio, portID, portSubscription); err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
 	// Second call with the same (pageID, kind, entityID) — must be a
 	// silent no-op via ON CONFLICT (entity_kind, entity_id) DO NOTHING.
-	if err := svc.InsertPageEntityRef(ctx, tx, pageID, KindPortfolio, portID, portTenant); err != nil {
+	if err := svc.InsertPageEntityRef(ctx, tx, pageID, KindPortfolio, portID, portSubscription); err != nil {
 		t.Fatalf("second insert (idempotent path): %v", err)
 	}
 	var n int

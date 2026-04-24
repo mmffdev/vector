@@ -34,14 +34,14 @@ func NewEntitiesService(pool *pgxpool.Pool) *EntitiesService {
 // ListInTenant returns active (non-archived) portfolios and products
 // for the tenant, sorted by kind then name. No paging — the demo data
 // volume is tiny; revisit when we cross a few hundred rows.
-func (s *EntitiesService) ListInTenant(ctx context.Context, tenantID uuid.UUID) ([]EntityRow, error) {
+func (s *EntitiesService) ListInTenant(ctx context.Context, subscriptionID uuid.UUID) ([]EntityRow, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT 'portfolio' AS kind, id, name FROM portfolio
-		 WHERE tenant_id = $1 AND archived_at IS NULL
+		 WHERE subscription_id = $1 AND archived_at IS NULL
 		UNION ALL
 		SELECT 'product' AS kind, id, name FROM product
-		 WHERE tenant_id = $1 AND archived_at IS NULL
-		ORDER BY kind, name`, tenantID)
+		 WHERE subscription_id = $1 AND archived_at IS NULL
+		ORDER BY kind, name`, subscriptionID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return []EntityRow{}, nil
@@ -74,7 +74,7 @@ type entitiesResp struct {
 // GET /api/nav/entities — portfolios + products in caller's tenant.
 func (h *EntitiesHandler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.ListInTenant(r.Context(), u.TenantID)
+	rows, err := h.Svc.ListInTenant(r.Context(), u.SubscriptionID)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

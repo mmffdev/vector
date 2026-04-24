@@ -32,7 +32,7 @@ func (r Role) Rank() int {
 
 type User struct {
 	ID                  uuid.UUID  `json:"id"`
-	TenantID            uuid.UUID  `json:"tenant_id"`
+	SubscriptionID            uuid.UUID  `json:"subscription_id"`
 	Email               string     `json:"email"`
 	PasswordHash        string     `json:"-"`
 	Role                Role       `json:"role"`
@@ -88,7 +88,7 @@ type UserWorkspacePermission struct {
 
 type CompanyRoadmap struct {
 	ID          uuid.UUID  `json:"id"`
-	TenantID    uuid.UUID  `json:"tenant_id"`
+	SubscriptionID    uuid.UUID  `json:"subscription_id"`
 	KeyNum      int64      `json:"key_num"`
 	Name        string     `json:"name"`
 	OwnerUserID uuid.UUID  `json:"owner_user_id"`
@@ -99,7 +99,7 @@ type CompanyRoadmap struct {
 
 type Workspace struct {
 	ID                uuid.UUID  `json:"id"`
-	TenantID          uuid.UUID  `json:"tenant_id"`
+	SubscriptionID          uuid.UUID  `json:"subscription_id"`
 	CompanyRoadmapID  uuid.UUID  `json:"company_roadmap_id"`
 	KeyNum            int64      `json:"key_num"`
 	Name              string     `json:"name"`
@@ -111,7 +111,7 @@ type Workspace struct {
 
 type Portfolio struct {
 	ID           uuid.UUID  `json:"id"`
-	TenantID     uuid.UUID  `json:"tenant_id"`
+	SubscriptionID     uuid.UUID  `json:"subscription_id"`
 	WorkspaceID  uuid.UUID  `json:"workspace_id"`
 	TypeID       *uuid.UUID `json:"type_id,omitempty"`
 	KeyNum       int64      `json:"key_num"`
@@ -124,7 +124,7 @@ type Portfolio struct {
 
 type Product struct {
 	ID                 uuid.UUID  `json:"id"`
-	TenantID           uuid.UUID  `json:"tenant_id"`
+	SubscriptionID           uuid.UUID  `json:"subscription_id"`
 	WorkspaceID        uuid.UUID  `json:"workspace_id"`
 	ParentPortfolioID  *uuid.UUID `json:"parent_portfolio_id,omitempty"`
 	TypeID             *uuid.UUID `json:"type_id,omitempty"`
@@ -138,7 +138,7 @@ type Product struct {
 
 type PortfolioItemType struct {
 	ID         uuid.UUID  `json:"id"`
-	TenantID   uuid.UUID  `json:"tenant_id"`
+	SubscriptionID   uuid.UUID  `json:"subscription_id"`
 	Name       string     `json:"name"`
 	Tag        string     `json:"tag"`
 	SortOrder  int        `json:"sort_order"`
@@ -149,7 +149,7 @@ type PortfolioItemType struct {
 
 type ExecutionItemType struct {
 	ID         uuid.UUID  `json:"id"`
-	TenantID   uuid.UUID  `json:"tenant_id"`
+	SubscriptionID   uuid.UUID  `json:"subscription_id"`
 	Name       string     `json:"name"`
 	Tag        string     `json:"tag"`
 	SortOrder  int        `json:"sort_order"`
@@ -167,7 +167,7 @@ const (
 
 type ItemTypeState struct {
 	ID            uuid.UUID    `json:"id"`
-	TenantID      uuid.UUID    `json:"tenant_id"`
+	SubscriptionID      uuid.UUID    `json:"subscription_id"`
 	ItemTypeID    uuid.UUID    `json:"item_type_id"`
 	ItemTypeKind  ItemTypeKind `json:"item_type_kind"`
 	Name          string       `json:"name"`

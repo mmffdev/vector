@@ -36,11 +36,11 @@ func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer email.Sender) *S
 func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	u := &models.User{}
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, tenant_id, email, password_hash, role, is_active, last_login,
+		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
 		       failed_login_count, locked_until, created_at, updated_at
 		FROM users WHERE email = $1`, email).Scan(
-		&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
 	)
@@ -56,11 +56,11 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.Us
 func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	u := &models.User{}
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, tenant_id, email, password_hash, role, is_active, last_login,
+		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
 		       failed_login_count, locked_until, created_at, updated_at
 		FROM users WHERE id = $1`, id).Scan(
-		&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
 	)
@@ -88,7 +88,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 		return nil, ErrAccountInactive
 	}
 	if u.LockedUntil != nil && u.LockedUntil.After(time.Now()) {
-		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, TenantID: &u.TenantID, Action: "auth.login_failed", IPAddress: &ip, Metadata: map[string]any{"reason": "locked"}})
+		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip, Metadata: map[string]any{"reason": "locked"}})
 		return nil, ErrAccountLocked
 	}
 
@@ -122,7 +122,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 		return nil, err
 	}
 
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, TenantID: &u.TenantID, Action: "auth.login", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login", IPAddress: &ip})
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }
 
@@ -136,11 +136,11 @@ func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip stri
 		_, _ = s.Pool.Exec(ctx, `
 			UPDATE users SET failed_login_count = $1, locked_until = $2 WHERE id = $3`,
 			newCount, lockUntil, u.ID)
-		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, TenantID: &u.TenantID, Action: "auth.account_locked", IPAddress: &ip})
+		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.account_locked", IPAddress: &ip})
 	} else {
 		_, _ = s.Pool.Exec(ctx, `UPDATE users SET failed_login_count = $1 WHERE id = $2`, newCount, u.ID)
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, TenantID: &u.TenantID, Action: "auth.login_failed", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip})
 }
 
 func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*LoginResult, error) {
@@ -205,7 +205,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	if err != nil {
 		return nil, err
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, TenantID: &u.TenantID, Action: "auth.token_refresh", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh", IPAddress: &ip})
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: newExp}, nil
 }
 
@@ -259,7 +259,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &userID, TenantID: &u.TenantID, Action: "auth.password_change", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{UserID: &userID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_change", IPAddress: &ip})
 	return nil
 }
 
@@ -287,7 +287,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, emailIn, ip string) 
 	origin := os.Getenv("FRONTEND_ORIGIN")
 	link := origin + "/login/reset/confirm?token=" + raw
 	_ = s.Mailer.SendResetLink(u.Email, link)
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, TenantID: &u.TenantID, Action: "auth.password_reset_requested", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_reset_requested", IPAddress: &ip})
 	return nil
 }
 
@@ -340,7 +340,7 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &userID, TenantID: &u.TenantID, Action: "auth.password_reset_completed", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{UserID: &userID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_reset_completed", IPAddress: &ip})
 	return nil
 }
 

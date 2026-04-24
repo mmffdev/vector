@@ -128,20 +128,20 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 	}
 
 	// Pages + aggregated roles in one query so we don't N+1.
-	// Includes system-scoped pages (created_by IS NULL AND tenant_id IS NULL)
-	// and tenant-scoped entity pages (created_by IS NULL AND tenant_id IS NOT NULL,
+	// Includes system-scoped pages (created_by IS NULL AND subscription_id IS NULL)
+	// and tenant-scoped entity pages (created_by IS NULL AND subscription_id IS NOT NULL,
 	// kind = 'entity'). Tenant scoping at the row level is fine here: a user
 	// only ever has prefs in their own tenant, and the catalogue handler
 	// further filters to entity rows that user has actually pinned.
 	// User-custom pages light up when that feature lands.
 	pageRows, err := tx.Query(ctx, `
 		SELECT p.key_enum, p.label, p.href, p.icon, p.tag_enum, p.kind,
-		       p.pinnable, p.default_pinned, p.default_order, p.tenant_id,
+		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
 		       COALESCE(array_agg(pr.role::text ORDER BY pr.role) FILTER (WHERE pr.role IS NOT NULL), '{}') AS roles
 		FROM pages p
 		LEFT JOIN page_roles pr ON pr.page_id = p.id
 		WHERE p.created_by IS NULL
-		  AND (p.tenant_id IS NULL OR p.kind = 'entity')
+		  AND (p.subscription_id IS NULL OR p.kind = 'entity')
 		GROUP BY p.id
 		ORDER BY p.tag_enum, p.default_order`)
 	if err != nil {
@@ -157,7 +157,7 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 		var roleStrs []string
 		if err := pageRows.Scan(
 			&e.Key, &e.Label, &e.Href, &e.Icon, &e.TagEnum, &kind,
-			&e.Pinnable, &e.DefaultPinned, &e.DefaultOrder, &e.TenantID, &roleStrs,
+			&e.Pinnable, &e.DefaultPinned, &e.DefaultOrder, &e.SubscriptionID, &roleStrs,
 		); err != nil {
 			return nil, fmt.Errorf("nav registry: scan page: %w", err)
 		}
@@ -198,16 +198,16 @@ func (r *Registry) IsPinnable(key string) bool {
 }
 
 // CatalogFor returns entries visible to (role, tenant), in canonical
-// order. Static pages (TenantID == nil) appear for every tenant; entity
+// order. Static pages (SubscriptionID == nil) appear for every tenant; entity
 // pages appear only for users in their owning tenant. Roles still gate
 // regardless of kind.
-func (r *Registry) CatalogFor(role models.Role, tenantID uuid.UUID) []CatalogEntry {
+func (r *Registry) CatalogFor(role models.Role, subscriptionID uuid.UUID) []CatalogEntry {
 	out := make([]CatalogEntry, 0, len(r.entries))
 	for _, e := range r.entries {
 		if !roleAllowed(role, e.Roles) {
 			continue
 		}
-		if e.TenantID != nil && *e.TenantID != tenantID {
+		if e.SubscriptionID != nil && *e.SubscriptionID != subscriptionID {
 			continue
 		}
 		out = append(out, e)

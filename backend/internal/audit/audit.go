@@ -18,7 +18,7 @@ func New(pool *pgxpool.Pool) *Logger {
 
 type Entry struct {
 	UserID     *uuid.UUID
-	TenantID   *uuid.UUID
+	SubscriptionID   *uuid.UUID
 	Action     string
 	Resource   *string
 	ResourceID *string
@@ -32,8 +32,8 @@ func (l *Logger) Log(ctx context.Context, e Entry) {
 		meta, _ = json.Marshal(e.Metadata)
 	}
 	_, _ = l.pool.Exec(ctx, `
-		INSERT INTO audit_log (user_id, tenant_id, action, resource, resource_id, metadata, ip_address)
+		INSERT INTO audit_log (user_id, subscription_id, action, resource, resource_id, metadata, ip_address)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		e.UserID, e.TenantID, e.Action, e.Resource, e.ResourceID, meta, e.IPAddress,
+		e.UserID, e.SubscriptionID, e.Action, e.Resource, e.ResourceID, meta, e.IPAddress,
 	)
 }

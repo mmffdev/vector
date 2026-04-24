@@ -40,7 +40,7 @@ func New(pool *pgxpool.Pool, audit *audit.Logger, mailer email.Sender) *Service 
 type CreateInput struct {
 	Email    string
 	Role     models.Role
-	TenantID uuid.UUID
+	SubscriptionID uuid.UUID
 }
 
 // Create makes a new account with a random hashed placeholder password and
@@ -68,11 +68,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 
 	u := &models.User{}
 	err = s.Pool.QueryRow(ctx, `
-		INSERT INTO users (tenant_id, email, password_hash, role, force_password_change)
+		INSERT INTO users (subscription_id, email, password_hash, role, force_password_change)
 		VALUES ($1, $2, $3, $4, TRUE)
-		RETURNING id, tenant_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
-		in.TenantID, email, hash, string(in.Role),
-	).Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt)
+		RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
+		in.SubscriptionID, email, hash, string(in.Role),
+	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if strings.Contains(err.Error(), "users_email_tenant_unique") {
 			return nil, "", ErrDuplicateEmail
@@ -95,7 +95,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 	_ = s.Mailer.SendResetLink(u.Email, link)
 
 	s.Audit.Log(ctx, audit.Entry{
-		UserID: &createdBy, TenantID: &u.TenantID,
+		UserID: &createdBy, SubscriptionID: &u.SubscriptionID,
 		Action: "user.created", Resource: strPtr("user"), ResourceID: strPtr(u.ID.String()),
 		IPAddress: nilIfEmpty(ip),
 		Metadata:  map[string]any{"email": u.Email, "role": u.Role},
@@ -103,11 +103,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 	return u, link, nil
 }
 
-func (s *Service) List(ctx context.Context, tenantID uuid.UUID) ([]models.User, error) {
+func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.User, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, tenant_id, email, role, is_active, last_login, auth_method,
+		SELECT id, subscription_id, email, role, is_active, last_login, auth_method,
 		       force_password_change, password_changed_at, created_at, updated_at
-		FROM users WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantID)
+		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC`, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (s *Service) List(ctx context.Context, tenantID uuid.UUID) ([]models.User, 
 	out := []models.User{}
 	for rows.Next() {
 		u := models.User{}
-		if err := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.LastLogin,
+		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.LastLogin,
 			&u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -134,7 +134,7 @@ type UpdateInput struct {
 // actorRole and actorTenant come from the verified session, never the
 // payload. Pre-flight checks (in order):
 //   1. Target must exist in actor's tenant — otherwise ErrNotFound
-//      (cross-tenant existence is hidden).
+//      (cross-subscription existence is hidden).
 //   2. Target's CURRENT role must not outrank actor — otherwise
 //      ErrRoleCeiling (a padmin cannot poke a gadmin record).
 //   3. If a NEW role is requested, it must not outrank actor —
@@ -146,7 +146,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		targetRole   models.Role
 	)
 	err := s.Pool.QueryRow(ctx,
-		`SELECT tenant_id, role FROM users WHERE id = $1`, id,
+		`SELECT subscription_id, role FROM users WHERE id = $1`, id,
 	).Scan(&targetTenant, &targetRole)
 	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
 		return ErrNotFound
@@ -202,9 +202,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 func (s *Service) FindByID(ctx context.Context, id, actorTenant uuid.UUID) (*models.User, error) {
 	u := &models.User{}
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, tenant_id, email, role, is_active, created_at, updated_at
-		FROM users WHERE id = $1 AND tenant_id = $2`, id, actorTenant,
-	).Scan(&u.ID, &u.TenantID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
+		SELECT id, subscription_id, email, role, is_active, created_at, updated_at
+		FROM users WHERE id = $1 AND subscription_id = $2`, id, actorTenant,
+	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
 	}

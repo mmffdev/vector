@@ -83,9 +83,9 @@ func ParseEntityKey(key string) (EntityKind, uuid.UUID, bool) {
 }
 
 // loadEntity fetches the bare minimum needed to mint a page: name,
-// tenant_id, archived state. Tenant fence: the caller's tenant must
+// subscription_id, archived state. Tenant fence: the caller's tenant must
 // match the entity's tenant. Archived entities cannot be bookmarked.
-func (b *Bookmarks) loadEntity(ctx context.Context, q pgx.Tx, kind EntityKind, id uuid.UUID, callerTenant uuid.UUID) (name string, tenantID uuid.UUID, err error) {
+func (b *Bookmarks) loadEntity(ctx context.Context, q pgx.Tx, kind EntityKind, id uuid.UUID, callerSubscription uuid.UUID) (name string, subscriptionID uuid.UUID, err error) {
 	var table string
 	switch kind {
 	case EntityKindPortfolio:
@@ -98,21 +98,21 @@ func (b *Bookmarks) loadEntity(ctx context.Context, q pgx.Tx, kind EntityKind, i
 	var archived *string
 	// SQL injection note: table is a hard-coded enum, never user input.
 	row := q.QueryRow(ctx, fmt.Sprintf(`
-		SELECT name, tenant_id, archived_at::text FROM %s WHERE id = $1`, table), id)
-	if err := row.Scan(&name, &tenantID, &archived); err != nil {
+		SELECT name, subscription_id, archived_at::text FROM %s WHERE id = $1`, table), id)
+	if err := row.Scan(&name, &subscriptionID, &archived); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", uuid.Nil, ErrEntityNotFound
 		}
 		return "", uuid.Nil, err
 	}
-	if tenantID != callerTenant {
+	if subscriptionID != callerSubscription {
 		// Don't leak existence — same error as not-found.
 		return "", uuid.Nil, ErrEntityNotFound
 	}
 	if archived != nil {
 		return "", uuid.Nil, ErrEntityArchived
 	}
-	return name, tenantID, nil
+	return name, subscriptionID, nil
 }
 
 // hrefFor returns the canonical detail-page URL for an entity. These
@@ -140,12 +140,12 @@ func iconFor(kind EntityKind) string {
 //
 // Flow (single transaction):
 //  1. Validate kind, fetch entity (tenant fence + archive check)
-//  2. Get-or-create the shared pages row (tenant_id = entity tenant)
+//  2. Get-or-create the shared pages row (subscription_id = entity tenant)
 //  3. Get-or-create the page_entity_refs backlink
 //  4. Ensure all roles have access via page_roles (idempotent)
 //  5. Insert user_nav_prefs at end of bookmarks group (idempotent)
 //  6. Bust the registry cache so the next catalogue read picks up the new page
-func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, role models.Role, kind EntityKind, entityID uuid.UUID) (string, error) {
+func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUID, role models.Role, kind EntityKind, entityID uuid.UUID) (string, error) {
 	if !kind.Valid() {
 		return "", ErrUnknownEntityKind
 	}
@@ -157,7 +157,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	}
 	defer tx.Rollback(ctx)
 
-	name, entityTenant, err := b.loadEntity(ctx, tx, kind, entityID, callerTenant)
+	name, entityTenant, err := b.loadEntity(ctx, tx, kind, entityID, callerSubscription)
 	if err != nil {
 		return "", err
 	}
@@ -180,8 +180,8 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM user_nav_prefs unp
 		JOIN pages p ON p.key_enum = unp.item_key
-		WHERE unp.user_id = $1 AND unp.tenant_id = $2 AND unp.profile_id IS NULL
-		  AND p.tag_enum = 'bookmarks'`, userID, callerTenant).Scan(&current); err != nil {
+		WHERE unp.user_id = $1 AND unp.subscription_id = $2 AND unp.profile_id IS NULL
+		  AND p.tag_enum = 'bookmarks'`, userID, callerSubscription).Scan(&current); err != nil {
 		return "", err
 	}
 	if current >= MaxPinned {
@@ -189,7 +189,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	}
 
 	// Get-or-create pages row. The partial unique index
-	// pages_unique_key_shared_tenant covers (key_enum, tenant_id) WHERE
+	// pages_unique_key_shared_tenant covers (key_enum, subscription_id) WHERE
 	// created_by IS NULL, so two consecutive Pin calls collapse onto the
 	// same row instead of duplicating it (NULL-distinct semantics on the
 	// old plain UNIQUE constraint produced phantom duplicates).
@@ -197,9 +197,9 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind,
 		                   pinnable, default_pinned, default_order,
-		                   created_by, tenant_id)
+		                   created_by, subscription_id)
 		VALUES ($1, $2, $3, $4, 'bookmarks', 'entity', TRUE, FALSE, 0, NULL, $5)
-		ON CONFLICT (key_enum, tenant_id) WHERE created_by IS NULL AND tenant_id IS NOT NULL DO UPDATE
+		ON CONFLICT (key_enum, subscription_id) WHERE created_by IS NULL AND subscription_id IS NOT NULL DO UPDATE
 		  SET label = EXCLUDED.label, updated_at = NOW()
 		RETURNING id`,
 		key, name, hrefFor(kind, entityID), iconFor(kind), entityTenant,
@@ -214,7 +214,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	// duplicate inside InsertPageEntityRef is cheap (FOR UPDATE on a row
 	// we've just selected) and keeps writers obliged to route through
 	// the shared service.
-	if err := b.Refs.InsertPageEntityRef(ctx, tx, pageID, entityrefs.EntityKind(kind), entityID, callerTenant); err != nil {
+	if err := b.Refs.InsertPageEntityRef(ctx, tx, pageID, entityrefs.EntityKind(kind), entityID, callerSubscription); err != nil {
 		return "", err
 	}
 
@@ -237,8 +237,8 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	if err := tx.QueryRow(ctx, `
 		SELECT COALESCE(MAX(position) + 1, 0)
 		FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL`,
-		userID, callerTenant).Scan(&nextPos); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL`,
+		userID, callerSubscription).Scan(&nextPos); err != nil {
 		return "", err
 	}
 
@@ -246,10 +246,10 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 	// means a second pin is a no-op rather than an error — friendlier UX
 	// and matches what the caller probably expected.
 	tag, err := tx.Exec(ctx, `
-		INSERT INTO user_nav_prefs (user_id, tenant_id, profile_id, item_key, position, is_start_page)
+		INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
 		VALUES ($1, $2, NULL, $3, $4, FALSE)
-		ON CONFLICT (user_id, tenant_id, profile_id, item_key) DO NOTHING`,
-		userID, callerTenant, key, nextPos)
+		ON CONFLICT (user_id, subscription_id, profile_id, item_key) DO NOTHING`,
+		userID, callerSubscription, key, nextPos)
 	if err != nil {
 		return "", err
 	}
@@ -274,7 +274,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerTenant uuid.UUID, rol
 // Unpin removes a bookmark from the caller's pinned list. Idempotent —
 // removing something that isn't pinned is not an error. The shared
 // pages row is left in place; other users may still have it pinned.
-func (b *Bookmarks) Unpin(ctx context.Context, userID, callerTenant uuid.UUID, kind EntityKind, entityID uuid.UUID) error {
+func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.UUID, kind EntityKind, entityID uuid.UUID) error {
 	if !kind.Valid() {
 		return ErrUnknownEntityKind
 	}
@@ -290,8 +290,8 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerTenant uuid.UUID, k
 	var removed *int
 	if err := tx.QueryRow(ctx, `
 		SELECT position FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL AND item_key = $3`,
-		userID, callerTenant, key).Scan(&removed); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3`,
+		userID, callerSubscription, key).Scan(&removed); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return tx.Commit(ctx) // not pinned — nothing to do
 		}
@@ -300,8 +300,8 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerTenant uuid.UUID, k
 
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL AND item_key = $3`,
-		userID, callerTenant, key); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3`,
+		userID, callerSubscription, key); err != nil {
 		return err
 	}
 
@@ -312,8 +312,8 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerTenant uuid.UUID, k
 	if removed != nil {
 		if _, err := tx.Exec(ctx, `
 			UPDATE user_nav_prefs SET position = position - 1
-			WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL AND position > $3`,
-			userID, callerTenant, *removed); err != nil {
+			WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND position > $3`,
+			userID, callerSubscription, *removed); err != nil {
 			return err
 		}
 	}
@@ -323,7 +323,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerTenant uuid.UUID, k
 
 // IsPinned returns true if this user has the entity pinned in their
 // current tenant. Cheap point lookup — used to drive pin-button state.
-func (b *Bookmarks) IsPinned(ctx context.Context, userID, callerTenant uuid.UUID, kind EntityKind, entityID uuid.UUID) (bool, error) {
+func (b *Bookmarks) IsPinned(ctx context.Context, userID, callerSubscription uuid.UUID, kind EntityKind, entityID uuid.UUID) (bool, error) {
 	if !kind.Valid() {
 		return false, ErrUnknownEntityKind
 	}
@@ -331,7 +331,7 @@ func (b *Bookmarks) IsPinned(ctx context.Context, userID, callerTenant uuid.UUID
 	var n int
 	err := b.Pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL AND item_key = $3`,
-		userID, callerTenant, key).Scan(&n)
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3`,
+		userID, callerSubscription, key).Scan(&n)
 	return n > 0, err
 }

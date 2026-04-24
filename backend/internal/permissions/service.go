@@ -34,7 +34,7 @@ type GrantInput struct {
 }
 
 // Grant inserts (or upserts) a permission row. Both the workspace and the
-// target user must belong to actorTenant; cross-tenant attempts return
+// target user must belong to actorTenant; cross-subscription attempts return
 // ErrNotFound so the caller cannot probe for existence.
 func (s *Service) Grant(ctx context.Context, in GrantInput, actorTenant, actor uuid.UUID, ip string) (*models.UserWorkspacePermission, error) {
 	// Pre-flight: workspace and target user must be in actor's tenant.
@@ -81,7 +81,7 @@ func (s *Service) Revoke(ctx context.Context, id, actorTenant, actor uuid.UUID, 
 		 USING workspace w
 		 WHERE p.id = $1
 		   AND p.workspace_id = w.id
-		   AND w.tenant_id = $2`, id, actorTenant)
+		   AND w.subscription_id = $2`, id, actorTenant)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (s *Service) ListForUser(ctx context.Context, userID, actorTenant uuid.UUID
 		  FROM user_workspace_permissions p
 		  JOIN workspace w ON w.id = p.workspace_id
 		 WHERE p.user_id = $1
-		   AND w.tenant_id = $2`, userID, actorTenant)
+		   AND w.subscription_id = $2`, userID, actorTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -148,23 +148,23 @@ func (s *Service) ListForWorkspace(ctx context.Context, workspaceID, actorTenant
 	return out, nil
 }
 
-func (s *Service) assertWorkspaceInTenant(ctx context.Context, workspaceID, tenantID uuid.UUID) error {
+func (s *Service) assertWorkspaceInTenant(ctx context.Context, workspaceID, subscriptionID uuid.UUID) error {
 	var got uuid.UUID
 	err := s.Pool.QueryRow(ctx,
-		`SELECT tenant_id FROM workspace WHERE id = $1`, workspaceID,
+		`SELECT subscription_id FROM workspace WHERE id = $1`, workspaceID,
 	).Scan(&got)
-	if err == pgx.ErrNoRows || (err == nil && got != tenantID) {
+	if err == pgx.ErrNoRows || (err == nil && got != subscriptionID) {
 		return ErrNotFound
 	}
 	return err
 }
 
-func (s *Service) assertUserInTenant(ctx context.Context, userID, tenantID uuid.UUID) error {
+func (s *Service) assertUserInTenant(ctx context.Context, userID, subscriptionID uuid.UUID) error {
 	var got uuid.UUID
 	err := s.Pool.QueryRow(ctx,
-		`SELECT tenant_id FROM users WHERE id = $1`, userID,
+		`SELECT subscription_id FROM users WHERE id = $1`, userID,
 	).Scan(&got)
-	if err == pgx.ErrNoRows || (err == nil && got != tenantID) {
+	if err == pgx.ErrNoRows || (err == nil && got != subscriptionID) {
 		return ErrNotFound
 	}
 	return err

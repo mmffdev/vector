@@ -17,8 +17,8 @@ Four tables in `mmff_vector` carry app-enforced polymorphic FKs (`entity_stakeho
    Why: between a SELECT and an INSERT, a concurrent archive can slip in; row lock prevents the race.
 2. **The loader (not the caller) sets `kind`.**
    Why: a caller passing both `kind` and `id` can lie; centralising kind assignment in the loader stops cross-kind ID injection.
-3. **Enforce `parent.tenant_id = caller.tenant_id` at load time, reject otherwise (as not-found).**
-   Why: the polymorphic row carries its own `tenant_id`, but writing one whose parent belongs to another tenant is a cross-tenant leak — and leaking existence via a distinct error is itself a leak.
+3. **Enforce `parent.subscription_id = caller.subscription_id` at load time, reject otherwise (as not-found).**
+   Why: the polymorphic row carries its own `subscription_id`, but writing one whose parent belongs to another subscription is a cross-subscription leak — and leaking existence via a distinct error is itself a leak.
 4. **Reverse reads JOIN to the parent table (or UNION ALL across kinds), never trust the polymorphic row alone.**
    Why: an orphan row will read back as live data otherwise; a JOIN forces the orphan to disappear.
 5. **Every archive/delete handler for a parent kind MUST call `cleanupPolymorphicChildren(tx, kind, id)` for every relationship pointing at that kind.**
@@ -30,9 +30,9 @@ The shared writer lives in `backend/internal/entityrefs` — every polymorphic i
 
 Surface (see `backend/internal/entityrefs/service.go`):
 
-- `LoadParent(ctx, tx, kind, id, callerTenant) (parentTenant, error)` — pre-flight `SELECT … FOR UPDATE` on the parent. Returns `ErrUnknownEntityKind`, `ErrEntityNotFound` (also for cross-tenant — existence is sensitive), or `ErrEntityArchived`. Used internally by every `Insert*`; exposed for callers that need the tenant for downstream work (e.g. `bookmarks.go` uses it to build a tenant-scoped page).
-- `InsertEntityStakeholder(ctx, tx, kind, entityID, userID, callerTenant, role) (id, error)` — validates parent, then inserts (idempotent on the unique tuple).
-- `InsertPageEntityRef(ctx, tx, pageID, kind, entityID, callerTenant) error` — validates parent, then inserts (idempotent on `(entity_kind, entity_id)`). Vocabulary narrower than `EntityKind`: only `KindPortfolio | KindProduct` — `KindWorkspace` returns `ErrUnknownEntityKind`.
+- `LoadParent(ctx, tx, kind, id, callerSubscription) (parentSubscription, error)` — pre-flight `SELECT … FOR UPDATE` on the parent. Returns `ErrUnknownEntityKind`, `ErrEntityNotFound` (also for cross-subscription — existence is sensitive), or `ErrEntityArchived`. Used internally by every `Insert*`; exposed for callers that need the subscription for downstream work (e.g. `bookmarks.go` uses it to build a subscription-scoped page).
+- `InsertEntityStakeholder(ctx, tx, kind, entityID, userID, callerSubscription, role) (id, error)` — validates parent, then inserts (idempotent on the unique tuple).
+- `InsertPageEntityRef(ctx, tx, pageID, kind, entityID, callerSubscription) error` — validates parent, then inserts (idempotent on `(entity_kind, entity_id)`). Vocabulary narrower than `EntityKind`: only `KindPortfolio | KindProduct` — `KindWorkspace` returns `ErrUnknownEntityKind`.
 - `CleanupChildren(ctx, tx, kind, id) (rowsDeleted, error)` — deletes from every polymorphic child table whose vocabulary accepts `kind`. Called from every parent's archive/delete handler inside the same tx as the archive UPDATE. Source of truth for the registry is the table below.
 
 The writer's contract: callers build their own outer transaction, call `LoadParent` (or one of the `Insert*` methods which call it for them), do whatever else they need, commit. The dispatch trigger from migration 013 is a backstop — if a future writer bypasses this service, the trigger still rejects bad inserts at the database layer.
@@ -64,11 +64,11 @@ For "all rows referencing any live parent of any kind", UNION ALL across the par
 SELECT es.*
 FROM entity_stakeholders es
 JOIN (
-  SELECT 'workspace'::text AS kind, id, tenant_id FROM workspace WHERE archived_at IS NULL
-  UNION ALL SELECT 'portfolio',     id, tenant_id FROM portfolio WHERE archived_at IS NULL
-  UNION ALL SELECT 'product',       id, tenant_id FROM product   WHERE archived_at IS NULL
+  SELECT 'workspace'::text AS kind, id, subscription_id FROM workspace WHERE archived_at IS NULL
+  UNION ALL SELECT 'portfolio',     id, subscription_id FROM portfolio WHERE archived_at IS NULL
+  UNION ALL SELECT 'product',       id, subscription_id FROM product   WHERE archived_at IS NULL
 ) parents ON parents.kind = es.entity_kind AND parents.id = es.entity_id
-WHERE es.tenant_id = $1;
+WHERE es.subscription_id = $1;
 ```
 
 Orphans drop out automatically; archived parents drop out via `WHERE archived_at IS NULL`.
@@ -80,7 +80,7 @@ Two layers — both hit real Postgres via the tunnel; pattern after `backend/int
 - **Per-relationship lifecycle test.** Create parent, insert child via the service, archive parent through its real handler, assert the child row is gone. One per (relationship × parent kind) cell — small, focused, runs on every PR that touches the relevant package.
 - **Canary: `TestNoPolymorphicOrphans`.** A single integration test that runs four `SELECT count(*)` assertions (one per relationship) against the live DB and fails if any returns non-zero. Cheap, runs in CI, catches both forgotten cleanup calls and historical orphans introduced before the cleanup discipline existed. Lives at `backend/internal/dbcheck/orphans_test.go`.
 
-## Open gap (as of 2026-04-23)
+## Open gap (as of 2026-04-24)
 
 `backend/internal/nav/bookmarks.go` is the only live writer. Its insert side now routes through `entityrefs.Service` (Phase 2.2 of TD-001 pay-down). Migration 013 added BEFORE INSERT/UPDATE dispatch triggers as defence in depth — orphans cannot be inserted at all, regardless of which writer is used.
 

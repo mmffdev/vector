@@ -9,7 +9,7 @@ export type Role = "user" | "padmin" | "gadmin";
 
 export interface AuthUser {
   id: string;
-  tenant_id: string;
+  subscription_id: string;
   email: string;
   role: Role;
   is_active: boolean;

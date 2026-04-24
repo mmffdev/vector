@@ -39,7 +39,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	// Tenant always comes from the verified session, never the payload.
 	// See c_security.md#input-comes-from-the-session-not-the-payload.
-	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, TenantID: actor.TenantID}, actor.Role, actor.ID, clientIP(r))
+	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, SubscriptionID: actor.SubscriptionID}, actor.Role, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrDuplicateEmail) {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -57,7 +57,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
-	out, err := h.Svc.List(r.Context(), actor.TenantID)
+	out, err := h.Svc.List(r.Context(), actor.SubscriptionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -82,7 +82,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.Update(r.Context(), id, UpdateInput{Role: req.Role, IsActive: req.IsActive}, actor.Role, actor.TenantID, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Update(r.Context(), id, UpdateInput{Role: req.Role, IsActive: req.IsActive}, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,11 +16,31 @@ import (
 )
 
 type AccessClaims struct {
-	Email             string `json:"email"`
-	Role              string `json:"role"`
-	TenantID          string `json:"tenant_id"`
-	ForcePwdChange    bool   `json:"force_pwd_change"`
+	Email          string `json:"email"`
+	Role           string `json:"role"`
+	SubscriptionID string `json:"subscription_id"`
+	ForcePwdChange bool   `json:"force_pwd_change"`
 	jwt.RegisteredClaims
+}
+
+// UnmarshalJSON accepts both `subscription_id` (new) and `tenant_id`
+// (legacy) for one release grace period so tokens issued by the
+// pre-rename build still verify. Prefer subscription_id when both
+// are present. After the grace period this whole method can go and
+// the struct's natural unmarshal will resume.
+func (c *AccessClaims) UnmarshalJSON(data []byte) error {
+	type alias AccessClaims
+	aux := struct {
+		LegacyTenantID string `json:"tenant_id"`
+		*alias
+	}{alias: (*alias)(c)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if c.SubscriptionID == "" && aux.LegacyTenantID != "" {
+		c.SubscriptionID = aux.LegacyTenantID
+	}
+	return nil
 }
 
 func SignAccessToken(u *models.User) (string, error) {
@@ -33,7 +54,7 @@ func SignAccessToken(u *models.User) (string, error) {
 	claims := AccessClaims{
 		Email:          u.Email,
 		Role:           string(u.Role),
-		TenantID:       u.TenantID.String(),
+		SubscriptionID: u.SubscriptionID.String(),
 		ForcePwdChange: u.ForcePasswordChange,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID.String(),

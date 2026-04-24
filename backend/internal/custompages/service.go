@@ -82,12 +82,12 @@ func New(pool *pgxpool.Pool) *Service { return &Service{Pool: pool} }
 
 // ListPagesOnly returns the caller's custom pages (label + icon),
 // ordered by label. Used by the catalogue merge — no views needed there.
-func (s *Service) ListPagesOnly(ctx context.Context, userID, tenantID uuid.UUID) ([]CustomPage, error) {
+func (s *Service) ListPagesOnly(ctx context.Context, userID, subscriptionID uuid.UUID) ([]CustomPage, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT id, label, icon
 		FROM user_custom_pages
-		WHERE user_id = $1 AND tenant_id = $2
-		ORDER BY label`, userID, tenantID)
+		WHERE user_id = $1 AND subscription_id = $2
+		ORDER BY label`, userID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,14 +108,14 @@ func (s *Service) ListPagesOnly(ctx context.Context, userID, tenantID uuid.UUID)
 // Get returns a single page (with views) if it belongs to the caller.
 // Returns ErrNotFound for both "doesn't exist" and "belongs to someone
 // else" — never leak existence across users/tenants.
-func (s *Service) Get(ctx context.Context, userID, tenantID, pageID uuid.UUID) (*CustomPage, error) {
+func (s *Service) Get(ctx context.Context, userID, subscriptionID, pageID uuid.UUID) (*CustomPage, error) {
 	var p CustomPage
 	var id uuid.UUID
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id, label, icon
 		FROM user_custom_pages
-		WHERE id = $1 AND user_id = $2 AND tenant_id = $3`,
-		pageID, userID, tenantID).Scan(&id, &p.Label, &p.Icon)
+		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
+		pageID, userID, subscriptionID).Scan(&id, &p.Label, &p.Icon)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -163,7 +163,7 @@ func (s *Service) listViews(ctx context.Context, pageID uuid.UUID) ([]CustomView
 // Create makes a page and seeds it with one default view (Timeline,
 // position 0). Both rows go in a single transaction so a partial state
 // can never exist.
-func (s *Service) Create(ctx context.Context, userID, tenantID uuid.UUID, label, icon string) (*CustomPage, error) {
+func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, label, icon string) (*CustomPage, error) {
 	label = strings.TrimSpace(label)
 	if label == "" {
 		return nil, ErrEmptyLabel
@@ -185,7 +185,7 @@ func (s *Service) Create(ctx context.Context, userID, tenantID uuid.UUID, label,
 	var count int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM user_custom_pages
-		WHERE user_id = $1 AND tenant_id = $2`, userID, tenantID).Scan(&count); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2`, userID, subscriptionID).Scan(&count); err != nil {
 		return nil, err
 	}
 	if count >= MaxPagesPerUser {
@@ -194,9 +194,9 @@ func (s *Service) Create(ctx context.Context, userID, tenantID uuid.UUID, label,
 
 	pageID := uuid.New()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO user_custom_pages (id, user_id, tenant_id, label, icon)
+		INSERT INTO user_custom_pages (id, user_id, subscription_id, label, icon)
 		VALUES ($1, $2, $3, $4, $5)`,
-		pageID, userID, tenantID, label, icon)
+		pageID, userID, subscriptionID, label, icon)
 	if err != nil {
 		if isUniqueViolation(err, "user_custom_pages_label_unique") {
 			return nil, ErrDuplicateLabel
@@ -239,9 +239,9 @@ type PatchInput struct {
 }
 
 // Patch updates label and/or icon on a page the caller owns.
-func (s *Service) Patch(ctx context.Context, userID, tenantID, pageID uuid.UUID, in PatchInput) (*CustomPage, error) {
+func (s *Service) Patch(ctx context.Context, userID, subscriptionID, pageID uuid.UUID, in PatchInput) (*CustomPage, error) {
 	if in.Label == nil && in.Icon == nil {
-		return s.Get(ctx, userID, tenantID, pageID)
+		return s.Get(ctx, userID, subscriptionID, pageID)
 	}
 	if in.Label != nil {
 		l := strings.TrimSpace(*in.Label)
@@ -258,8 +258,8 @@ func (s *Service) Patch(ctx context.Context, userID, tenantID, pageID uuid.UUID,
 		UPDATE user_custom_pages
 		SET label = COALESCE($4, label),
 		    icon  = COALESCE($5, icon)
-		WHERE id = $1 AND user_id = $2 AND tenant_id = $3`,
-		pageID, userID, tenantID, in.Label, in.Icon)
+		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
+		pageID, userID, subscriptionID, in.Label, in.Icon)
 	if err != nil {
 		if isUniqueViolation(err, "user_custom_pages_label_unique") {
 			return nil, ErrDuplicateLabel
@@ -269,18 +269,18 @@ func (s *Service) Patch(ctx context.Context, userID, tenantID, pageID uuid.UUID,
 	if tag.RowsAffected() == 0 {
 		return nil, ErrNotFound
 	}
-	return s.Get(ctx, userID, tenantID, pageID)
+	return s.Get(ctx, userID, subscriptionID, pageID)
 }
 
 // Delete removes a page (and cascades its views). Also cascades on the
 // nav side via ON DELETE CASCADE in user_nav_prefs? No — prefs do not
 // FK to custom pages (item_key is a string). So callers should also
 // drop any pinned reference; the frontend does this on delete.
-func (s *Service) Delete(ctx context.Context, userID, tenantID, pageID uuid.UUID) error {
+func (s *Service) Delete(ctx context.Context, userID, subscriptionID, pageID uuid.UUID) error {
 	tag, err := s.Pool.Exec(ctx, `
 		DELETE FROM user_custom_pages
-		WHERE id = $1 AND user_id = $2 AND tenant_id = $3`,
-		pageID, userID, tenantID)
+		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
+		pageID, userID, subscriptionID)
 	if err != nil {
 		return err
 	}

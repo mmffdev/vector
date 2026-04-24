@@ -38,9 +38,9 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	cat := reg.CatalogFor(u.Role, u.TenantID)
+	cat := reg.CatalogFor(u.Role, u.SubscriptionID)
 
-	extras, err := h.customPageEntriesFor(r.Context(), u.ID, u.TenantID, u.Role)
+	extras, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -63,7 +63,7 @@ type prefsResp struct {
 // GET /api/nav/prefs — this user's prefs + custom groups for their current tenant.
 func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.TenantID)
+	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.SubscriptionID)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -90,12 +90,12 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.TenantID, u.Role)
+	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.TenantID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries); err != nil {
+	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
@@ -127,7 +127,7 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 // DELETE /api/nav/prefs — wipe this user's prefs (reset to defaults).
 func (h *Handler) DeletePrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	if err := h.Svc.DeletePrefs(r.Context(), u.ID, u.TenantID); err != nil {
+	if err := h.Svc.DeletePrefs(r.Context(), u.ID, u.SubscriptionID); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -141,7 +141,7 @@ type startPageResp struct {
 // GET /api/nav/start-page — resolved href, falls back to /dashboard.
 func (h *Handler) StartPage(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.TenantID, u.Role)
+	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -169,7 +169,7 @@ func (h *Handler) PinBookmark(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.TenantID, u.Role, EntityKind(req.EntityKind), req.EntityID)
+	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.SubscriptionID, u.Role, EntityKind(req.EntityKind), req.EntityID)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownEntityKind):
@@ -198,7 +198,7 @@ func (h *Handler) UnpinBookmark(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Bookmarks.Unpin(r.Context(), u.ID, u.TenantID, EntityKind(req.EntityKind), req.EntityID); err != nil {
+	if err := h.Bookmarks.Unpin(r.Context(), u.ID, u.SubscriptionID, EntityKind(req.EntityKind), req.EntityID); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownEntityKind):
 			http.Error(w, "invalid request", http.StatusBadRequest)
@@ -224,7 +224,7 @@ func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	pinned, err := h.Bookmarks.IsPinned(r.Context(), u.ID, u.TenantID, kind, id)
+	pinned, err := h.Bookmarks.IsPinned(r.Context(), u.ID, u.SubscriptionID, kind, id)
 	if err != nil {
 		if errors.Is(err, ErrUnknownEntityKind) {
 			http.Error(w, "invalid request", http.StatusBadRequest)
@@ -241,13 +241,13 @@ func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
 // resolve user_custom keys that aren't in the shared registry.
 func (h *Handler) customPageEntriesFor(
 	ctx context.Context,
-	userID, tenantID uuid.UUID,
+	userID, subscriptionID uuid.UUID,
 	role models.Role,
 ) (map[string]CatalogEntry, error) {
 	if h.CustomPages == nil {
 		return nil, nil
 	}
-	pages, err := h.CustomPages.ListPagesOnly(ctx, userID, tenantID)
+	pages, err := h.CustomPages.ListPagesOnly(ctx, userID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}

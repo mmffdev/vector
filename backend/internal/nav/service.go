@@ -92,12 +92,12 @@ type CustomGroupInput struct {
 
 // GetPrefs returns a user's prefs for (user, tenant, profile=NULL) ordered by position.
 // Empty slice means "no prefs set" — callers fall back to catalogue defaults.
-func (s *Service) GetPrefs(ctx context.Context, userID, tenantID uuid.UUID) ([]PrefRow, error) {
+func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID) ([]PrefRow, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
 		FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL
-		ORDER BY position`, userID, tenantID)
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL
+		ORDER BY position`, userID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,12 +150,12 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 // GetStartPageHref resolves the start page for (user, tenant, profile=NULL).
 // Returns ("", false) if no start page set OR the caller's current role no
 // longer permits the stored item (e.g. demotion since prefs were written).
-func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UUID, role models.Role) (string, bool, error) {
+func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) (string, bool, error) {
 	var key string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT item_key FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL AND is_start_page = TRUE
-		LIMIT 1`, userID, tenantID).Scan(&key)
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND is_start_page = TRUE
+		LIMIT 1`, userID, subscriptionID).Scan(&key)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
@@ -193,7 +193,7 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, tenantID uuid.UU
 //   - group labels: non-empty, <= MaxGroupLabelLen, unique CI per user
 func (s *Service) ReplacePrefs(
 	ctx context.Context,
-	userID, tenantID uuid.UUID,
+	userID, subscriptionID uuid.UUID,
 	role models.Role,
 	pinned []PinnedInput,
 	startPageKey *string,
@@ -323,7 +323,7 @@ func (s *Service) ReplacePrefs(
 	// has no rows pointing at it when we delete it).
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL`, userID, tenantID); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL`, userID, subscriptionID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
@@ -362,9 +362,9 @@ func (s *Service) ReplacePrefs(
 				gid = &u
 			}
 			batch.Queue(`
-				INSERT INTO user_nav_prefs (user_id, tenant_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
+				INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
 				VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8)`,
-				userID, tenantID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
+				userID, subscriptionID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range translated {
@@ -383,7 +383,7 @@ func (s *Service) ReplacePrefs(
 
 // DeletePrefs nukes all prefs rows AND custom groups for the user. Used by
 // "Reset to defaults" in the modal.
-func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) error {
+func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.UUID) error {
 	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -391,7 +391,7 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, tenantID uuid.UUID) e
 	defer tx.Rollback(ctx)
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND tenant_id = $2 AND profile_id IS NULL`, userID, tenantID); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL`, userID, subscriptionID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
