@@ -1,0 +1,18 @@
+- [Project Infrastructure & Deployment](project_infrastructure.md) — Platform stack, hosting environment, role-based architecture
+- [File Creation in Paths with Spaces](file_creation_preference.md) — Use Bash for files in directories with spaces
+- [Theme Switching in CSS Updates](theme_switching_rule.md) — Always test light/dark theme when updating CSS
+- [SSH Authentication for MMFFDev Server](ssh_auth.md) — Use `id_ed25519` key for root@mmffdev.com
+- [psql access via SSH tunnel](psql_via_ssh_tunnel.md) — Always `localhost:5434` → remote `:5432`; no local Postgres
+- [Vector PM Dev Accounts](dev_accounts.md) — Live credentials for admin/user test accounts
+- [No inline CSS in Vector PM](feedback_no_inline_css.md) — All styling via globals.css classes; inline styles need cleanup
+- [Vector PM CSS naming convention](feedback_css_convention.md) — BEM-lite; full guide at project `docs/css-guide.md`
+- [Linear pacing over batched work](feedback_linear_pacing.md) — One step at a time with checkpoints; confirm before moving on
+- [GitHub identity for Vector PM project](github_identity.md) — Active gh CLI account is mmffdev; cookra is inactive fallback
+- [Keep services and servers running](feedback_keep_services_up.md) — Detach dev services from session; monitor and restart proactively
+- [User writes British English](user_british_english.md) — Use British spellings in all prose, copy, docs, comments
+- [Vector PM repo is private](repo_visibility.md) — Private remote; committing .env files and secrets is acceptable
+- [Nav system status](project_nav_status.md) — Phases 1–4 shipped + security hardening (ec474b9); Phase 3 entity-key catalogue still pending
+- [Role ceiling on account management](feedback_role_ceiling.md) — Admins can only act on accounts at their level or below; hard server-side rule
+- [gadmin → padmin handover model](project_admin_handover.md) — Gadmin provisions workspace/portfolio stack, hands to padmin to operate day-to-day
+- [Workspace page titles use title case](feedback_workspace_page_titles.md) — All workspace page titles after `+++` must be title-cased
+- [Take features end-to-end on the live stack](feedback_collaboration_landing.md) — Migration applied + backend rebuilt/restarted + frontend + sidebar + CSS; check for stale `./server` binary

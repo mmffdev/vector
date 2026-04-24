@@ -24,6 +24,14 @@ SERVER_HOST="mmffdev.com"
 SERVER_USER="root"
 TUNNEL_PORT=5434
 REMOTE_PG_PORT=5432
+ADMINER_LOCAL_PORT=8081
+ADMINER_REMOTE_PORT=8081
+RABBITMQ_MGMT_LOCAL_PORT=15672
+RABBITMQ_MGMT_REMOTE_PORT=15672
+PORTAINER_LOCAL_PORT=9000
+PORTAINER_REMOTE_PORT=9000
+HOMEPAGE_LOCAL_PORT=8082
+HOMEPAGE_REMOTE_PORT=3000
 SSH_CONFIG="$HOME/.ssh/config"
 SSH_KEY="$HOME/.ssh/id_ed25519"
 ENV_LOCAL="$REPO_ROOT/backend/.env.local"
@@ -184,29 +192,50 @@ check_ssh_copy_id() {
 }
 
 check_ssh_config() {
-  step "SSH config entries (mmffdev-pg, mmffdev-admin)"
+  step "SSH config entries (mmffdev-pg, mmffdev-homepage, mmffdev-admin)"
   mkdir -p "$HOME/.ssh"
   touch "$SSH_CONFIG"
   chmod 600 "$SSH_CONFIG"
-  local missing=0
-  grep -q '^Host mmffdev-pg' "$SSH_CONFIG" || missing=1
-  grep -q '^Host mmffdev-admin' "$SSH_CONFIG" || missing=1
-  if [ "$missing" -eq 0 ]; then
-    ok "Both aliases present."
+  local missing_pg=0 missing_hp=0 missing_admin=0
+  grep -q '^Host mmffdev-pg$' "$SSH_CONFIG" || missing_pg=1
+  grep -q '^Host mmffdev-homepage$' "$SSH_CONFIG" || missing_hp=1
+  grep -q '^Host mmffdev-admin$' "$SSH_CONFIG" || missing_admin=1
+  if [ "$missing_pg" -eq 0 ] && [ "$missing_hp" -eq 0 ] && [ "$missing_admin" -eq 0 ]; then
+    ok "All aliases present."
     return 0
   fi
-  info "One or both ssh aliases missing."
-  if ask "Append mmffdev-pg and mmffdev-admin blocks to ~/.ssh/config?"; then
-    cat >> "$SSH_CONFIG" <<EOF
+  info "One or more ssh aliases missing."
+  if ask "Append missing mmffdev-* blocks to ~/.ssh/config?"; then
+    if [ "$missing_pg" -eq 1 ]; then
+      cat >> "$SSH_CONFIG" <<EOF
 
 # Added by mmff-Ops setup
 Host mmffdev-pg
   HostName $SERVER_HOST
   User $SERVER_USER
   LocalForward $TUNNEL_PORT localhost:$REMOTE_PG_PORT
+  LocalForward $ADMINER_LOCAL_PORT localhost:$ADMINER_REMOTE_PORT
+  LocalForward $RABBITMQ_MGMT_LOCAL_PORT localhost:$RABBITMQ_MGMT_REMOTE_PORT
+  LocalForward $PORTAINER_LOCAL_PORT localhost:$PORTAINER_REMOTE_PORT
   ServerAliveInterval 30
   ServerAliveCountMax 3
   ExitOnForwardFailure yes
+EOF
+    fi
+    if [ "$missing_hp" -eq 1 ]; then
+      cat >> "$SSH_CONFIG" <<EOF
+
+Host mmffdev-homepage
+  HostName $SERVER_HOST
+  User $SERVER_USER
+  LocalForward $HOMEPAGE_LOCAL_PORT localhost:$HOMEPAGE_REMOTE_PORT
+  ServerAliveInterval 30
+  ServerAliveCountMax 3
+  ExitOnForwardFailure yes
+EOF
+    fi
+    if [ "$missing_admin" -eq 1 ]; then
+      cat >> "$SSH_CONFIG" <<EOF
 
 Host mmffdev-admin
   HostName $SERVER_HOST
@@ -214,9 +243,10 @@ Host mmffdev-admin
   ServerAliveInterval 30
   ServerAliveCountMax 3
 EOF
+    fi
     ok "ssh config updated."
   else
-    warn "Skipped ssh config — tunnel will not start via alias."
+    warn "Skipped ssh config — tunnel(s) will not start via alias."
   fi
 }
 
@@ -242,6 +272,28 @@ check_tunnel() {
   fi
 }
 
+check_homepage_tunnel() {
+  step "Homepage tunnel on localhost:$HOMEPAGE_LOCAL_PORT"
+  if nc -z localhost "$HOMEPAGE_LOCAL_PORT" 2>/dev/null; then
+    ok "Homepage tunnel already listening."
+    return 0
+  fi
+  info "Homepage tunnel not up."
+  if ask "Start homepage tunnel now (autossh if available, else ssh -N -f)?"; then
+    if has_cmd autossh; then
+      autossh -M 0 -N -f mmffdev-homepage || { err "autossh failed to start."; return 1; }
+    else
+      ssh -N -f mmffdev-homepage || { err "ssh -N -f failed."; return 1; }
+    fi
+    sleep 2
+    nc -z localhost "$HOMEPAGE_LOCAL_PORT" 2>/dev/null \
+      && ok "Homepage tunnel is up — http://localhost:$HOMEPAGE_LOCAL_PORT" \
+      || { err "Homepage tunnel not listening after start."; return 1; }
+  else
+    warn "Skipped — Homepage will not be reachable at localhost:$HOMEPAGE_LOCAL_PORT."
+  fi
+}
+
 check_env_local() {
   step "backend/.env.local"
   if [ -f "$ENV_LOCAL" ]; then
@@ -260,7 +312,7 @@ check_env_local() {
 
 DB_HOST=localhost
 DB_PORT=$TUNNEL_PORT
-DB_NAME=mmff_ops
+DB_NAME=mmff_vector
 DB_USER=mmff_dev
 DB_PASSWORD="$DB_PASSWORD_DEFAULT"
 
@@ -306,12 +358,12 @@ verify_db() {
   fi
   pw="${pw:-$DB_PASSWORD_DEFAULT}"
   local count
-  count=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d mmff_ops -tAc "SELECT COUNT(*) FROM backlog_items;" 2>&1) || {
+  count=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d mmff_vector -tAc "SELECT 1;" 2>&1) || {
     err "DB query failed: $count"
     return 1
   }
-  if [[ "$count" =~ ^[0-9]+$ ]]; then
-    ok "Connected. backlog_items row count: $count"
+  if [ "$count" = "1" ]; then
+    ok "Connected to mmff_vector via tunnel."
   else
     err "Unexpected response: $count"
     return 1
@@ -332,6 +384,7 @@ check_ssh_key        || true
 check_ssh_copy_id    || true
 check_ssh_config
 check_tunnel
+check_homepage_tunnel
 check_env_local
 check_dotenv_installed
 verify_db            || true

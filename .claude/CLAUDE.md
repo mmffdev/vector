@@ -22,12 +22,16 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Technical-debt register (standing rule)** → [`docs/c_tech_debt.md`](../docs/c_tech_debt.md) — identify/measure/recommend on every task; S1 fix now, S2 cap now, S3 record.
 - **Bash commands** → [`docs/c_bash.md`](../docs/c_bash.md) — verified commands only; grouped by domain.
 - **Postgres ops** → [`docs/c_postgresql.md`](../docs/c_postgresql.md) — tunnel, pg_dump, psql, migrations.
+- **Postgres introspection cookbook** → [`docs/c_c_db_playbook.md`](../docs/c_c_db_playbook.md) — copy-paste queries for columns/FKs/constraints/triggers + backfill verification recipes + rename-audit checklist.
+- **Adminer web DB UI** → [`docs/c_c_adminer.md`](../docs/c_c_adminer.md) — Adminer container on the server, reached via tunnel at `http://localhost:8081`; login crib + lifecycle.
+- **Laptop bootstrap (`./dev/scripts/bootstrap_laptop.sh`)** → [`docs/c_laptop_bootstrap.md`](../docs/c_laptop_bootstrap.md) — clone+pull+go: links auto-memory, runs ssh_manager, optional LaunchAgent for auto-tunnel.
 - **SSH reference** → [`docs/c_ssh.md`](../docs/c_ssh.md) — host aliases, key, tunnel lifecycle.
 - **Deployment context** → [`docs/c_deployment.md`](../docs/c_deployment.md) — hosted vs on-prem, Docker container, DB name.
 - **App Router layout** → [`docs/c_page-structure.md`](../docs/c_page-structure.md) — route groups, role gating, PageShell.
 - **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist; librarian scans against it.
 - **Backup on push** → [`docs/c_backup-on-push.md`](../docs/c_backup-on-push.md) — dual-channel; auto-snapshots pushed commits.
 - **`<librarian>`** → [`docs/c_librarian.md`](../docs/c_librarian.md) — run after major updates to sync docs with code and flag security issues.
+- **`<migration-audit>`** → [`.claude/agents/migration-audit.md`](agents/migration-audit.md) — read-only DB auditor; runs rename/backfill/constraint checks from the playbook and reports FAIL/WARN/OK punch list.
 - **Make UI app (`<makeapp> -<name> -<scope>`)** → [`docs/c_make-app.md`](../docs/c_make-app.md) — scaffold a user-facing app in `app/store/ui_apps/ui_app_<name>/` with manifest, index, css, and registry entry.
 - **Make dev UI app (`<makedevapp> -<name> -<scope>`)** → [`docs/c_make-dev-app.md`](../docs/c_make-dev-app.md) — scaffold a developer-only app in `dev/store/ui_apps/ui_app_<name>/` with manifest, index, css (no registry).
 - **Selenium Grid UI (`<seleniumup>`)** → [`docs/c_selenium.md`](../docs/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
