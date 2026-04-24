@@ -1,8 +1,10 @@
 # Database schema — golden source
 
-> Last verified live: 2026-04-24 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-24 post Phase-0 (`mmff_library` adoption) for migrations 017 (`tenants → subscriptions` rename), 018 (`subscriptions.tier`), 019 (`pending_library_cleanup_jobs`).
+> Last verified live: 2026-04-24 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-25 post Phase-1 (`mmff_library` scaffolding: bundle tables + roles + grants + MMFF seed). Phase-0 covered migrations 017 (`tenants → subscriptions`), 018 (`subscriptions.tier`), 019 (`pending_library_cleanup_jobs`).
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
+
+> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
 If you find drift, re-run the snapshot at the bottom of this file and update.
 
