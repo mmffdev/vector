@@ -31,6 +31,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist; librarian scans against it.
 - **Backup on push** → [`docs/c_backup-on-push.md`](../docs/c_backup-on-push.md) — dual-channel; auto-snapshots pushed commits.
 - **`<librarian>`** → [`docs/c_librarian.md`](../docs/c_librarian.md) — run after major updates to sync docs with code and flag security issues.
+- **`<migration-audit>`** → [`.claude/agents/migration-audit.md`](agents/migration-audit.md) — read-only DB auditor; runs rename/backfill/constraint checks from the playbook and reports FAIL/WARN/OK punch list.
 - **Make UI app (`<makeapp> -<name> -<scope>`)** → [`docs/c_make-app.md`](../docs/c_make-app.md) — scaffold a user-facing app in `app/store/ui_apps/ui_app_<name>/` with manifest, index, css, and registry entry.
 - **Make dev UI app (`<makedevapp> -<name> -<scope>`)** → [`docs/c_make-dev-app.md`](../docs/c_make-dev-app.md) — scaffold a developer-only app in `dev/store/ui_apps/ui_app_<name>/` with manifest, index, css (no registry).
 - **Selenium Grid UI (`<seleniumup>`)** → [`docs/c_selenium.md`](../docs/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.

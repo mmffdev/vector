@@ -249,6 +249,20 @@ ORDER BY subscription_id;
 
 ---
 
+## Automated runner
+
+The `<migration-audit>` agent ([`.claude/agents/migration-audit.md`](../.claude/agents/migration-audit.md)) wraps the rename-audit checklist + the four backfill verification patterns + constraint/index/trigger sanity queries into one invocation. Use it before merging any migration that renames, backfills, or restructures.
+
+```
+<migration-audit> 017     # audit migration 017 (the rename)
+<migration-audit>         # audit the highest-numbered file in db/schema/
+<migration-audit> rename  # only the rename checklist below
+```
+
+Output is a FAIL/WARN/OK punch list with verdict `BLOCK MERGE | WATCH | SHIP`. Read-only on the DB.
+
+---
+
 ## Rename-audit checklist (Migration 017)
 
 Before declaring a `tenants → subscriptions` rename complete, run:
