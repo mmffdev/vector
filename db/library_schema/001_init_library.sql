@@ -1,23 +1,19 @@
 -- ============================================================
 -- MMFFDev - mmff_library: Bootstrap database (Phase 1)
 -- Run against the `postgres` database (NOT mmff_library):
---   docker exec -i mmff-ops-postgres psql -U mmff_dev -d postgres < 001_init_library.sql
+--   psql -U mmff_dev -d postgres -f 001_init_library.sql
 --
--- Creates the mmff_library database. Idempotent via DO block —
--- repeating the apply is safe.
+-- Creates the mmff_library database. Idempotent via SELECT + \gexec —
+-- CREATE DATABASE cannot run inside a function or transaction block,
+-- so the conditional is built as a meta-command that emits the CREATE
+-- statement only when the database is missing.
 -- ============================================================
 
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'mmff_library') THEN
-        CREATE DATABASE mmff_library
-            ENCODING 'UTF8'
-            LC_COLLATE 'en_US.UTF-8'
-            LC_CTYPE   'en_US.UTF-8'
-            TEMPLATE   template0;
-    END IF;
-END
-$$;
+SELECT format(
+    'CREATE DATABASE mmff_library ENCODING ''UTF8'' LC_COLLATE ''en_US.UTF-8'' LC_CTYPE ''en_US.UTF-8'' TEMPLATE template0'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'mmff_library')
+\gexec
 
 COMMENT ON DATABASE mmff_library IS
     'MMFF-authored, shared content library. Read-only to request-path pool. '
