@@ -22,9 +22,11 @@ import (
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/email"
+	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
 	"github.com/mmffdev/vector-backend/internal/security"
 	"github.com/mmffdev/vector-backend/internal/users"
 )
@@ -58,6 +60,15 @@ func main() {
 	}
 	defer pool.Close()
 
+	// Library DB pools (mmff_library). Phase 3 only consumes RO; the
+	// publish + ack pools are wired the moment a handler needs them.
+	// Required env vars are documented in librarydb/db.go.
+	libPools, err := librarydb.New(ctx)
+	if err != nil {
+		log.Fatalf("librarydb: %v", err)
+	}
+	defer libPools.Close()
+
 	auditLog := audit.New(pool)
 	mailer := email.NewFromEnv()
 
@@ -84,6 +95,8 @@ func main() {
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
+
+	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -154,6 +167,20 @@ func main() {
 		r.Get("/{id}", customPagesH.Get)
 		r.Patch("/{id}", customPagesH.Patch)
 		r.Delete("/{id}", customPagesH.Delete)
+	})
+
+	// ---- /api/portfolio-models ----
+	// Read-only library bundle surface (Phase 3 of mmff_library plan).
+	// Any authenticated user — MMFF-authored content is implicitly
+	// visible across tenants; per-tenant share enforcement lands in
+	// Phase 5.
+	r.Route("/api/portfolio-models", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
+		r.Get("/{id}", portfolioModelsH.GetByModelID)
 	})
 
 	// ---- /api/admin ----
