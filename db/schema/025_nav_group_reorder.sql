@@ -7,8 +7,10 @@
 --
 -- 1. Tag ordering — sidebar group sequence becomes:
 --      Personal (0) → Admin Settings (1) → Planning (2) → Strategic (3)
---    personal_settings stays admin-menu-only (avatar dropdown), no order change needed.
---    bookmarks tag is entity-only (no pinnable static pages), left at 0 as a tie.
+--    admin_settings.is_admin_menu set FALSE — it was TRUE from when those pages
+--    lived in the header cog dropdown; sidebar rendering filters out is_admin_menu
+--    tags, so this was hiding the whole group. personal_settings stays TRUE
+--    (avatar dropdown only). bookmarks is entity-only, left at 0 as a tie.
 --
 -- 2. account-settings — avatar dropdown only.
 --    Already tag_enum='personal_settings' (is_admin_menu=TRUE), so it already
@@ -26,7 +28,7 @@ BEGIN;
 --    bookmarks tag is entity-only (no pinnable static pages); sits at 0 as a tie — harmless.
 --    personal_settings is avatar-only (is_admin_menu=TRUE); no sidebar order needed.
 UPDATE page_tags SET default_order = 0 WHERE tag_enum = 'personal';
-UPDATE page_tags SET default_order = 1 WHERE tag_enum = 'admin_settings';
+UPDATE page_tags SET default_order = 1, is_admin_menu = FALSE WHERE tag_enum = 'admin_settings';
 UPDATE page_tags SET default_order = 2 WHERE tag_enum = 'planning';
 UPDATE page_tags SET default_order = 3 WHERE tag_enum = 'strategic';
 
