@@ -26,19 +26,23 @@ Host mmffdev.com
 
 This is the Plesk-provisioned user for file uploads to the webspace. **Not** for DB or system admin — use `mmffdev-admin` for those.
 
-### `mmffdev-pg` — Postgres tunnel
+### `mmffdev-pg` — multi-service tunnel
 
 ```
 Host mmffdev-pg
   HostName mmffdev.com
   User root
-  LocalForward 5434 localhost:5432
+  LocalForward 5434 localhost:5432   # Postgres (mmff_vector)
+  LocalForward 8081 localhost:8081   # Adminer
+  LocalForward 15672 localhost:15672 # RabbitMQ management
+  LocalForward 9000 localhost:9000   # Portainer
+  LocalForward 3333 localhost:3333   # Planka kanban board
   ServerAliveInterval 30
   ServerAliveCountMax 3
   ExitOnForwardFailure yes
 ```
 
-Use: `ssh -N -f mmffdev-pg` to open the tunnel. `ExitOnForwardFailure yes` means if port 5434 is already taken locally, `ssh` exits with an error instead of silently connecting without the forward.
+Use: `ssh -N -f mmffdev-pg` to open all tunnels. `ExitOnForwardFailure yes` means if any port is already taken locally, `ssh` exits with an error instead of silently connecting without the forward.
 
 ### `mmffdev-admin` — interactive / one-off root shell
 

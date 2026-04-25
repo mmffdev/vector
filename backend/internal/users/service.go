@@ -66,29 +66,32 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 		return nil, "", err
 	}
 
-	u := &models.User{}
-	err = s.Pool.QueryRow(ctx, `
-		INSERT INTO users (subscription_id, email, password_hash, role, force_password_change)
-		VALUES ($1, $2, $3, $4, TRUE)
-		RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
-		in.SubscriptionID, email, hash, string(in.Role),
-	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
-		if strings.Contains(err.Error(), "users_email_tenant_unique") {
-			return nil, "", ErrDuplicateEmail
-		}
-		return nil, "", err
-	}
-
-	// Issue initial reset token.
+	// Issue initial reset token before the transaction so we can roll back cleanly on token-gen failure.
 	raw, tokHash, err := auth.GenerateRefreshToken()
 	if err != nil {
 		return nil, "", err
 	}
 	exp := time.Now().Add(24 * time.Hour) // longer window for initial setup
-	if _, err := s.Pool.Exec(ctx, `
-		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
-		VALUES ($1, $2, $3, $4)`, u.ID, tokHash, exp, nilIfEmpty(ip)); err != nil {
+
+	u := &models.User{}
+	err = pgx.BeginTxFunc(ctx, s.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO users (subscription_id, email, password_hash, role, force_password_change)
+			VALUES ($1, $2, $3, $4, TRUE)
+			RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
+			in.SubscriptionID, email, hash, string(in.Role),
+		).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+			VALUES ($1, $2, $3, $4)`, u.ID, tokHash, exp, nilIfEmpty(ip))
+		return err
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "users_email_tenant_unique") {
+			return nil, "", ErrDuplicateEmail
+		}
 		return nil, "", err
 	}
 	link := os.Getenv("FRONTEND_ORIGIN") + "/login/reset/confirm?token=" + raw

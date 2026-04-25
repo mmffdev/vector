@@ -603,7 +603,7 @@ Pattern summary:
 
 Deferred until item-level work begins:
 
-- Work-item tables (`user_story`, `task`, `feature`, …) — blocked on OKR placement decision (SoW §11). `item_state_history.item_id` has no FK yet for this reason.
+- Work-item tables (`user_story`, `task`, `feature`, …) — deferred; not in current scope. `item_state_history.item_id` has no FK yet for this reason.
 - `item_key_alias` table for rename grace-period redirects (see [c_url-routing.md](c_url-routing.md)). Deferred until the first tag rename ships.
 - Multi-division config root (SoW §12 paid tier) — planned as a nullable `config_root_id` addition on item-type and state tables; non-breaking.
 - `nav_icons` catalogue + per-user icon override on `user_nav_prefs` (planned, not yet built).
