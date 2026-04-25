@@ -109,18 +109,35 @@ CREATE TRIGGER trg_tenants_updated_at
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
--- SEED: default tenant + gadmin user
--- Password 'changeme' hashed with bcrypt cost 12
+-- SEED: default tenant + dev accounts (gadmin, padmin, user)
+-- Password 'myApples100@' hashed with bcrypt cost 12
 -- Hash: $2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/liO
+-- NOTE: hash above was generated for 'changeme'; replace with correct
+--       bcrypt(myApples100@, 12) hash before deploying to any environment.
 -- ============================================================
 INSERT INTO tenants (id, name, slug)
 VALUES ('00000000-0000-0000-0000-000000000001', 'MMFFDev', 'mmffdev');
 
 INSERT INTO users (tenant_id, email, password_hash, role, is_active)
-VALUES (
-    '00000000-0000-0000-0000-000000000001',
-    'admin@mmffdev.com',
-    '$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/liO',
-    'gadmin',
-    TRUE
-);
+VALUES
+    (
+        '00000000-0000-0000-0000-000000000001',
+        'gadmin@mmffdev.com',
+        '$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/liO',
+        'gadmin',
+        TRUE
+    ),
+    (
+        '00000000-0000-0000-0000-000000000001',
+        'padmin@mmffdev.com',
+        '$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/liO',
+        'padmin',
+        TRUE
+    ),
+    (
+        '00000000-0000-0000-0000-000000000001',
+        'user@mmffdev.com',
+        '$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/liO',
+        'user',
+        TRUE
+    );
