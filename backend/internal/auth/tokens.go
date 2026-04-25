@@ -13,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 type AccessClaims struct {
@@ -44,7 +45,7 @@ func (c *AccessClaims) UnmarshalJSON(data []byte) error {
 }
 
 func SignAccessToken(u *models.User) (string, error) {
-	secret := os.Getenv("JWT_ACCESS_SECRET")
+	secret := secrets.Get("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_ACCESS_SECRET not set")
 	}
@@ -68,7 +69,7 @@ func SignAccessToken(u *models.User) (string, error) {
 }
 
 func ParseAccessToken(raw string) (*AccessClaims, error) {
-	secret := os.Getenv("JWT_ACCESS_SECRET")
+	secret := secrets.Get("JWT_ACCESS_SECRET")
 	claims := &AccessClaims{}
 	_, err := jwt.ParseWithClaims(raw, claims, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {

@@ -34,6 +34,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 func main() {
@@ -78,8 +79,8 @@ func migrateVector(ctx context.Context, root string, dryRun bool) error {
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=mmff_migrate_vector",
 		envOr("DB_HOST", "localhost"),
 		envOr("DB_PORT", "5434"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
+		secrets.Get("DB_USER"),
+		secrets.Get("DB_PASSWORD"),
 		envOr("DB_NAME", "mmff_vector"),
 	)
 	pool, err := openPool(ctx, dsn, "vector")
@@ -98,11 +99,11 @@ func migrateLibrary(ctx context.Context, root string, dryRun bool) error {
 	// LIBRARY_ADMIN_DB_USER is a dedicated role with DDL rights on mmff_library.
 	// Fall back to the main DB user (mmff_dev / superuser) if not configured —
 	// both DBs live on the same Postgres instance behind the tunnel.
-	user := os.Getenv("LIBRARY_ADMIN_DB_USER")
-	pwd := os.Getenv("LIBRARY_ADMIN_DB_PASSWORD")
+	user := secrets.Get("LIBRARY_ADMIN_DB_USER")
+	pwd := secrets.Get("LIBRARY_ADMIN_DB_PASSWORD")
 	if user == "" {
-		user = os.Getenv("DB_USER")
-		pwd = os.Getenv("DB_PASSWORD")
+		user = secrets.Get("DB_USER")
+		pwd = secrets.Get("DB_PASSWORD")
 	}
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=mmff_migrate_library",

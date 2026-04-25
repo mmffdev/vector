@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 func New(ctx context.Context) (*pgxpool.Pool, error) {
@@ -13,8 +14,8 @@ func New(ctx context.Context) (*pgxpool.Pool, error) {
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
+		secrets.Get("DB_USER"),
+		secrets.Get("DB_PASSWORD"),
 		os.Getenv("DB_NAME"),
 	)
 	pool, err := pgxpool.New(ctx, dsn)

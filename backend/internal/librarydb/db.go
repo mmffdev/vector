@@ -17,6 +17,7 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 // Pools bundles the three live pools so callers receive one struct
@@ -46,12 +47,12 @@ func New(ctx context.Context) (*Pools, error) {
 	port := envOr("LIBRARY_DB_PORT", "5434")
 	dbname := envOr("LIBRARY_DB_NAME", "mmff_library")
 
-	roUser := os.Getenv("LIBRARY_DB_USER")
-	roPwd := os.Getenv("LIBRARY_DB_PASSWORD")
-	pubUser := os.Getenv("LIBRARY_PUBLISH_DB_USER")
-	pubPwd := os.Getenv("LIBRARY_PUBLISH_DB_PASSWORD")
-	ackUser := os.Getenv("LIBRARY_ACK_DB_USER")
-	ackPwd := os.Getenv("LIBRARY_ACK_DB_PASSWORD")
+	roUser := secrets.Get("LIBRARY_DB_USER")
+	roPwd := secrets.Get("LIBRARY_DB_PASSWORD")
+	pubUser := secrets.Get("LIBRARY_PUBLISH_DB_USER")
+	pubPwd := secrets.Get("LIBRARY_PUBLISH_DB_PASSWORD")
+	ackUser := secrets.Get("LIBRARY_ACK_DB_USER")
+	ackPwd := secrets.Get("LIBRARY_ACK_DB_PASSWORD")
 
 	if roUser == "" || pubUser == "" || ackUser == "" {
 		return nil, errors.New("librarydb: LIBRARY_DB_USER, LIBRARY_PUBLISH_DB_USER, and LIBRARY_ACK_DB_USER must all be set")

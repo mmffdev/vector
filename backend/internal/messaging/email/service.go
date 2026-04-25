@@ -3,6 +3,8 @@ package email
 import (
 	"log"
 	"os"
+
+	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 // Service is the front door for outbound mail. Callers depend on this
@@ -46,8 +48,8 @@ func NewFromEnv() *Service {
 		Transport: SMTPTransport{
 			Host: host,
 			Port: port,
-			User: os.Getenv("SMTP_USER"),
-			Pass: os.Getenv("SMTP_PASS"),
+			User: secrets.Get("SMTP_USER"),
+			Pass: secrets.Get("SMTP_PASS"),
 		},
 		From: from,
 	}
