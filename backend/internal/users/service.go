@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/email"
+	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 )
 
@@ -30,10 +30,10 @@ var (
 type Service struct {
 	Pool   *pgxpool.Pool
 	Audit  *audit.Logger
-	Mailer email.Sender
+	Mailer *email.Service
 }
 
-func New(pool *pgxpool.Pool, audit *audit.Logger, mailer email.Sender) *Service {
+func New(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
 	return &Service{Pool: pool, Audit: audit, Mailer: mailer}
 }
 
@@ -92,7 +92,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 		return nil, "", err
 	}
 	link := os.Getenv("FRONTEND_ORIGIN") + "/login/reset/confirm?token=" + raw
-	_ = s.Mailer.SendResetLink(u.Email, link)
+	_ = s.Mailer.SendPasswordReset(ctx, u.Email, link)
 
 	s.Audit.Log(ctx, audit.Entry{
 		UserID: &createdBy, SubscriptionID: &u.SubscriptionID,

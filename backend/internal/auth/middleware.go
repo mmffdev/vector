@@ -18,6 +18,14 @@ func UserFromCtx(ctx context.Context) *models.User {
 	return u
 }
 
+// WithUserForTest seeds a user into the context as if RequireAuth had
+// run. Test-only helper — production code paths must go through
+// RequireAuth so JWT validation actually happens. Lives in the auth
+// package because the ctxKey is unexported.
+func WithUserForTest(ctx context.Context, u *models.User) context.Context {
+	return context.WithValue(ctx, userCtxKey, u)
+}
+
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authz := r.Header.Get("Authorization")

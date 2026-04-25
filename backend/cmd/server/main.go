@@ -22,8 +22,9 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
-	"github.com/mmffdev/vector-backend/internal/email"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
+	"github.com/mmffdev/vector-backend/internal/libraryreleases"
+	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/permissions"
@@ -108,6 +109,26 @@ func main() {
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 
 	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
+
+	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
+	// Reconciler maintains a per-subscription badge-count cache; ticker
+	// floor is 15m by default (LIBRARY_RECONCILER_INTERVAL to override).
+	// On-login hook warms the cache so the first badge poll after sign-in
+	// returns instantly. Cache is invalidated on every successful ack.
+	libReleasesRec := libraryreleases.NewReconciler(libPools.RO, pool)
+	libReleasesRec.Start(ctx)
+	defer libReleasesRec.Stop()
+	libReleasesH := libraryreleases.NewHandler(libPools.RO, pool, auditLog, libReleasesRec)
+
+	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *models.User) {
+		var tier string
+		if err := pool.QueryRow(ctx,
+			`SELECT tier FROM subscriptions WHERE id = $1`, u.SubscriptionID,
+		).Scan(&tier); err != nil {
+			return // tier lookup failed — reconciler will warm on first poll
+		}
+		libReleasesRec.Touch(ctx, u.SubscriptionID, tier)
+	})
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -200,6 +221,22 @@ func main() {
 
 		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
 		r.Get("/{id}", portfolioModelsH.GetByModelID)
+	})
+
+	// ---- /api/library/releases ----
+	// Release-notification channel (Phase 3, plan §12). Gadmin-only:
+	// only the subscription's group admin acknowledges releases on
+	// behalf of the tenant. Count endpoint is the cheap badge poll;
+	// list endpoint hands back full release rows + actions.
+	r.Route("/api/library/releases", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequireRole(models.RoleGAdmin))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", libReleasesH.List)
+		r.Get("/count", libReleasesH.Count)
+		r.Post("/{id}/ack", libReleasesH.Ack)
 	})
 
 	// ---- /api/admin ----

@@ -12,8 +12,10 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 - **Styling / CSS / new UI components** → [`docs/css-guide.md`](../docs/css-guide.md) — BEM-lite, no inline styles, rules in `app/globals.css`.
 - **Database backup (`<backupsql>`)** → [`docs/c_db-backup.md`](../docs/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
+- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — track outstanding/done work; flags: `-a` add, `-n` outstanding, `-d` done, `-h` help.
 - **Dev server (`<npm>`)** → [`docs/c_npm.md`](../docs/c_npm.md) — start Next.js on `:3000`.
 - **Dev launcher (`MMFF Vector Dev.app`)** → [`docs/c_dev-launcher.md`](../docs/c_dev-launcher.md) — AppleScript app that starts tunnel, backend, frontend.
+- **Service status (`<services>`)** → [`docs/c_services.md`](../docs/c_services.md) — read-only status check for tunnel (`:5434`), backend (`:5100`), next (`:5101`).
 - **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
 - **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants; links to per-table leaves.
@@ -33,4 +35,5 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Selenium Grid UI (`<seleniumup>`)** → [`docs/c_selenium.md`](../docs/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
+- **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
 

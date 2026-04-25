@@ -4,7 +4,7 @@
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
-> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
+> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
 If you find drift, re-run the snapshot at the bottom of this file and update.
 
@@ -45,6 +45,7 @@ These rules are the contract; every query/handler/migration honours them.
 | User navigation | `user_nav_prefs`, `user_nav_groups` |
 | User custom pages | `user_custom_pages`, `user_custom_page_views` |
 | Library reconciliation | `pending_library_cleanup_jobs` |
+| Library release acks | `library_acknowledgements` |
 
 ---
 
@@ -336,7 +337,7 @@ Append-only state-change journal. UPDATE/DELETE rejected by trigger.
 
 ### `pages`
 
-Page-registry catalogue. System pages have `subscription_id`/`created_by` NULL; subscription-shared have `subscription_id` set; user-custom have both `subscription_id` and `created_by` set. Uniqueness enforced by three partial indexes (see migration 012).
+Page-registry catalogue. System pages have `subscription_id`/`created_by` NULL; subscription-shared have `subscription_id` set; user-custom have both `subscription_id` and `created_by` set. Uniqueness enforced by three partial indexes (see migration 012). **Migration authors:** the `ON CONFLICT … WHERE` clauses in 012 mention `tenant_id` in their original text but were renamed to `subscription_id` by migration 017. Always read the live partial-index columns before writing a new `INSERT … ON CONFLICT` against `pages` (migrations 020 + 022 both shipped with the wrong column name and rolled back at apply).
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|

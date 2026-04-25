@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/email"
+	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 )
 
@@ -26,10 +26,18 @@ var (
 type Service struct {
 	Pool   *pgxpool.Pool
 	Audit  *audit.Logger
-	Mailer email.Sender
+	Mailer *email.Service
+
+	// OnLogin is invoked synchronously after a successful Login.
+	// Used by Phase 3 to warm the library-releases reconciler cache for
+	// the just-authenticated subscription. Wire from main.go to avoid an
+	// auth → libraryreleases import cycle. Slice (not single fn) so
+	// future cross-cutting concerns (presence, last-seen, analytics)
+	// register without rewiring this hook.
+	OnLogin []func(ctx context.Context, user *models.User)
 }
 
-func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer email.Sender) *Service {
+func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
 	return &Service{Pool: pool, Audit: audit, Mailer: mailer}
 }
 
@@ -123,6 +131,14 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	}
 
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login", IPAddress: &ip})
+
+	// Fire post-login hooks (cache warming, presence, etc.). Errors
+	// inside hooks are the hook's own responsibility — Login's contract
+	// is "credentials accepted", not "every downstream cache primed".
+	for _, h := range s.OnLogin {
+		h(ctx, u)
+	}
+
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }
 
@@ -260,6 +276,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 		return err
 	}
 	s.Audit.Log(ctx, audit.Entry{UserID: &userID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_change", IPAddress: &ip})
+	_ = s.Mailer.SendPasswordChanged(ctx, u.Email)
 	return nil
 }
 
@@ -286,7 +303,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, emailIn, ip string) 
 	}
 	origin := os.Getenv("FRONTEND_ORIGIN")
 	link := origin + "/login/reset/confirm?token=" + raw
-	_ = s.Mailer.SendResetLink(u.Email, link)
+	_ = s.Mailer.SendPasswordReset(ctx, u.Email, link)
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_reset_requested", IPAddress: &ip})
 	return nil
 }
@@ -341,6 +358,7 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 		return err
 	}
 	s.Audit.Log(ctx, audit.Entry{UserID: &userID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_reset_completed", IPAddress: &ip})
+	_ = s.Mailer.SendPasswordChanged(ctx, u.Email)
 	return nil
 }
 

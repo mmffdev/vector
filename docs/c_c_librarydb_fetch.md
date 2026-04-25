@@ -66,3 +66,16 @@ Status codes:
 The DTO lives in `portfoliomodels/dto.go` rather than tagging the `librarydb` structs directly because the fetcher must keep `[]byte` for the Phase 4 adoption cookbook (hand the bytes straight to the tenant-side INSERTs without a re-encode round trip).
 
 Sharing enforcement (private/invite scopes, `portfolio_model_shares`) is **not** evaluated here — Phase 3 only ships MMFF-authored bundles which are implicitly visible to every authenticated caller. Phase 5 wires share evaluation in front of these handlers.
+
+## Release-channel surface (also in `librarydb`)
+
+Phase 3 added a second read path on the same RO pool: outstanding releases for a subscription. Lives at `backend/internal/librarydb/releases.go`. Cross-DB by design — release rows live in `mmff_library`, ack rows live in `mmff_vector` (no Postgres FK between them; the handler validates release id via `FindRelease` before writing the ack).
+
+| Function | Pool(s) | Purpose |
+|---|---|---|
+| `ListReleasesSinceAck(ctx, libRO, vectorPool, subID, tier)` | RO + vector | Two-pass: load active releases for tier, load actions, subtract acked set. |
+| `FindRelease(ctx, libRO, releaseID)` | RO | 404-pre-check before ack write. Returns `ErrReleaseNotFound`. |
+| `AckRelease(ctx, vectorPool, subID, releaseID, userID, action)` | vector | Idempotent INSERT (`ON CONFLICT DO NOTHING`); returns `(created bool, err)`. Validates action via `IsValidAction` — returns `ErrInvalidAction`. |
+| `CountOutstandingForSubscription(ctx, libRO, vectorPool, subID, tier)` | RO + vector | Count for the badge poll endpoint. |
+
+Severity vocabulary: `info` / `action` / `breaking` (plan §12.1). Action keys: `upgrade_model`, `review_terminology`, `enable_flag`, `dismissed`. See [`c_c_library_release_channel.md`](c_c_library_release_channel.md) for the end-to-end flow.

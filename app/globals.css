@@ -1764,6 +1764,7 @@ button {
    Utilities
    ============================================================ */
 .u-mono {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 12px;
   color: var(--ink-2);
 }
@@ -2246,4 +2247,265 @@ button {
 .theme-status--future {
   color: var(--ink-3);
   border-color: var(--line-2);
+}
+
+/* ============================================================
+   Portfolio model preview (read-only bundle view)
+   ============================================================ */
+.model-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.model-preview__header {
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-preview__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-preview__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-1);
+  margin: 0;
+}
+
+.model-preview__description {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.model-preview__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.model-preview__meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.model-preview__meta-row dt {
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+  min-width: 90px;
+}
+
+.model-preview__meta-row dd {
+  margin: 0;
+  color: var(--ink-2);
+  word-break: break-all;
+}
+
+.model-preview__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-preview__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.model-preview__workflows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.model-preview__workflow {
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-preview__workflow-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-1);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.model-preview__states {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-preview__state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.model-preview__state-label {
+  color: var(--ink-1);
+}
+
+.model-preview__transitions {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 0;
+  border-top: 1px dashed var(--line-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-preview__transition {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* ============================================================
+   Library release notification channel (Phase 3, plan §12)
+   - Severity: info | action | breaking
+   - Card list rendered on /library-releases
+   ============================================================ */
+
+.release-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.release-card {
+  border: 1px solid var(--line-1);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--surface-1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.release-card--info {
+  border-left-color: var(--ink-3);
+}
+
+.release-card--action {
+  border-left-color: var(--warn-1, #d97706);
+  background: var(--warn-bg-1, rgba(217, 119, 6, 0.04));
+}
+
+.release-card--breaking {
+  border-left-color: var(--danger-1, #dc2626);
+  background: var(--danger-bg-1, rgba(220, 38, 38, 0.06));
+}
+
+.release-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.release-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.release-card__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+.release-card__severity {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.release-card__severity--info {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.release-card__severity--action {
+  background: var(--warn-1, #d97706);
+  color: white;
+}
+
+.release-card__severity--breaking {
+  background: var(--danger-1, #dc2626);
+  color: white;
+}
+
+.release-card__summary {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.release-card__body {
+  border-top: 1px dashed var(--line-1);
+  padding-top: 8px;
+}
+
+.release-card__body summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.release-card__body-text {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  font-family: var(--font-mono, monospace);
+}
+
+.release-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
 }

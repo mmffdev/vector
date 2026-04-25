@@ -14,9 +14,9 @@ import (
 )
 
 // TestLibraryGrantMatrix asserts that the live mmff_library role grants
-// exactly match the canonical map in db/library_schema/005_grants.sql
-// (and plan §9). Drift in either direction — extra privileges OR missing
-// privileges — fails this test.
+// exactly match the canonical map in db/library_schema/005_grants.sql +
+// 007_grants_release_channel.sql (and plan §9 + §12). Drift in either
+// direction — extra privileges OR missing privileges — fails this test.
 //
 // The test runs as mmff_dev (super-ish role on the dev cluster) so it
 // can read information_schema.role_table_grants. CI env supplies the
@@ -31,18 +31,40 @@ func TestLibraryGrantMatrix(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Canonical matrix. Update this when 005_grants.sql changes.
+	// Canonical matrix. Update this when 005_grants.sql or
+	// 007_grants_release_channel.sql change.
 	// Each entry: role -> table -> sorted set of privileges.
-	want := map[string]map[string][]string{
-		"mmff_library_admin": tableMap(libraryTables(), []string{"DELETE", "INSERT", "REFERENCES", "SELECT", "TRIGGER", "TRUNCATE", "UPDATE"}),
-		"mmff_library_ro":    tableMap(libraryTables(), []string{"SELECT"}),
-		"mmff_library_publish": tableMap(libraryTables(), []string{"INSERT", "SELECT", "UPDATE"}),
-		// ack: NO table grants in Phase 1. Phase 3 extends the matrix when
-		// library_releases / library_acknowledgements ship.
-		"mmff_library_ack": map[string][]string{},
+
+	bundleTables := bundleTableList()
+	releaseTables := releaseTableList() // releases, actions, log
+	allTables := append(append([]string{}, bundleTables...), releaseTables...)
+
+	adminPrivs := []string{"DELETE", "INSERT", "REFERENCES", "SELECT", "TRIGGER", "TRUNCATE", "UPDATE"}
+	roPrivs := []string{"SELECT"}
+	publishWritePrivs := []string{"INSERT", "SELECT", "UPDATE"}
+
+	// publish gets INSERT/SELECT/UPDATE on bundle tables (Phase 1) +
+	// releases + actions (Phase 3); INSERT-only on release_log.
+	publishMap := tableMap(bundleTables, publishWritePrivs)
+	publishMap["library_releases"] = sortedCopy(publishWritePrivs)
+	publishMap["library_release_actions"] = sortedCopy(publishWritePrivs)
+	publishMap["library_release_log"] = []string{"INSERT"}
+
+	// ack: Phase 1 had zero grants. Phase 3 adds SELECT on releases +
+	// actions only — no log access, no bundle access.
+	ackMap := map[string][]string{
+		"library_releases":        sortedCopy(roPrivs),
+		"library_release_actions": sortedCopy(roPrivs),
 	}
 
-	got := loadLiveGrants(ctx, t, pool)
+	want := map[string]map[string][]string{
+		"mmff_library_admin":   tableMap(allTables, adminPrivs),
+		"mmff_library_ro":      tableMap(allTables, roPrivs),
+		"mmff_library_publish": publishMap,
+		"mmff_library_ack":     ackMap,
+	}
+
+	got := loadLiveGrants(ctx, t, pool, allTables)
 
 	for role, wantTables := range want {
 		gotTables := got[role]
@@ -62,9 +84,14 @@ func TestLibraryGrantMatrix(t *testing.T) {
 	}
 }
 
-// libraryTables returns the canonical Phase-1 table list. Phase 3 will
-// extend this when library_releases / _actions / _acknowledgements ship.
+// libraryTables returns every table in mmff_library covered by the grant
+// matrix (bundle tables + release-channel tables).
 func libraryTables() []string {
+	return append(append([]string{}, bundleTableList()...), releaseTableList()...)
+}
+
+// bundleTableList — Phase 1 portfolio-model bundle tables.
+func bundleTableList() []string {
 	return []string{
 		"portfolio_models",
 		"portfolio_model_layers",
@@ -74,6 +101,22 @@ func libraryTables() []string {
 		"portfolio_model_terminology",
 		"portfolio_model_shares",
 	}
+}
+
+// releaseTableList — Phase 3 release-channel tables.
+func releaseTableList() []string {
+	return []string{
+		"library_releases",
+		"library_release_actions",
+		"library_release_log",
+	}
+}
+
+func sortedCopy(in []string) []string {
+	out := make([]string, len(in))
+	copy(out, in)
+	sort.Strings(out)
+	return out
 }
 
 func tableMap(tables, privs []string) map[string][]string {
@@ -88,23 +131,15 @@ func tableMap(tables, privs []string) map[string][]string {
 	return out
 }
 
-func loadLiveGrants(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]map[string][]string {
+func loadLiveGrants(ctx context.Context, t *testing.T, pool *pgxpool.Pool, tables []string) map[string]map[string][]string {
 	t.Helper()
 	rows, err := pool.Query(ctx, `
 		SELECT grantee, table_name, privilege_type
 		FROM information_schema.role_table_grants
 		WHERE table_schema = 'public'
 		  AND grantee LIKE 'mmff_library_%'
-		  AND table_name IN (
-		      'portfolio_models',
-		      'portfolio_model_layers',
-		      'portfolio_model_workflows',
-		      'portfolio_model_workflow_transitions',
-		      'portfolio_model_artifacts',
-		      'portfolio_model_terminology',
-		      'portfolio_model_shares'
-		  )
-	`)
+		  AND table_name = ANY($1)
+	`, tables)
 	if err != nil {
 		t.Fatalf("query grants: %v", err)
 	}
@@ -165,7 +200,7 @@ func testLibraryAdminPool(t *testing.T) *pgxpool.Pool {
 	host := envOrDefault("LIBRARY_DB_HOST", "localhost")
 	port := envOrDefault("LIBRARY_DB_PORT", "5434")
 	dbname := envOrDefault("LIBRARY_DB_NAME", "mmff_library")
-	user := envOrDefault("DB_USER", "mmff_dev")        // dev superuser
+	user := envOrDefault("DB_USER", "mmff_dev") // dev superuser
 	pwd := os.Getenv("DB_PASSWORD")
 
 	dsn := fmt.Sprintf(

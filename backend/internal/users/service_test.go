@@ -13,7 +13,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/email"
+	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 )
 
@@ -45,10 +45,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// silentMailer satisfies email.Sender without sending anything.
-type silentMailer struct{}
-
-func (silentMailer) SendResetLink(_, _ string) error { return nil }
+// silentMailer wraps the DiscardTransport so tests don't ship reset links.
 
 // mkTenant inserts a throwaway tenant and returns its id + cleanup.
 func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()) {
@@ -62,11 +59,32 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	).Scan(&subscriptionID); err != nil {
 		t.Fatalf("insert tenant: %v", err)
 	}
+	// Dependency-ordered teardown. Subscriptions can accumulate portfolio-stack +
+	// item-type seed data whose FKs RESTRICT both `users` and `subscriptions`, so a
+	// users/subscription delete alone leaves orphans and silently fails. Delete from
+	// the leaves up; let CASCADE handle sessions/perms/nav off `users`.
 	cleanup := func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM password_resets WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`, subscriptionID)
-		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE subscription_id = $1`, subscriptionID)
-		if _, err := pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, subscriptionID); err != nil {
-			t.Logf("cleanup tenant %s: %v", label, err)
+		stmts := []string{
+			`DELETE FROM item_state_history          WHERE subscription_id = $1`,
+			`DELETE FROM item_type_transition_edges  WHERE subscription_id = $1`,
+			`DELETE FROM item_type_states            WHERE subscription_id = $1`,
+			`DELETE FROM portfolio_item_types        WHERE subscription_id = $1`,
+			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
+			`DELETE FROM entity_stakeholders         WHERE subscription_id = $1`,
+			`DELETE FROM product                     WHERE subscription_id = $1`,
+			`DELETE FROM portfolio                   WHERE subscription_id = $1`,
+			`DELETE FROM workspace                   WHERE subscription_id = $1`,
+			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
+			`DELETE FROM subscription_sequence       WHERE subscription_id = $1`,
+			`DELETE FROM pending_library_cleanup_jobs WHERE subscription_id = $1`,
+			`DELETE FROM password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users                       WHERE subscription_id = $1`,
+			`DELETE FROM subscriptions               WHERE id = $1`,
+		}
+		for _, sql := range stmts {
+			if _, err := pool.Exec(ctx, sql, subscriptionID); err != nil {
+				t.Errorf("cleanup tenant %s: %s: %v", label, sql, err)
+			}
 		}
 	}
 	return subscriptionID, cleanup
@@ -90,7 +108,7 @@ func mkUser(t *testing.T, pool *pgxpool.Pool, subscriptionID uuid.UUID, role mod
 }
 
 func newSvc(pool *pgxpool.Pool) *Service {
-	var mailer email.Sender = silentMailer{}
+	mailer := email.New(email.DiscardTransport{}, "test@example.com")
 	return New(pool, audit.New(pool), mailer)
 }
 
