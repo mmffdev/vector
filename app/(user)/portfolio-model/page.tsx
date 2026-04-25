@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
+import BlockingReleaseGate from "@/app/components/BlockingReleaseGate";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 
@@ -115,6 +116,7 @@ export default function PortfolioModelPage() {
   if (!user || user.role === "user") return null;
 
   return (
+    <BlockingReleaseGate>
     <PageShell
       title="Portfolio Model"
       subtitle="Preview the MMFF-authored portfolio model bundle"
@@ -137,6 +139,7 @@ export default function PortfolioModelPage() {
       )}
       {state.kind === "ready" && <BundleView bundle={state.bundle} />}
     </PageShell>
+    </BlockingReleaseGate>
   );
 }
 

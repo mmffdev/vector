@@ -2509,3 +2509,53 @@ button {
   flex-wrap: wrap;
   margin-top: auto;
 }
+
+/* ── Blocking release gate ─────────────────────────────────────────────────── */
+
+.blocking-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.blocking-gate__dialog {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: 8px;
+  padding: 32px;
+  max-width: 420px;
+  width: calc(100% - 32px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.blocking-gate__icon {
+  font-size: 32px;
+  color: var(--color-red, #e53e3e);
+}
+
+.blocking-gate__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-1);
+  margin: 0;
+}
+
+.blocking-gate__body {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.blocking-gate__cta {
+  margin-top: 8px;
+}

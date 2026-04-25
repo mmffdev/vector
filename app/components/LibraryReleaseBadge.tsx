@@ -4,59 +4,21 @@
  * LibraryReleaseBadge — header notification icon for the mmff_library
  * release-notification channel (Phase 3, plan §12).
  *
- * Renders the bell icon for everyone, but only polls the count
- * endpoint and shows the badge for gadmins (plan §12: only the group
- * admin acts on releases). Polls every 5 minutes — matches the
- * reconciler's cache TTL so the badge stays in step without hammering
- * the backend.
- *
- * Click navigates to /library-releases.
+ * Renders the bell icon for everyone; gadmins see a numeric badge driven
+ * by LibraryReleasesContext (single shared poll). Click navigates to
+ * /library-releases.
  */
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { api, ApiError } from "@/app/lib/api";
-
-type CountResponse = {
-  count: number;
-  fresh: boolean;
-};
-
-const POLL_MS = 5 * 60 * 1000;
+import { useLibraryReleases } from "@/app/contexts/LibraryReleasesContext";
 
 export default function LibraryReleaseBadge() {
   const { user } = useAuth();
-  const [count, setCount] = useState<number | null>(null);
+  const { count } = useLibraryReleases();
 
   const isGAdmin = user?.role === "gadmin";
 
-  useEffect(() => {
-    if (!isGAdmin) return;
-    let cancelled = false;
-
-    const fetchCount = async () => {
-      try {
-        const data = await api<CountResponse>("/api/library/releases/count");
-        if (!cancelled) setCount(data.count);
-      } catch (err) {
-        // 401/403 means session not yet established — leave badge blank.
-        if (!(err instanceof ApiError) || (err.status !== 401 && err.status !== 403)) {
-          // log only — badge degrades to "no count" on transient errors
-          console.warn("library releases count failed:", err);
-        }
-      }
-    };
-
-    void fetchCount();
-    const id = window.setInterval(fetchCount, POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [isGAdmin]);
-
-  // Non-gadmin: show the bell but no badge, no link (kept for visual parity).
   if (!isGAdmin) {
     return (
       <button className="app-header-wrapper__icon-btn" title="Notifications">

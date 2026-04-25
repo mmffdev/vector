@@ -10,6 +10,7 @@ import AppFooter from "@/app/components/AppFooter";
 import PageHeaderBar from "@/app/components/PageHeaderBar";
 import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
+import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   if (loading || !user || user.force_password_change) return null;
 
   return (
+    <LibraryReleasesProvider>
     <NavPrefsProvider>
       <PageHeaderProvider>
         <div className="app-root">
@@ -46,5 +48,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         </div>
       </PageHeaderProvider>
     </NavPrefsProvider>
+    </LibraryReleasesProvider>
   );
 }
