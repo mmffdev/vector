@@ -17,7 +17,7 @@ Tunnel must be up on `:3333`. All commands use `$TOKEN` — get it once per sess
 | Label: storify | `1760724305328473193` |
 | Label: backlog-cmd | `1760724306184111210` |
 | Label: manual | `1760724307056526443` |
-| Label: agent-parallel | `1760728388919624826` |
+| Label: MULTI AGENT (berry-red) | `1760728388919624826` |
 
 ---
 
@@ -115,7 +115,7 @@ Filter to a specific list: add `if c['listId'] == '<LIST_ID>'` before print.
 
 ---
 
-## Scan for agent-parallel claimable cards
+## Scan for MULTI AGENT claimable cards
 
 ```bash
 curl -s "http://localhost:3333/api/boards/1760699595475649556" \

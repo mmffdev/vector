@@ -6,7 +6,15 @@
       "mcp__planka__get_lists",
       "mcp__planka__move_card_to_list",
       "mcp__planka__get_available_colors",
-      "mcp__planka__create_label"
+      "mcp__planka__create_label",
+      "mcp__planka__create_card",
+      "Edit(~/.claude/skills/storify/**)",
+      "mcp__planka__assign_label_to_card",
+      "mcp__planka__update_card_description",
+      "mcp__planka__get_labels",
+      "mcp__planka__rename_card",
+      "mcp__planka__change_label_color",
+      "mcp__planka__rename_label"
     ],
     "additionalDirectories": [
       "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude"

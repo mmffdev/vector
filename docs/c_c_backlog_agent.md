@@ -36,15 +36,29 @@ BRANCH=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse 
 | `storify` | lagoon-blue | `1760724305328473193` | `/storify` skill |
 | `backlog-cmd` | egg-yellow | `1760724306184111210` | `<backlog> -a` |
 | `manual` | fresh-salad | `1760724307056526443` | Human (UI only) |
-| `agent-parallel` | bright-moss | `1760728388919624826` | Planning agent — safe for parallel claim |
+| `MULTI AGENT` | berry-red | `1760728388919624826` | Planning agent — safe for parallel claim |
 
-Apply labels via MCP `create_card labels[]` array at creation time — curl label endpoint is broken (see [`c_c_planka_rest.md`](c_c_planka_rest.md)).
+**Hard rule (every card-creating agent — storify, backlog-cmd, manual, ad-hoc):** every card MUST end creation carrying `PH-NNNN`, `FE-SECNNNN`, a creation-source label (`storify` / `backlog-cmd` / `manual`), and `MULTI AGENT` if it qualifies. Cards missing any of these are defects — fix on the spot, do not move on.
 
-**`agent-parallel` qualifies when:** touches only its own files, no pending migrations, no schema changes, no shared service state. When in doubt, leave it unlabelled.
+**Label-application transport — verified state of the world:**
+
+| Path | Reality |
+|---|---|
+| `mcp__planka__create_card` with `labels[]` | **Silently broken** — schema accepts the field, server ignores it. Card is created with zero labels. Do NOT rely on this. |
+| `mcp__planka__assign_label_to_card` (one call per label, after the card exists) | Works reliably. **Use this.** |
+| `POST /api/cards/:id/labels` (REST) | Often returns `E_NOT_FOUND` even on success — the response body is untrustworthy. Verify after; if missing, retry via MCP. |
+
+**Required protocol — no shortcuts:**
+1. Create the card (REST `POST /api/lists/.../cards` OR `mcp__planka__create_card` — both fine for create-only).
+2. For each required label, call `mcp__planka__assign_label_to_card`.
+3. Fetch the board (`GET /api/boards/<BOARD_ID>`) and confirm `included.cardLabels` lists every required label for the new card. If any are missing, retry step 2 for that label and re-verify.
+4. Only after the verify shows the full label set is the card considered created.
+
+**`MULTI AGENT` qualifies when:** touches only its own files, no pending migrations, no schema changes, no shared service state. When in doubt, leave it unlabelled.
 
 ## Parallel agent work-claim
 
-Scan for claimable cards (Backlog + To Do, `agent-parallel` labelled):
+Scan for claimable cards (Backlog + To Do, `MULTI AGENT` labelled):
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \

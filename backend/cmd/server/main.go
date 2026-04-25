@@ -22,6 +22,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
+	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
@@ -109,6 +110,9 @@ func main() {
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 
 	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
+	portfolioAdoptionStateH := portfoliomodels.NewAdoptionStateHandler(pool)
+	portfolioAdoptH := portfoliomodels.NewAdoptHandler(libPools.RO, pool)
+	portfolioAdoptStreamH := portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
@@ -119,6 +123,12 @@ func main() {
 	libReleasesRec.Start(ctx)
 	defer libReleasesRec.Stop()
 	libReleasesH := libraryreleases.NewHandler(libPools.RO, pool, auditLog, libReleasesRec)
+
+	// Generic error reporter: any authenticated role can POST a
+	// {code, context} pair; we validate the code against the cross-DB
+	// mmff_library.error_codes catalogue and append-only insert into
+	// mmff_vector.error_events.
+	errorsReportH := errorsreport.NewHandler(libPools.RO, pool)
 
 	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *models.User) {
 		var tier string
@@ -211,16 +221,44 @@ func main() {
 
 	// ---- /api/portfolio-models ----
 	// Read-only library bundle surface (Phase 3 of mmff_library plan).
-	// Any authenticated user — MMFF-authored content is implicitly
-	// visible across tenants; per-tenant share enforcement lands in
-	// Phase 5.
+	// Bundle GETs by family/id are open to any authenticated user —
+	// MMFF-authored content is implicitly visible across tenants;
+	// per-tenant share enforcement lands in Phase 5. List + adoption-state
+	// are padmin-only because adoption is a padmin-owned product decision.
 	r.Route("/api/portfolio-models", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
+		// Padmin-only: list of MMFF-published bundles for the adoption
+		// picker. Registered BEFORE /{id} so chi resolves the static
+		// path first (defensive — chi's trie prefers static segments
+		// anyway).
+		r.With(auth.RequireRole(models.RolePAdmin)).
+			Get("/", portfolioModelsH.List)
+
+		// Padmin-only: live adoption state for the caller's subscription.
+		// Registered BEFORE /{id} so chi resolves the static path first
+		// (defensive — chi's trie prefers static segments anyway).
+		r.With(auth.RequireRole(models.RolePAdmin)).
+			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
+
 		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
 		r.Get("/{id}", portfolioModelsH.GetByModelID)
+
+		// Padmin-only: run the adoption saga for a library model id.
+		// Per-step atomic, idempotent on retry — see
+		// backend/internal/portfoliomodels/adopt.go for the orchestrator.
+		// Registered AFTER /{id} in source order is fine — chi's trie
+		// distinguishes by HTTP method anyway.
+		r.With(auth.RequireRole(models.RolePAdmin)).
+			Post("/{id}/adopt", portfolioAdoptH.Adopt)
+
+		// Padmin-only: SSE variant — emits one `event: step` per saga
+		// step plus a final `event: done` or `event: fail`. See
+		// backend/internal/portfoliomodels/adopt_stream.go.
+		r.With(auth.RequireRole(models.RolePAdmin)).
+			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
 	})
 
 	// ---- /api/library/releases ----
@@ -237,6 +275,18 @@ func main() {
 		r.Get("/", libReleasesH.List)
 		r.Get("/count", libReleasesH.Count)
 		r.Post("/{id}/ack", libReleasesH.Ack)
+	})
+
+	// ---- /api/errors ----
+	// Generic error reporter — any authenticated user (padmin, gadmin,
+	// or user) may report an occurrence. Rate-limited to dampen runaway
+	// loops on the client side; cap matches /api/nav.
+	r.Route("/api/errors", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Post("/report", errorsReportH.Report)
 	})
 
 	// ---- /api/admin ----

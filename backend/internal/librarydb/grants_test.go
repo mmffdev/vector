@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 // TestLibraryGrantMatrix asserts that the live mmff_library role grants
@@ -36,8 +37,9 @@ func TestLibraryGrantMatrix(t *testing.T) {
 	// Each entry: role -> table -> sorted set of privileges.
 
 	bundleTables := bundleTableList()
-	releaseTables := releaseTableList() // releases, actions, log
-	allTables := append(append([]string{}, bundleTables...), releaseTables...)
+	releaseTables := releaseTableList()     // releases, actions, log
+	referenceTables := referenceTableList() // error_codes (Phase 4 prep)
+	allTables := append(append(append([]string{}, bundleTables...), releaseTables...), referenceTables...)
 
 	adminPrivs := []string{"DELETE", "INSERT", "REFERENCES", "SELECT", "TRIGGER", "TRUNCATE", "UPDATE"}
 	roPrivs := []string{"SELECT"}
@@ -49,12 +51,21 @@ func TestLibraryGrantMatrix(t *testing.T) {
 	publishMap["library_releases"] = sortedCopy(publishWritePrivs)
 	publishMap["library_release_actions"] = sortedCopy(publishWritePrivs)
 	publishMap["library_release_log"] = []string{"INSERT"}
+	// Phase-4 prep: publish reads error_codes (reference data), does not write.
+	for _, t := range referenceTables {
+		publishMap[t] = sortedCopy(roPrivs)
+	}
 
 	// ack: Phase 1 had zero grants. Phase 3 adds SELECT on releases +
-	// actions only — no log access, no bundle access.
+	// actions only — no log access, no bundle access. Phase-4 prep adds
+	// SELECT on error_codes so ack can resolve codes when surfacing
+	// validation failures.
 	ackMap := map[string][]string{
 		"library_releases":        sortedCopy(roPrivs),
 		"library_release_actions": sortedCopy(roPrivs),
+	}
+	for _, t := range referenceTables {
+		ackMap[t] = sortedCopy(roPrivs)
 	}
 
 	want := map[string]map[string][]string{
@@ -85,9 +96,12 @@ func TestLibraryGrantMatrix(t *testing.T) {
 }
 
 // libraryTables returns every table in mmff_library covered by the grant
-// matrix (bundle tables + release-channel tables).
+// matrix (bundle tables + release-channel tables + reference tables).
 func libraryTables() []string {
-	return append(append([]string{}, bundleTableList()...), releaseTableList()...)
+	out := append([]string{}, bundleTableList()...)
+	out = append(out, releaseTableList()...)
+	out = append(out, referenceTableList()...)
+	return out
 }
 
 // bundleTableList — Phase 1 portfolio-model bundle tables.
@@ -109,6 +123,14 @@ func releaseTableList() []string {
 		"library_releases",
 		"library_release_actions",
 		"library_release_log",
+	}
+}
+
+// referenceTableList — Phase-4-prep MMFF-authored read-only reference data.
+// Every role gets SELECT (admin gets ALL); publish does NOT write here.
+func referenceTableList() []string {
+	return []string{
+		"error_codes",
 	}
 }
 
@@ -200,8 +222,14 @@ func testLibraryAdminPool(t *testing.T) *pgxpool.Pool {
 	host := envOrDefault("LIBRARY_DB_HOST", "localhost")
 	port := envOrDefault("LIBRARY_DB_PORT", "5434")
 	dbname := envOrDefault("LIBRARY_DB_NAME", "mmff_library")
-	user := envOrDefault("DB_USER", "mmff_dev") // dev superuser
-	pwd := os.Getenv("DB_PASSWORD")
+	// DB_USER / DB_PASSWORD are stored as ENC[aes256gcm:...] in .env.local;
+	// secrets.Get unwraps them using MASTER_KEY. Fallback to "mmff_dev" if
+	// DB_USER is unset (dev superuser default).
+	user := secrets.Get("DB_USER")
+	if user == "" {
+		user = "mmff_dev"
+	}
+	pwd := secrets.Get("DB_PASSWORD")
 
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",

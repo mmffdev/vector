@@ -1,10 +1,10 @@
 # Database schema — golden source
 
-> Last verified live: 2026-04-24 against `mmff_vector` (snapshot taken via tunnel). Doc updated 2026-04-25 post Phase-1 (`mmff_library` scaffolding: bundle tables + roles + grants + MMFF seed). Phase-0 covered migrations 017 (`tenants → subscriptions`), 018 (`subscriptions.tier`), 019 (`pending_library_cleanup_jobs`).
+> Last verified live: 2026-04-25 against `mmff_vector` (snapshot taken via tunnel; migration 028 applied + dropped during the verification; migration 029 applied via SSH+docker and verified with `\d` on all five mirror tables). Doc updated 2026-04-25 post Phase-1 (`mmff_library` scaffolding: bundle tables + roles + grants + MMFF seed) and Phase-4 prep (migration 026 added the `subscription_portfolio_model_state` adoption-state table — file shipped, not yet deployed). Migration 028 added the error-tracking domain (`error_events`, append-only). Migration 029 added the five adoption-mirror tables (`subscription_layers`, `subscription_workflows`, `subscription_workflow_transitions`, `subscription_artifacts`, `subscription_terminology`) populated by the adoption orchestrator from a `mmff_library` portfolio-model bundle — see [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md). Phase-0 covered migrations 017 (`tenants → subscriptions`), 018 (`subscriptions.tier`), 019 (`pending_library_cleanup_jobs`).
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
-> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
+> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `error_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/library_schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
 If you find drift, re-run the snapshot at the bottom of this file and update.
 
@@ -46,6 +46,9 @@ These rules are the contract; every query/handler/migration honours them.
 | User custom pages | `user_custom_pages`, `user_custom_page_views` |
 | Library reconciliation | `pending_library_cleanup_jobs` |
 | Library release acks | `library_acknowledgements` |
+| Library adoption state | `subscription_portfolio_model_state` |
+| Portfolio model mirror | `subscription_layers`, `subscription_workflows`, `subscription_workflow_transitions`, `subscription_artifacts`, `subscription_terminology` |
+| Error tracking | `error_events` |
 
 ---
 
@@ -483,6 +486,56 @@ Constraints:
 - `UNIQUE (page_id, label)`.
 - Index `idx_user_custom_page_views_page ON (page_id, position)`.
 
+### `subscription_portfolio_model_state`
+
+Per-subscription adoption record for an `mmff_library.portfolio_models` row (migration 026). Tracks the multi-step adoption saga (snapshot → mirror → flip pointer → cross-DB cleanup; see `feature_library_db_and_portfolio_presets_v3.md` §11). One non-terminal row per subscription, enforced by partial unique index. Ships with migration 026; not yet deployed (Phase-4 prep).
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
+| `adopted_model_id`* | uuid | no | — | App-enforced FK to `mmff_library.portfolio_models.id` (cross-DB; no real FK). Adoption handler validates at write time. |
+| `adopted_by_user_id`* | uuid | no | — | → `users.id` (RESTRICT). Padmin who initiated adoption (role enforced at handler). |
+| `adopted_at`* | timestamptz | no | `now()` | |
+| `status`* | text | no | — | CHECK in (`pending`, `in_progress`, `completed`, `failed`, `rolled_back`) |
+| `archived_at` | timestamptz | yes | — | soft-archive |
+| `created_at`* | timestamptz | no | `now()` | |
+| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+
+Indexes:
+- `idx_subscription_portfolio_model_state_subscription_id ON (subscription_id) WHERE archived_at IS NULL` — hot path "what is subscription X's current adoption?".
+- `idx_subscription_portfolio_model_state_status ON (subscription_id, status) WHERE archived_at IS NULL` — operator/UI filter by lifecycle.
+- `idx_subscription_portfolio_model_state_active_unique` UNIQUE on `(subscription_id) WHERE archived_at IS NULL AND status NOT IN ('failed','rolled_back')` — at most one non-terminal adoption per subscription; failed/rolled_back rows persist for audit.
+
+### Adoption mirror tables — `subscription_layers` / `subscription_workflows` / `subscription_workflow_transitions` / `subscription_artifacts` / `subscription_terminology`
+
+Five per-subscription mirror tables (migration 029) populated by the adoption orchestrator from a `mmff_library` portfolio-model bundle. Each mirrors one of the library's bundle children verbatim, plus the per-subscription wrappings: `id` UUID PK, `subscription_id` (RESTRICT), `source_library_id` + `source_library_version` (app-enforced cross-DB), `archived_at`, `created_at`, `updated_at` + `set_updated_at()` trigger. Cross-FKs **between mirrors** (e.g. `subscription_workflows.layer_id` → `subscription_layers.id`) use the new mirror UUID PKs — the orchestrator translates `library_id` → `mirror_id` row-by-row at adopt time. Library-derived uniqueness re-shaped per-subscription (e.g. `(subscription_id, name)` partial WHERE `archived_at IS NULL`).
+
+Full column lists, index lists, FK rules (RESTRICT on self/parent layer, CASCADE between workflows ↔ transitions), drop order, and the cross-DB writer-rules pattern: see [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md).
+
+### `error_events`
+
+Per-subscription append-only log of reported errors (migration 028). One row per call to `reportError(code, context)`. UPDATE and DELETE are rejected by trigger (matches `item_state_history` pattern from migration 006; stricter than `audit_log` which is convention-only). No `archived_at`, no `updated_at` — append-only audit data.
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
+| `user_id` | uuid | yes | — | → `users.id` (SET NULL). Survives user deletion for audit. |
+| `code`* | text | no | — | App-enforced FK by value to `mmff_library.error_codes.code` (cross-DB; no real FK). Readers LEFT JOIN across DBs and tolerate missing matches. See TD-LIB-007. |
+| `context` | jsonb | yes | — | Optional structured payload from `reportError`. Small (< ~4 KB) JSON of short snake_case keys; link to logs/traces for blobs. |
+| `occurred_at`* | timestamptz | no | `now()` | when the error was reported |
+| `request_id` | text | yes | — | Correlation handle to logs/traces; matches go-chi `middleware.RequestID` output (TEXT, not UUID). |
+| `created_at`* | timestamptz | no | `now()` | |
+
+Indexes:
+- `idx_error_events_subscription_code ON (subscription_id, code, occurred_at DESC)` — primary read path: "last N errors of code X for this subscription".
+- `idx_error_events_subscription_occurred ON (subscription_id, occurred_at DESC)` — recent errors regardless of code (dashboards / alerts).
+
+Append-only triggers:
+- `trg_error_events_no_update BEFORE UPDATE` → `error_events_append_only()` raises `check_violation`.
+- `trg_error_events_no_delete BEFORE DELETE` → same function.
+
 ---
 
 ## Foreign-key map (delete rules)
@@ -498,6 +551,9 @@ company_roadmap.owner_user_id    → users.id            (RESTRICT)
 
 entity_stakeholders.subscription_id → subscriptions.id (RESTRICT)
 entity_stakeholders.user_id      → users.id            (RESTRICT)
+
+error_events.subscription_id    → subscriptions.id     (RESTRICT)
+error_events.user_id            → users.id             (SET NULL)
 
 execution_item_types.subscription_id → subscriptions.id (RESTRICT)
 
@@ -522,6 +578,29 @@ pages.subscription_id          → subscriptions.id      (CASCADE)
 password_resets.user_id        → users.id              (CASCADE)
 
 pending_library_cleanup_jobs.subscription_id → subscriptions.id (RESTRICT)
+
+subscription_portfolio_model_state.subscription_id    → subscriptions.id (RESTRICT)
+subscription_portfolio_model_state.adopted_by_user_id → users.id         (RESTRICT)
+-- adopted_model_id → mmff_library.portfolio_models.id  (APP-ENFORCED; no DB FK, cross-DB)
+
+subscription_layers.subscription_id    → subscriptions.id          (RESTRICT)
+subscription_layers.parent_layer_id    → subscription_layers.id    (RESTRICT)
+-- source_library_id → mmff_library.portfolio_model_layers.id      (APP-ENFORCED cross-DB)
+
+subscription_workflows.subscription_id → subscriptions.id          (RESTRICT)
+subscription_workflows.layer_id        → subscription_layers.id    (CASCADE)
+-- source_library_id → mmff_library.portfolio_model_workflows.id   (APP-ENFORCED cross-DB)
+
+subscription_workflow_transitions.subscription_id  → subscriptions.id        (RESTRICT)
+subscription_workflow_transitions.from_state_id    → subscription_workflows.id (CASCADE)
+subscription_workflow_transitions.to_state_id      → subscription_workflows.id (CASCADE)
+-- source_library_id → mmff_library.portfolio_model_workflow_transitions.id (APP-ENFORCED cross-DB)
+
+subscription_artifacts.subscription_id → subscriptions.id          (RESTRICT)
+-- source_library_id → mmff_library.portfolio_model_artifacts.id   (APP-ENFORCED cross-DB)
+
+subscription_terminology.subscription_id → subscriptions.id        (RESTRICT)
+-- source_library_id → mmff_library.portfolio_model_terminology.id (APP-ENFORCED cross-DB)
 
 portfolio.subscription_id      → subscriptions.id      (RESTRICT)
 portfolio.workspace_id         → workspace.id          (RESTRICT)
@@ -589,7 +668,12 @@ Pattern summary:
 017_subscriptions_rename.sql          -- tenants → subscriptions, tenant_id → subscription_id, tenant_sequence → subscription_sequence; FKs/indexes/triggers/dispatch fns updated in same tx (TD-LIB-001 Phase 0)
 018_subscription_tier.sql             -- subscriptions.tier TEXT NOT NULL DEFAULT 'pro' CHECK in (free,pro,enterprise) — drives mmff_library entitlements (TD-LIB-002)
 019_pending_library_cleanup_jobs.sql  -- cross-DB cleanup work queue for the archive saga (TD-LIB-003)
+026_subscription_portfolio_model_state.sql -- per-subscription adoption-state table (Phase 4 prep): id, subscription_id, adopted_model_id (app-enforced cross-DB FK to mmff_library.portfolio_models), adopted_by_user_id (padmin), status saga lifecycle, partial unique on active row (TD-LIB-007)
+028_error_events.sql                  -- per-subscription append-only error log: subscription_id (RESTRICT), user_id (SET NULL), code (app-enforced cross-DB FK to mmff_library.error_codes), context jsonb, occurred_at, request_id; UPDATE/DELETE rejected by trigger (matches item_state_history). (TD-LIB-008)
+029_adoption_mirror_tables.sql        -- 5 per-subscription mirror tables for the adoption orchestrator: subscription_layers, subscription_workflows, subscription_workflow_transitions, subscription_artifacts, subscription_terminology. Each carries source_library_id + source_library_version (app-enforced cross-DB to mmff_library.portfolio_model_*); cross-FKs between mirrors use mirror UUIDs. See c_c_schema_adoption_mirrors.md. (TD-LIB-009)
 ```
+
+> Migrations 020–025 (portfolio model page, library acks, library releases page, default-pin backfills, nav group reorder) and 027 are present on disk but are out of scope for this list — see the files in `db/schema/` directly until the next librarian sweep.
 
 ## Naming conventions
 

@@ -2392,6 +2392,66 @@ button {
 }
 
 /* ============================================================
+   Layer hierarchy block diagram
+   Vertical stack of bordered rectangles representing a model's
+   layers (workspace at top by sort_order asc) with a dashed
+   placeholder box at the bottom for the gadmin's custom layers.
+   ============================================================ */
+
+.layer-hierarchy {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layer-hierarchy__box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  color: var(--ink-1);
+}
+
+.layer-hierarchy__box--custom {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--line-2);
+  color: var(--ink-3);
+}
+
+.layer-hierarchy__tag {
+  font-size: 11px;
+  color: var(--ink-2);
+  padding: 2px 6px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-sm);
+  flex: 0 0 auto;
+}
+
+.layer-hierarchy__box--custom .layer-hierarchy__tag {
+  background: transparent;
+  color: var(--ink-3);
+  border-style: dashed;
+}
+
+.layer-hierarchy__name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.layer-hierarchy__box--custom .layer-hierarchy__name {
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ============================================================
    Library release notification channel (Phase 3, plan §12)
    - Severity: info | action | breaking
    - Card list rendered on /library-releases
@@ -2558,4 +2618,365 @@ button {
 
 .blocking-gate__cta {
   margin-top: 8px;
+}
+
+/* -------------------------------------------------------------------------
+ * AdoptionOverlay (cards 00017 + 00018)
+ * Full-screen progress UI shown while a portfolio model is being adopted.
+ * Phase 1: centered loader. Phase 2: horizontal block-diagram of step boxes.
+ * Failure UI (00018): per-step --failed flag plus an error banner with code,
+ * message, retry status, and (after exhaustion) Try again / Cancel actions.
+ * ------------------------------------------------------------------------- */
+.adoption-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-1, #ffffff);
+  padding: 24px;
+}
+
+.adoption-overlay__phase-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.adoption-overlay__spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid var(--border-1, #e2e8f0);
+  border-top-color: var(--color-blue, #3182ce);
+  animation: adoption-overlay-spin 0.9s linear infinite;
+}
+
+@keyframes adoption-overlay-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.adoption-overlay__loader-text {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.adoption-overlay__phase-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 1100px;
+  width: 100%;
+}
+
+.adoption-overlay__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink-1);
+  margin: 0;
+}
+
+.adoption-overlay__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.adoption-overlay__step {
+  flex: 0 0 130px;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid var(--border-1, #e2e8f0);
+  border-radius: 6px;
+  background: var(--surface-2, #f7fafc);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 240ms ease, border-color 240ms ease, color 240ms ease;
+}
+
+.adoption-overlay__step-index {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3, #718096);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adoption-overlay__step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-1);
+  text-align: center;
+}
+
+.adoption-overlay__step--idle {
+  /* default styling (grey) */
+}
+
+.adoption-overlay__step--in-progress {
+  border-color: var(--color-blue, #3182ce);
+  background: var(--surface-1, #ffffff);
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.15);
+}
+
+.adoption-overlay__step--in-progress .adoption-overlay__step-index {
+  color: var(--color-blue, #3182ce);
+}
+
+.adoption-overlay__step--complete {
+  border-color: var(--color-green, #38a169);
+  background: rgba(56, 161, 105, 0.08);
+}
+
+.adoption-overlay__step--complete .adoption-overlay__step-index {
+  color: var(--color-green, #38a169);
+}
+
+/* Failure styling — owned by card 00018. */
+.adoption-overlay__step--failed {
+  border-color: var(--color-red, #e53e3e);
+  background: rgba(229, 62, 62, 0.08);
+}
+
+.adoption-overlay__step--failed .adoption-overlay__step-index {
+  color: var(--color-red, #e53e3e);
+}
+
+.adoption-overlay__success {
+  font-size: 14px;
+  color: var(--color-green, #38a169);
+  margin: 0;
+}
+
+/* Error banner (card 00018) — surfaces error_code + user_message from the SSE
+ * `event: fail` payload. While auto-retrying, it shows the retry counter.
+ * After ADOPTION_MAX_RETRIES (5) it surfaces Try again / Cancel actions. */
+.adoption-overlay__error {
+  width: 100%;
+  max-width: 720px;
+  margin: 0;
+  padding: 16px 20px;
+  border: 1px solid var(--color-red, #e53e3e);
+  border-radius: 6px;
+  background: rgba(229, 62, 62, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.adoption-overlay__error-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-red, #e53e3e);
+  text-transform: uppercase;
+}
+
+.adoption-overlay__error-message {
+  font-size: 14px;
+  color: var(--ink-1);
+}
+
+.adoption-overlay__error-retry {
+  font-size: 12px;
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.adoption-overlay__error-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.adoption-overlay__error-button {
+  appearance: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border-1, #e2e8f0);
+  background: var(--surface-1, #ffffff);
+  color: var(--ink-1);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.adoption-overlay__error-button:hover {
+  background: var(--surface-2, #f7fafc);
+}
+
+.adoption-overlay__error-button--primary {
+  border-color: var(--color-blue, #3182ce);
+  background: var(--color-blue, #3182ce);
+  color: #ffffff;
+}
+
+.adoption-overlay__error-button--primary:hover {
+  background: #2b6cb0;
+  border-color: #2b6cb0;
+}
+
+/* ============================================================
+   Wizard model card list (card 00019)
+   Horizontal row of selectable portfolio model cards used by
+   the padmin adoption wizard. Single-select; confirm POSTs to
+   /api/portfolio-models/{id}/adopt.
+   ============================================================ */
+
+.wizard-model-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wizard-model-cards__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wizard-model-cards__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+.wizard-model-cards__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.wizard-model-cards__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.wizard-model-cards__item {
+  display: flex;
+  flex: 0 1 280px;
+  min-width: 240px;
+}
+
+.wizard-model-cards__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  background: var(--surface-1, var(--surface));
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease,
+    box-shadow 120ms ease;
+  color: inherit;
+  font: inherit;
+}
+
+.wizard-model-cards__card:hover:not(:disabled) {
+  border-color: var(--ink-3);
+}
+
+.wizard-model-cards__card:focus-visible {
+  outline: 2px solid var(--hot-pink);
+  outline-offset: 2px;
+}
+
+.wizard-model-cards__card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wizard-model-cards__card--selected {
+  border-color: var(--hot-pink);
+  box-shadow: inset 0 0 0 1px var(--hot-pink);
+}
+
+.wizard-model-cards__card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wizard-model-cards__card-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-1);
+  flex: 1 1 auto;
+}
+
+.wizard-model-cards__card-description {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+
+.wizard-model-cards__card-meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wizard-model-cards__card-meta-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.wizard-model-cards__card-meta-row dt {
+  color: var(--ink-3);
+  flex: 0 0 64px;
+  margin: 0;
+}
+
+.wizard-model-cards__card-meta-row dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.wizard-model-cards__card-summary {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.wizard-model-cards__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wizard-model-cards__confirm {
+  min-width: 120px;
 }
