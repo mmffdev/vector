@@ -11,11 +11,11 @@ Load the relevant guide only when the task touches that area — keeps this file
 **Standing rule (hard):** every task maintains the technical-debt register — identify, measure (S1/S2/S3 + trigger), recommend (cap now, pay-down on trigger). See [`docs/c_tech_debt.md`](../docs/c_tech_debt.md).
 
 - **Styling / CSS / new UI components** → [`docs/css-guide.md`](../docs/css-guide.md) — BEM-lite, no inline styles, rules in `app/globals.css`.
-- **Database backup (`<backupsql>`)** → [`docs/c_db-backup.md`](../docs/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
-- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — track outstanding/done work; flags: `-a` add, `-n` outstanding, `-d` done, `-h` help.
-- **Dev server (`<npm>`)** → [`docs/c_npm.md`](../docs/c_npm.md) — start Next.js on `:3000`.
-- **Dev launcher (`MMFF Vector Dev.app`)** → [`docs/c_dev-launcher.md`](../docs/c_dev-launcher.md) — AppleScript app that starts tunnel, backend, frontend.
-- **Service status (`<services>`)** → [`docs/c_services.md`](../docs/c_services.md) — read-only status check for tunnel (`:5434`), backend (`:5100`), next (`:5101`).
+- **Database backup (`<backupsql>`)** → [`.claude/commands/c_db-backup.md`](commands/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
+- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — Planka kanban via MCP; tunnel must be up on `:3333`; flags: `-a` add, `-n` outstanding, `-d` done, `-m` move to done, `-h` help.
+- **Dev server (`<npm>`)** → [`.claude/commands/c_npm.md`](commands/c_npm.md) — start Next.js on `:3000`.
+- **Dev launcher (`MMFF Vector Dev.app`)** → [`.claude/commands/c_dev-launcher.md`](commands/c_dev-launcher.md) — AppleScript app that starts tunnel, backend, frontend.
+- **Service status (`<services>`)** → [`.claude/commands/c_services.md`](commands/c_services.md) — read-only status check for tunnel (`:5434`), backend (`:5100`), next (`:5101`).
 - **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
 - **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants; links to per-table leaves.
@@ -29,10 +29,10 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **App Router layout** → [`docs/c_page-structure.md`](../docs/c_page-structure.md) — route groups, role gating, PageShell.
 - **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist; librarian scans against it.
 - **Backup on push** → [`docs/c_backup-on-push.md`](../docs/c_backup-on-push.md) — dual-channel; auto-snapshots pushed commits.
-- **`<librarian>`** → [`docs/c_librarian.md`](../docs/c_librarian.md) — run after major updates to sync docs with code and flag security issues.
-- **Make UI app (`<makeapp> -<name> -<scope>`)** → [`docs/c_make-app.md`](../docs/c_make-app.md) — scaffold a user-facing app in `app/store/ui_apps/ui_app_<name>/` with manifest, index, css, and registry entry.
-- **Make dev UI app (`<makedevapp> -<name> -<scope>`)** → [`docs/c_make-dev-app.md`](../docs/c_make-dev-app.md) — scaffold a developer-only app in `dev/store/ui_apps/ui_app_<name>/` with manifest, index, css (no registry).
-- **Selenium Grid UI (`<seleniumup>`)** → [`docs/c_selenium.md`](../docs/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
+- **`<librarian>`** → [`.claude/commands/c_librarian.md`](commands/c_librarian.md) — run after major updates to sync docs with code and flag security issues.
+- **Make UI app (`<makeapp> -<name> -<scope>`)** → [`.claude/commands/c_make-app.md`](commands/c_make-app.md) — scaffold a user-facing app in `app/store/ui_apps/ui_app_<name>/` with manifest, index, css, and registry entry.
+- **Make dev UI app (`<makedevapp> -<name> -<scope>`)** → [`.claude/commands/c_make-dev-app.md`](commands/c_make-dev-app.md) — scaffold a developer-only app in `dev/store/ui_apps/ui_app_<name>/` with manifest, index, css (no registry).
+- **Selenium Grid UI (`<seleniumup>`)** → [`.claude/commands/c_selenium.md`](commands/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
 - **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
