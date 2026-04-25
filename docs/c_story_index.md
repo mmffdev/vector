@@ -24,6 +24,12 @@ Example: `00021 — Frontend: full-screen adoption overlay`.
 - **`storify`** (or `backlog-cmd` / `manual`) — creation source.
 - **`MULTI AGENT`** (berry-red) — only when story qualifies for parallel dispatch (see `c_c_backlog_agent.md`).
 
+## Active phase
+
+Current phase: **PH-0005** (CSS responsive design).
+
+Phase 4 (portfolio-model adoption) is complete. Phase 5 is the responsive design initiative.
+
 ## Deletion log
 
 | ID | Title | Reason |
