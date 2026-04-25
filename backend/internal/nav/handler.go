@@ -63,7 +63,7 @@ type prefsResp struct {
 // GET /api/nav/prefs — this user's prefs + custom groups for their current tenant.
 func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.SubscriptionID)
+	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

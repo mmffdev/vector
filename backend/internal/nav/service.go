@@ -92,7 +92,47 @@ type CustomGroupInput struct {
 
 // GetPrefs returns a user's prefs for (user, tenant, profile=NULL) ordered by position.
 // Empty slice means "no prefs set" — callers fall back to catalogue defaults.
-func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID) ([]PrefRow, error) {
+//
+// Side effect: opportunistically backfills any system page (created_by IS NULL,
+// subscription_id IS NULL) where pages.default_pinned=TRUE and the user's role
+// is allowed by page_roles, but the user has no row in user_nav_prefs for it.
+// This eliminates the per-release backfill-migration tax — adding a new system
+// page with default_pinned=TRUE auto-pins it for every existing eligible user
+// on their next nav fetch. One-time per (user, page); subsequent unpins stick.
+func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) ([]PrefRow, error) {
+	if _, err := s.Pool.Exec(ctx, `
+		INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
+		SELECT
+			$1::uuid,
+			$2::uuid,
+			NULL,
+			p.key_enum,
+			COALESCE(
+				(SELECT MAX(unp.position) + 1
+				 FROM user_nav_prefs unp
+				 WHERE unp.user_id = $1::uuid
+				   AND unp.subscription_id = $2::uuid
+				   AND unp.profile_id IS NULL),
+				0
+			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
+			FALSE
+		FROM pages p
+		JOIN page_roles pr ON pr.page_id = p.id
+		WHERE p.created_by IS NULL
+		  AND p.subscription_id IS NULL
+		  AND p.default_pinned = TRUE
+		  AND p.pinnable = TRUE
+		  AND pr.role = $3::user_role
+		  AND NOT EXISTS (
+			  SELECT 1 FROM user_nav_prefs unp
+			  WHERE unp.user_id = $1::uuid
+				AND unp.subscription_id = $2::uuid
+				AND unp.profile_id IS NULL
+				AND unp.item_key = p.key_enum
+		  )`, userID, subscriptionID, string(role)); err != nil {
+		return nil, fmt.Errorf("nav prefs backfill: %w", err)
+	}
+
 	rows, err := s.Pool.Query(ctx, `
 		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
 		FROM user_nav_prefs

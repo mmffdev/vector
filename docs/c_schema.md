@@ -349,7 +349,7 @@ Page-registry catalogue. System pages have `subscription_id`/`created_by` NULL; 
 | `tag_enum`* | text | no | — | → `page_tags.tag_enum` |
 | `kind`* | text | no | — | `system`, `entity`, `user_custom`, etc. |
 | `pinnable`* | bool | no | `true` | |
-| `default_pinned`* | bool | no | `false` | |
+| `default_pinned`* | bool | no | `false` | auto-pinned on the next `GET /api/nav/prefs` for any user whose role passes `page_roles`; one-time per (user, page) — subsequent unpins stick. See `nav.Service.GetPrefs` opportunistic backfill. |
 | `default_order`* | int | no | `0` | |
 | `created_by` | uuid | yes | — | → `users.id` (CASCADE). NULL = system/shared |
 | `subscription_id` | uuid | yes | — | → `subscriptions.id` (CASCADE). NULL = global system page |

@@ -127,12 +127,15 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Fatalf("ReplacePrefs: %v", err)
 	}
 
-	rows, err := svc.GetPrefs(ctx, userID, subscriptionID)
+	rows, err := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
 	if err != nil {
 		t.Fatalf("GetPrefs: %v", err)
 	}
-	if len(rows) != 3 {
-		t.Fatalf("want 3 rows, got %d", len(rows))
+	// GetPrefs opportunistically backfills default-pinned system pages
+	// for the caller's role; assert the explicitly pinned three are present
+	// at positions 0..2, not the total row count.
+	if len(rows) < 3 {
+		t.Fatalf("want at least 3 rows, got %d", len(rows))
 	}
 	if rows[0].ItemKey != "dashboard" || rows[0].Position != 0 {
 		t.Errorf("row 0 mismatch: %+v", rows[0])
@@ -273,12 +276,14 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 		t.Fatalf("second write: %v", err)
 	}
 
-	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID)
-	if len(rows) != 2 {
-		t.Fatalf("want 2 rows after overwrite, got %d", len(rows))
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	// Backfill may add additional default-pinned rows; assert the two
+	// explicitly-set rows lead the list in the order ReplacePrefs placed them.
+	if len(rows) < 2 {
+		t.Fatalf("want at least 2 rows after overwrite, got %d", len(rows))
 	}
 	if rows[0].ItemKey != "backlog" || rows[1].ItemKey != "planning" {
-		t.Errorf("unexpected rows: %+v", rows)
+		t.Errorf("unexpected leading rows: %+v", rows)
 	}
 }
 
@@ -298,9 +303,20 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 	if err := svc.DeletePrefs(ctx, userID, subscriptionID); err != nil {
 		t.Fatalf("DeletePrefs: %v", err)
 	}
-	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID)
-	if len(rows) != 0 {
-		t.Fatalf("want 0 rows after delete, got %d", len(rows))
+	// After DeletePrefs the prefs row is gone; the next GetPrefs will
+	// repopulate every default_pinned=TRUE page allowed for the role.
+	// That's the documented behavior — assert the originally-pinned key
+	// is back rather than asserting zero rows.
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	found := false
+	for _, r := range rows {
+		if r.ItemKey == "dashboard" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("dashboard should be re-pinned by backfill after DeletePrefs, got rows: %+v", rows)
 	}
 }
 
