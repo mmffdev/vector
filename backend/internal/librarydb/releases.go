@@ -346,22 +346,22 @@ func FindRelease(ctx context.Context, libRO *pgxpool.Pool, releaseID uuid.UUID) 
 }
 
 // CountOutstandingForSubscription returns how many active, in-audience
-// releases the caller has NOT yet acknowledged. Used by the reconciler
-// to populate the badge count without re-fetching every release row on
-// every page load.
+// releases the caller has NOT yet acknowledged, and whether any of those
+// outstanding releases have severity=breaking. Used by the reconciler to
+// populate the badge count and blocking-gate flag.
 func CountOutstandingForSubscription(
 	ctx context.Context,
 	libRO *pgxpool.Pool,
 	vectorPool *pgxpool.Pool,
 	subscriptionID uuid.UUID,
 	subscriptionTier string,
-) (int, error) {
+) (count int, hasBlocking bool, err error) {
 	releases, err := loadActiveReleases(ctx, libRO, subscriptionID, subscriptionTier)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if len(releases) == 0 {
-		return 0, nil
+		return 0, false, nil
 	}
 	releaseIDs := make([]uuid.UUID, 0, len(releases))
 	for _, r := range releases {
@@ -369,7 +369,16 @@ func CountOutstandingForSubscription(
 	}
 	acked, err := loadAckedSet(ctx, vectorPool, subscriptionID, releaseIDs)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
-	return len(releases) - len(acked), nil
+	for _, r := range releases {
+		if _, ok := acked[r.ID]; ok {
+			continue
+		}
+		count++
+		if r.Severity == SeverityBreaking {
+			hasBlocking = true
+		}
+	}
+	return count, hasBlocking, nil
 }

@@ -82,8 +82,9 @@ type ackResponse struct {
 }
 
 type countResponse struct {
-	Count int  `json:"count"`
-	Fresh bool `json:"fresh"`
+	Count       int  `json:"count"`
+	HasBlocking bool `json:"has_blocking"`
+	Fresh       bool `json:"fresh"`
 }
 
 // Count — GET /api/library/releases/count
@@ -97,8 +98,8 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.Reconciler != nil {
-		if n, fresh := h.Reconciler.Count(u.SubscriptionID); fresh {
-			writeJSON(w, http.StatusOK, countResponse{Count: n, Fresh: true})
+		if n, blocking, fresh := h.Reconciler.Count(u.SubscriptionID); fresh {
+			writeJSON(w, http.StatusOK, countResponse{Count: n, HasBlocking: blocking, Fresh: true})
 			return
 		}
 	}
@@ -109,20 +110,19 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.Reconciler != nil {
 		h.Reconciler.Touch(r.Context(), u.SubscriptionID, tier)
-		if n, _ := h.Reconciler.Count(u.SubscriptionID); true {
-			writeJSON(w, http.StatusOK, countResponse{Count: n, Fresh: true})
-			return
-		}
+		n, blocking, _ := h.Reconciler.Count(u.SubscriptionID)
+		writeJSON(w, http.StatusOK, countResponse{Count: n, HasBlocking: blocking, Fresh: true})
+		return
 	}
 	// Fallback path (no reconciler wired): compute inline.
-	n, err := librarydb.CountOutstandingForSubscription(
+	n, blocking, err := librarydb.CountOutstandingForSubscription(
 		r.Context(), h.LibRO, h.VectorPool, u.SubscriptionID, tier,
 	)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, countResponse{Count: n, Fresh: false})
+	writeJSON(w, http.StatusOK, countResponse{Count: n, HasBlocking: blocking, Fresh: false})
 }
 
 // List — GET /api/library/releases

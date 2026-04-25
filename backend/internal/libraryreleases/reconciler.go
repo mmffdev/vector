@@ -40,6 +40,7 @@ type Reconciler struct {
 
 type cachedCount struct {
 	count       int
+	hasBlocking bool
 	tier        string
 	refreshedAt time.Time
 }
@@ -111,7 +112,7 @@ func (r *Reconciler) refreshAll(ctx context.Context) {
 	r.mu.RUnlock()
 
 	for _, id := range subs {
-		count, err := librarydb.CountOutstandingForSubscription(
+		count, hasBlocking, err := librarydb.CountOutstandingForSubscription(
 			ctx, r.libRO, r.vectorPool, id, tiers[id],
 		)
 		if err != nil {
@@ -121,6 +122,7 @@ func (r *Reconciler) refreshAll(ctx context.Context) {
 		r.mu.Lock()
 		r.cache[id] = cachedCount{
 			count:       count,
+			hasBlocking: hasBlocking,
 			tier:        tiers[id],
 			refreshedAt: time.Now().UTC(),
 		}
@@ -133,7 +135,7 @@ func (r *Reconciler) refreshAll(ctx context.Context) {
 // from a session. Errors are logged but not surfaced — a missing badge
 // count degrades to "we don't know yet, try again", not a 500.
 func (r *Reconciler) Touch(ctx context.Context, subscriptionID uuid.UUID, tier string) {
-	count, err := librarydb.CountOutstandingForSubscription(
+	count, hasBlocking, err := librarydb.CountOutstandingForSubscription(
 		ctx, r.libRO, r.vectorPool, subscriptionID, tier,
 	)
 	if err != nil {
@@ -143,6 +145,7 @@ func (r *Reconciler) Touch(ctx context.Context, subscriptionID uuid.UUID, tier s
 	r.mu.Lock()
 	r.cache[subscriptionID] = cachedCount{
 		count:       count,
+		hasBlocking: hasBlocking,
 		tier:        tier,
 		refreshedAt: time.Now().UTC(),
 	}
@@ -158,17 +161,15 @@ func (r *Reconciler) Invalidate(subscriptionID uuid.UUID) {
 	r.mu.Unlock()
 }
 
-// Count returns the cached outstanding-release count for a subscription
-// and a `fresh` flag indicating whether the cache hit was within the
-// TTL. The badge handler treats `!fresh` as a hint to re-touch
-// asynchronously while still returning the (slightly stale) count.
-func (r *Reconciler) Count(subscriptionID uuid.UUID) (int, bool) {
+// Count returns the cached outstanding-release count, hasBlocking flag,
+// and a `fresh` flag for a subscription. The badge handler treats
+// `!fresh` as a hint to re-touch while still returning the stale values.
+func (r *Reconciler) Count(subscriptionID uuid.UUID) (count int, hasBlocking bool, fresh bool) {
 	r.mu.RLock()
 	c, ok := r.cache[subscriptionID]
 	r.mu.RUnlock()
 	if !ok {
-		return 0, false
+		return 0, false, false
 	}
-	fresh := time.Since(c.refreshedAt) < cacheTTL
-	return c.count, fresh
+	return c.count, c.hasBlocking, time.Since(c.refreshedAt) < cacheTTL
 }

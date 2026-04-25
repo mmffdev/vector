@@ -149,7 +149,7 @@ func TestCountOutstanding(t *testing.T) {
 		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
 		subID, releaseID)
 
-	pre, err := CountOutstandingForSubscription(ctx, libPool, vecPool, subID, tier)
+	pre, _, err := CountOutstandingForSubscription(ctx, libPool, vecPool, subID, tier)
 	if err != nil {
 		t.Fatalf("Count pre: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestCountOutstanding(t *testing.T) {
 		t.Fatalf("AckRelease: %v", err)
 	}
 
-	post, err := CountOutstandingForSubscription(ctx, libPool, vecPool, subID, tier)
+	post, _, err := CountOutstandingForSubscription(ctx, libPool, vecPool, subID, tier)
 	if err != nil {
 		t.Fatalf("Count post: %v", err)
 	}
