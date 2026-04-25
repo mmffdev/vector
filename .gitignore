@@ -8,3 +8,4 @@ local-assets/security-flags.jsonl
 .playwright-mcp/
 .claude/scheduled_tasks.lock
 prefs-nav-*.png
+backend/.env.local
