@@ -10,14 +10,18 @@ originSessionId: d252e265-892b-4087-8dbd-a50e6045c3e2
 
 ## Auth
 
+Use the `claude@mmffdev.com` account (created for the agent; admin's account is separate):
+
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
   -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"admin@mmffdev.com","password":"changeme123!"}' \
+  -d '{"emailOrUsername":"claude@mmffdev.com","password":"myApples27@"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
 ```
 
-Re-run at the start of any session. Token is valid ~1 year.
+Re-run at the start of any session. Token is valid ~1 year. Terms of service have already been accepted on this account; login returns a real access token (not a `pendingToken`).
+
+If a future Planka upgrade re-prompts terms, the response shape is `{"code":"E_FORBIDDEN","pendingToken":"...","step":"accept-terms"}`. Fetch the signature from `GET /api/terms`, then `POST /api/access-tokens/accept-terms` with `{pendingToken, signature}`.
 
 ## Key IDs (pre-resolved)
 
@@ -64,6 +68,28 @@ for c in d['included']['cards']:
     print(c['id'], c['listId'], c['name'])
 "
 ```
+
+## Attach a label to a card
+
+```bash
+curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/card-labels" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"labelId":"<LABEL_ID>"}'
+```
+
+**Important:** the path is **`/card-labels`** (kebab-case), not `/labels`. The `/labels` form returns `E_NOT_FOUND` and the storify skill's REST template (which uses `/labels`) silently fails. Same kebab-case convention applies to `/card-memberships` (assigning a user as card owner).
+
+## Assign a user to a card (card ownership)
+
+```bash
+curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/card-memberships" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"<USER_ID>"}'
+```
+
+My user ID (claude@mmffdev.com): `1761296226721990419`.
 
 ## Post a comment on a card
 

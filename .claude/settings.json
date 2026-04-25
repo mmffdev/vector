@@ -14,10 +14,12 @@
       "mcp__planka__get_labels",
       "mcp__planka__rename_card",
       "mcp__planka__change_label_color",
-      "mcp__planka__rename_label"
+      "mcp__planka__rename_label",
+      "Bash(git commit -m ' *)"
     ],
     "additionalDirectories": [
-      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude"
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/memory"
     ]
   },
   "hooks": {

@@ -29,6 +29,7 @@ Counters are independent per namespace.
 | Label | Planka label ID | Color | Meaning |
 |---|---|---|---|
 | `FE-DEV0001` | `1760909905369237242` | tank-green | Master debug toggle + dev-mode debug infrastructure |
+| `FE-DEV0002` | `1761301483015374767` | tank-green | Internal planning docs (dev/planning/c_database_mapping.md and similar) |
 
 ## Adding a new feature label
 
