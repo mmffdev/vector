@@ -20,7 +20,7 @@ ALTER TABLE users
 
 UPDATE users
     SET force_password_change = TRUE
-    WHERE email = 'admin@mmffdev.com';
+    WHERE email = 'gadmin@mmffdev.com';
 
 -- ============================================================
 -- 2. password_resets — single-use, time-boxed tokens
