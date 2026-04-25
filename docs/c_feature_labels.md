@@ -1,6 +1,12 @@
-# Feature label registry (FE-SECNNNN)
+# Feature label registry (FE-SEC / FE-DEV)
 
-One feature label per discrete feature/section. Every story card must carry exactly one `FE-SEC*` label so the board can be filtered to a single feature's cards.
+One feature label per discrete feature/section. Every story card must carry exactly one feature label so the board can be filtered to a single feature's cards.
+
+Two parallel namespaces:
+- **`FE-SECNNNN`** — product-section features (user-facing slices of the product).
+- **`FE-DEVNNNN`** — dev-mode tooling and debug-only surfaces (lives under `/dev`, not user-facing).
+
+Counters are independent per namespace.
 
 ## Allocation
 
@@ -16,10 +22,17 @@ One feature label per discrete feature/section. Every story card must carry exac
 | `FE-SEC0001` | `1760810747115341214` | tank-green | Portfolio-model adoption / wizard (Phase 4) |
 | `FE-SEC0002` | `1760821853498115528` | tank-green | Role boundary / page gating (padmin vs gadmin) |
 | `FE-SEC0003` | `1760826753166607866` | tank-green | Test infrastructure / canary integrity |
+| `FE-SEC0004` | `1760908389019289311` | tank-green | Graph engine (reusable hierarchy / data-view rendering) |
+
+### FE-DEV registry
+
+| Label | Planka label ID | Color | Meaning |
+|---|---|---|---|
+| `FE-DEV0001` | `1760909905369237242` | tank-green | Master debug toggle + dev-mode debug infrastructure |
 
 ## Adding a new feature label
 
-1. Pick the next sequential number (`FE-SEC0002`, `FE-SEC0003`, ...).
+1. Pick the next sequential number in the right namespace (`FE-SEC0005`, `FE-DEV0002`, ...).
 2. Create the label on Planka via `create_label` with color `tank-green` (all FE labels share this color).
-3. Append a row to the registry above with the Planka label ID.
+3. Append a row to the matching registry table above with the Planka label ID.
 4. Apply to all cards in the feature.

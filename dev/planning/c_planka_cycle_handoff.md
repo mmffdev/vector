@@ -1,6 +1,9 @@
 # Handoff Prompt: Planka Cycle Time Analysis Tools
 
 ## Overview
+
+root/.planka/ is the only folder you need, do not leave the folder as it contains and needed files :
+
 Implement cycle time tracking and analysis tools for the Planka MCP kanban board. The Planka API already provides timestamps for card movements (`listChangedAt`, `prevListId`) which enable calculation of workflow velocity and cycle time metrics.
 
 ## Current State

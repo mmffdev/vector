@@ -1,0 +1,11 @@
+- [SESSION BOOTUP — read first](bootup.md) — Active branch, what's done, what's next, key facts, uncommitted work. Update at end of every session.
+- [TOOLING BOOTUP — Planka + MCP](boot2.md) — Planka board setup, SSH tunnel :3333, MCP config, backlog bootstrap status. Update when tooling changes.
+- [Never create debt — fix now, flag if detected](feedback_no_debt.md) — Overrides standing register's cap-and-defer; introduce no new debt, surface detected debt immediately.
+- [Card lifecycle — move states on every task](feedback_card_lifecycle.md) — Backlog→To Do→Doing→Completed on every task, including quick fixes. No code before card is in Doing.
+- [Storify all layers before starting](feedback_storify_all_layers.md) — Decompose across backend, frontend, migration, tests before /storify; never storify only one layer of a feature.
+- [Role boundaries — gadmin vs padmin vs user](project_role_boundaries.md) — gadmin=tech/support, padmin=product owner, user=consumer. Portfolio model = padmin-only. Ask "product or system?" before gating.
+- [BlockingReleaseGate — gadmin page gating pattern](project_blocking_release_gate.md) — Wrap gadmin pages with BlockingReleaseGate; padmin pages must NOT import it.
+- [Dev launcher uses `go run`](project_dev_launcher_runtime.md) — Backend runs from `go run`, not `./backend/server`; check /healthz commit vs HEAD, not file mtimes.
+- [Planka kanban board](project_planka.md) — Self-hosted backlog on mmffdev.com, SSH tunnel :3333, planka MCP registered
+- [Planka API direct access](planka_api_access.md) — MCP is broken (v1.0.7 HTML bug); use curl REST calls instead. Auth, key IDs, card CRUD commands all here.
+- [Pre-launch security checklist](project_pre_launch_security.md) — Scrub git history (.env.local committed with MASTER_KEY), harden ssh_manager.sh, rotate secrets. Hard deadline: before any external repo access.

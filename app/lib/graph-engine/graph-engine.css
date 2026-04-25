@@ -1,0 +1,97 @@
+/* Graph engine — dedicated stylesheet.
+ *
+ * All engine styles use the `.ge-` prefix so they cannot collide with
+ * app styles or the legacy hierarchy-tree class names. Imported by
+ * GraphCanvas; never bundled into globals.css.
+ *
+ * Visual parity targets (from the legacy SVG ModelHierarchyAccordion):
+ *   - No border-radius anywhere
+ *   - 1px borders in the major-grid colour `#e0e0e0`
+ *   - Connectors are 1.5px lines; --story is red dashed
+ *   - Arrowheads are static-orient (handled in <marker> in Edges.tsx)
+ *   - Node label: 13px / 500 weight (matches measureNodeWidth assumption)
+ */
+
+.ge-canvas {
+  position: relative;
+  margin: 0 auto;
+  color: var(--ink-1, #1a1a1a);
+}
+
+.ge-canvas--empty {
+  padding: 16px 0;
+  color: var(--ink-2, #555);
+  font-size: 13px;
+}
+
+.ge-nodes {
+  position: absolute;
+  inset: 0;
+}
+
+/* Edge overlay must paint on top of nodes; flex/inline order is moot
+   because both are absolutely positioned inside the canvas, and SVG
+   document order does the rest. */
+.ge-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  color: var(--ink-1, #1a1a1a);
+}
+
+.ge-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface, #fff);
+  border: 1px solid var(--ink-1, #1a1a1a);
+  border-radius: 0;
+  box-sizing: border-box;
+  padding: 0 12px;
+  user-select: none;
+}
+
+.ge-node__label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.ge-node--root {
+  border-color: var(--ink-1, #1a1a1a);
+}
+
+.ge-node--leaf {
+  border-color: #dc2626;
+}
+
+.ge-edge {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.ge-edge--story {
+  stroke: #dc2626;
+  stroke-dasharray: 4 3;
+}
+
+/* Drag scaffold (Story 3) — these classes exist so the interactions
+   layer can toggle them without further CSS. They are no-ops while
+   data-drag="off" / data-hover="off". */
+.ge-canvas[data-drag="on"] .ge-node {
+  cursor: grab;
+}
+.ge-canvas[data-drag="on"] .ge-node--dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+.ge-canvas[data-hover="on"] .ge-node--hover {
+  outline: 1px solid #888;
+  outline-offset: 1px;
+}

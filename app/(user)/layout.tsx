@@ -11,6 +11,7 @@ import PageHeaderBar from "@/app/components/PageHeaderBar";
 import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
+import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   if (loading || !user || user.force_password_change) return null;
 
   return (
+    <MasterDebugProvider>
     <LibraryReleasesProvider>
     <NavPrefsProvider>
       <PageHeaderProvider>
@@ -49,5 +51,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       </PageHeaderProvider>
     </NavPrefsProvider>
     </LibraryReleasesProvider>
+    </MasterDebugProvider>
   );
 }

@@ -23,6 +23,7 @@
 //     button. The router can use this to dismiss the wizard.
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/app/lib/api";
 import {
   PORTFOLIO_MODELS_LIST_PATH,
@@ -72,6 +73,7 @@ export default function WizardModelCardList({
   onAdoptStarted,
   onCancel,
 }: WizardModelCardListProps) {
+  const router = useRouter();
   const [fetchState, setFetchState] = useState<FetchState>({ kind: "loading" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -165,6 +167,9 @@ export default function WizardModelCardList({
         >
           {fetchState.models.map((m) => {
             const isSelected = m.id === selectedId;
+            const layerNames = m.layer_summary
+              ? m.layer_summary.split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
             return (
               <li key={m.id} className="wizard-model-cards__item">
                 <button
@@ -180,31 +185,84 @@ export default function WizardModelCardList({
                 >
                   <div className="wizard-model-cards__card-header">
                     <h3 className="wizard-model-cards__card-name">{m.name}</h3>
-                    <span className="tag tag--good">v{m.version}</span>
+                    <span className="wizard-model-cards__card-version">
+                      v{m.version}
+                    </span>
                   </div>
-                  {m.description && (
-                    <p className="wizard-model-cards__card-description">
-                      {m.description}
-                    </p>
-                  )}
-                  <dl className="wizard-model-cards__card-meta">
-                    <div className="wizard-model-cards__card-meta-row">
-                      <dt>Layers</dt>
-                      <dd>{m.layer_count}</dd>
-                    </div>
-                    {m.layer_summary && (
-                      <div className="wizard-model-cards__card-meta-row">
-                        <dt>Hierarchy</dt>
-                        <dd className="wizard-model-cards__card-summary">
-                          {m.layer_summary}
-                        </dd>
-                      </div>
+
+                  <div
+                    className={
+                      "wizard-model-cards__card-description" +
+                      (m.description ? "" : " wizard-model-cards__card-description--empty")
+                    }
+                  >
+                    {m.description ?? (
+                      <svg
+                        className="wizard-model-cards__card-description-placeholder"
+                        viewBox="0 0 100 50"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                      >
+                        <rect x="0" y="0" width="100" height="50" fill="none" />
+                        <line x1="0" y1="0" x2="100" y2="50" />
+                        <line x1="100" y1="0" x2="0" y2="50" />
+                      </svg>
                     )}
-                  </dl>
+                  </div>
+
+                  <div className="wizard-model-cards__card-count">
+                    {m.layer_count} Layer{m.layer_count === 1 ? "" : "s"}
+                  </div>
+
+                  {layerNames.length > 0 && (
+                    <ol
+                      className="layer-hierarchy wizard-model-cards__card-hierarchy"
+                      aria-label={`${m.name} layer hierarchy`}
+                    >
+                      {layerNames.flatMap((name, i) => {
+                        const nodes: React.ReactNode[] = [
+                          <li
+                            key={`${m.id}-layer-${i}`}
+                            className="layer-hierarchy__box"
+                          >
+                            <span className="layer-hierarchy__name">{name}</span>
+                          </li>,
+                        ];
+                        if (i < layerNames.length - 1) {
+                          nodes.push(
+                            <li
+                              key={`${m.id}-arrow-${i}`}
+                              className="layer-hierarchy__arrow"
+                              aria-hidden="true"
+                            />
+                          );
+                        }
+                        return nodes;
+                      })}
+                    </ol>
+                  )}
                 </button>
               </li>
             );
           })}
+          <li className="wizard-model-cards__item">
+            <button
+              type="button"
+              className="wizard-model-cards__card wizard-model-cards__card--custom"
+              onClick={() => router.push("/portfolio-model/custom")}
+              disabled={submitting}
+            >
+              <div className="wizard-model-cards__card-header">
+                <h3 className="wizard-model-cards__card-name">Build your own</h3>
+                <span className="wizard-model-cards__card-version">+</span>
+              </div>
+              <div className="wizard-model-cards__card-description wizard-model-cards__card-description--empty">
+                <span className="wizard-model-cards__card-custom-hint">
+                  Start with an empty hierarchy and define your own layers.
+                </span>
+              </div>
+            </button>
+          </li>
         </ul>
       )}
 

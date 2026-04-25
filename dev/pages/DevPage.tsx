@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import "@dev/styles/dev.css";
+import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 
 export default function DevPage() {
   const [copied, setCopied] = useState(false);
+  const { enabled: masterDebug, setEnabled: setMasterDebug } = useMasterDebug();
 
   const copyCommand = () => {
     navigator.clipboard.writeText("bash dev/scripts/ssh_manager.sh");
@@ -20,6 +22,21 @@ export default function DevPage() {
       </header>
 
       <div className="dev-doc">
+        <section className="dev-section">
+          <h2 className="dev-h2">Debug</h2>
+          <label className="form__switch">
+            <input
+              type="checkbox"
+              checked={masterDebug}
+              onChange={(e) => setMasterDebug(e.target.checked)}
+            />
+            Master debug {masterDebug ? "on" : "off"}
+          </label>
+          <p className="dev-p">
+            Session-scoped flag (resets on tab close / hard reload). Read it via <code>useMasterDebug()</code>.
+          </p>
+        </section>
+
         <section className="dev-section">
           <h2 className="dev-h2">SSH Tunnel Setup</h2>
           <p className="dev-p">
