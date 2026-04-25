@@ -309,16 +309,6 @@ export default function AppSidebar_2() {
         );
       })}
 
-      <Link
-        href="/preferences/navigation"
-        className="sidebar-item"
-        title={!open ? "Manage navigation" : undefined}
-        aria-label="Manage navigation"
-      >
-        <IconFor iconKey="cog" />
-        <span className="sidebar-item__label">Manage nav</span>
-      </Link>
-
       {visibleDevItems.length > 0 && (
         <div className="sidebar-dev-group">
           {visibleDevItems.map((item) => (
