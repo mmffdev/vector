@@ -94,27 +94,41 @@ Other pending work (from prior session):
 
 ---
 
-## Pending uncommitted (at session end 2026-04-25)
+## Session end state (2026-04-25)
 
-Modified — graph engine work + accordion removal:
-- `app/(user)/layout.tsx`
-- `app/(user)/portfolio-model/LayerHierarchyDiagram.tsx`
-- `app/(user)/portfolio-model/WizardModelCardList.tsx` (accordion import + JSX removed)
-- `app/globals.css` (dead accordion + hierarchy-tree CSS removed)
-- `dev/pages/DevPage.tsx`
-- `dev/planning/c_planka_cycle_handoff.md`
-- `docs/c_feature_labels.md` (FE-SEC0004 added; FE-DEV namespace added)
-- `docs/c_story_index.md` (last issued 00030)
+**Branch pushed to remote.** `feat/migration-017-subscriptions-rename` →
+`origin/feat/migration-017-subscriptions-rename` (new upstream set).
+Last commit: `4174886 — Graph engine + accordion removal + storify hardening`.
 
-Untracked — engine + supporting work:
-- `app/contexts/MasterDebugContext.tsx`
-- `app/lib/graph-engine/` (whole directory: types, layout, view, interactions, css)
-- `audit/`
-- `db/library_schema/seed/003_extra_models.sql`
+**26 commits ahead of `origin/main`, 0 behind.** Branch NOT merged to main —
+user agreed to hold off until pre-launch security checklist is done.
+Pre-launch list: scrub git history (`.env.local` was once committed with
+`MASTER_KEY`), harden `ssh_manager.sh`, rotate secrets — see
+`project_pre_launch_security.md`.
 
-Never commit:
-- `backend/.env.local` (creds)
-- `backend/server`, `backend/encsecret`, `backend/migrate` (compiled binaries)
-- `dev/scripts/backup/`
-- `portfolio-model-login-redirect.png`
-- `.claude/memory/`, `.claude/worktrees/`, `.planka/`
+**Backup-on-push hook SKIPPED** during the final push (SSH tunnel ticket
+expired + `mmff_dev` password auth failed). No fresh DB snapshot was
+taken at session end. Run `<backupsql>` after refreshing the tunnel if
+you want one before next session's destructive work.
+
+**Worktree left in place** at `.claude/worktrees/agent-a804f892b980eb75a`
+(branch `worktree-agent-a804f892b980eb75a`). All 24 of its commits are
+already in the current branch — safe to remove with
+`git worktree remove --force .claude/worktrees/agent-a804f892b980eb75a`
+when convenient. User chose to leave it for now.
+
+**Working tree contains only never-commits** at end of session:
+`backend/.env.local`, `backend/server`, `backend/encsecret`,
+`backend/migrate`, `dev/scripts/backup/`, `portfolio-model-login-redirect.png`,
+`.claude/worktrees/`, `.planka/`. Nothing else outstanding.
+
+## Cross-machine sync (laptop pull list)
+
+If resuming from the laptop, pull these:
+- `git fetch origin && git checkout feat/migration-017-subscriptions-rename && git pull`
+- New remote-only branch: `theme/phase0-tokenisation-cleanup` —
+  `git checkout theme/phase0-tokenisation-cleanup` to grab it.
+- Outside git: `MASTER_KEY` must be set in `backend/.env.local` on the
+  laptop (from password manager) or `secrets.Get` will panic on startup.
+- Compiled binaries (`backend/server` etc.) — rebuild via `go run`/`go build`.
+- DB schema may need `go run ./backend/cmd/migrate -db both` to catch up.
