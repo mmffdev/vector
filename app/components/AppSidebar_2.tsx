@@ -106,7 +106,7 @@ function SidebarItem({
 export default function AppSidebar_2() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { prefs, customGroups, catalogue, findEntry, defaultPinned, tagByEnum } = useNavPrefs();
+  const { prefs, customGroups, catalogue, findEntry, defaultPinned, tags } = useNavPrefs();
   const [collapsed, setCollapsed] = useState(false);
   const [peeked, setPeeked] = useState(false);
 
@@ -196,46 +196,41 @@ export default function AppSidebar_2() {
   const renderGroups: RenderGroup[] = useMemo(() => {
     const tagBuckets: Record<string, Rendered[]> = {};
     const customBuckets: Record<string, Rendered[]> = {};
-    const order: Array<{ kind: "tag" | "custom"; key: string }> = [];
-
-    const note = (kind: "tag" | "custom", key: string) => {
-      if (!order.find((o) => o.kind === kind && o.key === key)) {
-        order.push({ kind, key });
-      }
-    };
 
     for (const r of baseRendered) {
       if (r.groupId) {
         (customBuckets[r.groupId] ??= []).push(r);
-        note("custom", r.groupId);
       } else {
         const tagEnum = r.entry.tagEnum || "personal";
         (tagBuckets[tagEnum] ??= []).push(r);
-        note("tag", tagEnum);
       }
     }
 
-    // Append any custom groups that have no items yet, sorted by their own position.
-    const seenCustom = new Set(order.filter((o) => o.kind === "custom").map((o) => o.key));
-    const emptyCustom = customGroups
-      .filter((g) => !seenCustom.has(g.id))
-      .sort((a, b) => a.position - b.position);
-    for (const g of emptyCustom) order.push({ kind: "custom", key: g.id });
+    // System tag groups always render in canonical tag default_order — not
+    // first-appearance order — so the group sequence is fixed for all users:
+    // Personal → Admin Settings → Planning → Strategic (per page_tags.default_order).
+    // Tags with no items are omitted. admin_menu tags (avatar-only) are excluded.
+    const sortedTags = [...tags]
+      .filter((t) => !t.isAdminMenu)
+      .sort((a, b) => a.defaultOrder - b.defaultOrder);
 
+    // Custom groups interleave after the tag group whose last item precedes
+    // the first custom-group item in position order. For simplicity, append
+    // all custom groups after system tag groups in their own position order.
     const out: RenderGroup[] = [];
-    for (const o of order) {
-      if (o.kind === "tag") {
-        const tag = tagByEnum(o.key);
-        if (!tag) continue;
-        out.push({ kind: "tag", tag, items: tagBuckets[o.key] ?? [] });
-      } else {
-        const group = customGroups.find((g) => g.id === o.key);
-        if (!group) continue;
-        out.push({ kind: "custom", group, items: customBuckets[o.key] ?? [] });
-      }
+    for (const tag of sortedTags) {
+      const items = tagBuckets[tag.enum];
+      if (!items || items.length === 0) continue;
+      out.push({ kind: "tag", tag, items });
     }
+
+    const allCustom = customGroups.slice().sort((a, b) => a.position - b.position);
+    for (const group of allCustom) {
+      out.push({ kind: "custom", group, items: customBuckets[group.id] ?? [] });
+    }
+
     return out;
-  }, [baseRendered, customGroups, tagByEnum]);
+  }, [baseRendered, customGroups, tags]);
 
   const visibleDevItems = useMemo(
     () => catalogue.filter((e) => !e.pinnable),
