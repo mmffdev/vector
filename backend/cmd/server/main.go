@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -30,6 +31,16 @@ import (
 	"github.com/mmffdev/vector-backend/internal/security"
 	"github.com/mmffdev/vector-backend/internal/users"
 )
+
+// Build-time identity. Set via -ldflags "-X main.Commit=… -X main.BuildTime=…"
+// so /healthz can prove which binary is actually serving traffic. Defaults
+// keep tests and ad-hoc `go run` builds working.
+var (
+	Commit    = "dev"
+	BuildTime = "unknown"
+)
+
+var processStartedAt = time.Now().UTC()
 
 func main() {
 	_ = godotenv.Load(".env.local")
@@ -114,7 +125,15 @@ func main() {
 	r.Use(security.BodyLimit)
 	r.Use(security.CSRF)
 
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status":     "ok",
+			"commit":     Commit,
+			"build_time": BuildTime,
+			"started_at": processStartedAt.Format(time.RFC3339),
+		})
+	})
 
 	// ---- /api/auth ----
 	r.Route("/api/auth", func(r chi.Router) {
