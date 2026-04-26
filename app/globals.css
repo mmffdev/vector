@@ -1,14 +1,90 @@
+/* =============================================================
+   Vector Design System — Foundation tokens (story 00069)
+   Colors, type, spacing, radii. No shadows.
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
-  --sidebar-width: 220px;
+  /* ---------- Layout (kept from previous shell) ---------- */
+  --sidebar-width: 240px;
   --sidebar-width-collapsed: 64px;
   --app-header-wrapper-height: 77px;
+  --content-max-width: 1440px;
+  --row-height: 48px;
+  --input-height: 40px;
 
-  --radius-sm: 0;
-  --radius-md: 0;
+  /* ---------- Foundation: warm neutrals ---------- */
+  --canvas:         #F4F2EE;
+  --surface:        #FFFFFF;
+  --surface-sunken: #EDEAE4;
 
-  --hot-pink: #f59e0b;
-  --paper: #fffefa;
-  --cream: #f5f3ee;
+  --ink:        #1A1A1A;
+  --ink-muted:  #5C5C5C;
+  --ink-subtle: #8A8A8A;
+  --ink-faint:  #B8B5AF;
+
+  --border:        #E5E1DA;
+  --border-strong: #D4CFC5;
+
+  /* ---------- Status (always with icon + label) ---------- */
+  --success:    #2F7D54;
+  --success-bg: #E5F0E9;
+  --warning:    #B7791F;
+  --warning-bg: #FBEFD4;
+  --danger:     #B23B3B;
+  --danger-bg:  #F5E1DE;
+  --info:       #2F5F8A;
+  --info-bg:    #E1ECF5;
+
+  /* ---------- Brand slots (themeable, default to ink) ---------- */
+  --brand-tenant:           #1A1A1A;
+  --brand-tenant-contrast:  #FFFFFF;
+  --brand-product:          #1A1A1A;
+  --brand-product-contrast: #FFFFFF;
+
+  /* ---------- Type families ---------- */
+  --font-sans:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-numeric: 'Inter', system-ui, sans-serif;
+
+  /* ---------- Type scale ---------- */
+  --text-xs:    11px;     --leading-xs:    16px;
+  --text-sm:    13px;     --leading-sm:    20px;
+  --text-base:  14px;     --leading-base:  22px;
+  --text-md:    16px;     --leading-md:    24px;
+  --text-lg:    20px;     --leading-lg:    28px;
+  --text-xl:    28px;     --leading-xl:    36px;
+  --text-2xl:   36px;     --leading-2xl:   44px;
+
+  /* ---------- Weights ---------- */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------- Radii ---------- */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  --border-width: 1px;
 }
 
 :root[data-sidebar-collapsed="true"] {
@@ -24,68 +100,94 @@
   }
 }
 
-:root[data-theme="light"] {
-  --bg: var(--cream);
-  --surface: #f0eee9;
-  --surface-alt: #e8e5de;
+/* =============================================================
+   Legacy bridge — old variable names map to new Vector tokens.
+   Keeps existing JSX (var(--ink-1), var(--bg), var(--accent), etc.)
+   working without rewriting class references.
+   ============================================================= */
+:root[data-theme="light"], :root {
+  --bg: var(--canvas);
+  --surface-alt: var(--surface-sunken);
 
-  --ink-1: #1f1f1f;
-  --ink-2: #4a4a4a;
-  --ink-3: #9ca3af;
-  --ink-4: #c0c0c0;
+  --ink-1: var(--ink);
+  --ink-2: var(--ink-muted);
+  --ink-3: var(--ink-subtle);
+  --ink-4: var(--ink-faint);
 
-  --line-1: #e5e7eb;
-  --line-2: #d1d5db;
+  --line-1: var(--border);
+  --line-2: var(--border-strong);
 
-  --accent: #a3e635;
-  --accent-soft: rgba(163, 230, 53, 0.1);
-  --accent-border: rgba(163, 230, 53, 0.5);
-  --accent-ink: #7d9d1a;
+  --accent: var(--brand-product);
+  --accent-soft: rgba(26, 26, 26, 0.06);
+  --accent-border: rgba(26, 26, 26, 0.20);
+  --accent-ink: var(--ink);
 
-  --good: #10b981;
-  --warn: #f59e0b;
-  --error: #ef4444;
+  --good:  var(--success);
+  --warn:  var(--warning);
+  --error: var(--danger);
+
+  /* legacy paper/cream/hot-pink kept as aliases — Vector replaces them */
+  --paper: var(--surface);
+  --cream: var(--canvas);
+  --hot-pink: var(--ink);
 
   --surface-1: var(--surface);
-  --surface-2: var(--surface-alt);
-  --accent-1: var(--accent);
-  --accent-pink: var(--hot-pink);
-  --border-1: var(--line-1);
+  --surface-2: var(--surface-sunken);
+  --accent-1: var(--brand-product);
+  --accent-pink: var(--ink);
+  --border-1: var(--border);
 
-  --nav-item-hover-bg: #cccccc;
-  --nav-item-active-bg: #cccccc;
+  --nav-item-hover-bg: var(--surface-sunken);
+  --nav-item-active-bg: var(--surface-sunken);
 }
 
+/* ---------- Dark theme (warm dark) ---------- */
 :root[data-theme="dark"] {
-  --bg: #1f1f1f;
-  --surface: #2a2a2a;
-  --surface-alt: #3a3a3a;
+  --canvas:         #1A1816;
+  --surface:        #232120;
+  --surface-sunken: #1F1D1B;
 
-  --ink-1: #ffffff;
-  --ink-2: #e5e5e5;
-  --ink-3: #9ca3af;
-  --ink-4: #6b7280;
+  --ink:        #F4F2EE;
+  --ink-muted:  #B0ADA6;
+  --ink-subtle: #8A8780;
+  --ink-faint:  #4A4744;
 
-  --line-1: #3a3a3a;
-  --line-2: #4a4a4a;
+  --border:        #2E2B28;
+  --border-strong: #3D3A36;
 
-  --accent: #a3e635;
-  --accent-soft: rgba(163, 230, 53, 0.1);
-  --accent-border: rgba(163, 230, 53, 0.5);
-  --accent-ink: #a3e635;
+  /* Legacy bridge for dark mode resolves through the new tokens above */
+  --bg: var(--canvas);
+  --surface-alt: var(--surface-sunken);
 
-  --good: #10b981;
-  --warn: #f59e0b;
-  --error: #ef4444;
+  --ink-1: var(--ink);
+  --ink-2: var(--ink-muted);
+  --ink-3: var(--ink-subtle);
+  --ink-4: var(--ink-faint);
+
+  --line-1: var(--border);
+  --line-2: var(--border-strong);
+
+  --accent: var(--ink);
+  --accent-soft: rgba(244, 242, 238, 0.06);
+  --accent-border: rgba(244, 242, 238, 0.20);
+  --accent-ink: var(--ink);
+
+  --good:  var(--success);
+  --warn:  var(--warning);
+  --error: var(--danger);
+
+  --paper: var(--surface);
+  --cream: var(--canvas);
+  --hot-pink: var(--ink);
 
   --surface-1: var(--surface);
-  --surface-2: var(--surface-alt);
-  --accent-1: var(--accent);
-  --accent-pink: var(--hot-pink);
-  --border-1: var(--line-1);
+  --surface-2: var(--surface-sunken);
+  --accent-1: var(--ink);
+  --accent-pink: var(--ink);
+  --border-1: var(--border);
 
-  --nav-item-hover-bg: #cccccc;
-  --nav-item-active-bg: #cccccc;
+  --nav-item-hover-bg: var(--surface-sunken);
+  --nav-item-active-bg: var(--surface-sunken);
 }
 
 * {
