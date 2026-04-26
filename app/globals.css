@@ -1265,22 +1265,31 @@ button {
 }
 
 /* ============================================================
-   Cards
+   Cards — Vector Design System (story 00077)
+   --surface white background, 1px --border, --radius-lg (12px),
+   24px (--space-6) padding. NO box-shadow ever — separation comes
+   from the canvas/surface tone shift + 1px border.
    ============================================================ */
 .card {
   background: var(--surface);
-  border: 1px solid var(--line-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: none;
 }
 
 .card__header {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--line-1);
-  font-weight: 600;
-  color: var(--ink-1);
+  padding: 0 0 var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
 }
 
 .card__body {
-  padding: 20px;
+  padding: 0;
 }
 
 /* ============================================================
