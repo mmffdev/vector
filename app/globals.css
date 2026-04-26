@@ -1131,12 +1131,20 @@ table.tbl tbody tr:hover td {
 }
 
 /* ============================================================
-   Modal
+   Modal / overlay (Vector kit)
+   - Backdrop: flat rgba(0,0,0,0.4), no blur, no gradient.
+   - Dialog: --surface, 1px --border, --radius-xl (16px), no
+     box-shadow (Vector hard rule — depth comes from tone, not
+     shadows).
+   - Header: 16/600/--ink title, 36x36 close icon button.
+   - Body & actions: --space-6 padding; actions row right-aligned
+     using standard .btn variants and one primary per region.
    ============================================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
   display: grid;
   place-items: center;
   z-index: 100;
@@ -1146,7 +1154,10 @@ table.tbl tbody tr:hover td {
   width: 420px;
   max-width: calc(100vw - 32px);
   background: var(--surface);
-  border: 1px solid var(--line-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: none;
+  overflow: hidden;
 }
 
 .modal--wide {
@@ -1157,40 +1168,52 @@ table.tbl tbody tr:hover td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--line-1);
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border);
 }
 
 .modal__title {
-  font-size: 16px;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
   font-weight: 600;
-  color: var(--ink-1);
+  color: var(--ink);
+  margin: 0;
 }
 
 .modal__close {
   background: transparent;
-  color: var(--ink-3);
-  font-size: 22px;
+  color: var(--ink-muted);
+  font-size: 20px;
   line-height: 1;
   padding: 0;
-  width: 24px;
-  height: 24px;
-  border: none;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .modal__close:hover {
-  color: var(--ink-1);
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border-color: var(--border);
 }
 
 .modal__body {
-  padding: 20px;
+  padding: var(--space-6);
 }
 
 .modal__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 /* ============================================================
