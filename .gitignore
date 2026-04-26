@@ -11,4 +11,6 @@ prefs-nav-*.png
 backend/.env.local
 .claude/hooks/
 .claude/memory/
+.claude/settings.json
+.claude/settings.json.bak
 .planka/
