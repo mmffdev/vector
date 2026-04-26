@@ -364,9 +364,9 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
       <header className="model-preview__header">
         <div className="model-preview__title-row">
           <h2 className="model-preview__title">{m.name}</h2>
-          <span className="tag tag--good">v{m.version}</span>
-          <span className="tag">{m.scope}</span>
-          <span className="tag tag--muted">{m.visibility}</span>
+          <span className="pill pill--success">v{m.version}</span>
+          <span className="pill pill--neutral">{m.scope}</span>
+          <span className="pill pill--neutral">{m.visibility}</span>
         </div>
         {m.description && (
           <p className="model-preview__description">{m.description}</p>
@@ -411,8 +411,8 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
                     <li key={s.id} className="model-preview__state">
                       <span className="u-mono">{s.state_key}</span>
                       <span className="model-preview__state-label">{s.state_label}</span>
-                      {s.is_initial && <span className="tag tag--muted">initial</span>}
-                      {s.is_terminal && <span className="tag tag--good">terminal</span>}
+                      {s.is_initial && <span className="pill pill--neutral">initial</span>}
+                      {s.is_terminal && <span className="pill pill--success">terminal</span>}
                     </li>
                   ))}
                 </ul>
@@ -452,9 +452,9 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
                   <td className="table__cell u-mono">{a.artifact_key}</td>
                   <td className="table__cell">
                     {a.enabled ? (
-                      <span className="tag tag--good">on</span>
+                      <span className="pill pill--success">on</span>
                     ) : (
-                      <span className="tag tag--muted">off</span>
+                      <span className="pill pill--neutral">off</span>
                     )}
                   </td>
                 </tr>

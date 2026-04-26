@@ -133,7 +133,7 @@ function UsersTab() {
                   <td className="table__cell">
                     {u.email}
                     {u.force_password_change && (
-                      <span className="tag" title="Must change password on next login">
+                      <span className="pill pill--warning" title="Must change password on next login">
                         pending pw
                       </span>
                     )}

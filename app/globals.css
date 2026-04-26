@@ -1284,33 +1284,55 @@ button {
 }
 
 /* ============================================================
-   Tags
+   Pills + status badges — Vector Design System (story 00076)
+   Semantic bg/fg pairs, --radius-full, 11px / 500 / Inter, icon + label.
+   Always render an icon next to the label — never colour alone.
+   The legacy .tag classes are aliased here so JSX migrates cleanly.
    ============================================================ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  border: 1px solid transparent;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pill svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+.pill--success { background: var(--success-bg); color: var(--success); }
+.pill--warning { background: var(--warning-bg); color: var(--warning); }
+.pill--danger  { background: var(--danger-bg);  color: var(--danger); }
+.pill--info    { background: var(--info-bg);    color: var(--info); }
+.pill--neutral { background: var(--surface-sunken); color: var(--ink-muted); }
+
+/* Legacy .tag aliases — keep visual parity with .pill semantics so any
+   un-migrated JSX still reads correctly under the new palette. */
 .tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
   margin-left: 8px;
-  padding: 1px 6px;
-  background: var(--surface-alt);
-  color: var(--ink-3);
-  border: 1px solid var(--line-1);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  text-transform: none;
+  letter-spacing: 0;
 }
-
-.tag--muted {
-  color: var(--ink-3);
-}
-
-.tag--warn {
-  color: var(--warn);
-  border-color: var(--warn);
-}
-
-.tag--good {
-  color: var(--good);
-  border-color: var(--good);
-}
+.tag--muted { background: var(--surface-sunken); color: var(--ink-muted); }
+.tag--warn  { background: var(--warning-bg);     color: var(--warning); }
+.tag--good  { background: var(--success-bg);     color: var(--success); }
 
 /* ============================================================
    Code block
