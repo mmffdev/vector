@@ -1792,6 +1792,67 @@ table.tbl tbody tr:hover td {
 }
 
 /* ============================================================
+   Dashboard tiles (Vector kit)
+   - Outer grid auto-wraps to a single column on narrow screens.
+   - Tiles are .card-styled (white --surface, 1px --border,
+     --radius-lg, 24px padding, no shadow).
+   - .tile__label is the eyebrow micro-label above the metric.
+   - .t-metric utility renders large numeric values with
+     tabular-nums so digits align column-to-column.
+   ============================================================ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tile__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+.tile__hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--ink-muted);
+}
+
+.t-metric {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  line-height: 1.1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================
    Placeholder / empty-state — Vector kit
    - Centred container, generous vertical whitespace (>= --space-12).
    - Title: --text-md (16px) / 600 / --ink (no apologetic tone).
