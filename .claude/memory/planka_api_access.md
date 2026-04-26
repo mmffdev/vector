@@ -107,6 +107,21 @@ curl -s -X DELETE "http://localhost:3333/api/cards/<CARD_ID>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+## Create a label
+
+```bash
+curl -s -X POST "http://localhost:3333/api/boards/<BOARD_ID>/labels" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"LABEL_NAME","color":"midnight-blue","position":65536}'
+```
+
+**Critical:** 
+- Endpoint is `/api/boards/:id/labels` (not `/api/labels` — that returns 404)
+- `position` parameter is required (omitting it returns `E_MISSING_OR_INVALID_PARAMS`)
+- `position=65536` appends the label at the end of the list; use lower values for specific ordering
+- `color` options: `midnight-blue`, `tank-green`, `berry-red`, etc.
+
 ## Prerequisite
 
 Tunnel must be up on `localhost:3333` before any of this works.  
