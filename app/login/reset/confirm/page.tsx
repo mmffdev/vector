@@ -1,5 +1,14 @@
 "use client";
 
+// /login/reset/confirm — set new password from a reset token.
+// Shares the .auth-page / .auth-card surface restyled in 00082.
+// Story 00084 verified: both password fields render at 40px /
+// --radius-md / --border-strong; "Set password" button is a
+// full-width .btn--primary; mismatch / invalid-token errors
+// surface via .auth-card__error-slot which uses --danger-bg /
+// --danger / --danger 1px border. Success redirects to
+// /login?reset=1 (the success styling lives there, not here).
+
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
