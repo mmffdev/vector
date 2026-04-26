@@ -34,6 +34,9 @@ export const PORTFOLIO_MODELS_LIST_PATH = "/api/portfolio-models";
 export function adoptModelPath(modelId: string): string {
   return `/api/portfolio-models/${modelId}/adopt`;
 }
+export function adoptStreamPath(modelId: string): string {
+  return `/api/portfolio-models/${modelId}/adopt/stream`;
+}
 
 // Retry policy for the adoption overlay (card 00018). Auto-retry up to
 // ADOPTION_MAX_RETRIES on `event: fail`; the saga is idempotent on

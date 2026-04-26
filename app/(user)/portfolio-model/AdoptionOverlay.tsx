@@ -51,9 +51,10 @@ import {
   ADOPTION_STEPS,
   ADOPTION_STEP_LABELS,
   adoptModelPath,
+  adoptStreamPath,
   type AdoptionStepName,
 } from "./adoptionConstants";
-import { api } from "@/app/lib/api";
+import { api, getApiToken } from "@/app/lib/api";
 import { reportError } from "@/app/lib/reportError";
 
 type StepStatus = "idle" | "in-progress" | "complete" | "failed";
@@ -116,7 +117,8 @@ export default function AdoptionOverlay({
   // Bumped on each manual reset to force the SSE effect to re-run.
   const [streamEpoch, setStreamEpoch] = useState(0);
 
-  const esRef = useRef<EventSource | null>(null);
+  // AbortController for the fetch-based SSE stream.
+  const abortRef = useRef<AbortController | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
 
@@ -172,120 +174,153 @@ export default function AdoptionOverlay({
     [clearRetryTimer, modelId],
   );
 
-  // SSE lifecycle: owned by this component. Re-runs when streamEpoch bumps
-  // (after a retry) so the EventSource is replaced cleanly.
+  // SSE lifecycle: uses fetch() so Authorization: Bearer is sent correctly.
+  // EventSource cannot set custom headers; the backend requires Bearer auth.
+  // Re-runs when streamEpoch bumps (after a retry) so a fresh stream opens.
   useEffect(() => {
-    const url = `/api/portfolio-models/${encodeURIComponent(
-      modelId,
-    )}/adopt/stream`;
-    const es = new EventSource(url, { withCredentials: true });
-    esRef.current = es;
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
 
-    const handleStep = (evt: MessageEvent) => {
-      let payload: StepEventPayload;
-      try {
-        payload = JSON.parse(evt.data) as StepEventPayload;
-      } catch {
-        return;
-      }
-      const name = payload.name as AdoptionStepName;
-      if (!ADOPTION_STEPS.includes(name)) return;
+    const token = getApiToken();
+    const headers: Record<string, string> = {
+      Accept: "text/event-stream",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      setStatuses((prev) => {
-        const next = { ...prev };
-        if (payload.status === "fail") {
-          next[name] = "failed";
-          return next;
+    // Minimal SSE line parser — handles `event:`, `data:`, and blank-line
+    // frame boundaries. Comments (`:`) are ignored.
+    let curEvent = "";
+    let curData = "";
+
+    function dispatchFrame(eventName: string, data: string) {
+      if (eventName === "step") {
+        let payload: StepEventPayload;
+        try {
+          payload = JSON.parse(data) as StepEventPayload;
+        } catch {
+          return;
         }
-        if (payload.status === "complete" || payload.status === "done") {
-          next[name] = "complete";
+        const name = payload.name as AdoptionStepName;
+        if (!ADOPTION_STEPS.includes(name)) return;
+        setStatuses((prev) => {
+          const next = { ...prev };
+          if (payload.status === "fail") {
+            next[name] = "failed";
+            return next;
+          }
+          if (payload.status === "complete" || payload.status === "done") {
+            next[name] = "complete";
+          } else {
+            next[name] = "in-progress";
+            const idx = ADOPTION_STEPS.indexOf(name);
+            for (let i = 0; i < idx; i++) {
+              const earlier = ADOPTION_STEPS[i];
+              if (next[earlier] === "idle" || next[earlier] === "in-progress") {
+                next[earlier] = "complete";
+              }
+            }
+          }
+          return next;
+        });
+      } else if (eventName === "done") {
+        let donePayload: AdoptionDoneEvent | null = null;
+        try {
+          donePayload = JSON.parse(data) as AdoptionDoneEvent;
+        } catch {
+          // still complete even if payload is malformed
+        }
+        setStatuses((prev) => {
+          const next = { ...prev };
+          for (const s of ADOPTION_STEPS) {
+            if (next[s] !== "failed") next[s] = "complete";
+          }
+          return next;
+        });
+        setAllDone(true);
+        setLastFail(null);
+        if (donePayload && onDone) onDone(donePayload);
+        ctrl.abort();
+      } else if (eventName === "fail") {
+        let failPayload: AdoptionFailEvent | null = null;
+        try {
+          failPayload = JSON.parse(data) as AdoptionFailEvent;
+        } catch {
+          return;
+        }
+        if (!failPayload) return;
+        if (ADOPTION_STEPS.includes(failPayload.step as AdoptionStepName)) {
+          setStatuses((prev) => ({
+            ...prev,
+            [failPayload!.step as AdoptionStepName]: "failed",
+          }));
+        }
+        setLastFail(failPayload);
+        ctrl.abort();
+        const attempt = retryCountRef.current;
+        if (attempt < ADOPTION_MAX_RETRIES) {
+          setRetryCount(attempt + 1);
+          scheduleRetry(attempt);
         } else {
-          next[name] = "in-progress";
-          // Anything earlier in the order that's still idle has implicitly
-          // completed (server emits in order); mark it complete so the
-          // diagram fills left-to-right cleanly.
-          const idx = ADOPTION_STEPS.indexOf(name);
-          for (let i = 0; i < idx; i++) {
-            const earlier = ADOPTION_STEPS[i];
-            if (next[earlier] === "idle" || next[earlier] === "in-progress") {
-              next[earlier] = "complete";
+          setExhausted(true);
+          void reportError(failPayload.error_code, {
+            surface: "AdoptionOverlay",
+            model_id: modelId,
+            subscription_id: subscriptionId,
+            step: failPayload.step,
+            message: failPayload.message,
+            retries: attempt,
+          });
+          if (onFail) onFail(failPayload);
+        }
+      }
+    }
+
+    void (async () => {
+      try {
+        const API_BASE =
+          process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+        const res = await fetch(API_BASE + adoptStreamPath(modelId), {
+          headers,
+          credentials: "include",
+          signal: ctrl.signal,
+        });
+        if (!res.ok || !res.body) return;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (line === "") {
+              // Frame boundary — dispatch if we have an event name.
+              if (curEvent) dispatchFrame(curEvent, curData);
+              curEvent = "";
+              curData = "";
+            } else if (line.startsWith(":")) {
+              // Heartbeat comment — ignore.
+            } else if (line.startsWith("event: ")) {
+              curEvent = line.slice(7);
+            } else if (line.startsWith("data: ")) {
+              curData += (curData ? "\n" : "") + line.slice(6);
             }
           }
         }
-        return next;
-      });
-    };
-
-    const handleDone = (evt: MessageEvent) => {
-      let payload: AdoptionDoneEvent | null = null;
-      try {
-        payload = JSON.parse(evt.data) as AdoptionDoneEvent;
       } catch {
-        // Still flip the UI to complete even if the payload is malformed.
+        // AbortError on cleanup or network failure — no action needed.
       }
-      setStatuses((prev) => {
-        const next = { ...prev };
-        for (const s of ADOPTION_STEPS) {
-          if (next[s] !== "failed") next[s] = "complete";
-        }
-        return next;
-      });
-      setAllDone(true);
-      setLastFail(null);
-      if (payload && onDone) onDone(payload);
-      es.close();
-    };
-
-    const handleFail = (evt: MessageEvent) => {
-      let payload: AdoptionFailEvent | null = null;
-      try {
-        payload = JSON.parse(evt.data) as AdoptionFailEvent;
-      } catch {
-        return;
-      }
-      if (!payload) return;
-
-      if (ADOPTION_STEPS.includes(payload.step as AdoptionStepName)) {
-        setStatuses((prev) => ({
-          ...prev,
-          [payload!.step as AdoptionStepName]: "failed",
-        }));
-      }
-      setLastFail(payload);
-      es.close();
-
-      const attempt = retryCountRef.current;
-      if (attempt < ADOPTION_MAX_RETRIES) {
-        setRetryCount(attempt + 1);
-        scheduleRetry(attempt);
-      } else {
-        // Exhausted — surface to error_events and let the user decide.
-        setExhausted(true);
-        void reportError(payload.error_code, {
-          surface: "AdoptionOverlay",
-          model_id: modelId,
-          subscription_id: subscriptionId,
-          step: payload.step,
-          message: payload.message,
-          retries: attempt,
-        });
-        if (onFail) onFail(payload);
-      }
-    };
-
-    es.addEventListener("step", handleStep as EventListener);
-    es.addEventListener("done", handleDone as EventListener);
-    es.addEventListener("fail", handleFail as EventListener);
+    })();
 
     return () => {
-      es.removeEventListener("step", handleStep as EventListener);
-      es.removeEventListener("done", handleDone as EventListener);
-      es.removeEventListener("fail", handleFail as EventListener);
-      es.close();
-      esRef.current = null;
+      ctrl.abort();
+      abortRef.current = null;
     };
-    // subscriptionId is passed through for downstream telemetry; intentionally
-    // not in the dep array — the SSE URL is keyed off modelId only.
+    // subscriptionId is passed through for telemetry; not in dep array.
     // streamEpoch forces re-open after a retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId, streamEpoch]);
@@ -322,9 +357,9 @@ export default function AdoptionOverlay({
 
   const handleCancel = useCallback(() => {
     clearRetryTimer();
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
     }
     if (onCancel) onCancel();
   }, [clearRetryTimer, onCancel]);
