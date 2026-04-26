@@ -316,9 +316,9 @@ func main() {
 			r.Get("/permissions", permsH.List)
 		})
 
-		// Dev tools — gadmin only
+		// Dev tools — gadmin or padmin (reset is scoped to caller's subscription)
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(models.RoleGAdmin))
+			r.Use(auth.RequireRole(models.RoleGAdmin, models.RolePAdmin))
 			r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
 		})
 	})
