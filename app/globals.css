@@ -913,80 +913,118 @@ button {
 /* ============================================================
    Forms
    ============================================================ */
+/* ============================================================
+   Forms — Vector Design System (story 00075)
+   40px input height, --radius-md, --border-strong rest border, ink
+   focus ring (no lime-green), label 14px/500 above field, helper
+   13px ink-muted, error 13px danger.
+   ============================================================ */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  background: var(--paper);
+  gap: 16px;
+  background: transparent;
 }
 
 .form__row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  
+  gap: 4px;
 }
 
 .form__label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-family: var(--font-mono), ui-monospace, 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: var(--ink-2);
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
 }
 
 .form__input,
 .form__select,
 .form__textarea {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--line-1);
+  height: var(--input-height);
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: var(--ink-1);
-  font-family: var(--font-mono), ui-monospace, 'JetBrains Mono', monospace;
+  color: var(--ink);
+  font-family: var(--font-sans);
   font-size: 14px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.form__textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 10px 12px;
+  line-height: var(--leading-base);
+  resize: vertical;
+}
+
+.form__input::placeholder,
+.form__textarea::placeholder { color: var(--ink-subtle); }
+
+.form__input:hover:not(:disabled),
+.form__select:hover:not(:disabled),
+.form__textarea:hover:not(:disabled) {
+  border-color: var(--ink-muted);
 }
 
 .form__input:focus,
 .form__select:focus,
 .form__textarea:focus {
   outline: none;
-  border-color: var(--accent-border);
+  border-color: var(--ink);
+  background: var(--surface);
+}
+
+.form__input:disabled,
+.form__select:disabled,
+.form__textarea:disabled {
+  background: var(--surface-sunken);
+  color: var(--ink-subtle);
+  cursor: not-allowed;
 }
 
 .form__input.has-error,
 .form__select.has-error,
 .form__textarea.has-error {
-  border-color: var(--error);
+  border-color: var(--danger);
 }
 
 .form__select--sm {
-  padding: 4px 6px;
+  height: 32px;
+  padding: 0 10px;
   font-size: 13px;
 }
 
 .form__error {
-  color: var(--error);
+  color: var(--danger);
+  font-family: var(--font-sans);
   font-size: 13px;
-  padding: 8px 12px;
-  border: 1px solid var(--error);
-  background: rgba(239, 68, 68, 0.05);
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin-top: 4px;
 }
 
 .form__hint {
-  font-size: 11px;
-  color: var(--ink-2);
-  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 4px 0 0;
 }
 
 .form__switch {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-family: var(--font-sans);
   font-size: 13px;
-  color: var(--ink-2);
+  color: var(--ink-muted);
   cursor: pointer;
 }
 
