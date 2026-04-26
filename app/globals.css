@@ -1364,36 +1364,52 @@ button {
 }
 
 /* ============================================================
-   Topbar internals
+   AppHeader / Topbar — Vector Design System (story 00073)
+   Transparent over canvas, breadcrumb in ink-muted with active in
+   ink-500, 36px icon buttons on --surface with 1px --border, 36px
+   avatar with --border-strong ring. Notification badge uses --danger.
    ============================================================ */
-.app-header-wrapper--role-gadmin { border-bottom-color: #ef4444; }
-.app-header-wrapper--role-padmin { border-bottom-color: #a855f7; }
+.app-header-wrapper--role-gadmin { border-bottom-color: var(--danger); }
+.app-header-wrapper--role-padmin { border-bottom-color: var(--info); }
 
 .app-header-wrapper__center {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-muted);
 }
+.app-header-wrapper__center strong { color: var(--ink); font-weight: 500; }
 
 .app-header-wrapper__actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .app-header-wrapper__email {
-  font-size: 14px;
-  color: var(--ink-2);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-muted);
 }
 
 .app-header-wrapper__theme-toggle {
-  background: var(--line-1);
-  color: var(--ink-2);
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  padding: 0 12px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.app-header-wrapper__theme-toggle:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 .app-header-wrapper__icon-btn {
@@ -1403,53 +1419,58 @@ button {
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: none;
-  border: none;
-  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
+  border-radius: var(--radius-md);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .app-header-wrapper__icon-btn:hover {
-  color: var(--ink-1);
-  background: var(--line-1);
+  color: var(--ink);
+  background: var(--surface-sunken);
 }
 
 .app-header-wrapper__badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: -4px;
+  right: -4px;
   min-width: 18px;
   height: 18px;
-  padding: 0 4px;
-  background: var(--accent);
-  color: var(--ink-1);
+  padding: 0 5px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-family: var(--font-sans);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 18px;
-  border-radius: 9px;
+  border-radius: var(--radius-full);
   text-align: center;
+  border: 1px solid var(--danger);
+  font-variant-numeric: tabular-nums;
 }
 
 .app-header-wrapper__avatar {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: transparent;
-  color: var(--ink-1);
-  font-size: 12px;
-  font-weight: 700;
-  border: 1px solid var(--ink-1);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-strong);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .app-header-wrapper__avatar:hover {
-  opacity: 0.85;
+  background: var(--surface-sunken);
+  border-color: var(--ink-muted);
 }
 
 /* ============================================================
