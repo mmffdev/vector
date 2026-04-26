@@ -1678,7 +1678,11 @@ table.tbl tbody tr:hover td {
 }
 
 /* ============================================================
-   Placeholder (empty-state variant used inside tab panels)
+   Placeholder / empty-state — Vector kit
+   - Centred container, generous vertical whitespace (>= --space-12).
+   - Title: --text-md (16px) / 600 / --ink (no apologetic tone).
+   - Body:  --text-base (14px) / --ink-muted, 8px above title.
+   - No exclamation marks, no "Oops", no "Awesome" — calm copy only.
    ============================================================ */
 .placeholder {
   display: flex;
@@ -1686,23 +1690,27 @@ table.tbl tbody tr:hover td {
   align-items: center;
   justify-content: center;
   min-height: 240px;
-  gap: 8px;
-  padding: 24px;
+  padding: var(--space-12) var(--space-6);
   background: var(--surface);
-  border: 1px solid var(--line-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   text-align: center;
 }
 
 .placeholder__title {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
 }
 
 .placeholder__body {
-  font-size: 14px;
-  color: var(--ink-3);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--ink-muted);
   max-width: 480px;
+  margin: 8px 0 0;
 }
 
 /* ============================================================
