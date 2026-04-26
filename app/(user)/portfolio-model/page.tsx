@@ -38,6 +38,7 @@ import AdoptionOverlay, {
   type AdoptionDoneEvent,
   type AdoptionFailEvent,
 } from "./AdoptionOverlay";
+import LayersTable from "./LayersTable";
 
 // Phase 5 will list bundles via a /api/portfolio-models endpoint; until
 // then the seeded MMFF Standard family id is the only thing to render.
@@ -308,9 +309,26 @@ function PortfolioRouterBody({
 }
 
 function BundleView({ bundle }: { bundle: BundleDTO }) {
+  // localLayers seeds from bundle for immediate render, then is replaced
+  // by a GET /api/subscription/layers fetch so IDs are subscription UUIDs
+  // (required by PATCH /api/subscription/layers/batch).
+  const [localLayers, setLocalLayers] = useState<LayerDTO[]>(() =>
+    [...bundle.layers].sort((a, b) => a.sort_order - b.sort_order)
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    api<LayerDTO[]>("/api/subscription/layers").then((rows) => {
+      if (!cancelled) setLocalLayers(rows.sort((a, b) => a.sort_order - b.sort_order));
+    }).catch(() => {
+      // Keep bundle seed on error — table will show but PATCH will fail
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const layerOrder = useMemo(
-    () => [...bundle.layers].sort((a, b) => a.sort_order - b.sort_order),
-    [bundle.layers]
+    () => [...localLayers].sort((a, b) => a.sort_order - b.sort_order),
+    [localLayers]
   );
   const workflowsByLayer = useMemo(() => {
     const m = new Map<string, WorkflowDTO[]>();
@@ -372,30 +390,10 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
       </header>
 
       <Section title="Layers">
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">Order</th>
-                <th className="table__cell">Tag</th>
-                <th className="table__cell">Name</th>
-                <th className="table__cell">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {layerOrder.map((l) => (
-                <tr key={l.id} className="table__row">
-                  <td className="table__cell table__cell--numeric">{l.sort_order}</td>
-                  <td className="table__cell">{l.tag}</td>
-                  <td className="table__cell">{l.name}</td>
-                  <td className="table__cell table__cell--muted">
-                    {l.description_md ?? "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <LayersTable
+          initialLayers={localLayers}
+          onLayersUpdated={setLocalLayers}
+        />
       </Section>
 
       <Section title="Workflows">

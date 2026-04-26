@@ -4,17 +4,11 @@
 
 ## Script
 
+**Use `.claude/bin/planka board`:**
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"admin@mmffdev.com","password":"changeme123!"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
-
 PROPOSED="<title lowercased>"
 
-curl -s -H "Authorization: Bearer $TOKEN" \
-  http://localhost:3333/api/boards/1760699595475649556 \
-  | python3 -c "
+.claude/bin/planka board | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 active_lists = {'1760700028730475544','1760700252018443289','1760700299682513946'}

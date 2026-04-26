@@ -114,6 +114,7 @@ func main() {
 	portfolioAdoptH := portfoliomodels.NewAdoptHandler(libPools.RO, pool)
 	portfolioAdoptStreamH := portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 	devResetH := portfoliomodels.NewDevResetHandler(pool)
+	layersBatchH := portfoliomodels.NewLayersBatchHandler(pool)
 
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
@@ -276,6 +277,19 @@ func main() {
 		r.Get("/", libReleasesH.List)
 		r.Get("/count", libReleasesH.Count)
 		r.Post("/{id}/ack", libReleasesH.Ack)
+	})
+
+	// ---- /api/subscription ----
+	// Subscription-scoped write surface. Padmin-only.
+	r.Route("/api/subscription", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequireRole(models.RolePAdmin))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		// Subscription layer reads + writes (stories 00062–00065).
+		r.Get("/layers", layersBatchH.GetLayers)
+		r.Patch("/layers/batch", layersBatchH.PatchLayersBatch)
 	})
 
 	// ---- /api/errors ----

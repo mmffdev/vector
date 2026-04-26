@@ -1,0 +1,26 @@
+---
+title: Health Check
+sidebar_label: Health
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+
+# Health Check
+
+## GET /healthz
+
+<EndpointHeader method="GET" path="/healthz" auth="none" />
+
+Public endpoint — no auth, no CSRF. Used by load balancers and monitoring.
+
+**Response** — `200 OK`
+
+```json
+{
+  "status": "ok",
+  "commit": "abc1234",
+  "buildTime": "2026-04-26T00:00:00Z"
+}
+```
+
+Handler: `cmd/server/main.go`

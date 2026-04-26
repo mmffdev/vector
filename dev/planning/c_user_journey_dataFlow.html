@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Model — Data Flow Reference</title>
+<style>
+  :root {
+    --orange:  #e07b39;
+    --green:   #3a9e6e;
+    --blue:    #3a72b8;
+    --purple:  #7c4db8;
+    --red:     #c0392b;
+    --bg:      #1a1a2e;
+    --surface: #16213e;
+    --panel:   #0f3460;
+    --border:  #2a3a5e;
+    --text:    #e0e6f0;
+    --muted:   #8899bb;
+    --code:    #aaddff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 32px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  h2 { font-size: 18px; font-weight: 700; color: #fff; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 10px; }
+  p  { color: var(--muted); margin-bottom: 10px; }
+
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+
+  /* ── Labels / badges ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  .badge-lib   { background: #1a3a2a; color: var(--green);  border: 1px solid var(--green); }
+  .badge-vec   { background: #1a2a3a; color: var(--blue);   border: 1px solid var(--blue);  }
+  .badge-both  { background: #2a1a3a; color: var(--purple); border: 1px solid var(--purple);}
+  .badge-read  { background: #1e2e1e; color: #6dbf7a; border: 1px solid #3a6a3a; }
+  .badge-write { background: #2e1e1e; color: #e07b7b; border: 1px solid #6a3a3a; }
+  .badge-role  { background: #2e2a1a; color: var(--orange); border: 1px solid var(--orange);}
+  .badge-step  { background: #16213e; color: var(--blue); border: 1px solid var(--blue); font-size: 11px; }
+
+  /* ── Section panels ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+  }
+  .section.highlight-orange { border-left: 4px solid var(--orange); }
+  .section.highlight-green  { border-left: 4px solid var(--green);  }
+  .section.highlight-blue   { border-left: 4px solid var(--blue);   }
+  .section.highlight-purple { border-left: 4px solid var(--purple); }
+  .section.highlight-red    { border-left: 4px solid var(--red);    }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 13px;
+  }
+  th {
+    background: var(--panel);
+    color: var(--text);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+  }
+  tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  tr:hover td { background: rgba(255,255,255,.04); }
+
+  /* ── Flow steps ── */
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .step-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .step-card .step-num {
+    display: inline-block;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    text-align: center;
+    line-height: 24px;
+    margin-bottom: 10px;
+  }
+  .step-card.orange .step-num { background: var(--orange); }
+  .step-card.green  .step-num { background: var(--green);  }
+  .step-card.purple .step-num { background: var(--purple); }
+  .step-card.red    .step-num { background: var(--red);    }
+  .step-card h4     { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #fff; }
+  .step-card ul     { padding-left: 16px; color: var(--muted); font-size: 12.5px; }
+  .step-card li     { margin-bottom: 4px; }
+  .step-card .arrow { color: var(--orange); font-weight: 700; margin: 0 4px; }
+
+  /* ── DB columns list ── */
+  code {
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 12px;
+    color: var(--code);
+    background: rgba(0,0,0,.3);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ── Status pill ── */
+  .status-pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .s-pending     { background: #2a2a10; color: #d4bc40; border: 1px solid #6a6020; }
+  .s-inprog      { background: #0a2040; color: #60b0ff; border: 1px solid #204060; }
+  .s-completed   { background: #0a3020; color: #50d080; border: 1px solid #205040; }
+  .s-failed      { background: #3a0a0a; color: #ff6060; border: 1px solid #601020; }
+  .s-rolledback  { background: #2a0a2a; color: #c080ff; border: 1px solid #601060; }
+
+  /* ── DB layout ── */
+  .db-row {
+    display: flex;
+    gap: 24px;
+    margin: 16px 0;
+  }
+  .db-box {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .db-box.lib-db  { border-top: 3px solid var(--green);  }
+  .db-box.vec-db  { border-top: 3px solid var(--blue);   }
+  .db-box .db-name {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .db-box.lib-db .db-name { color: var(--green); }
+  .db-box.vec-db .db-name { color: var(--blue);  }
+  .db-box ul { padding-left: 16px; font-size: 12.5px; color: var(--muted); }
+  .db-box li { margin-bottom: 5px; }
+  .db-box li code { font-size: 11.5px; }
+
+  /* ── Arrow connector ── */
+  .connector {
+    text-align: center;
+    color: var(--orange);
+    font-size: 24px;
+    padding: 6px;
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Final state grid ── */
+  .final-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .final-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .final-card .fc-title { font-weight: 700; font-size: 13px; color: #fff; margin-bottom: 6px; }
+  .final-card .fc-desc  { font-size: 12px; color: var(--muted); }
+  .final-card .fc-state { margin-top: 8px; font-size: 12px; color: var(--green); }
+  .final-card .fc-state.empty { color: var(--red); }
+
+  /* ── Reset flow ── */
+  .delete-sequence {
+    counter-reset: del;
+    list-style: none;
+    padding: 0;
+  }
+  .delete-sequence li {
+    counter-increment: del;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .delete-sequence li:last-child { border-bottom: none; }
+  .delete-sequence li::before {
+    content: counter(del);
+    background: var(--red);
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    text-align: center;
+    line-height: 22px;
+    flex-shrink: 0;
+  }
+  .del-sql { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: monospace; }
+
+  .toc {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+    display: inline-block;
+    min-width: 280px;
+  }
+  .toc h3 { margin-top: 0; color: var(--muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .toc ol { padding-left: 20px; margin-top: 8px; }
+  .toc li { margin-bottom: 4px; }
+  .toc a  { color: var(--blue); text-decoration: none; font-size: 13px; }
+  .toc a:hover { color: var(--orange); }
+
+  .note {
+    background: rgba(224,123,57,.07);
+    border: 1px solid rgba(224,123,57,.25);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 12px 0;
+  }
+  .note strong { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<h1>Portfolio Model — Data Flow Reference</h1>
+<p class="subtitle">Generated 2026-04-26 &nbsp;|&nbsp; <span class="badge badge-vec">mmff_vector</span> &nbsp;<span class="badge badge-lib">mmff_library</span> &nbsp;&mdash;&nbsp; Covers adoption, live operation, and dev reset</p>
+
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#databases">Database Architecture</a></li>
+    <li><a href="#step1-login">Step 1 — Padmin Logs In &amp; Sees Models</a></li>
+    <li><a href="#step2-select">Step 2 — Padmin Selects &amp; Confirms</a></li>
+    <li><a href="#step3-saga">Step 3 — Adoption Saga (7 Steps)</a></li>
+    <li><a href="#step4-live">Step 4 — Live Operation After Adoption</a></li>
+    <li><a href="#step5-reset">Step 5 — Dev Reset Flow</a></li>
+    <li><a href="#status-enum">Adoption Status Enum</a></li>
+    <li><a href="#tables-ref">Full Table Reference</a></li>
+  </ol>
+</div>
+
+
+<!-- ═══════════════════════════════════════ DATABASE ARCHITECTURE -->
+<h2 id="databases">Database Architecture</h2>
+
+<div class="section highlight-purple">
+  <p>Two separate Postgres databases serve this system. They are never joined — cross-DB references are <strong>app-enforced</strong> (UUIDs stored but no DB-level FK across servers).</p>
+
+  <div class="db-row">
+    <div class="db-box lib-db">
+      <div class="db-name">mmff_library (read-only at runtime)</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">MMFF-authored content. Padmin cannot edit it. The app reads here to list and fetch models.</p>
+      <ul>
+        <li><code>portfolio_models</code> — spine record; versioned</li>
+        <li><code>portfolio_model_layers</code> — hierarchical layer tree</li>
+        <li><code>portfolio_model_workflows</code> — per-layer state machine states</li>
+        <li><code>portfolio_model_workflow_transitions</code> — allowed transitions between states</li>
+        <li><code>portfolio_model_artifacts</code> — feature flags (board, sprint, PI planner)</li>
+        <li><code>portfolio_model_terminology</code> — label overrides (e.g. "Epic" → custom word)</li>
+      </ul>
+    </div>
+    <div class="connector">⇄</div>
+    <div class="db-box vec-db">
+      <div class="db-name">mmff_vector (tenant data, read-write)</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Per-subscription operational data. The adoption saga writes here; live product reads here.</p>
+      <ul>
+        <li><code>subscription_portfolio_model_state</code> — adoption lifecycle record</li>
+        <li><code>subscription_layers</code> — mirror of adopted layers</li>
+        <li><code>subscription_workflows</code> — mirror of adopted workflow states</li>
+        <li><code>subscription_workflow_transitions</code> — mirror of transition edges</li>
+        <li><code>subscription_artifacts</code> — mirror of enabled features/config</li>
+        <li><code>subscription_terminology</code> — mirror of label overrides</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Why mirrors?</strong> The library DB is managed by MMFF (read-only to tenants). When a padmin adopts a model, every relevant row is copied into the vector DB under their <code>subscription_id</code>. After adoption, <strong>zero queries hit the library DB</strong> for day-to-day operation. Mirrors also capture the model version at adoption time via <code>source_library_version</code>, so library updates don't silently change live tenant configs.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ STEP 1: LOGIN + SEE MODELS -->
+<h2 id="step1-login">Step 1 — Padmin Logs In &amp; Sees Available Models</h2>
+
+<div class="section highlight-orange">
+  <p><span class="badge badge-role">padmin only</span> &nbsp; The portfolio model selection UI is gated to the <code>padmin</code> role. A regular user or gadmin cannot access this flow.</p>
+
+  <div class="flow-grid">
+    <div class="step-card orange">
+      <div class="step-num">1</div>
+      <h4>Auth &amp; Session</h4>
+      <ul>
+        <li>Padmin posts credentials to <code>POST /api/auth/login</code></li>
+        <li>Backend checks <code>mmff_vector.users</code> table: <code>WHERE email=$1 AND subscription_id=$2</code></li>
+        <li>JWT issued — claims include <code>subscription_id</code>, <code>user_id</code>, <code>role="padmin"</code></li>
+        <li>All subsequent requests carry <code>Authorization: Bearer &lt;jwt&gt;</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card orange">
+      <div class="step-num">2</div>
+      <h4>Check Adoption State</h4>
+      <ul>
+        <li>Frontend calls <code>GET /api/portfolio-models/adoption-state</code></li>
+        <li>Reads <code>mmff_vector.subscription_portfolio_model_state</code></li>
+        <li>Query: <code>WHERE subscription_id=$1 AND status='completed' AND archived_at IS NULL</code></li>
+        <li>If adopted → redirected to adopted model view</li>
+        <li>If not adopted → wizard shown: model card list</li>
+      </ul>
+    </div>
+
+    <div class="step-card orange">
+      <div class="step-num">3</div>
+      <h4>Fetch Available Models</h4>
+      <ul>
+        <li>Frontend calls <code>GET /api/portfolio-models</code></li>
+        <li>Backend reads <span class="badge badge-lib">mmff_library</span> <code>portfolio_models</code> + <code>portfolio_model_layers</code></li>
+        <li>Query filters: <code>scope='system'</code>, <code>visibility='public'</code>, <code>archived_at IS NULL</code></li>
+        <li>Returns: name, description, layer count, layer name summary, version, model_family_id</li>
+        <li>No write to any DB at this point</li>
+      </ul>
+    </div>
+
+    <div class="step-card orange">
+      <div class="step-num">4</div>
+      <h4>Model Detail (on hover/click)</h4>
+      <ul>
+        <li>Frontend calls <code>GET /api/portfolio-models/{id}</code></li>
+        <li>Backend opens REPEATABLE READ + READ ONLY transaction on <span class="badge badge-lib">mmff_library</span></li>
+        <li>Reads all 6 tables for that model (spine + 5 children) in one consistent snapshot</li>
+        <li>Returns <code>Bundle</code> struct — layers, workflows, transitions, artifacts, terminology</li>
+        <li>No write to any DB</li>
+      </ul>
+    </div>
+  </div>
+
+  <table style="margin-top:20px">
+    <thead>
+      <tr>
+        <th>API Call</th>
+        <th>DB</th>
+        <th>Table(s) Read</th>
+        <th>DB Write?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>POST /api/auth/login</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><code>users</code></td>
+        <td>No (token issued in memory)</td>
+      </tr>
+      <tr>
+        <td><code>GET /api/portfolio-models/adoption-state</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><code>subscription_portfolio_model_state</code></td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><code>GET /api/portfolio-models</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><code>portfolio_models</code>, <code>portfolio_model_layers</code></td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><code>GET /api/portfolio-models/{id}</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td>All 6 library tables (REPEATABLE READ snapshot)</td>
+        <td>No</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ═══════════════════════════════════════ STEP 2: SELECT & CONFIRM -->
+<h2 id="step2-select">Step 2 — Padmin Selects the Model and Confirms</h2>
+
+<div class="section highlight-blue">
+  <p>Padmin clicks a model card and hits Confirm/Adopt. This triggers the HTTP POST that starts the saga. Before any DB write, the backend runs idempotency checks.</p>
+
+  <div class="flow-grid">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <h4>POST /api/portfolio-models/{id}/adopt</h4>
+      <ul>
+        <li>Backend extracts <code>model_id</code> from URL path</li>
+        <li>Extracts <code>subscription_id</code> + <code>user_id</code> from JWT claims</li>
+        <li>Calls <code>Orchestrator.Adopt()</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <h4>Idempotency Check</h4>
+      <ul>
+        <li>Reads <code>subscription_portfolio_model_state</code> for this subscription</li>
+        <li><strong>status=completed, same model</strong> → return 200 immediately (no saga, idempotent)</li>
+        <li><strong>status=completed, different model</strong> → return 409 conflict</li>
+        <li><strong>status=in_progress</strong> → return 409 conflict (already running)</li>
+        <li><strong>status=failed, same model</strong> → resume saga from failed step</li>
+        <li><strong>status=failed, different model</strong> → archive stale row, start fresh</li>
+        <li><strong>no row</strong> → start fresh saga</li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <h4>Library Snapshot (Read-Only)</h4>
+      <ul>
+        <li>Opens REPEATABLE READ + READ ONLY tx on <span class="badge badge-lib">mmff_library</span></li>
+        <li>Reads all 6 tables for the selected model into memory as a <code>Bundle</code></li>
+        <li>This snapshot is used for ALL subsequent saga steps — library is never re-queried mid-saga</li>
+        <li>Tx closed (read-only, no commit needed)</li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <h4>First Vector DB Write</h4>
+      <ul>
+        <li>Opens write tx on <span class="badge badge-vec">mmff_vector</span></li>
+        <li>INSERT into <code>subscription_portfolio_model_state</code>: <code>status='in_progress'</code></li>
+        <li>Row created — this is the adoption record that tracks the saga lifecycle</li>
+        <li>Returns to SSE stream (step events begin flowing)</li>
+      </ul>
+    </div>
+  </div>
+
+  <table style="margin-top:20px">
+    <thead>
+      <tr><th>Condition</th><th>Existing Row?</th><th>Action</th><th>Response</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>No previous adoption</td><td>None</td><td>INSERT new row, status=in_progress</td><td>Saga starts, SSE stream</td></tr>
+      <tr><td>Already completed, same model</td><td>completed</td><td>No write</td><td>200 OK immediately</td></tr>
+      <tr><td>Already completed, different model</td><td>completed</td><td>No write</td><td>409 conflict</td></tr>
+      <tr><td>In progress</td><td>in_progress</td><td>No write</td><td>409 conflict</td></tr>
+      <tr><td>Failed, same model</td><td>failed</td><td>UPDATE status=in_progress (resume)</td><td>Saga resumes</td></tr>
+      <tr><td>Failed, different model</td><td>failed</td><td>SET archived_at=NOW() on stale, INSERT fresh row</td><td>Saga starts fresh</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ═══════════════════════════════════════ STEP 3: SAGA -->
+<h2 id="step3-saga">Step 3 — Adoption Saga (7 Steps via SSE Stream)</h2>
+
+<div class="section highlight-green">
+  <p>The saga runs synchronously server-side but results are streamed to the browser via <strong>Server-Sent Events (SSE)</strong>. Each step fires a <code>step</code> event; the overlay animates the card for that step. All writes go to <span class="badge badge-vec">mmff_vector</span>; all reads come from the in-memory <code>Bundle</code> snapshot taken in step 2.</p>
+
+  <div class="note">
+    <strong>SSE Transport:</strong> The frontend uses <code>fetch()</code> + <code>ReadableStream</code> (not <code>EventSource</code>) so it can send <code>Authorization: Bearer &lt;jwt&gt;</code> to the backend at <code>http://localhost:5100</code> (port 5100, not through Next.js). The SSE endpoint is <code>GET /api/portfolio-models/{id}/adopt/stream</code>.
+  </div>
+
+  <div class="flow-grid">
+    <div class="step-card green">
+      <div class="step-num">1</div>
+      <h4><span class="badge badge-step">step: validate</span></h4>
+      <ul>
+        <li><span class="badge badge-lib">library</span> Confirms model exists and is fetchable</li>
+        <li>Uses the in-memory Bundle snapshot (no new DB query)</li>
+        <li><span class="badge badge-vec">vector</span> INSERT into <code>subscription_portfolio_model_state</code></li>
+        <li>Writes: <code>subscription_id</code>, <code>adopted_model_id</code>, <code>adopted_by_user_id</code>, <code>status='in_progress'</code></li>
+        <li>SSE: <code>event: step</code> → <code>{"index":0,"name":"validate","status":"ok"}</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card green">
+      <div class="step-num">2</div>
+      <h4><span class="badge badge-step">step: layers</span></h4>
+      <ul>
+        <li>Reads layers from Bundle snapshot (<span class="badge badge-lib">library</span> — no new query)</li>
+        <li><span class="badge badge-vec">vector</span> INSERT into <code>subscription_layers</code></li>
+        <li>Two-phase: first insert root layers (no parent), then update <code>parent_layer_id</code> FKs for children using newly-assigned UUIDs</li>
+        <li>Copies: name, tag, sort_order, icon, colour, description_md, help_md, allows_children, is_leaf, <strong>source_library_id</strong>, <strong>source_library_version</strong></li>
+        <li><code>ON CONFLICT DO NOTHING</code> — idempotent</li>
+        <li>SSE: <code>event: step</code> → <code>{"index":1,"name":"layers","status":"ok"}</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card green">
+      <div class="step-num">3</div>
+      <h4><span class="badge badge-step">step: workflows</span></h4>
+      <ul>
+        <li>Reads workflows from Bundle snapshot</li>
+        <li>Translates library layer UUID → mirror subscription_layer UUID (using map built in step 2)</li>
+        <li><span class="badge badge-vec">vector</span> INSERT into <code>subscription_workflows</code></li>
+        <li>Copies: state_key, state_label, sort_order, is_initial, is_terminal, colour, <code>layer_id</code> (mirror FK)</li>
+        <li>Builds workflow UUID map for transitions step</li>
+        <li>SSE: <code>event: step</code> → <code>{"index":2,"name":"workflows","status":"ok"}</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card green">
+      <div class="step-num">4</div>
+      <h4><span class="badge badge-step">step: transitions</span></h4>
+      <ul>
+        <li>Reads transition edges from Bundle snapshot</li>
+        <li>Translates library workflow UUIDs → mirror subscription_workflow UUIDs</li>
+        <li><span class="badge badge-vec">vector</span> INSERT into <code>subscription_workflow_transitions</code></li>
+        <li>Copies: from_state_id (mirror), to_state_id (mirror), source_library_id, source_library_version</li>
+        <li>CHECK: from ≠ to enforced in migration</li>
+        <li>SSE: <code>event: step</code> → <code>{"index":3,"name":"transitions","status":"ok"}</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card green">
+      <div class="step-num">5</div>
+      <h4><span class="badge badge-step">step: artifacts</span></h4>
+      <ul>
+        <li>Reads artifact toggles from Bundle snapshot</li>
+        <li><span class="badge badge-vec">vector</span> INSERT into <code>subscription_artifacts</code></li>
+        <li>Copies: artifact_key, enabled (bool), config (JSONB)</li>
+        <li>Controls feature flags like board view, sprint planning, PI planner</li>
+        <li>SSE: <code>event: step</code> → <code>{"index":4,"name":"artifacts","status":"ok"}</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card green">
+      <div class="step-num">6</div>
+      <h4><span class="badge badge-step">step: terminology</span></h4>
+      <ul>
+        <li>Reads label overrides from Bundle snapshot</li>
+        <li><span class="badge badge-vec">vector</span> INSERT into <code>subscription_terminology</code></li>
+        <li>Copies: key (e.g. "epic_label"), value (e.g. "Initiative")</li>
+        <li>UI reads these to rename standard labels per model</li>
+        <li>SSE: <code>event: step</code> → <code>{"index":5,"name":"terminology","status":"ok"}</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card green">
+      <div class="step-num">7</div>
+      <h4><span class="badge badge-step">step: finalize</span></h4>
+      <ul>
+        <li><span class="badge badge-vec">vector</span> UPDATE <code>subscription_portfolio_model_state</code></li>
+        <li>Sets: <code>status='completed'</code>, <code>adopted_by_user_id=$user</code>, <code>adopted_at=NOW()</code></li>
+        <li>This is the commit point — the subscription is now officially on this model</li>
+        <li>SSE: <code>event: step</code> → <code>{"index":6,"name":"finalize","status":"ok"}</code></li>
+        <li>SSE: <code>event: done</code> → <code>{"state_id":"...","status":"completed","adopted_at":"..."}</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px">Error Handling During Saga</h3>
+  <table>
+    <thead>
+      <tr><th>Failure Point</th><th>Action</th><th>State Table Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Any step (1–7)</td>
+        <td><code>failSaga()</code> called — UPDATE state row <code>status='failed'</code>, INSERT into <code>error_events</code> with JSON context</td>
+        <td><span class="status-pill s-failed">failed</span></td>
+      </tr>
+      <tr>
+        <td>SSE: fail event</td>
+        <td><code>event: fail</code> sent to browser → <code>{"step":"...","error_code":"ADOPT_*","message":"..."}</code></td>
+        <td>UI shows error state</td>
+      </tr>
+      <tr>
+        <td>Retry same model</td>
+        <td>Finds <span class="status-pill s-failed">failed</span> row + same model → <code>resetFailedToInProgress()</code>, saga resumes</td>
+        <td><span class="status-pill s-inprog">in_progress</span> → <span class="status-pill s-completed">completed</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:20px">Idempotent Completed Path (Already Adopted)</h3>
+  <div class="note">
+    <strong>Idempotency:</strong> If the padmin hits adopt on an already-completed model, <code>Adopt()</code> returns immediately with the existing result — no saga runs, zero step events fire. The SSE handler detects <code>stepCount == 0</code> on a successful result and emits 7 synthetic <code>ok</code> step events before the <code>done</code> terminator, so the overlay still animates correctly.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ STEP 4: LIVE OPERATION -->
+<h2 id="step4-live">Step 4 — Live State After Adoption Is Complete</h2>
+
+<div class="section highlight-blue">
+  <p>Once <code>status='completed'</code> is set, the subscription runs entirely off its mirror tables in <span class="badge badge-vec">mmff_vector</span>. The library DB is not consulted again unless a re-adoption is triggered.</p>
+
+  <div class="final-grid">
+    <div class="final-card">
+      <div class="fc-title">subscription_portfolio_model_state</div>
+      <div class="fc-desc">One active row per subscription. <code>status='completed'</code>, <code>archived_at IS NULL</code>. Unique partial index ensures only one live adoption.</div>
+      <div class="fc-state">✓ adopted_model_id = library UUID</div>
+    </div>
+    <div class="final-card">
+      <div class="fc-title">subscription_layers</div>
+      <div class="fc-desc">N rows — one per layer in the adopted model. <code>parent_layer_id</code> is a self-FK within this table (not the library). Hierarchical tree fully local.</div>
+      <div class="fc-state">✓ source_library_id, source_library_version captured</div>
+    </div>
+    <div class="final-card">
+      <div class="fc-title">subscription_workflows</div>
+      <div class="fc-desc">M rows — one per state per layer. <code>layer_id</code> FK → subscription_layers. <code>is_initial</code> / <code>is_terminal</code> flags drive UI workflow rendering.</div>
+      <div class="fc-state">✓ state_key, state_label, colour copied</div>
+    </div>
+    <div class="final-card">
+      <div class="fc-title">subscription_workflow_transitions</div>
+      <div class="fc-desc">T rows — directed edges between workflow states. Both <code>from_state_id</code> and <code>to_state_id</code> are FKs into <code>subscription_workflows</code> (CASCADE on delete).</div>
+      <div class="fc-state">✓ from/to FKs resolve locally</div>
+    </div>
+    <div class="final-card">
+      <div class="fc-title">subscription_artifacts</div>
+      <div class="fc-desc">Feature toggle rows. <code>artifact_key</code> (e.g. "board", "sprint") + <code>enabled</code> bool + <code>config</code> JSONB for per-feature settings.</div>
+      <div class="fc-state">✓ enabled/config govern feature availability</div>
+    </div>
+    <div class="final-card">
+      <div class="fc-title">subscription_terminology</div>
+      <div class="fc-desc">Label override rows. UI reads these to substitute model-specific language ("Epic" → "Initiative", etc). Keyed by string key.</div>
+      <div class="fc-state">✓ key/value pairs for UI label substitution</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px">Live Lookup Queries (All Hit mmff_vector Only)</h3>
+  <table>
+    <thead>
+      <tr><th>What the UI Needs</th><th>Table Queried</th><th>Key Filter</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Is this subscription adopted?</td>
+        <td><code>subscription_portfolio_model_state</code></td>
+        <td><code>subscription_id=$1 AND status='completed' AND archived_at IS NULL</code></td>
+      </tr>
+      <tr>
+        <td>Which layers does this subscription have?</td>
+        <td><code>subscription_layers</code></td>
+        <td><code>subscription_id=$1 AND archived_at IS NULL ORDER BY sort_order</code></td>
+      </tr>
+      <tr>
+        <td>What states does a layer have?</td>
+        <td><code>subscription_workflows</code></td>
+        <td><code>subscription_id=$1 AND layer_id=$layerId AND archived_at IS NULL</code></td>
+      </tr>
+      <tr>
+        <td>What transitions are allowed?</td>
+        <td><code>subscription_workflow_transitions</code></td>
+        <td><code>subscription_id=$1 AND from_state_id=$stateId AND archived_at IS NULL</code></td>
+      </tr>
+      <tr>
+        <td>Is feature X enabled?</td>
+        <td><code>subscription_artifacts</code></td>
+        <td><code>subscription_id=$1 AND artifact_key='board' AND archived_at IS NULL</code></td>
+      </tr>
+      <tr>
+        <td>What is the label for "epic"?</td>
+        <td><code>subscription_terminology</code></td>
+        <td><code>subscription_id=$1 AND key='epic_label' AND archived_at IS NULL</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ═══════════════════════════════════════ STEP 5: DEV RESET -->
+<h2 id="step5-reset">Step 5 — Dev Reset Flow</h2>
+
+<div class="section highlight-red">
+  <p><span class="badge badge-role">gadmin or padmin</span> &nbsp; The Dev Setup page exposes a <strong>Reset Adoption State</strong> button. It is internal tooling — it wipes all mirror data for the caller's subscription back to zero, as if adoption never happened.</p>
+
+  <div class="note">
+    <strong>Scope:</strong> The reset is always scoped to the caller's own <code>subscription_id</code> (from the JWT). A gadmin cannot reset another subscription's data through this endpoint. The filter <code>source_library_id IS NOT NULL</code> on mirror tables protects any hand-authored rows (if any exist in future) from accidental deletion.
+  </div>
+
+  <h3>Endpoint</h3>
+  <p><code>POST /api/admin/dev/adoption-reset</code> — requires gadmin or padmin role</p>
+
+  <h3>Deletion Sequence (children deleted before parents)</h3>
+  <ul class="delete-sequence">
+    <li>
+      <div>
+        <strong>subscription_artifacts</strong>
+        <div class="del-sql">DELETE FROM subscription_artifacts WHERE subscription_id=$1 AND source_library_id IS NOT NULL</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>subscription_terminology</strong>
+        <div class="del-sql">DELETE FROM subscription_terminology WHERE subscription_id=$1 AND source_library_id IS NOT NULL</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>subscription_workflow_transitions</strong>
+        <div class="del-sql">DELETE FROM subscription_workflow_transitions WHERE subscription_id=$1 AND source_library_id IS NOT NULL</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Must go before workflows — <code>from_state_id</code>/<code>to_state_id</code> FK into workflows</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>subscription_workflows</strong>
+        <div class="del-sql">DELETE FROM subscription_workflows WHERE subscription_id=$1 AND source_library_id IS NOT NULL</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Must go before layers — <code>layer_id</code> FK into subscription_layers</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>subscription_layers</strong>
+        <div class="del-sql">DELETE FROM subscription_layers WHERE subscription_id=$1 AND source_library_id IS NOT NULL</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Parent rows (self-referential <code>parent_layer_id</code>) — children already gone by cascade via workflows delete</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>subscription_portfolio_model_state</strong> — NO filter on source_library_id
+        <div class="del-sql">DELETE FROM subscription_portfolio_model_state WHERE subscription_id=$1</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Wipes all rows including failed/rolled_back history for this subscription</div>
+      </div>
+    </li>
+  </ul>
+
+  <h3 style="margin-top:24px">End State After Reset — All Tables</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Table</th>
+        <th>DB</th>
+        <th>State After Reset</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>subscription_portfolio_model_state</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Zero rows</strong> for this subscription</td>
+        <td>Adoption check now returns <code>{"adopted":false}</code></td>
+      </tr>
+      <tr>
+        <td><code>subscription_layers</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Zero rows</strong> where <code>source_library_id IS NOT NULL</code></td>
+        <td>Layer tree gone; subscription is unmodelled</td>
+      </tr>
+      <tr>
+        <td><code>subscription_workflows</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Zero rows</strong> where <code>source_library_id IS NOT NULL</code></td>
+        <td>All state machine definitions gone</td>
+      </tr>
+      <tr>
+        <td><code>subscription_workflow_transitions</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Zero rows</strong> where <code>source_library_id IS NOT NULL</code></td>
+        <td>All transition edges gone</td>
+      </tr>
+      <tr>
+        <td><code>subscription_artifacts</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Zero rows</strong> where <code>source_library_id IS NOT NULL</code></td>
+        <td>Feature flags gone; features revert to defaults</td>
+      </tr>
+      <tr>
+        <td><code>subscription_terminology</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Zero rows</strong> where <code>source_library_id IS NOT NULL</code></td>
+        <td>Label overrides gone; UI shows default labels</td>
+      </tr>
+      <tr>
+        <td><code>portfolio_models</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Library never written to by the app</td>
+      </tr>
+      <tr>
+        <td><code>portfolio_model_layers</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Library never written to by the app</td>
+      </tr>
+      <tr>
+        <td><code>portfolio_model_workflows</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Library never written to by the app</td>
+      </tr>
+      <tr>
+        <td><code>portfolio_model_workflow_transitions</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Library never written to by the app</td>
+      </tr>
+      <tr>
+        <td><code>portfolio_model_artifacts</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Library never written to by the app</td>
+      </tr>
+      <tr>
+        <td><code>portfolio_model_terminology</code></td>
+        <td><span class="badge badge-lib">library</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Library never written to by the app</td>
+      </tr>
+      <tr>
+        <td><code>users</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Reset has no effect on user accounts</td>
+      </tr>
+      <tr>
+        <td><code>subscriptions</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Subscription record and tenant data untouched</td>
+      </tr>
+      <tr>
+        <td><code>workspace</code>, <code>portfolio</code>, <code>product</code></td>
+        <td><span class="badge badge-vec">vector</span></td>
+        <td><strong>Untouched</strong></td>
+        <td>Product data untouched — reset is model schema only</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:20px">After Reset: What Padmin Sees</h3>
+  <p>On next page load, <code>GET /api/portfolio-models/adoption-state</code> returns <code>{"adopted":false}</code>. The wizard re-appears. Padmin can adopt any model — including the same one again — as if it's a first adoption. The full saga runs again and re-populates all mirror tables from scratch.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════ STATUS ENUM -->
+<h2 id="status-enum">Adoption Status Enum</h2>
+
+<div class="section highlight-purple">
+  <p>Column: <code>subscription_portfolio_model_state.status TEXT</code> CHECK constraint enforces exactly these values.</p>
+
+  <table>
+    <thead>
+      <tr><th>Status</th><th>When Set</th><th>Unique Index Active?</th><th>Can Padmin Adopt Again?</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="status-pill s-pending">pending</span></td>
+        <td>Reserved for future two-phase commit pattern. Not currently used — saga skips directly to in_progress.</td>
+        <td>Yes (blocks new adoption)</td>
+        <td>No — 409 conflict</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill s-inprog">in_progress</span></td>
+        <td>Set immediately when saga starts (validate step). Clears to completed or failed.</td>
+        <td>Yes (blocks new adoption)</td>
+        <td>No — 409 conflict</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill s-completed">completed</span></td>
+        <td>Set in finalize step. This is the live/healthy state.</td>
+        <td>Yes (blocks new adoption)</td>
+        <td>Only if same model (idempotent 200)</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill s-failed">failed</span></td>
+        <td>Set by <code>failSaga()</code> on any step error. Mirror tables may be partially written.</td>
+        <td><strong>No</strong> — excluded from unique index</td>
+        <td>Yes — same model resumes; different model archives stale row and starts fresh</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill s-rolledback">rolled_back</span></td>
+        <td>Reserved for future re-adoption / model switch. Not yet implemented.</td>
+        <td><strong>No</strong> — excluded from unique index</td>
+        <td>Yes (treated same as failed)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Unique index rule:</strong> <code>idx_subscription_portfolio_model_state_active_unique</code> is a <em>partial</em> unique index on <code>(subscription_id)</code> WHERE <code>archived_at IS NULL AND status NOT IN ('failed', 'rolled_back')</code>. This allows one failed row + one in_progress row to coexist briefly during the archive-and-restart sequence, but guarantees only one "live" adoption per subscription at any time.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ TABLE REFERENCE -->
+<h2 id="tables-ref">Full Table Reference</h2>
+
+<div class="section">
+  <h3><span class="badge badge-lib">mmff_library</span> — portfolio_models (spine)</h3>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>UUID PK</td><td>Stable model identity. Used as <code>adopted_model_id</code> in vector.</td></tr>
+      <tr><td><code>model_family_id</code></td><td>UUID</td><td>Groups versions of the same model family.</td></tr>
+      <tr><td><code>version</code></td><td>INT</td><td>Monotonic version within family. <code>(model_family_id, version)</code> unique.</td></tr>
+      <tr><td><code>name</code>, <code>description</code></td><td>TEXT</td><td>Shown in wizard card list.</td></tr>
+      <tr><td><code>scope</code></td><td>TEXT</td><td>system / tenant / shared. Only system+public models shown to padmins.</td></tr>
+      <tr><td><code>visibility</code></td><td>TEXT</td><td>private / public / invite.</td></tr>
+      <tr><td><code>feature_flags</code></td><td>JSONB</td><td>Model-level flags.</td></tr>
+      <tr><td><code>archived_at</code></td><td>TIMESTAMPTZ</td><td>Soft-archive. Archived models not shown in list.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="badge badge-lib">mmff_library</span> — portfolio_model_layers</h3>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>UUID PK</td><td>Source ID — stored as <code>source_library_id</code> in mirror.</td></tr>
+      <tr><td><code>model_id</code></td><td>UUID FK→portfolio_models</td><td>Scoped to one model.</td></tr>
+      <tr><td><code>name</code>, <code>tag</code></td><td>TEXT</td><td>Unique within model. Tag is 2-4 chars.</td></tr>
+      <tr><td><code>parent_layer_id</code></td><td>UUID self-FK nullable</td><td>Hierarchical tree. Root layers have NULL.</td></tr>
+      <tr><td><code>sort_order</code>, <code>icon</code>, <code>colour</code></td><td>various</td><td>Display properties.</td></tr>
+      <tr><td><code>allows_children</code>, <code>is_leaf</code></td><td>BOOL</td><td>Tree shape constraints.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="badge badge-vec">mmff_vector</span> — subscription_portfolio_model_state</h3>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>UUID PK</td><td>Row identity.</td></tr>
+      <tr><td><code>subscription_id</code></td><td>UUID FK→subscriptions</td><td>Tenant scoping.</td></tr>
+      <tr><td><code>adopted_model_id</code></td><td>UUID</td><td>App-enforced cross-DB ref to <code>mmff_library.portfolio_models.id</code>.</td></tr>
+      <tr><td><code>adopted_by_user_id</code></td><td>UUID FK→users</td><td>Padmin who triggered adoption.</td></tr>
+      <tr><td><code>adopted_at</code></td><td>TIMESTAMPTZ</td><td>When finalize step completed.</td></tr>
+      <tr><td><code>status</code></td><td>TEXT CHECK</td><td>pending / in_progress / completed / failed / rolled_back</td></tr>
+      <tr><td><code>archived_at</code></td><td>TIMESTAMPTZ</td><td>Set when row is superseded (e.g. stale failed row archived during retry).</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="badge badge-vec">mmff_vector</span> — Mirror Tables (subscription_layers, subscription_workflows, subscription_workflow_transitions, subscription_artifacts, subscription_terminology)</h3>
+  <table>
+    <thead><tr><th>Common Columns (all 5 tables)</th><th>Type</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>UUID PK</td><td>New UUID assigned at adoption — not the library UUID.</td></tr>
+      <tr><td><code>subscription_id</code></td><td>UUID FK→subscriptions</td><td>Tenant scoping. All queries filter by this.</td></tr>
+      <tr><td><code>source_library_id</code></td><td>UUID</td><td>App-enforced cross-DB ref to source library table row. Also used by reset filter.</td></tr>
+      <tr><td><code>source_library_version</code></td><td>INT</td><td>Snapshot of <code>portfolio_models.version</code> at adopt time. Immutable version pin.</td></tr>
+      <tr><td><code>archived_at</code></td><td>TIMESTAMPTZ</td><td>Soft-archive. All live queries filter <code>WHERE archived_at IS NULL</code>.</td></tr>
+      <tr><td><code>created_at</code>, <code>updated_at</code></td><td>TIMESTAMPTZ</td><td>Audit columns. <code>updated_at</code> maintained by trigger.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:40px;padding:16px 20px;background:var(--panel);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted)">
+  <strong style="color:var(--text)">Source files:</strong> &nbsp;
+  <code>backend/internal/portfoliomodels/adopt.go</code> &nbsp;·&nbsp;
+  <code>adopt_stream.go</code> &nbsp;·&nbsp;
+  <code>dev_reset.go</code> &nbsp;·&nbsp;
+  <code>adoption_state.go</code> &nbsp;·&nbsp;
+  <code>list.go</code> &nbsp;·&nbsp;
+  <code>backend/internal/librarydb/fetch.go</code> &nbsp;·&nbsp;
+  <code>backend/internal/librarydb/list.go</code> &nbsp;·&nbsp;
+  <code>db/schema/026_subscription_portfolio_model_state.sql</code> &nbsp;·&nbsp;
+  <code>db/schema/029_adoption_mirror_tables.sql</code> &nbsp;·&nbsp;
+  <code>db/library_schema/003_portfolio_model_bundles.sql</code>
+</div>
+
+</body>
+</html>

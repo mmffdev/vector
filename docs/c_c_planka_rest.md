@@ -1,8 +1,8 @@
 # Planka REST command templates
 
-> Lazy-loaded. Load when writing curl/Python Planka calls or debugging MCP failures.
+> **⚠️ REFERENCE ONLY** — Do not call these directly via curl. Use `.claude/bin/planka` helper instead (see [`.claude/bin/planka`](./.claude/bin/planka)). This document is kept for understanding the Planka REST API; all actual board operations must go through the helper.
 
-Tunnel must be up on `:3333`. All commands use `$TOKEN` — get it once per session (see Auth below).
+Tunnel must be up on `:3333`.
 
 ## Key IDs (hard-coded — do not re-fetch)
 
@@ -21,81 +21,63 @@ Tunnel must be up on `:3333`. All commands use `$TOKEN` — get it once per sess
 
 ---
 
-## Auth — get token
+## Auth
 
-```bash
-TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"admin@mmffdev.com","password":"changeme123!"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
-```
+**Use `.claude/bin/planka` — never call this directly.** Credentials are stored in `backend/.env.local` (git-ignored) and read only by the helper script.
+
+The agent account (`claude@mmffdev.com`) has already accepted terms; login returns a real access token (valid ~1 year).
 
 ---
 
 ## Create card
 
-**Use MCP `mcp__planka__create_card`** — curl always requires `type` and the REST label endpoint is unreliable.
-
-MCP call (labels array works on create):
-```
-mcp__planka__create_card
-  listId:      <LIST_ID>
-  name:        "<TITLE>"
-  description: "<AC>\n\n---\n_Agent: backlog-cmd | <DATE> | <BRANCH>_"
-  position:    <65536 * N>
-  type:        story
-  labels:      ["<LABEL_ID>", ...]
-```
-
-Get date/branch at runtime:
+**Use `.claude/bin/planka create-card`:**
 ```bash
-DATE=$(date +%Y-%m-%d)
-BRANCH=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
+.claude/bin/planka create-card <listId> "<title>" "<description>"
+# Prints card ID to stdout
 ```
+
+Details:
+- `type` must be `"story"` (not `"card"` — that errors). `"project"` is for epics.
+- `position`: increment by 65536 per card to space them.
+- Labels must be attached separately (see Attach label section below)
 
 ---
 
 ## Move card to list
 
+**Use `.claude/bin/planka move-card`:**
 ```bash
-curl -s -X PATCH "http://localhost:3333/api/cards/<CARD_ID>" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"listId":"<LIST_ID>","position":<POSITION>}'
+.claude/bin/planka move-card <cardId> <listId> <position>
 ```
 
-**Both `listId` and `position` are required together** — omitting either returns 422.
-
-Position conventions: first card = 65536, subsequent = 65536 × N. If inserting between cards, use midpoint.
+Details:
+- **Both `listId` and `position` are required** — omitting either silently fails.
+- Position conventions: first card = 65536, subsequent = 65536 × N. If inserting between cards, use midpoint.
 
 ---
 
 ## Post comment
 
+**Use `.claude/bin/planka comment`:**
 ```bash
-curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/comments" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"<COMMENT_TEXT>"}'
+.claude/bin/planka comment <cardId> "<text>"
 ```
 
-For dynamic text with branch/hash:
+Example with branch/date:
 ```bash
-BRANCH=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
-curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/comments" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"text\":\"**Code complete** — <SUMMARY>. Branch: ${BRANCH}\"}"
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
+DATE=$(date +%Y-%m-%d)
+.claude/bin/planka comment <cardId> "**Code complete** — $DATE | branch \`$BRANCH\`"
 ```
 
 ---
 
 ## Fetch board state (cards + labels)
 
+**Use `.claude/bin/planka board`:**
 ```bash
-curl -s "http://localhost:3333/api/boards/1760699595475649556" \
-  -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "
+.claude/bin/planka board | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
 list_names = {
@@ -107,7 +89,7 @@ list_names = {
 }
 for c in d['included']['cards']:
     name = list_names.get(c['listId'],'?')
-    print(f\"{name:12s} {c['id']} {c['name']}\")
+    print(f'{name:12s} {c['id']} {c['name']}')
 "
 ```
 
@@ -117,10 +99,9 @@ Filter to a specific list: add `if c['listId'] == '<LIST_ID>'` before print.
 
 ## Scan for MULTI AGENT claimable cards
 
+**Use `.claude/bin/planka board`:**
 ```bash
-curl -s "http://localhost:3333/api/boards/1760699595475649556" \
-  -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "
+.claude/bin/planka board | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 claimable = {'1760700028730475544','1760700252018443289'}
@@ -135,16 +116,17 @@ for c in d['included']['cards']:
 
 ## Delete card
 
+**Use `.claude/bin/planka delete-card`:**
 ```bash
-curl -s -X DELETE "http://localhost:3333/api/cards/<CARD_ID>" \
-  -H "Authorization: Bearer $TOKEN"
+.claude/bin/planka delete-card <cardId>
 ```
 
 ---
 
 ## Known gotchas
 
-- **Label assign via curl** (`POST /api/cards/:id/labels`) returns 404 in this Planka version. Use MCP `create_card labels[]` instead — apply labels at creation time.
-- **Card create requires `type`** — valid values: `story`, `project`. Omitting it returns 422 `E_MISSING_OR_INVALID_PARAMS`.
-- **Move requires `position`** — `PATCH /api/cards/:id` with only `listId` returns 422. Always pass both.
+- **Label endpoint is `/card-labels` (kebab-case)** — not `/labels` (that returns 404).
+- **Card move requires BOTH `listId` and `position`** — omitting either silently fails (returns 200 but card doesn't move).
+- **Card create requires `type`** — valid values: `story`, `project`. Omitting it returns 422.
+- **Label create requires `position`** parameter (e.g., 65536) — omitting it returns `E_MISSING_OR_INVALID_PARAMS`.
 - **Label remove** — no working REST endpoint found. Remove labels in the Planka UI.

@@ -1,0 +1,8 @@
+{
+  "label": "Library Releases",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "MMFF-authored content release notifications — list, count, and ack."
+  }
+}

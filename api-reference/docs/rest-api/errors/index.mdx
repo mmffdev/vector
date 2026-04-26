@@ -1,0 +1,45 @@
+---
+title: Error Reporting endpoints
+sidebar_label: Error Reporting
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import TableDeps from '@site/src/components/TableDeps';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Error Reporting
+
+Base path: `/api/errors` — `internal/errorsreport/handler.go`
+
+<RateLimit rpm={120} />
+
+---
+
+## POST /api/errors/report
+
+<EndpointHeader method="POST" path="/api/errors/report" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['error_events']} />
+
+Reports a client-side error event. The error code is validated against the `mmff_library.error_codes` catalogue before insertion into `mmff_vector.error_events`.
+
+**Request body**
+
+```json
+{
+  "code": "string",
+  "message": "string",
+  "context": {}
+}
+```
+
+**Response** — `204 No Content`
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `400` | Unknown error code (not in catalogue) |
+
+Handler: `internal/errorsreport/handler.go:78`

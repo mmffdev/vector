@@ -1,0 +1,160 @@
+---
+title: Navigation endpoints
+sidebar_label: Navigation
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import TableDeps from '@site/src/components/TableDeps';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Navigation
+
+Base path: `/api/nav` — `internal/nav/handler.go`
+
+All routes require bearer auth + fresh password. <RateLimit rpm={120} />
+
+---
+
+## GET /api/nav/catalogue
+
+<EndpointHeader method="GET" path="/api/nav/catalogue" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['nav_items', 'nav_groups', 'subscription_nav_overrides']} />
+
+Returns the full nav tree for the authenticated user's subscription, filtered by their role. Items are grouped and ordered by position.
+
+**Response** — `200 OK`
+
+```json
+[
+  {
+    "id": "string",
+    "label": "string",
+    "path": "string",
+    "group": "string | null",
+    "position": 0,
+    "pinnable": true,
+    "devOnly": false
+  }
+]
+```
+
+---
+
+## GET /api/nav/prefs
+
+<EndpointHeader method="GET" path="/api/nav/prefs" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['user_nav_prefs']} />
+
+Returns saved nav preferences for the current user (sidebar collapse state, etc.).
+
+**Response** — `200 OK` — JSON object of preference key→value pairs.
+
+---
+
+## PUT /api/nav/prefs
+
+<EndpointHeader method="PUT" path="/api/nav/prefs" auth="bearer" />
+<AuthGate role="any" />
+
+Replace all nav preferences for the current user.
+
+**Request body** — JSON object of preference key→value pairs.
+
+**Response** — `204 No Content`
+
+---
+
+## DELETE /api/nav/prefs
+
+<EndpointHeader method="DELETE" path="/api/nav/prefs" auth="bearer" />
+<AuthGate role="any" />
+
+Clears all saved nav preferences for the current user.
+
+**Response** — `204 No Content`
+
+---
+
+## GET /api/nav/start-page
+
+<EndpointHeader method="GET" path="/api/nav/start-page" auth="bearer" />
+<AuthGate role="any" />
+
+Returns the resolved start-page path for the current user (used on login redirect).
+
+**Response** — `200 OK`
+
+```json
+{ "path": "/roadmap" }
+```
+
+---
+
+## POST /api/nav/bookmark
+
+<EndpointHeader method="POST" path="/api/nav/bookmark" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['user_nav_bookmarks']} />
+
+Pins a nav item as a bookmark for the current user.
+
+**Request body**
+
+```json
+{ "navItemId": "string" }
+```
+
+**Response** — `204 No Content`
+
+---
+
+## DELETE /api/nav/bookmark
+
+<EndpointHeader method="DELETE" path="/api/nav/bookmark" auth="bearer" />
+<AuthGate role="any" />
+
+Removes a bookmarked nav item.
+
+**Request body**
+
+```json
+{ "navItemId": "string" }
+```
+
+**Response** — `204 No Content`
+
+---
+
+## GET /api/nav/bookmark/check
+
+<EndpointHeader method="GET" path="/api/nav/bookmark/check" auth="bearer" />
+<AuthGate role="any" />
+
+Check whether a nav item is bookmarked by the current user.
+
+**Query params**
+
+| Param | Type | Description |
+|---|---|---|
+| `navItemId` | string | Nav item UUID to check |
+
+**Response** — `200 OK`
+
+```json
+{ "bookmarked": true }
+```
+
+---
+
+## GET /api/nav/entities
+
+<EndpointHeader method="GET" path="/api/nav/entities" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['nav_entity_refs']} />
+
+Returns entity refs registered for the current subscription's nav — used to resolve `/item/<uuid>` and `/item/<tag>` aliases.
+
+**Response** — `200 OK` — array of entity ref objects.

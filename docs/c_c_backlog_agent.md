@@ -60,15 +60,9 @@ BRANCH=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse 
 
 Scan for claimable cards (Backlog + To Do, `MULTI AGENT` labelled):
 
+**Use `.claude/bin/planka board`:**
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"admin@mmffdev.com","password":"changeme123!"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
-
-curl -s "http://localhost:3333/api/boards/1760699595475649556" \
-  -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "
+.claude/bin/planka board | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 claimable = {'1760700028730475544','1760700252018443289'}

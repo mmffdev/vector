@@ -1,0 +1,162 @@
+---
+title: Admin endpoints
+sidebar_label: Admin
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import TableDeps from '@site/src/components/TableDeps';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Admin
+
+Base path: `/api/admin` — `internal/users/handler.go`, `internal/permissions/handler.go`
+
+All routes require bearer auth + fresh password.
+Chi pattern for parameterised routes: `/api/admin/users/{id}`, `/api/admin/permissions/{id}`
+
+<RateLimit rpm={120} />
+
+---
+
+## Users
+
+### GET /api/admin/users
+
+<EndpointHeader method="GET" path="/api/admin/users" auth="bearer" />
+<AuthGate role="gadmin" /> <AuthGate role="padmin" />
+<TableDeps tables={['users']} />
+
+Lists all users in the subscription.
+
+**Response** — `200 OK`
+
+```json
+[
+  {
+    "id": "string",
+    "email": "string",
+    "role": "gadmin | padmin | user",
+    "createdAt": "string",
+    "archivedAt": "string | null"
+  }
+]
+```
+
+Handler: `internal/users/handler.go:58`
+
+---
+
+### POST /api/admin/users
+
+<EndpointHeader method="POST" path="/api/admin/users" auth="bearer" />
+<AuthGate role="gadmin" />
+
+Creates a new user in the subscription. Sends an invite email.
+
+**Request body**
+
+```json
+{
+  "email": "string",
+  "role": "gadmin | padmin | user",
+  "sendInvite": true
+}
+```
+
+**Response** — `201 Created`
+
+```json
+{ "id": "string" }
+```
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `409` | Email already exists in this subscription |
+
+Handler: `internal/users/handler.go:30`
+
+---
+
+### PATCH /api/admin/users/:id
+
+<EndpointHeader method="PATCH" path="/api/admin/users/:id" auth="bearer" />
+<AuthGate role="gadmin" />
+
+Updates a user's role or archived state. Partial update — omit fields to leave unchanged.
+Chi pattern: `/api/admin/users/{id}`
+
+**Request body**
+
+```json
+{ "role": "gadmin | padmin | user", "archivedAt": "string | null" }
+```
+
+**Response** — `204 No Content`
+
+Handler: `internal/users/handler.go:73`
+
+---
+
+## Permissions
+
+### GET /api/admin/permissions
+
+<EndpointHeader method="GET" path="/api/admin/permissions" auth="bearer" />
+<AuthGate role="gadmin" /> <AuthGate role="padmin" />
+<TableDeps tables={['permissions']} />
+
+Lists all permission grants for the subscription.
+
+**Response** — `200 OK`
+
+```json
+[
+  {
+    "id": "string",
+    "userId": "string",
+    "resource": "string",
+    "action": "string"
+  }
+]
+```
+
+Handler: `internal/permissions/handler.go:67`
+
+---
+
+### POST /api/admin/permissions
+
+<EndpointHeader method="POST" path="/api/admin/permissions" auth="bearer" />
+<AuthGate role="gadmin" /> <AuthGate role="padmin" />
+
+Grants a permission to a user.
+
+**Request body**
+
+```json
+{ "userId": "string", "resource": "string", "action": "string" }
+```
+
+**Response** — `201 Created`
+
+```json
+{ "id": "string" }
+```
+
+Handler: `internal/permissions/handler.go:27`
+
+---
+
+### DELETE /api/admin/permissions/:id
+
+<EndpointHeader method="DELETE" path="/api/admin/permissions/:id" auth="bearer" />
+<AuthGate role="gadmin" /> <AuthGate role="padmin" />
+
+Revokes a permission grant. Chi pattern: `/api/admin/permissions/{id}`
+
+**Response** — `204 No Content`
+
+Handler: `internal/permissions/handler.go:49`

@@ -1,0 +1,8 @@
+{
+  "label": "Database",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "mmff_vector schema reference — tables, invariants, and tenant isolation."
+  }
+}

@@ -53,6 +53,29 @@ npm run e2e                          # node:test runner; specs in e2e/
 
 Watch the browser live at `http://localhost:7900` (password `secret`); Grid UI at `http://localhost:4444/ui/`. See [`docs/c_selenium.md`](docs/c_selenium.md) and [`dev/planning/plan_selenium_e2e.md`](dev/planning/plan_selenium_e2e.md).
 
+### Optional: Local speech-to-text (Whisper)
+
+Claude Code uses OpenAI's open-source Whisper model for audio transcription. It runs locally on your machine — no API costs, fully private.
+
+**Setup:**
+
+```bash
+# 1. Install Whisper CLI (one-time)
+pip install openai-whisper
+
+# 2. Pre-download a model (choose one by speed/quality tradeoff):
+whisper --model base      # Fastest (~141MB); good for English
+whisper --model small     # Better accuracy (~461MB)
+whisper --model medium    # Even better (~1.4GB)
+whisper --model large     # Best quality (~2.9GB)
+```
+
+If you skip step 2, the model auto-downloads on first transcription (will take a minute the first time).
+
+**Usage:** In Claude Code, just ask to transcribe an audio file: _"Transcribe `/path/to/audio.mp3`"_. The local Whisper model will convert speech to text.
+
+**Cleanup:** If you later switch back to cloud-based transcription, remove the old installation with `pip uninstall openai-whisper`.
+
 ## Project docs
 
 See [`.claude/CLAUDE.md`](.claude/CLAUDE.md) for the full topic index.

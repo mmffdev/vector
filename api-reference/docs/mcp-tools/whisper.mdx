@@ -1,0 +1,33 @@
+---
+title: Whisper MCP
+sidebar_position: 2
+---
+
+# Whisper MCP (whisper-local)
+
+Local audio transcription via MLX Whisper, exposed as an MCP tool.
+
+**Server:** `~/.claude/bin/whisper-mcp.js` (Node.js stdio JSON-RPC)  
+**Model:** `mlx-community/whisper-large-v3-turbo` (1.5 GB, cached at `~/.cache/huggingface/hub/`)  
+**Config:** `.mcp.json` → `node /Users/rick/.claude/bin/whisper-mcp.js`
+
+## Tool: `transcribe`
+
+```ts
+transcribe(file_path: string, model?: string): string
+```
+
+Transcribes the audio file at `file_path`. Returns the transcript as plain text.
+
+**Supported formats:** `.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`
+
+## Example
+
+```json
+{
+  "tool": "transcribe",
+  "arguments": {
+    "file_path": "/tmp/meeting.m4a"
+  }
+}
+```

@@ -1,0 +1,183 @@
+---
+title: Portfolio Model endpoints
+sidebar_label: Portfolio Models
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import SseBadge from '@site/src/components/SseBadge';
+import TableDeps from '@site/src/components/TableDeps';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Portfolio Models
+
+Base path: `/api/portfolio-models` — `internal/portfoliomodels/`
+
+<RateLimit rpm={120} />
+
+---
+
+## GET /api/portfolio-models/
+
+<EndpointHeader method="GET" path="/api/portfolio-models/" auth="bearer" />
+<AuthGate role="padmin" />
+<TableDeps tables={['portfolio_models', 'subscription_portfolio_model_state']} />
+
+Lists all available portfolio models (from `mmff_library`) plus the current adoption state for the subscription.
+
+**Response** — `200 OK`
+
+```json
+[
+  {
+    "id": "string",
+    "family": "string",
+    "version": "string",
+    "label": "string",
+    "adoptionState": "none | in_progress | completed | failed | null"
+  }
+]
+```
+
+Handler: `internal/portfoliomodels/list.go:40`
+
+---
+
+## GET /api/portfolio-models/adoption-state
+
+<EndpointHeader method="GET" path="/api/portfolio-models/adoption-state" auth="bearer" />
+<AuthGate role="padmin" />
+<TableDeps tables={['subscription_portfolio_model_state']} />
+
+Returns the current adoption state record for the subscription.
+
+**Response** — `200 OK`
+
+```json
+{
+  "modelId": "string",
+  "status": "none | in_progress | completed | failed",
+  "startedAt": "string | null",
+  "completedAt": "string | null"
+}
+```
+
+Handler: `internal/portfoliomodels/adoption_state.go:59`
+
+---
+
+## GET /api/portfolio-models/:family/latest
+
+<EndpointHeader method="GET" path="/api/portfolio-models/:family/latest" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['portfolio_models']} />
+
+Returns the latest version of a portfolio model by family slug. Readable by any authenticated user.
+Chi route pattern: `/api/portfolio-models/{family}/latest`
+
+**Path params**
+
+| Param | Type | Description |
+|---|---|---|
+| `family` | string | Portfolio model family slug (e.g. `standard`, `agile`) |
+
+**Response** — `200 OK` — single portfolio model object.
+
+Handler: `internal/portfoliomodels/handler.go:38`
+
+---
+
+## GET /api/portfolio-models/:id
+
+<EndpointHeader method="GET" path="/api/portfolio-models/:id" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['portfolio_models']} />
+
+Returns a specific portfolio model by UUID. Readable by any authenticated user.
+Chi route pattern: `/api/portfolio-models/{id}`
+
+**Response** — `200 OK` — single portfolio model object.
+
+Handler: `internal/portfoliomodels/handler.go:53`
+
+---
+
+## POST /api/portfolio-models/:id/adopt
+
+<EndpointHeader method="POST" path="/api/portfolio-models/:id/adopt" auth="bearer" />
+<AuthGate role="padmin" />
+<TableDeps tables={['subscription_portfolio_model_state', 'subscription_layers', 'subscription_workflows', 'subscription_workflow_transitions', 'subscription_artifacts', 'subscription_terminology']} />
+
+Starts the adoption saga for the model. Returns `202 Accepted` immediately. Stream progress via `/adopt/stream`.
+Chi route pattern: `/api/portfolio-models/{id}/adopt`
+
+The saga mirrors 6 step groups from `mmff_library` into `mmff_vector`:
+1. Layers
+2. Workflows
+3. Workflow transitions
+4. Artifacts
+5. Terminology
+6. State record
+
+**Errors**
+
+| Status | JSON `code` | Meaning |
+|---|---|---|
+| `409` | `ALREADY_ADOPTED` | This model is already the active adoption |
+| `409` | `ADOPT_IN_PROGRESS` | Another adoption is in progress |
+
+**Response** — `202 Accepted`
+
+```json
+{ "streamPath": "/api/portfolio-models/<id>/adopt/stream" }
+```
+
+Handler: `internal/portfoliomodels/adopt.go`
+
+---
+
+## GET /api/portfolio-models/:id/adopt/stream
+
+<EndpointHeader method="GET" path="/api/portfolio-models/:id/adopt/stream" auth="bearer" />
+<AuthGate role="padmin" />
+<SseBadge />
+
+SSE stream of adoption saga progress. Chi route pattern: `/api/portfolio-models/{id}/adopt/stream`
+
+**Must use `fetch()` — not `EventSource`** (EventSource cannot set `Authorization` header).
+
+```ts
+const res = await fetch(streamPath, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+const reader = res.body!.getReader();
+```
+
+**Event types**
+
+| Event | Data shape | Meaning |
+|---|---|---|
+| `step` | `{"step":"layers","ok":true,"msg":"Applied 4 layers"}` | One saga step completed |
+| `done` | `{"success":true}` | Adoption fully complete |
+| `error` | `{"message":"..."}` | Adoption failed |
+
+On an idempotent call (already adopted), the stream emits 7 synthetic `step` events followed by `done` so the overlay completes normally.
+
+Handler: `internal/portfoliomodels/adopt_stream.go:111`
+
+---
+
+## POST /api/admin/dev/adoption-reset
+
+<EndpointHeader method="POST" path="/api/admin/dev/adoption-reset" auth="bearer" />
+<AuthGate role="padmin" />
+
+Dev-only. Hard-deletes all mirror table rows and the `subscription_portfolio_model_state` record. Returns the subscription to unadopted state.
+
+:::caution
+Destructive. Dev environment only.
+:::
+
+**Response** — `204 No Content`
+
+Handler: `internal/portfoliomodels/dev_reset.go:34`

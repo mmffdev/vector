@@ -9,3 +9,6 @@ local-assets/security-flags.jsonl
 .claude/scheduled_tasks.lock
 prefs-nav-*.png
 backend/.env.local
+.claude/hooks/
+.claude/memory/
+.planka/

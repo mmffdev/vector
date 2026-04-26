@@ -1,0 +1,27 @@
+---
+title: CSRF
+sidebar_position: 3
+---
+
+# CSRF Protection
+
+Vector uses double-submit cookie CSRF protection on all state-mutating routes (`POST`, `PATCH`, `PUT`, `DELETE`).
+
+## How it works
+
+1. On first load, the backend sets a `csrf_token` cookie (httpOnly=false so JS can read it).
+2. Every mutating request must include the token as the `X-CSRF-Token` header.
+3. The backend compares the header value to the cookie — mismatch → `403 Forbidden`.
+
+## Example
+
+```http
+POST /api/portfoliomodels/adopt
+Authorization: Bearer <jwt>
+X-CSRF-Token: <value from csrf_token cookie>
+Content-Type: application/json
+```
+
+## Frontend helper
+
+The frontend `api()` helper reads and attaches the CSRF token automatically. Direct `fetch()` calls outside the helper must attach it manually.

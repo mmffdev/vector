@@ -2,22 +2,37 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
+      "Edit(**)",
+      "Bash(**)",
+      "Write(**)",
+      "Read(**)",
       "mcp__planka__delete_card",
       "mcp__planka__get_lists",
       "mcp__planka__move_card_to_list",
       "mcp__planka__get_available_colors",
       "mcp__planka__create_label",
       "mcp__planka__create_card",
-      "Edit(~/.claude/skills/storify/**)",
       "mcp__planka__assign_label_to_card",
       "mcp__planka__update_card_description",
       "mcp__planka__get_labels",
       "mcp__planka__rename_card",
       "mcp__planka__change_label_color",
       "mcp__planka__rename_label",
-      "Bash(git commit -m ' *)"
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__list_allowed_directories",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__create_directory",
+      "mcp__filesystem__create_file",
+      "mcp__filesystem__edit_file",
+      "mcp__filesystem__move_file",
+      "mcp__filesystem__delete_file",
+      "Edit(/.claude/skills/stories/**)",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_network_requests"
     ],
     "additionalDirectories": [
+      "/Users/rick/.claude",
       "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude",
       "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/memory"
     ]
@@ -31,6 +46,24 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/planka-card-moved.sh\"",
             "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/backend-restart-reminder.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/backend-restart-reminder.sh\""
           }
         ]
       }
@@ -52,6 +85,16 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-digest.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/api-docs-reminder.sh\""
           }
         ]
       }

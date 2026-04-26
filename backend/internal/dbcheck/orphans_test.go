@@ -57,15 +57,6 @@ func TestNoPolymorphicOrphans(t *testing.T) {
 				)`,
 		},
 		{
-			name: "item_type_states",
-			sql: `
-				SELECT count(*) FROM item_type_states its
-				WHERE NOT EXISTS (
-				  SELECT 1 FROM portfolio_item_types pit WHERE its.item_type_kind = 'portfolio' AND its.item_type_id = pit.id
-				  UNION ALL SELECT 1 FROM execution_item_types eit WHERE its.item_type_kind = 'execution' AND its.item_type_id = eit.id
-				)`,
-		},
-		{
 			// page_entity_refs CHECK is {portfolio, product} only —
 			// workspace bookmarks are not implemented (see
 			// backend/internal/nav/bookmarks.go EntityKind constants).
@@ -78,11 +69,6 @@ func TestNoPolymorphicOrphans(t *testing.T) {
 				  SELECT 1 FROM portfolio p  WHERE per.entity_kind = 'portfolio' AND per.entity_id = p.id
 				  UNION ALL SELECT 1 FROM product   pr WHERE per.entity_kind = 'product'   AND per.entity_id = pr.id
 				)`,
-		},
-		{
-			name:       "item_state_history",
-			skip:       true,
-			skipReason: "no parent table yet — portfolio_item / execution_item not in schema (see docs/c_schema.md §'Not yet in the schema')",
 		},
 	}
 

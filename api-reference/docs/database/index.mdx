@@ -1,0 +1,44 @@
+---
+title: Database overview
+sidebar_label: Overview
+---
+
+# Database
+
+Vector uses two Postgres databases:
+
+| Database | Purpose |
+|---|---|
+| `mmff_vector` | Tenant data — subscriptions, users, nav, portfolio models, items |
+| `mmff_library` | MMFF-authored content — portfolio model definitions, terminology |
+
+## Tenant isolation
+
+Every tenant row carries a `subscription_id` FK. All queries must filter by the authenticated user's `subscription_id`. The Go service layer enforces this — raw DB access must follow the same rule.
+
+## Soft-archive pattern
+
+Deletions are soft. Tables with user-visible data carry an `archived_at TIMESTAMPTZ` column. Live queries always filter `archived_at IS NULL`.
+
+## Migrations
+
+Migrations live in `db/schema/` as numbered SQL files (`001_...sql`, `002_...sql`, …). Run with:
+
+```bash
+go run ./backend/cmd/migrate [-dry-run] [-db vector|library|both]
+```
+
+## Table reference
+
+| Domain | Tables |
+|---|---|
+| Identity | `subscriptions`, `users`, `user_invites` |
+| Navigation | `nav_items`, `nav_groups`, `subscription_nav_overrides` |
+| Portfolio models | `portfolio_models` (library), `subscription_portfolio_model_state`, mirror tables |
+| Roadmap | `roadmaps`, `products`, `execution_item_types`, `work_items` |
+| Library | `library_releases`, `library_release_items` |
+| Config | `config_roots` (planned) |
+
+:::note
+Full per-table docs are in progress. See `docs/c_schema.md` in the repo for the current reference.
+:::

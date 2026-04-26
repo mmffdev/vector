@@ -1,0 +1,59 @@
+:root {
+  --ifm-color-primary: #e8620f;
+  --ifm-color-primary-dark: #d15509;
+  --ifm-color-primary-darker: #c44f08;
+  --ifm-color-primary-darkest: #a34107;
+  --ifm-color-primary-light: #ed7526;
+  --ifm-color-primary-lighter: #ef7d30;
+  --ifm-color-primary-lightest: #f59255;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #f07030;
+  --ifm-color-primary-dark: #e0601e;
+  --ifm-color-primary-darker: #d55a1a;
+  --ifm-color-primary-darkest: #b34a14;
+  --ifm-color-primary-light: #f47e42;
+  --ifm-color-primary-lighter: #f5844a;
+  --ifm-color-primary-lightest: #f89060;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* endpoint method badges */
+.method-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--ifm-font-family-monospace);
+  color: #fff;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+.method-get    { background: #2e7d32; }
+.method-post   { background: #1565c0; }
+.method-patch  { background: #e65100; }
+.method-put    { background: #6a1a8a; }
+.method-delete { background: #b71c1c; }
+
+/* role badges */
+.role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.role-gadmin { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+.role-padmin { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.role-user   { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; }
+.role-any    { background: #f3e5f5; color: #4a148c; border: 1px solid #ce93d8; }
+
+[data-theme='dark'] .role-gadmin { background: #3d0000; color: #ef9a9a; border-color: #7f0000; }
+[data-theme='dark'] .role-padmin { background: #003d00; color: #a5d6a7; border-color: #005000; }
+[data-theme='dark'] .role-user   { background: #001e40; color: #90caf9; border-color: #003060; }
+[data-theme='dark'] .role-any    { background: #1a0030; color: #ce93d8; border-color: #3d0070; }

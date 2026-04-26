@@ -1,0 +1,8 @@
+{
+  "label": "Error Reporting",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "Client-side error event reporting."
+  }
+}

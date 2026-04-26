@@ -1,0 +1,24 @@
+---
+title: Roles
+sidebar_position: 2
+---
+
+import AuthGate from '@site/src/components/AuthGate';
+
+# Roles
+
+Vector has three user roles. Each endpoint documents its required role.
+
+| Role | Badge | Description |
+|---|---|---|
+| `gadmin` | <AuthGate role="gadmin" /> | Platform administrator — tech/support access |
+| `padmin` | <AuthGate role="padmin" /> | Product owner — portfolio model, workspace config |
+| `user` | <AuthGate role="user" /> | Consumer — views and interacts with the product |
+
+## Role hierarchy
+
+Roles are discrete — `gadmin` does not inherit `padmin` permissions. "Product or system?" is the deciding question when gating a feature.
+
+- **Product features** (portfolio model, layers, wizard) → `padmin`
+- **System features** (seed data, tenant setup, service health) → `gadmin`
+- **Consumer features** (roadmap, item views) → `user`

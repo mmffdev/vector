@@ -1,0 +1,107 @@
+---
+title: Custom Pages endpoints
+sidebar_label: Custom Pages
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import TableDeps from '@site/src/components/TableDeps';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Custom Pages
+
+Base path: `/api/custom-pages` — `internal/custompages/handler.go`
+
+User-created pages reachable at `/p/<uuid>`. All routes require bearer auth + fresh password.
+Chi pattern for parameterised routes: `/api/custom-pages/{id}`
+
+<RateLimit rpm={120} />
+
+---
+
+## GET /api/custom-pages/
+
+<EndpointHeader method="GET" path="/api/custom-pages/" auth="bearer" />
+<AuthGate role="any" />
+<TableDeps tables={['user_custom_pages']} />
+
+Lists all custom pages for the subscription, filtered by the caller's access level.
+
+**Response** — `200 OK`
+
+```json
+[
+  {
+    "id": "string",
+    "slug": "string",
+    "title": "string",
+    "createdAt": "string"
+  }
+]
+```
+
+---
+
+## POST /api/custom-pages/
+
+<EndpointHeader method="POST" path="/api/custom-pages/" auth="bearer" />
+<AuthGate role="any" />
+
+Creates a new custom page.
+
+**Request body**
+
+```json
+{ "title": "string", "content": "string" }
+```
+
+**Response** — `201 Created`
+
+```json
+{ "id": "string", "slug": "string" }
+```
+
+---
+
+## GET /api/custom-pages/:id
+
+<EndpointHeader method="GET" path="/api/custom-pages/:id" auth="bearer" />
+<AuthGate role="any" />
+
+Returns a single custom page by UUID.
+
+**Response** — `200 OK` — full page object including content.
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `404` | Page not found or not accessible |
+
+---
+
+## PATCH /api/custom-pages/:id
+
+<EndpointHeader method="PATCH" path="/api/custom-pages/:id" auth="bearer" />
+<AuthGate role="any" />
+
+Updates title and/or content. Partial update — omit fields to leave unchanged.
+
+**Request body**
+
+```json
+{ "title": "string", "content": "string" }
+```
+
+**Response** — `204 No Content`
+
+---
+
+## DELETE /api/custom-pages/:id
+
+<EndpointHeader method="DELETE" path="/api/custom-pages/:id" auth="bearer" />
+<AuthGate role="any" />
+
+Soft-deletes a custom page (sets `archived_at`).
+
+**Response** — `204 No Content`

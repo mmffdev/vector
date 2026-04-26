@@ -65,10 +65,6 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	// the leaves up; let CASCADE handle sessions/perms/nav off `users`.
 	cleanup := func() {
 		stmts := []string{
-			`DELETE FROM item_state_history          WHERE subscription_id = $1`,
-			`DELETE FROM item_type_transition_edges  WHERE subscription_id = $1`,
-			`DELETE FROM item_type_states            WHERE subscription_id = $1`,
-			`DELETE FROM portfolio_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM entity_stakeholders         WHERE subscription_id = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,

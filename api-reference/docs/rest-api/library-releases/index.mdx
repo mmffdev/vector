@@ -1,0 +1,90 @@
+---
+title: Library Release endpoints
+sidebar_label: Library Releases
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import TableDeps from '@site/src/components/TableDeps';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Library Releases
+
+Base path: `/api/library/releases` — `internal/libraryreleases/handler.go`
+
+Cross-DB release notifications: content published to `mmff_library` surfaces as actionable badges in the gadmin UI.
+Chi pattern for parameterised routes: `/api/library/releases/{id}/ack`
+
+<RateLimit rpm={120} />
+
+---
+
+## GET /api/library/releases/count
+
+<EndpointHeader method="GET" path="/api/library/releases/count" auth="bearer" />
+<AuthGate role="gadmin" />
+<TableDeps tables={['library_releases', 'library_release_acks']} />
+
+Returns the count of unacknowledged releases for the subscription. Drives the gadmin nav badge.
+
+**Response** — `200 OK`
+
+```json
+{ "count": 3 }
+```
+
+Handler: `internal/libraryreleases/handler.go:94`
+
+---
+
+## GET /api/library/releases/
+
+<EndpointHeader method="GET" path="/api/library/releases/" auth="bearer" />
+<AuthGate role="gadmin" />
+<TableDeps tables={['library_releases', 'library_release_items', 'library_release_acks']} />
+
+Lists all releases with items and ack status for the subscription.
+
+**Response** — `200 OK`
+
+```json
+[
+  {
+    "id": "string",
+    "version": "string",
+    "releasedAt": "string",
+    "severity": "info | warning | critical",
+    "acked": false,
+    "items": [
+      {
+        "id": "string",
+        "title": "string",
+        "description": "string",
+        "type": "string"
+      }
+    ]
+  }
+]
+```
+
+Handler: `internal/libraryreleases/handler.go:132`
+
+---
+
+## POST /api/library/releases/:id/ack
+
+<EndpointHeader method="POST" path="/api/library/releases/:id/ack" auth="bearer" />
+<AuthGate role="gadmin" />
+<TableDeps tables={['library_release_acks']} />
+
+Acknowledges a release for the subscription. Clears the badge count for this release.
+
+**Path params**
+
+| Param | Type | Description |
+|---|---|---|
+| `id` | string | Library release UUID |
+
+**Response** — `204 No Content`
+
+Handler: `internal/libraryreleases/handler.go:163`

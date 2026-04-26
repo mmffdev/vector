@@ -1,0 +1,140 @@
+---
+title: Auth endpoints
+sidebar_label: Auth
+---
+
+import EndpointHeader from '@site/src/components/EndpointHeader';
+import AuthGate from '@site/src/components/AuthGate';
+import RateLimit from '@site/src/components/RateLimit';
+
+# Auth
+
+Base path: `/api/auth` — `internal/auth/handler.go`
+
+---
+
+## POST /api/auth/login
+
+<EndpointHeader method="POST" path="/api/auth/login" auth="none" />
+<RateLimit rpm={10} />
+
+Exchange email + password for a JWT bearer token and a refresh cookie.
+
+**Request body**
+
+```json
+{ "email": "string", "password": "string" }
+```
+
+**Response** — `200 OK`
+
+```json
+{ "token": "string", "user": { "id": "string", "role": "string" } }
+```
+
+Sets `rt` (refresh token) as an HttpOnly / SameSite=Strict cookie scoped to `/api/auth`.
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `401` | Invalid credentials |
+
+---
+
+## POST /api/auth/refresh
+
+<EndpointHeader method="POST" path="/api/auth/refresh" auth="none" />
+
+Exchange the `rt` cookie for a new bearer token. Does not require a body.
+
+**Response** — `200 OK`
+
+```json
+{ "token": "string" }
+```
+
+---
+
+## POST /api/auth/logout
+
+<EndpointHeader method="POST" path="/api/auth/logout" auth="none" />
+
+Clears the `rt` cookie. No body required.
+
+**Response** — `204 No Content`
+
+---
+
+## GET /api/auth/me
+
+<EndpointHeader method="GET" path="/api/auth/me" auth="bearer" />
+<AuthGate role="any" />
+
+Returns the currently authenticated user. Also enforces `RequireFreshPassword` — if the user's password is stale, returns `403` with a `STALE_PASSWORD` code.
+
+**Response** — `200 OK`
+
+```json
+{
+  "id": "string",
+  "email": "string",
+  "role": "gadmin | padmin | user",
+  "subscriptionId": "string"
+}
+```
+
+---
+
+## POST /api/auth/change-password
+
+<EndpointHeader method="POST" path="/api/auth/change-password" auth="bearer" />
+<AuthGate role="any" />
+
+**Request body**
+
+```json
+{ "currentPassword": "string", "newPassword": "string" }
+```
+
+**Response** — `204 No Content`
+
+---
+
+## POST /api/auth/password-reset
+
+<EndpointHeader method="POST" path="/api/auth/password-reset" auth="none" />
+<RateLimit rpm={3} />
+
+Sends a password-reset email. Responds `204` regardless of whether the email exists (prevents enumeration).
+
+**Request body**
+
+```json
+{ "email": "string" }
+```
+
+**Response** — `204 No Content`
+
+---
+
+## POST /api/auth/password-reset/confirm
+
+<EndpointHeader method="POST" path="/api/auth/password-reset/confirm" auth="none" />
+<RateLimit rpm={10} />
+
+Confirm a password reset with the token from the email link.
+
+**Request body**
+
+```json
+{ "token": "string", "newPassword": "string" }
+```
+
+**Response** — `204 No Content`
+
+---
+
+## CSRF note
+
+CSRF validation is **exempt** on all `/api/auth/*` routes. State-changing routes elsewhere require the `X-CSRF-Token` header. See [CSRF](../../getting-started/03-csrf.mdx).

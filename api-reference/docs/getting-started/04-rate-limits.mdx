@@ -1,0 +1,30 @@
+---
+title: Rate Limits
+sidebar_position: 4
+---
+
+import RateLimit from '@site/src/components/RateLimit';
+
+# Rate Limits
+
+Rate limits are enforced per-user per-endpoint family. Limits are returned in response headers.
+
+| Header | Meaning |
+|---|---|
+| `X-RateLimit-Limit` | Max requests per window |
+| `X-RateLimit-Remaining` | Requests remaining |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+
+When exceeded: `429 Too Many Requests`.
+
+## Default limits
+
+| Endpoint family | Limit |
+|---|---|
+| Auth (`/api/auth/*`) | 10 req / min |
+| General API | 120 req / min |
+| SSE streams | 10 concurrent connections |
+
+:::note
+Rate limits are not yet enforced in dev. This page documents the intended production limits.
+:::

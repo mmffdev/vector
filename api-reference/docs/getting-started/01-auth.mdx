@@ -1,0 +1,54 @@
+---
+title: Authentication
+sidebar_position: 1
+---
+
+import AuthGate from '@site/src/components/AuthGate';
+
+# Authentication
+
+Vector uses JWT bearer tokens issued by `POST /api/auth/login`.
+
+## Login
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "..."
+}
+```
+
+**Response** — `200 OK`
+
+```json
+{
+  "token": "<jwt>",
+  "user": { "id": "...", "role": "padmin" }
+}
+```
+
+## Using the token
+
+Pass the token as a Bearer header on every authenticated request:
+
+```http
+Authorization: Bearer <jwt>
+```
+
+## Token lifetime
+
+Tokens expire after **24 hours**. Re-authenticate to get a new token.
+
+## SSE endpoints
+
+SSE endpoints (`text/event-stream`) do not support `EventSource` because that API cannot set custom headers. Use `fetch()` with a manual stream reader instead:
+
+```ts
+const res = await fetch(url, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+const reader = res.body!.getReader();
+```

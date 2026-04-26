@@ -53,18 +53,6 @@ func TestArchiveLifecycle_CompanyRoadmap_Stakeholders(t *testing.T) {
 	t.Skipf(skipNoHandler, "company_roadmap")
 }
 
-func TestArchiveLifecycle_PortfolioItemTypes_ItemTypeStates(t *testing.T) {
-	t.Skipf(skipNoHandler, "portfolio_item_types")
-}
-
 func TestArchiveLifecycle_ExecutionItemTypes_ItemTypeStates(t *testing.T) {
 	t.Skipf(skipNoHandler, "execution_item_types")
 }
-
-// portfolio_item / execution_item parent tables don't exist yet (item
-// tables not built per c_polymorphic_writes.md). When they ship, add:
-//   TestArchiveLifecycle_PortfolioItem_ItemStateHistory
-//   TestArchiveLifecycle_ExecutionItem_ItemStateHistory
-// item_state_history is append-only (UPDATE/DELETE rejected by trigger)
-// — adding the cleanup call requires either lifting the trigger for
-// cleanup-context deletes or a soft-tombstone column.

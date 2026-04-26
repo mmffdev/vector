@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "whisper-local": {
+      "command": "node",
+      "args": [
+        "/Users/rick/.claude/bin/whisper-mcp.js"
+      ]
+    }
+  }
+}

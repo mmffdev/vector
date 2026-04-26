@@ -1,0 +1,212 @@
+---
+title: Planka MCP
+sidebar_position: 1
+---
+
+# Planka — Board Helper
+
+The Planka board is accessed via `.claude/bin/planka` (a Python REST wrapper), **not** the MCP server. The MCP v1.0.7 returns HTML on some endpoints due to a routing bug.
+
+**Entry point:** `.claude/bin/planka <command> [args…]`  
+**Credentials:** `PLANKA_AGENT_USER` + `PLANKA_AGENT_PASS` from `backend/.env.local`  
+**Base URL:** `http://localhost:3333` (SSH tunnel port — must be open)
+
+---
+
+## Board IDs (resolved — do not re-fetch)
+
+**Board:** Vector Main — `1760699595475649556`
+
+| List | ID |
+|---|---|
+| Backlog | `1760700028730475544` |
+| To Do | `1760700252018443289` |
+| Doing | `1760700299682513946` |
+| Completed | `1760700351842878491` |
+| Accepted | `1760700396512216092` |
+
+**Ownership labels:**
+
+| Label | Color | ID |
+|---|---|---|
+| `storify` | lagoon-blue | `1760724305328473193` |
+| `backlog-cmd` | egg-yellow | `1760724306184111210` |
+| `manual` | fresh-salad | `1760724307056526443` |
+
+---
+
+## Commands
+
+### create-card
+
+```bash
+.claude/bin/planka create-card <listId> "<title>" "<description>"
+```
+
+Creates a card in the given list. Prints the new card ID to stdout.
+
+Underlying REST call:
+```http
+POST /api/lists/<listId>/cards
+{ "name": "...", "description": "...", "position": 65536, "type": "story" }
+```
+
+---
+
+### label-card
+
+```bash
+.claude/bin/planka label-card <cardId> <labelId>
+```
+
+Attaches a label to a card.
+
+```http
+POST /api/cards/<cardId>/card-labels
+{ "labelId": "..." }
+```
+
+:::caution
+This endpoint silently drops the request if the `labelId` doesn't exist on the board. Always use IDs from the table above.
+:::
+
+---
+
+### move-card
+
+```bash
+.claude/bin/planka move-card <cardId> <listId> <position>
+```
+
+Moves a card to a different list. Use position `65536` for end-of-list.
+
+```http
+PATCH /api/cards/<cardId>
+{ "listId": "...", "position": 65536 }
+```
+
+**Card lifecycle positions:**
+
+| Transition | From list | To list |
+|---|---|---|
+| Approval / "go" | Backlog | To Do |
+| First code edit | To Do | Doing |
+| Code complete | Doing | Completed |
+| Accepted | Completed | Accepted |
+
+---
+
+### comment
+
+```bash
+.claude/bin/planka comment <cardId> "<text>"
+```
+
+Posts a comment on a card.
+
+```http
+POST /api/cards/<cardId>/comments
+{ "text": "..." }
+```
+
+---
+
+### delete-card
+
+```bash
+.claude/bin/planka delete-card <cardId>
+```
+
+Permanently deletes a card.
+
+```http
+DELETE /api/cards/<cardId>
+```
+
+---
+
+### create-label
+
+```bash
+.claude/bin/planka create-label <boardId> "<name>" "<color>" <position>
+```
+
+Creates a label on the board. Prints the new label ID to stdout.
+
+```http
+POST /api/boards/<boardId>/labels
+{ "name": "...", "color": "...", "position": <int> }
+```
+
+:::note
+The correct endpoint is `/api/boards/<boardId>/labels` — NOT `/api/labels`. The latter 404s.
+:::
+
+---
+
+### board
+
+```bash
+.claude/bin/planka board
+```
+
+Fetches the full board JSON — all lists, cards, labels, and cardLabels.
+
+```http
+GET /api/boards/1760699595475649556
+```
+
+Response shape (abbreviated):
+
+```json
+{
+  "item": { "id": "...", "name": "Vector Main" },
+  "included": {
+    "lists": [...],
+    "cards": [...],
+    "labels": [...],
+    "cardLabels": [...]
+  }
+}
+```
+
+---
+
+### verify-labels
+
+```bash
+.claude/bin/planka verify-labels "<cardId1,cardId2>" "<label1,label2>"
+```
+
+Checks that each card has all required labels. Exits `0` if all pass, `1` if any fail. Prints `OK` / `DEFECT` per card.
+
+```bash
+.claude/bin/planka verify-labels "1760700028730475544,1760700252018443289" "storify,PH-0005"
+```
+
+---
+
+## Authentication
+
+All commands authenticate on first use via:
+
+```http
+POST /api/access-tokens
+{ "emailOrUsername": "...", "password": "..." }
+```
+
+The token is cached in `/tmp/.planka_token_<pid>` for the lifetime of the process. A new token is fetched if the cache file is missing.
+
+---
+
+## Card lifecycle rule
+
+Every task — including quick fixes — must follow the full lifecycle:
+
+1. **Backlog** — card exists, not yet approved
+2. **To Do** — approved ("go" / "start") → move here
+3. **Doing** — first code edit made → move here
+4. **Completed** — code done → move here
+5. **Accepted** → terminal; lives on board as shipped changelog — never delete
+
+No code before the card is in **Doing**.

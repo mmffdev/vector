@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Planka board API helper — single entry point for all board operations
+# Delegates to planka_api.py which handles all REST calls
+# Reads credentials from backend/.env.local (git-ignored)
+# Never prints tokens or credentials to stdout
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$SCRIPT_DIR/planka_api.py" "$@"

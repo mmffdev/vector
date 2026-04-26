@@ -6,7 +6,7 @@
   --radius-sm: 0;
   --radius-md: 0;
 
-  --hot-pink: #ec4899;
+  --hot-pink: #f59e0b;
   --paper: #fffefa;
   --cream: #f5f3ee;
 }
@@ -101,7 +101,7 @@ html {
 
 body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--ink-1);
   background: var(--bg);
@@ -3043,5 +3043,186 @@ button {
 
 .wizard-model-cards__confirm {
   min-width: 120px;
+}
+
+/* ============================================================
+   Layers editor (stories 00063 / 00064 / 00065)
+   ============================================================ */
+
+.layers-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Drag handle column ───────────────────────────────────── */
+
+.layers-editor__drag-header {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  padding: 0;
+}
+
+.layers-editor__drag-cell {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  padding: 0;
+  text-align: center;
+  cursor: grab;
+}
+
+.layers-editor__drag-cell:active {
+  cursor: grabbing;
+}
+
+.layers-editor__drag-handle {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--ink-4);
+  line-height: 1;
+  user-select: none;
+  padding: 0 6px;
+}
+
+/* ── Row states ───────────────────────────────────────────── */
+
+.layers-editor__row {
+  transition: background 80ms ease;
+}
+
+.layers-editor__row--drag-over {
+  outline: 2px solid var(--hot-pink);
+  outline-offset: -2px;
+  background: var(--accent-soft);
+}
+
+/* ── Editable cell ────────────────────────────────────────── */
+
+.layers-editor__cell {
+  position: relative;
+}
+
+.layers-editor__cell--clickable {
+  cursor: pointer;
+}
+
+.layers-editor__cell--clickable:hover {
+  background: var(--surface-alt);
+}
+
+.layers-editor__cell--editing {
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.layers-editor__cell--tag {
+  width: 72px;
+  min-width: 72px;
+}
+
+.layers-editor__cell--invalid {
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* ── Inputs inside cells ──────────────────────────────────── */
+
+.layers-editor__input {
+  width: 100%;
+  padding: 5px 7px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-1);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.layers-editor__input:focus {
+  border-color: var(--hot-pink);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.layers-editor__input--error {
+  border-color: var(--error);
+}
+
+.layers-editor__input--tag {
+  max-width: 64px;
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+}
+
+.layers-editor__textarea {
+  width: 100%;
+  padding: 5px 7px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-1);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.layers-editor__textarea:focus {
+  border-color: var(--hot-pink);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* ── Inline cell error message ────────────────────────────── */
+
+.layers-editor__cell-error {
+  display: block;
+  font-size: 11px;
+  color: var(--error);
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+/* ── Confirm Changes bar ──────────────────────────────────── */
+
+.layers-editor__confirm-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line-1);
+  background: var(--surface);
+  z-index: 10;
+}
+
+.layers-editor__confirm-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+
+.layers-editor__confirm-bar-label {
+  font-size: 13px;
+  color: var(--ink-2);
+  flex: 1 1 auto;
+}
+
+.layers-editor__confirm-bar-error {
+  font-size: 12px;
+  color: var(--error);
+  flex: 1 1 100%;
+  order: 10;
+}
+
+.layers-editor__confirm-bar-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 

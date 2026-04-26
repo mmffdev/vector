@@ -1,0 +1,8 @@
+{
+  "label": "REST API",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "All Vector REST endpoints, grouped by feature area."
+  }
+}

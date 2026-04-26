@@ -1,0 +1,8 @@
+{
+  "label": "MCP Tools",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "MCP server tools available in Claude Code for this project."
+  }
+}

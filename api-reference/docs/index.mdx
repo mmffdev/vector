@@ -1,0 +1,25 @@
+---
+id: index
+title: Vector API Reference
+sidebar_label: Overview
+slug: /
+---
+
+# Vector API Reference
+
+Internal reference for the MMFFDev Vector platform.
+
+| Section | Contents |
+|---|---|
+| **Getting Started** | Auth model, roles, CSRF, rate limits |
+| **REST API** | Endpoint docs by feature group |
+| **Database** | mmff_vector schema reference |
+| **MCP Tools** | Planka + whisper-local MCP tools |
+
+## Base URL
+
+```
+http://localhost:5100   (backend, dev)
+```
+
+All authenticated routes expect `Authorization: Bearer <token>` obtained from `POST /api/auth/login`.
