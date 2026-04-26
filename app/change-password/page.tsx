@@ -1,5 +1,19 @@
 "use client";
 
+// /change-password — first-login forced password change.
+// Shares the .auth-page / .auth-card surface restyled in 00082
+// (.auth-card--wide for the slightly wider 3-field form).
+// Story 00085 verified via the same shared classes that drive
+// /login and /login/reset/confirm: centred card on --canvas;
+// current / new / confirm password inputs at 40px / --radius-md /
+// --border-strong; full-width .btn--primary save button; mismatch
+// errors render in --danger-bg with --danger 1px border via
+// .auth-card__error-slot. No lime-green anywhere.
+//
+// The page deliberately does not show a cancel/skip button — the
+// flow is forced, so the AC's optional .btn--ghost is a no-op
+// here.
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/app/lib/api";
