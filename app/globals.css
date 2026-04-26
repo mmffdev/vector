@@ -500,8 +500,75 @@ button {
   color: var(--ink-3);
 }
 
+/* ============================================================
+   Page body shell (Vector kit)
+   - Outer .page-body provides the canvas padding (8px top, 32px sides
+     and bottom) so content never butts up against the chrome.
+   - Inner wrapper caps content width at 1440px and centres it.
+   - .page__head sits at the top of the body: 28px/600 title with
+     subtle negative letter-spacing and an --ink-muted subtitle 4px
+     below; actions group is right-aligned (flex-end) on the same row.
+   - .eyebrow renders the 11px uppercase --ink-subtle micro-labels
+     used as section sub-headings throughout the kit.
+   ============================================================ */
 .page-body {
-  padding: 8px 24px 24px;
+  padding: 8px 32px 32px;
+}
+
+.page-body__inner {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.page__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: var(--space-6) 0 var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.page__head-text {
+  min-width: 0;
+}
+
+.page__title {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.page__subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--ink-muted);
+  margin: 4px 0 0;
+}
+
+.page__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.eyebrow {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin: 0 0 var(--space-2);
 }
 
 .sidebar-item {
