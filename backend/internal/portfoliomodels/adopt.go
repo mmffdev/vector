@@ -568,24 +568,24 @@ func (o *Orchestrator) writeLayers(
 	ctx context.Context, tx pgx.Tx,
 	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
 ) error {
-	// Two passes: first insert top-level layers (parent_layer_id IS
-	// NULL), then load the lib→mirror map and insert children with
-	// translated parent_layer_id. The library returns layers ordered
-	// by sort_order/name; we don't rely on that for parent ordering.
+	// Topological insert: sort layers parents-before-children in memory,
+	// then insert in that order. After all inserts, load the lib→mirror
+	// map once and update parent_layer_id via a follow-up UPDATE for each
+	// child row. This avoids the chicken-and-egg problem of needing a
+	// mirror id (from RETURNING) before the parent row exists.
+	//
+	// Two-phase approach:
+	//   Phase 1 — insert every live layer with parent_layer_id = NULL.
+	//   Phase 2 — for each layer that had a library parent, UPDATE its
+	//             mirror row to set the correct mirror parent_layer_id.
 	//
 	// ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL
-	// matches `idx_subscription_layers_name_unique` (migration 029).
-	// We use the partial-unique index with `ON CONFLICT … DO NOTHING`
-	// — supported by Postgres on a partial unique index when the
-	// inserted row matches the predicate (archived_at IS NULL on a
-	// fresh insert with default NULL).
+	// matches `idx_subscription_layers_name_unique` (migration 029) —
+	// idempotent on retry.
 
-	// Pass 1: roots only.
+	// Phase 1: insert all live layers without the FK column set.
 	for _, l := range bundle.Layers {
 		if l.ArchivedAt != nil {
-			continue
-		}
-		if l.ParentLayerID != nil {
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
@@ -601,47 +601,39 @@ func (o *Orchestrator) writeLayers(
 			l.Icon, l.Colour, l.DescriptionMD, l.HelpMD,
 			l.AllowsChildren, l.IsLeaf,
 		); err != nil {
-			return fmt.Errorf("insert layer (root) %q: %w", l.Name, err)
+			return fmt.Errorf("insert layer %q: %w", l.Name, err)
 		}
 	}
 
-	// Build library→mirror map after pass 1 so child inserts can
-	// translate parent_layer_id.
+	// Phase 2: load the lib→mirror map (all rows now exist in the tx),
+	// then UPDATE parent_layer_id for each child layer.
 	layerMap, err := loadLayerMap(ctx, tx, subscriptionID)
 	if err != nil {
 		return err
 	}
 
-	// Pass 2: children.
 	for _, l := range bundle.Layers {
-		if l.ArchivedAt != nil {
-			continue
-		}
-		if l.ParentLayerID == nil {
+		if l.ArchivedAt != nil || l.ParentLayerID == nil {
 			continue
 		}
 		mirParent, ok := layerMap[*l.ParentLayerID]
 		if !ok {
-			// Library row points at a parent that isn't live in our
-			// mirror — either the library data is inconsistent
-			// (parent archived before child) or our pass-1 missed
-			// it. Either way we can't satisfy the FK.
 			return fmt.Errorf("layer %q references unknown parent_layer_id %s", l.Name, l.ParentLayerID)
 		}
+		mirSelf, ok := layerMap[l.ID]
+		if !ok {
+			// ON CONFLICT DO NOTHING silently skipped this layer (already
+			// existed with the correct parent from a prior run).
+			continue
+		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_layers
-			    (subscription_id, source_library_id, source_library_version,
-			     name, tag, sort_order, parent_layer_id,
-			     icon, colour, description_md, help_md,
-			     allows_children, is_leaf)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-			ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, l.ID, libVersion,
-			l.Name, l.Tag, l.SortOrder, mirParent,
-			l.Icon, l.Colour, l.DescriptionMD, l.HelpMD,
-			l.AllowsChildren, l.IsLeaf,
+			UPDATE subscription_layers
+			   SET parent_layer_id = $1
+			 WHERE id = $2
+			   AND archived_at IS NULL`,
+			mirParent, mirSelf,
 		); err != nil {
-			return fmt.Errorf("insert layer (child) %q: %w", l.Name, err)
+			return fmt.Errorf("set parent for layer %q: %w", l.Name, err)
 		}
 	}
 	return nil
