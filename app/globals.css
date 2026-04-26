@@ -700,26 +700,34 @@ button {
 }
 
 /* ============================================================
-   Buttons
+   Buttons — Vector Design System (story 00074)
+   Five variants: primary (ink), secondary (surface+border), ghost
+   (transparent), danger (danger-bg/danger), sm + icon-only sizes.
+   40px default height, --radius-md, Inter 14px / 500. One primary
+   per region. No box-shadow ever.
    ============================================================ */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px 12px;
-  font-family: inherit;
-  font-size: 13px;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 500;
-  border: 1px solid var(--line-1);
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--ink-2);
-  border-radius: var(--radius-sm);
+  color: var(--ink);
+  border-radius: var(--radius-md);
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  box-shadow: none;
 }
+.btn svg { width: 16px; height: 16px; }
 
 .btn:hover:not(:disabled) {
-  background: var(--surface-alt);
-  color: var(--ink-1);
+  background: var(--surface-sunken);
 }
 
 .btn:disabled {
@@ -728,43 +736,67 @@ button {
 }
 
 .btn--primary {
-  background: transparent;
-  color: var(--ink-1);
-  border: 1px solid var(--line-1);
+  background: var(--ink);
+  color: #ffffff;
+  border-color: var(--ink);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--hot-pink);
+  background: #000;
   color: #ffffff;
-  border-color: var(--hot-pink);
+  border-color: #000;
 }
 
 .btn--secondary {
-  background: transparent;
-  color: var(--ink-2);
-  border: 1px solid var(--line-1);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+}
+.btn--secondary:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 .btn--ghost {
   border-color: transparent;
   background: transparent;
+  color: var(--ink-muted);
+}
+.btn--ghost:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 .btn--danger {
-  background: transparent;
-  color: var(--error);
-  border-color: var(--error);
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #ffffff;
+  border-color: var(--danger);
 }
 
 .btn--sm {
-  padding: 4px 8px;
-  font-size: 12px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .btn--lg {
-  padding: 10px 16px;
+  height: 48px;
+  padding: 0 20px;
   font-size: 14px;
 }
+
+/* Icon-only button: square 36x36 with no horizontal padding */
+.btn--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+.btn--icon.btn--sm { width: 32px; height: 32px; }
 
 .pin-button {
   display: inline-flex;
