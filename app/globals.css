@@ -371,26 +371,50 @@ button {
   position: relative;
 }
 
+/* Hover-flyout — Vector kit (story 00072): surface bg, 1px border,
+   radius-md, NO shadow. Separation from sidebar comes from the canvas
+   gap and the tone shift, not depth. */
 .sidebar-flyout {
   position: fixed;
   min-width: 200px;
   max-width: 280px;
-  background: var(--bg);
-  border: 1px solid var(--line-1);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  padding: 4px 0;
   z-index: 50;
   display: flex;
   flex-direction: column;
 }
 
 .sidebar-flyout .sidebar-item--flyout {
-  padding: 0 12px;
-  height: 40px;
-  min-height: 40px;
+  padding: 0 16px;
+  height: 36px;
+  min-height: 36px;
   flex-shrink: 0;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.sidebar-flyout .sidebar-item--flyout:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+/* Collapsed sidebar: centre icons, hide labels, keep active tone */
+.app-sidebar-container[data-open="false"] .sidebar-item,
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-item {
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+}
+
+.app-sidebar-container[data-open="false"] .sidebar-item.active,
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-item.active {
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 .sidebar-group--custom .sidebar-group__heading {
