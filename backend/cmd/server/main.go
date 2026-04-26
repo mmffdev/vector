@@ -113,6 +113,7 @@ func main() {
 	portfolioAdoptionStateH := portfoliomodels.NewAdoptionStateHandler(pool)
 	portfolioAdoptH := portfoliomodels.NewAdoptHandler(libPools.RO, pool)
 	portfolioAdoptStreamH := portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
+	devResetH := portfoliomodels.NewDevResetHandler(pool)
 
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
@@ -313,6 +314,12 @@ func main() {
 			r.Post("/permissions", permsH.Grant)
 			r.Delete("/permissions/{id}", permsH.Revoke)
 			r.Get("/permissions", permsH.List)
+		})
+
+		// Dev tools — gadmin only
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireRole(models.RoleGAdmin))
+			r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
 		})
 	})
 

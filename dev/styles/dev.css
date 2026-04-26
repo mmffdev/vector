@@ -120,3 +120,111 @@
 .dev-btn--primary:hover:not(:disabled) {
   border-color: var(--accent);
 }
+
+.dev-btn--danger {
+  background: #fee8e8;
+  color: #c41919;
+  border-color: #e8a8a8;
+}
+
+.dev-btn--danger:hover:not(:disabled) {
+  background: #fdd3d3;
+  border-color: #c41919;
+}
+
+/* Alert messages */
+.dev-alert {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.dev-alert--success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.dev-alert--error {
+  background: #fee8e8;
+  color: #c41919;
+  border: 1px solid #e8a8a8;
+}
+
+/* ---- Library page ---- */
+.dev-library { max-width: 900px; }
+
+.dev-library__toolbar {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.dev-library__search {
+  flex: 1; height: 34px; padding: 0 10px;
+  border: 1px solid var(--line-1); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--ink-1); font-family: var(--font-sans);
+  font-size: 13px; outline: none;
+}
+.dev-library__search:focus { border-color: #ff6600; }
+.dev-library__count { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+
+.dev-library__table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.dev-library__table th {
+  text-align: left; padding: 6px 12px; font-size: 11px; font-weight: 600;
+  color: var(--ink-3); border-bottom: 1px solid var(--line-1); white-space: nowrap;
+}
+.dev-library__row { cursor: pointer; border-bottom: 1px solid var(--line-2); }
+.dev-library__row:hover { background: var(--surface); }
+.dev-library__row td { padding: 8px 12px; color: var(--ink-2); }
+.dev-library__name { color: #ff6600 !important; font-weight: 500; }
+.dev-library__dir { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3) !important; }
+.dev-library__size,
+.dev-library__mtime { white-space: nowrap; }
+
+.dev-library__pagination {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line-2);
+}
+.dev-library__page-info { font-size: 13px; color: var(--ink-3); }
+
+/* ---- Library document view ---- */
+.dev-library__doc-title { margin-left: 12px; }
+.dev-library__md-body {
+  max-width: 800px; margin-top: 24px;
+  font-size: 14px; line-height: 1.7; color: var(--ink-2);
+}
+.dev-library__md-body h1 { font-size: 22px; font-weight: 700; color: var(--ink-1); margin: 0 0 20px; }
+.dev-library__md-body h2 { font-size: 17px; font-weight: 600; color: var(--ink-1); margin: 32px 0 12px; }
+.dev-library__md-body h3 { font-size: 14px; font-weight: 600; color: var(--ink-1); margin: 24px 0 8px; }
+.dev-library__md-body p  { margin: 0 0 14px; }
+.dev-library__md-body a  { color: #ff6600; text-decoration: none; }
+.dev-library__md-body a:hover { text-decoration: underline; }
+.dev-library__md-body code {
+  font-family: var(--font-mono); font-size: 12px;
+  background: var(--surface); border: 1px solid var(--line-1);
+  padding: 1px 5px; border-radius: var(--radius-sm); color: #ff6600;
+}
+.dev-library__md-body pre {
+  background: var(--surface); border: 1px solid var(--line-1);
+  padding: 14px 16px; overflow-x: auto; border-radius: var(--radius-sm); margin: 0 0 16px;
+}
+.dev-library__md-body pre code { background: none; border: none; padding: 0; color: var(--ink-1); }
+.dev-library__md-body ul,
+.dev-library__md-body ol  { padding-left: 22px; margin: 0 0 14px; }
+.dev-library__md-body li  { margin-bottom: 4px; }
+.dev-library__md-body blockquote {
+  border-left: 3px solid #ff6600; padding-left: 14px;
+  color: var(--ink-3); margin: 0 0 14px;
+}
+.dev-library__md-body table {
+  width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;
+}
+.dev-library__md-body th {
+  text-align: left; padding: 6px 10px; font-weight: 600;
+  border-bottom: 2px solid var(--line-1); color: var(--ink-1);
+}
+.dev-library__md-body td { padding: 6px 10px; border-bottom: 1px solid var(--line-2); }
+.dev-library__md-body hr { border: none; border-top: 1px solid var(--line-1); margin: 28px 0; }
+.dev-library__md-body strong { font-weight: 600; color: var(--ink-1); }
+.dev-library__md-body em { font-style: italic; }

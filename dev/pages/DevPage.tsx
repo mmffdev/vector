@@ -3,15 +3,42 @@
 import { useState } from "react";
 import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
+import { api } from "@/app/lib/api";
 
 export default function DevPage() {
   const [copied, setCopied] = useState(false);
   const { enabled: masterDebug, setEnabled: setMasterDebug } = useMasterDebug();
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const copyCommand = () => {
     navigator.clipboard.writeText("bash dev/scripts/ssh_manager.sh");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleResetAdoption = async () => {
+    if (!window.confirm("Reset portfolio adoption to zero state? This will delete all adoption records and mirrors.")) {
+      return;
+    }
+
+    setResetLoading(true);
+    setResetResult(null);
+
+    try {
+      const response = await api("/api/admin/dev/adoption-reset", { method: "POST" });
+      setResetResult({
+        success: true,
+        message: response.message || "Adoption state reset successfully.",
+      });
+    } catch (error: any) {
+      setResetResult({
+        success: false,
+        message: error?.message || "Failed to reset adoption state.",
+      });
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -35,6 +62,25 @@ export default function DevPage() {
           <p className="dev-p">
             Session-scoped flag (resets on tab close / hard reload). Read it via <code>useMasterDebug()</code>.
           </p>
+        </section>
+
+        <section className="dev-section">
+          <h2 className="dev-h2">Portfolio Adoption</h2>
+          <p className="dev-p">
+            Reset adoption state to zero (gadmin only). Deletes all adoption records and mirror tables.
+          </p>
+          <button
+            onClick={handleResetAdoption}
+            disabled={resetLoading}
+            className="dev-btn dev-btn--danger"
+          >
+            {resetLoading ? "Resetting..." : "Reset Adoption State"}
+          </button>
+          {resetResult && (
+            <div className={`dev-alert dev-alert--${resetResult.success ? "success" : "error"}`}>
+              {resetResult.message}
+            </div>
+          )}
         </section>
 
         <section className="dev-section">
