@@ -2,6 +2,8 @@
 
 Guidance for Claude Code in this repo.
 
+**Global instructions** → [`.claude/c_global_instructions.md`](c_global_instructions.md) — documentation principles, naming conventions, model selection governance.
+
 ## Working practices
 
 Load the relevant guide only when the task touches that area — keeps this file small.
