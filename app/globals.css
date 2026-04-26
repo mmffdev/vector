@@ -875,41 +875,53 @@ button {
   color: var(--accent-pink, var(--ink-1));
 }
 
+/* Entity list — Vector kit
+   Used on /portfolio for the pinnable entity rows. Each row is a
+   surface-on-canvas card with a hairline --border, --radius-md, and
+   no shadow. Kind label uses the eyebrow micro-label spec
+   (11px / uppercase / 0.08em / --ink-subtle); name uses --text-base
+   in --ink. Hover lifts to --surface-sunken (no transform/shadow). */
 .entity-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .entity-list__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border: 1px solid var(--line-1);
-  border-radius: 6px;
-  background: var(--surface-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: background 120ms ease;
+}
+
+.entity-list__row:hover {
+  background: var(--surface-sunken);
 }
 
 .entity-list__main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .entity-list__kind {
-  font-size: 11px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-2);
+  letter-spacing: 0.08em;
+  color: var(--ink-subtle);
+  font-weight: 600;
 }
 
 .entity-list__name {
-  font-size: 14px;
-  color: var(--ink-1);
+  font-size: var(--text-base);
+  color: var(--ink);
 }
 
 .btn--block {
