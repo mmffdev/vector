@@ -216,7 +216,14 @@ func (o *Orchestrator) Adopt(
 			return nil, errInFlight{}
 		case "failed":
 			if existingState.ModelID != modelID {
-				return nil, errPriorFailureDifferentModel{prior: existingState.ModelID}
+				// Stale failed row is for a different model. Archive it
+				// so the partial unique index admits a fresh row for the
+				// newly-selected model.
+				if err := o.archiveStaleFailedRow(ctx, existingState.ID); err != nil {
+					return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
+				}
+				existingState = nil // treat as a clean slate
+				break
 			}
 			// Resume — re-run all steps under idempotent inserts. We
 			// flip the row back to in_progress and reuse its id.
@@ -423,6 +430,24 @@ func (o *Orchestrator) insertPendingState(
 		return uuid.UUID{}, fmt.Errorf("insert state row: %w", err)
 	}
 	return id, nil
+}
+
+// archiveStaleFailedRow soft-archives a failed row for a *different*
+// model so the partial unique index (archived_at IS NULL) admits a
+// fresh row for the newly-selected model.
+func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID uuid.UUID) error {
+	_, err := o.VectorPool.Exec(ctx, `
+		UPDATE subscription_portfolio_model_state
+		   SET archived_at = NOW()
+		 WHERE id = $1
+		   AND status = 'failed'
+		   AND archived_at IS NULL`,
+		stateID,
+	)
+	if err != nil {
+		return fmt.Errorf("archive stale failed row: %w", err)
+	}
+	return nil
 }
 
 // resetFailedToInProgress flips a previously-failed row back to
@@ -869,12 +894,6 @@ type errInFlight struct{}
 
 func (errInFlight) Error() string { return "another adoption is in progress for this subscription" }
 
-type errPriorFailureDifferentModel struct{ prior uuid.UUID }
-
-func (e errPriorFailureDifferentModel) Error() string {
-	return "prior failed adoption row exists for a different model: " + e.prior.String()
-}
-
 type errSimInjected struct{ step string }
 
 func (e errSimInjected) Error() string { return "sim-harness injected failure at step " + e.step }
@@ -944,10 +963,9 @@ func writeAdoptErr(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var (
-		alreadyAdopted     errAlreadyAdopted
-		inFlight           errInFlight
-		priorDifferent     errPriorFailureDifferentModel
-		adoptErr           adoptionError
+		alreadyAdopted errAlreadyAdopted
+		inFlight       errInFlight
+		adoptErr       adoptionError
 	)
 
 	switch {
@@ -960,12 +978,6 @@ func writeAdoptErr(w http.ResponseWriter, err error) {
 	case errors.As(err, &inFlight):
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(map[string]string{"code": "ADOPT_IN_FLIGHT"})
-	case errors.As(err, &priorDifferent):
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code":     "ADOPT_PRIOR_FAILURE_DIFFERENT_MODEL",
-			"prior_id": priorDifferent.prior,
-		})
 	case errors.As(err, &adoptErr):
 		status := http.StatusInternalServerError
 		if adoptErr.Code == codeAdoptBundleNotFound {

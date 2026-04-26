@@ -300,7 +300,6 @@ func classifyAdoptErr(err error) (string, string, string) {
 	var (
 		alreadyAdopted errAlreadyAdopted
 		inFlight       errInFlight
-		priorDifferent errPriorFailureDifferentModel
 		aerr           adoptionError
 	)
 
@@ -309,8 +308,6 @@ func classifyAdoptErr(err error) (string, string, string) {
 		return "", "ADOPT_ALREADY_ADOPTED", err.Error()
 	case errors.As(err, &inFlight):
 		return "", "ADOPT_IN_FLIGHT", err.Error()
-	case errors.As(err, &priorDifferent):
-		return "", "ADOPT_PRIOR_FAILURE_DIFFERENT_MODEL", err.Error()
 	case errors.As(err, &aerr):
 		return aerr.Step, aerr.Code, err.Error()
 	default:

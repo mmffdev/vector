@@ -69,6 +69,29 @@ export interface WizardModelCardListProps {
   onCancel?: () => void;
 }
 
+function adoptErrMessage(e: unknown): string {
+  if (!(e instanceof ApiError)) return "Failed to start adoption";
+  const code =
+    e.body && typeof e.body === "object"
+      ? (e.body as { code?: string }).code
+      : undefined;
+  switch (code) {
+    case "ADOPT_ALREADY_ADOPTED":
+      return "This subscription already has an adopted portfolio model.";
+    case "ADOPT_IN_FLIGHT":
+      return "An adoption is already in progress. Please wait and try again.";
+    case "ADOPT_BUNDLE_NOT_FOUND":
+      return "The selected portfolio model is no longer available.";
+    case "ADOPT_STEP_FAIL_LAYERS":
+    case "ADOPT_INTERNAL":
+      return "Adoption failed due to an internal error. Please try again or contact support.";
+    default:
+      return code
+        ? `Adoption failed: ${code}`
+        : `Error ${e.status}: request failed`;
+  }
+}
+
 export default function WizardModelCardList({
   onAdoptStarted,
   onCancel,
@@ -117,15 +140,7 @@ export default function WizardModelCardList({
       });
       onAdoptStarted(res.state_id, res.model_id);
     } catch (e) {
-      const message =
-        e instanceof ApiError
-          ? `Error ${e.status}: ${
-              typeof e.body === "string"
-                ? e.body
-                : (e.body as { code?: string })?.code ?? "request failed"
-            }`
-          : "Failed to start adoption";
-      setSubmitError(message);
+      setSubmitError(adoptErrMessage(e));
       setSubmitting(false);
     }
   }
