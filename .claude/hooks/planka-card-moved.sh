@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # PostToolUse hook — fires after mcp__planka__move_card_to_list
 # Posts a pick-up or completion comment based on which list the card landed in.
+# Uses .claude/bin/planka helper — never calls Planka API directly.
 
 set -euo pipefail
 
 DOING_LIST="1760700299682513946"
 COMPLETED_LIST="1760700351842878491"
-PLANKA="http://localhost:3333"
-PLANKA_USER="admin@mmffdev.com"
-PLANKA_PASS="changeme123!"
+PLANKA_HELPER="./.claude/bin/planka"
 
 INPUT=$(cat)
 
@@ -30,13 +29,6 @@ print(d.get('tool_input', {}).get('newListId', ''))
 # Skip silently if tunnel is down
 nc -z localhost 3333 2>/dev/null || exit 0
 
-TOKEN=$(curl -sf -X POST "$PLANKA/api/access-tokens" \
-  -H "Content-Type: application/json" \
-  -d "{\"emailOrUsername\":\"$PLANKA_USER\",\"password\":\"$PLANKA_PASS\"}" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])" 2>/dev/null) || exit 0
-
-[[ -z "$TOKEN" ]] && exit 0
-
 BRANCH=$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 DATE=$(date +%Y-%m-%d)
 
@@ -46,9 +38,6 @@ else
   TEXT="**Code complete** — $DATE | branch \`$BRANCH\` — moved to Completed, awaiting review/test"
 fi
 
-curl -sf -X POST "$PLANKA/api/cards/$CARD_ID/comments" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"text\":\"$TEXT\"}" > /dev/null 2>&1 || true
+"$PLANKA_HELPER" comment "$CARD_ID" "$TEXT" 2>/dev/null || true
 
 exit 0

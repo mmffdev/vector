@@ -19,4 +19,5 @@ Full contract is in `docs/c_c_backlog_agent.md`.
 - Do not make the first code edit until the card is in Doing.
 - After the last change, move to Completed and post a one-line comment with what was done.
 - This applies even for 30-second styling fixes — no exceptions.
-- Use `PATCH /api/cards/<id>` with `{"listId":"<target>","position":65536}`. See `docs/c_c_planka_rest.md` for REST templates.
+- **Final checkpoint before reporting task done:** Always move the card to Completed as part of the completion handoff, not as a later manual step.
+- Use `.claude/bin/planka move-card <cardId> <listId> <position>`. See `docs/c_c_planka_rest.md` for REST templates.

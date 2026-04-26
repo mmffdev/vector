@@ -1,0 +1,219 @@
+/* =============================================================
+   Vector Design System — Foundation tokens
+   Colors, type, spacing, radii. No shadows.
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Zen Maru Gothic kept available for accent / Japanese display use
+   (legacy from original codebase). Not the system default. */
+@font-face {
+  font-family: 'Zen Maru Gothic';
+  src: url('./fonts/ZenMaruGothic-Light.ttf') format('truetype');
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Zen Maru Gothic';
+  src: url('./fonts/ZenMaruGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Zen Maru Gothic';
+  src: url('./fonts/ZenMaruGothic-Medium.ttf') format('truetype');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Zen Maru Gothic';
+  src: url('./fonts/ZenMaruGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Zen Maru Gothic';
+  src: url('./fonts/ZenMaruGothic-Black.ttf') format('truetype');
+  font-weight: 900; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* ---------- Foundation: warm neutrals ---------- */
+  --canvas:         #F4F2EE;
+  --surface:        #FFFFFF;
+  --surface-sunken: #EDEAE4;
+
+  --ink:        #1A1A1A;
+  --ink-muted:  #5C5C5C;
+  --ink-subtle: #8A8A8A;
+  --ink-faint:  #B8B5AF;
+
+  --border:        #E5E1DA;
+  --border-strong: #D4CFC5;
+
+  /* ---------- Status (always with icon + label) ---------- */
+  --success:    #2F7D54;
+  --success-bg: #E5F0E9;
+  --warning:    #B7791F;
+  --warning-bg: #FBEFD4;
+  --danger:     #B23B3B;
+  --danger-bg:  #F5E1DE;
+  --info:       #2F5F8A;
+  --info-bg:    #E1ECF5;
+
+  /* ---------- Brand slots (themeable, default to ink) ---------- */
+  --brand-tenant:           #1A1A1A;
+  --brand-tenant-contrast:  #FFFFFF;
+  --brand-product:          #1A1A1A;
+  --brand-product-contrast: #FFFFFF;
+
+  /* ---------- Type families ---------- */
+  --font-sans:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-numeric: 'Inter', system-ui, sans-serif;
+
+  /* ---------- Type scale ---------- */
+  --text-xs:    11px;     --leading-xs:    16px;
+  --text-sm:    13px;     --leading-sm:    20px;
+  --text-base:  14px;     --leading-base:  22px;
+  --text-md:    16px;     --leading-md:    24px;
+  --text-lg:    20px;     --leading-lg:    28px;
+  --text-xl:    28px;     --leading-xl:    36px;
+  --text-2xl:   36px;     --leading-2xl:   44px;
+
+  /* ---------- Weights ---------- */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------- Radii ---------- */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  --border-width: 1px;
+
+  /* ---------- Layout ---------- */
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
+  --content-max-width: 1440px;
+  --row-height: 48px;
+  --input-height: 40px;
+}
+
+/* ---------- Dark theme (personal preference) ---------- */
+:root[data-theme="dark"] {
+  --canvas:         #1A1816;
+  --surface:        #232120;
+  --surface-sunken: #1F1D1B;
+
+  --ink:        #F4F2EE;
+  --ink-muted:  #B0ADA6;
+  --ink-subtle: #8A8780;
+  --ink-faint:  #4A4744;
+
+  --border:        #2E2B28;
+  --border-strong: #3D3A36;
+}
+
+/* =============================================================
+   Semantic typography classes
+   Use these instead of raw size+weight everywhere.
+   ============================================================= */
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+/* Eyebrow / micro-label — TOTAL REVENUE, RECENT TRANSACTIONS */
+.t-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+/* Page title */
+.t-page-title, h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* Card title / section heading */
+.t-card-title, h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+/* H3 — sub-section */
+h3 {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+/* Body — default UI text */
+.t-body, p {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  font-weight: var(--weight-regular);
+  color: var(--ink);
+}
+
+/* Helper / metadata text */
+.t-helper {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--ink-muted);
+}
+
+/* Display metric — dashboard hero numbers */
+.t-metric {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Numeric helper — apply to anything with figures */
+.t-num { font-variant-numeric: tabular-nums; }
+
+/* Mono — code, IDs */
+.t-mono, code, kbd, samp {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}

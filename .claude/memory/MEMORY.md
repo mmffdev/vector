@@ -9,3 +9,4 @@
 - [Planka kanban board](project_planka.md) — Self-hosted backlog on mmffdev.com, SSH tunnel :3333, planka MCP registered
 - [Planka API direct access](planka_api_access.md) — MCP is broken (v1.0.7 HTML bug); use curl REST calls instead. Auth, key IDs, card CRUD commands all here.
 - [Pre-launch security checklist](project_pre_launch_security.md) — Scrub git history (.env.local committed with MASTER_KEY), harden ssh_manager.sh, rotate secrets. Hard deadline: before any external repo access.
+- [API reference docs must stay in sync](feedback_api_docs_sync.md) — Update api-reference/ + redeploy after any handler/route file change; Stop hook fires as a safety net.

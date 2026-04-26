@@ -4,22 +4,22 @@ description: How to access the Planka board via REST API — use this because pl
 type: reference
 originSessionId: d252e265-892b-4087-8dbd-a50e6045c3e2
 ---
+## ⚠️ HARD RULE: DO NOT CALL CURL DIRECTLY
+
+**All Planka board operations must go through `.claude/bin/planka`** — the single authoritative entry point. This ensures:
+- Credentials are never printed to stdout
+- Passwords are never visible in process lists
+- There is one source of truth for all API calls
+
+If you find yourself writing curl to call Planka, STOP and use the helper instead. See `.claude/bin/planka help` for all available sub-commands.
+
 ## Why not MCP
 
-`planka-mcp` v1.0.7 makes preflight calls at startup that return `E_NOT_FOUND`. After that every MCP tool call returns the Planka HTML login page instead of JSON. Use direct REST calls instead.
+`planka-mcp` v1.0.7 makes preflight calls at startup that return `E_NOT_FOUND`. After that every MCP tool call returns the Planka HTML login page instead of JSON.
 
-## Auth
+## Auth (Reference Only)
 
-Use the `claude@mmffdev.com` account (created for the agent; admin's account is separate):
-
-```bash
-TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"claude@mmffdev.com","password":"myApples27@"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
-```
-
-Re-run at the start of any session. Token is valid ~1 year. Terms of service have already been accepted on this account; login returns a real access token (not a `pendingToken`).
+The `claude@mmffdev.com` account (created for the agent; admin's account is separate) credentials are stored in `backend/.env.local` (git-ignored) and are read only by `.claude/bin/planka`. Token is valid ~1 year; terms of service already accepted on this account.
 
 If a future Planka upgrade re-prompts terms, the response shape is `{"code":"E_FORBIDDEN","pendingToken":"...","step":"accept-terms"}`. Fetch the signature from `GET /api/terms`, then `POST /api/access-tokens/accept-terms` with `{pendingToken, signature}`.
 
@@ -35,92 +35,50 @@ If a future Planka upgrade re-prompts terms, the response shape is `{"code":"E_F
 | List: Completed | `1760700351842878491` |
 | List: Accepted | `1760700396512216092` |
 
-## Create a card
+## REST API Endpoints (Reference Only)
 
-```bash
-curl -s -X POST "http://localhost:3333/api/lists/<LIST_ID>/cards" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Card title","description":"...","position":65536,"type":"story"}'
-```
+**Use `.claude/bin/planka <sub-command>` instead of calling these directly.**
 
-- `type` must be `"story"` (not `"card"` — that errors). `"project"` is for epics.
-- `position`: increment by 65536 per card to space them.
+### Create a card
+- **Endpoint:** `POST /api/lists/<LIST_ID>/cards`
+- **Body:** `{"name":"...","description":"...","position":65536,"type":"story"}`
+- **Note:** `type` must be `"story"` (not `"card"`). `"project"` is for epics. Position increments by 65536 per card.
+- **Helper:** `planka create-card <listId> "<title>" "<desc>"` → prints card ID
 
-## Move a card to a different list
+### Move a card
+- **Endpoint:** `PATCH /api/cards/<CARD_ID>`
+- **Body:** `{"listId":"<TARGET_LIST_ID>","position":<POS>}`
+- **Note:** Both `listId` and `position` are required. Omitting either silently fails.
+- **Helper:** `planka move-card <cardId> <listId> <position>`
 
-```bash
-curl -s -X PATCH "http://localhost:3333/api/cards/<CARD_ID>" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"listId":"<TARGET_LIST_ID>"}'
-```
+### Get all cards
+- **Endpoint:** `GET /api/boards/1760699595475649556`
+- **Response:** JSON with `included.cards[]`, `included.lists[]`, `included.labels[]`, `included.cardLabels[]`
+- **Helper:** `planka board` → prints full JSON
 
-## Get all cards on the board
+### Attach a label
+- **Endpoint:** `POST /api/cards/<CARD_ID>/card-labels`
+- **Body:** `{"labelId":"<LABEL_ID>"}`
+- **Note:** Path is **`/card-labels`** (kebab-case), NOT `/labels` (that returns 404). Same applies to `/card-memberships`.
+- **Helper:** `planka label-card <cardId> <labelId>`
 
-```bash
-curl -s "http://localhost:3333/api/boards/1760699595475649556" \
-  -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-for c in d['included']['cards']:
-    print(c['id'], c['listId'], c['name'])
-"
-```
+### Post a comment
+- **Endpoint:** `POST /api/cards/<CARD_ID>/comments`
+- **Body:** `{"text":"..."}`
+- **Helper:** `planka comment <cardId> "<text>"`
 
-## Attach a label to a card
+### Delete a card
+- **Endpoint:** `DELETE /api/cards/<CARD_ID>`
+- **Helper:** `planka delete-card <cardId>`
 
-```bash
-curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/card-labels" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"labelId":"<LABEL_ID>"}'
-```
+### Create a label
+- **Endpoint:** `POST /api/boards/<BOARD_ID>/labels`
+- **Body:** `{"name":"...","color":"midnight-blue","position":65536}`
+- **Note:** Endpoint is `/api/boards/:id/labels` (not `/api/labels` — that returns 404). `position` is required. Colors: `midnight-blue`, `tank-green`, `berry-red`, etc.
+- **Helper:** `planka create-label <boardId> "<name>" <color> <position>` → prints label ID
 
-**Important:** the path is **`/card-labels`** (kebab-case), not `/labels`. The `/labels` form returns `E_NOT_FOUND` and the storify skill's REST template (which uses `/labels`) silently fails. Same kebab-case convention applies to `/card-memberships` (assigning a user as card owner).
-
-## Assign a user to a card (card ownership)
-
-```bash
-curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/card-memberships" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"<USER_ID>"}'
-```
-
-My user ID (claude@mmffdev.com): `1761296226721990419`.
-
-## Post a comment on a card
-
-```bash
-curl -s -X POST "http://localhost:3333/api/cards/<CARD_ID>/comments" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"comment text here"}'
-```
-
-## Delete a card
-
-```bash
-curl -s -X DELETE "http://localhost:3333/api/cards/<CARD_ID>" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-## Create a label
-
-```bash
-curl -s -X POST "http://localhost:3333/api/boards/<BOARD_ID>/labels" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"LABEL_NAME","color":"midnight-blue","position":65536}'
-```
-
-**Critical:** 
-- Endpoint is `/api/boards/:id/labels` (not `/api/labels` — that returns 404)
-- `position` parameter is required (omitting it returns `E_MISSING_OR_INVALID_PARAMS`)
-- `position=65536` appends the label at the end of the list; use lower values for specific ordering
-- `color` options: `midnight-blue`, `tank-green`, `berry-red`, etc.
+### Verify labels on cards
+- **Helper:** `planka verify-labels "id1,id2,id3" "label1,label2"` → exits 1 on any defect
 
 ## Prerequisite
 

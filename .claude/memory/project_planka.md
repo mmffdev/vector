@@ -17,3 +17,6 @@ Planka is running on mmffdev.com in Docker at /opt/planka/, accessible via SSH t
 - SMTP: routes through host Postfix (172.23.0.1:25, Docker subnet trusted via mynetworks), FROM noreply@mmffdev.com
 - MCP binary: /opt/homebrew/bin/planka-mcp (npm package: planka-mcp)
 - Port 3333 added to mmffdev-pg SSH tunnel alias
+
+**LANKA API Calls:**
+s

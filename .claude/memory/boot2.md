@@ -8,17 +8,9 @@ originSessionId: b094b773-ebff-4f71-a435-1eb6d427b442
 
 ### Access
 - URL: `http://localhost:3333` (SSH tunnel — `ssh -N -f mmffdev-pg`)
-- Admin: `admin@mmffdev.com` / `changeme123!`
-- **MCP fixed (2026-04-25)** — two bugs patched: `PLANKA_API_URL` corrected to `http://localhost:3333/api` in `~/.claude.json`; hardcoded `createTaskList` test call removed from `/opt/homebrew/bin/planka-mcp` (line 52). MCP tools (`mcp__planka__*`) work after Claude Code restart. REST API docs below kept as fallback.
-
-### Planka REST API (use this instead of MCP)
-
-```bash
-TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"admin@mmffdev.com","password":"changeme123!"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
-```
+- **Use `.claude/bin/planka` helper** — single entry point for all board operations. Never call curl directly.
+- Agent account: `claude@mmffdev.com` (credentials in `backend/.env.local`, git-ignored)
+- Admin account: separate (see project-admins for access)
 
 **Key IDs (resolved — don't re-fetch):**
 | Thing | ID |
@@ -88,3 +80,65 @@ claude mcp add planka -s user \
   -e PLANKA_PASSWORD=<new-password> \
   -- /opt/homebrew/bin/planka-mcp
 ```
+
+---
+
+## Whisper MCP (2026-04-26 — READY)
+
+- Model: `mlx-community/whisper-large-v3-turbo` cached at `~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-turbo/` (1.5GB)
+- Also: `~/.cache/whisper/large-v3-turbo.pt` (openai-whisper format, 1.5GB)
+- MLX Whisper CLI: `~/Library/Python/3.9/bin/mlx_whisper`
+- MCP server: `~/.claude/bin/whisper-mcp.js` (Node.js raw JSON-RPC stdio, zero deps)
+- Config: `.mcp.json` → `node /Users/rick/.claude/bin/whisper-mcp.js`
+- Tool: `transcribe(file_path, model?)` — returns transcript text
+- **Pending:** test with a real audio file after next Claude Code restart
+
+---
+
+## Adminer (2026-04-26 — customised)
+
+- URL: `http://localhost:8081` (SSH tunnel `mmffdev-pg`)
+- Docker: `/opt/adminer/` on remote, `adminer:4` image
+- **Default changed to SELECT DATA** — plugin at `/opt/adminer/plugins-enabled/select-default.php`
+- Plugin injects JS that rewrites sidebar `table=` links → `select=` on page load
+- Volume mount added to docker-compose for persistence
+
+---
+
+## Remote services port map (all via SSH tunnel `mmffdev-pg`)
+
+| Local port | Service | Remote path |
+|---|---|---|
+| `3333` | Planka kanban | `/opt/planka/` |
+| `5434` | Postgres (mmff_vector) | — |
+| `8081` | Adminer | `/opt/adminer/` |
+| `8083` | **API Reference docs** | `/opt/api-reference/` |
+| `9000` | Portainer | — |
+| `15672` | RabbitMQ management | — |
+
+**Separate tunnel** `mmffdev-homepage`: `localhost:8082` → remote port 3000 (Homepage dashboard)
+
+Restart tunnel: `pkill -f "ssh.*mmffdev-pg" && ssh -N -f mmffdev-pg`
+
+---
+
+## API Reference Docs Site (2026-04-26 — LIVE at localhost:8083)
+
+**What it is:** Docusaurus 3 (TypeScript) developer-facing API reference. Maps all Vector REST endpoints, DB tables, MCP tools, and integrations. Rally-style left-nav hierarchy.
+
+**Local scaffold:** `api-reference/` in repo root  
+**Remote:** `/opt/api-reference/docker-compose.yml` — `mmffdev/api-reference:latest` on `127.0.0.1:8083:80`  
+**Homepage:** auto-discovered via Docker labels — appears as "API Reference" tile in Developer group  
+**Deploy:** `cd api-reference && ./deploy.sh` — builds `linux/amd64` image (buildx), pipes via SSH, restarts container
+
+**Current state:** Default Docusaurus scaffold is live. Content not yet written.
+
+**Next session — content to build:**
+1. Strip default scaffold (remove blog, tutorial content, update site title/config)
+2. Build MDX components: `<AuthGate>`, `<RateLimit>`, `<TableDeps>`, `<SseBadge>`, `<EndpointHeader>`
+3. Getting Started section (auth model, CSRF, roles, rate limits)
+4. REST API section — start with Auth + Nav groups (most-used)
+5. DB Reference section — mmff_vector domain by domain
+6. MCP Tools section — Planka + whisper-local first
+
+**Planned structure:** See session notes — full left-nav hierarchy and per-page anatomy documented.
