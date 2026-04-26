@@ -855,59 +855,94 @@ button {
 }
 
 /* ============================================================
-   Tables
+   Tables — Vector Design System (story 00078)
+   .table-wrap container: surface bg, 1px --border, --radius-lg,
+   overflow:hidden so the corners clip cleanly.
+   .table thead: --surface-sunken with 11px uppercase --ink-muted
+   column labels. Rows 48px tall, 1px hairline, last row no bottom.
+   Hover shifts row to --surface-sunken. Numeric columns get
+   font-variant-numeric: tabular-nums.
+   Both BEM (.table __head/__cell) and Vector kit (.tbl) names work.
    ============================================================ */
 .table-wrap {
   background: var(--surface);
-  border: 1px solid var(--line-1);
-  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: none;
 }
 
-.table {
+.table,
+table.tbl {
   width: 100%;
   border-collapse: collapse;
+  font-family: var(--font-sans);
   font-size: 13px;
 }
 
-.table__head {
-  background: var(--surface-alt);
+.table__head,
+table.tbl thead {
+  background: var(--surface-sunken);
 }
 
-.table__head .table__cell {
-  color: var(--ink-3);
+.table__head .table__cell,
+table.tbl thead th {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
   font-weight: 500;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
   text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.table__row {
-  border-bottom: 1px solid var(--line-1);
+.table__row,
+table.tbl tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
 }
 
-.table__row:last-child {
+.table__row:last-child,
+table.tbl tbody tr:last-child {
   border-bottom: none;
 }
 
-.table__cell {
-  padding: 10px 14px;
-  color: var(--ink-1);
+.table__row:last-child .table__cell,
+table.tbl tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table__cell,
+table.tbl tbody td {
+  padding: 0 16px;
+  height: var(--row-height);
+  color: var(--ink);
   vertical-align: middle;
-  border-bottom: 1px solid var(--line-1);
+  border-bottom: 1px solid var(--border);
 }
 
-.table__head .table__cell {
-  border-bottom: 1px solid var(--line-1);
+.table__row:hover .table__cell,
+table.tbl tbody tr:hover td {
+  background: var(--surface-sunken);
 }
 
-.table__cell--numeric {
+.table__cell--numeric,
+.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .table__cell--muted {
-  color: var(--ink-3);
+  color: var(--ink-muted);
+}
+
+/* Mono cell helper for IDs */
+.id {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  font-size: 12px;
 }
 
 /* ============================================================
