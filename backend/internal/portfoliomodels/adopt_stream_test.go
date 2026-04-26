@@ -7,6 +7,11 @@
 //     events (one per saga step) all with status=ok plus a terminating
 //     `done` event whose payload includes a parseable state_id.
 //
+//   - idempotentCompleted: hits the SSE endpoint after a saga already
+//     completed. Adopt() returns immediately (zero hook fires); asserts
+//     the handler still emits 7 synthetic ok step events so the overlay
+//     can animate through to completion.
+//
 //   - failPath: drive the orchestrator with FailAtStep="layers" via a
 //     thin in-process call to the writer adapter (no HTTP), asserting
 //     the same SSE byte stream that the handler would have emitted —
@@ -128,6 +133,86 @@ func TestAdoptStream_HappyPath(t *testing.T) {
 	}
 	if steps != len(stepOrder) {
 		t.Errorf("step events: want %d (one per saga step), got %d", len(stepOrder), steps)
+	}
+	if !doneFound {
+		t.Errorf("missing terminating done event")
+	}
+}
+
+// TestAdoptStream_IdempotentCompleted verifies the synthetic-step path:
+// when Adopt() returns immediately because the saga already completed,
+// the stream still emits 7 ok step events before the done terminator so
+// the overlay can animate to completion.
+func TestAdoptStream_IdempotentCompleted(t *testing.T) {
+	libRO := testRoPool(t)
+	defer libRO.Close()
+	vec, user := testVectorPoolPadmin(t)
+	defer vec.Close()
+
+	ctx := context.Background()
+	modelID := uuid.MustParse(seededMMFFModelID)
+
+	if err := resetAdoptionFixture(ctx, vec, user.SubscriptionID); err != nil {
+		t.Skipf("reset fixture failed (mirror tables not deployed?): %v", err)
+	}
+	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
+
+	orch := NewOrchestrator(libRO, vec)
+	// Run the real saga first so the state row is completed.
+	_, err := orch.Adopt(ctx, user.SubscriptionID, user.ID, modelID, "seed-run", AdoptOptions{})
+	if err != nil {
+		t.Skipf("seed Adopt failed (infra?): %v", err)
+	}
+
+	// Now hit the SSE endpoint — Adopt() will return immediately
+	// (idempotent completed path) with zero real step hook fires.
+	h := NewAdoptStreamHandlerWith(orch, time.Second)
+	r := chi.NewRouter()
+	r.Use(injectUser(user))
+	r.Get("/api/portfolio-models/{id}/adopt/stream", h.Stream)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	req, err2 := http.NewRequest(http.MethodGet, srv.URL+"/api/portfolio-models/"+modelID.String()+"/adopt/stream", nil)
+	if err2 != nil {
+		t.Fatalf("new request: %v", err2)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err3 := http.DefaultClient.Do(req)
+	if err3 != nil {
+		t.Fatalf("GET: %v", err3)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status: want 200, got %d: %s", resp.StatusCode, body)
+	}
+
+	events := readSSE(t, resp.Body, 10*time.Second)
+
+	steps := 0
+	var doneFound bool
+	for _, ev := range events {
+		switch ev.event {
+		case "step":
+			steps++
+			var p map[string]any
+			if err := json.Unmarshal([]byte(ev.data), &p); err != nil {
+				t.Fatalf("step payload not JSON: %v / %s", err, ev.data)
+			}
+			if p["status"] != "ok" {
+				t.Errorf("idempotent step %v: want status=ok, got %v", p["name"], p["status"])
+			}
+		case "done":
+			doneFound = true
+		case "fail":
+			t.Errorf("idempotent path: unexpected fail event: %s", ev.data)
+		}
+	}
+	if steps != len(stepOrder) {
+		t.Errorf("synthetic step events: want %d, got %d", len(stepOrder), steps)
 	}
 	if !doneFound {
 		t.Errorf("missing terminating done event")

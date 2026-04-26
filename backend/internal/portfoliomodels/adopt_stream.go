@@ -195,6 +195,8 @@ func (h *AdoptStreamHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	heartbeat := time.NewTicker(h.heartbeat)
 	defer heartbeat.Stop()
 
+	stepCount := 0 // tracks how many step events were emitted
+
 	for {
 		select {
 		case <-r.Context().Done():
@@ -216,10 +218,24 @@ func (h *AdoptStreamHandler) Stream(w http.ResponseWriter, r *http.Request) {
 				// Channel closed: orchestrator has returned. Pull the
 				// final result/error and emit the terminator.
 				out := <-outcome
+				// Idempotent-completed path: Adopt() returns immediately
+				// when the saga already completed (same model). No hook
+				// fires so stepCount == 0. Emit synthetic ok events for
+				// all steps so the overlay can animate to completion.
+				if out.err == nil && stepCount == 0 {
+					for i, name := range stepOrder {
+						writeStepEvent(w, flusher, streamMsg{
+							kind:  "step",
+							index: i,
+							name:  name,
+						})
+					}
+				}
 				writeTerminator(w, flusher, out.res, out.err)
 				return
 			}
 			writeStepEvent(w, flusher, msg)
+			stepCount++
 		}
 	}
 }
