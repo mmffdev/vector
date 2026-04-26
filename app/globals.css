@@ -141,7 +141,10 @@
   --nav-item-active-bg: var(--surface-sunken);
 }
 
-/* ---------- Dark theme (warm dark) ---------- */
+/* ---------- Dark theme — Vector warm dark palette (story 00070) ----------
+   Replaces previous cold-grey #1f1f1f / #2a2a2a / #3a3a3a values with warm
+   dark neutrals that match the system aesthetic. Inks lift to warm parchment
+   for contrast against the dark canvas. */
 :root[data-theme="dark"] {
   --canvas:         #1A1816;
   --surface:        #232120;
