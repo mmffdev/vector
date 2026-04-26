@@ -1,5 +1,11 @@
 "use client";
 
+// /login/reset — password reset request.
+// Shares the .auth-page / .auth-card surface restyled for the
+// Vector Design System in story 00082; this page also passes
+// the AC for 00083 (centred card on canvas, 40px input, full-
+// width primary, ink-muted back-link, no lime-green).
+
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/app/lib/api";
