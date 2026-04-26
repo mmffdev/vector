@@ -172,6 +172,183 @@ Document which theme set each component/page uses by default. Allow per-page ove
   - Interactive: `#a78bfa` (light violet)
   - P: `#3f0f63` (dark purple)
 
+## Example: Set 1 Variables (Light Mode)
+
+All variables for Set 1 in light theme follow the naming pattern. A partial example:
+
+```css
+/* Core colors */
+--light-accent-1: #f59e0b;
+--light-primary-1: #78350f;
+--light-interactive-1: #ea580c;
+--light-p-1: #fef3c7;
+
+/* Typography */
+--light-h1-1: #1f1f1f;
+--light-h2-1: #1f1f1f;
+/* ... h3–h6 ... */
+
+/* Borders */
+--light-border-style-constant-1: 1px solid #d1d5db;
+--light-border-style-dashed-1: 1px dashed #d1d5db;
+--light-border-style-dotted-1: 1px dotted #d1d5db;
+
+/* Links */
+--light-link-link-1: #f59e0b;
+--light-link-visited-1: #92400e;
+--light-link-hover-1: #ea580c;
+--light-link-active-1: #b45309;
+
+/* Page backgrounds */
+--light-page-bg-standard-1: #f5f3ee;
+--light-page-bg-alternate-1: #f0eee9;
+--light-page-bg-negative-1: #fee2e2;
+--light-page-bg-positive-1: #dcfce7;
+
+/* ... and so on for other domains ... */
+```
+
+Repeat this pattern for **light Sets 2, 3, 4** and **dark Sets 1, 2, 3, 4**.
+--light-page-border-positive-1
+--light-page-border-top-standard-1
+--light-page-border-top-secondary-1
+--light-page-border-top-highlight-1
+--light-page-border-top-important-1
+--light-page-border-left-standard-1
+--light-page-border-left-secondary-1
+--light-page-border-left-highlight-1
+--light-page-border-left-important-1
+--light-page-border-bottom-standard-1
+--light-page-border-bottom-secondary-1
+--light-page-border-bottom-highlight-1
+--light-page-border-bottom-important-1
+--light-accent-border-left-standard-1
+--light-accent-border-left-secondary-1
+--light-accent-border-left-highlight-1
+--light-accent-border-left-important-1
+--light-surface-form-1
+--light-surface-input-1
+--light-surface-model-1
+--light-feedback-tooltip-A-1
+--light-feedback-tooltip-B-1
+--light-feedback-tooltip-C-1
+--light-feedback-tooltip-D-1
+--light-surface-bg-standard-1
+--light-surface-bg-alternative-1
+--light-surface-bg-negative-1
+--light-surface-bg-positive-1
+--light-surface-hover-standard-1
+--light-surface-hover-alternative-1
+--light-surface-hover-negative-1
+--light-surface-hover-positive-1
+--light-surface-border-standard-1
+--light-surface-border-alternative-1
+--light-surface-border-negative-1
+--light-surface-border-positive-1
+--light-accent-border-standard-1
+--light-accent-border-alternative-1
+--light-accent-border-negative-1
+--light-accent-border-positive-1
+--light-accent-border-top-standard-1
+--light-accent-border-top-alternative-1
+--light-accent-border-top-negative-1
+--light-accent-border-top-positive-1
+--light-accent-border-left-standard-1
+--light-accent-border-left-alternative-1
+--light-accent-border-left-negative-1
+--light-accent-border-left-positive-1
+--light-accent-border-bottom-standard-1
+--light-accent-border-bottom-alternative-1
+--light-accent-border-bottom-negative-1
+--light-accent-border-bottom-positive-1
+--light-table-1
+--light-table-row-header-1
+--light-table-row-sub-header-1
+--light-table-row-odd-1
+--light-table-row-even-1
+--light-table-row-footer-1
+--light-table-col-header-1
+--light-table-col-sub-header-1
+--light-table-col-odd-1
+--light-table-col-even-1
+--light-table-col-footer-1
+--light-table-filter-bg-1
+--light-table-filter-border-1
+--light-table-filter-text-1
+--light-table-filter-clear-hover-1
+--light-table-filter-link-1
+--light-table-filter-visited-1
+--light-table-filter-hover-1
+--light-table-filter-active-1
+--light-table-pagination-bg-1
+--light-table-pagination-border-1
+--light-table-pagination-text-1
+--light-table-pagination-clear-hover-1
+--light-table-pagination-link-1
+--light-table-pagination-visited-1
+--light-table-pagination-hover-1
+--light-table-pagination-active-1
+--light-table-drag-placeholder-bg-1
+--light-table-drag-placeholder-border-1
+--light-table-drag-placeholder-dashed-1
+--light-table-drag-ghost-bg-1
+--light-table-drag-ghost-border-1
+--light-table-search-bg-1
+--light-table-search-border-1
+--light-table-search-text-1
+--light-table-search-clear-hover-1
+--light-progress-bar-bg-1
+--light-progress-bar-fill-1
+--light-progress-bar-complete-1
+--light-progress-bar-blocked-1
+--light-progress-bar-frame-bg-1
+--light-progress-bar-frame-border-1
+--light-progress-spinner-bg-1
+--light-progress-spinner-border-1
+--light-shadow-sm-1
+--light-shadow-md-1
+--light-shadow-lg-1
+--light-shadow-focus-1
+--light-badge-A-1
+--light-badge-B-1
+--light-badge-C-1
+--light-badge-D-1
+--light-badge-E-1
+--light-badge-F-1
+--light-badge-G-1
+--light-badge-A-border-1
+--light-badge-B-border-1
+--light-badge-C-border-1
+--light-badge-D-border-1
+--light-badge-E-border-1
+--light-badge-F-border-1
+--light-badge-G-border-1
+--light-state-alert-10-1
+--light-state-alert-09-1
+--light-state-alert-08-1
+--light-state-alert-07-1
+--light-state-alert-06-1
+--light-state-alert-05-1
+--light-state-alert-04-1
+--light-state-alert-03-1
+--light-state-alert-02-1
+--light-state-alert-01-1
+--light-state-priority-10-1
+--light-state-priority-09-1
+--light-state-priority-08-1
+--light-state-priority-07-1
+--light-state-priority-06-1
+--light-state-priority-05-1
+--light-state-priority-04-1
+--light-state-priority-03-1
+--light-state-priority-02-1
+--light-state-priority-01-1
+
+ Pattern repeats 4 time, such **-1, **-2, **3, **4 Also Dark such as —dark-**
+
+
+
+
 ## File Structure
 
 - `app/globals.css` — CSS variable definitions (root, light, dark)
