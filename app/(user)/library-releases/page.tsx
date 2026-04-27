@@ -127,22 +127,53 @@ export default function LibraryReleasesPage() {
         </div>
       )}
       {state.kind === "ready" && state.releases.length > 0 && (
-        <ul className="release-list">
-          {state.releases.map((r) => (
-            <ReleaseCard
-              key={r.id}
-              release={r}
-              acking={acking === r.id}
-              onAck={ack}
-            />
-          ))}
-        </ul>
+        // Story 00099 — list rendered as a Vector table. Surface +
+        // 1px --border + --radius-lg from .table-wrap; sunken thead
+        // with eyebrow column heads + 48px rows from the base
+        // .table block. Severity uses .pill variants per AC:
+        // CRITICAL/breaking=danger, action=warning, info=info,
+        // unknown/low=neutral.
+        <div className="table-wrap">
+          <table className="table">
+            <thead className="table__head">
+              <tr className="table__row">
+                <th className="table__cell">Version</th>
+                <th className="table__cell">Title</th>
+                <th className="table__cell">Severity</th>
+                <th className="table__cell">Released</th>
+                <th className="table__cell" style={{ textAlign: "right" }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.releases.map((r) => (
+                <ReleaseRow
+                  key={r.id}
+                  release={r}
+                  acking={acking === r.id}
+                  onAck={ack}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </PageShell>
   );
 }
 
-function ReleaseCard({
+function severityPillClass(s: Severity): string {
+  switch (s) {
+    case "breaking":
+      return "pill--danger";
+    case "action":
+      return "pill--warning";
+    case "info":
+    default:
+      return "pill--info";
+  }
+}
+
+function ReleaseRow({
   release,
   acking,
   onAck,
@@ -154,49 +185,36 @@ function ReleaseCard({
   const sortedActions = [...release.actions].sort(
     (a, b) => a.sort_order - b.sort_order
   );
+  const primaryAction = sortedActions[0];
+  const releasedAt = new Date(release.released_at).toLocaleDateString();
 
   return (
-    <li className={`release-card release-card--${release.severity}`}>
-      <header className="release-card__header">
-        <div className="release-card__title-row">
-          <span className={`release-card__severity release-card__severity--${release.severity}`}>
-            {release.severity}
-          </span>
-          <h3 className="release-card__title">{release.title}</h3>
-          <span className="tag tag--muted">v{release.library_version}</span>
+    <tr className="table__row">
+      <td className="table__cell t-mono">v{release.library_version}</td>
+      <td className="table__cell">
+        <div style={{ color: "var(--ink)" }}>{release.title}</div>
+        <div style={{ color: "var(--ink-muted)", fontSize: "var(--text-xs)" }}>
+          {release.summary_md}
         </div>
-        <p className="release-card__summary">{release.summary_md}</p>
-      </header>
-
-      {release.body_md && (
-        <details className="release-card__body">
-          <summary>More detail</summary>
-          <pre className="release-card__body-text">{release.body_md}</pre>
-        </details>
-      )}
-
-      <footer className="release-card__actions">
-        {sortedActions.length === 0 ? (
-          <button
-            className="btn btn--primary"
-            disabled={acking}
-            onClick={() => onAck(release.id, "dismissed")}
-          >
-            {acking ? "Acknowledging…" : "Acknowledge"}
-          </button>
-        ) : (
-          sortedActions.map((a, i) => (
-            <button
-              key={a.id}
-              className={`btn ${i === 0 ? "btn--primary" : ""}`}
-              disabled={acking}
-              onClick={() => onAck(release.id, a.action_key)}
-            >
-              {acking ? "…" : a.label}
-            </button>
-          ))
-        )}
-      </footer>
-    </li>
+      </td>
+      <td className="table__cell">
+        <span className={`pill ${severityPillClass(release.severity)}`}>
+          {release.severity.toUpperCase()}
+        </span>
+      </td>
+      <td className="table__cell table__cell--muted">{releasedAt}</td>
+      <td className="table__cell" style={{ textAlign: "right" }}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          disabled={acking}
+          onClick={() =>
+            onAck(release.id, primaryAction?.action_key ?? "dismissed")
+          }
+        >
+          {acking ? "Acknowledging…" : (primaryAction?.label ?? "Acknowledge")}
+        </button>
+      </td>
+    </tr>
   );
 }
