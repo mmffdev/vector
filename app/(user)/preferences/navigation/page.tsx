@@ -9,7 +9,6 @@ import {
   useSensor,
   useSensors,
   useDroppable,
-  useDraggable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -30,9 +29,9 @@ import {
   type PutPrefsPinnedRow,
   type PutPrefsGroupRow,
 } from "@/app/contexts/NavPrefsContext";
-import { createCustomPage, patchCustomPage, deleteCustomPage } from "@/app/lib/customPages";
-import { ApiError } from "@/app/lib/api";
+import { createCustomPage } from "@/app/lib/customPages";
 import { useDraft } from "@/app/hooks/useDraft";
+import DraftBanner from "@/app/components/DraftBanner";
 
 const MAX_PINNED = 50;
 const MAX_CUSTOM_GROUPS = 10;
@@ -96,8 +95,6 @@ function PinnedRow({
   onUnpin,
   onToggleStart,
   onPickIcon,
-  onRenameCustom,
-  onDeleteCustom,
   draggable,
 }: {
   entry: NavCatalogEntry;
@@ -106,8 +103,6 @@ function PinnedRow({
   onUnpin: () => void;
   onToggleStart: () => void;
   onPickIcon?: () => void;
-  onRenameCustom?: (label: string) => void;
-  onDeleteCustom?: () => void;
   draggable: boolean;
 }) {
   const sortable = useSortable({ id: itemDragId(entry.key), disabled: !draggable });
@@ -117,18 +112,6 @@ function PinnedRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-  const isCustom = entry.kind === "user_custom";
-  const [renaming, setRenaming] = useState(false);
-  const [renameVal, setRenameVal] = useState(entry.label);
-  useEffect(() => { setRenameVal(entry.label); }, [entry.label]);
-
-  const commitRename = () => {
-    setRenaming(false);
-    const t = renameVal.trim();
-    if (t && t !== entry.label) onRenameCustom?.(t);
-    else setRenameVal(entry.label);
-  };
-
   return (
     <li ref={setNodeRef} style={style} className="nav-prefs__row">
       {draggable && (
@@ -165,45 +148,8 @@ function PinnedRow({
           <NavIcon iconKey={iconKey} />
         </span>
       )}
-      {isCustom && renaming ? (
-        <input
-          className="nav-prefs__label-rename"
-          value={renameVal}
-          autoFocus
-          maxLength={64}
-          onChange={(e) => setRenameVal(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-            if (e.key === "Escape") { setRenameVal(entry.label); setRenaming(false); }
-          }}
-        />
-      ) : (
-        <span className="nav-prefs__label">{entry.label}</span>
-      )}
+      <span className="nav-prefs__label">{entry.label}</span>
       <div className="nav-prefs__actions">
-        {isCustom && !renaming && onRenameCustom && (
-          <button
-            type="button"
-            className="nav-prefs__btn"
-            onClick={() => setRenaming(true)}
-            aria-label={`Rename ${entry.label}`}
-            title="Rename"
-          >✎</button>
-        )}
-        {isCustom && onDeleteCustom && (
-          <button
-            type="button"
-            className="nav-prefs__btn nav-prefs__btn--danger"
-            onClick={onDeleteCustom}
-            aria-label={`Delete ${entry.label}`}
-            title="Delete page"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
-            </svg>
-          </button>
-        )}
         <button
           type="button"
           className={`nav-prefs__btn ${isStart ? "nav-prefs__btn--active" : ""}`}
@@ -294,8 +240,6 @@ function ChildrenList({
   onPickIcon,
   onSetIcon,
   onClearIcon,
-  onRenameCustom,
-  onDeleteCustom,
 }: {
   parentKey: string;
   childKeys: string[];
@@ -308,8 +252,6 @@ function ChildrenList({
   onPickIcon?: (k: string) => void;
   onSetIcon?: (k: string, icon: string) => void;
   onClearIcon?: (k: string) => void;
-  onRenameCustom?: (k: string, label: string) => void;
-  onDeleteCustom?: (k: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `parent:${parentKey}` });
   return (
@@ -331,8 +273,6 @@ function ChildrenList({
                 onUnpin={() => onUnpin(ck)}
                 onToggleStart={() => onToggleStart(ck)}
                 onPickIcon={onPickIcon ? () => onPickIcon(ck) : undefined}
-                onRenameCustom={onRenameCustom ? (label) => onRenameCustom(ck, label) : undefined}
-                onDeleteCustom={onDeleteCustom ? () => onDeleteCustom(ck) : undefined}
                 draggable
               />
               {pickerKey === ck && onSetIcon && (
@@ -372,8 +312,6 @@ function BucketBlock({
   onClearIcon,
   onRename,
   onRemoveGroup,
-  onRenameCustom,
-  onDeleteCustom,
   isCustom,
 }: {
   bucketId: BucketKey;
@@ -391,12 +329,11 @@ function BucketBlock({
   onClearIcon?: (k: string) => void;
   onRename?: (label: string) => void;
   onRemoveGroup?: () => void;
-  onRenameCustom?: (key: string, label: string) => void;
-  onDeleteCustom?: (key: string) => void;
   isCustom: boolean;
 }) {
   const headerSortable = useSortable({
     id: groupHeaderDragId(bucketId),
+    disabled: !isCustom,
   });
   const dropZone = useDroppable({ id: `bucket:${bucketId}` });
   const style: React.CSSProperties = {
@@ -423,23 +360,25 @@ function BucketBlock({
       className={`nav-prefs__group ${isCustom ? "nav-prefs__group--custom" : ""}`}
     >
       <div className="nav-prefs__group-heading-row">
-        <button
-          type="button"
-          className="nav-prefs__group-drag"
-          aria-label={`Reorder ${heading} group`}
-          title="Drag group to reorder"
-          {...headerSortable.attributes}
-          {...headerSortable.listeners}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <circle cx="9" cy="6" r="1.5" />
-            <circle cx="15" cy="6" r="1.5" />
-            <circle cx="9" cy="12" r="1.5" />
-            <circle cx="15" cy="12" r="1.5" />
-            <circle cx="9" cy="18" r="1.5" />
-            <circle cx="15" cy="18" r="1.5" />
-          </svg>
-        </button>
+        {isCustom && (
+          <button
+            type="button"
+            className="nav-prefs__group-drag"
+            aria-label={`Reorder ${heading} group`}
+            title="Drag group to reorder"
+            {...headerSortable.attributes}
+            {...headerSortable.listeners}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="9" cy="6" r="1.5" />
+              <circle cx="15" cy="6" r="1.5" />
+              <circle cx="9" cy="12" r="1.5" />
+              <circle cx="15" cy="12" r="1.5" />
+              <circle cx="9" cy="18" r="1.5" />
+              <circle cx="15" cy="18" r="1.5" />
+            </svg>
+          </button>
+        )}
         {isCustom && editing ? (
           <input
             className="nav-prefs__group-rename"
@@ -508,8 +447,6 @@ function BucketBlock({
                   onUnpin={() => onUnpin(it.key)}
                   onToggleStart={() => onToggleStart(it.key)}
                   onPickIcon={onPickIcon ? () => onPickIcon(it.key) : undefined}
-                  onRenameCustom={onRenameCustom ? (label) => onRenameCustom(it.key, label) : undefined}
-                  onDeleteCustom={onDeleteCustom ? () => onDeleteCustom(it.key) : undefined}
                   draggable
                 />
                 {pickerKey === it.key && onSetIcon && (
@@ -533,8 +470,6 @@ function BucketBlock({
                   onPickIcon={onPickIcon}
                   onSetIcon={onSetIcon}
                   onClearIcon={onClearIcon}
-                  onRenameCustom={onRenameCustom}
-                  onDeleteCustom={onDeleteCustom}
                 />
               </div>
             );
@@ -542,186 +477,6 @@ function BucketBlock({
         </ul>
       </SortableContext>
     </div>
-  );
-}
-
-function AvailablePanel({
-  poolTags,
-  poolByTag,
-  atCap,
-  onPin,
-  onRenameCustom,
-  onDeleteCustom,
-  onSetPoolIcon,
-}: {
-  poolTags: import("@/app/contexts/NavPrefsContext").NavTagGroup[];
-  poolByTag: Map<string, import("@/app/contexts/NavPrefsContext").NavCatalogEntry[]>;
-  atCap: boolean;
-  onPin: (key: string) => void;
-  onRenameCustom: (key: string, label: string) => void;
-  onDeleteCustom: (key: string) => void;
-  onSetPoolIcon: (key: string, icon: string) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: "pool:available" });
-  const [pickerKey, setPickerKey] = useState<string | null>(null);
-  const togglePicker = (k: string) => setPickerKey((cur) => (cur === k ? null : k));
-  return (
-    <section
-      ref={setNodeRef}
-      className={`nav-prefs__pane nav-prefs__pane--available${isOver ? " nav-prefs__pane--drop-target" : ""}`}
-      aria-label="Available"
-    >
-      <header className="nav-prefs__pane-header">
-        <h2 className="nav-prefs__pane-title">Available</h2>
-      </header>
-      {poolTags.length === 0 ? (
-        <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
-      ) : (
-        poolTags.map((tag) => (
-          <div key={tag.enum} className="nav-prefs__group">
-            <div className="nav-prefs__group-heading-row">
-              <h3 className="nav-prefs__group-heading">{tag.label}</h3>
-            </div>
-            <ul className="nav-prefs__list">
-              {(poolByTag.get(tag.enum) ?? []).map((entry) => (
-                <Fragment key={entry.key}>
-                  <PoolItem
-                    entry={entry}
-                    atCap={atCap}
-                    onPin={onPin}
-                    onRenameCustom={entry.kind === "user_custom" ? (label) => onRenameCustom(entry.key, label) : undefined}
-                    onDeleteCustom={entry.kind === "user_custom" ? () => onDeleteCustom(entry.key) : undefined}
-                    onPickIcon={entry.kind === "user_custom" ? () => togglePicker(entry.key) : undefined}
-                  />
-                  {pickerKey === entry.key && (
-                    <li className="nav-prefs__picker-row">
-                      <IconPicker
-                        currentIcon={entry.icon}
-                        hasOverride={false}
-                        onChoose={(icon) => { onSetPoolIcon(entry.key, icon); setPickerKey(null); }}
-                        onClose={() => setPickerKey(null)}
-                      />
-                    </li>
-                  )}
-                </Fragment>
-              ))}
-            </ul>
-          </div>
-        ))
-      )}
-    </section>
-  );
-}
-
-function PoolItem({
-  entry,
-  atCap,
-  onPin,
-  onRenameCustom,
-  onDeleteCustom,
-  onPickIcon,
-}: {
-  entry: NavCatalogEntry;
-  atCap: boolean;
-  onPin: (key: string) => void;
-  onRenameCustom?: (label: string) => void;
-  onDeleteCustom?: () => void;
-  onPickIcon?: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `item:${entry.key}`,
-    disabled: atCap,
-  });
-  const [renaming, setRenaming] = useState(false);
-  const [renameVal, setRenameVal] = useState(entry.label);
-  useEffect(() => { setRenameVal(entry.label); }, [entry.label]);
-
-  const commitRename = () => {
-    setRenaming(false);
-    const t = renameVal.trim();
-    if (t && t !== entry.label) onRenameCustom?.(t);
-    else setRenameVal(entry.label);
-  };
-
-  return (
-    <li
-      ref={setNodeRef}
-      className={`nav-prefs__row nav-prefs__row--pool${isDragging ? " nav-prefs__row--dragging" : ""}`}
-      {...attributes}
-      {...listeners}
-    >
-      <span className="nav-prefs__drag-dots" aria-hidden="true">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
-          <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-          <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
-        </svg>
-      </span>
-      {renaming ? (
-        <input
-          className="nav-prefs__label-rename"
-          value={renameVal}
-          autoFocus
-          maxLength={64}
-          onChange={(e) => setRenameVal(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-            if (e.key === "Escape") { setRenameVal(entry.label); setRenaming(false); }
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        />
-      ) : (
-        <span className="nav-prefs__label">{entry.label}</span>
-      )}
-      <div className="nav-prefs__actions">
-        {onPickIcon && (
-          <button
-            type="button"
-            className="nav-prefs__icon nav-prefs__icon--pool-btn"
-            aria-label={`Change icon for ${entry.label}`}
-            title="Change icon"
-            onClick={(e) => { e.stopPropagation(); onPickIcon(); }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <NavIcon iconKey={entry.icon} />
-          </button>
-        )}
-        {onRenameCustom && !renaming && (
-          <button
-            type="button"
-            className="nav-prefs__btn"
-            aria-label={`Rename ${entry.label}`}
-            title="Rename"
-            onClick={(e) => { e.stopPropagation(); setRenaming(true); }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >✎</button>
-        )}
-        {onDeleteCustom && (
-          <button
-            type="button"
-            className="nav-prefs__btn nav-prefs__btn--danger"
-            aria-label={`Delete ${entry.label}`}
-            title="Delete page"
-            onClick={(e) => { e.stopPropagation(); onDeleteCustom(); }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
-            </svg>
-          </button>
-        )}
-        <button
-          type="button"
-          className="nav-prefs__btn"
-          onClick={(e) => { e.stopPropagation(); onPin(entry.key); }}
-          disabled={atCap}
-          aria-label={`Pin ${entry.label}`}
-          title={atCap ? `Pinned limit (${MAX_PINNED}) reached` : "Pin"}
-          onPointerDown={(e) => e.stopPropagation()}
-        >+</button>
-      </div>
-    </li>
   );
 }
 
@@ -740,7 +495,8 @@ export default function NavPreferencesPage() {
   const [createPageErr, setCreatePageErr] = useState<string | null>(null);
 
   // Draft persistence for the "New custom page" form. The draft only
-  // Silently restore whatever the user was typing last — no banner.
+  // tracks the label (the icon picker isn't part of this form). Save is
+  // 500ms-debounced; clear() runs only on a 2xx response from the server.
   const newPageDraft = useDraft<{ label: string }>(
     { formKey: "nav.custom-page.create", initial: { label: "" } },
     (vals) => setNewPageLabel(vals.label ?? ""),
@@ -864,16 +620,6 @@ export default function NavPreferencesPage() {
     next.bucketOrder = draft.bucketOrder.includes(bucket)
       ? draft.bucketOrder
       : [...draft.bucketOrder, bucket];
-    setDraft(next);
-  };
-
-  const pinFromPool = (key: string, toBucket: BucketKey, toIndex: number) => {
-    if (atCap) return;
-    const next: DraftState = { ...draft, itemsByBucket: { ...draft.itemsByBucket } };
-    const toList = (next.itemsByBucket[toBucket] ?? []).slice();
-    toList.splice(Math.min(Math.max(toIndex, 0), toList.length), 0, { key, parent: null });
-    next.itemsByBucket[toBucket] = toList;
-    if (!next.bucketOrder.includes(toBucket)) next.bucketOrder = [...next.bucketOrder, toBucket];
     setDraft(next);
   };
 
@@ -1142,13 +888,6 @@ export default function NavPreferencesPage() {
     if (!aEntry) return;
     const aOwner = findOwner(aKey);
 
-    // 2a-0) Drop onto the available panel → unpin.
-    if (overId === "pool:available") {
-      const owner = findOwner(aKey);
-      if (owner.bucket || owner.parent) unpin(aKey);
-      return;
-    }
-
     // 2a) Drop onto a parent's children droppable → nest under that parent.
     if (overId.startsWith("parent:")) {
       const parentKey = overId.slice("parent:".length);
@@ -1161,11 +900,12 @@ export default function NavPreferencesPage() {
       const targetBucket = overId.slice("bucket:".length);
       // Catalogue items are locked to their tag bucket.
       if (aEntry.kind !== "user_custom" && targetBucket !== tagBucket(aEntry.tagEnum || "personal")) return;
+      // Custom items are not allowed in tag buckets either (per validator).
+      // Actually: only user_custom may live in custom buckets; user_custom may live in their tag bucket too.
       if (aOwner.bucket === targetBucket && (draft.itemsByBucket[targetBucket] ?? []).length > 0) return;
       const toIndex = (draft.itemsByBucket[targetBucket] ?? []).length;
       if (aOwner.bucket) moveTopLevel(aKey, aOwner.bucket, targetBucket, toIndex);
       else if (aOwner.parent) promoteChildToTopLevel(aKey, aOwner.parent, targetBucket, toIndex);
-      else pinFromPool(aKey, targetBucket, toIndex);
       return;
     }
 
@@ -1203,13 +943,6 @@ export default function NavPreferencesPage() {
         const toList = draft.itemsByBucket[oOwner.bucket] ?? [];
         const toIdx = toList.findIndex((it) => it.key === oKey);
         promoteChildToTopLevel(aKey, aOwner.parent, oOwner.bucket, toIdx);
-        return;
-      }
-      // Drop pool item onto a top-level item → pin next to it.
-      if (!aOwner.bucket && !aOwner.parent && oOwner.bucket) {
-        const toList = draft.itemsByBucket[oOwner.bucket] ?? [];
-        const toIdx = toList.findIndex((it) => it.key === oKey);
-        pinFromPool(aKey, oOwner.bucket, toIdx);
         return;
       }
       // Drop onto an existing child row → nest under that row's parent.
@@ -1289,27 +1022,6 @@ export default function NavPreferencesPage() {
     }
   };
 
-  const handleRenameCustomPage = (key: string, label: string) => {
-    const id = key.slice("custom:".length);
-    patchCustomPage(id, { label })
-      .then(refetch)
-      .catch((e) => setError(e instanceof Error ? e.message : "Rename failed"));
-  };
-
-  const handleDeleteCustomPage = (key: string) => {
-    const id = key.slice("custom:".length);
-    deleteCustomPage(id)
-      .then(refetch)
-      .catch((e) => setError(e instanceof Error ? e.message : "Delete failed"));
-  };
-
-  const handleSetPoolIcon = (key: string, icon: string) => {
-    const id = key.slice("custom:".length);
-    patchCustomPage(id, { icon })
-      .then(refetch)
-      .catch((e) => setError(e instanceof Error ? e.message : "Icon update failed"));
-  };
-
   // Build pool grouped by tag for display.
   const poolByTag = new Map<string, NavCatalogEntry[]>();
   for (const entry of pool) {
@@ -1333,22 +1045,16 @@ export default function NavPreferencesPage() {
     return { heading: g?.label ?? "(unnamed)", isCustom: true, groupId: id };
   };
 
-  // Sortable ids for the group-header layer — all groups are reorderable.
-  const customBucketIds = draft.bucketOrder.map(groupHeaderDragId);
+  // Sortable ids for the group-header layer.
+  const customBucketIds = draft.bucketOrder
+    .filter((b) => b.startsWith("group:"))
+    .map(groupHeaderDragId);
 
   return (
     <PageShell
       title="Navigation preferences"
       subtitle={`Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`}
     >
-      <div className="nav-prefs__pane nav-prefs__quick-bar">
-        <button type="button" className="btn btn--primary">Planning</button>
-        <button type="button" className="btn btn--primary">Work</button>
-        <button type="button" className="btn btn--primary">Button 3</button>
-        <button type="button" className="btn btn--primary">Button 4</button>
-        <button type="button" className="btn btn--primary">Button 5</button>
-      </div>
-
       <div className="nav-prefs">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <section className="nav-prefs__pane" aria-label="Pinned">
@@ -1392,8 +1098,6 @@ export default function NavPreferencesPage() {
                       onClearIcon={clearIconOverride}
                       onRename={isCustom && groupId ? (label) => renameGroup(groupId, label) : undefined}
                       onRemoveGroup={isCustom && groupId ? () => removeGroup(groupId) : undefined}
-                      onRenameCustom={handleRenameCustomPage}
-                      onDeleteCustom={handleDeleteCustomPage}
                       isCustom={isCustom}
                     />
                   );
@@ -1409,6 +1113,13 @@ export default function NavPreferencesPage() {
             <p className="nav-prefs__new-page-card-hint">
               Holds timeline, board, or list views. Appears under <strong>Personal</strong>.
             </p>
+            {newPageDraft.restored && (
+              <DraftBanner
+                savedAt={newPageDraft.restored.savedAt}
+                onRestore={newPageDraft.restored.apply}
+                onDiscard={newPageDraft.restored.dismiss}
+              />
+            )}
             <form
               className="nav-prefs__new-page"
               onSubmit={async (e) => {
@@ -1419,21 +1130,14 @@ export default function NavPreferencesPage() {
                 setCreatePageErr(null);
                 try {
                   await createCustomPage(label);
+                  // Server confirmed write — only now is it safe to drop
+                  // the draft. On any error the draft stays so the user
+                  // can retry without retyping.
                   await newPageDraft.clear();
                   setNewPageLabel("");
                   await refetch();
-                } catch (err) {
-                  if (err instanceof ApiError) {
-                    if (err.status === 400) {
-                      setCreatePageErr("Could not create page — duplicate name or limit reached.");
-                    } else if (err.status === 403) {
-                      setCreatePageErr("Session expired — please refresh the page and try again.");
-                    } else {
-                      setCreatePageErr(`Could not create page (${err.status}: ${typeof err.body === "string" ? err.body : "server error"}).`);
-                    }
-                  } else {
-                    setCreatePageErr("Could not create page — unexpected error.");
-                  }
+                } catch {
+                  setCreatePageErr("Could not create page (duplicate label or cap reached).");
                 } finally {
                   setCreatingPage(false);
                 }
@@ -1461,15 +1165,39 @@ export default function NavPreferencesPage() {
             {createPageErr && <p className="nav-prefs__error" role="alert">{createPageErr}</p>}
           </section>
 
-          <AvailablePanel
-            poolTags={poolTags}
-            poolByTag={poolByTag}
-            atCap={atCap}
-            onPin={pin}
-            onRenameCustom={handleRenameCustomPage}
-            onDeleteCustom={handleDeleteCustomPage}
-            onSetPoolIcon={handleSetPoolIcon}
-          />
+          <section className="nav-prefs__pane" aria-label="Available">
+            <header className="nav-prefs__pane-header">
+              <h2 className="nav-prefs__pane-title">Available</h2>
+            </header>
+            {poolTags.length === 0 ? (
+              <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
+            ) : (
+              poolTags.map((tag) => (
+                <div key={tag.enum} className="nav-prefs__group">
+                  <div className="nav-prefs__group-heading-row nav-prefs__group-heading-row--static">
+                    <h3 className="nav-prefs__group-heading">{tag.label}</h3>
+                  </div>
+                  <ul className="nav-prefs__list">
+                    {(poolByTag.get(tag.enum) ?? []).map((entry) => (
+                      <li key={entry.key} className="nav-prefs__row">
+                        <span className="nav-prefs__label">{entry.label}</span>
+                        <div className="nav-prefs__actions">
+                          <button
+                            type="button"
+                            className="nav-prefs__btn"
+                            onClick={() => pin(entry.key)}
+                            disabled={atCap}
+                            aria-label={`Pin ${entry.label}`}
+                            title={atCap ? `Pinned limit (${MAX_PINNED}) reached` : "Pin"}
+                          >+</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            )}
+          </section>
         </DndContext>
 
       </div>
