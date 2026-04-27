@@ -431,6 +431,109 @@ button {
   color: var(--surface-1);
 }
 
+/* Cell wraps the pill + its hover actions so the action group fades in
+   only while the cell is hovered (keeps the resting state minimal). */
+.profile-bar__cell {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.profile-bar__cell-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.profile-bar__cell:hover .profile-bar__cell-actions,
+.profile-bar__cell:focus-within .profile-bar__cell-actions {
+  opacity: 1;
+}
+
+.profile-bar__icon-btn {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+}
+
+.profile-bar__icon-btn:hover {
+  background: var(--nav-item-hover-bg);
+  color: var(--ink-1);
+}
+
+.profile-bar__icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-bar__icon-btn--danger:hover {
+  color: var(--danger, #c0392b);
+}
+
+.profile-bar__add {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px dashed var(--line-2);
+  border-radius: 999px;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+.profile-bar__add:hover:not(:disabled) {
+  background: var(--nav-item-hover-bg);
+  color: var(--ink-1);
+  border-style: solid;
+}
+
+.profile-bar__add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-bar__edit {
+  display: inline-flex;
+}
+
+.profile-bar__input {
+  height: 22px;
+  padding: 0 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--ink-1);
+  border-radius: 999px;
+  color: var(--ink-1);
+  font-size: 11px;
+  line-height: 1;
+  max-width: 140px;
+  outline: none;
+}
+
+.profile-bar__error {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--danger, #c0392b);
+  margin-top: 2px;
+}
+
 .sidebar-item__label {
   white-space: nowrap;
   overflow: hidden;
