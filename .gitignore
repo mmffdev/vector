@@ -11,6 +11,7 @@ prefs-nav-*.png
 backend/.env.local
 backend/.env.dev
 backend/.env.staging
+backend/.env.production
 dev/remote_setup.html
 .claude/hooks/
 .claude/memory/
@@ -21,4 +22,5 @@ dev/remote_setup.html
 MMFFDev - Vector Assets/backups/
 MMFFDev - Vector Assets/security-flags.jsonl
 MMFFDev - Vector Assets/Vector Design System.zip
+.build/
 

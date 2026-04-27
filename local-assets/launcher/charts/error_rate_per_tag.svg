@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-labelledby="errtag-title errtag-desc" font-family="Inter, system-ui, sans-serif">
+  <title id="errtag-title">Error rate per phase tag — last 7 days</title>
+  <desc id="errtag-desc">Horizontal bar chart of error counts grouped by phase tag over the last 7 days. tunnel.connect 12, tunnel.reconnect 4, backend.start 3, backend.health 2, frontend.start 1, frontend.health 0, env.switch 5, port.collide 6. Threshold of 10 marked by dashed orange line.</desc>
+  <rect x="0" y="0" width="720" height="320" fill="#FFFFFF"/>
+  <text x="24" y="28" font-size="14" font-weight="600" fill="#1A1A1A">Error rate per phase tag — last 7 days</text>
+  <text x="24" y="46" font-size="11" fill="#5C5C5C">Counts of structured log entries with severity=error, grouped by tag.</text>
+  <!-- plot area: x 180..680 (500 wide); 0..20 errors -->
+  <g stroke="#E5E1DA" stroke-width="1">
+    <line x1="180" y1="70" x2="180" y2="290"/>
+    <line x1="305" y1="70" x2="305" y2="290"/>
+    <line x1="430" y1="70" x2="430" y2="290"/>
+    <line x1="555" y1="70" x2="555" y2="290"/>
+    <line x1="680" y1="70" x2="680" y2="290"/>
+  </g>
+  <!-- threshold 10 errors → 250px → x = 180+250 = 430 already a gridline; emphasise -->
+  <line x1="430" y1="70" x2="430" y2="290" stroke="#B7791F" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="434" y="82" font-size="10" fill="#B7791F">≥10 = investigate</text>
+  <g font-size="10" fill="#8A8A8A" text-anchor="middle">
+    <text x="180" y="306">0</text>
+    <text x="305" y="306">5</text>
+    <text x="430" y="306">10</text>
+    <text x="555" y="306">15</text>
+    <text x="680" y="306">20</text>
+  </g>
+  <!-- 8 bars, height 16, gap 10 -->
+  <g font-size="11" fill="#1A1A1A" text-anchor="end">
+    <text x="174" y="102">tunnel.connect</text>
+    <text x="174" y="128">tunnel.reconnect</text>
+    <text x="174" y="154">backend.start</text>
+    <text x="174" y="180">backend.health</text>
+    <text x="174" y="206">frontend.start</text>
+    <text x="174" y="232">frontend.health</text>
+    <text x="174" y="258">env.switch</text>
+    <text x="174" y="284">port.collide</text>
+  </g>
+  <!-- 25px per error -->
+  <rect x="180" y="92" width="300" height="14" fill="#B23B3B"/>
+  <rect x="180" y="118" width="100" height="14" fill="#2F7D54"/>
+  <rect x="180" y="144" width="75"  height="14" fill="#2F7D54"/>
+  <rect x="180" y="170" width="50"  height="14" fill="#2F7D54"/>
+  <rect x="180" y="196" width="25"  height="14" fill="#2F7D54"/>
+  <rect x="180" y="222" width="2"   height="14" fill="#2F7D54"/>
+  <rect x="180" y="248" width="125" height="14" fill="#B7791F"/>
+  <rect x="180" y="274" width="150" height="14" fill="#B7791F"/>
+  <g font-size="10" fill="#1A1A1A">
+    <text x="486" y="103">12</text>
+    <text x="286" y="129">4</text>
+    <text x="261" y="155">3</text>
+    <text x="236" y="181">2</text>
+    <text x="211" y="207">1</text>
+    <text x="190" y="233">0</text>
+    <text x="311" y="259">5</text>
+    <text x="336" y="285">6</text>
+  </g>
+  <g font-size="11">
+    <rect x="500" y="60" width="12" height="8" fill="#2F7D54"/>
+    <text x="518" y="68" fill="#5C5C5C">healthy</text>
+    <rect x="568" y="60" width="12" height="8" fill="#B7791F"/>
+    <text x="586" y="68" fill="#5C5C5C">watch</text>
+    <rect x="624" y="60" width="12" height="8" fill="#B23B3B"/>
+    <text x="642" y="68" fill="#5C5C5C">over thresh.</text>
+  </g>
+</svg>

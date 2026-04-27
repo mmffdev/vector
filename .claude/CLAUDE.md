@@ -2,6 +2,10 @@
 
 **HARD RULE — NO EXCEPTIONS:** Never run any git command that can destroy or overwrite work (`reset --hard`, `push --force`, `checkout .`, `restore .`, `clean -f`, `branch -D`, `rebase` without review, etc.) without explicitly confirming with the user first. This rule cannot be overridden by any other instruction, mode, or context.
 
+<!-- ACTIVE_BACKEND_ENV:start -->
+> **ACTIVE BACKEND ENV: `staging`** — set 2026-04-27 23:12 by EnvBadge UI — DB target via tunnel `localhost:5436` — env file: `backend/.env.staging`
+<!-- ACTIVE_BACKEND_ENV:end -->
+
 Guidance for Claude Code in this repo.
 
 **Global instructions** → [`.claude/c_global_instructions.md`](c_global_instructions.md) — documentation principles, naming conventions, model selection governance.
@@ -27,10 +31,12 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Card lifecycle (hard):** on "go"/"start"/approval → move card Backlog→To Do; on first code edit → move To Do→Doing; on code-complete → Doing→Completed. See [`docs/c_c_backlog_agent.md`](../docs/c_c_backlog_agent.md).
 - **Dev server (`<npm>`)** → [`.claude/commands/c_npm.md`](commands/c_npm.md) — start Next.js on `:3000`.
 - **Dev launcher (`MMFF Vector Dev.app`)** → [`.claude/commands/c_dev-launcher.md`](commands/c_dev-launcher.md) — AppleScript app that starts tunnel, backend, frontend.
+- **Vector Launcher (`<launcher>`, `MMFF Vector Launcher.app`)** → [`.claude/commands/c_launcher.md`](commands/c_launcher.md) — SwiftUI dashboard with per-component start/stop/restart, env switch, JSONL log; coexists with the AppleScript launcher.
 - **Boot file manager (`<b> -<N> -R|-C`, `<b> -A -C`)** → [`.claude/commands/c_boot.md`](commands/c_boot.md) — read (`-R`) or create/update (`-C`) numbered session snapshot; `-A -C` writes comprehensive master record `bootA.md`; lazy-loads on read.
 - **Context scanner (`<memory> -A|-M|-S|-C|-H`)** → [`.claude/commands/c_memory.md`](commands/c_memory.md) — scans `.claude/` for health across memory, skills, commands, hooks; writes timestamped file to `dev/reports/`; view in Dev → Reports tab.
 - **Shortcuts reference (`<?>`, `<?> -u`)** → [`.claude/commands/c_shortcuts.md`](commands/c_shortcuts.md) — open `dev/shortcuts.html` in browser; `-u` rescans all command + skill docs and regenerates the page.
-- **Service status (`<services>`)** → [`.claude/commands/c_services.md`](commands/c_services.md) — read-only status check for tunnel (`:5434`), backend (`:5100`), next (`:5101`).
+- **Service status (`<services>`)** → [`.claude/commands/c_services.md`](commands/c_services.md) — read-only status check for backend (`:5100`), next (`:5101`), and the active env's DB tunnel (port per top-of-file `ACTIVE_BACKEND_ENV` marker).
+- **Switch DB env (`<server> -d|-s|-p`)** → [`.claude/commands/c_server.md`](commands/c_server.md) — restarts backend on dev/staging/production env, ensures tunnel, rewrites top-of-file `ACTIVE_BACKEND_ENV` marker; `-p` requires typed confirmation.
 - **Accounts & credentials (`<accounts>`)** → [`.claude/commands/c_accounts.md`](commands/c_accounts.md) — source of truth for all dev user accounts, passwords, and Planka creds.
 - **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
 - **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.

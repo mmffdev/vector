@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260" role="img" aria-labelledby="envsw-title envsw-desc" font-family="Inter, system-ui, sans-serif">
+  <title id="envsw-title">Env-switch frequency — last 30 days</title>
+  <desc id="envsw-desc">Vertical bar chart of environment switches per day, segmented by target env. Targets: dev, staging, production. dev dominates with frequent switches; production shows two switches in the period, both to confirm a deploy.</desc>
+  <rect x="0" y="0" width="720" height="260" fill="#FFFFFF"/>
+  <text x="24" y="28" font-size="14" font-weight="600" fill="#1A1A1A">Env-switch frequency — last 30 days</text>
+  <text x="24" y="46" font-size="11" fill="#5C5C5C">Counts &lt;server&gt; -d / -s / -p invocations. Production switches are rare and intentional.</text>
+  <!-- plot 60..680 wide (620), y 70..210 (140). 30 days, step ~20.7 -->
+  <g stroke="#E5E1DA" stroke-width="1">
+    <line x1="60" y1="210" x2="680" y2="210"/>
+    <line x1="60" y1="175" x2="680" y2="175"/>
+    <line x1="60" y1="140" x2="680" y2="140"/>
+    <line x1="60" y1="105" x2="680" y2="105"/>
+    <line x1="60" y1="70" x2="680" y2="70"/>
+  </g>
+  <g font-size="10" fill="#8A8A8A" text-anchor="end">
+    <text x="54" y="214">0</text>
+    <text x="54" y="179">3</text>
+    <text x="54" y="144">6</text>
+    <text x="54" y="109">9</text>
+    <text x="54" y="74">12</text>
+  </g>
+  <g font-size="10" fill="#8A8A8A" text-anchor="middle">
+    <text x="60" y="228">D-29</text>
+    <text x="246" y="228">D-20</text>
+    <text x="432" y="228">D-10</text>
+    <text x="680" y="228">today</text>
+  </g>
+  <!-- bars: each day stacked dev (ink) + staging (warning) + production (danger) -->
+  <!-- per-bar width 14, x = 60 + i*20.7 -->
+  <!-- counts arrays length 30 -->
+  <!-- dev:        4,2,3,5,1,0,2,3,6,4,2,1,3,5,4,7,3,2,4,6,5,3,4,2,1,5,4,3,2,6 -->
+  <!-- staging:    0,0,1,0,0,0,1,0,0,1,0,0,2,0,0,0,1,0,1,0,0,2,0,0,1,0,0,1,0,0 -->
+  <!-- production: 0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0 -->
+  <!-- y per unit = 11.667 px -->
+  <g>
+    <!-- helper note: y_top = 210 - total*11.667. dev block bottom→up first, then staging, then production -->
+    <!-- For brevity we draw each segment with computed values inline -->
+    <!-- i=0 dev=4 stg=0 prd=0 -->
+    <rect x="60"   y="163.33" width="14" height="46.67" fill="#1A1A1A"/>
+    <!-- i=1 dev=2 -->
+    <rect x="80.7" y="186.67" width="14" height="23.33" fill="#1A1A1A"/>
+    <!-- i=2 dev=3 stg=1 -->
+    <rect x="101.4" y="175"   width="14" height="35"    fill="#1A1A1A"/>
+    <rect x="101.4" y="163.33" width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=3 dev=5 -->
+    <rect x="122.1" y="151.67" width="14" height="58.33" fill="#1A1A1A"/>
+    <!-- i=4 dev=1 -->
+    <rect x="142.8" y="198.33" width="14" height="11.67" fill="#1A1A1A"/>
+    <!-- i=5 dev=0 prd=1 -->
+    <rect x="163.5" y="198.33" width="14" height="11.67" fill="#B23B3B"/>
+    <!-- i=6 dev=2 stg=1 -->
+    <rect x="184.2" y="186.67" width="14" height="23.33" fill="#1A1A1A"/>
+    <rect x="184.2" y="175"   width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=7 dev=3 -->
+    <rect x="204.9" y="175"   width="14" height="35"    fill="#1A1A1A"/>
+    <!-- i=8 dev=6 -->
+    <rect x="225.6" y="140"   width="14" height="70"    fill="#1A1A1A"/>
+    <!-- i=9 dev=4 stg=1 -->
+    <rect x="246.3" y="163.33" width="14" height="46.67" fill="#1A1A1A"/>
+    <rect x="246.3" y="151.67" width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=10 dev=2 -->
+    <rect x="267"   y="186.67" width="14" height="23.33" fill="#1A1A1A"/>
+    <!-- i=11 dev=1 -->
+    <rect x="287.7" y="198.33" width="14" height="11.67" fill="#1A1A1A"/>
+    <!-- i=12 dev=3 stg=2 -->
+    <rect x="308.4" y="175"   width="14" height="35"    fill="#1A1A1A"/>
+    <rect x="308.4" y="151.67" width="14" height="23.33" fill="#B7791F"/>
+    <!-- i=13 dev=5 -->
+    <rect x="329.1" y="151.67" width="14" height="58.33" fill="#1A1A1A"/>
+    <!-- i=14 dev=4 -->
+    <rect x="349.8" y="163.33" width="14" height="46.67" fill="#1A1A1A"/>
+    <!-- i=15 dev=7 -->
+    <rect x="370.5" y="128.33" width="14" height="81.67" fill="#1A1A1A"/>
+    <!-- i=16 dev=3 stg=1 -->
+    <rect x="391.2" y="175"   width="14" height="35"    fill="#1A1A1A"/>
+    <rect x="391.2" y="163.33" width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=17 dev=2 -->
+    <rect x="411.9" y="186.67" width="14" height="23.33" fill="#1A1A1A"/>
+    <!-- i=18 dev=4 stg=1 -->
+    <rect x="432.6" y="163.33" width="14" height="46.67" fill="#1A1A1A"/>
+    <rect x="432.6" y="151.67" width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=19 dev=6 -->
+    <rect x="453.3" y="140"   width="14" height="70"    fill="#1A1A1A"/>
+    <!-- i=20 dev=5 prd=1 -->
+    <rect x="474"   y="151.67" width="14" height="58.33" fill="#1A1A1A"/>
+    <rect x="474"   y="140"   width="14" height="11.67" fill="#B23B3B"/>
+    <!-- i=21 dev=3 stg=2 -->
+    <rect x="494.7" y="175"   width="14" height="35"    fill="#1A1A1A"/>
+    <rect x="494.7" y="151.67" width="14" height="23.33" fill="#B7791F"/>
+    <!-- i=22 dev=4 -->
+    <rect x="515.4" y="163.33" width="14" height="46.67" fill="#1A1A1A"/>
+    <!-- i=23 dev=2 -->
+    <rect x="536.1" y="186.67" width="14" height="23.33" fill="#1A1A1A"/>
+    <!-- i=24 dev=1 stg=1 -->
+    <rect x="556.8" y="198.33" width="14" height="11.67" fill="#1A1A1A"/>
+    <rect x="556.8" y="186.67" width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=25 dev=5 -->
+    <rect x="577.5" y="151.67" width="14" height="58.33" fill="#1A1A1A"/>
+    <!-- i=26 dev=4 -->
+    <rect x="598.2" y="163.33" width="14" height="46.67" fill="#1A1A1A"/>
+    <!-- i=27 dev=3 stg=1 -->
+    <rect x="618.9" y="175"   width="14" height="35"    fill="#1A1A1A"/>
+    <rect x="618.9" y="163.33" width="14" height="11.67" fill="#B7791F"/>
+    <!-- i=28 dev=2 -->
+    <rect x="639.6" y="186.67" width="14" height="23.33" fill="#1A1A1A"/>
+    <!-- i=29 dev=6 -->
+    <rect x="660.3" y="140"   width="14" height="70"    fill="#1A1A1A"/>
+  </g>
+  <g font-size="11">
+    <rect x="500" y="60" width="12" height="8" fill="#1A1A1A"/>
+    <text x="518" y="68" fill="#5C5C5C">dev</text>
+    <rect x="552" y="60" width="12" height="8" fill="#B7791F"/>
+    <text x="570" y="68" fill="#5C5C5C">staging</text>
+    <rect x="624" y="60" width="12" height="8" fill="#B23B3B"/>
+    <text x="642" y="68" fill="#5C5C5C">production</text>
+  </g>
+</svg>
