@@ -437,6 +437,21 @@ button {
   display: inline-flex;
   align-items: center;
   position: relative;
+  cursor: grab;
+}
+
+.profile-bar__cell:active {
+  cursor: grabbing;
+}
+
+.profile-bar__cell.dragging {
+  opacity: 0.4;
+}
+
+.profile-bar__cell.drag-over {
+  /* Drop-before insertion line on the leading edge of the hover target. */
+  box-shadow: -2px 0 0 0 var(--ink-1);
+  border-radius: 2px;
 }
 
 .profile-bar__cell-actions {
