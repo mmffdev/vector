@@ -57,14 +57,47 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 }
 
 type prefsResp struct {
-	Prefs  []PrefRow     `json:"prefs"`
-	Groups []CustomGroup `json:"groups"`
+	ProfileID uuid.UUID     `json:"profile_id"`
+	Prefs     []PrefRow     `json:"prefs"`
+	Groups    []CustomGroup `json:"groups"`
 }
 
-// GET /api/nav/prefs — this user's prefs + custom groups for their current tenant.
+// parseProfileQuery reads ?profile_id=<uuid>. Returns (nil, nil) when
+// the param is absent (caller's signal to resolve implicitly).
+// (badParam, nil) is reported as a 400 by the caller.
+func parseProfileQuery(r *http.Request) (*uuid.UUID, error) {
+	raw := r.URL.Query().Get("profile_id")
+	if raw == "" {
+		return nil, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+// GET /api/nav/prefs[?profile_id=<uuid>] — prefs + groups for the
+// resolved profile. profile_id query param is optional; when omitted,
+// the active profile is used (falls back to Default, lazy-seeds if
+// missing). Response always includes the concrete profile_id used.
 func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.SubscriptionID, u.Role)
+	explicit, err := parseProfileQuery(r)
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	pid, err := h.Svc.ResolveProfile(r.Context(), u.ID, u.SubscriptionID, explicit)
+	if err != nil {
+		if errors.Is(err, ErrProfileNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	rows, err := h.Svc.GetPrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, pid)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -74,16 +107,22 @@ func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, prefsResp{Prefs: rows, Groups: groups})
+	writeJSON(w, http.StatusOK, prefsResp{ProfileID: pid, Prefs: rows, Groups: groups})
 }
 
 type putPrefsReq struct {
+	ProfileID    *uuid.UUID         `json:"profile_id,omitempty"`
 	Pinned       []PinnedInput      `json:"pinned"`
 	StartPageKey *string            `json:"start_page_key"`
 	Groups       []CustomGroupInput `json:"groups"`
 }
 
-// PUT /api/nav/prefs — replace this user's prefs and custom groups atomically.
+// PUT /api/nav/prefs — replace prefs (and, when targeting Default,
+// the shared group pool) atomically. profile_id in the body is
+// optional; absent means "use the resolved profile" (active → Default
+// → lazy-seed). When a non-default profile is targeted, the groups
+// payload MUST be empty — group placements on non-default profiles
+// flow through B6's dedicated surface, not this endpoint.
 func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req putPrefsReq
@@ -91,12 +130,21 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
+	pid, err := h.Svc.ResolveProfile(r.Context(), u.ID, u.SubscriptionID, req.ProfileID)
+	if err != nil {
+		if errors.Is(err, ErrProfileNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries); err != nil {
+	if err := h.Svc.ReplacePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries, pid); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
@@ -125,9 +173,34 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DELETE /api/nav/prefs — wipe this user's prefs (reset to defaults).
+// DELETE /api/nav/prefs[?profile_id=<uuid>] — reset prefs.
+//
+// No profile_id (legacy "Reset to defaults"): resolves to the user's
+// home profile, wipes its prefs, and — only if it's Default — wipes
+// the shared group pool too. This preserves the legacy modal's reset
+// semantics.
+//
+// With profile_id: scoped reset of just that profile's prefs. Never
+// touches the shared group pool. Use this from per-profile UI.
 func (h *Handler) DeletePrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
+	explicit, err := parseProfileQuery(r)
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if explicit != nil {
+		if err := h.Svc.DeletePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, *explicit); err != nil {
+			if errors.Is(err, ErrProfileNotFound) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if err := h.Svc.DeletePrefs(r.Context(), u.ID, u.SubscriptionID); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

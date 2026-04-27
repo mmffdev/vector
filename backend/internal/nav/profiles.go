@@ -329,6 +329,82 @@ func (s *Service) SetActiveProfile(ctx context.Context, userID, subscriptionID, 
 	return err
 }
 
+// EnsureDefaultProfile lazy-seeds a Default profile for this
+// (user, subscription) if one doesn't already exist, then returns its
+// id. Idempotent: races between two concurrent first-reads are
+// resolved by the partial-unique index uq_user_nav_profiles_default_per_user
+// — both INSERTs land at the same row, the second one no-ops.
+//
+// Used by:
+//   - prefs reads/writes when no explicit profile_id is given (story B5)
+//   - tests that create fresh users without running migration 036
+func (s *Service) EnsureDefaultProfile(ctx context.Context, userID, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id
+		  FROM user_nav_profiles
+		 WHERE user_id         = $1
+		   AND subscription_id = $2
+		   AND is_default      = TRUE
+	`, userID, subscriptionID).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, err
+	}
+
+	err = s.Pool.QueryRow(ctx, `
+		INSERT INTO user_nav_profiles
+		    (user_id, subscription_id, label, position, is_default, start_page_key)
+		VALUES ($1, $2, 'Default', 0, TRUE, NULL)
+		ON CONFLICT (user_id, subscription_id) WHERE is_default = TRUE
+		DO UPDATE SET updated_at = user_nav_profiles.updated_at
+		RETURNING id
+	`, userID, subscriptionID).Scan(&id)
+	return id, err
+}
+
+// ResolveProfile picks the profile a prefs operation should target.
+// Order:
+//   1. explicit non-nil profileID → verify ownership, return it. 404 sentinel
+//      on miss (callers should NOT lazy-seed when the client named a profile).
+//   2. users.active_nav_profile_id, if it belongs to this subscription.
+//   3. Default profile for (user, subscription).
+//   4. Lazy-seed a Default (B5) and return that.
+//
+// The (active + Default) lookup runs in one query so we never see a
+// partial state between writes.
+func (s *Service) ResolveProfile(ctx context.Context, userID, subscriptionID uuid.UUID, explicit *uuid.UUID) (uuid.UUID, error) {
+	if explicit != nil {
+		if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, *explicit); err != nil {
+			return uuid.Nil, err
+		}
+		return *explicit, nil
+	}
+
+	var activeID, defaultID *uuid.UUID
+	err := s.Pool.QueryRow(ctx, `
+		SELECT
+		    (SELECT id FROM user_nav_profiles
+		      WHERE user_id = $1 AND subscription_id = $2 AND id =
+		            (SELECT active_nav_profile_id FROM users WHERE id = $1)) AS active_id,
+		    (SELECT id FROM user_nav_profiles
+		      WHERE user_id = $1 AND subscription_id = $2 AND is_default = TRUE) AS default_id
+	`, userID, subscriptionID).Scan(&activeID, &defaultID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if activeID != nil {
+		return *activeID, nil
+	}
+	if defaultID != nil {
+		return *defaultID, nil
+	}
+
+	return s.EnsureDefaultProfile(ctx, userID, subscriptionID)
+}
+
 // isUniqueViolation reports whether err is a Postgres 23505 unique-
 // constraint violation that mentions the named constraint. Tolerates
 // non-pg errors and unwraps via errors.As.
