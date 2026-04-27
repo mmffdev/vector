@@ -933,6 +933,127 @@ button {
   pointer-events: none;
 }
 
+/* Planning board + timeline — Vector kit (story 00096)
+   Three-column swimlane: each column is a --surface card on
+   --canvas with a 1px --border / --radius-lg / --space-4 padding;
+   no shadow. Cards inside are smaller --surface-sunken tiles.
+   The timeline track is --surface-sunken; bars fill with --ink
+   (never brand colour). */
+.planning-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.planning-column {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: none;
+}
+
+.planning-column__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.planning-column__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.planning-column__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.planning-column__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.planning-card {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+.planning-card__id {
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}
+
+.planning-card__title {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.planning-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.planning-timeline__row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.planning-timeline__label {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.planning-timeline__track {
+  position: relative;
+  height: 8px;
+  background: var(--surface-sunken);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.planning-timeline__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ink);
+  border-radius: 4px;
+}
+
 /* Backlog work-item rows — Vector kit (story 00094)
    Each row is a stand-alone surface card on --canvas: --surface
    background, 1px --border, --radius-md, 14px / 20px padding. The
