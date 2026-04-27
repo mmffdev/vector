@@ -28,12 +28,12 @@ interface AdminUser {
   created_at: string;
 }
 
-type Tab = "users" | "permissions";
+type Tab = "organization" | "users" | "permissions";
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("users");
+  const [tab, setTab] = useState<Tab>("organization");
 
   useEffect(() => {
     if (user && user.role !== "gadmin") router.replace("/dashboard");
@@ -41,9 +41,16 @@ export default function WorkspaceSettingsPage() {
 
   if (!user || user.role !== "gadmin") return null;
 
+  // Story 00104 — Organization tab added as the default landing
+  // tab so the workspace identity (display name, region, support
+  // contact) is visible at a glance. Users + Permissions remain
+  // the operational tabs that come after.
   return (
-    <PageShell title="Workspace Settings" subtitle="User management and tenant-level configuration">
+    <PageShell title="Workspace Settings" subtitle="Organization, user management, and tenant-level configuration">
       <div className="tabs">
+        <TabButton active={tab === "organization"} onClick={() => setTab("organization")}>
+          Organization
+        </TabButton>
         <TabButton active={tab === "users"} onClick={() => setTab("users")}>
           Users
         </TabButton>
@@ -51,9 +58,90 @@ export default function WorkspaceSettingsPage() {
           Permissions
         </TabButton>
       </div>
+      {tab === "organization" && <OrganizationTab />}
       {tab === "users" && <UsersTab />}
       {tab === "permissions" && <PermissionsTab />}
     </PageShell>
+  );
+}
+
+// Story 00104 — Organization tab uses .form / .form__row /
+// .form__label / .form__input from the Vector kit. Sections are
+// separated by .eyebrow micro-headings so the visual grouping
+// matches /portfolio-settings (00092). Subscription identity is
+// read-only (only padmin/billing can change it). Danger zone uses
+// .btn--danger for the destructive "Archive workspace" action.
+function OrganizationTab() {
+  return (
+    <div>
+      <h3 className="eyebrow">Identity</h3>
+      <form className="form" onSubmit={(e) => e.preventDefault()} style={{ marginBottom: "var(--space-8)" }}>
+        <div className="form__row">
+          <label className="form__label">
+            Workspace name
+            <input type="text" className="form__input" defaultValue="MMFF Standard" />
+          </label>
+        </div>
+        <div className="form__row">
+          <label className="form__label">
+            Subscription ID
+            <input type="text" className="form__input t-mono" value="sub_01HXKP9QV4ZK2N7M3BC5YJ8DRA" disabled />
+            <span className="form__hint">Reference this when contacting support.</span>
+          </label>
+        </div>
+        <div className="form__row">
+          <label className="form__label">
+            Region
+            <select className="form__select" defaultValue="apse2">
+              <option value="apse2">Asia Pacific (Sydney)</option>
+              <option value="use1">US East (N. Virginia)</option>
+              <option value="euw1">Europe (Ireland)</option>
+            </select>
+          </label>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button type="submit" className="btn btn--primary">Save organization</button>
+        </div>
+      </form>
+
+      <h3 className="eyebrow">Support contact</h3>
+      <form className="form" onSubmit={(e) => e.preventDefault()} style={{ marginBottom: "var(--space-8)" }}>
+        <div className="form__row">
+          <label className="form__label">
+            Primary contact email
+            <input type="email" className="form__input" defaultValue="" placeholder="ops@example.com" />
+            <span className="form__hint">Where MMFF support and incident notifications are sent.</span>
+          </label>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button type="submit" className="btn btn--primary">Save contact</button>
+        </div>
+      </form>
+
+      <h3 className="eyebrow">Danger zone</h3>
+      <div
+        style={{
+          border: "1px solid var(--danger)",
+          background: "var(--danger-bg)",
+          borderRadius: "var(--radius-md)",
+          padding: "var(--space-5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+        }}
+      >
+        <div>
+          <div style={{ color: "var(--ink)", fontWeight: 500, fontSize: "var(--text-sm)" }}>
+            Archive workspace
+          </div>
+          <div style={{ color: "var(--ink-muted)", fontSize: "var(--text-xs)" }}>
+            Removes user access and freezes content. Requires platform-admin confirmation.
+          </div>
+        </div>
+        <button type="button" className="btn btn--danger" disabled>Archive…</button>
+      </div>
+    </div>
   );
 }
 
