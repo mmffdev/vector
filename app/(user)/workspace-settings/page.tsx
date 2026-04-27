@@ -302,14 +302,76 @@ function ResetLinkModal({ email, url, onClose }: { email: string; url: string; o
   );
 }
 
+// Story 00102 — Permissions tab uses a Vector .table-wrap +
+// .table to render the role/capability matrix. Cells render a
+// .pill (--success grant, --neutral deny) so granted vs denied is
+// visible at a glance without colour saturation. Header row uses
+// the sunken thead with eyebrow column heads from the base table
+// block. The backend grid (/api/admin/permissions) will hydrate
+// these cells once the projects module ships; for now the matrix
+// is rendered from STATIC defaults so the visual contract is
+// locked.
+const CAPABILITIES: Array<{ key: string; label: string }> = [
+  { key: "read", label: "Read content" },
+  { key: "comment", label: "Comment" },
+  { key: "create", label: "Create items" },
+  { key: "edit_own", label: "Edit own items" },
+  { key: "edit_any", label: "Edit any item" },
+  { key: "publish", label: "Publish releases" },
+  { key: "manage_users", label: "Manage users" },
+  { key: "manage_billing", label: "Manage billing" },
+];
+
+const ROLES: Role[] = ["user", "padmin", "gadmin"];
+
+const DEFAULT_GRID: Record<Role, Record<string, boolean>> = {
+  user: { read: true, comment: true, create: true, edit_own: true, edit_any: false, publish: false, manage_users: false, manage_billing: false },
+  padmin: { read: true, comment: true, create: true, edit_own: true, edit_any: true, publish: true, manage_users: false, manage_billing: false },
+  gadmin: { read: true, comment: true, create: true, edit_own: true, edit_any: true, publish: true, manage_users: true, manage_billing: true },
+};
+
 function PermissionsTab() {
   return (
-    <div className="placeholder">
-      <h3 className="placeholder__title">Permissions</h3>
-      <p className="placeholder__body">
-        Project-level permissions will appear here once the projects module is live. The backend grid is already wired
-        (<code>/api/admin/permissions</code>), so enabling this tab is a UI-only change later.
-      </p>
+    <div>
+      <div className="toolbar">
+        <div className="toolbar__meta">
+          {CAPABILITIES.length} capabilities &times; {ROLES.length} roles
+        </div>
+        <button type="button" className="btn btn--primary" disabled>
+          Save changes
+        </button>
+      </div>
+      <div className="table-wrap">
+        <table className="table">
+          <thead className="table__head">
+            <tr className="table__row">
+              <th className="table__cell">Capability</th>
+              {ROLES.map((r) => (
+                <th key={r} className="table__cell">
+                  {r}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {CAPABILITIES.map((c) => (
+              <tr key={c.key} className="table__row">
+                <td className="table__cell">{c.label}</td>
+                {ROLES.map((r) => {
+                  const granted = DEFAULT_GRID[r][c.key];
+                  return (
+                    <td key={r} className="table__cell">
+                      <span className={`pill ${granted ? "pill--success" : "pill--neutral"}`}>
+                        {granted ? "Allow" : "Deny"}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
