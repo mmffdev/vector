@@ -2687,48 +2687,62 @@ table.tbl tbody tr:hover td {
   gap: 12px;
 }
 
-/* ---- Custom container page (/p/<id>) ---- */
-.custom-page { display: flex; flex-direction: column; gap: 16px; }
+/* ============================================================
+   Custom container page (/p/<id>) — Vector kit (story 00107)
+   The page sits on --canvas. Rename action is a Vector ghost
+   button (.btn--ghost). Inline rename input matches .form__input
+   shape. View tabs reuse the global .tabs treatment via direct
+   tokens so they read identically to other tab strips.
+   ============================================================ */
+.custom-page { display: flex; flex-direction: column; gap: var(--space-4); }
 .custom-page__heading-row { display: flex; justify-content: flex-end; }
 .custom-page__rename {
   background: transparent;
-  border: 1px solid var(--border-1);
-  color: var(--ink-2);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
-.custom-page__rename:hover { background: var(--surface-2); color: var(--ink-1); }
+.custom-page__rename:hover { background: var(--surface-sunken); border-color: var(--border-strong); }
 .custom-page__title-input {
-  background: var(--surface-2);
-  border: 1px solid var(--accent);
-  color: var(--ink-1);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 14px;
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
   min-width: 240px;
+  height: var(--input-height);
 }
 .custom-page__tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border-1);
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
 }
 .custom-page__tab {
   background: transparent;
   border: none;
-  color: var(--ink-2);
-  padding: 8px 14px;
-  font-size: 13px;
+  color: var(--ink-muted);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 120ms ease, border-color 120ms ease;
 }
-.custom-page__tab:hover { color: var(--ink-1); }
+.custom-page__tab:hover { color: var(--ink); }
 .custom-page__tab--active {
-  color: var(--ink-1);
-  border-bottom-color: var(--accent);
+  color: var(--ink);
+  border-bottom-color: var(--ink);
 }
-.custom-page__actions { display: flex; justify-content: flex-end; }
+.custom-page__actions { display: flex; justify-content: flex-end; margin-top: var(--space-4); }
 
 .nav-prefs__new-page-card-hint {
   margin: 0 0 var(--space-3);
