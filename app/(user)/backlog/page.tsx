@@ -67,13 +67,93 @@ export default function Backlog() {
         </div>
       </div>
 
-      <div className="placeholder">
-        <h3 className="placeholder__title">Backlog rows land in 00094</h3>
-        <p className="placeholder__body">
-          Artefact tables and hierarchy view ship in the next story; this page
-          currently demonstrates the filter bar layout only.
-        </p>
-      </div>
+      <ul className="backlog-list" aria-label="Backlog items">
+        {SAMPLE_ROWS.map((row) => (
+          <li key={row.id} className="backlog-row">
+            <span className="backlog-row__type" aria-hidden="true">
+              {ICONS[row.type]}
+            </span>
+            <span className="backlog-row__id">{row.id}</span>
+            <span className="backlog-row__title">{row.title}</span>
+            <span className={`backlog-row__status pill ${row.statusClass}`}>{row.status}</span>
+            <span className={`backlog-row__priority pill ${row.priorityClass}`}>{row.priority}</span>
+          </li>
+        ))}
+      </ul>
     </PageShell>
   );
 }
+
+// Sample data — replaced by real /api/backlog wiring in a later card.
+// Kept inline so the page renders the Vector row spec without backend
+// dependencies for the design audit.
+const ICONS: Record<"story" | "epic" | "task", React.ReactNode> = {
+  // Lucide-style stroked SVGs at 16px — currentColor, no fill.
+  story: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <line x1="7" y1="9" x2="17" y2="9" />
+      <line x1="7" y1="13" x2="13" y2="13" />
+    </svg>
+  ),
+  epic: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7l8-4 8 4-8 4-8-4z" />
+      <path d="M4 12l8 4 8-4" />
+      <path d="M4 17l8 4 8-4" />
+    </svg>
+  ),
+  task: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  ),
+};
+
+const SAMPLE_ROWS: Array<{
+  id: string;
+  type: "story" | "epic" | "task";
+  title: string;
+  status: string;
+  statusClass: string;
+  priority: string;
+  priorityClass: string;
+}> = [
+  {
+    id: "STR-00094",
+    type: "story",
+    title: "Backlog work item rows + status pills",
+    status: "In progress",
+    statusClass: "pill--info",
+    priority: "P1",
+    priorityClass: "pill--neutral",
+  },
+  {
+    id: "EPC-00021",
+    type: "epic",
+    title: "Vector Design System rebrand",
+    status: "On track",
+    statusClass: "pill--success",
+    priority: "P0",
+    priorityClass: "pill--warning",
+  },
+  {
+    id: "TSK-00310",
+    type: "task",
+    title: "Verify .t-mono renders in JetBrains Mono",
+    status: "Blocked",
+    statusClass: "pill--danger",
+    priority: "P2",
+    priorityClass: "pill--neutral",
+  },
+  {
+    id: "STR-00088",
+    type: "story",
+    title: "Portfolio overview list refresh",
+    status: "Done",
+    statusClass: "pill--success",
+    priority: "P3",
+    priorityClass: "pill--neutral",
+  },
+];

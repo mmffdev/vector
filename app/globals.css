@@ -933,6 +933,86 @@ button {
   pointer-events: none;
 }
 
+/* Backlog work-item rows — Vector kit (story 00094)
+   Each row is a stand-alone surface card on --canvas: --surface
+   background, 1px --border, --radius-md, 14px / 20px padding. The
+   item ID column uses .t-mono (JetBrains Mono) at --text-xs in
+   --ink-muted, fixed width 84px so titles align. Status renders
+   via the existing .pill family; type icons inherit currentColor
+   at 16px (no decorative colour). Hover lifts the row background
+   to --surface-sunken (no shadow, no transform). */
+.backlog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.backlog-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.backlog-row:hover {
+  background: var(--surface-sunken);
+}
+
+.backlog-row__type {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backlog-row__type svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+}
+
+.backlog-row__id {
+  flex: 0 0 84px;
+  width: 84px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.backlog-row__title {
+  flex: 1 1 auto;
+  font-size: var(--text-base);
+  color: var(--ink);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backlog-row__status,
+.backlog-row__priority {
+  flex: 0 0 auto;
+}
+
+/* .t-mono — utility for monospace cells (JetBrains Mono / tabular). */
+.t-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Backlog filter bar — Vector kit (story 00093)
    Sits on --canvas (no card / no shadow) directly under the page
    header. Three slots: 36px search input on --surface, .pill
