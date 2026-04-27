@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# switch-server — programmatic equivalent of the <server> shortcut.
+# Used by POST /api/env/switch from the EnvBadge dropdown.
+#
+# Args: $1 = dev | staging | production
+#
+# Steps mirror .claude/commands/c_server.md:
+#   1. resolve env → port + ssh alias + env file
+#   2. ensure ssh tunnel up on the target port
+#   3. kill backend on :5100 (and its `go run` child)
+#   4. relaunch backend with BACKEND_ENV set
+#   5. update CLAUDE.md ACTIVE_BACKEND_ENV marker (best-effort)
+#
+# Logs to /tmp/mmff-switch.log so the spawning HTTP handler returns 202
+# and the operator can tail progress out-of-band.
+
+set -uo pipefail
+
+ENV="${1:-}"
+case "$ENV" in
+  dev)        PORT=5435; ALIAS=vector-dev-pg ;;
+  staging)    PORT=5436; ALIAS=vector-staging-pg ;;
+  production) PORT=5434; ALIAS=mmffdev-pg ;;
+  *) echo "usage: switch-server dev|staging|production" >&2; exit 2 ;;
+esac
+
+REPO="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+ENV_FILE="$REPO/backend/.env.$ENV"
+LOG=/tmp/mmff-switch.log
+
+log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" | tee -a "$LOG" >&2; }
+
+log "switch → $ENV (port $PORT, alias $ALIAS)"
+
+if [ ! -f "$ENV_FILE" ]; then
+  log "ABORT: missing $ENV_FILE"
+  exit 1
+fi
+
+# 1. Tunnel up
+if ! nc -z localhost "$PORT" 2>/dev/null; then
+  log "tunnel :$PORT down — ssh -fN $ALIAS"
+  ssh -fN "$ALIAS" 2>>"$LOG" || { log "ABORT: ssh -fN $ALIAS failed"; exit 1; }
+  for _ in $(seq 1 10); do nc -z localhost "$PORT" 2>/dev/null && break; sleep 0.5; done
+  if ! nc -z localhost "$PORT" 2>/dev/null; then
+    log "ABORT: tunnel never came up on :$PORT"
+    exit 1
+  fi
+fi
+log "tunnel :$PORT UP"
+
+# 2. Kill existing backend (and its go-run child)
+PID=$(lsof -nP -iTCP:5100 -sTCP:LISTEN 2>/dev/null | awk 'NR>1 {print $2; exit}')
+if [ -n "$PID" ]; then
+  log "stopping backend pid $PID"
+  pkill -P "$PID" 2>/dev/null || true
+  kill "$PID" 2>/dev/null || true
+  for _ in $(seq 1 20); do nc -z localhost 5100 2>/dev/null || break; sleep 0.5; done
+  if nc -z localhost 5100 2>/dev/null; then
+    log "ABORT: backend still listening on :5100 — manual kill required"
+    exit 1
+  fi
+fi
+
+# 3. Launch new backend
+cd "$REPO/backend"
+: > /tmp/mmff-server.log
+log "launching: BACKEND_ENV=$ENV go run ./cmd/server"
+BACKEND_ENV="$ENV" nohup go run ./cmd/server > /tmp/mmff-server.log 2>&1 &
+disown
+
+# 4. Wait for /healthz
+for _ in $(seq 1 60); do
+  if curl -sS --max-time 1 http://localhost:5100/healthz 2>/dev/null | grep -q '"status":"ok"'; then
+    log "backend up — /healthz ok"
+    break
+  fi
+  sleep 1
+done
+if ! curl -sS --max-time 1 http://localhost:5100/healthz 2>/dev/null | grep -q '"status":"ok"'; then
+  log "WARN: backend never reported healthy — see /tmp/mmff-server.log"
+fi
+
+# 5. Update CLAUDE.md marker (best-effort — silent if block missing)
+TS=$(date "+%Y-%m-%d %H:%M")
+LINE="> **ACTIVE BACKEND ENV: \`$ENV\`** — set $TS by EnvBadge UI — DB target via tunnel \`localhost:$PORT\` — env file: \`backend/.env.$ENV\`"
+python3 - "$REPO" "$LINE" <<'PY' 2>>"$LOG" || true
+import re, sys
+repo, line = sys.argv[1], sys.argv[2]
+path = repo + "/.claude/CLAUDE.md"
+src  = open(path).read()
+block = "<!-- ACTIVE_BACKEND_ENV:start -->\n" + line + "\n<!-- ACTIVE_BACKEND_ENV:end -->"
+out, n = re.subn(
+    r"<!-- ACTIVE_BACKEND_ENV:start -->.*?<!-- ACTIVE_BACKEND_ENV:end -->",
+    block, src, flags=re.DOTALL,
+)
+if n > 0:
+    open(path, "w").write(out)
+    print("CLAUDE.md marker updated")
+else:
+    print("CLAUDE.md marker block not present — skipped")
+PY
+
+log "switch complete: $ENV"

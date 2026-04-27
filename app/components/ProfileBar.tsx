@@ -27,6 +27,7 @@ export default function ProfileBar() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Drag state — local-only; on drop we fire reorderProfiles and let
@@ -101,11 +102,11 @@ export default function ProfileBar() {
 
   const remove = useCallback(async (p: NavProfile) => {
     if (p.is_default) return;
-    if (!confirm(`Delete profile "${p.label}"?`)) return;
     setBusy(true);
     setError(null);
     try {
       await deleteProfile(p.id);
+      setConfirmingDeleteId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -246,6 +247,7 @@ export default function ProfileBar() {
               "profile-bar__cell",
               dragging ? "dragging" : "",
               dragOver ? "drag-over" : "",
+              confirmingDeleteId === p.id ? "confirming-delete" : "",
             ].filter(Boolean).join(" ")}
             draggable={edit.mode === "idle" && !busy}
             onDragStart={(e) => onDragStart(e, p.id)}
@@ -264,27 +266,56 @@ export default function ProfileBar() {
               {p.label}
             </button>
             <span className="profile-bar__cell-actions">
-              <button
-                type="button"
-                className="profile-bar__icon-btn"
-                onClick={(e) => { e.stopPropagation(); startRename(p); }}
-                title="Rename profile"
-                aria-label={`Rename ${p.label}`}
-                disabled={busy}
-              >
-                ✎
-              </button>
-              {!p.is_default && (
-                <button
-                  type="button"
-                  className="profile-bar__icon-btn profile-bar__icon-btn--danger"
-                  onClick={(e) => { e.stopPropagation(); void remove(p); }}
-                  title="Delete profile"
-                  aria-label={`Delete ${p.label}`}
-                  disabled={busy}
-                >
-                  ×
-                </button>
+              {confirmingDeleteId === p.id ? (
+                <>
+                  <button
+                    type="button"
+                    className="profile-bar__icon-btn profile-bar__icon-btn--confirm"
+                    onClick={(e) => { e.stopPropagation(); void remove(p); }}
+                    title="Confirm delete"
+                    aria-label={`Confirm delete ${p.label}`}
+                    disabled={busy}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="profile-bar__icon-btn"
+                    onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(null); }}
+                    title="Cancel"
+                    aria-label="Cancel delete"
+                    disabled={busy}
+                  >
+                    ×
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="profile-bar__icon-btn"
+                    onClick={(e) => { e.stopPropagation(); startRename(p); }}
+                    title="Rename profile"
+                    aria-label={`Rename ${p.label}`}
+                    disabled={busy}
+                  >
+                    ✎
+                  </button>
+                  {!p.is_default && (
+                    <button
+                      type="button"
+                      className="profile-bar__icon-btn profile-bar__icon-btn--danger"
+                      onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(p.id); }}
+                      title="Delete profile"
+                      aria-label={`Delete ${p.label}`}
+                      disabled={busy}
+                    >
+                      ×
+                    </button>
+                  )}
+                </>
               )}
             </span>
           </span>

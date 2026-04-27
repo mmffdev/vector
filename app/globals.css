@@ -464,7 +464,8 @@ button {
 }
 
 .profile-bar__cell:hover .profile-bar__cell-actions,
-.profile-bar__cell:focus-within .profile-bar__cell-actions {
+.profile-bar__cell:focus-within .profile-bar__cell-actions,
+.profile-bar__cell.confirming-delete .profile-bar__cell-actions {
   opacity: 1;
 }
 
@@ -496,6 +497,15 @@ button {
 
 .profile-bar__icon-btn--danger:hover {
   color: var(--danger, #c0392b);
+}
+
+.profile-bar__icon-btn--confirm {
+  color: var(--success);
+}
+
+.profile-bar__icon-btn--confirm:hover:not(:disabled) {
+  background: var(--success);
+  color: var(--surface);
 }
 
 .profile-bar__add {
@@ -2340,6 +2350,107 @@ table.tbl tbody tr:hover td {
   align-items: center;
   justify-content: center;
   transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* Env badge — square box next to avatar showing D/S/P (which DB the
+   backend is connected to). Polls /api/env every 10s + on focus.
+   Click → dropdown of the other two envs; click one → POST switch
+   and replace letter with blue pulsing circle until the new letter
+   resolves through the polling loop. */
+.env-badge-wrap {
+  position: relative;
+  display: inline-block;
+}
+.env-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+}
+.env-badge--button {
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.env-badge--button:hover {
+  filter: brightness(0.95);
+}
+.env-badge--button:active {
+  transform: translateY(1px);
+}
+.env-badge--dev {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success);
+}
+.env-badge--staging {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.env-badge--production {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.env-badge--unknown,
+.env-badge--error {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border-strong);
+}
+.env-badge--loading {
+  background: var(--surface-sunken);
+  border-color: var(--border);
+}
+
+/* Switching state — blue pulsing circle, fills the same 36×36 slot
+   so the header layout doesn't reflow during transitions. */
+.env-badge--switching {
+  background: var(--surface);
+  border-color: var(--info);
+}
+.env-badge__pulse {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--info);
+  animation: env-badge-pulse 1s ease-in-out infinite;
+}
+@keyframes env-badge-pulse {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* Dropdown — stacked vertically directly below the trigger badge. */
+.env-badge-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 50;
+}
+.env-badge--menu-item {
+  /* identical to base .env-badge sizing — already handled by the
+     .env-badge class above; nothing extra needed here. */
 }
 
 .app-header-wrapper__avatar:hover {

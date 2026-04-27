@@ -97,6 +97,47 @@
   height: auto !important;
 }
 
+/* Active env badge in header (dev / staging / production) */
+.devf__env {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink-subtle);
+}
+.devf__env--dev        { background: var(--success-bg); color: var(--success); border-color: transparent; }
+.devf__env--staging    { background: var(--warning-bg); color: var(--warning); border-color: transparent; }
+.devf__env--production { background: var(--danger-bg);  color: var(--danger);  border-color: transparent; }
+
+/* Poll-cadence progress bar — fills width of panel over POLL_INTERVAL_MS,
+   then snaps back to 0 on each refresh (re-mounted via React key). */
+.devf__progress {
+  height: 5px;
+  width: 100%;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.devf__progress-bar {
+  height: 100%;
+  width: 0;
+  background: #2563eb;
+  animation: devf-progress-fill var(--devf-poll-ms, 10000ms) linear forwards;
+}
+@keyframes devf-progress-fill {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* Highlight the row whose tunnel matches the backend's active env. */
+.devf__row--active td {
+  background: var(--surface-sunken);
+  font-weight: 600;
+}
+
 .dev-root {
   color: var(--ink);
   font-family: var(--font-sans);

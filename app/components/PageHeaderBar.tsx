@@ -5,6 +5,7 @@ import { useTheme } from "@/app/hooks/useTheme";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
+import EnvBadge from "@/app/components/EnvBadge";
 import { toTitleCase } from "@/app/lib/titleCase";
 
 const roleLabels: Record<Role, string> = {
@@ -80,6 +81,8 @@ export default function PageHeaderBar() {
             </svg>
           </button>
         )}
+
+        <EnvBadge />
 
         <UserAvatarMenu />
       </div>

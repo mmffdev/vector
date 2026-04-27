@@ -4,7 +4,7 @@ import { useState } from "react";
 import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { api } from "@/app/lib/api";
-import DevServicesPanel from "./DevServicesPanel";
+import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
 import DevShortcutsPanel from "./DevShortcutsPanel";
 import DevReportsPanel from "./DevReportsPanel";
 import DevResearchPanel from "./DevResearchPanel";
@@ -89,7 +89,9 @@ export default function DevPage() {
       {tab === "research" && <DevResearchPanel />}
 
       {tab === "setup" && <div className="dev-doc">
-        <DevServicesPanel />
+        <section className="dev-section">
+          <ServiceHealthPanel />
+        </section>
 
         <section className="dev-section">
           <h2 className="dev-h2">Debug</h2>

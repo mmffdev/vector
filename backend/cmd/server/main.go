@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -162,13 +163,101 @@ func main() {
 	r.Use(security.BodyLimit)
 	r.Use(security.CSRF)
 
+	// envFromDBPort derives env name + letter from the live DB_PORT.
+	// Single source of truth for /healthz and /api/env.
+	envFromDBPort := func() (env, letter string) {
+		switch os.Getenv("DB_PORT") {
+		case "5435":
+			return "dev", "D"
+		case "5436":
+			return "staging", "S"
+		case "5434":
+			return "production", "P"
+		default:
+			return "unknown", "?"
+		}
+	}
+
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		env, _ := envFromDBPort()
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status":     "ok",
 			"commit":     Commit,
 			"build_time": BuildTime,
 			"started_at": processStartedAt.Format(time.RFC3339),
+			"env":        env,
+		})
+	})
+
+	// /api/env reports which DB the backend is actually connected to.
+	// Letter is derived from the live DB_PORT env var (5434=prod tunnel,
+	// 5435=dev, 5436=staging) — the truth source the frontend EnvBadge
+	// polls so it can never drift from the running backend.
+	r.Get("/api/env", func(w http.ResponseWriter, r *http.Request) {
+		env, letter := envFromDBPort()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"env":         env,
+			"letter":      letter,
+			"db_host":     os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT"),
+			"backend_env": os.Getenv("BACKEND_ENV"),
+		})
+	})
+
+	// POST /api/env/switch — flips backend to the requested env by
+	// spawning .claude/bin/switch-server in a detached process group.
+	// The script kills this very process and starts a new `go run`
+	// with BACKEND_ENV set, so we MUST send the 202 response before
+	// the script gets to step 2 (kill). The script's own ~1s setup
+	// + tunnel check provides the buffer.
+	//
+	// Dev-only: refuses when APP_ENV=production. CSRF middleware
+	// blocks unauthenticated callers (no csrf cookie → 403 before
+	// reaching this handler).
+	r.Post("/api/env/switch", func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("APP_ENV") == "production" {
+			http.Error(w, "env switch disabled in production", http.StatusForbidden)
+			return
+		}
+		var body struct {
+			Target string `json:"target"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+		switch body.Target {
+		case "dev", "staging", "production":
+			// ok
+		default:
+			http.Error(w, "target must be dev|staging|production", http.StatusBadRequest)
+			return
+		}
+
+		script := "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/bin/switch-server"
+		if _, err := os.Stat(script); err != nil {
+			http.Error(w, "switch-server script missing", http.StatusInternalServerError)
+			return
+		}
+
+		cmd := exec.Command("/bin/bash", script, body.Target)
+		// Detach from this process group so the script survives our
+		// imminent SIGTERM.
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+		if err := cmd.Start(); err != nil {
+			http.Error(w, "spawn failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		// Reap the spawned bash so it doesn't become a zombie before
+		// we die. The actual `go run` is a grandchild and is already
+		// re-parented to init by Setsid.
+		go func() { _ = cmd.Wait() }()
+
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status": "switching",
+			"target": body.Target,
 		})
 	})
 

@@ -1,22 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "@dev/styles/dev.css";
-
-type ServiceStatus = "up" | "down" | "degraded";
-
-type ServiceResult = {
-  id: string;
-  label: string;
-  status: ServiceStatus;
-  latencyMs?: number;
-  detail?: string;
-};
-
-type CheckResult = {
-  services: ServiceResult[];
-  checkedAt: string;
-};
+import ServiceHealthPanel from "./ServiceHealthPanel";
+import { useServiceHealth } from "./useServiceHealth";
 
 // Dead-code eliminated in production build — returns null if not dev.
 export default function DevStatusFloat() {
@@ -25,27 +12,17 @@ export default function DevStatusFloat() {
 }
 
 function FloatPanel() {
-  const [open, setOpen]       = useState(false);
-  const [result, setResult]   = useState<CheckResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const rootRef               = useRef<HTMLDivElement>(null);
-  const timerRef              = useRef<ReturnType<typeof setInterval>>();
+  const [open, setOpen] = useState(false);
+  const rootRef         = useRef<HTMLDivElement>(null);
+  const { result, loading } = useServiceHealth();
 
-  const check = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dev/services", { cache: "no-store" });
-      if (res.ok) setResult(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    check();
-    timerRef.current = setInterval(check, 30_000);
-    return () => clearInterval(timerRef.current);
-  }, [check]);
+  const services  = result?.services ?? [];
+  const downCount = services.filter((s) => s.status === "down").length;
+  const dotStatus =
+    loading && !result   ? "checking"
+    : downCount > 0      ? "down"
+    : services.length > 0 ? "up"
+    : "checking";
 
   useEffect(() => {
     if (!open) return;
@@ -61,70 +38,11 @@ function FloatPanel() {
     };
   }, [open]);
 
-  const services   = result?.services ?? [];
-  const downCount  = services.filter((s) => s.status === "down").length;
-  const dotStatus  =
-    loading && !result   ? "checking"
-    : downCount > 0      ? "down"
-    : services.length > 0 ? "up"
-    : "checking";
-
-  const STATUS_LABEL: Record<ServiceStatus | "checking", string> = {
-    up: "Up", down: "Down", degraded: "Degraded", checking: "…",
-  };
-
   return (
     <div className="devf" ref={rootRef}>
       {open && (
         <div className="devf__panel" role="dialog" aria-label="Service health">
-          <div className="devf__header">
-            <span className="dev-eyebrow">Service health</span>
-            {loading && result && <span className="dev-services-spinner" aria-hidden />}
-            {result?.checkedAt && (
-              <span className="devf__ts">
-                {new Date(result.checkedAt).toLocaleTimeString([], {
-                  hour: "2-digit", minute: "2-digit", second: "2-digit",
-                })}
-              </span>
-            )}
-            <button className="dev-btn dev-btn--sm" onClick={check} disabled={loading}>
-              Refresh
-            </button>
-          </div>
-
-          <table className="dev-services-table">
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Status</th>
-                <th>Latency</th>
-                <th>Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.length === 0
-                ? (
-                  <tr>
-                    <td colSpan={4} className="devf__empty">Checking services…</td>
-                  </tr>
-                )
-                : services.map((svc) => (
-                  <tr key={svc.id}>
-                    <td className="dev-services-name">{svc.label}</td>
-                    <td>
-                      <span className={`dev-services-pill dev-services-pill--${svc.status}`}>
-                        <span className="dev-services-dot" />
-                        {STATUS_LABEL[svc.status]}
-                      </span>
-                    </td>
-                    <td className="dev-services-latency">
-                      {svc.latencyMs !== undefined ? `${svc.latencyMs} ms` : "—"}
-                    </td>
-                    <td className="dev-services-detail">{svc.detail ?? "—"}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+          <ServiceHealthPanel />
         </div>
       )}
 

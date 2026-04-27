@@ -8,6 +8,7 @@ type ServiceResult = {
   status: "up" | "down" | "degraded";
   latencyMs?: number;
   detail?: string;
+  active?: boolean;
 };
 
 function tcpProbe(port: number, timeoutMs = 2000): Promise<{ ok: boolean; latencyMs: number }> {
@@ -45,21 +46,47 @@ export async function GET() {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const [backend, dbTunnel, planka, apiDocs] = await Promise.all([
+  const [backend, devTunnel, stagingTunnel, prodTunnel, planka, apiDocs] = await Promise.all([
     httpProbe("http://localhost:5100/healthz"),
+    tcpProbe(5435),
+    tcpProbe(5436),
     tcpProbe(5434),
     httpProbe("http://localhost:3333"),
     httpProbe("http://localhost:8083"),
   ]);
 
-  function backendDetail(p: typeof backend): string | undefined {
-    const b = p.body as Record<string, string> | undefined;
-    if (!b || typeof b !== "object") return undefined;
-    const commit = b.commit === "dev" ? "go run (no commit)" : b.commit?.slice(0, 8);
-    const started = b.started_at
-      ? `up since ${new Date(b.started_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+  const backendBody = backend.body as Record<string, string> | undefined;
+  const activeEnv = backendBody?.env;
+
+  function backendDetail(): string | undefined {
+    if (!backendBody || typeof backendBody !== "object") return undefined;
+    const commit = backendBody.commit === "dev" ? "go run (no commit)" : backendBody.commit?.slice(0, 8);
+    const started = backendBody.started_at
+      ? `up since ${new Date(backendBody.started_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
       : undefined;
-    return [commit, started].filter(Boolean).join(" · ");
+    const env = backendBody.env ? `env=${backendBody.env}` : undefined;
+    return [env, commit, started].filter(Boolean).join(" · ");
+  }
+
+  function tunnelRow(
+    id: string,
+    label: string,
+    port: number,
+    env: string,
+    probe: { ok: boolean; latencyMs: number },
+    sshAlias: string,
+  ): ServiceResult {
+    return {
+      id,
+      label,
+      group: "Database",
+      status: probe.ok ? "up" : "down",
+      latencyMs: probe.ok ? probe.latencyMs : undefined,
+      detail: probe.ok
+        ? `SSH tunnel :${port} → mmff_vector${activeEnv === env ? " (active)" : ""}`
+        : `tunnel down — run \`ssh -fN ${sshAlias}\``,
+      active: activeEnv === env,
+    };
   }
 
   const services: ServiceResult[] = [
@@ -69,16 +96,11 @@ export async function GET() {
       group: "Core",
       status: backend.ok ? "up" : "down",
       latencyMs: backend.latencyMs,
-      detail: backend.ok ? backendDetail(backend) : "no response on :5100",
+      detail: backend.ok ? backendDetail() : "no response on :5100",
     },
-    {
-      id: "db-tunnel",
-      label: "Database",
-      group: "Core",
-      status: dbTunnel.ok ? "up" : "down",
-      latencyMs: dbTunnel.ok ? dbTunnel.latencyMs : undefined,
-      detail: dbTunnel.ok ? "SSH tunnel :5434 → mmff_vector" : "tunnel down — run ssh_manager.sh",
-    },
+    tunnelRow("db-tunnel-dev",     "DB Tunnel · dev",        5435, "dev",        devTunnel,     "vector-dev-pg"),
+    tunnelRow("db-tunnel-staging", "DB Tunnel · staging",    5436, "staging",    stagingTunnel, "vector-staging-pg"),
+    tunnelRow("db-tunnel-prod",    "DB Tunnel · production", 5434, "production", prodTunnel,    "mmffdev-pg"),
     {
       id: "planka",
       label: "Planka Board",
@@ -97,5 +119,5 @@ export async function GET() {
     },
   ];
 
-  return NextResponse.json({ services, checkedAt: new Date().toISOString() });
+  return NextResponse.json({ services, checkedAt: new Date().toISOString(), activeEnv });
 }
