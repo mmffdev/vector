@@ -4,24 +4,25 @@
  * app styles or the legacy hierarchy-tree class names. Imported by
  * GraphCanvas; never bundled into globals.css.
  *
- * Visual parity targets (from the legacy SVG ModelHierarchyAccordion):
- *   - No border-radius anywhere
- *   - 1px borders in the major-grid colour `#e0e0e0`
- *   - Connectors are 1.5px lines; --story is red dashed
- *   - Arrowheads are static-orient (handled in <marker> in Edges.tsx)
- *   - Node label: 13px / 500 weight (matches measureNodeWidth assumption)
+ * Story 00110 Vector sweep: removed every hardcoded hex value.
+ *   - Tokens come from globals.css (--ink, --ink-muted, --surface,
+ *     --border, --danger, --ink-subtle).
+ *   - Connectors are 1.5px lines in --ink; --story edges are
+ *     --danger dashed.
+ *   - Arrowheads are static-orient (handled in <marker> in Edges.tsx).
+ *   - Node label: 13px / 500 weight (matches measureNodeWidth assumption).
  */
 
 .ge-canvas {
   position: relative;
   margin: 0 auto;
-  color: var(--ink-1, #1a1a1a);
+  color: var(--ink);
 }
 
 .ge-canvas--empty {
   padding: 16px 0;
-  color: var(--ink-2, #555);
-  font-size: 13px;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
 }
 
 .ge-nodes {
@@ -37,7 +38,7 @@
   left: 0;
   top: 0;
   pointer-events: none;
-  color: var(--ink-1, #1a1a1a);
+  color: var(--ink);
 }
 
 .ge-node {
@@ -45,8 +46,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface, #fff);
-  border: 1px solid var(--ink-1, #1a1a1a);
+  background: var(--surface);
+  border: 1px solid var(--ink);
   border-radius: 0;
   box-sizing: border-box;
   padding: 0 12px;
@@ -54,7 +55,7 @@
 }
 
 .ge-node__label {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
   line-height: 1.2;
   text-align: center;
@@ -63,11 +64,11 @@
 }
 
 .ge-node--root {
-  border-color: var(--ink-1, #1a1a1a);
+  border-color: var(--ink);
 }
 
 .ge-node--leaf {
-  border-color: #dc2626;
+  border-color: var(--danger);
 }
 
 .ge-edge {
@@ -77,7 +78,7 @@
 }
 
 .ge-edge--story {
-  stroke: #dc2626;
+  stroke: var(--danger);
   stroke-dasharray: 4 3;
 }
 
@@ -92,6 +93,6 @@
   opacity: 0.85;
 }
 .ge-canvas[data-hover="on"] .ge-node--hover {
-  outline: 1px solid #888;
+  outline: 1px solid var(--ink-subtle);
   outline-offset: 1px;
 }

@@ -19,10 +19,13 @@
   --surface:        #FFFFFF;
   --surface-sunken: #EDEAE4;
 
-  --ink:        #1A1A1A;
-  --ink-muted:  #5C5C5C;
-  --ink-subtle: #8A8A8A;
-  --ink-faint:  #B8B5AF;
+  --ink:          #1A1A1A;
+  --ink-muted:    #5C5C5C;
+  --ink-subtle:   #8A8A8A;
+  --ink-faint:    #B8B5AF;
+  /* Semantic "on-ink" colour for text/icons placed on a --ink fill.
+     Story 00110: replaces hardcoded #ffffff in .btn--primary etc. */
+  --ink-contrast: #FFFFFF;
 
   --border:        #E5E1DA;
   --border-strong: #D4CFC5;
@@ -150,10 +153,12 @@
   --surface:        #232120;
   --surface-sunken: #1F1D1B;
 
-  --ink:        #F4F2EE;
-  --ink-muted:  #B0ADA6;
-  --ink-subtle: #8A8780;
-  --ink-faint:  #4A4744;
+  --ink:          #F4F2EE;
+  --ink-muted:    #B0ADA6;
+  --ink-subtle:   #8A8780;
+  --ink-faint:    #4A4744;
+  /* In dark mode the ink is light, so its contrast is the dark canvas. */
+  --ink-contrast: #1A1816;
 
   --border:        #2E2B28;
   --border-strong: #3D3A36;
@@ -733,8 +738,10 @@ button {
   align-items: center;
 }
 
-.app-footer--role-gadmin { border-top-color: #ef4444; }
-.app-footer--role-padmin { border-top-color: #a855f7; }
+/* Story 00110: footer role accent uses semantic --danger / --info
+   instead of hardcoded red/purple hex values. */
+.app-footer--role-gadmin { border-top-color: var(--danger); }
+.app-footer--role-padmin { border-top-color: var(--info); }
 
 .app-footer-left {
   display: flex;
@@ -804,14 +811,17 @@ button {
 
 .btn--primary {
   background: var(--ink);
-  color: #ffffff;
+  color: var(--ink-contrast);
   border-color: var(--ink);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: #000;
-  color: #ffffff;
-  border-color: #000;
+  /* Story 00110: hover deepens via opacity rather than a hardcoded
+     #000 fill so dark-mode renders correctly. */
+  background: var(--ink);
+  color: var(--ink-contrast);
+  border-color: var(--ink);
+  opacity: 0.9;
 }
 
 .btn--secondary {
@@ -841,7 +851,7 @@ button {
 }
 .btn--danger:hover:not(:disabled) {
   background: var(--danger);
-  color: #ffffff;
+  color: var(--ink-contrast);
   border-color: var(--danger);
 }
 
@@ -2027,14 +2037,18 @@ table.tbl tbody tr:hover td {
 }
 
 .avatar-menu__panel {
+  /* Story 00110: drop drop-shadow per Vector "no shadow on chrome";
+     define presence with a 1px --border on a --surface fill and
+     --radius-md corners. */
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--space-2));
   right: 0;
   min-width: 240px;
   background: var(--surface);
-  border: 1px solid var(--line-1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  padding: var(--space-2) 0;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -3384,9 +3398,9 @@ table.tbl tbody tr:hover td {
   gap: 10px;
   padding: 5px 3px;
   background: var(--surface);
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 0;
-  color: var(--ink-1);
+  color: var(--ink);
 }
 
 .layer-hierarchy__arrow {
@@ -3414,10 +3428,10 @@ table.tbl tbody tr:hover td {
 
 .layer-hierarchy__tag {
   font-size: 11px;
-  color: var(--ink-2);
+  color: var(--ink-muted);
   padding: 2px 6px;
-  background: var(--surface-alt);
-  border: 1px solid #e0e0e0;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 0;
   flex: 0 0 auto;
 }
@@ -3469,13 +3483,13 @@ table.tbl tbody tr:hover td {
 }
 
 .release-card--action {
-  border-left-color: var(--warn-1, #d97706);
-  background: var(--warn-bg-1, rgba(217, 119, 6, 0.04));
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
 }
 
 .release-card--breaking {
-  border-left-color: var(--danger-1, #dc2626);
-  background: var(--danger-bg-1, rgba(220, 38, 38, 0.06));
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .release-card__header {
@@ -3513,13 +3527,13 @@ table.tbl tbody tr:hover td {
 }
 
 .release-card__severity--action {
-  background: var(--warn-1, #d97706);
-  color: white;
+  background: var(--warning);
+  color: var(--ink-contrast);
 }
 
 .release-card__severity--breaking {
-  background: var(--danger-1, #dc2626);
-  color: white;
+  background: var(--danger);
+  color: var(--ink-contrast);
 }
 
 .release-card__summary {

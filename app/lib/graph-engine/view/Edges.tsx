@@ -47,7 +47,8 @@ export default function Edges({ width, height, edges }: EdgesProps) {
           markerHeight="8"
           orient="0"
         >
-          <path d="M0,8 L5,0 L10,8 Z" fill="#dc2626" />
+          {/* Story 00110: arrowhead matches .ge-edge--story stroke (--danger). */}
+          <path d="M0,8 L5,0 L10,8 Z" fill="var(--danger)" />
         </marker>
       </defs>
       {edges.map((e) => {
