@@ -3446,6 +3446,12 @@ table.tbl tbody tr:hover td {
 
 /* ── Blocking release gate ─────────────────────────────────────────────────── */
 
+/* Blocking release gate — Vector kit (story 00100)
+   Backdrop is rgba(0,0,0,0.4) flat — no blur. The dialog is a
+   centred --surface card with 1px --border, --radius-xl, no
+   shadow; --space-8 padding. Title in --ink at --text-md/600;
+   body in --ink-muted at --text-sm. CTA is a single .btn--primary
+   (one primary per region). Bell-badge styles below. */
 .blocking-gate {
   position: fixed;
   inset: 0;
@@ -3453,45 +3459,80 @@ table.tbl tbody tr:hover td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
+  padding: var(--space-6);
 }
 
 .blocking-gate__dialog {
-  background: var(--surface-1);
-  border: 1px solid var(--border-1);
-  border-radius: 8px;
-  padding: 32px;
-  max-width: 420px;
-  width: calc(100% - 32px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  max-width: 480px;
+  width: calc(100% - var(--space-8));
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
+  box-shadow: none;
 }
 
 .blocking-gate__icon {
-  font-size: 32px;
-  color: var(--color-red, #e53e3e);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 24px;
+  font-weight: 600;
 }
 
 .blocking-gate__title {
-  font-size: 18px;
+  font-size: var(--text-md);
   font-weight: 600;
-  color: var(--ink-1);
+  color: var(--ink);
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
 .blocking-gate__body {
-  font-size: 14px;
-  color: var(--ink-2);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
   margin: 0;
   line-height: 1.5;
 }
 
 .blocking-gate__cta {
-  margin-top: 8px;
+  margin-top: var(--space-2);
+}
+
+/* Header bell badge — unread library release count.
+   --danger-bg / --danger pill at radius-full; tabular-nums so 1
+   and 88 line up consistently. */
+.bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  border: 1px solid var(--danger);
+  box-shadow: none;
 }
 
 /* -------------------------------------------------------------------------
