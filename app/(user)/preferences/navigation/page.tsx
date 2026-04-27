@@ -23,6 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
 import { NavIcon } from "@/app/components/NavIcon";
+import ProfileBar from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
@@ -821,7 +822,12 @@ export default function NavPreferencesPage() {
   const {
     prefs, customGroups, save, reset, catalogue, refetch, patchCatalogueEntry,
     defaultPinned, findEntry, tagByEnum, tags,
+    profiles, activeProfileId, setProfileGroups,
   } = useNavPrefs();
+  const activeProfile = useMemo(
+    () => profiles.find((p) => p.id === activeProfileId) ?? null,
+    [profiles, activeProfileId],
+  );
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1454,12 +1460,45 @@ export default function NavPreferencesPage() {
         label: g.label,
         position: i,
       }));
-      const body: PutPrefsBody = {
-        pinned,
-        start_page_key: draft.startPageKey,
-        groups,
-      };
-      await save(body);
+      // Non-default profiles share the pool — they must NOT carry a groups
+      // payload (backend wipes-and-reinserts the pool only on Default).
+      const isDefaultProfile = activeProfile?.is_default ?? true;
+      const body: PutPrefsBody = isDefaultProfile
+        ? { pinned, start_page_key: draft.startPageKey, groups }
+        : { pinned, start_page_key: draft.startPageKey };
+      const canonical = await save(body);
+      // Persist this profile's group-placement junction. Server-returned
+      // canonical groups arrive in payload order, so when we sent groups
+      // they line up index-for-index with draft.customGroups; on
+      // non-default profiles we sent nothing, so canonical is the
+      // existing pool — already canonical UUIDs.
+      if (activeProfileId) {
+        const localToCanonical = new Map<string, string>();
+        if (isDefaultProfile) {
+          draft.customGroups.forEach((g, i) => {
+            const c = canonical[i];
+            if (c) localToCanonical.set(g.id, c.id);
+          });
+        }
+        const groupBuckets = draft.bucketOrder.filter((b) => b.startsWith("group:"));
+        const placements = groupBuckets
+          .map((b, position) => {
+            const localId = b.slice("group:".length);
+            // Synthetic ids only get remapped on default profile (where
+            // we sent the groups payload). On non-default they shouldn't
+            // exist (UI prevents creation) — drop defensively.
+            if (localId.startsWith("new:")) {
+              const remapped = localToCanonical.get(localId);
+              return remapped ? { group_id: remapped, position } : null;
+            }
+            return { group_id: localId, position };
+          })
+          .filter((p): p is { group_id: string; position: number } => p !== null)
+          // Re-number positions to stay contiguous after any drops.
+          .map((p, i) => ({ ...p, position: i }));
+        await setProfileGroups(activeProfileId, placements);
+        await refetch();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to save");
     } finally {
@@ -1538,14 +1577,14 @@ export default function NavPreferencesPage() {
   return (
     <PageShell
       title="Navigation preferences"
-      subtitle={`Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`}
+      subtitle={
+        activeProfile
+          ? `Editing "${activeProfile.label}" — pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
+          : `Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
+      }
     >
       <div className="nav-prefs__pane nav-prefs__quick-bar">
-        <button type="button" className="btn nav-prefs__quick-btn--active" aria-current="true">Default</button>
-        <button type="button" className="btn btn--primary">Work</button>
-        <button type="button" className="btn btn--primary">Button 3</button>
-        <button type="button" className="btn btn--primary">Button 4</button>
-        <button type="button" className="btn btn--primary">Button 5</button>
+        <ProfileBar />
       </div>
 
       <div className="nav-prefs">

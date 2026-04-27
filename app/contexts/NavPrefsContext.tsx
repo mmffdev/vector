@@ -42,11 +42,28 @@ export interface NavCustomGroup {
   position: number;
 }
 
+// Phase 5 — navigation profile (named layout slot per subscription).
+export interface NavProfile {
+  id: string;
+  label: string;
+  position: number;
+  is_default: boolean;
+  start_page_key: string | null;
+}
+
+// Per-profile group placement (junction row).
+export interface ProfileGroupPlacement {
+  group_id: string;
+  position: number;
+}
+
 interface PrefsResp {
   prefs: PrefRow[];
   groups: NavCustomGroup[];
+  profile_id: string;
 }
 interface CatalogueResp { catalogue: NavCatalogEntry[]; tags: NavTagGroup[]; }
+interface ProfilesResp { profiles: NavProfile[]; active_profile_id: string | null; }
 
 export interface PutPrefsPinnedRow {
   item_key: string;
@@ -84,7 +101,9 @@ interface NavPrefsState {
   // change) without re-pulling prefs from the server. A full refetch would
   // clobber any unsaved local pin/order edits in the navigation editor.
   patchCatalogueEntry: (key: string, partial: Partial<NavCatalogEntry>) => void;
-  save: (body: PutPrefsBody) => Promise<void>;
+  // Returns canonical groups in payload order so callers can map any
+  // synthetic "new:" ids they sent to the server-minted UUIDs.
+  save: (body: PutPrefsBody) => Promise<NavCustomGroup[]>;
   reset: () => Promise<void>;
   findEntry: (key: string) => NavCatalogEntry | undefined;
   isPinnable: (key: string) => boolean;
@@ -93,6 +112,20 @@ interface NavPrefsState {
   isBookmarked: (kind: EntityKind, id: string) => boolean;
   bookmark: (kind: EntityKind, id: string) => Promise<void>;
   unbookmark: (kind: EntityKind, id: string) => Promise<void>;
+
+  // Phase 5 — profile slice
+  profiles: NavProfile[];
+  activeProfileId: string | null;
+  setActiveProfile: (profileId: string) => Promise<void>;
+  createProfile: (label: string) => Promise<NavProfile>;
+  renameProfile: (profileId: string, label: string) => Promise<void>;
+  deleteProfile: (profileId: string) => Promise<void>;
+  reorderProfiles: (orderedIds: string[]) => Promise<void>;
+  // E2 — per-profile group placement (junction).
+  setProfileGroups: (
+    profileId: string,
+    placements: ProfileGroupPlacement[],
+  ) => Promise<void>;
 }
 
 const Ctx = createContext<NavPrefsState | null>(null);
@@ -103,6 +136,8 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   const [customGroups, setCustomGroups] = useState<NavCustomGroup[]>([]);
   const [catalogue, setCatalogue] = useState<NavCatalogEntry[]>([]);
   const [tags, setTags] = useState<NavTagGroup[]>([]);
+  const [profiles, setProfiles] = useState<NavProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,26 +147,48 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       setCustomGroups([]);
       setCatalogue([]);
       setTags([]);
+      setProfiles([]);
+      setActiveProfileId(null);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const [prefsRes, catRes] = await Promise.all([
-        api<PrefsResp>("/api/nav/prefs"),
+      const [profilesRes, catRes] = await Promise.all([
+        api<ProfilesResp>("/api/nav/profiles"),
         api<CatalogueResp>("/api/nav/catalogue"),
       ]);
-      setPrefs(prefsRes.prefs ?? []);
-      setCustomGroups(prefsRes.groups ?? []);
+      const profileList = profilesRes.profiles ?? [];
+      setProfiles(profileList);
       setCatalogue(catRes.catalogue ?? []);
       setTags(catRes.tags ?? []);
+
+      // Pick active: server-tracked → first profile (Default).
+      const targetId =
+        profilesRes.active_profile_id ??
+        profileList[0]?.id ??
+        null;
+
+      // Prefs query is scoped by profile_id when present so we always
+      // load placements for the same profile we'll write back to.
+      const prefsPath = targetId
+        ? `/api/nav/prefs?profile_id=${encodeURIComponent(targetId)}`
+        : "/api/nav/prefs";
+      const prefsRes = await api<PrefsResp>(prefsPath);
+      setPrefs(prefsRes.prefs ?? []);
+      setCustomGroups(prefsRes.groups ?? []);
+      // Server returns the resolved profile_id — trust it as the source of truth
+      // (it accounts for lazy-seed of Default on first load).
+      setActiveProfileId(prefsRes.profile_id ?? targetId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load nav");
       setPrefs([]);
       setCustomGroups([]);
       setCatalogue([]);
       setTags([]);
+      setProfiles([]);
+      setActiveProfileId(null);
     } finally {
       setLoading(false);
     }
@@ -149,14 +206,78 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const save = useCallback(async (body: PutPrefsBody) => {
-    await api("/api/nav/prefs", { method: "PUT", body: JSON.stringify(body) });
+    const scoped: PutPrefsBody & { profile_id?: string } = activeProfileId
+      ? { ...body, profile_id: activeProfileId }
+      : body;
+    const resp = await api<{ groups: NavCustomGroup[] }>("/api/nav/prefs", {
+      method: "PUT",
+      body: JSON.stringify(scoped),
+    });
+    await refetch();
+    return resp.groups ?? [];
+  }, [refetch, activeProfileId]);
+
+  const reset = useCallback(async () => {
+    const path = activeProfileId
+      ? `/api/nav/prefs?profile_id=${encodeURIComponent(activeProfileId)}`
+      : "/api/nav/prefs";
+    await api(path, { method: "DELETE" });
+    await refetch();
+  }, [refetch, activeProfileId]);
+
+  const setActiveProfile = useCallback(async (profileId: string) => {
+    await api("/api/nav/profiles/active", {
+      method: "PUT",
+      body: JSON.stringify({ profile_id: profileId }),
+    });
     await refetch();
   }, [refetch]);
 
-  const reset = useCallback(async () => {
-    await api("/api/nav/prefs", { method: "DELETE" });
+  const createProfile = useCallback(async (label: string) => {
+    const created = await api<NavProfile>("/api/nav/profiles", {
+      method: "POST",
+      body: JSON.stringify({ label }),
+    });
+    await refetch();
+    return created;
+  }, [refetch]);
+
+  const renameProfile = useCallback(async (profileId: string, label: string) => {
+    await api(`/api/nav/profiles/${encodeURIComponent(profileId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label }),
+    });
     await refetch();
   }, [refetch]);
+
+  const deleteProfile = useCallback(async (profileId: string) => {
+    await api(`/api/nav/profiles/${encodeURIComponent(profileId)}`, {
+      method: "DELETE",
+    });
+    await refetch();
+  }, [refetch]);
+
+  const reorderProfiles = useCallback(async (orderedIds: string[]) => {
+    await api("/api/nav/profiles/order", {
+      method: "PUT",
+      body: JSON.stringify({ profile_ids: orderedIds }),
+    });
+    await refetch();
+  }, [refetch]);
+
+  // setProfileGroups writes the per-profile group placement junction
+  // (which user_nav_groups appear in this profile, at which positions).
+  // Never refetches — caller decides because this is usually chained
+  // with other writes (e.g. PUT prefs first, then this).
+  const setProfileGroups = useCallback(
+    async (profileId: string, placements: ProfileGroupPlacement[]) => {
+      await api(`/api/nav/profiles/${encodeURIComponent(profileId)}/groups`, {
+        method: "PUT",
+        body: JSON.stringify({ placements }),
+      });
+    },
+    [],
+  );
 
   const byKey = useMemo(() => {
     const m = new Map<string, NavCatalogEntry>();
@@ -237,6 +358,9 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     refetch, patchCatalogueEntry, save, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
     isBookmarked, bookmark, unbookmark,
+    profiles, activeProfileId,
+    setActiveProfile, createProfile, renameProfile, deleteProfile, reorderProfiles,
+    setProfileGroups,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

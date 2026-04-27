@@ -90,7 +90,18 @@ type CustomGroupInput struct {
 	Position int    `json:"position"`
 }
 
-// GetPrefs returns a user's prefs for (user, tenant, profile=NULL) ordered by position.
+// GetPrefs returns the user's prefs for the resolved profile (active
+// → Default → lazy-seed). Backwards-compatible signature kept for
+// tests + handlers that don't yet pass an explicit profile.
+func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) ([]PrefRow, error) {
+	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetPrefsForProfile(ctx, userID, subscriptionID, role, pid)
+}
+
+// GetPrefsForProfile returns prefs scoped to a specific profile.
 // Empty slice means "no prefs set" — callers fall back to catalogue defaults.
 //
 // Side effect: opportunistically backfills any system page (created_by IS NULL,
@@ -98,26 +109,34 @@ type CustomGroupInput struct {
 // is allowed by page_roles, but the user has no row in user_nav_prefs for it.
 // This eliminates the per-release backfill-migration tax — adding a new system
 // page with default_pinned=TRUE auto-pins it for every existing eligible user
-// on their next nav fetch. One-time per (user, page); subsequent unpins stick.
-func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) ([]PrefRow, error) {
+// on their next nav fetch. One-time per (user, page, profile); subsequent
+// unpins stick. Auto-pin is per-profile so a custom profile starts clean
+// rather than inheriting the union of "every default-pinned page ever shipped"
+// from Default.
+func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) ([]PrefRow, error) {
+	// Default-page auto-pin only fires for the user's Default profile.
+	// Custom profiles start with whatever the user explicitly puts on
+	// them — auto-pinning every new system page across every profile
+	// would silently grow customer profiles forever.
 	if _, err := s.Pool.Exec(ctx, `
 		INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
 		SELECT
 			$1::uuid,
 			$2::uuid,
-			NULL,
+			$4::uuid,
 			p.key_enum,
 			COALESCE(
 				(SELECT MAX(unp.position) + 1
 				 FROM user_nav_prefs unp
 				 WHERE unp.user_id = $1::uuid
 				   AND unp.subscription_id = $2::uuid
-				   AND unp.profile_id IS NULL),
+				   AND unp.profile_id = $4::uuid),
 				0
 			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
 			FALSE
 		FROM pages p
 		JOIN page_roles pr ON pr.page_id = p.id
+		JOIN user_nav_profiles d ON d.id = $4::uuid AND d.is_default = TRUE
 		WHERE p.created_by IS NULL
 		  AND p.subscription_id IS NULL
 		  AND p.default_pinned = TRUE
@@ -127,17 +146,17 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 			  SELECT 1 FROM user_nav_prefs unp
 			  WHERE unp.user_id = $1::uuid
 				AND unp.subscription_id = $2::uuid
-				AND unp.profile_id IS NULL
+				AND unp.profile_id = $4::uuid
 				AND unp.item_key = p.key_enum
-		  )`, userID, subscriptionID, string(role)); err != nil {
+		  )`, userID, subscriptionID, string(role), profileID); err != nil {
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
 	rows, err := s.Pool.Query(ctx, `
 		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
 		FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL
-		ORDER BY position`, userID, subscriptionID)
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
+		ORDER BY position`, userID, subscriptionID, profileID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,15 +206,26 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 	return out, rows.Err()
 }
 
-// GetStartPageHref resolves the start page for (user, tenant, profile=NULL).
+// GetStartPageHref resolves the start page for (user, sub) using the
+// resolved profile (active → Default → lazy-seed). Backwards-compat
+// wrapper kept so handlers + tests don't need updating.
 // Returns ("", false) if no start page set OR the caller's current role no
 // longer permits the stored item (e.g. demotion since prefs were written).
 func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) (string, bool, error) {
+	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
+	if err != nil {
+		return "", false, err
+	}
+	return s.GetStartPageHrefForProfile(ctx, userID, subscriptionID, role, pid)
+}
+
+// GetStartPageHrefForProfile is the profile-scoped variant.
+func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) (string, bool, error) {
 	var key string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT item_key FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND is_start_page = TRUE
-		LIMIT 1`, userID, subscriptionID).Scan(&key)
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3 AND is_start_page = TRUE
+		LIMIT 1`, userID, subscriptionID, profileID).Scan(&key)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
@@ -239,6 +269,35 @@ func (s *Service) ReplacePrefs(
 	startPageKey *string,
 	groups []CustomGroupInput,
 	extraEntries map[string]CatalogEntry,
+) error {
+	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
+	if err != nil {
+		return err
+	}
+	return s.ReplacePrefsForProfile(ctx, userID, subscriptionID, role, pinned, startPageKey, groups, extraEntries, pid)
+}
+
+// ReplacePrefsForProfile is the profile-scoped variant. Wipes + re-inserts
+// only this profile's rows; other profiles are untouched. user_nav_groups
+// (the shared pool) is NOT wiped here — that would clobber other profiles
+// referencing the same groups. Group writes happen via /api/nav/groups
+// instead (a separate surface — see story B6).
+//
+// Until the dedicated groups surface lands, this method preserves the
+// legacy "groups payload replaces user_nav_groups" behaviour ONLY when
+// it's writing the user's Default profile (the only profile the legacy
+// PUT could ever touch). Non-default profiles MUST send an empty
+// groups list; the shared group pool is not the responsibility of a
+// profile-scoped write.
+func (s *Service) ReplacePrefsForProfile(
+	ctx context.Context,
+	userID, subscriptionID uuid.UUID,
+	role models.Role,
+	pinned []PinnedInput,
+	startPageKey *string,
+	groups []CustomGroupInput,
+	extraEntries map[string]CatalogEntry,
+	profileID uuid.UUID,
 ) error {
 	if len(pinned) > MaxPinned {
 		return fmt.Errorf("%w: %d > %d", ErrTooManyPinned, len(pinned), MaxPinned)
@@ -358,16 +417,30 @@ func (s *Service) ReplacePrefs(
 	}
 	defer tx.Rollback(ctx)
 
-	// Wipe prefs first (FK to groups is ON DELETE SET NULL so order doesn't
-	// matter for integrity, but wiping prefs first means any deleted group
-	// has no rows pointing at it when we delete it).
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL`, userID, subscriptionID); err != nil {
+	// Look up whether the targeted profile is Default. The shared
+	// user_nav_groups pool is only wiped when writing Default — that
+	// preserves the legacy single-profile behaviour without letting a
+	// non-default-profile PUT clobber groups other profiles still
+	// reference. The group surface gets its own dedicated endpoint in
+	// B6; until then, non-default profiles MUST send an empty groups
+	// list (validated above by len cap; semantically should be 0).
+	var targetIsDefault bool
+	if err := tx.QueryRow(ctx, `
+		SELECT is_default FROM user_nav_profiles WHERE id = $1
+	`, profileID).Scan(&targetIsDefault); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+
+	// Wipe prefs for THIS profile only (other profiles' rows survive).
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM user_nav_prefs
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`, userID, subscriptionID, profileID); err != nil {
 		return err
+	}
+	if targetIsDefault {
+		if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
 	}
 
 	// Insert groups first so FK targets exist for any prefs row that
@@ -403,8 +476,8 @@ func (s *Service) ReplacePrefs(
 			}
 			batch.Queue(`
 				INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
-				VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8)`,
-				userID, subscriptionID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+				userID, subscriptionID, profileID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range translated {
@@ -421,23 +494,57 @@ func (s *Service) ReplacePrefs(
 	return tx.Commit(ctx)
 }
 
-// DeletePrefs nukes all prefs rows AND custom groups for the user. Used by
-// "Reset to defaults" in the modal.
+// DeletePrefs is the legacy "Reset to defaults" — nukes prefs for the
+// resolved profile AND the shared group pool. Kept as a wrapper so
+// existing callers (handler + tests) work unchanged. New code targeting
+// a specific profile should call DeletePrefsForProfile, which never
+// touches the shared group pool.
 func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.UUID) error {
+	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
+	if err != nil {
+		return err
+	}
 	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
+
+	var isDefault bool
+	if err := tx.QueryRow(ctx, `
+		SELECT is_default FROM user_nav_profiles WHERE id = $1
+	`, pid).Scan(&isDefault); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL`, userID, subscriptionID); err != nil {
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`, userID, subscriptionID, pid); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
-		return err
+	// Reset only wipes the shared group pool when the user's resolved
+	// profile is Default. Non-default profiles share the pool; resetting
+	// one of them must not erase groups that other profiles still place.
+	if isDefault {
+		if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
+}
+
+// DeletePrefsForProfile wipes prefs for the named profile only. Never
+// touches user_nav_groups (the shared pool). Use the legacy DeletePrefs
+// when the caller really means "reset to defaults" on the user's home
+// profile.
+func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {
+	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
+		return err
+	}
+	_, err := s.Pool.Exec(ctx, `
+		DELETE FROM user_nav_prefs
+		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`,
+		userID, subscriptionID, profileID)
+	return err
 }
 
 // validatePinned enforces the rule set described on ReplacePrefs.

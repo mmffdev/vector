@@ -11,6 +11,7 @@ import {
   type NavCustomGroup,
 } from "@/app/contexts/NavPrefsContext";
 import { NavIcon as IconFor } from "@/app/components/NavIcon";
+import ProfileBar from "@/app/components/ProfileBar";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
@@ -328,6 +329,8 @@ export default function AppSidebar_2() {
           <IconFor iconKey="pencil" />
         </Link>
       </div>
+
+      {open && <ProfileBar />}
 
       {renderGroups.map((g) => {
         if (g.items.length === 0 && g.kind === "tag") return null;

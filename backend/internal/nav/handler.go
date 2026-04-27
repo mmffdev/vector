@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
@@ -56,14 +57,47 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 }
 
 type prefsResp struct {
-	Prefs  []PrefRow     `json:"prefs"`
-	Groups []CustomGroup `json:"groups"`
+	ProfileID uuid.UUID     `json:"profile_id"`
+	Prefs     []PrefRow     `json:"prefs"`
+	Groups    []CustomGroup `json:"groups"`
 }
 
-// GET /api/nav/prefs — this user's prefs + custom groups for their current tenant.
+// parseProfileQuery reads ?profile_id=<uuid>. Returns (nil, nil) when
+// the param is absent (caller's signal to resolve implicitly).
+// (badParam, nil) is reported as a 400 by the caller.
+func parseProfileQuery(r *http.Request) (*uuid.UUID, error) {
+	raw := r.URL.Query().Get("profile_id")
+	if raw == "" {
+		return nil, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+// GET /api/nav/prefs[?profile_id=<uuid>] — prefs + groups for the
+// resolved profile. profile_id query param is optional; when omitted,
+// the active profile is used (falls back to Default, lazy-seeds if
+// missing). Response always includes the concrete profile_id used.
 func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.GetPrefs(r.Context(), u.ID, u.SubscriptionID, u.Role)
+	explicit, err := parseProfileQuery(r)
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	pid, err := h.Svc.ResolveProfile(r.Context(), u.ID, u.SubscriptionID, explicit)
+	if err != nil {
+		if errors.Is(err, ErrProfileNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	rows, err := h.Svc.GetPrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, pid)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -73,16 +107,22 @@ func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, prefsResp{Prefs: rows, Groups: groups})
+	writeJSON(w, http.StatusOK, prefsResp{ProfileID: pid, Prefs: rows, Groups: groups})
 }
 
 type putPrefsReq struct {
+	ProfileID    *uuid.UUID         `json:"profile_id,omitempty"`
 	Pinned       []PinnedInput      `json:"pinned"`
 	StartPageKey *string            `json:"start_page_key"`
 	Groups       []CustomGroupInput `json:"groups"`
 }
 
-// PUT /api/nav/prefs — replace this user's prefs and custom groups atomically.
+// PUT /api/nav/prefs — replace prefs (and, when targeting Default,
+// the shared group pool) atomically. profile_id in the body is
+// optional; absent means "use the resolved profile" (active → Default
+// → lazy-seed). When a non-default profile is targeted, the groups
+// payload MUST be empty — group placements on non-default profiles
+// flow through B6's dedicated surface, not this endpoint.
 func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req putPrefsReq
@@ -90,12 +130,21 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
+	pid, err := h.Svc.ResolveProfile(r.Context(), u.ID, u.SubscriptionID, req.ProfileID)
+	if err != nil {
+		if errors.Is(err, ErrProfileNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	if err := h.Svc.ReplacePrefs(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries); err != nil {
+	if err := h.Svc.ReplacePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries, pid); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
@@ -121,12 +170,50 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.WriteHeader(http.StatusNoContent)
+	// Return the canonical pool so the client can map synthetic "new:" ids
+	// from the request to server-minted UUIDs. The pool is sorted by
+	// position — same order the request sent groups in — so callers can
+	// align by index.
+	groups, err := h.Svc.GetCustomGroups(r.Context(), u.ID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, putPrefsResp{Groups: groups})
 }
 
-// DELETE /api/nav/prefs — wipe this user's prefs (reset to defaults).
+type putPrefsResp struct {
+	Groups []CustomGroup `json:"groups"`
+}
+
+// DELETE /api/nav/prefs[?profile_id=<uuid>] — reset prefs.
+//
+// No profile_id (legacy "Reset to defaults"): resolves to the user's
+// home profile, wipes its prefs, and — only if it's Default — wipes
+// the shared group pool too. This preserves the legacy modal's reset
+// semantics.
+//
+// With profile_id: scoped reset of just that profile's prefs. Never
+// touches the shared group pool. Use this from per-profile UI.
 func (h *Handler) DeletePrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
+	explicit, err := parseProfileQuery(r)
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if explicit != nil {
+		if err := h.Svc.DeletePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, *explicit); err != nil {
+			if errors.Is(err, ErrProfileNotFound) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if err := h.Svc.DeletePrefs(r.Context(), u.ID, u.SubscriptionID); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -266,6 +353,225 @@ func (h *Handler) customPageEntriesFor(
 		}
 	}
 	return out, nil
+}
+
+// ---- profiles -------------------------------------------------------
+
+type profilesResp struct {
+	Profiles        []Profile  `json:"profiles"`
+	ActiveProfileID *uuid.UUID `json:"active_profile_id"`
+}
+
+// GET /api/nav/profiles — list this user's profiles for the current
+// subscription, plus the user's currently-active profile id (nullable
+// when nothing has been pinned yet — client falls back to first/Default).
+func (h *Handler) ListProfiles(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	profs, err := h.Svc.ListProfiles(r.Context(), u.ID, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	activeID, err := h.Svc.GetActiveProfileID(r.Context(), u.ID, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, profilesResp{Profiles: profs, ActiveProfileID: activeID})
+}
+
+type createProfileReq struct {
+	Label string `json:"label"`
+}
+
+// POST /api/nav/profiles — create a new (non-default) profile.
+func (h *Handler) CreateProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req createProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	p, err := h.Svc.CreateProfile(r.Context(), u.ID, u.SubscriptionID, req.Label)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrProfileLabelEmpty),
+			errors.Is(err, ErrProfileLabelTooLong):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrDuplicateProfileLabel):
+			http.Error(w, "duplicate label", http.StatusConflict)
+		case errors.Is(err, ErrTooManyProfiles):
+			http.Error(w, "cap reached", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	writeJSON(w, http.StatusCreated, p)
+}
+
+type renameProfileReq struct {
+	Label string `json:"label"`
+}
+
+// PATCH /api/nav/profiles/{id} — rename a profile.
+func (h *Handler) RenameProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	var req renameProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.RenameProfile(r.Context(), u.ID, u.SubscriptionID, id, req.Label); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileLabelEmpty),
+			errors.Is(err, ErrProfileLabelTooLong):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrDuplicateProfileLabel):
+			http.Error(w, "duplicate label", http.StatusConflict)
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /api/nav/profiles/{id} — delete a non-default profile.
+func (h *Handler) DeleteProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.DeleteProfile(r.Context(), u.ID, u.SubscriptionID, id); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrCannotDeleteDefault):
+			http.Error(w, "cannot delete default", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type reorderProfilesReq struct {
+	Order []uuid.UUID `json:"order"`
+}
+
+// PUT /api/nav/profiles/order — batch reorder. Body: {"order": [id, id, ...]}.
+func (h *Handler) ReorderProfiles(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req reorderProfilesReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.ReorderProfiles(r.Context(), u.ID, u.SubscriptionID, req.Order); err != nil {
+		switch {
+		case errors.Is(err, ErrBadPositions):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type profileGroupsResp struct {
+	Placements []ProfileGroupPlacement `json:"placements"`
+}
+
+// GET /api/nav/profiles/{id}/groups — list group placements for a profile.
+func (h *Handler) ListProfileGroups(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	out, err := h.Svc.ListProfileGroups(r.Context(), u.ID, u.SubscriptionID, id)
+	if err != nil {
+		if errors.Is(err, ErrProfileNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, profileGroupsResp{Placements: out})
+}
+
+type setProfileGroupsReq struct {
+	Placements []ProfileGroupPlacement `json:"placements"`
+}
+
+// PUT /api/nav/profiles/{id}/groups — replace placements atomically.
+func (h *Handler) SetProfileGroups(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	var req setProfileGroupsReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.SetProfileGroups(r.Context(), u.ID, u.SubscriptionID, id, req.Placements); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrUnknownGroup),
+			errors.Is(err, ErrBadPositions):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type setActiveProfileReq struct {
+	ProfileID uuid.UUID `json:"profile_id"`
+}
+
+// PUT /api/nav/profiles/active — pin the user's active profile.
+func (h *Handler) SetActiveProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req setActiveProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.SetActiveProfile(r.Context(), u.ID, u.SubscriptionID, req.ProfileID); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrProfileWrongSubscription):
+			http.Error(w, "wrong subscription", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
