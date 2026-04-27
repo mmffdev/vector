@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Foundation palette</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 16px; background: var(--canvas); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .swatch {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .chip {
+    width: 100%; height: 44px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .name {
+    font-size: var(--text-sm);
+    color: var(--ink);
+    font-weight: var(--weight-semibold);
+    margin-bottom: 2px;
+  }
+  .hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch"><div class="chip" style="background:#F4F2EE"></div><div class="name">Canvas</div><div class="hex">#F4F2EE</div></div>
+    <div class="swatch"><div class="chip" style="background:#FFFFFF"></div><div class="name">Surface</div><div class="hex">#FFFFFF</div></div>
+    <div class="swatch"><div class="chip" style="background:#EDEAE4"></div><div class="name">Surface sunken</div><div class="hex">#EDEAE4</div></div>
+    <div class="swatch"><div class="chip" style="background:#1A1A1A"></div><div class="name">Ink</div><div class="hex">#1A1A1A</div></div>
+    <div class="swatch"><div class="chip" style="background:#5C5C5C"></div><div class="name">Ink muted</div><div class="hex">#5C5C5C</div></div>
+    <div class="swatch"><div class="chip" style="background:#8A8A8A"></div><div class="name">Ink subtle</div><div class="hex">#8A8A8A</div></div>
+    <div class="swatch"><div class="chip" style="background:#E5E1DA"></div><div class="name">Border</div><div class="hex">#E5E1DA</div></div>
+    <div class="swatch"><div class="chip" style="background:#D4CFC5"></div><div class="name">Border strong</div><div class="hex">#D4CFC5</div></div>
+  </div>
+</body>
+</html>

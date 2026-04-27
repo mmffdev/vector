@@ -20,7 +20,7 @@ import (
 
 // Caps and limits.
 const (
-	MaxPagesPerUser    = 50
+	MaxPagesPerUser    = 100
 	MaxViewsPerPage    = 8
 	MaxLabelLen        = 64
 	DefaultIcon        = "folder"

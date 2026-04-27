@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Brand tier slots</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--canvas); }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .tier {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .eyebrow {
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+    font-weight: var(--weight-medium);
+  }
+  .mark {
+    height: 56px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: var(--weight-semibold);
+  }
+  .name { font-size: var(--text-sm); color: var(--ink); font-weight: var(--weight-semibold); }
+  .desc { font-size: 12px; color: var(--ink-muted); line-height: 1.45; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="tier">
+      <div class="eyebrow">Tier 1 · Platform</div>
+      <div class="mark" style="background:#1A1A1A;color:#FFFFFF">Vector</div>
+      <div class="name">MMFFDev Vector</div>
+      <div class="desc">Quiet trust mark. Login, footers, system emails.</div>
+    </div>
+    <div class="tier">
+      <div class="eyebrow">Tier 2 · Tenant</div>
+      <div class="mark" style="background:#2A4A6E;color:#FFFFFF">Acme Co.</div>
+      <div class="name">Customer brand</div>
+      <div class="desc">Owns sidebar chrome. WCAG-AA gated.</div>
+    </div>
+    <div class="tier">
+      <div class="eyebrow">Tier 3 · Product</div>
+      <div class="mark" style="background:#FFFFFF;border:1px solid #D4CFC5;color:#1A1A1A"><span style="border-bottom:2px solid #2F7D54;padding-bottom:2px">Vista</span></div>
+      <div class="name">Product accent</div>
+      <div class="desc">Active tab indicator + primary CTA, scoped to product.</div>
+    </div>
+    <div class="tier">
+      <div class="eyebrow">Personal</div>
+      <div class="mark" style="background:#F4F2EE;color:#1A1A1A;border:1px solid #E5E1DA">Light · Dark</div>
+      <div class="name">Theme variant</div>
+      <div class="desc">Inverts foundation only. Never overrides brand.</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,3 +1,9 @@
+---
+name: stories
+description: 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
+allowed-tools: Bash, Read, Write, Edit
+---
+
 # /stories
 
 Turn a plan or work description into shippable user stories with 7-gate acceptance system, create them in Planka Backlog, then wait for user approval.

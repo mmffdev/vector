@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Radii</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--canvas); }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .demo {
+    height: 72px; background: var(--surface-sunken); border: 1px solid var(--border);
+  }
+  .name { font-family: var(--font-mono); font-size: 12px; color: var(--ink); font-weight: var(--weight-semibold); }
+  .px { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="demo" style="border-radius:6px"></div><div class="name">radius-sm</div><div class="px">6 px · pills, small inputs</div></div>
+    <div class="cell"><div class="demo" style="border-radius:8px"></div><div class="name">radius-md</div><div class="px">8 px · buttons, inputs</div></div>
+    <div class="cell"><div class="demo" style="border-radius:12px"></div><div class="name">radius-lg</div><div class="px">12 px · cards, modals</div></div>
+    <div class="cell"><div class="demo" style="border-radius:16px"></div><div class="name">radius-xl</div><div class="px">16 px · hero surfaces</div></div>
+    <div class="cell"><div class="demo" style="border-radius:9999px"></div><div class="name">radius-full</div><div class="px">∞ · pills, avatars</div></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Accordion table (component)</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body style="background:var(--canvas)">
+<div id="root" style="padding:24px"></div>
+<script type="text/babel" src="Components.jsx"></script>
+<script type="text/babel" src="Accordion.jsx"></script>
+<script type="text/babel">
+function Demo() {
+  const tag = (t) => <span style={{fontFamily:"var(--font-mono)",fontSize:12,color:"var(--ink-muted)"}}>{t}</span>;
+  return (
+    <div style={{maxWidth:920,margin:"0 auto"}}>
+      <div style={{marginBottom:8}}><span className="eyebrow">Releases</span></div>
+      <AccordionTable
+        defaultOpen="r2"
+        columns={[
+          { label: "Tag",    width: 90 },
+          { label: "Name" },
+          { label: "Status", width: 130 },
+          { label: "Owner",  width: 180 },
+          { label: "Date",   width: 120, align: "right" },
+        ]}
+      >
+        <AccordionRow id="r1" cells={[
+          tag("v3.0"),
+          <span style={{fontWeight:500}}>Portfolio Model — initial release</span>,
+          <StatusPill kind="success">Shipped</StatusPill>,
+          "Salung Prastyo",
+          "12 Mar 2026",
+        ]}>
+          <div className="eyebrow" style={{marginBottom:8}}>Layers in this release</div>
+          <table className="tbl" style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,overflow:"hidden"}}>
+            <thead><tr><th style={{width:80}}>Order</th><th style={{width:100}}>Tag</th><th>Name</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>{tag("PFR")}</td><td>Portfolio Review</td><td style={{color:"var(--ink-muted)"}}>Business review — sells the outcomes & vision.</td></tr>
+              <tr><td>2</td><td>{tag("PR")}</td><td>Product</td><td style={{color:"var(--ink-muted)"}}>Logical sets that share roadmap or release cadence.</td></tr>
+              <tr><td>3</td><td>{tag("BO")}</td><td>Business Objective</td><td style={{color:"var(--ink-muted)"}}>Measurable outcome the portfolio is pursuing.</td></tr>
+            </tbody>
+          </table>
+        </AccordionRow>
+
+        <AccordionRow id="r2" cells={[
+          tag("v3.1"),
+          <span style={{fontWeight:500}}>Adds Theme + Feature granularity</span>,
+          <StatusPill kind="info">In review</StatusPill>,
+          "Madelyn Lubin",
+          "26 Apr 2026",
+        ]}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:24}}>
+            <div>
+              <div className="eyebrow" style={{marginBottom:8}}>Release notes</div>
+              <p style={{margin:"0 0 10px",fontSize:14,lineHeight:"22px"}}>Introduces two new layers (Theme and Feature) beneath Business Objective. Existing portfolios migrate automatically; consumers should re-run roll-up reports after the version bump.</p>
+              <p style={{margin:0,fontSize:14,lineHeight:"22px",color:"var(--ink-muted)"}}>Backwards-compatible with v3.0 API. Sidebar terminology unchanged.</p>
+            </div>
+            <div>
+              <div className="eyebrow" style={{marginBottom:8}}>Approval</div>
+              <label style={{display:"block",marginBottom:10}}>
+                <span style={{fontSize:13,fontWeight:500,display:"block",marginBottom:4}}>Reviewer</span>
+                <select style={{height:36,width:"100%",border:"1px solid var(--border-strong)",borderRadius:8,background:"var(--surface)",padding:"0 10px",font:"inherit",fontSize:13}}>
+                  <option>Salung Prastyo</option>
+                  <option>Ryan Korsgaard</option>
+                </select>
+              </label>
+              <label style={{display:"block",marginBottom:14}}>
+                <span style={{fontSize:13,fontWeight:500,display:"block",marginBottom:4}}>Comment</span>
+                <textarea rows="3" placeholder="Add a comment…" style={{width:"100%",border:"1px solid var(--border-strong)",borderRadius:8,background:"var(--surface)",padding:"8px 10px",font:"inherit",fontSize:13,resize:"vertical"}}/>
+              </label>
+              <div style={{display:"flex",gap:8}}>
+                <button className="btn btn--secondary btn--sm">Request changes</button>
+                <button className="btn btn--primary btn--sm">Approve</button>
+              </div>
+            </div>
+          </div>
+        </AccordionRow>
+
+        <AccordionRow id="r3" cells={[
+          tag("v3.2"),
+          <span style={{fontWeight:500}}>Risk register integration</span>,
+          <StatusPill kind="warning">Pending</StatusPill>,
+          "Abram Bergson",
+          "—",
+        ]}>
+          <div className="eyebrow" style={{marginBottom:12}}>Timeline</div>
+          <ol style={{listStyle:"none",margin:0,padding:0}}>
+            {[
+              ["Spec drafted",        "15 Apr 2026 · Salung Prastyo", true],
+              ["Engineering review",  "22 Apr 2026 · Eng team",       true],
+              ["QA & sign-off",       "Scheduled — 8 May 2026",       false],
+            ].map(([t, m, done], i, arr) => (
+              <li key={i} style={{display:"flex",gap:14,paddingBottom: i < arr.length - 1 ? 18 : 0}}>
+                <span style={{flex:"0 0 8px",height:8,marginTop:6,background: done ? "var(--ink)" : "var(--border-strong)",borderRadius:"50%"}}/>
+                <div style={{flex:1,borderLeft: i < arr.length - 1 ? "1px solid var(--border)" : "none",paddingLeft:14,marginLeft:-5}}>
+                  <div style={{fontSize:13,fontWeight:500,color: done ? "var(--ink)" : "var(--ink-muted)"}}>{t}</div>
+                  <div style={{fontSize:12,color: done ? "var(--ink-muted)" : "var(--ink-subtle)"}}>{m}</div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </AccordionRow>
+
+        <AccordionRow id="r4" cells={[
+          tag("v4.0"),
+          <span style={{fontWeight:500}}>Tenant-scoped models</span>,
+          <StatusPill kind="neutral">Backlog</StatusPill>,
+          "Phillip Mango",
+          "—",
+        ]}>
+          <div className="eyebrow" style={{marginBottom:8}}>Toggle options</div>
+          {[
+            ["Allow tenant overrides of layer names",          true],
+            ["Lock workflow definitions to platform default",  false],
+            ["Require WCAG AA validation on tenant brand",     true],
+          ].map(([label, on], i, arr) => (
+            <label key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none"}}>
+              <span style={{fontSize:13}}>{label}</span>
+              <span style={{display:"inline-block",width:36,height:20,background: on ? "var(--ink)" : "var(--border-strong)",borderRadius:9999,position:"relative"}}>
+                <span style={{position:"absolute",top:2,left: on ? 18 : 2,width:16,height:16,borderRadius:"50%",background:"#fff"}}/>
+              </span>
+            </label>
+          ))}
+        </AccordionRow>
+      </AccordionTable>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body>
+</html>

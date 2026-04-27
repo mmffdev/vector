@@ -51,6 +51,9 @@
 - 2026-04-25 — Flux tie in 
 - 2026-04-25 — Origo tie in 
 
+### Systems Thinking
+- 2026-04-27 — Design a Systems Thinking system
+
 ### All systems
 - 2026-04-25 — Paywall - subscription system 
 - 2026-04-25 — Accounts segment and billing for gadmin and new account type [backoffice] boffice@mmffdev.com 

@@ -214,6 +214,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | UI | `FE-UI0002` | 2/? | `1762058691722348184` | Active | Vector Design System facelift (all pages + components, branch: vector-rebrand-001) |
 | UX | — | 0/? | — | Ready | User experience / workflows |
 | SEC | `FE-SEC0001` | 1/? | `1760810747115341214` | Active | Security baseline |
+| SEC | `FE-SEC0005` | 5/? | `1762205064870495730` | Active | Remote client access — MMFFDev admin login and dev panel access (PH-0020) |
 | GOV | — | 0/? | — | Ready | Governance / feature flags |
 | AUD | `FE-AUD0001` | 1/? | `1762012948181550696` | Active | Layer change audit logging |
 | RED | — | 0/? | — | Ready | Redundancy / HA / backup |
@@ -221,6 +222,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API0001` | 1/? | `1761472630432466214` | Active | Portfolio adoption endpoints |
 | API | `FE-API0002` | 2/? | `1761991023807956485` | Active | Layer batch rename/reorder endpoint |
 | API | `FE-API0003` | 3/? | `1762013369910429311` | Active | Layer change history endpoint |
+| API | `FE-API0004` | 4/? | `1762137672404436439` | Active | Samantha SDK — custom app developer API |
 | SQL | — | 0/? | — | Ready | Database / schema / migrations |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | — | 0/? | — | Ready | Algorithms / search / matching |

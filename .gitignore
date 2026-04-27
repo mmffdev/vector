@@ -13,5 +13,9 @@ backend/.env.local
 .claude/memory/
 .claude/settings.json
 .claude/settings.json.bak
+.claude/worktrees/
 .planka/
+MMFFDev - Vector Assets/backups/
+MMFFDev - Vector Assets/security-flags.jsonl
+MMFFDev - Vector Assets/Vector Design System.zip
 

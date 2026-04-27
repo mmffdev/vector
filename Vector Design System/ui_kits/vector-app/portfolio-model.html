@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Portfolio Model</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  /* Page-specific tweaks: tenant header bar inspired by the live screen */
+  .vh {
+    display: flex; align-items: center;
+    padding: 14px 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+  }
+  .vh__brand { font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+  .vh__brand span.plus { color: var(--ink-faint); margin: 0 6px; font-weight: 400; }
+  .vh__brand span.product { color: var(--ink); font-weight: 500; }
+  .vh__spacer { flex: 1; }
+  .vh__pill {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    color: var(--success); background: var(--success-bg);
+    padding: 3px 10px; border-radius: 9999px;
+  }
+  .vh__icons { display: flex; align-items: center; gap: 4px; }
+  .vh__ib {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    color: var(--ink-muted);
+    background: transparent; border: none; border-radius: 6px;
+  }
+  .vh__ib:hover { background: var(--surface-sunken); color: var(--ink); }
+  .vh__avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#C8B393,#A88B6E); margin-left: 6px; }
+</style>
+</head>
+<body style="background:var(--canvas)">
+<div id="root"></div>
+<script type="text/babel" src="Sidebar.jsx"></script>
+<script type="text/babel" src="Components.jsx"></script>
+<script type="text/babel" src="PortfolioModel.jsx"></script>
+<script type="text/babel">
+function App() {
+  const [active, setActive] = React.useState("portfolio-model");
+
+  return (
+    <>
+      <header className="vh">
+        <div className="vh__brand">Vector<span className="plus">+</span><span className="product">Portfolio Model</span></div>
+        <div className="vh__spacer"></div>
+        <span className="vh__pill">PRO/PM</span>
+        <div className="vh__icons">
+          <button className="vh__ib" aria-label="Notifications"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+          <button className="vh__ib" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+          <button className="vh__ib" aria-label="Help"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 4M12 17h.01"/></svg></button>
+          <button className="vh__ib" aria-label="Theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></button>
+        </div>
+        <div className="vh__avatar"></div>
+      </header>
+
+      <div style={{display:"grid",gridTemplateColumns:"240px 1fr",minHeight:"calc(100vh - 56px)"}}>
+        <Sidebar active={active} onNavigate={setActive} />
+        <PortfolioModel />
+      </div>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

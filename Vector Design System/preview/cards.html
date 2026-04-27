@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Card anatomy</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--canvas); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: var(--ink-subtle); }
+  .metric { font-size: 36px; line-height: 44px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 8px; }
+  .delta { font-size: 12px; color: var(--ink-muted); margin-top: 14px; }
+  .head { display:flex; align-items:center; justify-content: space-between; margin-bottom: 14px; }
+  .menu { width: 24px; height: 24px; color: var(--ink-subtle); cursor: pointer; }
+  .label { font-size: 14px; color: var(--ink); font-weight: 500; margin-left: 6px;}
+  .row2 { display:flex; align-items:baseline; gap:10px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Total revenue</div>
+      <div class="row2"><div class="metric">$20,320</div><span class="label">USD</span></div>
+      <div class="delta">+0.94 last year</div>
+    </div>
+    <div class="card">
+      <div class="head">
+        <div class="eyebrow">Recent transactions</div>
+        <svg class="menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+      </div>
+      <p style="margin:0;font-size:14px;color:var(--ink-muted);line-height:22px">Card content sits here. Eyebrow + optional inline action / overflow menu, then content.</p>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--ink-muted);line-height:22px">No shadow, ever. Separation comes from canvas-vs-surface tone + 1px border.</p>
+    </div>
+  </div>
+</body>
+</html>

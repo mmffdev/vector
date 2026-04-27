@@ -49,6 +49,8 @@ interface Props {
   initialLayers: LayerDTO[];
   onLayersUpdated: (layers: LayerDTO[]) => void;
   fixedItems?: LayerDTO[];
+  topAnchorTag?: string;
+  strategyGroupLabel?: string;
   fixedGroupLabel?: string;
 }
 
@@ -56,12 +58,23 @@ function sorted(layers: LayerDTO[]): LayerDTO[] {
   return [...layers].sort((a, b) => a.sort_order - b.sort_order);
 }
 
-export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems, fixedGroupLabel }: Props) {
+// Ensures the anchor tag layer always has the highest sort_order so it stays
+// locked at the top of the display (which reverses the array).
+function normalizeTopAnchor(layers: LayerDTO[], anchorTag?: string): LayerDTO[] {
+  if (!anchorTag) return layers;
+  const anchor = layers.find((l) => l.tag === anchorTag);
+  if (!anchor) return layers;
+  const others = layers.filter((l) => l.tag !== anchorTag);
+  const maxSo = others.length > 0 ? Math.max(...others.map((l) => l.sort_order)) : 0;
+  return sorted(layers.map((l) => (l.tag === anchorTag ? { ...l, sort_order: maxSo + 1 } : l)));
+}
+
+export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems, topAnchorTag, strategyGroupLabel, fixedGroupLabel }: Props) {
   const [localLayers, setLocalLayers] = useState<LayerDTO[]>(() =>
-    sorted(initialLayers)
+    normalizeTopAnchor(sorted(initialLayers), topAnchorTag)
   );
   const [originalLayers, setOriginalLayers] = useState<LayerDTO[]>(() =>
-    sorted(initialLayers)
+    normalizeTopAnchor(sorted(initialLayers), topAnchorTag)
   );
   const [localFixed, setLocalFixed] = useState<LayerDTO[]>(() => fixedItems ?? []);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
@@ -77,6 +90,10 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
   // Visual drop-target row index (for --drag-over class)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
+  // Zone collapse state
+  const [strategyOpen, setStrategyOpen] = useState(true);
+  const [executionOpen, setExecutionOpen] = useState(true);
+
   const isDirty =
     localLayers.length === originalLayers.length &&
     localLayers.some((l, i) => {
@@ -91,13 +108,13 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
 
   // Reset local state when the parent swaps initialLayers (post-save response)
   useEffect(() => {
-    const s = sorted(initialLayers);
+    const s = normalizeTopAnchor(sorted(initialLayers), topAnchorTag);
     setLocalLayers(s);
     setOriginalLayers(s);
     setEditingCell(null);
     setErrors(new Map());
     setFormError(null);
-  }, [initialLayers]);
+  }, [initialLayers, topAnchorTag]);
 
   useEffect(() => {
     setLocalFixed(fixedItems ?? []);
@@ -535,18 +552,30 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
             <col className="layers-editor__col--name" />
             <col className="layers-editor__col--desc" />
           </colgroup>
-          <thead className="table__head">
-            <tr className="table__row">
+          <tbody>
+            <tr className="layers-editor__row--group-sep">
+              <td colSpan={5} className="layers-editor__group-sep-cell">
+                <button
+                  type="button"
+                  className="layers-editor__zone-toggle"
+                  onClick={() => setStrategyOpen((v) => !v)}
+                  aria-expanded={strategyOpen}
+                >
+                  <span className={`accordion__chevron${strategyOpen ? "" : " accordion__chevron--closed"}`} />
+                  <span className="eyebrow">{strategyGroupLabel ?? "Strategy Zone"}</span>
+                </button>
+              </td>
+            </tr>
+            {strategyOpen && <tr className="table__head">
               <th className="table__cell layers-editor__drag-header" aria-label="Drag to reorder" />
               <th className="table__cell">Order</th>
               <th className="table__cell">Tag</th>
               <th className="table__cell">Name</th>
               <th className="table__cell">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayLayers.map((layer, index) => {
+            </tr>}
+            {strategyOpen && displayLayers.map((layer, index) => {
               const isDragOver = dropTargetIndex === index;
+              const isAnchor = !!topAnchorTag && layer.tag === topAnchorTag;
               const rowCls = [
                 "table__row",
                 "layers-editor__row",
@@ -559,23 +588,25 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
                 <tr
                   key={layer.id}
                   className={rowCls}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
+                  onDragOver={isAnchor ? undefined : (e) => handleDragOver(e, index)}
+                  onDragLeave={isAnchor ? undefined : handleDragLeave}
+                  onDrop={isAnchor ? undefined : (e) => handleDrop(e, index)}
+                  onDragEnd={isAnchor ? undefined : handleDragEnd}
                 >
-                  <td className="table__cell layers-editor__drag-cell" aria-hidden="true">
-                    <span
-                      className="layers-editor__drag-handle"
-                      title="Drag to reorder"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, index)}
-                    >
-                      ⠿
-                    </span>
+                  <td className={`table__cell layers-editor__drag-cell${isAnchor ? " layers-editor__drag-cell--disabled" : ""}`} aria-hidden="true">
+                    {!isAnchor && (
+                      <span
+                        className="layers-editor__drag-handle"
+                        title="Drag to reorder"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                      >
+                        ⠿
+                      </span>
+                    )}
                   </td>
                   <td className="table__cell table__cell--numeric">
-                    {layer.sort_order + fixedOffset}
+                    {displayLayers.length - index + fixedOffset}
                   </td>
                   {renderTagCell(layer)}
                   {renderNameCell(layer)}
@@ -585,12 +616,27 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
             })}
             {displayFixed.length > 0 && (
               <>
-                <tr className="layers-editor__row--group-sep" aria-hidden="true">
+                <tr className="layers-editor__row--group-sep">
                   <td colSpan={5} className="layers-editor__group-sep-cell">
-                    <span className="eyebrow">{fixedGroupLabel ?? "Strategy Layer"}</span>
+                    <button
+                      type="button"
+                      className="layers-editor__zone-toggle"
+                      onClick={() => setExecutionOpen((v) => !v)}
+                      aria-expanded={executionOpen}
+                    >
+                      <span className={`accordion__chevron${executionOpen ? "" : " accordion__chevron--closed"}`} />
+                      <span className="eyebrow">{fixedGroupLabel ?? "Execution Zone"}</span>
+                    </button>
                   </td>
                 </tr>
-                {displayFixed.map((item) => (
+                {executionOpen && <tr className="table__head">
+                  <th className="table__cell layers-editor__drag-header" aria-label="Drag to reorder" />
+                  <th className="table__cell">Order</th>
+                  <th className="table__cell">Tag</th>
+                  <th className="table__cell">Name</th>
+                  <th className="table__cell">Description</th>
+                </tr>}
+                {executionOpen && displayFixed.map((item) => (
                   <tr key={item.id} className="table__row layers-editor__row">
                     <td className="table__cell layers-editor__drag-cell layers-editor__drag-cell--disabled" aria-hidden="true" />
                     <td className="table__cell table__cell--numeric table__cell--muted">

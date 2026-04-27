@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Shortcuts — MMFFDev</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas:   #FFFFFF;
+      --surface:  #F4F2EE;
+      --sunken:   #EDEAE4;
+      --border:   #d8d5d0;
+      --ink:      #1a1917;
+      --ink-2:    #4a4845;
+      --ink-3:    #7a7875;
+      --ink-4:    #b0aca7;
+      --blue-bg:  #EFF6FF;
+      --blue-txt: #1d4ed8;
+      --mono:     'SFMono-Regular', 'Consolas', 'Monaco', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--canvas);
+      padding: 40px 48px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 14px;
+      margin-bottom: 28px;
+    }
+
+    h1 { font-size: 18px; font-weight: 600; }
+
+    .meta { font-size: 12px; color: var(--ink-3); }
+    .meta code { font-family: var(--mono); font-size: 11px; }
+
+    /* Category rows */
+    .category-row td {
+      background: var(--sunken);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-3);
+      padding: 10px 14px 6px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-3);
+      padding: 8px 14px;
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+    }
+
+    td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tr:hover td { background: var(--surface); }
+    tr.category-row:hover td { background: var(--sunken); }
+
+    /* Shortcut tag */
+    .sc {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--blue-txt);
+      background: var(--blue-bg);
+      padding: 2px 7px;
+      border-radius: 5px;
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    /* Inline code */
+    code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--surface);
+      padding: 0 4px;
+      border-radius: 3px;
+      color: var(--ink-2);
+    }
+
+    .desc { color: var(--ink); font-size: 13px; }
+
+    .flags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+
+    .flag {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--ink-2);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .flag-none { opacity: 0.35; }
+
+    .flag-note { font-size: 11.5px; color: var(--ink-3); line-height: 1.45; }
+
+    /* Load path breadcrumb */
+    .path {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .path__item {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .path__arrow {
+      font-size: 10px;
+      color: var(--ink-4);
+      padding: 0 1px;
+    }
+
+    .path__seg {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--ink-3);
+      white-space: nowrap;
+    }
+
+    .path__seg--root {
+      background: var(--sunken);
+      color: var(--ink-2);
+      font-weight: 600;
+    }
+
+    footer {
+      margin-top: 36px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      font-size: 11.5px;
+      color: var(--ink-3);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Claude Code Shortcuts — MMFFDev</h1>
+  <p class="meta">Generated: 2026-04-27 &nbsp;·&nbsp; Run <code>&lt;?&gt; -u</code> to refresh</p>
+</header>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:10%">Shortcut</th>
+      <th style="width:50%">What it does</th>
+      <th style="width:20%">Flags</th>
+      <th style="width:20%">Load path</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- ── Session & Navigation ───────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Session &amp; Navigation</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;b&gt; -N</span></td>
+      <td class="desc">Session boot file manager — numbered snapshots.
+        Reads or creates <code>boot1.md</code>, <code>boot2.md</code>, … in the project memory dir.
+        <b>Lazy-load on read</b> — surfaces only branch, story counter, and What's next;
+        remaining sections available on explicit request.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-N -R</span>
+          <span class="flag">-N -C</span>
+        </div>
+        <div class="flag-note">
+          <code>-R</code> reads into context (lazy surface only, no writes).<br>
+          <code>-C</code> creates or updates snapshot; adds MEMORY.md pointer for new files.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_boot.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">&lt;b&gt; -A</span></td>
+      <td class="desc">Session boot file manager — master record.
+        Writes <code>bootA.md</code>: all cards touched, all uncommitted changes, key decisions,
+        full commit log, and every next step across all work streams. Always overwrites. Never added to MEMORY.md.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-A -R</span>
+          <span class="flag">-A -C</span>
+        </div>
+        <div class="flag-note">
+          <code>-A -R</code> loads master record into context (lazy surface).<br>
+          <code>-A -C</code> writes full-session <code>bootA.md</code> — always overwrites.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_boot.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">&lt;?&gt;</span></td>
+      <td class="desc">Open this shortcuts reference page in the browser.
+        Use <code>-u</code> to rescan all command and skill docs and regenerate this file first.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-u</span>
+        </div>
+        <div class="flag-note">
+          <code>-u</code> scans <code>.claude/commands/c_*.md</code> + <code>.claude/skills/*/SKILL.md</code>,
+          regenerates <code>dev/shortcuts.html</code>, then opens it.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_shortcuts.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- ── Dev Services ──────────────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Dev Services</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;services&gt;</span></td>
+      <td class="desc">Read-only status check for SSH tunnel (<code>:5434</code>), Go backend (<code>:5100</code>),
+        Next.js frontend (<code>:5101</code>). Compares running backend commit against <code>HEAD</code>
+        and flags stale builds. Logs: <code>/tmp/mmff-*.log</code>.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-s</span>
+        </div>
+        <div class="flag-note">
+          <code>-s</code> appends live app user list (DB query) + Planka board credentials.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_services.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">&lt;npm&gt;</span></td>
+      <td class="desc">Start the Next.js dev server on <code>:5101</code>.
+        Detects existing instance and reports its URL instead of starting a duplicate.
+        Logs to <code>/tmp/mmff-next.log</code>.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-where</span>
+          <span class="flag">-stop</span>
+          <span class="flag">-restart</span>
+          <span class="flag">-PORT</span>
+          <span class="flag">-h</span>
+        </div>
+        <div class="flag-note">
+          <code>-where</code> report URL · <code>-stop</code> kill · <code>-restart</code> kill+start · <code>-PORT</code> custom port.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_npm.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">&lt;seleniumup&gt;</span></td>
+      <td class="desc">Ping the Selenium Grid hub then open
+        <code>http://localhost:4444/ui/</code> in the browser.
+        Also surfaces the noVNC live viewer at <code>:7900</code> (password: <code>secret</code>).</td>
+      <td>
+        <div class="flags"><span class="flag flag-none">none</span></div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_selenium.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- ── Database ──────────────────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Database</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;backupsql&gt;</span></td>
+      <td class="desc">Dump the remote <code>mmff_vector</code> DB (via SSH tunnel on <code>:5434</code>)
+        to a timestamped SQL file tagged with the current <code>HEAD</code> short SHA.
+        Output: <code>local-assets/backups/YYYYMMDD_HHMMSS_&lt;sha&gt;.sql</code>.</td>
+      <td>
+        <div class="flags"><span class="flag flag-none">none</span></div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_db-backup.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- ── Credentials ───────────────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Credentials</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;accounts&gt;</span></td>
+      <td class="desc">Source of truth for all dev user accounts, passwords, and Planka credentials.
+        Queries live DB for current users; credential locations for DB, MASTER_KEY, JWT; password reset procedure.</td>
+      <td>
+        <div class="flags"><span class="flag flag-none">none</span></div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_accounts.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- ── Backlog & Stories ─────────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Backlog &amp; Stories</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;backlog&gt;</span></td>
+      <td class="desc">Planka kanban management via MCP. Tunnel required (<code>:3333</code>).
+        Reads, creates, moves, and accepts cards.
+        Entry point: <code>.claude/bin/planka</code> — never use curl directly.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-a</span>
+          <span class="flag">-n</span>
+          <span class="flag">-d</span>
+          <span class="flag">-accept</span>
+          <span class="flag">-h</span>
+        </div>
+        <div class="flag-note">
+          <code>-a</code> all cards · <code>-n</code> new · <code>-d</code> done/move · <code>-accept</code> approve · <code>-h</code> help.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">docs/c_backlog.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">/stories</span></td>
+      <td class="desc">7-gate story acceptance system. Creates Planka Backlog cards with AIGEN + Phase + Feature + EST + RISK labels.
+        Fibonacci F0–F13; auto-splits F21+. 85%+ confidence required on all 7 gates.
+        Invoke with a free-form feature plan.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">description</span>
+        </div>
+        <div class="flag-note">
+          Pass a free-form plan as the argument. Stories needing F21+ are split automatically.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">skills/stories/SKILL.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- ── Scaffolding ───────────────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Scaffolding</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;makeapp&gt;</span></td>
+      <td class="desc">Scaffold a user-facing UI app in
+        <code>app/store/ui_apps/ui_app_&lt;name&gt;/</code>.
+        Creates manifest, index component, scoped CSS, and registers in <code>app/store/registry.ts</code>.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-name</span>
+          <span class="flag">-scope</span>
+        </div>
+        <div class="flag-note">
+          <code>-name</code> slug (lowercase, a-z0-9_) · <code>-scope</code> one-line description.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_make-app.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">&lt;makedevapp&gt;</span></td>
+      <td class="desc">Scaffold a dev-only UI app in
+        <code>dev/store/ui_apps/ui_app_&lt;name&gt;/</code>.
+        Uses <code>d_</code> prefix, defaults to <code>gadmin</code> role, NOT registered in <code>app/store/registry.ts</code>.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-name</span>
+          <span class="flag">-scope</span>
+        </div>
+        <div class="flag-note">
+          <code>-name</code> slug · <code>-scope</code> description. Never expose to <code>user</code> or <code>padmin</code>.
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_make-dev-app.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- ── Documentation ─────────────────────────────────────── -->
+    <tr class="category-row"><td colspan="4">Documentation</td></tr>
+
+    <tr>
+      <td><span class="sc">&lt;librarian&gt;</span></td>
+      <td class="desc">Sync docs with code and scan for security violations.
+        Runs as background subagent. Patches drift in-place, creates new leaves when concepts appear.
+        Never commits. Default: files changed since last logged run.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">schema</span>
+          <span class="flag">auth</span>
+          <span class="flag">backend</span>
+          <span class="flag">app</span>
+          <span class="flag">devops</span>
+          <span class="flag">security</span>
+          <span class="flag">full</span>
+        </div>
+        <div class="flag-note">
+          No scope = changed files since last run.<br>
+          <code>full</code> = audit all leaves (slow — use pre-release or after long gaps).
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_librarian.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr class="category-row"><td colspan="4">Content</td></tr>
+
+    <tr>
+      <td><span class="sc">/writeweb</span></td>
+      <td class="desc">Human-AI collaborative website copy. Produces text that reads like an expert and an AI worked together — professional yet warm, precise yet conversational.
+        Pass <code>-h</code> to print the full flag reference without generating copy.</td>
+      <td>
+        <div class="flags">
+          <span class="flag">-t hero</span>
+          <span class="flag">-t feature</span>
+          <span class="flag">-t faq</span>
+          <span class="flag">-t about</span>
+          <span class="flag">-t explainer</span>
+          <span class="flag">-len short|medium|long</span>
+          <span class="flag">-context</span>
+          <span class="flag">-h</span>
+        </div>
+        <div class="flag-notes" style="margin-top:6px;font-size:11.5px;color:var(--ink-3);line-height:1.6;">
+          <b>hero</b> 20–50 words, hook sentence, no lists<br>
+          <b>feature</b> 80–150 words, benefit-led, one optional short list<br>
+          <b>faq</b> 60–100 words/answer, first sentence answers directly<br>
+          <b>about</b> 150–300 words, warmer narrative register<br>
+          <b>explainer</b> full prose, scales with -len (default)<br>
+          <b>-len</b> short / medium / long word count target<br>
+          <b>-context</b> industry or audience note<br>
+          <b>-h</b> print flag reference, no copy generated
+        </div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">skills/writeweb/SKILL.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td><span class="sc">&lt;tree&gt;</span></td>
+      <td class="desc">Audit the docs tree shape against the Authoring rule.
+        Every index entry must be one line (bold label → link → half-sentence hook).
+        Patches violations in-place. Never commits.</td>
+      <td>
+        <div class="flags"><span class="flag flag-none">none</span></div>
+      </td>
+      <td>
+        <div class="path">
+          <span class="path__item"><code class="path__seg path__seg--root">CLAUDE.md</code></span>
+          <span class="path__item"><span class="path__arrow">→</span><code class="path__seg">commands/c_tree.md</code></span>
+        </div>
+      </td>
+    </tr>
+
+  </tbody>
+</table>
+
+<footer>
+  Generated 2026-04-27 by <code>&lt;?&gt;</code>
+  &nbsp;·&nbsp; Source: <code>.claude/commands/c_*.md</code> + <code>.claude/skills/*/SKILL.md</code>
+  &nbsp;·&nbsp; Run <code>&lt;?&gt; -u</code> to regenerate
+</footer>
+
+</body>
+</html>

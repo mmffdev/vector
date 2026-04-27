@@ -123,6 +123,16 @@ def board():
     result = http_request("GET", f"{PLANKA_URL}/api/boards/{BOARD_ID}", token=token)
     print(json.dumps(result))
 
+def unlabel_card(card_id, label_id):
+    """Remove a label from a card by finding and deleting the card-label association"""
+    token = get_token()
+    data = http_request("GET", f"{PLANKA_URL}/api/boards/{BOARD_ID}", token=token)
+    for cl in data.get("included", {}).get("cardLabels", []):
+        if cl["cardId"] == card_id and cl["labelId"] == label_id:
+            http_request("DELETE", f"{PLANKA_URL}/api/cards/{card_id}/card-labels/{cl['id']}", token=token)
+            return
+    print(f"WARN: card-label association not found for card={card_id} label={label_id}", file=sys.stderr)
+
 def verify_labels(card_ids, required_names):
     """Verify each card has the required labels"""
     token = get_token()
@@ -182,6 +192,8 @@ if __name__ == "__main__":
             create_label(sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]))
         elif cmd == "board":
             board()
+        elif cmd == "unlabel-card":
+            unlabel_card(sys.argv[2], sys.argv[3])
         elif cmd == "verify-labels":
             verify_labels(sys.argv[2], sys.argv[3])
         else:

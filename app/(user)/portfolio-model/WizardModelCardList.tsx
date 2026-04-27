@@ -1,27 +1,5 @@
 "use client";
 
-// WizardModelCardList — Card 00019 (Phase 5 padmin adoption wizard).
-//
-// Renders a horizontal row of MMFF-published portfolio model cards from
-// GET /api/portfolio-models. Single-select; the Confirm button POSTs to
-// /api/portfolio-models/{id}/adopt and signals the parent (00015 smart
-// router) via `onAdoptStarted` so the parent can mount the adoption
-// overlay (owned by 00017).
-//
-// Integration boundary
-//   - Does NOT modify page.tsx; the smart router mounts this component.
-//   - Does NOT mount or render the adoption overlay; only signals.
-//   - Reuses adoptionConstants.ts for endpoint paths (additive exports).
-//
-// Props contract (consumed by 00015):
-//   onAdoptStarted(stateId: string, modelId: string): void
-//     Fired exactly once after a successful POST to the adopt endpoint.
-//     stateId comes from `state_id` in AdoptionResult; modelId echoes
-//     the selected card id (also returned as `model_id`).
-//   onCancel?: () => void
-//     Optional — invoked when the user clicks the secondary Cancel
-//     button. The router can use this to dismiss the wizard.
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/app/lib/api";
@@ -30,8 +8,6 @@ import {
   adoptModelPath,
 } from "./adoptionConstants";
 
-// Wire shape of one entry returned by GET /api/portfolio-models. Mirrors
-// modelListItemDTO in backend/internal/portfoliomodels/list.go.
 export interface PortfolioModelListItem {
   id: string;
   name: string;
@@ -46,7 +22,6 @@ interface ModelListResponse {
   models: PortfolioModelListItem[];
 }
 
-// AdoptionResult mirrors backend/internal/portfoliomodels/adopt.go.
 interface AdoptionResult {
   state_id: string;
   model_id: string;
@@ -61,12 +36,24 @@ type FetchState =
   | { kind: "ready"; models: PortfolioModelListItem[] };
 
 export interface WizardModelCardListProps {
-  // Fired once the adopt POST returns 2xx with a state row id. The
-  // smart router (00015) is expected to mount the overlay (00017) at
-  // this point and stop rendering the wizard.
   onAdoptStarted: (stateId: string, modelId: string) => void;
-  // Optional: lets the parent dismiss the wizard from a Cancel click.
   onCancel?: () => void;
+}
+
+function ModelTip() {
+  return (
+    <div className="tip-box">
+      <div className="tip-box__icon-col">
+        <span className="tip-box__icon" aria-hidden="true">i</span>
+      </div>
+      <div className="tip-box__text-col">
+        <p className="tip-box__label">Tip</p>
+        <p className="tip-box__body">
+          Your selection is not a permanent commitment. If your requirements change — or a different model better reflects how your organisation works — you can switch portfolio models at any time after adoption, and your existing work will carry forward into the new structure.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function adoptErrMessage(e: unknown): string {
@@ -98,8 +85,8 @@ export default function WizardModelCardList({
 }: WizardModelCardListProps) {
   const router = useRouter();
   const [fetchState, setFetchState] = useState<FetchState>({ kind: "loading" });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,7 +95,11 @@ export default function WizardModelCardList({
       try {
         const res = await api<ModelListResponse>(PORTFOLIO_MODELS_LIST_PATH);
         if (cancelled) return;
-        const models = res.models ?? [];
+        const models = (res.models ?? []).sort((a, b) => {
+          if (a.key === "mmff") return -1;
+          if (b.key === "mmff") return 1;
+          return a.name.localeCompare(b.name);
+        });
         if (models.length === 0) {
           setFetchState({ kind: "empty" });
         } else {
@@ -130,19 +121,23 @@ export default function WizardModelCardList({
     };
   }, []);
 
-  async function handleConfirm() {
-    if (!selectedId || submitting) return;
-    setSubmitting(true);
+  async function handleConfirm(modelId: string) {
+    if (submittingId) return;
+    setSubmittingId(modelId);
     setSubmitError(null);
     try {
-      const res = await api<AdoptionResult>(adoptModelPath(selectedId), {
+      const res = await api<AdoptionResult>(adoptModelPath(modelId), {
         method: "POST",
       });
       onAdoptStarted(res.state_id, res.model_id);
     } catch (e) {
       setSubmitError(adoptErrMessage(e));
-      setSubmitting(false);
+      setSubmittingId(null);
     }
+  }
+
+  function toggle(id: string) {
+    setOpenId((prev) => (prev === id ? null : id));
   }
 
   return (
@@ -175,134 +170,217 @@ export default function WizardModelCardList({
       )}
 
       {fetchState.kind === "ready" && (
-        <ul
-          className="wizard-model-cards__list"
-          role="radiogroup"
-          aria-label="Available portfolio models"
-        >
+        <div className="accordion" role="list">
           {fetchState.models.map((m) => {
-            const isSelected = m.id === selectedId;
+            const isOpen = openId === m.id;
             const layerNames = m.layer_summary
               ? m.layer_summary.split(",").map((s) => s.trim()).filter(Boolean)
               : [];
             return (
-              <li key={m.id} className="wizard-model-cards__item">
+              <div
+                key={m.id}
+                className="accordion__item"
+                role="listitem"
+              >
                 <button
                   type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  className={
-                    "wizard-model-cards__card" +
-                    (isSelected ? " wizard-model-cards__card--selected" : "")
-                  }
-                  onClick={() => setSelectedId(m.id)}
-                  disabled={submitting}
+                  className="accordion__toggle"
+                  onClick={() => toggle(m.id)}
+                  aria-expanded={isOpen}
                 >
-                  <div className="wizard-model-cards__card-header">
-                    <h3 className="wizard-model-cards__card-name">{m.name}</h3>
-                    <span className="wizard-model-cards__card-version">
-                      v{m.version}
-                    </span>
-                  </div>
-
-                  <div
+                  <span
                     className={
-                      "wizard-model-cards__card-description" +
-                      (m.description ? "" : " wizard-model-cards__card-description--empty")
+                      "accordion__chevron" +
+                      (isOpen ? "" : " accordion__chevron--closed")
                     }
-                  >
-                    {m.description ?? (
-                      <svg
-                        className="wizard-model-cards__card-description-placeholder"
-                        viewBox="0 0 100 50"
-                        preserveAspectRatio="none"
-                        aria-hidden="true"
-                      >
-                        <rect x="0" y="0" width="100" height="50" fill="none" />
-                        <line x1="0" y1="0" x2="100" y2="50" />
-                        <line x1="100" y1="0" x2="0" y2="50" />
-                      </svg>
-                    )}
-                  </div>
-
-                  <div className="wizard-model-cards__card-count">
-                    {m.layer_count} Layer{m.layer_count === 1 ? "" : "s"}
-                  </div>
-
-                  {layerNames.length > 0 && (
-                    <ol
-                      className="layer-hierarchy wizard-model-cards__card-hierarchy"
-                      aria-label={`${m.name} layer hierarchy`}
-                    >
-                      {layerNames.flatMap((name, i) => {
-                        const nodes: React.ReactNode[] = [
-                          <li
-                            key={`${m.id}-layer-${i}`}
-                            className="layer-hierarchy__box"
-                          >
-                            <span className="layer-hierarchy__name">{name}</span>
-                          </li>,
-                        ];
-                        if (i < layerNames.length - 1) {
-                          nodes.push(
-                            <li
-                              key={`${m.id}-arrow-${i}`}
-                              className="layer-hierarchy__arrow"
-                              aria-hidden="true"
-                            />
-                          );
-                        }
-                        return nodes;
-                      })}
-                    </ol>
-                  )}
+                  />
+                  <span className="accordion__toggle-name">
+                    {m.name}
+                  </span>
+                  <span className="wizard-model-cards__card-version">
+                    v{m.version}
+                  </span>
                 </button>
-              </li>
+
+                {isOpen && (
+                  <div className="accordion__body">
+                    <table className="model-chooser-grid">
+                      <tbody>
+                        <tr>
+                          <td className="model-chooser-grid__cell model-chooser-grid__cell--desc">
+                            {m.description ? (
+                              <>
+                                {m.description.split("\n\n").map((para, i) => {
+                                  const h = para.match(/^\*\*(.+)\*\*$/);
+                                  return h
+                                    ? <p key={i} className="model-chooser-grid__heading"><strong>{h[1]}</strong></p>
+                                    : <p key={i} className="model-chooser-grid__para">{para}</p>;
+                                })}
+                                <ModelTip />
+                              </>
+                            ) : (
+                              <svg
+                                className="wizard-model-cards__card-description-placeholder"
+                                viewBox="0 0 100 50"
+                                preserveAspectRatio="none"
+                                aria-hidden="true"
+                              >
+                                <rect x="0" y="0" width="100" height="50" fill="none" />
+                                <line x1="0" y1="0" x2="100" y2="50" />
+                                <line x1="100" y1="0" x2="0" y2="50" />
+                              </svg>
+                            )}
+                          </td>
+                          <td className="model-chooser-grid__cell model-chooser-grid__cell--count">
+                            {m.layer_count} Layer{m.layer_count === 1 ? "" : "s"}
+                          </td>
+                          <td className="model-chooser-grid__cell">
+                            {layerNames.length > 0 && (
+                              <ol
+                                className="layer-hierarchy"
+                                aria-label={`${m.name} layer hierarchy`}
+                              >
+                                {layerNames.flatMap((name, i) => {
+                                  const nodes: React.ReactNode[] = [
+                                    <li
+                                      key={`${m.id}-layer-${i}`}
+                                      className="layer-hierarchy__box"
+                                    >
+                                      <span className="layer-hierarchy__name">
+                                        {name}
+                                      </span>
+                                    </li>,
+                                  ];
+                                  if (i < layerNames.length - 1) {
+                                    nodes.push(
+                                      <li
+                                        key={`${m.id}-arrow-${i}`}
+                                        className="layer-hierarchy__arrow"
+                                        aria-hidden="true"
+                                      />
+                                    );
+                                  }
+                                  return nodes;
+                                })}
+                              </ol>
+                            )}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            colSpan={3}
+                            className="model-chooser-grid__footer-cell"
+                          >
+                            <div className="model-chooser-grid__footer-inner">
+                              <button
+                                type="button"
+                                className="btn btn--primary model-chooser-accept"
+                                onClick={() => handleConfirm(m.id)}
+                                disabled={submittingId !== null}
+                              >
+                                {submittingId === m.id
+                                  ? "Starting adoption…"
+                                  : "Accept"}
+                              </button>
+                              <span className="wizard-model-cards__card-version">
+                                v{m.version}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             );
           })}
-          <li className="wizard-model-cards__item">
+
+          {/* Build your own */}
+          <div
+            className="accordion__item accordion__item--alt"
+            role="listitem"
+          >
             <button
               type="button"
-              className="wizard-model-cards__card wizard-model-cards__card--custom"
-              onClick={() => router.push("/portfolio-model/custom")}
-              disabled={submitting}
+              className="accordion__toggle"
+              onClick={() => toggle("custom")}
+              aria-expanded={openId === "custom"}
             >
-              <div className="wizard-model-cards__card-header">
-                <h3 className="wizard-model-cards__card-name">Build your own</h3>
-                <span className="wizard-model-cards__card-version">+</span>
-              </div>
-              <div className="wizard-model-cards__card-description wizard-model-cards__card-description--empty">
-                <span className="wizard-model-cards__card-custom-hint">
-                  Start with an empty hierarchy and define your own layers.
-                </span>
-              </div>
+              <span
+                className={
+                  "accordion__chevron" +
+                  (openId === "custom"
+                    ? ""
+                    : " accordion__chevron--closed")
+                }
+              />
+              <span className="accordion__toggle-name">
+                Build your own
+              </span>
+              <span className="wizard-model-cards__card-version">+</span>
             </button>
-          </li>
-        </ul>
+
+            {openId === "custom" && (
+              <div className="accordion__body">
+                <table className="model-chooser-grid">
+                  <tbody>
+                    <tr>
+                      <td className="model-chooser-grid__cell model-chooser-grid__cell--desc">
+                        <span className="wizard-model-cards__card-custom-hint">
+                          Start with an empty hierarchy and define your own layers.
+                        </span>
+                        <ModelTip />
+                      </td>
+                      <td className="model-chooser-grid__cell model-chooser-grid__cell--count">
+                        —
+                      </td>
+                      <td className="model-chooser-grid__cell" />
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="model-chooser-grid__footer-cell"
+                      >
+                        <div className="model-chooser-grid__footer-inner">
+                          <button
+                            type="button"
+                            className="btn btn--primary model-chooser-accept"
+                            onClick={() =>
+                              router.push("/portfolio-model/custom")
+                            }
+                            disabled={submittingId !== null}
+                          >
+                            Accept
+                          </button>
+                          <span className="wizard-model-cards__card-version">
+                            +
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {submitError && <div className="form__error">{submitError}</div>}
 
-      <footer className="wizard-model-cards__actions">
-        {onCancel && (
+      {onCancel && (
+        <footer className="wizard-model-cards__actions">
           <button
             type="button"
             className="btn btn--secondary"
             onClick={onCancel}
-            disabled={submitting}
+            disabled={submittingId !== null}
           >
             Cancel
           </button>
-        )}
-        <button
-          type="button"
-          className="btn btn--primary wizard-model-cards__confirm"
-          onClick={handleConfirm}
-          disabled={!selectedId || submitting || fetchState.kind !== "ready"}
-        >
-          {submitting ? "Starting adoption…" : "Confirm"}
-        </button>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

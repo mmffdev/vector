@@ -340,11 +340,12 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
         </dl>
       </header>
 
-      <Section title="Strategy">
+      <Section title="Portfolio Hierarchy">
         <LayersTable
           initialLayers={localLayers}
           onLayersUpdated={setLocalLayers}
           fixedItems={STRATEGY_FIXED_ITEMS}
+          topAnchorTag="PRW"
         />
       </Section>
 

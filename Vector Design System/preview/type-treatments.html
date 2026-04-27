@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Type treatments</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--canvas); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="card">
+      <div class="t-eyebrow">Total revenue</div>
+      <div class="t-metric" style="margin-top:6px">$20,320</div>
+      <div class="meta">eyebrow + display metric (tabular-nums)</div>
+    </div>
+    <div class="card">
+      <h1 style="margin:0">Welcome back, Salung</h1>
+      <p style="margin:6px 0 0;color:var(--ink-muted)">Your workspace overview</p>
+      <div class="meta">page title + helper subtitle</div>
+    </div>
+    <div class="card">
+      <h2 style="margin:0">Recent transactions</h2>
+      <p style="margin:6px 0 0;font-size:13px;color:var(--ink-muted)">Last 30 days · 12 items</p>
+      <div class="meta">card title + metadata</div>
+    </div>
+    <div class="card">
+      <p style="margin:0">Body copy stays at <strong>14px regular</strong>. Bold sparingly — semibold (600) is the default emphasis.</p>
+      <div class="meta">body</div>
+    </div>
+  </div>
+</body>
+</html>

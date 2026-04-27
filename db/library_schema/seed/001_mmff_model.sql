@@ -40,16 +40,26 @@ WITH model_ins AS (
         '00000000-0000-0000-0000-00000000a000'::uuid,                 -- model_family_id (stable)
         'mmff',
         'Vector Standard',
-        'The default Vector portfolio model: Portfolio Runway → Product → Business Objective → Theme → Feature, with execution layers below.',
+        $$**What**
+
+Vector Standard is the MMFF native hierarchy. Five layers run from multi-year strategic planning down to individual features shipping each quarter. It keeps investment decisions separate from release planning so leadership and delivery teams each work at the level that is relevant to them.
+
+**How**
+
+Portfolio Runway captures where the portfolio is heading over the next one to three years. It is not a committed roadmap. Work flows down through Products and Business Objectives, which record what is being improved and why, before reaching Themes and Features, which define what is being built this quarter. Keeping those two questions at different layers stops aspirational roadmap items from being treated as sprint commitments before the underlying objectives have been confirmed.
+
+**Why**
+
+Pick Vector Standard if you have no existing framework requirement, or if you want a model that stays current as MMFF develops. Platform updates and new capabilities are built and tested against this structure first.$$,
         '# Vector Standard model
 
-The Vector default. Five portfolio layers from strategy down to deliverable feature, plus the execution stack underneath.
+The MMFF default. Five portfolio layers from strategy down to deliverable feature, with the execution stack underneath.
 
-- **Portfolio Runway** (PRW) — strategic horizon
-- **Product** (PR) — long-lived value stream
-- **Business Objective** (BO) — measurable outcome
-- **Theme** (TH) — release-sized scope
-- **Feature** (FT) — adoptable user-facing change
+- **Portfolio Runway** (PRW): strategic horizon
+- **Product** (PR): long-lived value stream
+- **Business Objective** (BO): measurable outcome
+- **Theme** (TH): release-sized scope
+- **Feature** (FT): adoptable user-facing change
 
 Edit freely after adoption. Updates from MMFF arrive as release notifications you can review and merge per row.',
         'system',
@@ -61,7 +71,7 @@ Edit freely after adoption. Updates from MMFF arrive as release notifications yo
         1,
         '2026.04.0'
     )
-    ON CONFLICT (model_family_id, version) DO NOTHING
+    ON CONFLICT (model_family_id, version) DO UPDATE SET description = EXCLUDED.description
     RETURNING id
 ),
 model_id_resolved AS (

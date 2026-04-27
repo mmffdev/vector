@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Charts</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--canvas); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
+  .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: var(--ink-subtle); }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--ink-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px;}
+  .dot { width: 8px; height: 8px; border-radius: 2px; }
+  .chart { width: 100%; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="eyebrow">Sales trend</div>
+      <div class="legend">
+        <span><span class="dot" style="background:#1A1A1A"></span>This year</span>
+        <span><span class="dot" style="background:#B8B5AF"></span>Last year</span>
+      </div>
+    </div>
+    <svg class="chart" viewBox="0 0 600 160" preserveAspectRatio="none">
+      <!-- gridlines -->
+      <g stroke="#E5E1DA" stroke-width="1" stroke-dasharray="3 4" opacity="0.6">
+        <line x1="0" y1="32" x2="600" y2="32"/>
+        <line x1="0" y1="64" x2="600" y2="64"/>
+        <line x1="0" y1="96" x2="600" y2="96"/>
+        <line x1="0" y1="128" x2="600" y2="128"/>
+      </g>
+      <!-- bars (last year, muted) -->
+      <g fill="#B8B5AF">
+        <rect x="20" y="100" width="14" height="40"/>
+        <rect x="70" y="80" width="14" height="60"/>
+        <rect x="120" y="90" width="14" height="50"/>
+        <rect x="170" y="60" width="14" height="80"/>
+        <rect x="220" y="70" width="14" height="70"/>
+        <rect x="270" y="40" width="14" height="100"/>
+        <rect x="320" y="55" width="14" height="85"/>
+        <rect x="370" y="75" width="14" height="65"/>
+        <rect x="420" y="85" width="14" height="55"/>
+        <rect x="470" y="65" width="14" height="75"/>
+        <rect x="520" y="80" width="14" height="60"/>
+        <rect x="570" y="95" width="14" height="45"/>
+      </g>
+      <!-- bars (this year, ink) -->
+      <g fill="#1A1A1A">
+        <rect x="36" y="80" width="14" height="60"/>
+        <rect x="86" y="65" width="14" height="75"/>
+        <rect x="136" y="70" width="14" height="70"/>
+        <rect x="186" y="40" width="14" height="100"/>
+        <rect x="236" y="50" width="14" height="90"/>
+        <rect x="286" y="20" width="14" height="120"/>
+        <rect x="336" y="35" width="14" height="105"/>
+        <rect x="386" y="55" width="14" height="85"/>
+        <rect x="436" y="62" width="14" height="78"/>
+        <rect x="486" y="45" width="14" height="95"/>
+        <rect x="536" y="58" width="14" height="82"/>
+        <rect x="586" y="75" width="14" height="65"/>
+      </g>
+    </svg>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--ink-subtle);letter-spacing:0.04em">
+      <span>JAN</span><span>FEB</span><span>MAR</span><span>APR</span><span>MAY</span><span>JUN</span><span>JUL</span><span>AUG</span><span>SEP</span><span>OCT</span><span>NOV</span><span>DEC</span>
+    </div>
+  </div>
+</body>
+</html>

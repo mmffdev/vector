@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vector — Elevation (none)</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 22px; background: var(--canvas); }
+  .stack { display: flex; gap: 16px; align-items: stretch; }
+  .layer {
+    flex: 1; padding: 16px;
+    border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .lname { font-size: var(--text-sm); color: var(--ink); font-weight: var(--weight-semibold); }
+  .ldesc { font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+  .note {
+    margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .strike { text-decoration: line-through; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+  <div class="stack">
+    <div class="layer" style="background:#F4F2EE;border:1px solid #E5E1DA">
+      <span class="lname">Canvas</span>
+      <span class="ldesc">Outermost. Warm off-white app background.</span>
+    </div>
+    <div class="layer" style="background:#FFFFFF;border:1px solid #E5E1DA">
+      <span class="lname">Surface</span>
+      <span class="ldesc">Cards, panels, modals, sidebar.</span>
+    </div>
+    <div class="layer" style="background:#EDEAE4;border:1px solid #E5E1DA">
+      <span class="lname">Sunken</span>
+      <span class="ldesc">Table headers, active nav, hover row.</span>
+    </div>
+  </div>
+  <div class="note">
+    <strong>No shadows.</strong> Separation comes from <span class="strike">z-depth</span> tone shift + 1px border. Never depth tricks.
+  </div>
+</body>
+</html>

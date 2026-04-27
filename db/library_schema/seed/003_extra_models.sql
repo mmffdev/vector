@@ -38,20 +38,30 @@ WITH model_ins AS (
         '00000000-0000-0000-0000-00000000b000'::uuid,
         'enterprise',
         'Enterprise',
-        'Five-layer enterprise portfolio: Strategic Objective -> Portfolio Objective -> Business Epic -> Business Outcome -> Feature.',
+        $$**What**
+
+Enterprise is built for large organisations where portfolio strategy and delivery need to stay clearly separated. Five layers from Strategic Objective down to Feature create a distinct accountability at each level: executives set direction, portfolio managers allocate investment, and delivery teams ship outcomes.
+
+**How**
+
+Strategic Objectives capture the multi-year business commitments the organisation must deliver. Portfolio Objectives translate those into measurable targets across one or two planning periods. Business Epics define the major value initiatives that advance each objective. Business Outcomes act as checkpoints confirming the work is producing real results before the next phase. Features at the base are the discrete increments teams pick up sprint by sprint.
+
+**Why**
+
+Use Enterprise when you run formal portfolio governance across multiple delivery programmes under a shared strategic plan, or when you need clear traceability from board-level goals to released software. The extra layers are worth the effort only if you have the governance structure in place to maintain them.$$,
         '# Enterprise model
 
 A five-layer chain for organisations that separate strategic intent from delivery outcomes.
 
-- **Strategic Objective** (SO)
-- **Portfolio Objective** (PO)
-- **Business Epic** (BE)
-- **Business Outcome** (BC)
-- **Feature** (FE)',
+- **Strategic Objective** (SO): top-level strategic intent
+- **Portfolio Objective** (PO): measurable portfolio target
+- **Business Epic** (BE): major value delivery initiative
+- **Business Outcome** (BC): checkpoint confirming the epic is delivering
+- **Feature** (FE): adoptable user-facing change',
         'system', NULL, 'public', '{}'::jsonb,
         'tree', 'sitemap', 1, '2026.04.0'
     )
-    ON CONFLICT (model_family_id, version) DO NOTHING
+    ON CONFLICT (model_family_id, version) DO UPDATE SET description = EXCLUDED.description
     RETURNING id
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
@@ -125,18 +135,28 @@ WITH model_ins AS (
         '00000000-0000-0000-0000-00000000c000'::uuid,
         'rally',
         'Rally',
-        'Three-layer Rally-style portfolio: Strategy -> Initiative -> Feature.',
+        $$**What**
+
+Rally is a three-layer portfolio hierarchy based on the Broadcom Rally portfolio management approach. The compact chain of Strategy, Initiative, and Feature suits organisations that want visible strategic alignment without the overhead of a deeper structure. Fewer layers means faster planning and less disruption when priorities shift.
+
+**How**
+
+Strategy at the top sets the investment themes that govern where funding goes. Initiatives are the work packages that act on that strategy, typically spanning one or more planning increments and owned at programme level. Features sit directly above the execution stack, connecting strategic intent to the sprint-level work delivery teams pick up day to day.
+
+**Why**
+
+Use Rally when your teams already work in a Rally environment and want familiar terminology in MMFF, or when you need something lighter than Enterprise but still want a distinct strategic layer above delivery work. The three-layer structure works well for programmes running fewer than ten delivery teams.$$,
         '# Rally model
 
-A lean three-layer chain inspired by Rally portfolio management.
+A lean three-layer chain based on Rally portfolio management.
 
-- **Strategy** (ST)
-- **Initiative** (IN)
-- **Feature** (FE)',
+- **Strategy** (ST): investment themes guiding funding
+- **Initiative** (IN): programme-level work package
+- **Feature** (FE): adoptable user-facing change',
         'system', NULL, 'public', '{}'::jsonb,
         'tree', 'sitemap', 1, '2026.04.0'
     )
-    ON CONFLICT (model_family_id, version) DO NOTHING
+    ON CONFLICT (model_family_id, version) DO UPDATE SET description = EXCLUDED.description
     RETURNING id
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
@@ -196,16 +216,26 @@ WITH model_ins AS (
         '00000000-0000-0000-0000-00000000d000'::uuid,
         'jira',
         'Jira',
-        'Single-layer light-touch portfolio: Initiative. Execution stack handles everything below.',
+        $$**What**
+
+The Jira model is the lightest option in the catalogue. A single portfolio layer, Initiative, sits above the execution stack. It is for teams that already manage delivery work in Jira or a similar tool and want to connect that work to portfolio-level planning without adding a parallel hierarchy on top.
+
+**How**
+
+Initiatives are large strategic containers, broadly equivalent to Jira Initiatives or top-level Epics depending on your configuration. They exist to group delivery work under a declared portfolio commitment. Everything below that level, including epics, stories, and tasks, continues to live in your existing tooling and connects to MMFF through the execution stack.
+
+**Why**
+
+Use Jira when you have an established Jira workflow your teams rely on and do not want to change. A single portfolio layer gives portfolio managers visibility into strategic commitments without asking delivery teams to adopt a new structure. This model requires the least change from an existing Jira setup.$$,
         '# Jira model
 
-Light-touch: a single portfolio layer above the execution stack. Suits teams that already manage detailed work outside the portfolio model.
+Light-touch: a single portfolio layer above the execution stack. For teams that already manage detailed work in Jira or a similar tool.
 
-- **Initiative** (IN)',
+- **Initiative** (IN): strategic container grouping delivery work',
         'system', NULL, 'public', '{}'::jsonb,
         'tree', 'sitemap', 1, '2026.04.0'
     )
-    ON CONFLICT (model_family_id, version) DO NOTHING
+    ON CONFLICT (model_family_id, version) DO UPDATE SET description = EXCLUDED.description
     RETURNING id
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
@@ -251,19 +281,29 @@ WITH model_ins AS (
         '00000000-0000-0000-0000-00000000e000'::uuid,
         'safe',
         'SAFe',
-        'Four-layer SAFe-style portfolio: Strategic Theme -> Portfolio Backlog -> Programme Backlog -> Feature.',
+        $$**What**
+
+The SAFe model follows the Scaled Agile Framework portfolio management structure. Four layers connect enterprise strategy to releasable features using terminology that SAFe-trained teams will already know. It suits organisations that have invested in SAFe and want MMFF to reflect that structure rather than requiring teams to translate between two different systems.
+
+**How**
+
+Strategic Themes represent the enterprise-level priorities that guide investment decisions, typically reviewed through a portfolio canvas or Business Agility Review. Portfolio Backlog holds Epics ready or approaching a funding decision. Programme Backlog contains approved work broken into PI-sized deliverables ready for Agile Release Train assignment. Features at the base are what teams pick up in PI planning and deliver across sprints.
+
+**Why**
+
+Use SAFe when your organisation runs PI planning, ART synchronisation, and portfolio Kanban and you want a model that fits that structure. The four-layer chain works well for programmes running multiple Agile Release Trains.$$,
         '# SAFe model
 
-SOW-style SAFe chain with Feature appended so the execution stack hangs off consistently.
+Four-layer SAFe portfolio chain connecting enterprise strategy to releasable features.
 
-- **Strategic Theme** (STH)
-- **Portfolio Backlog** (PBL)
-- **Programme Backlog** (PGB)
-- **Feature** (FE)',
+- **Strategic Theme** (STH): enterprise-level investment priority
+- **Portfolio Backlog** (PBL): Epics approaching or at funding decision
+- **Programme Backlog** (PGB): approved work ready for ART assignment
+- **Feature** (FE): adoptable user-facing change',
         'system', NULL, 'public', '{}'::jsonb,
         'tree', 'sitemap', 1, '2026.04.0'
     )
-    ON CONFLICT (model_family_id, version) DO NOTHING
+    ON CONFLICT (model_family_id, version) DO UPDATE SET description = EXCLUDED.description
     RETURNING id
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)

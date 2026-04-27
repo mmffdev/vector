@@ -17,7 +17,7 @@ const STORAGE_KEY = "sidebar-collapsed";
 const isActivePath = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
-// Render-only item. Hover-flyout if it has children.
+// Render-only item. Inline accordion when sidebar is open; hover-flyout when collapsed.
 function SidebarItem({
   item,
   iconKey,
@@ -34,12 +34,17 @@ function SidebarItem({
   childIconByKey: Record<string, string>;
 }) {
   const hasChildren = childItems.length > 0;
+  const isAnyChildActive = childItems.some((c) => isActivePath(pathname, c.href));
+
+  // Hover-driven expand — always open when a child is active
+  const [hovered, setHovered] = useState(false);
+  const expanded = isAnyChildActive || hovered;
+
+  // Flyout state (collapsed sidebar only)
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [flyoutPos, setFlyoutPos] = useState<{ top: number; left: number } | null>(null);
   const rowRef = useRef<HTMLAnchorElement | null>(null);
 
-  // Anchor the fixed-position flyout to the parent row. Using `fixed`
-  // escapes the sidebar's overflow:hidden clipping context.
   useEffect(() => {
     if (!flyoutOpen || !rowRef.current) return;
     const update = () => {
@@ -55,43 +60,74 @@ function SidebarItem({
     };
   }, [flyoutOpen]);
 
-  const label = hasChildren ? `${item.label} (${childItems.length})` : item.label;
+  // Collapsed sidebar — hover flyout (icon-only mode, no room for inline children)
+  if (!open && hasChildren) {
+    return (
+      <div
+        className="sidebar-item-wrap sidebar-item-wrap--has-flyout"
+        onMouseEnter={() => setFlyoutOpen(true)}
+        onMouseLeave={() => setFlyoutOpen(false)}
+        onFocus={() => setFlyoutOpen(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setFlyoutOpen(false);
+        }}
+      >
+        <Link
+          ref={rowRef}
+          href={item.href}
+          className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
+          title={item.label}
+        >
+          <IconFor iconKey={iconKey} />
+          <span className="sidebar-item__label">{item.label}</span>
+        </Link>
+        {flyoutOpen && flyoutPos && (
+          <div
+            className="sidebar-flyout"
+            role="menu"
+            aria-label={`${item.label} sub-pages`}
+            style={{ top: flyoutPos.top, left: flyoutPos.left }}
+          >
+            {childItems.map((child) => (
+              <Link
+                key={child.key}
+                href={child.href}
+                className={`sidebar-item sidebar-item--flyout ${isActivePath(pathname, child.href) ? "active" : ""}`}
+                role="menuitem"
+              >
+                <IconFor iconKey={childIconByKey[child.key] ?? child.icon} />
+                <span className="sidebar-item__label">{child.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
+  // Expanded sidebar — hover to reveal inline children
   return (
     <div
-      className={`sidebar-item-wrap ${hasChildren ? "sidebar-item-wrap--has-flyout" : ""}`}
-      onMouseEnter={() => hasChildren && setFlyoutOpen(true)}
-      onMouseLeave={() => hasChildren && setFlyoutOpen(false)}
-      onFocus={() => hasChildren && setFlyoutOpen(true)}
-      onBlur={(e) => {
-        if (hasChildren && !e.currentTarget.contains(e.relatedTarget as Node)) {
-          setFlyoutOpen(false);
-        }
-      }}
+      className="sidebar-item-wrap"
+      onMouseEnter={() => hasChildren && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <Link
-        ref={rowRef}
         href={item.href}
         className={`sidebar-item ${isActivePath(pathname, item.href) ? "active" : ""}`}
-        title={!open ? label : undefined}
+        title={!open ? item.label : undefined}
       >
         <IconFor iconKey={iconKey} />
-        <span className="sidebar-item__label">{label}</span>
+        <span className="sidebar-item__label">{item.label}</span>
       </Link>
 
-      {hasChildren && flyoutOpen && flyoutPos && (
-        <div
-          className="sidebar-flyout"
-          role="menu"
-          aria-label={`${item.label} sub-pages`}
-          style={{ top: flyoutPos.top, left: flyoutPos.left }}
-        >
+      {hasChildren && expanded && (
+        <div className="sidebar-children">
           {childItems.map((child) => (
             <Link
               key={child.key}
               href={child.href}
-              className={`sidebar-item sidebar-item--flyout ${isActivePath(pathname, child.href) ? "active" : ""}`}
-              role="menuitem"
+              className={`sidebar-item sidebar-item--child ${isActivePath(pathname, child.href) ? "active" : ""}`}
             >
               <IconFor iconKey={childIconByKey[child.key] ?? child.icon} />
               <span className="sidebar-item__label">{child.label}</span>
