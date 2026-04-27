@@ -51,6 +51,12 @@ export interface NavProfile {
   start_page_key: string | null;
 }
 
+// Per-profile group placement (junction row).
+export interface ProfileGroupPlacement {
+  group_id: string;
+  position: number;
+}
+
 interface PrefsResp {
   prefs: PrefRow[];
   groups: NavCustomGroup[];
@@ -91,7 +97,9 @@ interface NavPrefsState {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  save: (body: PutPrefsBody) => Promise<void>;
+  // Returns canonical groups in payload order so callers can map any
+  // synthetic "new:" ids they sent to the server-minted UUIDs.
+  save: (body: PutPrefsBody) => Promise<NavCustomGroup[]>;
   reset: () => Promise<void>;
   findEntry: (key: string) => NavCatalogEntry | undefined;
   isPinnable: (key: string) => boolean;
@@ -109,6 +117,11 @@ interface NavPrefsState {
   renameProfile: (profileId: string, label: string) => Promise<void>;
   deleteProfile: (profileId: string) => Promise<void>;
   reorderProfiles: (orderedIds: string[]) => Promise<void>;
+  // E2 — per-profile group placement (junction).
+  setProfileGroups: (
+    profileId: string,
+    placements: ProfileGroupPlacement[],
+  ) => Promise<void>;
 }
 
 const Ctx = createContext<NavPrefsState | null>(null);
@@ -183,8 +196,12 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     const scoped: PutPrefsBody & { profile_id?: string } = activeProfileId
       ? { ...body, profile_id: activeProfileId }
       : body;
-    await api("/api/nav/prefs", { method: "PUT", body: JSON.stringify(scoped) });
+    const resp = await api<{ groups: NavCustomGroup[] }>("/api/nav/prefs", {
+      method: "PUT",
+      body: JSON.stringify(scoped),
+    });
     await refetch();
+    return resp.groups ?? [];
   }, [refetch, activeProfileId]);
 
   const reset = useCallback(async () => {
@@ -234,6 +251,20 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     });
     await refetch();
   }, [refetch]);
+
+  // setProfileGroups writes the per-profile group placement junction
+  // (which user_nav_groups appear in this profile, at which positions).
+  // Never refetches — caller decides because this is usually chained
+  // with other writes (e.g. PUT prefs first, then this).
+  const setProfileGroups = useCallback(
+    async (profileId: string, placements: ProfileGroupPlacement[]) => {
+      await api(`/api/nav/profiles/${encodeURIComponent(profileId)}/groups`, {
+        method: "PUT",
+        body: JSON.stringify({ placements }),
+      });
+    },
+    [],
+  );
 
   const byKey = useMemo(() => {
     const m = new Map<string, NavCatalogEntry>();
@@ -316,6 +347,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     isBookmarked, bookmark, unbookmark,
     profiles, activeProfileId,
     setActiveProfile, createProfile, renameProfile, deleteProfile, reorderProfiles,
+    setProfileGroups,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

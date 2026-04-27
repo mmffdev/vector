@@ -731,7 +731,7 @@ export default function NavPreferencesPage() {
   const {
     prefs, customGroups, save, reset, catalogue, refetch,
     defaultPinned, findEntry, tagByEnum, tags,
-    profiles, activeProfileId,
+    profiles, activeProfileId, setProfileGroups,
   } = useNavPrefs();
   const activeProfile = useMemo(
     () => profiles.find((p) => p.id === activeProfileId) ?? null,
@@ -1270,12 +1270,45 @@ export default function NavPreferencesPage() {
         label: g.label,
         position: i,
       }));
-      const body: PutPrefsBody = {
-        pinned,
-        start_page_key: draft.startPageKey,
-        groups,
-      };
-      await save(body);
+      // Non-default profiles share the pool — they must NOT carry a groups
+      // payload (backend wipes-and-reinserts the pool only on Default).
+      const isDefaultProfile = activeProfile?.is_default ?? true;
+      const body: PutPrefsBody = isDefaultProfile
+        ? { pinned, start_page_key: draft.startPageKey, groups }
+        : { pinned, start_page_key: draft.startPageKey };
+      const canonical = await save(body);
+      // Persist this profile's group-placement junction. Server-returned
+      // canonical groups arrive in payload order, so when we sent groups
+      // they line up index-for-index with draft.customGroups; on
+      // non-default profiles we sent nothing, so canonical is the
+      // existing pool — already canonical UUIDs.
+      if (activeProfileId) {
+        const localToCanonical = new Map<string, string>();
+        if (isDefaultProfile) {
+          draft.customGroups.forEach((g, i) => {
+            const c = canonical[i];
+            if (c) localToCanonical.set(g.id, c.id);
+          });
+        }
+        const groupBuckets = draft.bucketOrder.filter((b) => b.startsWith("group:"));
+        const placements = groupBuckets
+          .map((b, position) => {
+            const localId = b.slice("group:".length);
+            // Synthetic ids only get remapped on default profile (where
+            // we sent the groups payload). On non-default they shouldn't
+            // exist (UI prevents creation) — drop defensively.
+            if (localId.startsWith("new:")) {
+              const remapped = localToCanonical.get(localId);
+              return remapped ? { group_id: remapped, position } : null;
+            }
+            return { group_id: localId, position };
+          })
+          .filter((p): p is { group_id: string; position: number } => p !== null)
+          // Re-number positions to stay contiguous after any drops.
+          .map((p, i) => ({ ...p, position: i }));
+        await setProfileGroups(activeProfileId, placements);
+        await refetch();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to save");
     } finally {

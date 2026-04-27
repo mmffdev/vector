@@ -170,7 +170,20 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.WriteHeader(http.StatusNoContent)
+	// Return the canonical pool so the client can map synthetic "new:" ids
+	// from the request to server-minted UUIDs. The pool is sorted by
+	// position — same order the request sent groups in — so callers can
+	// align by index.
+	groups, err := h.Svc.GetCustomGroups(r.Context(), u.ID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, putPrefsResp{Groups: groups})
+}
+
+type putPrefsResp struct {
+	Groups []CustomGroup `json:"groups"`
 }
 
 // DELETE /api/nav/prefs[?profile_id=<uuid>] — reset prefs.
