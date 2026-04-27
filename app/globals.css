@@ -392,6 +392,45 @@ button {
   display: none;
 }
 
+/* Profile bar — Phase 5. Pill row of navigation profiles between the
+   sidebar toolbar and the nav groups. Hidden when the rail is collapsed. */
+.profile-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 16px 8px 22px;
+}
+
+.profile-bar__pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.profile-bar__pill:hover {
+  background: var(--nav-item-hover-bg);
+  color: var(--ink-1);
+}
+
+.profile-bar__pill.active {
+  background: var(--ink-1);
+  border-color: var(--ink-1);
+  color: var(--surface-1);
+}
+
 .sidebar-item__label {
   white-space: nowrap;
   overflow: hidden;
