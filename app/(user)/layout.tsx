@@ -37,16 +37,14 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     <NavPrefsProvider>
       <PageHeaderProvider>
         <div className="app-root">
-          <PageHeaderBar />
-          <AppShell className="app-shell">
-            <AppSidebar_2 />
-            <div className="app-main-column">
-              <AppViewport className="app-viewport-container">
-                <PageWrapper className="page-wrapper">{children}</PageWrapper>
-              </AppViewport>
-              <AppFooter />
-            </div>
-          </AppShell>
+          <AppSidebar_2 />
+          <div className="app-main-column">
+            <PageHeaderBar />
+            <AppViewport className="app-viewport-container">
+              <PageWrapper className="page-wrapper">{children}</PageWrapper>
+            </AppViewport>
+            <AppFooter />
+          </div>
         </div>
       </PageHeaderProvider>
     </NavPrefsProvider>

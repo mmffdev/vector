@@ -9,7 +9,10 @@
 // Vector .placeholder kit (story 00079) on --canvas. No flat grey
 // fills, no decorative colour.
 
+import { useEffect, useState } from "react";
 import PageShell from "@/app/components/PageShell";
+import { SkeletonFade } from "@/app/components/Skeleton";
+import { ListRowSkeleton } from "@/app/components/SkeletonCompositions";
 
 const ASSIGNED: Array<{
   id: string;
@@ -64,10 +67,26 @@ const ICONS: Record<"story" | "epic" | "task", React.ReactNode> = {
 };
 
 export default function MyVista() {
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
   const empty = ASSIGNED.length === 0;
   return (
     <PageShell title="My Vista" subtitle="Your personalised view">
       <h3 className="eyebrow">Assigned to you</h3>
+      <SkeletonFade
+        loaded={!loading}
+        skeleton={
+          <ul className="backlog-list" aria-hidden="true">
+            <ListRowSkeleton wave={1} />
+            <ListRowSkeleton wave={3} />
+            <ListRowSkeleton wave={5} />
+          </ul>
+        }
+      >
       {empty ? (
         <div className="placeholder">
           <h3 className="placeholder__title">Nothing assigned</h3>
@@ -91,6 +110,7 @@ export default function MyVista() {
           ))}
         </ul>
       )}
+      </SkeletonFade>
     </PageShell>
   );
 }
