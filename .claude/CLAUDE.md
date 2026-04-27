@@ -26,6 +26,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Dev server (`<npm>`)** → [`.claude/commands/c_npm.md`](commands/c_npm.md) — start Next.js on `:3000`.
 - **Dev launcher (`MMFF Vector Dev.app`)** → [`.claude/commands/c_dev-launcher.md`](commands/c_dev-launcher.md) — AppleScript app that starts tunnel, backend, frontend.
 - **Service status (`<services>`)** → [`.claude/commands/c_services.md`](commands/c_services.md) — read-only status check for tunnel (`:5434`), backend (`:5100`), next (`:5101`).
+- **Accounts & credentials (`<accounts>`)** → [`.claude/commands/c_accounts.md`](commands/c_accounts.md) — source of truth for all dev user accounts, passwords, and Planka creds.
 - **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
 - **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants; links to per-table leaves.

@@ -1,6 +1,6 @@
 # Story ID index
 
-Last issued: **00068**
+Last issued: **00115**
 
 Single global counter for story cards. Storify, backlog-cmd, and any agent creating cards on the Planka board must:
 

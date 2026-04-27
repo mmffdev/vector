@@ -303,3 +303,5 @@ If any card ended Step 5c missing labels (and MCP retry also failed), surface wi
 | Label: RISK-MED | `1761454248593196285` |
 | Label: RISK-HIGH | `1761454250866509055` |
 | Label: MULTI AGENT | `1760728388919624826` |
+| Label: FE-UI0002 | `1762058691722348184` |
+| Label: FE-DEV0004 | `1762105753893602703` |

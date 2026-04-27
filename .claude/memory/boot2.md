@@ -12,21 +12,7 @@ originSessionId: b094b773-ebff-4f71-a435-1eb6d427b442
 - Agent account: `claude@mmffdev.com` (credentials in `backend/.env.local`, git-ignored)
 - Admin account: separate (see project-admins for access)
 
-**Key IDs (resolved — don't re-fetch):**
-| Thing | ID |
-|---|---|
-| Project: Vector Project | `1760699494401311762` |
-| Board: Vector Main | `1760699595475649556` |
-| List: Backlog | `1760700028730475544` |
-| List: To Do | `1760700252018443289` |
-| List: Doing | `1760700299682513946` |
-| List: Completed | `1760700351842878491` |
-| List: Accepted | `1760700396512216092` |
-
-**Create card:** `POST /api/lists/<LIST_ID>/cards` — body: `{"name":"...","description":"...","position":65536,"type":"story"}`  
-**Move card:** `PATCH /api/cards/<CARD_ID>` — body: `{"listId":"<TARGET_LIST_ID>"}`  
-**Delete card:** `DELETE /api/cards/<CARD_ID>`  
-**List cards:** `GET /api/boards/1760699595475649556` → `included.cards[]`
+**Key IDs and REST API** → see `planka_api_access.md` (authoritative).
 
 ### Board structure
 - Project: **Vector Project** — Board: **Vector Main**
@@ -49,7 +35,7 @@ originSessionId: b094b773-ebff-4f71-a435-1eb6d427b442
 | `backlog-cmd` | egg-yellow | `1760724306184111210` |
 | `manual` | fresh-salad | `1760724307056526443` |
 
-Applied via: `POST /api/cards/<id>/labels` — body: `{"labelId":"<id>"}`
+Applied via: `planka label-card <cardId> <labelId>` (endpoint is `/card-labels`, not `/labels`)
 
 ---
 
@@ -91,7 +77,7 @@ claude mcp add planka -s user \
 - MCP server: `~/.claude/bin/whisper-mcp.js` (Node.js raw JSON-RPC stdio, zero deps)
 - Config: `.mcp.json` → `node /Users/rick/.claude/bin/whisper-mcp.js`
 - Tool: `transcribe(file_path, model?)` — returns transcript text
-- **Pending:** test with a real audio file after next Claude Code restart
+- **Status:** ready
 
 ---
 
@@ -122,23 +108,9 @@ Restart tunnel: `pkill -f "ssh.*mmffdev-pg" && ssh -N -f mmffdev-pg`
 
 ---
 
-## API Reference Docs Site (2026-04-26 — LIVE at localhost:8083)
-
-**What it is:** Docusaurus 3 (TypeScript) developer-facing API reference. Maps all Vector REST endpoints, DB tables, MCP tools, and integrations. Rally-style left-nav hierarchy.
+## API Reference Docs Site (localhost:8083)
 
 **Local scaffold:** `api-reference/` in repo root  
 **Remote:** `/opt/api-reference/docker-compose.yml` — `mmffdev/api-reference:latest` on `127.0.0.1:8083:80`  
-**Homepage:** auto-discovered via Docker labels — appears as "API Reference" tile in Developer group  
-**Deploy:** `cd api-reference && ./deploy.sh` — builds `linux/amd64` image (buildx), pipes via SSH, restarts container
-
-**Current state:** Default Docusaurus scaffold is live. Content not yet written.
-
-**Next session — content to build:**
-1. Strip default scaffold (remove blog, tutorial content, update site title/config)
-2. Build MDX components: `<AuthGate>`, `<RateLimit>`, `<TableDeps>`, `<SseBadge>`, `<EndpointHeader>`
-3. Getting Started section (auth model, CSRF, roles, rate limits)
-4. REST API section — start with Auth + Nav groups (most-used)
-5. DB Reference section — mmff_vector domain by domain
-6. MCP Tools section — Planka + whisper-local first
-
-**Planned structure:** See session notes — full left-nav hierarchy and per-page anatomy documented.
+**Deploy:** `cd api-reference && ./deploy.sh` — builds `linux/amd64` image (buildx), pipes via SSH, restarts container  
+**Current state:** Default Docusaurus scaffold live. Content not yet written.

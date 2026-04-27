@@ -10,7 +10,7 @@
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 64px;
   --app-header-wrapper-height: 77px;
-  --content-max-width: 1440px;
+  --content-max-width: 100%;
   --row-height: 48px;
   --input-height: 40px;
 
@@ -239,30 +239,30 @@ button {
 }
 
 .app-root {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-}
-
-.app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  flex: 1;
-  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   transition: grid-template-columns 0.25s ease;
-  position: relative;
 }
 
+.app-shell { display: contents; }
+
 .app-main-column {
-  display: grid;
-  grid-template-rows: 1fr auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .app-viewport-container {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .page-wrapper {
@@ -281,13 +281,68 @@ button {
   border-right: 1px solid var(--border);
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 12px 0 16px;
+  padding: 0 0 16px;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   width: var(--sidebar-width);
   transition: width 0.25s ease;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sidebar-brand__logo {
+  width: 36px;
+  height: 36px;
+  background: var(--ink);
+  color: var(--ink-contrast);
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.sidebar-brand__label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sidebar-brand__label small {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-brand__label strong {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-sidebar-container[data-open="true"] {
@@ -302,7 +357,7 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 8px 24px 0 18px;
+  margin: 20px 24px 4px 22px;
 }
 
 .sidebar-collapse-toggle,
@@ -517,12 +572,11 @@ button {
      used as section sub-headings throughout the kit.
    ============================================================ */
 .page-body {
-  padding: 8px 32px 32px;
+  padding: 0 20px 20px;
 }
 
 .page-body__inner {
-  max-width: 1440px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .page__head {
@@ -652,7 +706,7 @@ button {
    room the page card has below the toolbar buttons on the right, so the
    first heading lines up with the page title across the rail. */
 .sidebar-toolbar + .sidebar-group {
-  margin-top: 28px;
+  margin-top: 8px;
 }
 
 .sidebar-group__heading-row {
@@ -660,7 +714,7 @@ button {
   display: flex;
   align-items: center;
   min-height: 24px;
-  margin: 0 0 4px 0;
+  margin: 0 0 8px 0;
   padding: 0 24px;
 }
 
@@ -678,6 +732,10 @@ button {
 /* When sidebar is collapsed, the group heading is decorative noise — hide
    the label but keep the group spacing intact so items don't mash together. */
 :root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-group__heading {
+  display: none;
+}
+
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-brand__label {
   display: none;
 }
 
@@ -730,7 +788,7 @@ button {
 
 .app-footer {
   background: transparent;
-  padding: 16px 24px;
+  padding: 16px 72px 16px 24px;
   font-size: 12px;
   color: var(--ink-3);
   display: flex;
@@ -959,7 +1017,7 @@ button {
 .planning-column {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -1008,7 +1066,7 @@ button {
 .planning-card {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
@@ -1221,7 +1279,7 @@ button {
 .table-wrap {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   overflow: hidden;
   box-shadow: none;
 }
@@ -1442,7 +1500,7 @@ table.tbl tbody tr:hover td {
   max-width: calc(100vw - 32px);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-xl) 0 var(--radius-xl) 0;
   box-shadow: none;
   overflow: hidden;
 }
@@ -1694,7 +1752,7 @@ table.tbl tbody tr:hover td {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   padding: var(--space-6);
   box-shadow: none;
 }
@@ -2344,7 +2402,7 @@ table.tbl tbody tr:hover td {
 .nav-prefs__pane {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -2878,7 +2936,7 @@ table.tbl tbody tr:hover td {
 .theme-panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -3470,7 +3528,7 @@ table.tbl tbody tr:hover td {
 .release-card {
   border: 1px solid var(--line-1);
   border-left-width: 4px;
-  border-radius: 6px;
+  border-radius: 6px 0 6px 0;
   background: var(--surface-1);
   padding: 16px;
   display: flex;
@@ -3594,7 +3652,7 @@ table.tbl tbody tr:hover td {
 .blocking-gate__dialog {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-xl) 0 var(--radius-xl) 0;
   padding: var(--space-8);
   max-width: 480px;
   width: calc(100% - var(--space-8));
@@ -3694,7 +3752,7 @@ table.tbl tbody tr:hover td {
 .adoption-overlay__phase-steps {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-xl) 0 var(--radius-xl) 0;
   box-shadow: none;
   padding: var(--space-8);
   display: flex;
@@ -3973,7 +4031,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-6);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   box-shadow: none;
   cursor: pointer;
   transition: border-color 120ms ease, background 120ms ease;
@@ -4170,8 +4228,37 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__cell--editing {
-  padding: var(--space-1) var(--space-2);
   vertical-align: middle;
+}
+
+/* Shared padding applied in both view and edit modes so the box model is
+   identical before and after clicking into a cell. */
+.layers-editor__cell--editable {
+  padding: var(--space-1) var(--space-2);
+}
+
+/* Ghost text wrapper: pre-reserves the same 1px border space as the real input
+   so clicking only changes border color — no layout shift. */
+.layers-editor__cell-text {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  line-height: 38px;
+  font-size: var(--text-sm);
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layers-editor__cell-text--tag {
+  max-width: 80px;
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
 .layers-editor__cell--tag {
@@ -4284,5 +4371,146 @@ table.tbl tbody tr:hover td {
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
+}
+
+/* ============================================================
+   Skeleton loader system (story 00111)
+   Path A: CSS structural shimmer using design tokens.
+   Wave stagger via --skeleton-delay custom property.
+   Content transition via .skeleton-fade grid stacking.
+   Dark mode automatic: tokens swap under data-theme="dark".
+   prefers-reduced-motion: covered by the global rule above.
+   ============================================================ */
+
+@keyframes skeleton-sweep {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+.skeleton {
+  display: block;
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 25%,
+    var(--surface)        50%,
+    var(--surface-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease infinite;
+  animation-delay: var(--skeleton-delay, 0ms);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Skeleton → content fade (grid stacking — no layout jump) ── */
+
+.skeleton-fade {
+  display: grid;
+}
+
+.skeleton-fade__skeleton,
+.skeleton-fade__content {
+  grid-area: 1 / 1;
+}
+
+.skeleton-fade__skeleton {
+  transition: opacity 0.2s ease;
+  z-index: 1;
+}
+
+.skeleton-fade--loaded .skeleton-fade__skeleton {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.skeleton-fade__content {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease 0.15s;
+}
+
+.skeleton-fade--loaded .skeleton-fade__content {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ============================================================
+   Skeleton compositions (story 00112)
+   Layout containers for CardSkeleton, ListRowSkeleton,
+   TableRowSkeleton, and NavItemSkeleton. Dimensions and spacing
+   mirror the real components they stand in for.
+   ============================================================ */
+
+/* Card skeleton — mirrors .wizard-model-cards__card */
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.skeleton-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.skeleton-card__hierarchy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* List row skeleton — generic list item (avatar + meta + badge) */
+.skeleton-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.skeleton-list-row__meta {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Table row skeleton — mirrors LayersTable row (drag handle + name + tag + desc) */
+.skeleton-table-row {
+  display: flex;
+  align-items: center;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--space-4);
+  gap: var(--space-3);
+}
+
+/* Nav item skeleton — mirrors .sidebar-item (icon + label) */
+.skeleton-nav-item {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  gap: 10px;
+  padding: 0 24px;
+}
+
+/* ============================================================
+   SVG skeleton infrastructure (story 00113)
+   Path B: clipPath + animated linearGradient for showcase
+   components. The .skeleton-svg class is the only CSS needed;
+   animation and theming are handled inside the SVG via SMIL
+   and CSS custom property stop colors.
+   ============================================================ */
+
+.skeleton-svg {
+  display: block;
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
 }
 

@@ -373,19 +373,9 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
         )}
         <dl className="model-preview__meta">
           <div className="model-preview__meta-row">
-            <dt>Family ID</dt>
-            <dd className="u-mono">{m.model_family_id}</dd>
+            <dt>Library version</dt>
+            <dd className="u-mono">{m.library_version ?? "—"}</dd>
           </div>
-          <div className="model-preview__meta-row">
-            <dt>Key</dt>
-            <dd className="u-mono">{m.key}</dd>
-          </div>
-          {m.library_version && (
-            <div className="model-preview__meta-row">
-              <dt>Library version</dt>
-              <dd className="u-mono">{m.library_version}</dd>
-            </div>
-          )}
         </dl>
       </header>
 

@@ -211,6 +211,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | ITM | — | 0/? | — | Ready | Work items / state machines |
 | DAT | — | 0/? | — | Ready | Data visualization / graphs |
 | UI | `FE-UI0001` | 1/? | `1761472628301759780` | Active | Portfolio wizard + adoption pages |
+| UI | `FE-UI0002` | 2/? | `1762058691722348184` | Active | Vector Design System facelift (all pages + components, branch: vector-rebrand-001) |
 | UX | — | 0/? | — | Ready | User experience / workflows |
 | SEC | `FE-SEC0001` | 1/? | `1760810747115341214` | Active | Security baseline |
 | GOV | — | 0/? | — | Ready | Governance / feature flags |
@@ -226,6 +227,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
 | DEV | `FE-DEV0002` | 2/? | `1761301483015374767` | Active | Planning docs (database mapping) |
 | DEV | `FE-DEV0003` | 3/? | `1761469925852972291` | Active | Portfolio adoption action paths |
+| DEV | `FE-DEV0004` | 4/? | `1762105753893602703` | Active | Service health panel (DevServicesPanel, DevStatusFloat, /api/dev/services) |
 
 ---
 

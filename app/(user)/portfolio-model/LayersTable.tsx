@@ -407,7 +407,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
 
     if (isEditing) {
       return (
-        <td className="table__cell layers-editor__cell layers-editor__cell--editing">
+        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--editable">
           <input
             className={`layers-editor__input${err ? " layers-editor__input--error" : ""}`}
             value={editingValue}
@@ -423,11 +423,11 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
     }
     return (
       <td
-        className={`table__cell layers-editor__cell layers-editor__cell--clickable${err ? " layers-editor__cell--invalid" : ""}`}
+        className={`table__cell layers-editor__cell layers-editor__cell--clickable layers-editor__cell--editable${err ? " layers-editor__cell--invalid" : ""}`}
         onClick={() => startEdit(layer.id, "name")}
         title="Click to edit"
       >
-        {layer.name}
+        <span className="layers-editor__cell-text">{layer.name}</span>
         {err && <span className="layers-editor__cell-error">{err}</span>}
       </td>
     );
@@ -440,7 +440,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
 
     if (isEditing) {
       return (
-        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--tag">
+        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--editable layers-editor__cell--tag">
           <input
             className={`layers-editor__input layers-editor__input--tag${err ? " layers-editor__input--error" : ""}`}
             value={editingValue}
@@ -457,11 +457,11 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
     }
     return (
       <td
-        className={`table__cell layers-editor__cell layers-editor__cell--clickable layers-editor__cell--tag${err ? " layers-editor__cell--invalid" : ""}`}
+        className={`table__cell layers-editor__cell layers-editor__cell--clickable layers-editor__cell--editable layers-editor__cell--tag${err ? " layers-editor__cell--invalid" : ""}`}
         onClick={() => startEdit(layer.id, "tag")}
         title="Click to edit"
       >
-        {layer.tag}
+        <span className="layers-editor__cell-text layers-editor__cell-text--tag">{layer.tag}</span>
         {err && <span className="layers-editor__cell-error">{err}</span>}
       </td>
     );
@@ -474,7 +474,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
 
     if (isEditing) {
       return (
-        <td className="table__cell layers-editor__cell layers-editor__cell--editing table__cell--muted">
+        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--editable table__cell--muted">
           <textarea
             className={`layers-editor__textarea${err ? " layers-editor__input--error" : ""}`}
             value={editingValue}
@@ -491,7 +491,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
     }
     return (
       <td
-        className={`table__cell table__cell--muted layers-editor__cell layers-editor__cell--clickable${err ? " layers-editor__cell--invalid" : ""}`}
+        className={`table__cell table__cell--muted layers-editor__cell layers-editor__cell--clickable layers-editor__cell--editable${err ? " layers-editor__cell--invalid" : ""}`}
         onClick={() => startEdit(layer.id, "description_md")}
         title="Click to edit"
       >

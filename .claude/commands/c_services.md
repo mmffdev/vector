@@ -40,6 +40,23 @@ for s in "tunnel:5434:ssh.*mmffdev-pg" "backend:5100:server|mmff-server|cmd/serv
 done
 ```
 
+## `-s` flag — include credentials
+
+When invoked as `<services> -s`, run the status check above, then append:
+
+```bash
+# App users (requires tunnel on :5434)
+PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend/.env.local" | cut -d= -f2-) \
+/opt/homebrew/opt/libpq/bin/psql -h localhost -p 5434 -U mmff_dev -d mmff_vector \
+  -c "SELECT email, role, is_active, force_password_change FROM users ORDER BY role, email;"
+```
+
+Also print: `Planka board: admin@mmffdev.com / changeme123! → http://localhost:3333`
+
+Full credential reference: [`.claude/commands/c_accounts.md`](c_accounts.md)
+
+---
+
 ## Logs (when something is DOWN)
 
 - tunnel  → `/tmp/mmff-tunnel.log`

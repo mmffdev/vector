@@ -1,12 +1,13 @@
-- [SESSION BOOTUP — read first](bootup.md) — Active branch, what's done, what's next, key facts, uncommitted work. Update at end of every session.
-- [TOOLING BOOTUP — Planka + MCP](boot2.md) — Planka board setup, SSH tunnel :3333, MCP config, backlog bootstrap status. Update when tooling changes.
+- [Session restore](bootup.md) — Load once when resuming after a break: branch, story counter, parked/active stories, key facts.
+- [Tooling reference — Planka + MCP](boot2.md) — Load when working with Planka/backlog: board IDs, SSH ports, MCP config, API Reference deploy.
 - [Never create debt — fix now, flag if detected](feedback_no_debt.md) — Overrides standing register's cap-and-defer; introduce no new debt, surface detected debt immediately.
 - [Card lifecycle — move states on every task](feedback_card_lifecycle.md) — Backlog→To Do→Doing→Completed on every task, including quick fixes. No code before card is in Doing.
 - [Storify all layers before starting](feedback_storify_all_layers.md) — Decompose across backend, frontend, migration, tests before /storify; never storify only one layer of a feature.
 - [Role boundaries — gadmin vs padmin vs user](project_role_boundaries.md) — gadmin=tech/support, padmin=product owner, user=consumer. Portfolio model = padmin-only. Ask "product or system?" before gating.
 - [BlockingReleaseGate — gadmin page gating pattern](project_blocking_release_gate.md) — Wrap gadmin pages with BlockingReleaseGate; padmin pages must NOT import it.
 - [Dev launcher uses `go run`](project_dev_launcher_runtime.md) — Backend runs from `go run`, not `./backend/server`; check /healthz commit vs HEAD, not file mtimes.
-- [Planka kanban board](project_planka.md) — Self-hosted backlog on mmffdev.com, SSH tunnel :3333, planka MCP registered
-- [Planka API direct access](planka_api_access.md) — MCP is broken (v1.0.7 HTML bug); use curl REST calls instead. Auth, key IDs, card CRUD commands all here.
+- [Planka API reference](planka_api_access.md) — Authoritative: .claude/bin/planka helper, board/list IDs, REST endpoints, label gotchas, MCP broken note.
 - [Pre-launch security checklist](project_pre_launch_security.md) — Scrub git history (.env.local committed with MASTER_KEY), harden ssh_manager.sh, rotate secrets. Hard deadline: before any external repo access.
 - [API reference docs must stay in sync](feedback_api_docs_sync.md) — Update api-reference/ + redeploy after any handler/route file change; Stop hook fires as a safety net.
+- [Vector Design System](reference_design_system.md) — `/MMFFDev - Vector Assets/Vector Design System/`; skill `/vector-design`; Inter font, warm neutrals, no decorative color — future state vs current app's Zen Maru Gothic.
+- [Sidebar toolbar icon alignment](feedback_sidebar_toolbar.md) — toggle + pencil left margin = 22px (user confirmed "perfect")
