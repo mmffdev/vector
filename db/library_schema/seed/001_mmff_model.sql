@@ -39,11 +39,11 @@ WITH model_ins AS (
         '00000000-0000-0000-0000-00000000aa01'::uuid,                 -- model id (v1)
         '00000000-0000-0000-0000-00000000a000'::uuid,                 -- model_family_id (stable)
         'mmff',
-        'MMFF Standard',
-        'The default MMFF portfolio model: Portfolio Runway → Product → Business Objective → Theme → Feature, with execution layers below.',
-        '# MMFF Standard model
+        'Vector Standard',
+        'The default Vector portfolio model: Portfolio Runway → Product → Business Objective → Theme → Feature, with execution layers below.',
+        '# Vector Standard model
 
-The MMFF default. Five portfolio layers from strategy down to deliverable feature, plus the execution stack underneath.
+The Vector default. Five portfolio layers from strategy down to deliverable feature, plus the execution stack underneath.
 
 - **Portfolio Runway** (PRW) — strategic horizon
 - **Product** (PR) — long-lived value stream

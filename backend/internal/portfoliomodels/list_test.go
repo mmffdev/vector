@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Smoke test: the list endpoint returns the seeded MMFF Standard model
+// Smoke test: the list endpoint returns the seeded Vector Standard model
 // with a populated layer summary. Mirrors the testRoPool/skip discipline
 // the rest of this package uses (see handler_test.go) so a missing
 // tunnel produces a skip rather than a hard failure.
@@ -53,8 +53,8 @@ func TestList_OK(t *testing.T) {
 	if found == nil {
 		t.Fatalf("seeded MMFF model %s missing from list (got %d entries)", wantID, len(body.Models))
 	}
-	if found.Name != "MMFF Standard" {
-		t.Errorf("model.name: want %q, got %q", "MMFF Standard", found.Name)
+	if found.Name != "Vector Standard" {
+		t.Errorf("model.name: want %q, got %q", "Vector Standard", found.Name)
 	}
 	if found.LayerCount != 5 {
 		t.Errorf("layer_count: want 5, got %d", found.LayerCount)

@@ -3,7 +3,7 @@
 -- Run against the mmff_library database AS mmff_library_admin:
 --   docker exec -i mmff-ops-postgres psql -U mmff_library_admin -d mmff_library < seed/002_test_release.sql
 --
--- Seeds a single info-severity release for the MMFF Standard family v1.
+-- Seeds a single info-severity release for the Vector Standard family v1.
 -- Lets the reconciler / handler tests work against a known-good row
 -- without a real release artifact landing.
 --
@@ -25,8 +25,8 @@ INSERT INTO library_releases (
 ) VALUES (
     '00000000-0000-0000-0000-00000000ad01'::uuid,
     '2026.04.0',
-    'MMFF Standard v1 published',
-    'The MMFF Standard portfolio model is live. Adopt it from Settings → Portfolio model.',
+    'Vector Standard v1 published',
+    'The Vector Standard portfolio model is live. Adopt it from Settings → Portfolio model.',
     NULL,
     'info',
     NULL,                                                       -- all tiers
