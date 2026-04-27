@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
@@ -266,6 +267,161 @@ func (h *Handler) customPageEntriesFor(
 		}
 	}
 	return out, nil
+}
+
+// ---- profiles -------------------------------------------------------
+
+type profilesResp struct {
+	Profiles []Profile `json:"profiles"`
+}
+
+// GET /api/nav/profiles — list this user's profiles for the current subscription.
+func (h *Handler) ListProfiles(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	profs, err := h.Svc.ListProfiles(r.Context(), u.ID, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, profilesResp{Profiles: profs})
+}
+
+type createProfileReq struct {
+	Label string `json:"label"`
+}
+
+// POST /api/nav/profiles — create a new (non-default) profile.
+func (h *Handler) CreateProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req createProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	p, err := h.Svc.CreateProfile(r.Context(), u.ID, u.SubscriptionID, req.Label)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrProfileLabelEmpty),
+			errors.Is(err, ErrProfileLabelTooLong):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrDuplicateProfileLabel):
+			http.Error(w, "duplicate label", http.StatusConflict)
+		case errors.Is(err, ErrTooManyProfiles):
+			http.Error(w, "cap reached", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	writeJSON(w, http.StatusCreated, p)
+}
+
+type renameProfileReq struct {
+	Label string `json:"label"`
+}
+
+// PATCH /api/nav/profiles/{id} — rename a profile.
+func (h *Handler) RenameProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	var req renameProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.RenameProfile(r.Context(), u.ID, u.SubscriptionID, id, req.Label); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileLabelEmpty),
+			errors.Is(err, ErrProfileLabelTooLong):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrDuplicateProfileLabel):
+			http.Error(w, "duplicate label", http.StatusConflict)
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /api/nav/profiles/{id} — delete a non-default profile.
+func (h *Handler) DeleteProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.DeleteProfile(r.Context(), u.ID, u.SubscriptionID, id); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrCannotDeleteDefault):
+			http.Error(w, "cannot delete default", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type reorderProfilesReq struct {
+	Order []uuid.UUID `json:"order"`
+}
+
+// PUT /api/nav/profiles/order — batch reorder. Body: {"order": [id, id, ...]}.
+func (h *Handler) ReorderProfiles(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req reorderProfilesReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.ReorderProfiles(r.Context(), u.ID, u.SubscriptionID, req.Order); err != nil {
+		switch {
+		case errors.Is(err, ErrBadPositions):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type setActiveProfileReq struct {
+	ProfileID uuid.UUID `json:"profile_id"`
+}
+
+// PUT /api/nav/profiles/active — pin the user's active profile.
+func (h *Handler) SetActiveProfile(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req setActiveProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.SetActiveProfile(r.Context(), u.ID, u.SubscriptionID, req.ProfileID); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrProfileWrongSubscription):
+			http.Error(w, "wrong subscription", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

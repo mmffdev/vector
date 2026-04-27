@@ -206,6 +206,16 @@ func main() {
 		r.Delete("/bookmark", navH.UnpinBookmark)
 		r.Get("/bookmark/check", navH.CheckBookmark)
 		r.Get("/entities", navEntitiesH.List)
+
+		// Profiles (Phase 5). /order and /active are static segments —
+		// register them before /{id} so chi prefers the static path,
+		// even though chi's trie does the right thing either way.
+		r.Get("/profiles", navH.ListProfiles)
+		r.Post("/profiles", navH.CreateProfile)
+		r.Put("/profiles/order", navH.ReorderProfiles)
+		r.Put("/profiles/active", navH.SetActiveProfile)
+		r.Patch("/profiles/{id}", navH.RenameProfile)
+		r.Delete("/profiles/{id}", navH.DeleteProfile)
 	})
 
 	// ---- /api/custom-pages ----
