@@ -1,0 +1,105 @@
+{
+  "id": "20260427-034654-S",
+  "scope": "S",
+  "scopeName": "Skills",
+  "flag": "-S",
+  "timestamp": "2026-04-27T03:46:54Z",
+  "checks": [
+    {
+      "status": "fail",
+      "label": "writeweb: missing frontmatter",
+      "detail": "SKILL.md starts with '# /writeweb' — no frontmatter block; skill description appears blank in skill list."
+    },
+    {
+      "status": "fail",
+      "label": "stories: missing frontmatter",
+      "detail": "SKILL.md starts with '# /stories' — no frontmatter block; skill description appears blank in skill list."
+    },
+    {
+      "status": "warn",
+      "label": "storify: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "warn",
+      "label": "audit-site: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "warn",
+      "label": "finding: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "warn",
+      "label": "observe: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "warn",
+      "label": "crawl-site: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "warn",
+      "label": "web-research: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "warn",
+      "label": "extract-and-export: missing allowed-tools",
+      "detail": "Frontmatter has name and description but no allowed-tools field."
+    },
+    {
+      "status": "pass",
+      "label": "crawlio-mcp: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "monitor: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "debugtable: frontmatter OK",
+      "detail": "Has name, description, argument-hint."
+    },
+    {
+      "status": "pass",
+      "label": "test: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "dossier: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "investigate: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "clone: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "compare: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "extract: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    },
+    {
+      "status": "pass",
+      "label": "browser-automation: frontmatter OK",
+      "detail": "Has name, description, allowed-tools."
+    }
+  ],
+  "summary": { "pass": 10, "warn": 7, "fail": 2 }
+}

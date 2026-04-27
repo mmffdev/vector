@@ -1,0 +1,90 @@
+{
+  "id": "20260427-032443-A",
+  "scope": "A",
+  "scopeName": "All",
+  "flag": "-A",
+  "timestamp": "2026-04-27T03:24:43Z",
+  "checks": [
+    {
+      "status": "pass",
+      "label": "MEMORY.md line count",
+      "detail": "15 lines — well under the 180 warn / 200 fail thresholds."
+    },
+    {
+      "status": "pass",
+      "label": "MEMORY.md links resolve",
+      "detail": "All 15 indexed links point to existing files."
+    },
+    {
+      "status": "warn",
+      "label": "Orphaned: boot1.md",
+      "detail": "boot1.md exists in memory dir but is not referenced in MEMORY.md index."
+    },
+    {
+      "status": "warn",
+      "label": "Orphaned: boot2.md",
+      "detail": "boot2.md exists in memory dir but is not referenced in MEMORY.md index."
+    },
+    {
+      "status": "warn",
+      "label": "Orphaned: boot3.md",
+      "detail": "boot3.md exists in memory dir but is not referenced in MEMORY.md index."
+    },
+    {
+      "status": "warn",
+      "label": "Orphaned: boot4.md",
+      "detail": "boot4.md exists in memory dir but is not referenced in MEMORY.md index."
+    },
+    {
+      "status": "pass",
+      "label": "Memory file frontmatter",
+      "detail": "All 19 memory files have valid --- frontmatter with name, description, and type fields."
+    },
+    {
+      "status": "pass",
+      "label": "Memory type distribution",
+      "detail": "15 indexed files: 8 feedback, 5 project, 2 reference; 4 unindexed boot files."
+    },
+    {
+      "status": "pass",
+      "label": "Global skills frontmatter",
+      "detail": "All 17 global SKILL.md files start with --- and have required fields."
+    },
+    {
+      "status": "fail",
+      "label": "stories/SKILL.md missing frontmatter",
+      "detail": "Project stories/SKILL.md starts with # /stories — missing --- frontmatter causes blank description in skill list."
+    },
+    {
+      "status": "pass",
+      "label": "Global skill descriptions",
+      "detail": "All 17 global skill descriptions are non-empty and non-comment strings."
+    },
+    {
+      "status": "pass",
+      "label": "Commands referenced in CLAUDE.md",
+      "detail": "13 of 14 command files in commands/ are referenced in .claude/CLAUDE.md."
+    },
+    {
+      "status": "warn",
+      "label": "Unreferenced: c_playwright.md",
+      "detail": "c_playwright.md is in commands/ but not referenced anywhere in .claude/CLAUDE.md."
+    },
+    {
+      "status": "pass",
+      "label": "Hooks registered",
+      "detail": "6 hooks registered: PostToolUse x3 (planka, write, edit), PreToolUse x1 (bash), SessionStart x1, Stop x1."
+    },
+    {
+      "status": "pass",
+      "label": "Hook script files exist",
+      "detail": "All 5 hook script files exist: planka-card-moved, backend-restart-reminder, push-backup-gate, session-start-digest, api-docs-reminder."
+    },
+    {
+      "status": "pass",
+      "label": "Hook commands non-empty",
+      "detail": "All 6 registered hook commands have non-empty command strings."
+    }
+  ],
+  "summary": { "pass": 10, "warn": 5, "fail": 1 }
+}

@@ -29,6 +29,13 @@ Project: **Vector Project** — Board: **Vector Main**
 | `-d` | List **Completed** cards awaiting test |
 | `-accept <id>` | Move card to **Accepted** |
 | `-h` | Print this flags table |
+| `-view` | Open `dev/planning/c_backlog.md` in VS Code — the long-range roadmap / future addons file |
+
+### `-view` behaviour
+
+Run: `code "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/dev/planning/c_backlog.md"`
+
+This file is **read-only context** — Claude does not act on its contents unless Rick explicitly points at an item by name.
 
 ## Card format
 
