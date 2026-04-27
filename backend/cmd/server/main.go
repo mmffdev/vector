@@ -216,6 +216,8 @@ func main() {
 		r.Put("/profiles/active", navH.SetActiveProfile)
 		r.Patch("/profiles/{id}", navH.RenameProfile)
 		r.Delete("/profiles/{id}", navH.DeleteProfile)
+		r.Get("/profiles/{id}/groups", navH.ListProfileGroups)
+		r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
 	})
 
 	// ---- /api/custom-pages ----

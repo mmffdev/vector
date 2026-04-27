@@ -471,6 +471,62 @@ func (h *Handler) ReorderProfiles(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+type profileGroupsResp struct {
+	Placements []ProfileGroupPlacement `json:"placements"`
+}
+
+// GET /api/nav/profiles/{id}/groups — list group placements for a profile.
+func (h *Handler) ListProfileGroups(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	out, err := h.Svc.ListProfileGroups(r.Context(), u.ID, u.SubscriptionID, id)
+	if err != nil {
+		if errors.Is(err, ErrProfileNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, profileGroupsResp{Placements: out})
+}
+
+type setProfileGroupsReq struct {
+	Placements []ProfileGroupPlacement `json:"placements"`
+}
+
+// PUT /api/nav/profiles/{id}/groups — replace placements atomically.
+func (h *Handler) SetProfileGroups(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	var req setProfileGroupsReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.SetProfileGroups(r.Context(), u.ID, u.SubscriptionID, id, req.Placements); err != nil {
+		switch {
+		case errors.Is(err, ErrProfileNotFound):
+			http.Error(w, "not found", http.StatusNotFound)
+		case errors.Is(err, ErrUnknownGroup),
+			errors.Is(err, ErrBadPositions):
+			http.Error(w, "invalid request", http.StatusBadRequest)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type setActiveProfileReq struct {
 	ProfileID uuid.UUID `json:"profile_id"`
 }

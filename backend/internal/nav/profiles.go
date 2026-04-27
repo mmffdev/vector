@@ -405,6 +405,135 @@ func (s *Service) ResolveProfile(ctx context.Context, userID, subscriptionID uui
 	return s.EnsureDefaultProfile(ctx, userID, subscriptionID)
 }
 
+// ProfileGroupPlacement is the wire shape for per-profile group
+// placement. Position is unique within the profile (DEFERRABLE) —
+// callers send a contiguous 0..N-1 sequence.
+type ProfileGroupPlacement struct {
+	GroupID  uuid.UUID `json:"group_id"`
+	Position int       `json:"position"`
+}
+
+// ListProfileGroups returns the placements of shared groups inside a
+// specific profile, in display order. The shared groups themselves
+// stay user-scoped — this surface is purely about "which of my groups
+// does this profile show, and where".
+func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) ([]ProfileGroupPlacement, error) {
+	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
+		return nil, err
+	}
+	rows, err := s.Pool.Query(ctx, `
+		SELECT group_id, position
+		  FROM user_nav_profile_groups
+		 WHERE profile_id = $1
+		 ORDER BY position
+	`, profileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ProfileGroupPlacement, 0, 4)
+	for rows.Next() {
+		var g ProfileGroupPlacement
+		if err := rows.Scan(&g.GroupID, &g.Position); err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+// SetProfileGroups replaces the placements for one profile atomically.
+// All group_ids must be owned by the same user (we re-verify against
+// user_nav_groups, never trusting client-supplied IDs). Positions must
+// form a contiguous 0..N-1 sequence; duplicates rejected. Uses the
+// DEFERRABLE position-unique constraint so the wipe + re-insert can
+// run in any order inside the txn.
+//
+// SHARED-POOL INVARIANT: this endpoint never inserts/updates/deletes
+// rows in user_nav_groups itself. Groups are created/renamed/deleted
+// only via the legacy PUT /api/nav/prefs path (Default profile) until
+// that surface is split off — so a user's group pool is the union of
+// what they author from Default, and per-profile placement just decides
+// which of those each profile shows.
+func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, profileID uuid.UUID, placements []ProfileGroupPlacement) error {
+	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
+		return err
+	}
+
+	posSeen := make(map[int]struct{}, len(placements))
+	idSeen := make(map[uuid.UUID]struct{}, len(placements))
+	for _, p := range placements {
+		if p.Position < 0 {
+			return ErrBadPositions
+		}
+		if _, dup := posSeen[p.Position]; dup {
+			return ErrBadPositions
+		}
+		if _, dup := idSeen[p.GroupID]; dup {
+			return ErrBadPositions
+		}
+		posSeen[p.Position] = struct{}{}
+		idSeen[p.GroupID] = struct{}{}
+	}
+	for i := 0; i < len(placements); i++ {
+		if _, ok := posSeen[i]; !ok {
+			return ErrBadPositions
+		}
+	}
+
+	if len(placements) > 0 {
+		ids := make([]uuid.UUID, 0, len(placements))
+		for _, p := range placements {
+			ids = append(ids, p.GroupID)
+		}
+		var owned int
+		err := s.Pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM user_nav_groups
+			 WHERE user_id = $1 AND id = ANY($2)
+		`, userID, ids).Scan(&owned)
+		if err != nil {
+			return err
+		}
+		if owned != len(ids) {
+			return ErrUnknownGroup
+		}
+	}
+
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM user_nav_profile_groups WHERE profile_id = $1
+	`, profileID); err != nil {
+		return err
+	}
+
+	if len(placements) > 0 {
+		batch := &pgx.Batch{}
+		for _, p := range placements {
+			batch.Queue(`
+				INSERT INTO user_nav_profile_groups (profile_id, group_id, position)
+				VALUES ($1, $2, $3)
+			`, profileID, p.GroupID, p.Position)
+		}
+		br := tx.SendBatch(ctx, batch)
+		for range placements {
+			if _, err := br.Exec(); err != nil {
+				_ = br.Close()
+				return err
+			}
+		}
+		if err := br.Close(); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
 // isUniqueViolation reports whether err is a Postgres 23505 unique-
 // constraint violation that mentions the named constraint. Tolerates
 // non-pg errors and unwraps via errors.As.
