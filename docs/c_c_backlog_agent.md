@@ -38,7 +38,7 @@ BRANCH=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse 
 | `manual` | fresh-salad | `1760724307056526443` | Human (UI only) |
 | `MULTI AGENT` | berry-red | `1760728388919624826` | Planning agent — safe for parallel claim |
 
-**Hard rule (every card-creating agent — storify, backlog-cmd, manual, ad-hoc):** every card MUST end creation carrying `PH-NNNN`, `FE-SECNNNN`, a creation-source label (`storify` / `backlog-cmd` / `manual`), and `MULTI AGENT` if it qualifies. Cards missing any of these are defects — fix on the spot, do not move on.
+**Hard rule (every card-creating agent — storify, backlog-cmd, manual, ad-hoc):** every card MUST end creation carrying `PH-NNNN`, `FE-<AREA>NNNN` (3-letter area code from `docs/c_feature_areas.md` decision tree), a creation-source label (`storify` / `backlog-cmd` / `manual`), and `MULTI AGENT` if it qualifies. Cards missing any of these are defects — fix on the spot, do not move on.
 
 **Label-application transport — verified state of the world:**
 

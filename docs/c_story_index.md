@@ -1,6 +1,6 @@
 # Story ID index
 
-Last issued: **00115**
+Last issued: **00123**
 
 Single global counter for story cards. Storify, backlog-cmd, and any agent creating cards on the Planka board must:
 
@@ -20,7 +20,7 @@ Example: `00021 — Frontend: full-screen adoption overlay`.
 ## Labels every card must carry
 
 - **`PH-NNNN`** — phase label (e.g. `PH-0004`). One per phase.
-- **`FE-SECNNNN`** — feature label from `c_feature_labels.md`. One per feature.
+- **`FE-<AREA>NNNN`** — feature area label from `c_feature_areas.md`. One per card; use the decision tree to pick the correct 3-letter area code.
 - **`storify`** (or `backlog-cmd` / `manual`) — creation source.
 - **`MULTI AGENT`** (berry-red) — only when story qualifies for parallel dispatch (see `c_c_backlog_agent.md`).
 

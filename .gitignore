@@ -14,3 +14,4 @@ backend/.env.local
 .claude/settings.json
 .claude/settings.json.bak
 .planka/
+

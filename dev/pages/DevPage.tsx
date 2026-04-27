@@ -5,12 +5,22 @@ import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { api } from "@/app/lib/api";
 import DevServicesPanel from "./DevServicesPanel";
+import DevShortcutsPanel from "./DevShortcutsPanel";
+import DevReportsPanel from "./DevReportsPanel";
+import DevResearchPanel from "./DevResearchPanel";
+
+type DevTab = "setup" | "shortcuts" | "reports" | "research";
 
 export default function DevPage() {
+  const [tab, setTab] = useState<DevTab>("setup");
   const [copied, setCopied] = useState(false);
   const { enabled: masterDebug, setEnabled: setMasterDebug } = useMasterDebug();
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const cancelReset = () => { setResetConfirm(false); setResetConfirmText(""); };
 
   const copyCommand = () => {
     navigator.clipboard.writeText("bash dev/scripts/ssh_manager.sh");
@@ -18,11 +28,9 @@ export default function DevPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleResetAdoption = async () => {
-    if (!window.confirm("Reset portfolio adoption to zero state? This will delete all adoption records and mirrors.")) {
-      return;
-    }
-
+  const handleConfirmReset = async () => {
+    setResetConfirm(false);
+    setResetConfirmText("");
     setResetLoading(true);
     setResetResult(null);
 
@@ -46,10 +54,41 @@ export default function DevPage() {
     <div className="dev-root">
       <header className="dev-page-header">
         <h1 className="dev-page-header__title">Dev Setup</h1>
-        <p className="dev-page-header__subtitle">Server access & SSH tunnel configuration</p>
+        <p className="dev-page-header__subtitle">Standalone diagnostic tool for monitoring and managing the local and remote development environment</p>
       </header>
 
-      <div className="dev-doc">
+      <nav className="dev-tabs">
+        <button
+          className={`dev-tab${tab === "setup" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("setup")}
+        >
+          Setup
+        </button>
+        <button
+          className={`dev-tab${tab === "shortcuts" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("shortcuts")}
+        >
+          Shortcuts
+        </button>
+        <button
+          className={`dev-tab${tab === "reports" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("reports")}
+        >
+          Reports
+        </button>
+        <button
+          className={`dev-tab${tab === "research" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("research")}
+        >
+          Research
+        </button>
+      </nav>
+
+      {tab === "shortcuts" && <DevShortcutsPanel />}
+      {tab === "reports" && <DevReportsPanel />}
+      {tab === "research" && <DevResearchPanel />}
+
+      {tab === "setup" && <div className="dev-doc">
         <DevServicesPanel />
 
         <section className="dev-section">
@@ -72,13 +111,33 @@ export default function DevPage() {
           <p className="dev-p">
             Reset adoption state to zero (gadmin only). Deletes all adoption records and mirror tables.
           </p>
-          <button
-            onClick={handleResetAdoption}
-            disabled={resetLoading}
-            className="dev-btn dev-btn--danger"
-          >
-            {resetLoading ? "Resetting..." : "Reset Adoption State"}
-          </button>
+          <div className="dev-btn-group">
+            <button
+              onClick={() => { setResetConfirm(true); setResetResult(null); }}
+              disabled={resetLoading || resetConfirm}
+              className="dev-btn dev-btn--danger"
+            >
+              {resetLoading ? "Resetting..." : "Reset Adoption State"}
+            </button>
+            {resetConfirm && (
+              <>
+                <input
+                  autoFocus
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  className={`dev-confirm-input${resetConfirmText === "RESET" ? " dev-confirm-input--ready" : ""}`}
+                  placeholder="Type RESET"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && resetConfirmText === "RESET") handleConfirmReset();
+                    if (e.key === "Escape") cancelReset();
+                  }}
+                />
+                <span className="dev-confirm-hint">
+                  Type <strong>RESET</strong> and press ↵ to permanently delete all adoption records and mirror tables. Esc to cancel.
+                </span>
+              </>
+            )}
+          </div>
           {resetResult && (
             <div className={`dev-alert dev-alert--${resetResult.success ? "success" : "error"}`}>
               {resetResult.message}
@@ -120,7 +179,7 @@ export default function DevPage() {
             <li>Server password (will be prompted)</li>
           </ul>
         </section>
-      </div>
+      </div>}
     </div>
   );
 }
