@@ -28,9 +28,9 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type KeyboardEvent,
 } from "react";
 import { api, ApiError } from "@/app/lib/api";
+import InlineEditField from "@/app/components/InlineEditField";
 
 export interface LayerDTO {
   id: string;
@@ -40,10 +40,7 @@ export interface LayerDTO {
   description_md: string | null;
 }
 
-interface EditingCell {
-  id: string;
-  field: "name" | "tag" | "description_md";
-}
+type EditField = "name" | "tag" | "description_md";
 
 interface Props {
   initialLayers: LayerDTO[];
@@ -77,8 +74,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
     normalizeTopAnchor(sorted(initialLayers), topAnchorTag)
   );
   const [localFixed, setLocalFixed] = useState<LayerDTO[]>(() => fixedItems ?? []);
-  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
-  const [editingValue, setEditingValue] = useState("");
   // keyed "${id}.${field}"
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [formError, setFormError] = useState<string | null>(null);
@@ -111,7 +106,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
     const s = normalizeTopAnchor(sorted(initialLayers), topAnchorTag);
     setLocalLayers(s);
     setOriginalLayers(s);
-    setEditingCell(null);
     setErrors(new Map());
     setFormError(null);
   }, [initialLayers, topAnchorTag]);
@@ -122,84 +116,56 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
 
   // ── Inline editing ────────────────────────────────────────────────────────
 
-  const startEdit = useCallback(
-    (id: string, field: EditingCell["field"]) => {
-      const layer = localLayers.find((l) => l.id === id) ?? localFixed.find((l) => l.id === id);
-      if (!layer) return;
-      const value =
-        field === "description_md"
-          ? layer.description_md ?? ""
-          : layer[field];
-      setEditingCell({ id, field });
-      setEditingValue(value);
-      // Clear any existing error for this cell so the user starts fresh
-      setErrors((prev) => {
-        const next = new Map(prev);
-        next.delete(`${id}.${field}`);
-        return next;
-      });
-    },
-    [localLayers, localFixed]
-  );
-
-  const cancelEdit = useCallback(() => {
-    setEditingCell(null);
-    setEditingValue("");
-  }, []);
-
-  const validateAndCommit = useCallback(
-    (id: string, field: EditingCell["field"], value: string) => {
+  // Validate and commit a single field. Returns true on success (caller can
+  // exit edit mode); false on validation failure (caller stays in edit mode
+  // and the per-cell error renders).
+  const commitField = useCallback(
+    (id: string, field: EditField, value: string): boolean => {
       const trimmed = value.trim();
+      const setError = (msg: string) => {
+        setErrors((prev) => {
+          const next = new Map(prev);
+          next.set(`${id}.${field}`, msg);
+          return next;
+        });
+      };
+      const clearError = () => {
+        setErrors((prev) => {
+          if (!prev.has(`${id}.${field}`)) return prev;
+          const next = new Map(prev);
+          next.delete(`${id}.${field}`);
+          return next;
+        });
+      };
 
-      // Tag constraints
       if (field === "tag") {
         if (trimmed.length < 2 || trimmed.length > 4) {
-          setErrors((prev) => {
-            const next = new Map(prev);
-            next.set(`${id}.${field}`, "Tag must be 2–4 characters");
-            return next;
-          });
-          // Stay in edit mode — don't commit
+          setError("Tag must be 2–4 characters");
           return false;
         }
-        // Duplicate tag check (across both sortable and fixed rows)
         const duplicate = [...localLayers, ...localFixed].find(
           (l) => l.id !== id && l.tag.toLowerCase() === trimmed.toLowerCase()
         );
         if (duplicate) {
-          setErrors((prev) => {
-            const next = new Map(prev);
-            next.set(`${id}.${field}`, "Duplicate tag");
-            return next;
-          });
+          setError("Duplicate tag");
           return false;
         }
       }
 
-      // Duplicate name check
       if (field === "name") {
         if (trimmed.length === 0) {
-          setErrors((prev) => {
-            const next = new Map(prev);
-            next.set(`${id}.${field}`, "Name is required");
-            return next;
-          });
+          setError("Name is required");
           return false;
         }
         const duplicate = [...localLayers, ...localFixed].find(
           (l) => l.id !== id && l.name.toLowerCase() === trimmed.toLowerCase()
         );
         if (duplicate) {
-          setErrors((prev) => {
-            const next = new Map(prev);
-            next.set(`${id}.${field}`, "Duplicate name");
-            return next;
-          });
+          setError("Duplicate name");
           return false;
         }
       }
 
-      // Commit to the right array (fixed items stay in localFixed; sortable in localLayers)
       const isFixed = localFixed.some((l) => l.id === id);
       (isFixed ? setLocalFixed : setLocalLayers)((prev) =>
         prev.map((l) => {
@@ -210,50 +176,11 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           };
         })
       );
-      setErrors((prev) => {
-        const next = new Map(prev);
-        next.delete(`${id}.${field}`);
-        return next;
-      });
-      setEditingCell(null);
-      setEditingValue("");
+      clearError();
       return true;
     },
     [localLayers, localFixed]
   );
-
-  const handleInputKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        cancelEdit();
-        return;
-      }
-      if (
-        e.key === "Enter" &&
-        (e.currentTarget.tagName === "INPUT" || e.ctrlKey)
-      ) {
-        e.preventDefault();
-        if (editingCell) {
-          validateAndCommit(editingCell.id, editingCell.field, editingValue);
-        }
-      }
-    },
-    [cancelEdit, validateAndCommit, editingCell, editingValue]
-  );
-
-  const handleInputBlur = useCallback(() => {
-    if (!editingCell) return;
-    // blur-commit: attempt to commit on blur.
-    // On validation failure: setErrors was already called inside validateAndCommit;
-    // we exit editing mode so the display cell shows the --invalid highlight and
-    // cell-error message. The user can click the cell again to re-enter a valid value.
-    validateAndCommit(editingCell.id, editingCell.field, editingValue);
-    // Always exit editing mode on blur (validateAndCommit calls setEditingCell(null)
-    // on success; we call it here on failure too).
-    setEditingCell(null);
-    setEditingValue("");
-  }, [editingCell, editingValue, validateAndCommit]);
 
   // ── Drag to reorder ───────────────────────────────────────────────────────
 
@@ -417,8 +344,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
 
   const handleCancel = useCallback(() => {
     setLocalLayers(sorted(originalLayers));
-    setEditingCell(null);
-    setEditingValue("");
     setErrors(new Map());
     setFormError(null);
   }, [originalLayers]);
@@ -430,101 +355,71 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
   }
 
   function renderNameCell(layer: LayerDTO) {
-    const isEditing =
-      editingCell?.id === layer.id && editingCell.field === "name";
     const err = cellError(layer.id, "name");
-
-    if (isEditing) {
-      return (
-        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--editable">
-          <input
-            className={`layers-editor__input${err ? " layers-editor__input--error" : ""}`}
-            value={editingValue}
-            autoFocus
-            onChange={(e) => setEditingValue(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            onBlur={handleInputBlur}
-            aria-label="Layer name"
-          />
-          {err && <span className="layers-editor__cell-error">{err}</span>}
-        </td>
-      );
-    }
     return (
       <td
-        className={`table__cell layers-editor__cell layers-editor__cell--clickable layers-editor__cell--editable${err ? " layers-editor__cell--invalid" : ""}`}
-        onClick={() => startEdit(layer.id, "name")}
-        title="Click to edit"
+        className={`table__cell layers-editor__cell layers-editor__cell--editable${err ? " layers-editor__cell--invalid" : ""}`}
       >
-        <span className="layers-editor__cell-text">{layer.name}</span>
+        <InlineEditField
+          value={layer.name}
+          onCommit={(next) => commitField(layer.id, "name", next)}
+          ariaLabel="Layer name"
+          inputClassName="layers-editor__input"
+          displayClassName="layers-editor__cell-text layers-editor__cell--clickable"
+          errorClassName="layers-editor__input--error"
+          hasError={Boolean(err)}
+          clickToEdit
+          allowEmpty
+        />
         {err && <span className="layers-editor__cell-error">{err}</span>}
       </td>
     );
   }
 
   function renderTagCell(layer: LayerDTO) {
-    const isEditing =
-      editingCell?.id === layer.id && editingCell.field === "tag";
     const err = cellError(layer.id, "tag");
-
-    if (isEditing) {
-      return (
-        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--editable layers-editor__cell--tag">
-          <input
-            className={`layers-editor__input layers-editor__input--tag${err ? " layers-editor__input--error" : ""}`}
-            value={editingValue}
-            autoFocus
-            maxLength={4}
-            onChange={(e) => setEditingValue(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            onBlur={handleInputBlur}
-            aria-label="Layer tag"
-          />
-          {err && <span className="layers-editor__cell-error">{err}</span>}
-        </td>
-      );
-    }
     return (
       <td
-        className={`table__cell layers-editor__cell layers-editor__cell--clickable layers-editor__cell--editable layers-editor__cell--tag${err ? " layers-editor__cell--invalid" : ""}`}
-        onClick={() => startEdit(layer.id, "tag")}
-        title="Click to edit"
+        className={`table__cell layers-editor__cell layers-editor__cell--editable layers-editor__cell--tag${err ? " layers-editor__cell--invalid" : ""}`}
       >
-        <span className="layers-editor__cell-text layers-editor__cell-text--tag">{layer.tag}</span>
+        <InlineEditField
+          value={layer.tag}
+          onCommit={(next) => commitField(layer.id, "tag", next)}
+          ariaLabel="Layer tag"
+          inputClassName="layers-editor__input layers-editor__input--tag"
+          displayClassName="layers-editor__cell-text layers-editor__cell-text--tag layers-editor__cell--clickable"
+          errorClassName="layers-editor__input--error"
+          hasError={Boolean(err)}
+          clickToEdit
+          allowEmpty
+          maxLength={4}
+        />
         {err && <span className="layers-editor__cell-error">{err}</span>}
       </td>
     );
   }
 
   function renderDescCell(layer: LayerDTO) {
-    const isEditing =
-      editingCell?.id === layer.id && editingCell.field === "description_md";
     const err = cellError(layer.id, "description_md");
-
-    if (isEditing) {
-      return (
-        <td className="table__cell layers-editor__cell layers-editor__cell--editing layers-editor__cell--editable table__cell--muted">
-          <textarea
-            className={`layers-editor__textarea${err ? " layers-editor__input--error" : ""}`}
-            value={editingValue}
-            autoFocus
-            rows={3}
-            onChange={(e) => setEditingValue(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            onBlur={handleInputBlur}
-            aria-label="Layer description"
-          />
-          {err && <span className="layers-editor__cell-error">{err}</span>}
-        </td>
-      );
-    }
     return (
       <td
-        className={`table__cell table__cell--muted layers-editor__cell layers-editor__cell--clickable layers-editor__cell--editable${err ? " layers-editor__cell--invalid" : ""}`}
-        onClick={() => startEdit(layer.id, "description_md")}
-        title="Click to edit"
+        className={`table__cell table__cell--muted layers-editor__cell layers-editor__cell--editable${err ? " layers-editor__cell--invalid" : ""}`}
       >
-        {layer.description_md ?? "—"}
+        <InlineEditField
+          value={layer.description_md ?? ""}
+          onCommit={(next) => commitField(layer.id, "description_md", next)}
+          ariaLabel="Layer description"
+          inputClassName="layers-editor__textarea"
+          displayClassName="layers-editor__cell--clickable"
+          errorClassName="layers-editor__input--error"
+          hasError={Boolean(err)}
+          clickToEdit
+          allowEmpty
+          multiline
+          rows={3}
+          maxLength={2000}
+          emptyDisplay="—"
+        />
         {err && <span className="layers-editor__cell-error">{err}</span>}
       </td>
     );

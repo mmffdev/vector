@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -11,6 +11,7 @@ import {
   useDroppable,
   useDraggable,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -23,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
 import { NavIcon } from "@/app/components/NavIcon";
 import ProfileBar from "@/app/components/ProfileBar";
+import InlineEditField from "@/app/components/InlineEditField";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
   useNavPrefs,
@@ -90,6 +92,91 @@ function nextSyntheticId(): string {
     : Math.random().toString(36).slice(2)}`;
 }
 
+// Inter-group drop slot — only rendered while a group header is being
+// dragged. Gives the user a clear, generously-sized drop target between
+// every pair of groups (and one above the first / below the last) so
+// reordering doesn't depend on hitting the next group's header.
+function GroupDropSlot({ index }: { index: number }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `slot:${index}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`nav-prefs__slot${isOver ? " nav-prefs__slot--over" : ""}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+// Small badge shown next to seeded (catalogue, non user_custom) nav items
+// to explain why rename/delete are unavailable. Hover shows a native
+// tooltip; click toggles an inline popover.
+function CoreItemBadge({ label }: { label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="nav-prefs__core-badge">
+      <button
+        type="button"
+        className="nav-prefs__btn nav-prefs__btn--core"
+        aria-label={`${label} is a core menu item`}
+        aria-expanded={open}
+        title="Core menu item — cannot be renamed"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onBlur={() => setOpen(false)}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </button>
+      {open && (
+        <span className="nav-prefs__core-popover" role="tooltip">
+          This is a core menu item and cannot be renamed.
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Inline delete-confirm tail. Renders at the right end of an actions row;
+// existing buttons shift left as this expands the actions container.
+function DeleteConfirm({
+  label,
+  onConfirm,
+  onCancel,
+}: {
+  label: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <span className="nav-prefs__confirm" role="group" aria-label={`Confirm delete ${label}`}>
+      <span className="nav-prefs__confirm-text">Delete?</span>
+      <button
+        type="button"
+        className="nav-prefs__btn nav-prefs__btn--confirm"
+        onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        aria-label={`Confirm delete ${label}`}
+        title="Confirm delete"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="nav-prefs__btn"
+        onClick={(e) => { e.stopPropagation(); onCancel(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        aria-label="Cancel delete"
+        title="Cancel"
+      >×</button>
+    </span>
+  );
+}
+
 function PinnedRow({
   entry,
   iconKey,
@@ -120,15 +207,7 @@ function PinnedRow({
   };
   const isCustom = entry.kind === "user_custom";
   const [renaming, setRenaming] = useState(false);
-  const [renameVal, setRenameVal] = useState(entry.label);
-  useEffect(() => { setRenameVal(entry.label); }, [entry.label]);
-
-  const commitRename = () => {
-    setRenaming(false);
-    const t = renameVal.trim();
-    if (t && t !== entry.label) onRenameCustom?.(t);
-    else setRenameVal(entry.label);
-  };
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <li ref={setNodeRef} style={style} className="nav-prefs__row">
@@ -151,38 +230,24 @@ function PinnedRow({
           </svg>
         </button>
       )}
-      {onPickIcon ? (
-        <button
-          type="button"
-          className="nav-prefs__icon"
-          aria-label={`Change icon for ${entry.label}`}
-          title="Change icon"
-          onClick={onPickIcon}
-        >
-          <NavIcon iconKey={iconKey} />
-        </button>
-      ) : (
-        <span className="nav-prefs__icon" aria-hidden="true">
-          <NavIcon iconKey={iconKey} />
-        </span>
-      )}
-      {isCustom && renaming ? (
-        <input
-          className="nav-prefs__label-rename"
-          value={renameVal}
-          autoFocus
-          maxLength={64}
-          onChange={(e) => setRenameVal(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-            if (e.key === "Escape") { setRenameVal(entry.label); setRenaming(false); }
-          }}
+      <span className="nav-prefs__row-icon" aria-hidden="true">
+        <NavIcon iconKey={iconKey} />
+      </span>
+      {isCustom && onRenameCustom ? (
+        <InlineEditField
+          value={entry.label}
+          onCommit={onRenameCustom}
+          ariaLabel={`Rename ${entry.label}`}
+          inputClassName="nav-prefs__label-rename"
+          displayClassName="nav-prefs__label"
+          editing={renaming}
+          onEditingChange={setRenaming}
         />
       ) : (
         <span className="nav-prefs__label">{entry.label}</span>
       )}
       <div className="nav-prefs__actions">
+        {!isCustom && <CoreItemBadge label={entry.label} />}
         {isCustom && !renaming && onRenameCustom && (
           <button
             type="button"
@@ -196,13 +261,24 @@ function PinnedRow({
           <button
             type="button"
             className="nav-prefs__btn nav-prefs__btn--danger"
-            onClick={onDeleteCustom}
+            onClick={() => setConfirmingDelete(true)}
             aria-label={`Delete ${entry.label}`}
             title="Delete page"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
             </svg>
+          </button>
+        )}
+        {onPickIcon && (
+          <button
+            type="button"
+            className="nav-prefs__btn"
+            onClick={onPickIcon}
+            aria-label={`Change icon for ${entry.label}`}
+            title="Change icon"
+          >
+            <NavIcon iconKey={iconKey} />
           </button>
         )}
         <button
@@ -213,7 +289,7 @@ function PinnedRow({
           aria-pressed={isStart}
           title={isStart ? "Start page (click to unset)" : "Set as start page"}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={isStart ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <path d="M9 22V12h6v10" />
           </svg>
@@ -225,6 +301,13 @@ function PinnedRow({
           aria-label={`Unpin ${entry.label}`}
           title="Unpin"
         >×</button>
+        {confirmingDelete && onDeleteCustom && (
+          <DeleteConfirm
+            label={entry.label}
+            onConfirm={() => { onDeleteCustom(); setConfirmingDelete(false); }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
+        )}
       </div>
     </li>
   );
@@ -407,15 +490,6 @@ function BucketBlock({
   };
 
   const [editing, setEditing] = useState(false);
-  const [draftLabel, setDraftLabel] = useState(heading);
-  useEffect(() => { setDraftLabel(heading); }, [heading]);
-
-  const commit = () => {
-    setEditing(false);
-    const trimmed = draftLabel.trim();
-    if (trimmed && trimmed !== heading && onRename) onRename(trimmed);
-    else setDraftLabel(heading);
-  };
 
   return (
     <div
@@ -441,27 +515,29 @@ function BucketBlock({
             <circle cx="15" cy="18" r="1.5" />
           </svg>
         </button>
-        {isCustom && editing ? (
-          <input
-            className="nav-prefs__group-rename"
-            value={draftLabel}
-            autoFocus
-            maxLength={MAX_GROUP_LABEL_LEN}
-            onChange={(e) => setDraftLabel(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); commit(); }
-              if (e.key === "Escape") { setDraftLabel(heading); setEditing(false); }
-            }}
-          />
+        {isCustom && onRename ? (
+          editing ? (
+            <InlineEditField
+              value={heading}
+              onCommit={onRename}
+              ariaLabel={`Rename ${heading} group`}
+              inputClassName="nav-prefs__group-rename"
+              displayClassName="nav-prefs__group-heading"
+              maxLength={MAX_GROUP_LABEL_LEN}
+              editing={editing}
+              onEditingChange={setEditing}
+            />
+          ) : (
+            <h3
+              className="nav-prefs__group-heading"
+              onDoubleClick={() => setEditing(true)}
+              title="Double-click to rename"
+            >
+              {heading}
+            </h3>
+          )
         ) : (
-          <h3
-            className="nav-prefs__group-heading"
-            onDoubleClick={() => isCustom && setEditing(true)}
-            title={isCustom ? "Double-click to rename" : undefined}
-          >
-            {heading}
-          </h3>
+          <h3 className="nav-prefs__group-heading">{heading}</h3>
         )}
         {isCustom && !editing && (
           <div className="nav-prefs__group-actions">
@@ -489,7 +565,7 @@ function BucketBlock({
         >
           {items.length === 0 && (
             <li className="nav-prefs__children-empty">
-              {isCustom ? "Drag a custom page here." : "Empty — pin something below."}
+              {isCustom ? "Drag a custom page here." : "Drag here, or pin something below."}
             </li>
           )}
           {items.map((it) => {
@@ -549,6 +625,7 @@ function BucketBlock({
 function AvailablePanel({
   poolTags,
   poolByTag,
+  libraryEntries,
   atCap,
   onPin,
   onRenameCustom,
@@ -557,6 +634,7 @@ function AvailablePanel({
 }: {
   poolTags: import("@/app/contexts/NavPrefsContext").NavTagGroup[];
   poolByTag: Map<string, import("@/app/contexts/NavPrefsContext").NavCatalogEntry[]>;
+  libraryEntries: import("@/app/contexts/NavPrefsContext").NavCatalogEntry[];
   atCap: boolean;
   onPin: (key: string) => void;
   onRenameCustom: (key: string, label: string) => void;
@@ -566,6 +644,29 @@ function AvailablePanel({
   const { setNodeRef, isOver } = useDroppable({ id: "pool:available" });
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const togglePicker = (k: string) => setPickerKey((cur) => (cur === k ? null : k));
+  const renderItem = (entry: import("@/app/contexts/NavPrefsContext").NavCatalogEntry) => (
+    <Fragment key={entry.key}>
+      <PoolItem
+        entry={entry}
+        atCap={atCap}
+        onPin={onPin}
+        onRenameCustom={entry.kind === "user_custom" ? (label) => onRenameCustom(entry.key, label) : undefined}
+        onDeleteCustom={entry.kind === "user_custom" ? () => onDeleteCustom(entry.key) : undefined}
+        onPickIcon={entry.kind === "user_custom" ? () => togglePicker(entry.key) : undefined}
+      />
+      {pickerKey === entry.key && (
+        <li className="nav-prefs__picker-row">
+          <IconPicker
+            currentIcon={entry.icon}
+            hasOverride={false}
+            onChoose={(icon) => { onSetPoolIcon(entry.key, icon); setPickerKey(null); }}
+            onClose={() => setPickerKey(null)}
+          />
+        </li>
+      )}
+    </Fragment>
+  );
+  const empty = poolTags.length === 0 && libraryEntries.length === 0;
   return (
     <section
       ref={setNodeRef}
@@ -575,40 +676,33 @@ function AvailablePanel({
       <header className="nav-prefs__pane-header">
         <h2 className="nav-prefs__pane-title">Available</h2>
       </header>
-      {poolTags.length === 0 ? (
+      {empty ? (
         <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
       ) : (
-        poolTags.map((tag) => (
-          <div key={tag.enum} className="nav-prefs__group">
+        <>
+          <div className="nav-prefs__group nav-prefs__group--library">
             <div className="nav-prefs__group-heading-row">
-              <h3 className="nav-prefs__group-heading">{tag.label}</h3>
+              <h3 className="nav-prefs__group-heading">Library</h3>
             </div>
-            <ul className="nav-prefs__list">
-              {(poolByTag.get(tag.enum) ?? []).map((entry) => (
-                <Fragment key={entry.key}>
-                  <PoolItem
-                    entry={entry}
-                    atCap={atCap}
-                    onPin={onPin}
-                    onRenameCustom={entry.kind === "user_custom" ? (label) => onRenameCustom(entry.key, label) : undefined}
-                    onDeleteCustom={entry.kind === "user_custom" ? () => onDeleteCustom(entry.key) : undefined}
-                    onPickIcon={entry.kind === "user_custom" ? () => togglePicker(entry.key) : undefined}
-                  />
-                  {pickerKey === entry.key && (
-                    <li className="nav-prefs__picker-row">
-                      <IconPicker
-                        currentIcon={entry.icon}
-                        hasOverride={false}
-                        onChoose={(icon) => { onSetPoolIcon(entry.key, icon); setPickerKey(null); }}
-                        onClose={() => setPickerKey(null)}
-                      />
-                    </li>
-                  )}
-                </Fragment>
-              ))}
-            </ul>
+            {libraryEntries.length === 0 ? (
+              <p className="nav-prefs__empty nav-prefs__empty--library">
+                Custom pages you create live here. Drag them into Pinned to add them to your sidebar.
+              </p>
+            ) : (
+              <ul className="nav-prefs__list">{libraryEntries.map(renderItem)}</ul>
+            )}
           </div>
-        ))
+          {poolTags.map((tag) => (
+            <div key={tag.enum} className="nav-prefs__group">
+              <div className="nav-prefs__group-heading-row">
+                <h3 className="nav-prefs__group-heading">{tag.label}</h3>
+              </div>
+              <ul className="nav-prefs__list">
+                {(poolByTag.get(tag.enum) ?? []).map(renderItem)}
+              </ul>
+            </div>
+          ))}
+        </>
       )}
     </section>
   );
@@ -634,15 +728,7 @@ function PoolItem({
     disabled: atCap,
   });
   const [renaming, setRenaming] = useState(false);
-  const [renameVal, setRenameVal] = useState(entry.label);
-  useEffect(() => { setRenameVal(entry.label); }, [entry.label]);
-
-  const commitRename = () => {
-    setRenaming(false);
-    const t = renameVal.trim();
-    if (t && t !== entry.label) onRenameCustom?.(t);
-    else setRenameVal(entry.label);
-  };
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <li
@@ -658,24 +744,22 @@ function PoolItem({
           <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
         </svg>
       </span>
-      {renaming ? (
-        <input
-          className="nav-prefs__label-rename"
-          value={renameVal}
-          autoFocus
-          maxLength={64}
-          onChange={(e) => setRenameVal(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-            if (e.key === "Escape") { setRenameVal(entry.label); setRenaming(false); }
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
+      {onRenameCustom ? (
+        <InlineEditField
+          value={entry.label}
+          onCommit={onRenameCustom}
+          ariaLabel={`Rename ${entry.label}`}
+          inputClassName="nav-prefs__label-rename"
+          displayClassName="nav-prefs__label"
+          editing={renaming}
+          onEditingChange={setRenaming}
+          stopPointerOnInput
         />
       ) : (
         <span className="nav-prefs__label">{entry.label}</span>
       )}
       <div className="nav-prefs__actions">
+        {entry.kind !== "user_custom" && <CoreItemBadge label={entry.label} />}
         {onPickIcon && (
           <button
             type="button"
@@ -704,7 +788,7 @@ function PoolItem({
             className="nav-prefs__btn nav-prefs__btn--danger"
             aria-label={`Delete ${entry.label}`}
             title="Delete page"
-            onClick={(e) => { e.stopPropagation(); onDeleteCustom(); }}
+            onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true); }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -721,6 +805,13 @@ function PoolItem({
           title={atCap ? `Pinned limit (${MAX_PINNED}) reached` : "Pin"}
           onPointerDown={(e) => e.stopPropagation()}
         >+</button>
+        {confirmingDelete && onDeleteCustom && (
+          <DeleteConfirm
+            label={entry.label}
+            onConfirm={() => { onDeleteCustom(); setConfirmingDelete(false); }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
+        )}
       </div>
     </li>
   );
@@ -729,7 +820,7 @@ function PoolItem({
 export default function NavPreferencesPage() {
   const { user } = useAuth();
   const {
-    prefs, customGroups, save, reset, catalogue, refetch,
+    prefs, customGroups, save, reset, catalogue, refetch, patchCatalogueEntry,
     defaultPinned, findEntry, tagByEnum, tags,
     profiles, activeProfileId, setProfileGroups,
   } = useNavPrefs();
@@ -744,6 +835,9 @@ export default function NavPreferencesPage() {
   const [newPageLabel, setNewPageLabel] = useState("");
   const [creatingPage, setCreatingPage] = useState(false);
   const [createPageErr, setCreatePageErr] = useState<string | null>(null);
+  const [newGroupLabel, setNewGroupLabel] = useState("");
+  const [createGroupErr, setCreateGroupErr] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Draft persistence for the "New custom page" form. The draft only
   // Silently restore whatever the user was typing last — no banner.
@@ -751,6 +845,24 @@ export default function NavPreferencesPage() {
     { formKey: "nav.custom-page.create", initial: { label: "" } },
     (vals) => setNewPageLabel(vals.label ?? ""),
   );
+
+  // Capture catalogue-derived helpers in refs so the draft-rebuild useEffect
+  // does NOT re-run when only the catalogue mutates locally (e.g. inline
+  // rename of a custom page). Without this, a label patch would rebuild
+  // `itemsByBucket` from server `prefs`, clobbering any unsaved local pins.
+  const findEntryRef = useRef(findEntry);
+  findEntryRef.current = findEntry;
+  const defaultPinnedRef = useRef(defaultPinned);
+  defaultPinnedRef.current = defaultPinned;
+
+  // Content-hash deps for the draft-rebuild useEffect. `prefs/customGroups/
+  // tags` get fresh array refs on every refetch (delete/create/save), even
+  // when the content is identical — that rebuild would clobber any unsaved
+  // local pin/order edits. Hashing the content makes the rebuild fire only
+  // when the server state truly changed.
+  const prefsHash = useMemo(() => JSON.stringify(prefs), [prefs]);
+  const customGroupsHash = useMemo(() => JSON.stringify(customGroups), [customGroups]);
+  const tagsHash = useMemo(() => JSON.stringify(tags), [tags]);
 
   // Hydrate draft from server state. Both tag buckets and custom buckets
   // are produced in first-appearance order (matching sidebar logic), with
@@ -769,7 +881,7 @@ export default function NavPreferencesPage() {
     };
 
     if (prefs.length === 0) {
-      for (const entry of defaultPinned) {
+      for (const entry of defaultPinnedRef.current) {
         pushTopLevel(entry.key, tagBucket(entry.tagEnum || "personal"));
       }
     } else {
@@ -778,7 +890,7 @@ export default function NavPreferencesPage() {
       for (const p of sorted) {
         if (p.is_start_page) startPageKey = p.item_key;
         if (p.parent_item_key) continue;
-        const entry = findEntry(p.item_key);
+        const entry = findEntryRef.current(p.item_key);
         if (!entry) continue;
         const bucket = p.group_id
           ? groupBucket(p.group_id)
@@ -788,10 +900,30 @@ export default function NavPreferencesPage() {
       // Second pass: children, grouped by parent in position order.
       for (const p of sorted) {
         if (!p.parent_item_key) continue;
-        if (!findEntry(p.item_key)) continue;
+        if (!findEntryRef.current(p.item_key)) continue;
         (childrenByParent[p.parent_item_key] ??= []).push(p.item_key);
       }
     }
+
+    // Seed empty tag buckets so they always render as drop targets.
+    // Catalogue items are locked to their tag bucket; without these, drags
+    // from Available have nowhere to land when the bucket is unpinned.
+    const haveTag = new Set(
+      orderSeen.filter((b) => b.startsWith("tag:")).map((b) => b.slice("tag:".length)),
+    );
+    const emptyTags = tags
+      .filter((t) => !t.isAdminMenu && !haveTag.has(t.enum))
+      .slice()
+      .sort((a, b) => a.defaultOrder - b.defaultOrder);
+    const firstCustomIdx = orderSeen.findIndex((b) => b.startsWith("group:"));
+    const insertAt = firstCustomIdx === -1 ? orderSeen.length : firstCustomIdx;
+    const tagInserts: BucketKey[] = [];
+    for (const t of emptyTags) {
+      const b = tagBucket(t.enum);
+      itemsByBucket[b] = itemsByBucket[b] ?? [];
+      tagInserts.push(b);
+    }
+    orderSeen.splice(insertAt, 0, ...tagInserts);
 
     // Append empty custom buckets by position.
     const haveCustom = new Set(orderSeen.filter((b) => b.startsWith("group:")));
@@ -819,7 +951,13 @@ export default function NavPreferencesPage() {
       iconOverrides,
     });
     setError(null);
-  }, [prefs, customGroups, defaultPinned, findEntry]);
+    // Intentionally key on content hashes, not array refs. `prefs/customGroups/
+    // tags` get fresh array identities on every refetch — including refetches
+    // triggered by save/delete/create — even when content is identical. Hashing
+    // makes the rebuild fire only when server state truly changed, so unsaved
+    // local pin/order edits survive a sibling refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefsHash, customGroupsHash, tagsHash]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -949,15 +1087,22 @@ export default function NavPreferencesPage() {
     setDraft({ ...draft, iconOverrides: next });
   };
 
-  const addCustomGroup = () => {
-    if (groupsAtCap) return;
+  const addCustomGroup = (rawLabel?: string): { ok: true } | { ok: false; reason: string } => {
+    if (groupsAtCap) return { ok: false, reason: `Cap of ${MAX_CUSTOM_GROUPS} groups reached.` };
     const id = nextSyntheticId();
     const used = new Set(draft.customGroups.map((g) => g.label.toLowerCase()));
-    let n = 1;
-    let label = `New group ${n}`;
-    while (used.has(label.toLowerCase())) {
-      n += 1;
+    let label: string;
+    if (rawLabel != null) {
+      label = rawLabel.trim().slice(0, MAX_GROUP_LABEL_LEN);
+      if (!label) return { ok: false, reason: "Group name cannot be empty." };
+      if (used.has(label.toLowerCase())) return { ok: false, reason: "A group with that name already exists." };
+    } else {
+      let n = 1;
       label = `New group ${n}`;
+      while (used.has(label.toLowerCase())) {
+        n += 1;
+        label = `New group ${n}`;
+      }
     }
     const position = draft.customGroups.length;
     const next: DraftState = {
@@ -967,6 +1112,7 @@ export default function NavPreferencesPage() {
       bucketOrder: [...draft.bucketOrder, groupBucket(id)],
     };
     setDraft(next);
+    return { ok: true };
   };
 
   const renameGroup = (id: string, label: string) => {
@@ -1126,14 +1272,52 @@ export default function NavPreferencesPage() {
     });
   };
 
+  // Move a bucket to a specific slot index (slot N = "insert before bucket
+  // currently at index N"; slot bucketOrder.length = end of list). Used by
+  // the explicit drop-slot targets rendered between groups during a drag.
+  const moveBucketToIndex = (fromBucket: BucketKey, toIndex: number) => {
+    const fromIdx = draft.bucketOrder.indexOf(fromBucket);
+    if (fromIdx < 0) return;
+    const cleaned = draft.bucketOrder.slice();
+    cleaned.splice(fromIdx, 1);
+    const insertAt = toIndex > fromIdx ? toIndex - 1 : toIndex;
+    cleaned.splice(Math.min(Math.max(insertAt, 0), cleaned.length), 0, fromBucket);
+    if (cleaned.join("|") === draft.bucketOrder.join("|")) return;
+    const customOrder = cleaned.filter((b) => b.startsWith("group:"));
+    const positionByGroupId = new Map<string, number>();
+    customOrder.forEach((b, i) => positionByGroupId.set(b.slice("group:".length), i));
+    setDraft({
+      ...draft,
+      bucketOrder: cleaned,
+      customGroups: draft.customGroups.map((g) => ({
+        ...g,
+        position: positionByGroupId.get(g.id) ?? g.position,
+      })),
+    });
+  };
+
+  const onDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+  const onDragCancel = () => setActiveDragId(null);
+
   const onDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
     const { active, over } = event;
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
     if (activeId === overId) return;
 
-    // 1) Custom group header reorder.
+    // 1a) Group header dropped on an explicit between-group slot.
+    if (activeId.startsWith("gheader:") && overId.startsWith("slot:")) {
+      const a = activeId.slice("gheader:".length);
+      const idx = parseInt(overId.slice("slot:".length), 10);
+      if (Number.isFinite(idx)) moveBucketToIndex(a, idx);
+      return;
+    }
+
+    // 1) Custom group header reorder (fallback when dropped on another header).
     if (activeId.startsWith("gheader:") && overId.startsWith("gheader:")) {
       const a = activeId.slice("gheader:".length);
       const o = overId.slice("gheader:".length);
@@ -1162,9 +1346,15 @@ export default function NavPreferencesPage() {
       return;
     }
 
-    // 2b) Drop into an empty bucket droppable.
-    if (overId.startsWith("bucket:")) {
-      const targetBucket = overId.slice("bucket:".length);
+    // 2b) Drop into a bucket — either via the inner-list droppable (`bucket:`)
+    // or via the bucket's sortable wrapper (`gheader:`). closestCenter can
+    // resolve to the header sortable when the cursor lands on the bucket's
+    // header strip or the empty area between rows, so both ids must be
+    // treated as a drop into that bucket's items list.
+    if (overId.startsWith("bucket:") || overId.startsWith("gheader:")) {
+      const targetBucket = overId.startsWith("bucket:")
+        ? overId.slice("bucket:".length)
+        : overId.slice("gheader:".length);
       // Catalogue items are locked to their tag bucket.
       if (aEntry.kind !== "user_custom" && targetBucket !== tagBucket(aEntry.tagEnum || "personal")) return;
       if (aOwner.bucket === targetBucket && (draft.itemsByBucket[targetBucket] ?? []).length > 0) return;
@@ -1330,8 +1520,10 @@ export default function NavPreferencesPage() {
 
   const handleRenameCustomPage = (key: string, label: string) => {
     const id = key.slice("custom:".length);
+    // Update local catalogue only — a full refetch would rebuild the
+    // draft from server prefs and clobber any unsaved local pin edits.
     patchCustomPage(id, { label })
-      .then(refetch)
+      .then(() => patchCatalogueEntry(key, { label }))
       .catch((e) => setError(e instanceof Error ? e.message : "Rename failed"));
   };
 
@@ -1345,13 +1537,20 @@ export default function NavPreferencesPage() {
   const handleSetPoolIcon = (key: string, icon: string) => {
     const id = key.slice("custom:".length);
     patchCustomPage(id, { icon })
-      .then(refetch)
+      .then(() => patchCatalogueEntry(key, { icon }))
       .catch((e) => setError(e instanceof Error ? e.message : "Icon update failed"));
   };
 
-  // Build pool grouped by tag for display.
+  // Build pool grouped by tag for display. user_custom entries break out
+  // into a separate "Library" container so newly-created pages have an
+  // obvious home before the user drags them into Pinned.
   const poolByTag = new Map<string, NavCatalogEntry[]>();
+  const libraryEntries: NavCatalogEntry[] = [];
   for (const entry of pool) {
+    if (entry.kind === "user_custom") {
+      libraryEntries.push(entry);
+      continue;
+    }
     const list = poolByTag.get(entry.tagEnum) ?? [];
     list.push(entry);
     poolByTag.set(entry.tagEnum, list);
@@ -1389,64 +1588,76 @@ export default function NavPreferencesPage() {
       </div>
 
       <div className="nav-prefs">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
+        >
           <section className="nav-prefs__pane" aria-label="Pinned">
             <header className="nav-prefs__pane-header">
               <h2 className="nav-prefs__pane-title">
                 Pinned <span className="nav-prefs__count">{totalPinned}/{MAX_PINNED}</span>
               </h2>
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={addCustomGroup}
-                disabled={groupsAtCap}
-                title={groupsAtCap ? `Cap of ${MAX_CUSTOM_GROUPS} custom groups reached` : "Add a custom group"}
-              >
-                + Custom group ({draft.customGroups.length}/{MAX_CUSTOM_GROUPS})
-              </button>
             </header>
             {draft.bucketOrder.length === 0 ? (
               <p className="nav-prefs__empty">Nothing pinned — the sidebar will show defaults until you pin something.</p>
             ) : (
               <SortableContext items={customBucketIds} strategy={verticalListSortingStrategy}>
-                {draft.bucketOrder.map((b) => {
+                {activeDragId?.startsWith("gheader:") && <GroupDropSlot index={0} />}
+                {draft.bucketOrder.map((b, i) => {
                   const { heading, isCustom, groupId } = bucketHeading(b);
                   const items = draft.itemsByBucket[b] ?? [];
-                  if (!isCustom && items.length === 0) return null;
+                  // Render every bucket — including empty tag buckets — so they
+                  // remain valid drop targets when dragging from Available.
                   return (
-                    <BucketBlock
-                      key={b}
-                      bucketId={b}
-                      heading={heading}
-                      items={items}
-                      childrenByParent={draft.childrenByParent}
-                      startPageKey={draft.startPageKey}
-                      findEntry={findEntry}
-                      iconOverrides={draft.iconOverrides}
-                      pickerKey={pickerKey}
-                      onUnpin={unpin}
-                      onToggleStart={toggleStart}
-                      onPickIcon={togglePicker}
-                      onSetIcon={setIconOverride}
-                      onClearIcon={clearIconOverride}
-                      onRename={isCustom && groupId ? (label) => renameGroup(groupId, label) : undefined}
-                      onRemoveGroup={isCustom && groupId ? () => removeGroup(groupId) : undefined}
-                      onRenameCustom={handleRenameCustomPage}
-                      onDeleteCustom={handleDeleteCustomPage}
-                      isCustom={isCustom}
-                    />
+                    <Fragment key={b}>
+                      <BucketBlock
+                        bucketId={b}
+                        heading={heading}
+                        items={items}
+                        childrenByParent={draft.childrenByParent}
+                        startPageKey={draft.startPageKey}
+                        findEntry={findEntry}
+                        iconOverrides={draft.iconOverrides}
+                        pickerKey={pickerKey}
+                        onUnpin={unpin}
+                        onToggleStart={toggleStart}
+                        onPickIcon={togglePicker}
+                        onSetIcon={setIconOverride}
+                        onClearIcon={clearIconOverride}
+                        onRename={isCustom && groupId ? (label) => renameGroup(groupId, label) : undefined}
+                        onRemoveGroup={isCustom && groupId ? () => removeGroup(groupId) : undefined}
+                        onRenameCustom={handleRenameCustomPage}
+                        onDeleteCustom={handleDeleteCustomPage}
+                        isCustom={isCustom}
+                      />
+                      {activeDragId?.startsWith("gheader:") && <GroupDropSlot index={i + 1} />}
+                    </Fragment>
                   );
                 })}
               </SortableContext>
             )}
           </section>
 
+          <AvailablePanel
+            poolTags={poolTags}
+            poolByTag={poolByTag}
+            libraryEntries={libraryEntries}
+            atCap={atCap}
+            onPin={pin}
+            onRenameCustom={handleRenameCustomPage}
+            onDeleteCustom={handleDeleteCustomPage}
+            onSetPoolIcon={handleSetPoolIcon}
+          />
+
           <section className="nav-prefs__pane nav-prefs__pane--new-page" aria-label="New custom page">
             <header className="nav-prefs__pane-header">
               <h2 className="nav-prefs__pane-title">New custom page</h2>
             </header>
             <p className="nav-prefs__new-page-card-hint">
-              Holds timeline, board, or list views. Appears under <strong>Personal</strong>.
+              Holds timeline, board, or list views. New pages appear in <strong>Library</strong> above — drag one into Pinned to add it to the sidebar.
             </p>
             <form
               className="nav-prefs__new-page"
@@ -1491,7 +1702,7 @@ export default function NavPreferencesPage() {
               />
               <button
                 type="submit"
-                className="nav-prefs__new-page-btn"
+                className="btn"
                 disabled={!newPageLabel.trim() || creatingPage}
               >
                 {creatingPage ? "Creating…" : "+ New page"}
@@ -1500,15 +1711,52 @@ export default function NavPreferencesPage() {
             {createPageErr && <p className="nav-prefs__error" role="alert">{createPageErr}</p>}
           </section>
 
-          <AvailablePanel
-            poolTags={poolTags}
-            poolByTag={poolByTag}
-            atCap={atCap}
-            onPin={pin}
-            onRenameCustom={handleRenameCustomPage}
-            onDeleteCustom={handleDeleteCustomPage}
-            onSetPoolIcon={handleSetPoolIcon}
-          />
+          <section className="nav-prefs__pane nav-prefs__pane--new-group" aria-label="New custom group">
+            <header className="nav-prefs__pane-header">
+              <h2 className="nav-prefs__pane-title">
+                New custom group <span className="nav-prefs__count">{draft.customGroups.length}/{MAX_CUSTOM_GROUPS}</span>
+              </h2>
+            </header>
+            <p className="nav-prefs__new-page-card-hint">
+              Custom groups appear in <strong>Pinned</strong> and can hold any custom pages you create. Drag groups by their handle to reorder.
+            </p>
+            <form
+              className="nav-prefs__new-page"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const label = newGroupLabel.trim();
+                if (!label || groupsAtCap) return;
+                setCreateGroupErr(null);
+                const result = addCustomGroup(label);
+                if (result.ok) {
+                  setNewGroupLabel("");
+                } else {
+                  setCreateGroupErr(result.reason);
+                }
+              }}
+            >
+              <input
+                className="nav-prefs__new-page-input"
+                placeholder="New group name…"
+                value={newGroupLabel}
+                onChange={(e) => {
+                  setNewGroupLabel(e.target.value);
+                  if (createGroupErr) setCreateGroupErr(null);
+                }}
+                maxLength={MAX_GROUP_LABEL_LEN}
+                disabled={groupsAtCap}
+              />
+              <button
+                type="submit"
+                className="btn"
+                disabled={!newGroupLabel.trim() || groupsAtCap}
+                title={groupsAtCap ? `Cap of ${MAX_CUSTOM_GROUPS} custom groups reached` : "Add a custom group"}
+              >
+                + New group
+              </button>
+            </form>
+            {createGroupErr && <p className="nav-prefs__error" role="alert">{createGroupErr}</p>}
+          </section>
         </DndContext>
 
       </div>

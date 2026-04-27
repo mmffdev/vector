@@ -64,6 +64,19 @@ func itemKey(kind EntityKind, id uuid.UUID) string {
 	return fmt.Sprintf("entity:%s:%s", kind, id.String())
 }
 
+// tagEnumForBookmark picks the page_tags row a freshly-bookmarked entity
+// lands in. Products live alongside other strategic pages; portfolios
+// remain in the dedicated Bookmarks group. Both still count toward the
+// per-user bookmark cap (tracked by kind='entity', not by tag).
+func tagEnumForBookmark(kind EntityKind) string {
+	switch kind {
+	case EntityKindProduct:
+		return "strategic"
+	default:
+		return "bookmarks"
+	}
+}
+
 // ParseEntityKey returns (kind, id, true) when key matches the entity
 // pattern. False on any malformed input — never panics.
 func ParseEntityKey(key string) (EntityKind, uuid.UUID, bool) {
@@ -175,13 +188,15 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 
 	// Cap: count existing bookmarks for this user before adding.
 	// Cheap COUNT — the unique index on (user, tenant, profile, item_key)
-	// makes the scan tight.
+	// makes the scan tight. Filter by kind='entity' rather than tag_enum
+	// so the cap survives entity bookmarks landing in different tag
+	// groups (e.g. product → 'strategic', portfolio → 'bookmarks').
 	var current int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM user_nav_prefs unp
 		JOIN pages p ON p.key_enum = unp.item_key
 		WHERE unp.user_id = $1 AND unp.subscription_id = $2 AND unp.profile_id IS NULL
-		  AND p.tag_enum = 'bookmarks'`, userID, callerSubscription).Scan(&current); err != nil {
+		  AND p.kind = 'entity'`, userID, callerSubscription).Scan(&current); err != nil {
 		return "", err
 	}
 	if current >= MaxPinned {
@@ -198,11 +213,11 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 		INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind,
 		                   pinnable, default_pinned, default_order,
 		                   created_by, subscription_id)
-		VALUES ($1, $2, $3, $4, 'bookmarks', 'entity', TRUE, FALSE, 0, NULL, $5)
+		VALUES ($1, $2, $3, $4, $5, 'entity', TRUE, FALSE, 0, NULL, $6)
 		ON CONFLICT (key_enum, subscription_id) WHERE created_by IS NULL AND subscription_id IS NOT NULL DO UPDATE
 		  SET label = EXCLUDED.label, updated_at = NOW()
 		RETURNING id`,
-		key, name, hrefFor(kind, entityID), iconFor(kind), entityTenant,
+		key, name, hrefFor(kind, entityID), iconFor(kind), tagEnumForBookmark(kind), entityTenant,
 	).Scan(&pageID); err != nil {
 		return "", err
 	}
