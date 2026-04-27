@@ -329,6 +329,28 @@ func (s *Service) SetActiveProfile(ctx context.Context, userID, subscriptionID, 
 	return err
 }
 
+// GetActiveProfileID returns users.active_nav_profile_id when it points
+// at a profile owned by this user under this subscription. Otherwise
+// returns nil — callers treat that as "fall back to Default".
+func (s *Service) GetActiveProfileID(ctx context.Context, userID, subscriptionID uuid.UUID) (*uuid.UUID, error) {
+	var id *uuid.UUID
+	err := s.Pool.QueryRow(ctx, `
+		SELECT p.id
+		  FROM users u
+		  JOIN user_nav_profiles p ON p.id = u.active_nav_profile_id
+		 WHERE u.id = $1
+		   AND p.user_id = $1
+		   AND p.subscription_id = $2
+	`, userID, subscriptionID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return id, nil
+}
+
 // EnsureDefaultProfile lazy-seeds a Default profile for this
 // (user, subscription) if one doesn't already exist, then returns its
 // id. Idempotent: races between two concurrent first-reads are

@@ -345,10 +345,13 @@ func (h *Handler) customPageEntriesFor(
 // ---- profiles -------------------------------------------------------
 
 type profilesResp struct {
-	Profiles []Profile `json:"profiles"`
+	Profiles        []Profile  `json:"profiles"`
+	ActiveProfileID *uuid.UUID `json:"active_profile_id"`
 }
 
-// GET /api/nav/profiles — list this user's profiles for the current subscription.
+// GET /api/nav/profiles — list this user's profiles for the current
+// subscription, plus the user's currently-active profile id (nullable
+// when nothing has been pinned yet — client falls back to first/Default).
 func (h *Handler) ListProfiles(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	profs, err := h.Svc.ListProfiles(r.Context(), u.ID, u.SubscriptionID)
@@ -356,7 +359,12 @@ func (h *Handler) ListProfiles(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, profilesResp{Profiles: profs})
+	activeID, err := h.Svc.GetActiveProfileID(r.Context(), u.ID, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, profilesResp{Profiles: profs, ActiveProfileID: activeID})
 }
 
 type createProfileReq struct {
