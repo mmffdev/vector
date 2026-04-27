@@ -60,11 +60,16 @@ export default function LibraryPage() {
   if (selected) {
     return (
       <div className="dev-root">
-        <header className="dev-page-header">
+        <header
+          className="dev-page-header"
+          style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}
+        >
           <button className="dev-btn" onClick={() => { setSelected(null); setHtml(null); }}>
             ← Library
           </button>
-          <h1 className="dev-page-header__title dev-library__doc-title">{selected.name}</h1>
+          <h1 className="dev-page-header__title dev-library__doc-title" style={{ margin: 0 }}>
+            {selected.name}
+          </h1>
         </header>
         {loading
           ? <p className="dev-p">Loading…</p>
