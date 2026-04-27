@@ -410,17 +410,6 @@ button {
   overflow: hidden;
 }
 
-.sidebar-brand {
-  font-size: 3em;
-  font-weight: 700;
-  color: var(--ink-1);
-  padding: 0 24px;
-  line-height: 1;
-  height: var(--app-header-wrapper-height);
-  display: flex;
-  align-items: center;
-}
-
 .sidebar-dev-group {
   margin-top: auto;
 }
@@ -737,6 +726,18 @@ button {
 
 :root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-brand__label {
   display: none;
+}
+
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-brand {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+:root[data-sidebar-collapsed="true"] .app-sidebar-container:not([data-open="true"]) .sidebar-toolbar {
+  justify-content: center;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .sidebar-section {
@@ -4192,13 +4193,6 @@ table.tbl tbody tr:hover td {
   line-height: 1;
   user-select: none;
   padding: 0 var(--space-2);
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.layers-editor__row:hover .layers-editor__drag-handle,
-.layers-editor__drag-cell:focus-within .layers-editor__drag-handle {
-  opacity: 1;
 }
 
 /* ── Row states ───────────────────────────────────────────── */

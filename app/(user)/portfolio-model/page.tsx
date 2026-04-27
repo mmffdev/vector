@@ -38,7 +38,7 @@ import AdoptionOverlay, {
   type AdoptionDoneEvent,
   type AdoptionFailEvent,
 } from "./AdoptionOverlay";
-import LayersTable from "./LayersTable";
+import LayersTable, { type LayerDTO } from "./LayersTable";
 
 // Phase 5 will list bundles via a /api/portfolio-models endpoint; until
 // then the seeded MMFF Standard family id is the only thing to render.
@@ -57,14 +57,6 @@ interface ModelDTO {
   version: number;
   library_version: string | null;
   archived_at: string | null;
-}
-
-interface LayerDTO {
-  id: string;
-  name: string;
-  tag: string;
-  sort_order: number;
-  description_md: string | null;
 }
 
 interface WorkflowDTO {
@@ -352,11 +344,8 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
         <LayersTable
           initialLayers={localLayers}
           onLayersUpdated={setLocalLayers}
+          fixedItems={STRATEGY_FIXED_ITEMS}
         />
-      </Section>
-
-      <Section title="Strategy Layer">
-        <StrategyLayerTable />
       </Section>
 
       <Section title="Artifacts">
@@ -410,36 +399,13 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
   );
 }
 
-const STRATEGY_ARTEFACTS = [
-  { tag: "STR", name: "User Story", description: "A user-facing capability described from the end-user perspective" },
-  { tag: "TSK", name: "Task", description: "A unit of technical work required to deliver a story" },
-  { tag: "DEF", name: "Defect", description: "A deviation from expected behaviour requiring a fix" },
+// sort_order encodes the fixed hierarchy position: Story=2, Task=1, Defect=0 (no number).
+// Sortable layers display as sort_order + max(fixed sort_orders) = sort_order + 2.
+const STRATEGY_FIXED_ITEMS: LayerDTO[] = [
+  { id: "fixed-str", tag: "STR", name: "User Story", sort_order: 2, description_md: "A user-facing capability described from the end-user perspective" },
+  { id: "fixed-tsk", tag: "TSK", name: "Task", sort_order: 1, description_md: "A unit of technical work required to deliver a story" },
+  { id: "fixed-def", tag: "DEF", name: "Defect", sort_order: 0, description_md: "A deviation from expected behaviour requiring a fix" },
 ];
-
-function StrategyLayerTable() {
-  return (
-    <div className="table-wrap">
-      <table className="table">
-        <thead className="table__head">
-          <tr className="table__row">
-            <th className="table__cell">Tag</th>
-            <th className="table__cell">Name</th>
-            <th className="table__cell">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {STRATEGY_ARTEFACTS.map((a) => (
-            <tr key={a.tag} className="table__row">
-              <td className="table__cell u-mono">{a.tag}</td>
-              <td className="table__cell">{a.name}</td>
-              <td className="table__cell table__cell--muted">{a.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

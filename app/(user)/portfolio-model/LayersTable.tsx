@@ -145,8 +145,8 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           // Stay in edit mode — don't commit
           return false;
         }
-        // Duplicate tag check
-        const duplicate = localLayers.find(
+        // Duplicate tag check (across both sortable and fixed rows)
+        const duplicate = [...localLayers, ...localFixed].find(
           (l) => l.id !== id && l.tag.toLowerCase() === trimmed.toLowerCase()
         );
         if (duplicate) {
@@ -169,7 +169,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           });
           return false;
         }
-        const duplicate = localLayers.find(
+        const duplicate = [...localLayers, ...localFixed].find(
           (l) => l.id !== id && l.name.toLowerCase() === trimmed.toLowerCase()
         );
         if (duplicate) {
@@ -182,8 +182,9 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
         }
       }
 
-      // Commit
-      setLocalLayers((prev) =>
+      // Commit to the right array (fixed items stay in localFixed; sortable in localLayers)
+      const isFixed = localFixed.some((l) => l.id === id);
+      (isFixed ? setLocalFixed : setLocalLayers)((prev) =>
         prev.map((l) => {
           if (l.id !== id) return l;
           return {
@@ -201,7 +202,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
       setEditingValue("");
       return true;
     },
-    [localLayers]
+    [localLayers, localFixed]
   );
 
   const handleInputKeyDown = useCallback(
@@ -277,11 +278,15 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
         return;
       }
       setLocalLayers((prev) => {
-        const next = [...prev];
-        const [moved] = next.splice(dragIndex, 1);
-        next.splice(dropIndex, 0, moved);
-        // Reassign sort_order 1…N (no gaps)
-        return next.map((l, i) => ({ ...l, sort_order: i + 1 }));
+        // Work in display order (descending sort_order = visual top first).
+        const display = [...prev].reverse();
+        const [moved] = display.splice(dragIndex, 1);
+        display.splice(dropIndex, 0, moved);
+        // Visual top = highest strategic = highest sort_order.
+        const total = display.length;
+        return display
+          .map((l, i) => ({ ...l, sort_order: total - i }))
+          .sort((a, b) => a.sort_order - b.sort_order);
       });
       dragIndexRef.current = null;
       dragOverIndexRef.current = null;
@@ -508,6 +513,17 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
     );
   }
 
+  // Hierarchy offset: fixed items occupy levels 1…N; sortable layers start above them.
+  const fixedOffset = fixedItems
+    ? Math.max(0, ...fixedItems.map((f) => f.sort_order))
+    : 0;
+
+  // Display sortable layers highest-strategic first (descending sort_order).
+  const displayLayers = [...localLayers].reverse();
+
+  // Display fixed items highest-hierarchy first (User Story → Task → Defect).
+  const displayFixed = [...localFixed].sort((a, b) => b.sort_order - a.sort_order);
+
   return (
     <div className="layers-editor">
       <div className="table-wrap">
@@ -529,7 +545,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
             </tr>
           </thead>
           <tbody>
-            {localLayers.map((layer, index) => {
+            {displayLayers.map((layer, index) => {
               const isDragOver = dropTargetIndex === index;
               const rowCls = [
                 "table__row",
@@ -559,7 +575,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
                     </span>
                   </td>
                   <td className="table__cell table__cell--numeric">
-                    {layer.sort_order}
+                    {layer.sort_order + fixedOffset}
                   </td>
                   {renderTagCell(layer)}
                   {renderNameCell(layer)}
@@ -567,6 +583,26 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
                 </tr>
               );
             })}
+            {displayFixed.length > 0 && (
+              <>
+                <tr className="layers-editor__row--group-sep" aria-hidden="true">
+                  <td colSpan={5} className="layers-editor__group-sep-cell">
+                    <span className="eyebrow">{fixedGroupLabel ?? "Strategy Layer"}</span>
+                  </td>
+                </tr>
+                {displayFixed.map((item) => (
+                  <tr key={item.id} className="table__row layers-editor__row">
+                    <td className="table__cell layers-editor__drag-cell layers-editor__drag-cell--disabled" aria-hidden="true" />
+                    <td className="table__cell table__cell--numeric table__cell--muted">
+                      {item.sort_order === 0 ? "—" : item.sort_order}
+                    </td>
+                    {renderTagCell(item)}
+                    {renderNameCell(item)}
+                    {renderDescCell(item)}
+                  </tr>
+                ))}
+              </>
+            )}
           </tbody>
         </table>
       </div>
