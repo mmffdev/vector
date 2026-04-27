@@ -851,7 +851,7 @@ button {
   border: 1px solid transparent;
   background: transparent;
   color: var(--ink);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
   box-shadow: none;
@@ -1225,7 +1225,7 @@ button {
   padding: 0 var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--ink);
@@ -1399,7 +1399,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -1539,7 +1539,7 @@ table.tbl tbody tr:hover td {
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
@@ -2013,7 +2013,7 @@ table.tbl tbody tr:hover td {
   padding: 0 12px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
@@ -2036,7 +2036,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink-muted);
   cursor: pointer;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -2570,7 +2570,7 @@ table.tbl tbody tr:hover td {
 .nav-prefs__btn {
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   color: var(--ink-muted);
   width: 32px;
   height: 32px;
@@ -2647,7 +2647,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   padding: var(--space-1) var(--space-2);
   height: 28px;
 }
@@ -2701,7 +2701,7 @@ table.tbl tbody tr:hover td {
   margin: var(--space-1) 0 var(--space-2);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
 }
 .nav-prefs__picker-label {
   font-family: var(--font-sans);
@@ -2724,7 +2724,7 @@ table.tbl tbody tr:hover td {
   height: 32px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   color: var(--ink-muted);
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease;
@@ -2785,7 +2785,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--ink);
   color: var(--ink);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   min-width: 240px;
@@ -2833,7 +2833,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   height: var(--input-height);
@@ -2847,7 +2847,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink);
   padding: 0 var(--space-4);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.2;
@@ -2890,7 +2890,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink);
   padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   line-height: 1.2;
@@ -3170,7 +3170,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   cursor: pointer;
   font-family: var(--font-sans);
   text-align: left;

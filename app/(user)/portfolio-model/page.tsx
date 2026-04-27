@@ -28,7 +28,7 @@
 // (`useAuth().user.subscription_id`) — the same source other padmin
 // surfaces use; never the URL.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -326,37 +326,6 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
     return () => { cancelled = true; };
   }, []);
 
-  const layerOrder = useMemo(
-    () => [...localLayers].sort((a, b) => a.sort_order - b.sort_order),
-    [localLayers]
-  );
-  const workflowsByLayer = useMemo(() => {
-    const m = new Map<string, WorkflowDTO[]>();
-    for (const w of bundle.workflows) {
-      const arr = m.get(w.layer_id) ?? [];
-      arr.push(w);
-      m.set(w.layer_id, arr);
-    }
-    for (const arr of m.values()) arr.sort((a, b) => a.sort_order - b.sort_order);
-    return m;
-  }, [bundle.workflows]);
-  const stateById = useMemo(() => {
-    const m = new Map<string, WorkflowDTO>();
-    for (const w of bundle.workflows) m.set(w.id, w);
-    return m;
-  }, [bundle.workflows]);
-  const transitionsByLayer = useMemo(() => {
-    const m = new Map<string, TransitionDTO[]>();
-    for (const t of bundle.transitions) {
-      const from = stateById.get(t.from_state_id);
-      if (!from) continue;
-      const arr = m.get(from.layer_id) ?? [];
-      arr.push(t);
-      m.set(from.layer_id, arr);
-    }
-    return m;
-  }, [bundle.transitions, stateById]);
-
   const m = bundle.model;
 
   return (
@@ -379,52 +348,15 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
         </dl>
       </header>
 
-      <Section title="Layers">
+      <Section title="Strategy">
         <LayersTable
           initialLayers={localLayers}
           onLayersUpdated={setLocalLayers}
         />
       </Section>
 
-      <Section title="Workflows">
-        <div className="model-preview__workflows">
-          {layerOrder.map((l) => {
-            const states = workflowsByLayer.get(l.id) ?? [];
-            const transitions = transitionsByLayer.get(l.id) ?? [];
-            return (
-              <div key={l.id} className="model-preview__workflow">
-                <h4 className="model-preview__workflow-title">
-                  <span className="u-mono">{l.tag}</span> {l.name}
-                </h4>
-                <ul className="model-preview__states">
-                  {states.map((s) => (
-                    <li key={s.id} className="model-preview__state">
-                      <span className="u-mono">{s.state_key}</span>
-                      <span className="model-preview__state-label">{s.state_label}</span>
-                      {s.is_initial && <span className="pill pill--neutral">initial</span>}
-                      {s.is_terminal && <span className="pill pill--success">terminal</span>}
-                    </li>
-                  ))}
-                </ul>
-                {transitions.length > 0 && (
-                  <ul className="model-preview__transitions">
-                    {transitions.map((t) => {
-                      const from = stateById.get(t.from_state_id);
-                      const to = stateById.get(t.to_state_id);
-                      return (
-                        <li key={t.id} className="model-preview__transition">
-                          <span className="u-mono">{from?.state_key ?? "?"}</span>
-                          <span aria-hidden="true"> → </span>
-                          <span className="u-mono">{to?.state_key ?? "?"}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      <Section title="Strategy Layer">
+        <StrategyLayerTable />
       </Section>
 
       <Section title="Artifacts">
@@ -474,6 +406,37 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
           </table>
         </div>
       </Section>
+    </div>
+  );
+}
+
+const STRATEGY_ARTEFACTS = [
+  { tag: "STR", name: "User Story", description: "A user-facing capability described from the end-user perspective" },
+  { tag: "TSK", name: "Task", description: "A unit of technical work required to deliver a story" },
+  { tag: "DEF", name: "Defect", description: "A deviation from expected behaviour requiring a fix" },
+];
+
+function StrategyLayerTable() {
+  return (
+    <div className="table-wrap">
+      <table className="table">
+        <thead className="table__head">
+          <tr className="table__row">
+            <th className="table__cell">Tag</th>
+            <th className="table__cell">Name</th>
+            <th className="table__cell">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {STRATEGY_ARTEFACTS.map((a) => (
+            <tr key={a.tag} className="table__row">
+              <td className="table__cell u-mono">{a.tag}</td>
+              <td className="table__cell">{a.name}</td>
+              <td className="table__cell table__cell--muted">{a.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
