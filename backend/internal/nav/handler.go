@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -136,11 +137,13 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		log.Printf("nav.PutPrefs: ResolveProfile user=%s sub=%s: %v", u.ID, u.SubscriptionID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
+		log.Printf("nav.PutPrefs: customPageEntriesFor user=%s sub=%s: %v", u.ID, u.SubscriptionID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -166,6 +169,8 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		default:
+			log.Printf("nav.PutPrefs: ReplacePrefsForProfile user=%s sub=%s pid=%s pinned=%d groups=%d: %v",
+				u.ID, u.SubscriptionID, pid, len(req.Pinned), len(req.Groups), err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -176,6 +181,7 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	// align by index.
 	groups, err := h.Svc.GetCustomGroups(r.Context(), u.ID)
 	if err != nil {
+		log.Printf("nav.PutPrefs: GetCustomGroups user=%s: %v", u.ID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
