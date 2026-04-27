@@ -245,6 +245,18 @@ button {
   height: 100dvh;
   overflow: hidden;
   transition: grid-template-columns 0.25s ease;
+  /* Smooth the snap-in after auth resolves. `both` holds opacity:0
+     before the animation runs so there's no single-frame flash. */
+  animation: app-root-fade-in 220ms ease-out both;
+}
+
+@keyframes app-root-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-root { animation: none; }
 }
 
 .app-shell { display: contents; }
@@ -399,6 +411,27 @@ button {
   flex-wrap: wrap;
   gap: 4px;
   margin: 6px 16px 8px 22px;
+  position: relative;          /* anchor for .profile-bar__mist */
+  overflow: hidden;            /* hides pills sliding in from off-screen right */
+}
+
+/* Right-anchored gradient veil — pills slide out from under it on mount,
+   then it fades to 0. pointer-events: none so it never eats clicks. */
+.profile-bar__mist {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 60%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;                  /* default hidden; entrance JS sets it to 1 then fades */
+  background: linear-gradient(
+    to left,
+    var(--surface-1) 0%,
+    var(--surface-1) 25%,
+    transparent 100%
+  );
 }
 
 .profile-bar__pill {
@@ -2728,9 +2761,21 @@ table.tbl tbody tr:hover td {
    Navigation preferences page (/preferences/navigation)
    ============================================================ */
 .nav-prefs__pane.nav-prefs__quick-bar {
-  flex-direction: row;
-  align-items: center;
-  margin-bottom: 5px;
+  /* Inherits .nav-prefs__pane chrome (surface, border, padding, gap).
+     Symmetric 24px margin sits this band evenly between the page header
+     above and the Pinned/Available row below. */
+  margin: var(--space-6) 0;
+}
+
+.nav-prefs__quick-bar .profile-bar {
+  margin: 0;
+  gap: 10px;                 /* uniform 10px between pills */
+}
+
+/* Hide inline edit/delete buttons in this context — equal-width pills.
+   New edit/delete feature will reintroduce these via a different UI. */
+.nav-prefs__quick-bar .profile-bar__cell-actions {
+  display: none;
 }
 
 .nav-prefs__quick-btn--active,
@@ -2944,6 +2989,10 @@ table.tbl tbody tr:hover td {
 
 .nav-prefs__row--pool {
   cursor: grab;
+}
+
+.nav-prefs__row--user-custom {
+  border-left: 5px solid #ff6600;
 }
 
 .nav-prefs__row--pool:active,

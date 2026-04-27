@@ -1,17 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import { useNavPrefs, type NavProfile } from "@/app/contexts/NavPrefsContext";
 
-const MAX_PROFILES = 10;
+export const MAX_PROFILES = 10;
 const MAX_LABEL = 32;
+
+// Entrance animation tunables — kept together so the choreography is
+// adjustable in one place. See `useEffect` near the JSX return.
+//
+// Slinky-collapse physics: every pill is its own object. All pills launch
+// from the same off-screen-right offset at t=0, but each has its own
+// velocity drawn from a linear ramp — leftmost (front) = fastest,
+// rightmost (back) = slowest. The front pill lands first with a soft
+// `back.out` settle; each trailing pill arrives later and compresses into
+// the established row with progressively stronger overshoot, producing
+// the visual of a slinky's coils telescoping together.
+//
+// Velocity, duration, and overshoot are recomputed every entrance from
+// the live pill count, so adding/removing profiles always rebalances.
+const ENTRANCE_FROM_X        = 240;   // px each pill travels (relative offset)
+const ENTRANCE_BASE_DURATION = 0.55;  // seconds for the FRONT (fastest) pill
+const ENTRANCE_SLOW_FACTOR   = 0.45;  // back pill speed = front × this (so 0.45 ≈ 2.2× longer)
+const BOUNCE_FRONT           = 0.8;   // back.out overshoot for the front pill (mild settle)
+const BOUNCE_REAR            = 2.2;   // back.out overshoot for the rear pill (hard collision)
+const MIST_FADE_DURATION     = 0.5;
+const MIST_FADE_OVERLAP      = 0.35;  // mist begins dissolving this many seconds before the last pill lands
 
 type EditState =
   | { mode: "idle" }
   | { mode: "creating" }
   | { mode: "renaming"; id: string };
 
-export default function ProfileBar() {
+export default function ProfileBar({ animateEntrance = false }: { animateEntrance?: boolean } = {}) {
   const {
     profiles,
     activeProfileId,
@@ -29,6 +51,8 @@ export default function ProfileBar() {
   const [error, setError] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const mistRef = useRef<HTMLDivElement | null>(null);
 
   // Drag state — local-only; on drop we fire reorderProfiles and let
   // refetch reconcile. The optimistic order lives in `pendingOrder`
@@ -40,6 +64,84 @@ export default function ProfileBar() {
   useEffect(() => {
     if (edit.mode !== "idle") inputRef.current?.focus();
   }, [edit.mode]);
+
+  // Mount entrance: pills slide horizontally from far right to home,
+  // sliding under a right-anchored gradient mist that dissolves once they
+  // land. Only runs when `animateEntrance` is true (the nav-prefs page);
+  // the sidebar instance opts out so the bar just appears.
+  // useLayoutEffect (not useEffect): runs synchronously before paint so
+  // the pills never flash at their home position before the slide-in.
+  useLayoutEffect(() => {
+    if (loading) return;
+    if (!animateEntrance) {
+      // Sidebar (or any other consumer) — no animation. Hide the mist
+      // since the CSS default leaves it visible for the entrance.
+      if (mistRef.current) mistRef.current.style.opacity = "0";
+      return;
+    }
+    const bar = barRef.current;
+    const mist = mistRef.current;
+    if (!bar) return;
+    const cells = Array.from(
+      bar.querySelectorAll<HTMLElement>(".profile-bar__cell, .profile-bar__add")
+    );
+    if (cells.length === 0) return;
+
+    const reduced = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      if (mist) mist.style.opacity = "0";
+      return;
+    }
+
+    // Per-pill physics — recomputed every entrance from live pill count.
+    // t = 0 (front, fastest, mild settle) → t = 1 (back, slowest, hard collision).
+    const N = cells.length;
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const specs = cells.map((_, i) => {
+      const t = N === 1 ? 0 : i / (N - 1);
+      const speedFactor = lerp(1, ENTRANCE_SLOW_FACTOR, t);
+      return {
+        duration:  ENTRANCE_BASE_DURATION / speedFactor,
+        overshoot: lerp(BOUNCE_FRONT, BOUNCE_REAR, t),
+      };
+    });
+    const slowestDuration = Math.max(...specs.map((s) => s.duration));
+
+    const ctx = gsap.context(() => {
+      gsap.set(cells, { x: ENTRANCE_FROM_X, opacity: 0, willChange: "transform, opacity" });
+      if (mist) gsap.set(mist, { opacity: 1 });
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          gsap.set(cells, { clearProps: "willChange,transform,opacity" });
+        },
+      });
+
+      // All pills launch at t=0. Differing velocities create the visible
+      // slinky compression — front pills land first, rear pills catch up
+      // and settle into the established row with stronger overshoot.
+      cells.forEach((cell, i) => {
+        const { duration, overshoot } = specs[i];
+        tl.to(cell, {
+          x: 0,
+          opacity: 1,
+          duration,
+          ease: `back.out(${overshoot})`,
+        }, 0);
+      });
+
+      if (mist) {
+        tl.to(mist, {
+          opacity: 0,
+          duration: MIST_FADE_DURATION,
+          ease: "power2.out",
+        }, Math.max(0, slowestDuration - MIST_FADE_OVERLAP));
+      }
+    }, bar);
+
+    return () => ctx.revert();
+  }, [loading, animateEntrance]);
 
   // Drop the optimistic order once the server's authoritative order arrives.
   useEffect(() => {
@@ -191,7 +293,11 @@ export default function ProfileBar() {
     [dragId, profiles, pendingOrder, computeReorder, reorderProfiles],
   );
 
-  if (loading || profiles.length === 0) return null;
+  // Only hide on the very first load. During subsequent refetches
+  // (profile switch, rename, reorder) the previous profiles are still
+  // in state — keep them rendered so the bar doesn't disappear and the
+  // entrance animation doesn't replay on every interaction.
+  if (profiles.length === 0) return null;
 
   // Apply optimistic order if a reorder is in flight; otherwise sort by position.
   const baseSorted = profiles.slice().sort((a, b) => a.position - b.position);
@@ -205,12 +311,14 @@ export default function ProfileBar() {
 
   return (
     <div
+      ref={barRef}
       className="profile-bar"
       role="tablist"
       aria-label="Navigation profiles"
       onDragOver={(e) => onDragOver(e, null)}
       onDrop={(e) => void onDrop(e, null)}
     >
+      <div ref={mistRef} className="profile-bar__mist" aria-hidden />
       {ordered.map((p) => {
         const active = p.id === activeProfileId;
         const renamingThis = edit.mode === "renaming" && edit.id === p.id;

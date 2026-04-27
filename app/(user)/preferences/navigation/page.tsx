@@ -23,7 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
 import { NavIcon } from "@/app/components/NavIcon";
-import ProfileBar from "@/app/components/ProfileBar";
+import ProfileBar, { MAX_PROFILES } from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
@@ -41,6 +41,7 @@ const MAX_PINNED = 50;
 const MAX_CUSTOM_GROUPS = 10;
 const MAX_CHILDREN_PER_PARENT = 8;
 const MAX_GROUP_LABEL_LEN = 64;
+const MAX_CUSTOM_PAGES = 50;
 
 // A bucket id is either "tag:<enum>" for a system tag bucket or
 // "group:<id>" for a custom group bucket. Custom groups can be reordered;
@@ -210,7 +211,7 @@ function PinnedRow({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
-    <li ref={setNodeRef} style={style} className="nav-prefs__row">
+    <li ref={setNodeRef} style={style} className={`nav-prefs__row${isCustom ? " nav-prefs__row--user-custom" : ""}`}>
       {draggable && (
         <button
           type="button"
@@ -627,6 +628,7 @@ function AvailablePanel({
   poolByTag,
   libraryEntries,
   atCap,
+  customPagesTotal,
   onPin,
   onRenameCustom,
   onDeleteCustom,
@@ -636,6 +638,7 @@ function AvailablePanel({
   poolByTag: Map<string, import("@/app/contexts/NavPrefsContext").NavCatalogEntry[]>;
   libraryEntries: import("@/app/contexts/NavPrefsContext").NavCatalogEntry[];
   atCap: boolean;
+  customPagesTotal: number;
   onPin: (key: string) => void;
   onRenameCustom: (key: string, label: string) => void;
   onDeleteCustom: (key: string) => void;
@@ -674,7 +677,9 @@ function AvailablePanel({
       aria-label="Available"
     >
       <header className="nav-prefs__pane-header">
-        <h2 className="nav-prefs__pane-title">Available</h2>
+        <h2 className="nav-prefs__pane-title">
+          Available <span className="nav-prefs__count">{customPagesTotal}/{MAX_CUSTOM_PAGES}</span>
+        </h2>
       </header>
       {empty ? (
         <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
@@ -733,7 +738,7 @@ function PoolItem({
   return (
     <li
       ref={setNodeRef}
-      className={`nav-prefs__row nav-prefs__row--pool${isDragging ? " nav-prefs__row--dragging" : ""}`}
+      className={`nav-prefs__row nav-prefs__row--pool${entry.kind === "user_custom" ? " nav-prefs__row--user-custom" : ""}${isDragging ? " nav-prefs__row--dragging" : ""}`}
       {...attributes}
       {...listeners}
     >
@@ -971,6 +976,14 @@ export default function NavPreferencesPage() {
     for (const cks of Object.values(draft.childrenByParent)) n += cks.length;
     return n;
   }, [draft]);
+
+  // Total custom pages the user has authored (pinned + unpinned). Counts
+  // every catalogue entry of kind "user_custom" — this is the figure that
+  // counts against MAX_CUSTOM_PAGES, NOT the visible-in-Available subset.
+  const customPagesTotal = useMemo(
+    () => catalogue.filter((e) => e.kind === "user_custom").length,
+    [catalogue],
+  );
 
   // "Available" pool: pinnable catalogue entries not already pinned anywhere.
   const pool = useMemo<NavCatalogEntry[]>(() => {
@@ -1584,7 +1597,12 @@ export default function NavPreferencesPage() {
       }
     >
       <div className="nav-prefs__pane nav-prefs__quick-bar">
-        <ProfileBar />
+        <header className="nav-prefs__pane-header">
+          <h2 className="nav-prefs__pane-title">
+            Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span>
+          </h2>
+        </header>
+        <ProfileBar animateEntrance />
       </div>
 
       <div className="nav-prefs">
@@ -1646,6 +1664,7 @@ export default function NavPreferencesPage() {
             poolByTag={poolByTag}
             libraryEntries={libraryEntries}
             atCap={atCap}
+            customPagesTotal={customPagesTotal}
             onPin={pin}
             onRenameCustom={handleRenameCustomPage}
             onDeleteCustom={handleDeleteCustomPage}
