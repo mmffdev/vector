@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
 import { NavIcon } from "@/app/components/NavIcon";
+import ProfileBar from "@/app/components/ProfileBar";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
   useNavPrefs,
@@ -730,7 +731,12 @@ export default function NavPreferencesPage() {
   const {
     prefs, customGroups, save, reset, catalogue, refetch,
     defaultPinned, findEntry, tagByEnum, tags,
+    profiles, activeProfileId,
   } = useNavPrefs();
+  const activeProfile = useMemo(
+    () => profiles.find((p) => p.id === activeProfileId) ?? null,
+    [profiles, activeProfileId],
+  );
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1339,14 +1345,14 @@ export default function NavPreferencesPage() {
   return (
     <PageShell
       title="Navigation preferences"
-      subtitle={`Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`}
+      subtitle={
+        activeProfile
+          ? `Editing "${activeProfile.label}" — pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
+          : `Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
+      }
     >
       <div className="nav-prefs__pane nav-prefs__quick-bar">
-        <button type="button" className="btn btn--primary">Planning</button>
-        <button type="button" className="btn btn--primary">Work</button>
-        <button type="button" className="btn btn--primary">Button 3</button>
-        <button type="button" className="btn btn--primary">Button 4</button>
-        <button type="button" className="btn btn--primary">Button 5</button>
+        <ProfileBar />
       </div>
 
       <div className="nav-prefs">
