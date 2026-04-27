@@ -45,14 +45,18 @@ var (
 var processStartedAt = time.Now().UTC()
 
 func main() {
-	_ = godotenv.Load(".env.local")
+	envFile := ".env.local"
+	if e := os.Getenv("BACKEND_ENV"); e != "" {
+		envFile = ".env." + e
+	}
+	_ = godotenv.Load(envFile)
 
 	// Prod safety: APP_ENV MUST be set explicitly. In production,
 	// COOKIE_SECURE MUST be true and FRONTEND_ORIGIN MUST be https://.
 	appEnv := os.Getenv("APP_ENV")
 	switch appEnv {
 	case "":
-		log.Fatal("APP_ENV must be set explicitly (development|production)")
+		log.Fatal("APP_ENV must be set explicitly (development|staging|production)")
 	case "production":
 		if os.Getenv("COOKIE_SECURE") != "true" {
 			log.Fatal("APP_ENV=production requires COOKIE_SECURE=true")
@@ -60,10 +64,10 @@ func main() {
 		if origin := os.Getenv("FRONTEND_ORIGIN"); !strings.HasPrefix(origin, "https://") {
 			log.Fatal("APP_ENV=production requires FRONTEND_ORIGIN to start with https://")
 		}
-	case "development":
-		log.Println("⚠ APP_ENV=development — cookie/origin guards relaxed; DO NOT run this in production")
+	case "staging", "development":
+		log.Printf("⚠ APP_ENV=%s — cookie/origin guards relaxed; DO NOT run this in production", appEnv)
 	default:
-		log.Fatalf("APP_ENV=%q invalid; must be development or production", appEnv)
+		log.Fatalf("APP_ENV=%q invalid; must be development, staging, or production", appEnv)
 	}
 
 	ctx := context.Background()

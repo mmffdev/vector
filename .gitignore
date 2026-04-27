@@ -9,6 +9,9 @@ local-assets/security-flags.jsonl
 .claude/scheduled_tasks.lock
 prefs-nav-*.png
 backend/.env.local
+backend/.env.dev
+backend/.env.staging
+dev/remote_setup.html
 .claude/hooks/
 .claude/memory/
 .claude/settings.json
