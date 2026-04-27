@@ -1,8 +1,8 @@
 # Dev launcher — `MMFF Vector Dev.app`
 
-> Last verified: 2026-04-21
+> Last verified: 2026-04-27
 
-Double-clickable AppleScript bundle that brings up the three local dev services: SSH tunnel (`localhost:5434`), Go backend (`:5100`), Next.js frontend (`:5101`).
+Double-clickable AppleScript bundle that brings up the four local dev services: SSH tunnel (`localhost:5434` + `:3333` + more), Go backend (`:5100`), Next.js frontend (`:5101`), with Planka (`:3333`) status shown in the summary.
 
 ## Source
 
