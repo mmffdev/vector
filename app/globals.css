@@ -81,11 +81,11 @@
   --space-16: 64px;
 
   /* ---------- Radii ---------- */
-  --radius-sm:   6px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   16px;
-  --radius-full: 9999px;
+  --radius-sm:   0;
+  --radius-md:   0;
+  --radius-lg:   0;
+  --radius-xl:   0;
+  --radius-full: 0;
 
   --border-width: 1px;
 }
@@ -234,8 +234,8 @@ button {
 }
 
 ::selection {
-  background: transparent;
-  color: var(--hot-pink);
+  background: var(--ink);
+  color: var(--ink-contrast);
 }
 
 .app-root {
@@ -306,7 +306,7 @@ button {
   height: 36px;
   background: var(--ink);
   color: var(--ink-contrast);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   display: grid;
   place-items: center;
   font-family: var(--font-sans);
@@ -369,7 +369,7 @@ button {
   justify-content: center;
   background: transparent;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: 0;
   color: var(--ink-2);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.25s ease;
@@ -429,7 +429,7 @@ button {
   max-width: 280px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   box-shadow: none;
   padding: 4px 0;
   z-index: 50;
@@ -799,7 +799,7 @@ button {
   color: var(--accent-ink);
   font-size: 12px;
   font-weight: 600;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
 }
 
 .empty-state {
@@ -809,7 +809,7 @@ button {
   justify-content: flex-start;
   min-height: 300px;
   gap: 12px;
-  border-radius: var(--radius-md);
+  border-radius: 0;
 }
 
 .empty-state h3 {
@@ -875,6 +875,10 @@ button {
    40px default height, --radius-md, Inter 14px / 500. One primary
    per region. No box-shadow ever.
    ============================================================ */
+/* Default button — Vector design system. Resting state: black surface,
+   white text, black border. Hover state: inverts to white surface with
+   the same black border and black text. This is the global default;
+   variants below opt out for ghost/secondary/danger usage. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -885,10 +889,11 @@ button {
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--ink);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--ink-contrast);
+  border-radius: 0;
+  cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
   box-shadow: none;
@@ -896,14 +901,18 @@ button {
 .btn svg { width: 16px; height: 16px; }
 
 .btn:hover:not(:disabled) {
-  background: var(--surface-sunken);
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--ink);
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.85;
   cursor: not-allowed;
 }
 
+/* Synonym for the default look — kept so callers can mark intent
+   explicitly. Identical to the bare `.btn`. */
 .btn--primary {
   background: var(--ink);
   color: var(--ink-contrast);
@@ -911,12 +920,9 @@ button {
 }
 
 .btn--primary:hover:not(:disabled) {
-  /* Story 00110: hover deepens via opacity rather than a hardcoded
-     #000 fill so dark-mode renders correctly. */
-  background: var(--ink);
-  color: var(--ink-contrast);
+  background: var(--surface);
+  color: var(--ink);
   border-color: var(--ink);
-  opacity: 0.9;
 }
 
 .btn--secondary {
@@ -927,6 +933,7 @@ button {
 .btn--secondary:hover:not(:disabled) {
   background: var(--surface-sunken);
   color: var(--ink);
+  border-color: var(--border-strong);
 }
 
 .btn--ghost {
@@ -937,6 +944,7 @@ button {
 .btn--ghost:hover:not(:disabled) {
   background: var(--surface-sunken);
   color: var(--ink);
+  border-color: transparent;
 }
 
 .btn--danger {
@@ -1001,7 +1009,7 @@ button {
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: var(--surface);
   transition: background 120ms ease;
 }
@@ -1054,7 +1062,7 @@ button {
 .planning-column {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -1085,7 +1093,7 @@ button {
   height: 22px;
   padding: 0 var(--space-2);
   background: var(--surface-sunken);
-  border-radius: 999px;
+  border-radius: 0;
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -1103,7 +1111,7 @@ button {
 .planning-card {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
@@ -1147,7 +1155,7 @@ button {
   position: relative;
   height: 8px;
   background: var(--surface-sunken);
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -1156,7 +1164,7 @@ button {
   top: 0;
   bottom: 0;
   background: var(--ink);
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* Backlog work-item rows — Vector kit (story 00094)
@@ -1183,7 +1191,7 @@ button {
   padding: 14px var(--space-5);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   transition: background 120ms ease, border-color 120ms ease;
 }
 
@@ -1262,7 +1270,7 @@ button {
   padding: 0 var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--ink);
@@ -1316,7 +1324,7 @@ button {
 .table-wrap {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: none;
 }
@@ -1436,7 +1444,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -1537,7 +1545,7 @@ table.tbl tbody tr:hover td {
   max-width: calc(100vw - 32px);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl) 0 var(--radius-xl) 0;
+  border-radius: 0;
   box-shadow: none;
   overflow: hidden;
 }
@@ -1576,7 +1584,7 @@ table.tbl tbody tr:hover td {
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
@@ -1789,7 +1797,7 @@ table.tbl tbody tr:hover td {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   padding: var(--space-6);
   box-shadow: none;
 }
@@ -1819,7 +1827,7 @@ table.tbl tbody tr:hover td {
   align-items: center;
   gap: 5px;
   padding: 2px 9px;
-  border-radius: var(--radius-full);
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
@@ -1847,7 +1855,7 @@ table.tbl tbody tr:hover td {
   background: var(--surface-sunken);
   color: var(--ink-muted);
   border: 1px solid transparent;
-  border-radius: var(--radius-full);
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
@@ -1867,7 +1875,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-3) var(--space-4);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--ink);
@@ -1913,8 +1921,8 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
 }
 .accordion__item:not(:first-child) { margin-top: -1px; }
-.accordion__item:first-child  { border-radius: var(--radius-lg) 0 0 0; }
-.accordion__item:last-child   { border-radius: 0 0 var(--radius-lg) 0; }
+.accordion__item:first-child  { border-radius: 0; }
+.accordion__item:last-child   { border-radius: 0; }
 .accordion__item--alt         { border-style: dashed; }
 .accordion__toggle {
   display: flex;
@@ -1996,7 +2004,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-6);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -2043,7 +2051,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-3);
   text-align: left;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -2056,7 +2064,7 @@ table.tbl tbody tr:hover td {
   text-align: left;
   color: var(--danger);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: 0 var(--space-3);
   max-height: 1px;
   overflow: hidden;
@@ -2109,7 +2117,7 @@ table.tbl tbody tr:hover td {
   padding: 0 12px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
@@ -2132,7 +2140,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink-muted);
   cursor: pointer;
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -2154,7 +2162,7 @@ table.tbl tbody tr:hover td {
   font-size: 10px;
   font-weight: 600;
   line-height: 18px;
-  border-radius: var(--radius-full);
+  border-radius: 0;
   text-align: center;
   border: 1px solid var(--danger);
   font-variant-numeric: tabular-nums;
@@ -2163,7 +2171,7 @@ table.tbl tbody tr:hover td {
 .app-header-wrapper__avatar {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--surface);
   color: var(--ink);
   font-family: var(--font-sans);
@@ -2200,7 +2208,7 @@ table.tbl tbody tr:hover td {
   min-width: 240px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   box-shadow: none;
   padding: var(--space-2) 0;
   z-index: 50;
@@ -2383,7 +2391,7 @@ table.tbl tbody tr:hover td {
   display: inline-block;
   width: 16px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: 0;
 }
 
 .chart-legend__swatch--pri {
@@ -2397,7 +2405,7 @@ table.tbl tbody tr:hover td {
 .chart-tooltip {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
   color: var(--ink);
@@ -2428,7 +2436,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-12) var(--space-6);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   text-align: center;
 }
 
@@ -2454,13 +2462,20 @@ table.tbl tbody tr:hover td {
 .nav-prefs__pane.nav-prefs__quick-bar {
   flex-direction: row;
   align-items: center;
-  margin-bottom: var(--space-4);
+  margin-bottom: 5px;
+}
+
+.nav-prefs__quick-btn--active,
+.nav-prefs__quick-btn--active:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--ink);
 }
 
 .nav-prefs {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
+  gap: 5px;
 }
 
 @media (min-width: 900px) {
@@ -2471,17 +2486,22 @@ table.tbl tbody tr:hover td {
 
   .nav-prefs__pane[aria-label="Pinned"] {
     grid-column: 1;
-    grid-row: 1 / span 2;
-  }
-
-  .nav-prefs__pane--new-page {
-    grid-column: 2;
     grid-row: 1;
   }
 
   .nav-prefs__pane[aria-label="Available"] {
     grid-column: 2;
+    grid-row: 1;
+  }
+
+  .nav-prefs__pane--new-page {
+    grid-column: 1 / -1;
     grid-row: 2;
+  }
+
+  .nav-prefs__pane--new-group {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 
   .nav-prefs__pane--custom {
@@ -2504,7 +2524,7 @@ table.tbl tbody tr:hover td {
 .nav-prefs__pane {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -2549,10 +2569,35 @@ table.tbl tbody tr:hover td {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  background: transparent;
+  padding: 10px;
+  border: 1px solid #EDEAE4;
+  border-left-width: 5px;
 }
 
 .nav-prefs__group + .nav-prefs__group {
-  margin-top: var(--space-3);
+  margin-top: 10px;
+}
+
+.nav-prefs__empty--library {
+  font-style: italic;
+  font-size: var(--text-xs);
+  margin: var(--space-1) 0 0 0;
+}
+
+.nav-prefs__slot {
+  height: 14px;
+  margin: -3px 0;
+  border-radius: 3px;
+  border: 2px dashed transparent;
+  transition: height 120ms ease, border-color 120ms ease, background-color 120ms ease, margin 120ms ease;
+}
+
+.nav-prefs__slot--over {
+  height: 36px;
+  margin: 4px 0;
+  border-color: var(--ink);
+  background-color: var(--surface-sunken);
 }
 
 .nav-prefs__group-heading-row {
@@ -2601,6 +2646,9 @@ table.tbl tbody tr:hover td {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  /* Ensure empty buckets keep a visible, droppable hit area so dragging
+     from the Available pane can land on them. */
+  min-height: var(--space-8);
 }
 
 .nav-prefs__row {
@@ -2610,8 +2658,16 @@ table.tbl tbody tr:hover td {
   padding: var(--space-2) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.nav-prefs__row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  flex: 0 0 auto;
 }
 
 .nav-prefs__row:hover {
@@ -2698,7 +2754,7 @@ table.tbl tbody tr:hover td {
 .nav-prefs__btn {
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   color: var(--ink-muted);
   width: 32px;
   height: 32px;
@@ -2724,19 +2780,66 @@ table.tbl tbody tr:hover td {
 }
 
 .nav-prefs__btn--active {
-  background: var(--ink);
   border-color: var(--ink);
-  color: var(--surface);
 }
 
 .nav-prefs__btn--active:hover:not(:disabled) {
-  background: var(--ink);
-  color: var(--surface);
+  border-color: var(--ink);
 }
 
 .nav-prefs__btn--danger:hover:not(:disabled) {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+.nav-prefs__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
+}
+
+.nav-prefs__confirm-text {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.nav-prefs__btn--confirm {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.nav-prefs__btn--confirm:hover:not(:disabled) {
+  background: var(--success);
+  color: var(--surface);
+  border-color: var(--success);
+}
+
+.nav-prefs__core-badge {
+  position: relative;
+  display: inline-flex;
+}
+
+.nav-prefs__core-popover {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  background: var(--ink);
+  color: var(--surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 4px;
+  width: max-content;
+  max-width: 220px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+  pointer-events: none;
 }
 
 .nav-prefs__notice {
@@ -2771,7 +2874,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   padding: var(--space-1) var(--space-2);
   height: 28px;
 }
@@ -2791,7 +2894,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   padding: var(--space-1) var(--space-2);
   height: 28px;
   min-width: 0;
@@ -2800,6 +2903,58 @@ table.tbl tbody tr:hover td {
   outline: none;
   border-color: var(--ink);
 }
+
+/* Shared inline-edit wrapper. Renders an input + a confirm (✓) button so
+   users can save with Enter, blur, or by clicking the trailing button. */
+.inline-edit {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  gap: 0;
+}
+.inline-edit__input {
+  flex: 1;
+  min-width: 0;
+}
+.inline-edit__input:focus {
+  position: relative;
+  z-index: 1;
+}
+.inline-edit__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -1px;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.inline-edit__btn--cancel {
+  background: var(--danger, #dc2626);
+  color: var(--ink-contrast);
+}
+.inline-edit__btn--cancel:hover {
+  background: var(--surface);
+  color: var(--danger, #dc2626);
+}
+.inline-edit__btn--accept {
+  background: var(--success, #16a34a);
+  color: var(--ink-contrast);
+}
+.inline-edit__btn--accept:hover {
+  background: var(--surface);
+  color: var(--success, #16a34a);
+}
+.inline-edit__btn:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  position: relative;
+  z-index: 1;
+}
+
 .nav-prefs__icon--pool-btn {
   cursor: pointer;
   background: none;
@@ -2811,7 +2966,7 @@ table.tbl tbody tr:hover td {
   width: 28px;
   height: 28px;
   color: var(--ink-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   transition: color 0.15s, background 0.15s;
 }
 .nav-prefs__icon--pool-btn:hover {
@@ -2822,7 +2977,12 @@ table.tbl tbody tr:hover td {
 .nav-prefs__children--over {
   outline: 2px dashed var(--ink);
   outline-offset: 2px;
-  border-radius: var(--radius-md);
+  border-radius: 0;
+}
+.nav-prefs__list--over .nav-prefs__children-empty,
+.nav-prefs__children--over .nav-prefs__children-empty {
+  border: 1px dotted #000;
+  color: var(--ink);
 }
 .nav-prefs__parent-wrap {
   display: flex;
@@ -2847,7 +3007,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-2) var(--space-3);
   background: var(--surface);
   border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
 }
 
 .nav-prefs__picker-row {
@@ -2863,7 +3023,7 @@ table.tbl tbody tr:hover td {
   margin: var(--space-1) 0 var(--space-2);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
 }
 .nav-prefs__picker-label {
   font-family: var(--font-sans);
@@ -2886,7 +3046,7 @@ table.tbl tbody tr:hover td {
   height: 32px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   color: var(--ink-muted);
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease;
@@ -2935,7 +3095,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink);
   padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   cursor: pointer;
@@ -2947,7 +3107,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--ink);
   color: var(--ink);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   min-width: 240px;
@@ -2995,7 +3155,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   height: var(--input-height);
@@ -3004,29 +3164,6 @@ table.tbl tbody tr:hover td {
   outline: none;
   border-color: var(--ink);
 }
-.nav-prefs__new-page-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--ink);
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  line-height: 1.2;
-  white-space: nowrap;
-  cursor: pointer;
-  height: var(--input-height);
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.nav-prefs__new-page-btn:hover:not(:disabled) {
-  background: var(--surface-sunken);
-  border-color: var(--border-strong);
-}
-.nav-prefs__new-page-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 /* Form-draft restoration banner — Vector kit. Sits on
    --info-bg with a 1px --info border and a --info accent on the
    leading edge so the banner reads as informational. */
@@ -3040,7 +3177,7 @@ table.tbl tbody tr:hover td {
   background: var(--info-bg);
   border: 1px solid var(--info);
   border-left-width: 3px;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--ink);
@@ -3052,7 +3189,7 @@ table.tbl tbody tr:hover td {
   border: 1px solid var(--border);
   color: var(--ink);
   padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   line-height: 1.2;
@@ -3098,7 +3235,7 @@ table.tbl tbody tr:hover td {
 .theme-panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -3139,7 +3276,7 @@ table.tbl tbody tr:hover td {
   grid-template-columns: repeat(10, 1fr);
   height: 60px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -3171,7 +3308,7 @@ table.tbl tbody tr:hover td {
   display: inline-flex;
   gap: 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -3222,7 +3359,7 @@ table.tbl tbody tr:hover td {
   width: 120px;
   height: 120px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   cursor: pointer;
   overflow: hidden;
   flex-shrink: 0;
@@ -3279,7 +3416,7 @@ table.tbl tbody tr:hover td {
   width: 36px;
   height: 36px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: 0;
   cursor: pointer;
   transition: border-color 120ms ease;
@@ -3297,7 +3434,7 @@ table.tbl tbody tr:hover td {
   justify-content: center;
   gap: var(--space-2);
   border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: var(--space-6);
   text-align: center;
   background: var(--surface-sunken);
@@ -3332,7 +3469,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   cursor: pointer;
   font-family: var(--font-sans);
   text-align: left;
@@ -3351,7 +3488,7 @@ table.tbl tbody tr:hover td {
   display: block;
   height: 36px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
 }
 
 .theme-maker__preset-name {
@@ -3392,7 +3529,7 @@ table.tbl tbody tr:hover td {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   padding: 1px 5px;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   color: var(--ink);
 }
 
@@ -3430,7 +3567,7 @@ table.tbl tbody tr:hover td {
   font-weight: 500;
   padding: 2px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+  border-radius: 0;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -3690,7 +3827,7 @@ table.tbl tbody tr:hover td {
 .release-card {
   border: 1px solid var(--line-1);
   border-left-width: 4px;
-  border-radius: 6px 0 6px 0;
+  border-radius: 0;
   background: var(--surface-1);
   padding: 16px;
   display: flex;
@@ -3738,7 +3875,7 @@ table.tbl tbody tr:hover td {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 .release-card__severity--info {
@@ -3778,7 +3915,7 @@ table.tbl tbody tr:hover td {
   margin: 8px 0 0;
   padding: 8px;
   background: var(--surface-2);
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 12px;
   white-space: pre-wrap;
   font-family: var(--font-mono, monospace);
@@ -3814,7 +3951,7 @@ table.tbl tbody tr:hover td {
 .blocking-gate__dialog {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl) 0 var(--radius-xl) 0;
+  border-radius: 0;
   padding: var(--space-8);
   max-width: 480px;
   width: calc(100% - var(--space-8));
@@ -3832,7 +3969,7 @@ table.tbl tbody tr:hover td {
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--danger-bg);
   color: var(--danger);
   font-size: 24px;
@@ -3871,7 +4008,7 @@ table.tbl tbody tr:hover td {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--danger-bg);
   color: var(--danger);
   font-size: var(--text-xs);
@@ -3914,7 +4051,7 @@ table.tbl tbody tr:hover td {
 .adoption-overlay__phase-steps {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl) 0 var(--radius-xl) 0;
+  border-radius: 0;
   box-shadow: none;
   padding: var(--space-8);
   display: flex;
@@ -3932,7 +4069,7 @@ table.tbl tbody tr:hover td {
 .adoption-overlay__spinner {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 0;
   border: 3px solid var(--border);
   border-top-color: var(--ink);
   animation: adoption-overlay-spin 0.9s linear infinite;
@@ -3975,7 +4112,7 @@ table.tbl tbody tr:hover td {
   min-height: 80px;
   padding: var(--space-3);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: var(--surface-sunken);
   color: var(--ink-muted);
   display: flex;
@@ -4044,7 +4181,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-3) var(--space-5);
   background: var(--success-bg);
   border: 1px solid var(--success);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   text-align: center;
   width: 100%;
   max-width: 480px;
@@ -4059,7 +4196,7 @@ table.tbl tbody tr:hover td {
   margin: 0;
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--danger);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: var(--danger-bg);
   display: flex;
   flex-direction: column;
@@ -4105,7 +4242,7 @@ table.tbl tbody tr:hover td {
   font-weight: 500;
   padding: 0 var(--space-4);
   height: 40px;
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
@@ -4254,7 +4391,7 @@ table.tbl tbody tr:hover td {
   margin-top: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--success);
-  border-radius: var(--radius);
+  border-radius: 0;
   background: none;
 }
 .tip-box__icon-col {
@@ -4267,7 +4404,7 @@ table.tbl tbody tr:hover td {
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 0;
   border: 1.5px solid var(--success);
   color: var(--success);
   font-size: 10px;
@@ -4309,7 +4446,7 @@ table.tbl tbody tr:hover td {
   display: inline-flex;
   align-items: center;
   padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   font-size: var(--text-xs);
@@ -4446,7 +4583,7 @@ table.tbl tbody tr:hover td {
   height: 40px;
   padding: 0 var(--space-3);
   border: 1px solid transparent;
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   line-height: 38px;
   font-size: var(--text-sm);
   box-sizing: border-box;
@@ -4481,7 +4618,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   outline: none;
   box-sizing: border-box;
   transition: border-color 120ms ease;
@@ -4511,7 +4648,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md) 0 var(--radius-md) 0;
+  border-radius: 0;
   outline: none;
   box-sizing: border-box;
   resize: vertical;
@@ -4652,7 +4789,7 @@ table.tbl tbody tr:hover td {
   background-size: 200% 100%;
   animation: skeleton-sweep 1.4s ease infinite;
   animation-delay: var(--skeleton-delay, 0ms);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
 }
 
 /* ── Skeleton → content fade (grid stacking — no layout jump) ── */
@@ -4698,7 +4835,7 @@ table.tbl tbody tr:hover td {
 .skeleton-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -4764,6 +4901,6 @@ table.tbl tbody tr:hover td {
 
 .skeleton-svg {
   display: block;
-  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+  border-radius: 0;
 }
 

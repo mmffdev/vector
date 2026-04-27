@@ -80,6 +80,10 @@ interface NavPrefsState {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  // Locally patch a single catalogue entry (e.g. after a rename / icon
+  // change) without re-pulling prefs from the server. A full refetch would
+  // clobber any unsaved local pin/order edits in the navigation editor.
+  patchCatalogueEntry: (key: string, partial: Partial<NavCatalogEntry>) => void;
   save: (body: PutPrefsBody) => Promise<void>;
   reset: () => Promise<void>;
   findEntry: (key: string) => NavCatalogEntry | undefined;
@@ -134,6 +138,15 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => { void refetch(); }, [refetch]);
+
+  const patchCatalogueEntry = useCallback(
+    (key: string, partial: Partial<NavCatalogEntry>) => {
+      setCatalogue((prev) =>
+        prev.map((e) => (e.key === key ? { ...e, ...partial } : e)),
+      );
+    },
+    [],
+  );
 
   const save = useCallback(async (body: PutPrefsBody) => {
     await api("/api/nav/prefs", { method: "PUT", body: JSON.stringify(body) });
@@ -221,7 +234,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const value: NavPrefsState = {
     prefs, customGroups, catalogue, tags, loading, error,
-    refetch, save, reset,
+    refetch, patchCatalogueEntry, save, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
     isBookmarked, bookmark, unbookmark,
   };
