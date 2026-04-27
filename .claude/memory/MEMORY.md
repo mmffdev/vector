@@ -15,10 +15,12 @@
 - [Sidebar toolbar icon alignment](feedback_sidebar_toolbar.md) — toggle + pencil left margin = 22px (user confirmed "perfect")
 - [Samantha SDK — internal app API name](project_samantha_sdk.md) — Custom app SDK named "Samantha" (after Rick's wife); root namespace `samantha.portfolio.*`.
 - [Pages default to full screen](feedback_pages_fullscreen.md) — All new pages are full screen by default; no max-width unless user specifies otherwise.
+- [No browser alert/confirm/prompt — in-page UI only](feedback_no_browser_alerts.md) — Never window.alert/confirm/prompt; pick form by context (banner, inline tick/cross, accept/confirm, type-to-confirm).
 - [Session restore — 2026-04-27 instance 1](boot1.md) — current working state snapshot.
 - [Session restore — 2026-04-27 instance 2](boot2.md) — boot file reorganisation + DevSetup inline confirmation.
 - [Session restore — 2026-04-27 instance 3](boot3.md) — Samantha SDK + terminology investigation.
 - [Session restore — 2026-04-27 instance 4](boot4.md) — rebrand + tooling session.
+- [MMFF Vector Launcher — backlog](project_launcher_backlog.md) — Swift macOS launcher (tunnel + backend + frontend + DB env) backlog & build plan.
 
 ### Rules
 

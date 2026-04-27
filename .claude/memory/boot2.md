@@ -1,95 +1,107 @@
 ---
-name: Session bootup — FE-SEC label cleanup + planka unlabel-card investigation
+name: Session bootup — <server> shortcut + Service health unification (10s poll, progress bar, env-aware)
 description: Load when resuming after a break. Branch, story counter, what's committed, what's uncommitted, what's next.
 type: project
-originSessionId: eb0ff3c1-d410-4947-b728-74918cf2a3bc
+originSessionId: 5b8bdf98-0f1b-4734-b76d-10cd228c3fe6
 ---
-
 ## Current state (last updated: 2026-04-27)
 
-**Active branch:** `vector-rebrand-001`
-**Story index last issued:** `00123`
-**Phase:** 5 (CSS / responsive design) — rebrand work + nav-profiles storification
+**Active branch:** `main`
+**Story index last issued:** unknown (`docs/c_story_index.md` not present in repo)
+**Phase:** post Nav Profiles Phase 5 — tooling/dev-UX work stream
 
 ---
 
 ## Planka card states
 
 **In progress / Doing:**
-- (none — current work is metadata cleanup, not feature dev)
+- (none — work this session was tooling/dev-UX, not card-tracked)
 
-**Recently created (Backlog, nav-profiles batch — 2026-04-27):**
-- 00118 — SQL: nav-profiles migration (now correctly: FE-SQL0001) — FE-SEC0006 removed ✓
-- 00119 — API: nav-profiles CRUD endpoints (correct: FE-API0005) — STILL has FE-SEC0006 ✗
-- 00120 — API: extend nav-prefs GET/PUT with profile_id (correct: FE-API0005) — STILL has FE-SEC0006 ✗
-- 00121 — UX: NavPrefsContext profile-aware (correct: FE-UX0001) — STILL has FE-SEC0006 ✗
-- 00122 — UX: profile-bar component (correct: FE-UX0001) — STILL has FE-SEC0006 ✗
-- 00123 — DEV: nav-profiles editor reactivity (correct: FE-DEV0005) — STILL has FE-SEC0006 ✗
+**Completed (committed, move to Completed in Planka):**
+- (none new committed this session — all changes still uncommitted on main)
 
 **Parked:**
-- 00050 — Backend: archive old portfolio layers (deferred to model-switching era)
+- (none)
 
 ---
 
 ## Uncommitted on branch
 
-- `.claude/bin/planka_api.py` — added `unlabel_card()` function (BROKEN — REST DELETE returns E_NOT_FOUND); added `unlabel-card` dispatch entry
-- `.claude/commands/c_boot.md` — boot skill updates
-- `.claude/memory/boot2.md` — this file (being rewritten now)
-- `.claude/memory/bootup.md` — DELETED (merged into boot1)
-- `.claude/memory/project_planka.md` — DELETED (consolidated into planka_api_access)
-- `.claude/skills/stories/SKILL.md` — stories skill updates
-- `app/(user)/portfolio-model/LayersTable.tsx` + `WizardModelCardList.tsx` + `page.tsx` — portfolio model UI changes
-- `app/components/AppSidebar_2.tsx` — sidebar tweaks
-- `backend/internal/custompages/service.go` — custom pages backend
-- `db/library_schema/seed/001_mmff_model.sql` + `003_extra_models.sql` — library seed updates
-- `dev/planning/c_backlog.md` — planning doc
-- `docs/c_feature_areas.md` — modified (NOT yet updated with new label entries: FE-SQL0001, FE-API0005, FE-UX0001, FE-DEV0005)
-- `MMFF Vector Dev.app/Contents/Resources/Scripts/main.scpt` — launcher AppleScript
-- `backend/server` — rebuilt binary
-- New untracked: `.claude/commands/c_shortcuts.md`, `.claude/skills/writeweb/`, `dev/shortcuts.html`, `HANDOFF.md`, `MMFFDev - Vector Assets/`, `Vector Design System/`
+**Modified:**
+- `.claude/CLAUDE.md` — added ACTIVE_BACKEND_ENV marker block (HTML-comment-delimited) + `<server>` and env-aware `<services>` entries.
+- `.claude/commands/c_services.md` — env-aware: parses `ACTIVE_BACKEND_ENV` marker to pick correct tunnel port.
+- `.claude/memory/MEMORY.md` — index entries for boot files etc.
+- `app/api/dev/services/route.ts` — probes all 3 DB tunnels (`:5434`/`:5435`/`:5436`); reads backend `/healthz`'s new `env` field; sets `active: true` on the matching tunnel row; returns `activeEnv` at top level.
+- `app/components/DevStatusFloat.tsx` — slimmed to float chrome only; uses shared `useServiceHealth` hook + `ServiceHealthPanel`. Dot status derived from same hook (no duplicate poll).
+- `backend/cmd/server/main.go` — added `envFromDBPort` closure (single source); `/healthz` now returns `"env":"..."`; `/api/env` reuses the same derivation.
+- `dev/pages/DevPage.tsx` — Setup tab now renders `<ServiceHealthPanel/>` (was `<DevServicesPanel/>`).
+- `dev/styles/dev.css` — added `.devf__progress` (5px blue bar, animation duration driven by `--devf-poll-ms`), `.devf__env--{dev,staging,production}` badges, `.devf__row--active` highlight.
+- Other modified files (`app/components/PageHeaderBar.tsx`, `ProfileBar.tsx`, `app/globals.css`, `backend/internal/nav/handler.go`) — pre-existing changes, not part of this session.
+
+**Deleted:**
+- `dev/pages/DevServicesPanel.tsx` — replaced by shared `ServiceHealthPanel`.
+
+**Untracked (this session):**
+- `app/components/ServiceHealthPanel.tsx` — single source of truth for the Service health UI (header + progress bar + table). Identified by `data-id="service-health"`.
+- `app/components/useServiceHealth.ts` — singleton polling hook (`SERVICE_HEALTH_POLL_MS = 10_000`). Module-level subscriber set; one fetch loop shared across all consumers.
+- `.claude/commands/c_server.md` — `<server> -d|-s|-p` shortcut spec (10-step procedure, `-p` requires typed "production").
+- `backend/.env.production` — clean env file for `BACKEND_ENV=production` (same DB target as `.env.local`).
+- `.claude/bin/switch-server` — appears to have been opened in IDE; not authored by this session.
+
+**Untracked (not from this session — pre-existing on disk):**
+- `.build/`, `Package.swift`, `Sources/`, `Tests/`, `MMFF Vector Launcher.app/`, `tools/`, `local-assets/`
+- `app/components/EnvBadge.tsx`, `db/schema/037_*.sql`, `db/schema/038_*.sql`, `dev/research/R003.json`, `mmffdev_builder_brief.md`
+- `.claude/commands/c_launcher.md`
 
 ---
 
 ## What shipped this session
 
-- **6 nav-profiles cards created** (00118–00123) via `/storify` — initially WRONG-labelled with `FE-SEC0006` (used as catch-all instead of reading c_feature_areas.md taxonomy)
-- **Correct area labels created on Planka board:**
-  - FE-SQL0001 = `1762271910986516028` (tank-green)
-  - FE-API0005 = `1762271935724521022` (tank-green)
-  - FE-UX0001 = `1762271957727839808` (tank-green)
-  - FE-DEV0005 = `1762271980142200386` (tank-green)
-- **Correct area labels applied** to all 6 cards (cards now have BOTH correct + wrong FE-SEC0006)
-- **Card 00118 cleaned** — FE-SEC0006 removed via browser UI; current labels: `[storify, FE-SQL0001, PH-0005]`
-- **Discovered:** Planka REST `DELETE /api/card-labels/:id` returns `E_NOT_FOUND` despite associations existing in board JSON; UI uses Socket.io for label removal (suspected — `window.io` not findable)
-- **Story index updated:** 00117 → 00123
-- **Story format clarification:** title format is `FE-<AREA>NNNN` not `FE-SECNNNN` (SEC = Security only, one of 18 area codes)
+**Backend (`backend/cmd/server/main.go`):**
+- Refactored env derivation into a single `envFromDBPort()` closure — used by both `/healthz` and `/api/env`. Source of truth is the live `DB_PORT` env var.
+- `/healthz` now returns `env` alongside `status/commit/build_time/started_at`. Backward-compatible (additive).
+- Restarted backend mid-session — `/healthz` confirmed returning `"env":"production"`.
+
+**`<server>` shortcut + supporting env file:**
+- Created `.claude/commands/c_server.md` with `-d|-s|-p` flags. Switches `BACKEND_ENV`, ensures the matching tunnel, kills + restarts backend on `:5100`, rewrites the HTML-comment-delimited `ACTIVE_BACKEND_ENV` marker block at the top of CLAUDE.md.
+- Created `backend/.env.production` (currently same DB target as `.env.local`; established as the canonical env file for `-p`).
+- Updated CLAUDE.md to register the marker block and the new `<server>` entry. Updated the `<services>` entry text to reflect env-awareness.
+
+**Service health unification:**
+- Single source of truth: `app/components/ServiceHealthPanel.tsx`. `data-id="service-health"`.
+- Singleton polling hook: `app/components/useServiceHealth.ts`. Module-level subscribers set, ref-counted start/stop, one in-flight guard. Both float and Setup-tab consumers share one fetch loop.
+- `app/api/dev/services/route.ts` rewritten to probe 3 tunnels in parallel and emit `active:true` on the row matching the backend's reported env.
+- `dev/styles/dev.css`: added `.devf__progress` 5px blue bar with `width 0→100%` animation driven by `--devf-poll-ms` custom property. Added env badges + active-row highlight.
+- `DevStatusFloat.tsx` reduced to float trigger + chrome; renders the shared panel inside.
+- `dev/pages/DevServicesPanel.tsx` deleted; `DevPage.tsx` imports the shared panel directly inside a `.dev-section` wrapper.
 
 ---
 
 ## Recent commits
 
 ```
-0d1d293 Tooling: Research system + command files + backlog -view flag (00110)
-e0f5d4c Tooling: claude-global.sh, dev UI panels, feature label cleanup (00108-00123)
-a7f91db Revert "Nav preferences: custom-page rename/delete + dashed drop targets"
-2c700bd Nav preferences: custom-page rename/delete + dashed drop targets
-c7c9f71 Tooling: add <boot> command — numbered session boot file manager
-78a663b Docs: update dev-launcher doc for Planka + 2026-04-27 verified date
-ea612e7 Tooling: rebuild Vector Dev launcher — stability + Planka + title
-072e007 Data: pin Vector Standard family first in model list, then alpha
+291f10e Tooling: <addpaper> research-paper shorthand + shared writer/format
+d76ef12 Backend: BACKEND_ENV switch + staging env support
+c3fad45 Migration 036: dedupe positions + force-immediate constraints before NOT NULL
+a483c67 Nav profiles Phase 5 — multi-profile sidebar + per-profile group placement (#11)
+0d9a51d Backup marker: pre-PR snapshot
+6dcd103 Planning: nav profiles feature design + research export R002
+d529f11 Nav: route product bookmarks to Strategic; lock Theme to avatar menu
+8f224f9 LayersTable: migrate inline editing to shared InlineEditField
 ```
 
 ---
 
 ## What's next
 
-1. **Fix `planka_api.py` unlabel-card** — find correct mechanism (REST endpoint OR Socket.io). User said "we have an api, fix it" — no DB access, no giving up.
-2. **Remove FE-SEC0006** from cards 00119, 00120, 00121, 00122, 00123 (once unlabel-card works)
-3. **Delete FE-SEC0006 label entirely** from Planka board (it should not exist; navigation profiles is not a security feature)
-4. **Update `docs/c_feature_areas.md`** with new label entries: FE-SQL0001 (nav-profiles migration), FE-API0005 (nav-profiles CRUD), FE-UX0001 (nav-profiles UI), FE-DEV0005 (nav-profiles dev tooling)
-5. **Clean up `docs/c_feature_labels.md`** — remove the stale/wrong FE-SEC0006 entry (legacy file, superseded by c_feature_areas.md)
-6. **Audit `/storify` skill** — it must read `c_feature_areas.md` and refuse to create cards with mismatched area codes (ban FE-SECNNNN as catch-all)
+1. **Commit this session's work** — likely two logical commits:
+   - `Tooling: <server> shortcut + .env.production + env-aware <services> + ACTIVE_BACKEND_ENV marker`
+   - `Dev UX: unify Service health (shared panel + singleton poll) + 10s progress bar + 3-tunnel probes + /healthz env field`
+2. **Consider a story card retroactively** for the Service health unification (per Storify-all-layers rule) if it should be tracked.
+3. **Verify `<server> -d` end-to-end** — switch to dev DB, confirm marker rewrite, confirm `/healthz env=dev`, confirm Setup-tab + float pop-up both highlight the dev row.
+4. **Decide on `<server> -p` UX in Claude** — `c_server.md` notes that with no TTY, the typed-confirmation step must become a chat question. Wire that into the runner if `<server> -p` is ever invoked through Claude.
+5. **Pre-launch security checklist** still pending (per memory `project_pre_launch_security.md`): scrub git history of committed `.env.local`, harden `ssh_manager.sh`, rotate secrets.
+6. **`docs/c_story_index.md`** is missing from the repo — needs creating per `<stories>` skill expectations, or the skill needs a fallback path.
 
 ---
 
@@ -104,18 +116,9 @@ ea612e7 Tooling: rebuild Vector Dev launcher — stability + Planka + title
 - **gadmin test account:** `gadmin@mmffdev.com` / `myApples100@`
 - **padmin test account:** `padmin@mmffdev.com` / `changeme123!`
 - **user test account:** `user@mmffdev.com` (password unknown — reset via backend hash endpoint if needed)
-- **Planka admin account:** `claude@mmffdev.com` / `myApples27@`
 - **DB password:** `grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-` — contains `&`, never shell-source
-- **Planka label add endpoint** — `POST /api/cards/{id}/card-labels` (works)
-- **Planka label remove endpoint** — UNKNOWN; REST `DELETE /api/card-labels/:id` and `DELETE /api/cards/{id}/card-labels/{cl_id}` both 404 with E_NOT_FOUND. UI likely uses Socket.io.
-- **Planka card creation** requires `"type": "project"` (or `"story"`) in POST body
-- **Feature label format:** `FE-<AREA>NNNN` where AREA ∈ {POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV} — SEC is Security only, NOT a catch-all
-- **New Planka labels (2026-04-27):**
-  - PH-0010 = `1762137671775290838` (midnight-blue)
-  - FE-API0004 = `1762137672404436439` (tank-green)
-  - FE-SQL0001 = `1762271910986516028` (tank-green)
-  - FE-API0005 = `1762271935724521022` (tank-green)
-  - FE-UX0001 = `1762271957727839808` (tank-green)
-  - FE-DEV0005 = `1762271980142200386` (tank-green)
-- **WRONG label still attached** — FE-SEC0006 (id known but not recorded here; lookup via board JSON if needed)
-- **Cards with BAD label still present:** 00119, 00120, 00121, 00122, 00123 (00118 is clean)
+- **Service health single source:** `app/components/ServiceHealthPanel.tsx` (`data-id="service-health"`); polled by singleton `useServiceHealth` hook in `app/components/useServiceHealth.ts`. `SERVICE_HEALTH_POLL_MS = 10_000`. Both the float pop-up and the Dev → Setup tab consume the same hook — never duplicate render or fetch.
+- **Active env detection:** `/healthz` returns `env` derived from `DB_PORT` (5434=production, 5435=dev, 5436=staging). `/api/dev/services` reads it and marks the matching tunnel row `active`. CSS `.devf__row--active` highlights it.
+- **CLAUDE.md ACTIVE_BACKEND_ENV marker** is delimited by `<!-- ACTIVE_BACKEND_ENV:start --> ... <!-- ACTIVE_BACKEND_ENV:end -->` — `<server>` rewrites the contents via Python `re.subn` with `re.DOTALL`. Removing the comments breaks `<server>`.
+- **`.env.production`** is identical to `.env.local` in DB target (both → mmffdev.com via `:5434`). It exists so `BACKEND_ENV=production` has a canonical home; `.env.local` remains the no-flag default.
+- **Progress-bar duration is constant-driven:** the React component sets `--devf-poll-ms` CSS variable from the same `SERVICE_HEALTH_POLL_MS`. Changing the constant retunes both the polling cadence and the bar animation in lockstep.

@@ -9,5 +9,29 @@
 	],
 	"settings": {
 		"DockerRun.DisableAutoGenerateConfig": true
+	},
+	"launch": {
+		"configurations": [
+			{
+				"type": "swift",
+				"request": "launch",
+				"args": [],
+				"cwd": "${workspaceFolder:MMFFDev - PM}",
+				"name": "Debug MMFFVectorLauncher (MMFFDev - PM)",
+				"target": "MMFFVectorLauncher",
+				"configuration": "debug",
+				"preLaunchTask": "swift: Build Debug MMFFVectorLauncher (MMFFDev - PM)"
+			},
+			{
+				"type": "swift",
+				"request": "launch",
+				"args": [],
+				"cwd": "${workspaceFolder:MMFFDev - PM}",
+				"name": "Release MMFFVectorLauncher (MMFFDev - PM)",
+				"target": "MMFFVectorLauncher",
+				"configuration": "release",
+				"preLaunchTask": "swift: Build Release MMFFVectorLauncher (MMFFDev - PM)"
+			}
+		]
 	}
 }
