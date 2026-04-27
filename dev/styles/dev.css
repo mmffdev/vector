@@ -1,5 +1,5 @@
 /* ============================================================
-   Dev module styles — fully namespaced under .dev-*
+   Dev module styles — fully namespaced under .dev-* and .devf-*
 
    Story 00108 + 00109 Vector rebrand: the dev surface now reads
    exclusively from Vector tokens defined in app/globals.css
@@ -9,6 +9,93 @@
    No legacy --ink-1/--line-1/--accent tokens, no hardcoded hex,
    no orange brand colour, no box-shadow on chrome.
    ============================================================ */
+
+/* ---- Dev status float (global overlay — .devf) ---- */
+.devf {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+}
+
+.devf__trigger {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.devf__trigger:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.devf__dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+  pointer-events: none;
+}
+
+.devf__dot--up       { background: var(--success); }
+.devf__dot--down     { background: var(--danger); }
+.devf__dot--degraded { background: var(--warning); }
+.devf__dot--checking { background: var(--ink-faint); }
+
+/* Flash the border red when something is down */
+.devf__trigger--down {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.devf__panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 500px;
+  overflow: hidden;
+}
+
+.devf__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+.devf__ts {
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.devf__empty {
+  text-align: center;
+  color: var(--ink-subtle) !important;
+  font-size: var(--text-sm) !important;
+  padding: var(--space-6) var(--space-4) !important;
+  height: auto !important;
+}
 
 .dev-root {
   color: var(--ink);

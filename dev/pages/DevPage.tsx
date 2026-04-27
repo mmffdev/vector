@@ -4,6 +4,7 @@ import { useState } from "react";
 import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { api } from "@/app/lib/api";
+import DevServicesPanel from "./DevServicesPanel";
 
 export default function DevPage() {
   const [copied, setCopied] = useState(false);
@@ -49,6 +50,8 @@ export default function DevPage() {
       </header>
 
       <div className="dev-doc">
+        <DevServicesPanel />
+
         <section className="dev-section">
           <h2 className="dev-h2">Debug</h2>
           <label className="form__switch">
