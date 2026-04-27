@@ -58,7 +58,8 @@ func ListPublishedModels(ctx context.Context, pool *pgxpool.Pool) ([]ModelSummar
 			AND pm.visibility = 'public'
 			AND pm.archived_at IS NULL
 		GROUP BY pm.id, pm.name, pm.description, pm.version, pm.model_family_id
-		ORDER BY pm.name, pm.version DESC`
+		ORDER BY CASE WHEN pm.model_family_id = '00000000-0000-0000-0000-00000000a000' THEN 0 ELSE 1 END,
+			pm.name, pm.version DESC`
 
 	rows, err := pool.Query(ctx, q)
 	if err != nil {
