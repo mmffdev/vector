@@ -48,19 +48,22 @@ interface EditingCell {
 interface Props {
   initialLayers: LayerDTO[];
   onLayersUpdated: (layers: LayerDTO[]) => void;
+  fixedItems?: LayerDTO[];
+  fixedGroupLabel?: string;
 }
 
 function sorted(layers: LayerDTO[]): LayerDTO[] {
   return [...layers].sort((a, b) => a.sort_order - b.sort_order);
 }
 
-export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
+export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems, fixedGroupLabel }: Props) {
   const [localLayers, setLocalLayers] = useState<LayerDTO[]>(() =>
     sorted(initialLayers)
   );
   const [originalLayers, setOriginalLayers] = useState<LayerDTO[]>(() =>
     sorted(initialLayers)
   );
+  const [localFixed, setLocalFixed] = useState<LayerDTO[]>(() => fixedItems ?? []);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editingValue, setEditingValue] = useState("");
   // keyed "${id}.${field}"
@@ -96,11 +99,15 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
     setFormError(null);
   }, [initialLayers]);
 
+  useEffect(() => {
+    setLocalFixed(fixedItems ?? []);
+  }, [fixedItems]);
+
   // ── Inline editing ────────────────────────────────────────────────────────
 
   const startEdit = useCallback(
     (id: string, field: EditingCell["field"]) => {
-      const layer = localLayers.find((l) => l.id === id);
+      const layer = localLayers.find((l) => l.id === id) ?? localFixed.find((l) => l.id === id);
       if (!layer) return;
       const value =
         field === "description_md"
@@ -115,7 +122,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
         return next;
       });
     },
-    [localLayers]
+    [localLayers, localFixed]
   );
 
   const cancelEdit = useCallback(() => {
@@ -233,10 +240,10 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
   // ── Drag to reorder ───────────────────────────────────────────────────────
 
   const handleDragStart = useCallback(
-    (e: DragEvent<HTMLTableRowElement>, index: number) => {
+    (e: DragEvent<HTMLSpanElement>, index: number) => {
+      e.stopPropagation();
       dragIndexRef.current = index;
       e.dataTransfer.effectAllowed = "move";
-      // Minimal payload so the browser shows something
       e.dataTransfer.setData("text/plain", String(index));
     },
     []
@@ -504,7 +511,14 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
   return (
     <div className="layers-editor">
       <div className="table-wrap">
-        <table className="table">
+        <table className="table layers-editor__table">
+          <colgroup>
+            <col className="layers-editor__col--drag" />
+            <col className="layers-editor__col--order" />
+            <col className="layers-editor__col--tag" />
+            <col className="layers-editor__col--name" />
+            <col className="layers-editor__col--desc" />
+          </colgroup>
           <thead className="table__head">
             <tr className="table__row">
               <th className="table__cell layers-editor__drag-header" aria-label="Drag to reorder" />
@@ -529,15 +543,18 @@ export default function LayersTable({ initialLayers, onLayersUpdated }: Props) {
                 <tr
                   key={layer.id}
                   className={rowCls}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, index)}
                   onDragEnd={handleDragEnd}
                 >
                   <td className="table__cell layers-editor__drag-cell" aria-hidden="true">
-                    <span className="layers-editor__drag-handle" title="Drag to reorder">
+                    <span
+                      className="layers-editor__drag-handle"
+                      title="Drag to reorder"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                    >
                       ⠿
                     </span>
                   </td>

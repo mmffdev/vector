@@ -1900,7 +1900,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-6);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
   box-shadow: none;
 }
 
@@ -4215,6 +4215,18 @@ table.tbl tbody tr:hover td {
 
 /* ── Editable cell ────────────────────────────────────────── */
 
+/* table-layout: fixed locks column widths so browser never reflows when
+   content swaps between a <span> and an <input>. Widths are set via <col>. */
+.layers-editor__table {
+  table-layout: fixed;
+}
+
+.layers-editor__col--drag  { width: 32px; }
+.layers-editor__col--order { width: 64px; }
+.layers-editor__col--tag   { width: 96px; }
+.layers-editor__col--name  { width: 22%; }
+.layers-editor__col--desc  { /* takes remaining space */ }
+
 .layers-editor__cell {
   position: relative;
 }
@@ -4262,8 +4274,7 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__cell--tag {
-  width: 88px;
-  min-width: 88px;
+  /* width controlled by layers-editor__col--tag <col> element */
 }
 
 .layers-editor__cell--invalid {
@@ -4311,7 +4322,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   outline: none;
   box-sizing: border-box;
   resize: vertical;
@@ -4371,6 +4382,23 @@ table.tbl tbody tr:hover td {
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
+}
+
+.layers-editor__row--group-sep td {
+  background: var(--surface-sunken);
+  padding: 0 12px;
+  height: 36px;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+  cursor: default;
+}
+.layers-editor__row--group-sep:hover td {
+  background: var(--surface-sunken);
+  box-shadow: none;
+}
+.layers-editor__drag-cell--disabled {
+  cursor: default;
+  pointer-events: none;
 }
 
 /* ============================================================
