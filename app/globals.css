@@ -1634,32 +1634,41 @@ table.tbl tbody tr:hover td {
 /* ============================================================
    Tabs
    ============================================================ */
+/* ============================================================
+   Tabs — Vector Design System (story 00101)
+   Underline rail in --border; active tab adopts --ink with a
+   --ink-strong underline (NEVER brand colour). 13px / 500 /
+   --ink-muted resting; tabular-nums for counts in tab labels.
+   No box-shadow, no gradient.
+   ============================================================ */
 .tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--line-1);
-  margin-bottom: 20px;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-5);
 }
 
 .tabs__tab {
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   background: transparent;
-  color: var(--ink-3);
-  font-size: 13px;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   font-weight: 500;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
 }
 
 .tabs__tab:hover {
-  color: var(--ink-2);
+  color: var(--ink);
 }
 
 .tabs__tab--active {
-  color: var(--ink-1);
-  border-bottom-color: var(--accent);
+  color: var(--ink);
+  border-bottom-color: var(--ink);
 }
 
 .tabs__panel {
@@ -1750,29 +1759,38 @@ table.tbl tbody tr:hover td {
    ============================================================ */
 .code-block {
   display: block;
-  padding: 10px 12px;
-  background: var(--surface-alt);
-  border: 1px solid var(--line-1);
-  font-size: 11px;
-  color: var(--ink-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
   word-break: break-all;
   max-height: 120px;
   overflow: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
-   Toolbar (row of actions above a table/list)
+   Toolbar (row above a table/list) — Vector kit
+   meta text in --ink-muted, --text-sm; baseline-aligned to the
+   primary action button. No background, no border — toolbar
+   sits on the page surface.
    ============================================================ */
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-4);
+  gap: var(--space-3);
 }
 
 .toolbar__meta {
-  color: var(--ink-3);
-  font-size: 13px;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================

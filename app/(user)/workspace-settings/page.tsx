@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * /workspace-settings — Story 00101 restyle.
+ * gadmin-only tenant administration. The Users tab renders a
+ * Vector .table-wrap + .table — sunken thead with eyebrow column
+ * heads, 48px rows, hover lifts to --surface-sunken. Status
+ * conveyed by .pill variants only (active=success, inactive=neutral,
+ * pending pw=warning). Dates render in --ink-muted with
+ * tabular-nums. No box-shadow, no gradient, no lime-green; one
+ * primary button per region (the "+ New user" toolbar action).
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
@@ -121,22 +132,23 @@ function UsersTab() {
               <tr className="table__row">
                 <th className="table__cell">Email</th>
                 <th className="table__cell">Role</th>
-                <th className="table__cell">Active</th>
+                <th className="table__cell">Status</th>
                 <th className="table__cell">Last login</th>
                 <th className="table__cell">Created</th>
-                <th className="table__cell"></th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((u) => (
                 <tr key={u.id} className="table__row">
                   <td className="table__cell">
-                    {u.email}
-                    {u.force_password_change && (
-                      <span className="pill pill--warning" title="Must change password on next login">
-                        pending pw
-                      </span>
-                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                      <span style={{ color: "var(--ink)" }}>{u.email}</span>
+                      {u.force_password_change && (
+                        <span className="pill pill--warning" title="Must change password on next login">
+                          pending pw
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="table__cell">
                     <select
@@ -151,19 +163,20 @@ function UsersTab() {
                     </select>
                   </td>
                   <td className="table__cell">
-                    <label className="form__switch">
+                    <label className="form__switch" title="Toggle account active state">
                       <input
                         type="checkbox"
                         checked={u.is_active}
                         disabled={pendingId === u.id}
                         onChange={(e) => updateUser(u.id, { is_active: e.target.checked })}
                       />
-                      {u.is_active ? "active" : "inactive"}
+                      <span className={`pill ${u.is_active ? "pill--success" : "pill--neutral"}`}>
+                        {u.is_active ? "Active" : "Inactive"}
+                      </span>
                     </label>
                   </td>
-                  <td className="table__cell">{fmtDate(u.last_login)}</td>
-                  <td className="table__cell">{fmtDate(u.created_at)}</td>
-                  <td className="table__cell"></td>
+                  <td className="table__cell table__cell--muted t-mono">{fmtDate(u.last_login)}</td>
+                  <td className="table__cell table__cell--muted t-mono">{fmtDate(u.created_at)}</td>
                 </tr>
               ))}
             </tbody>
