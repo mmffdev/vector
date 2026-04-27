@@ -3943,7 +3943,7 @@ table.tbl tbody tr:hover td {
   font-weight: 500;
   padding: 0 var(--space-4);
   height: 40px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
@@ -4245,7 +4245,7 @@ table.tbl tbody tr:hover td {
   height: 40px;
   padding: 0 var(--space-3);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   line-height: 38px;
   font-size: var(--text-sm);
   box-sizing: border-box;
@@ -4281,7 +4281,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 var(--radius-md) 0;
   outline: none;
   box-sizing: border-box;
   transition: border-color 120ms ease;
