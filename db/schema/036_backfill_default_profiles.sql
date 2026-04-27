@@ -10,11 +10,20 @@
 --
 -- Steps (all in one transaction so partial failure rolls back):
 --
+--   0. Renumber positions on orphan prefs (profile_id IS NULL) so each
+--      (user, subscription) has a contiguous 0..N-1 sequence. Required
+--      because the unique constraint on user_nav_prefs treats NULL
+--      profile_id as distinct, which let pre-existing data accumulate
+--      duplicate positions; once step 2 collapses those NULLs onto a
+--      single Default UUID, the dupes would violate uniqueness.
 --   1. INSERT one Default profile per (user_id, subscription_id) that
 --      already has user_nav_prefs rows. Skip pairs that already have
 --      a Default (re-run safe via the partial-unique index).
 --   2. UPDATE user_nav_prefs.profile_id to that Default's id, only
---      where profile_id IS NULL (re-run safe).
+--      where profile_id IS NULL (re-run safe). Followed by
+--      SET CONSTRAINTS ALL IMMEDIATE so any deferrable unique
+--      constraints fire here, before the ALTER below — Postgres
+--      refuses to ALTER a table with pending trigger events.
 --   3. ALTER user_nav_prefs.profile_id SET NOT NULL — every prefs row
 --      now has a profile, the FK from migration 035 is enforceable.
 --   4. INSERT user_nav_profile_groups for every existing group × every
@@ -34,6 +43,29 @@
 -- ============================================================
 
 BEGIN;
+
+-- ---- 0. Dedupe positions on orphan prefs ----------------------
+-- The (user_id, subscription_id, profile_id, position) unique constraint
+-- treats NULL profile_id as distinct, so historical rows accumulated
+-- duplicate (user, sub, position) tuples while profile_id was NULL.
+-- Renumber per (user, subscription) so positions are contiguous 0..N-1
+-- BEFORE step 2 collapses every NULL onto the same Default UUID.
+-- Idempotent: rows already in canonical order produce zero updates.
+
+WITH renumbered AS (
+    SELECT id,
+           ROW_NUMBER() OVER (
+               PARTITION BY user_id, subscription_id
+               ORDER BY position, item_key
+           ) - 1 AS new_position
+      FROM user_nav_prefs
+     WHERE profile_id IS NULL
+)
+UPDATE user_nav_prefs p
+   SET position = r.new_position
+  FROM renumbered r
+ WHERE p.id       = r.id
+   AND p.position <> r.new_position;
 
 -- ---- 1. Insert one Default per (user, subscription) -----------
 -- Distinct pairs from existing prefs become Default profiles.
@@ -66,6 +98,12 @@ UPDATE user_nav_prefs p
    AND d.subscription_id = p.subscription_id
    AND d.is_default      = TRUE
    AND p.profile_id      IS NULL;
+
+-- Force any deferrable constraints to validate now. Without this,
+-- the ALTER below fails with "cannot ALTER TABLE ... because it has
+-- pending trigger events". Step 0 already guarantees positions are
+-- unique, so this only validates — it never raises.
+SET CONSTRAINTS ALL IMMEDIATE;
 
 -- ---- 3. Lock the column down ----------------------------------
 -- Now safe — no NULLs left in profile_id.
