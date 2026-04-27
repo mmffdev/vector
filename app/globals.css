@@ -933,6 +933,70 @@ button {
   pointer-events: none;
 }
 
+/* Backlog filter bar — Vector kit (story 00093)
+   Sits on --canvas (no card / no shadow) directly under the page
+   header. Three slots: 36px search input on --surface, .pill
+   filter toggles, and ghost column-control buttons. Separated
+   from the row list below by --space-5 only — never a divider. */
+.backlog-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 var(--space-5);
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+.backlog-filter__search {
+  flex: 1 1 280px;
+  min-width: 240px;
+  height: 36px;
+  padding: 0 var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 120ms ease;
+}
+
+.backlog-filter__search::placeholder {
+  color: var(--ink-subtle);
+}
+
+.backlog-filter__search:hover {
+  border-color: var(--border-strong);
+}
+
+.backlog-filter__search:focus {
+  border-color: var(--ink);
+}
+
+.backlog-filter__pills {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.backlog-filter__pills .pill {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+}
+
+.backlog-filter__controls {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
 /* ============================================================
    Tables — Vector Design System (story 00078)
    .table-wrap container: surface bg, 1px --border, --radius-lg,
