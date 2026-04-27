@@ -1,5 +1,5 @@
--- MMFF Vector Dev launcher
--- Starts/inspects three services: SSH tunnel (localhost:5434), Go backend (:5100), Next.js frontend (:5101).
+-- Vector Dev launcher
+-- Starts/inspects four services: SSH tunnel (localhost:5434 + :3333), Go backend (:5100), Next.js frontend (:5101).
 -- Detects by process name (pgrep -f), verifies liveness by port, and fully detaches children so they
 -- survive Terminal/Claude Code exit via `nohup ... & disown` inside a login bash (so Homebrew PATH loads).
 
@@ -7,11 +7,12 @@ property projectRoot : "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
 property tunnelLog : "/tmp/mmff-tunnel.log"
 property serverLog : "/tmp/mmff-server.log"
 property nextLog : "/tmp/mmff-next.log"
+property appTitle : "Vector Dev"
 
 on runShell(cmd)
 	try
 		return do shell script cmd
-	on error errMsg number errNum
+	on error
 		return ""
 	end try
 end runShell
@@ -59,10 +60,23 @@ on joinPids(pidList)
 	return s
 end joinPids
 
-on killPids(pidList)
-	if (count of pidList) is 0 then return
+-- Kill by PIDs + by port listener to catch go run's compiled-binary child.
+on killPids(pidList, ports)
+	-- collect all PIDs: explicit list + port listeners
+	set allPids to pidList
+	repeat with port in ports
+		set lpid to my portListenerPid(port)
+		if lpid is not "" then
+			set found to false
+			repeat with p in allPids
+				if (p as text) is lpid then set found to true
+			end repeat
+			if not found then set end of allPids to lpid
+		end if
+	end repeat
+	if (count of allPids) is 0 then return
 	set pidsStr to ""
-	repeat with p in pidList
+	repeat with p in allPids
 		set pidsStr to pidsStr & " " & (p as text)
 	end repeat
 	my runShell("/bin/kill -TERM" & pidsStr & " 2>/dev/null || true")
@@ -71,7 +85,9 @@ on killPids(pidList)
 end killPids
 
 on tunnelStatus()
-	set thePids to my pidsFor("ssh -N.*mmffdev-pg")
+	set thePids to my pidsFor("ssh -N mmffdev-pg")
+	-- Tunnel is alive if both Postgres (5434) and Planka (3333) are reachable.
+	-- Checking 5434 alone is sufficient; Planka up implies tunnel is healthy.
 	set isUp to my portOpen("5434")
 	return {procPids:thePids, isUp:isUp}
 end tunnelStatus
@@ -79,7 +95,7 @@ end tunnelStatus
 on backendStatus()
 	set thePids to my pidsFor("go run ./cmd/server")
 	if (count of thePids) is 0 then
-		set thePids to my pidsFor("cmd/server")
+		set thePids to my pidsFor("mmff-server")
 	end if
 	set listener to my portListenerPid("5100")
 	set isUpFlag to (listener is not "")
@@ -88,10 +104,24 @@ on backendStatus()
 end backendStatus
 
 on frontendStatus()
-	set thePids to my pidsFor("next dev|next-server")
-	set isUpFlag to my portOpen("5101")
+	-- Use port listener as primary PID source (more reliable than pgrep on next process names).
+	set listener to my portListenerPid("5101")
+	set isUpFlag to (listener is not "")
+	set thePids to {}
+	if listener is not "" then
+		set thePids to {listener}
+	else
+		-- Fallback: check for running next process even if port not yet open.
+		set thePids to my pidsFor("next dev")
+		if (count of thePids) is 0 then set thePids to my pidsFor("next-server")
+	end if
 	return {procPids:thePids, isUp:isUpFlag}
 end frontendStatus
+
+on plankaStatus()
+	set isUp to my portOpen("3333")
+	return {isUp:isUp}
+end plankaStatus
 
 on startTunnel()
 	set c to "nohup /usr/bin/ssh -N mmffdev-pg </dev/null >" & tunnelLog & " 2>&1 & disown; echo $!"
@@ -119,20 +149,12 @@ on waitPortUp(port, maxSecs)
 	return false
 end waitPortUp
 
-on waitFrontend(maxSecs)
-	repeat with i from 1 to maxSecs
-		set r to my runShell("/usr/bin/grep -Eom1 'localhost:[0-9]+' " & nextLog & " 2>/dev/null || true")
-		if (my trimWS(r)) is not "" then return true
-		delay 1
-	end repeat
-	return false
-end waitFrontend
-
-on describeRunning(tStat, bStat, fStat)
+on describeRunning(tStat, bStat, fStat, pStat)
 	set msgLines to {}
-	if isUp of tStat then set end of msgLines to "Tunnel (5434): up — pids " & my joinPids(procPids of tStat)
+	if isUp of tStat then set end of msgLines to "Tunnel (5434 + 3333…): up — pids " & my joinPids(procPids of tStat)
 	if isUp of bStat then set end of msgLines to "Backend (5100): up — pids " & my joinPids(procPids of bStat)
 	if isUp of fStat then set end of msgLines to "Frontend (5101): up — pids " & my joinPids(procPids of fStat)
+	if isUp of pStat then set end of msgLines to "Planka (3333): up via tunnel"
 	set AppleScript's text item delimiters to linefeed
 	set s to msgLines as text
 	set AppleScript's text item delimiters to ""
@@ -143,19 +165,21 @@ on run
 	set tStat to my tunnelStatus()
 	set bStat to my backendStatus()
 	set fStat to my frontendStatus()
+	set pStat to my plankaStatus()
 
 	set anyUp to (isUp of tStat) or (isUp of bStat) or (isUp of fStat)
 
 	if anyUp then
-		set msg to "Already running:" & linefeed & linefeed & my describeRunning(tStat, bStat, fStat) & linefeed & linefeed & "Kill and restart those, leave them running, or cancel?"
-		set choice to button returned of (display dialog msg buttons {"Cancel", "Leave running", "Kill and restart"} default button "Leave running" with title "MMFF Vector Dev")
+		set msg to "Already running:" & linefeed & linefeed & my describeRunning(tStat, bStat, fStat, pStat) & linefeed & linefeed & "Kill and restart those, leave them running, or cancel?"
+		set choice to button returned of (display dialog msg buttons {"Cancel", "Leave running", "Kill and restart"} default button "Leave running" with title appTitle)
 		if choice is "Cancel" then return
 		if choice is "Kill and restart" then
+			-- Kill tunnel + backend + frontend; pass ports so we catch compiled-binary children.
 			set allPids to {}
 			if isUp of tStat then set allPids to allPids & (procPids of tStat)
 			if isUp of bStat then set allPids to allPids & (procPids of bStat)
 			if isUp of fStat then set allPids to allPids & (procPids of fStat)
-			my killPids(allPids)
+			my killPids(allPids, {"5434", "5100", "5101"})
 			delay 1
 			set tStat to {procPids:{}, isUp:false}
 			set bStat to {procPids:{}, isUp:false}
@@ -172,6 +196,7 @@ on run
 
 	if not tOk then
 		set tPid to my startTunnel()
+		-- Wait for Postgres port; Planka and others come up together.
 		set tOk to my waitPortUp("5434", 15)
 	else
 		if (count of (procPids of tStat)) > 0 then set tPid to (item 1 of (procPids of tStat))
@@ -187,12 +212,17 @@ on run
 
 	if not fOk then
 		set fPid to my startFrontend()
-		set fOk to my waitFrontend(60)
+		-- Port-open check is reliable; avoids log-grep races with Next.js 14+ output format.
+		set fOk to my waitPortUp("5101", 60)
+		if fOk and fPid is "" then set fPid to my portListenerPid("5101")
 	else
 		if (count of (procPids of fStat)) > 0 then set fPid to (item 1 of (procPids of fStat))
 	end if
 
-	set tLine to "Tunnel (localhost:5434): "
+	-- Re-check Planka now tunnel is up.
+	set pOk to my portOpen("3333")
+
+	set tLine to "Tunnel (localhost:5434 + :3333 + more): "
 	if tOk then
 		set tLine to tLine & "up (pid " & tPid & ")"
 	else
@@ -213,6 +243,13 @@ on run
 		set fLine to fLine & "FAILED — see " & nextLog
 	end if
 
-	set summary to tLine & linefeed & bLine & linefeed & fLine
-	display dialog summary buttons {"OK"} default button "OK" with title "MMFF Vector Dev"
+	set pLine to "Planka (http://localhost:3333): "
+	if pOk then
+		set pLine to pLine & "up"
+	else
+		set pLine to pLine & "down (tunnel may still be connecting)"
+	end if
+
+	set summary to tLine & linefeed & bLine & linefeed & fLine & linefeed & pLine
+	display dialog summary buttons {"OK"} default button "OK" with title appTitle
 end run
