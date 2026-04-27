@@ -52,6 +52,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Selenium Grid UI (`<seleniumup>`)** → [`.claude/commands/c_selenium.md`](commands/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
 - **Playwright MCP (`<playwright>`)** → [`.claude/commands/c_playwright.md`](commands/c_playwright.md) — disabled by default (21 tools); use Crawlio for browser automation; enable by renaming `.mcp.json.disabled` → `.mcp.json`.
 - **Research agent (`/research`)** → [`.claude/commands/c_research.md`](commands/c_research.md) — crawl + web-search + compile structured reports; `--page` saves JSON to `dev/research/` viewable in Dev → Research tab.
+- **Research paper shorthand (`<addpaper>`)** → [`.claude/commands/c_addpaper.md`](commands/c_addpaper.md) — web-search-only shortcut that writes `dev/research/RNNN.json` and optionally hands off to `/stories` for Planka cards.
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
 - **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
