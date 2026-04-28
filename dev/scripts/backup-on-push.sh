@@ -131,6 +131,11 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 0
 fi
 PW=$(grep '^DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
+DB_PORT=$(grep '^DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'" ' ')
+DB_PORT="${DB_PORT:-5434}"
+LIB_PW=$(grep '^LIBRARY_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
+LIB_PORT=$(grep '^LIBRARY_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'" ' ')
+LIB_PORT="${LIB_PORT:-$DB_PORT}"
 if [[ -z "$PW" ]]; then
   log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "env_missing: DB_PASSWORD not set"
   emit_skip_banner "DB_PASSWORD not found in backend/.env.local"
@@ -143,13 +148,13 @@ if [[ ! -x "$PG_DUMP" ]]; then
   exit 0
 fi
 
-# -- Dump -------------------------------------------------------------------
+# -- Dump mmff_vector -------------------------------------------------------
 TS=$(ts_fname)
 OUT="$BACKUP_DIR/${LABEL}_${TS}.sql"
 START_MS=$(($(date +%s) * 1000))
 
 if ! PGPASSWORD="$PW" "$PG_DUMP" \
-    -h localhost -p 5434 -U mmff_dev -d mmff_vector \
+    -h localhost -p "$DB_PORT" -U mmff_dev -d mmff_vector \
     --no-owner --no-privileges \
     > "$OUT" 2> "$OUT.err"; then
   ERR_TAIL=$(tail -c 300 "$OUT.err" 2>/dev/null | tr '\n' ' ')
@@ -167,6 +172,30 @@ log_entry "ok" "$SHA" "$LABEL" "$(basename "$OUT")" "$BYTES" "$DUR" ""
 printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
   "$LABEL" "$(basename "$OUT")" "$BYTES" "$DUR" "$CHANNEL"
 
+# -- Dump mmff_library ------------------------------------------------------
+if [[ -n "$LIB_PW" ]]; then
+  OUT_LIB="$BACKUP_DIR/${LABEL}_${TS}_library.sql"
+  START_MS=$(($(date +%s) * 1000))
+
+  if ! PGPASSWORD="$LIB_PW" "$PG_DUMP" \
+      -h localhost -p "$LIB_PORT" -U mmff_dev -d mmff_library \
+      --no-owner --no-privileges \
+      > "$OUT_LIB" 2> "$OUT_LIB.err"; then
+    ERR_TAIL=$(tail -c 300 "$OUT_LIB.err" 2>/dev/null | tr '\n' ' ')
+    rm -f "$OUT_LIB" "$OUT_LIB.err"
+    log_entry "skipped" "$SHA" "${LABEL}_library" "" 0 0 "pg_dump_failed (library): $ERR_TAIL"
+    emit_skip_banner "pg_dump mmff_library failed: $ERR_TAIL"
+  else
+    rm -f "$OUT_LIB.err"
+    END_MS=$(($(date +%s) * 1000))
+    DUR=$(( END_MS - START_MS ))
+    BYTES_LIB=$(wc -c < "$OUT_LIB" | tr -d ' ')
+    log_entry "ok" "$SHA" "${LABEL}_library" "$(basename "$OUT_LIB")" "$BYTES_LIB" "$DUR" ""
+    printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
+      "${LABEL}_library" "$(basename "$OUT_LIB")" "$BYTES_LIB" "$DUR" "$CHANNEL"
+  fi
+fi
+
 # -- Retention --------------------------------------------------------------
 if [[ "${SKIP_BACKUP_PRUNE:-0}" != "1" ]]; then
   python3 - "$BACKUP_DIR" "$RETENTION_COUNT" "$RETENTION_DAYS" <<'PY' || true
@@ -174,7 +203,7 @@ import os, re, sys, time
 backup_dir, keep_n, keep_days = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 now = time.time()
 cutoff = now - keep_days * 86400
-SHA_RE = re.compile(r'^[0-9a-f]{4,40}_\d{8}_\d{6}\.sql$')
+SHA_RE = re.compile(r'^[0-9a-f]{4,40}_\d{8}_\d{6}(_library)?\.sql$')
 candidates = []
 for name in os.listdir(backup_dir):
     path = os.path.join(backup_dir, name)
