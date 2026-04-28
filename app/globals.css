@@ -4009,6 +4009,46 @@ table.tbl tbody tr:hover td {
   border-top: 1px solid var(--border);
 }
 
+.nav-prefs__reset-confirm {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+}
+
+.nav-prefs__reset-confirm-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.nav-prefs__reset-confirm-list {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  margin: 0 0 var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
+.nav-prefs__reset-confirm-list li {
+  margin-bottom: var(--space-1);
+}
+
+.nav-prefs__reset-confirm-warning {
+  font-size: var(--text-xs);
+  color: var(--danger);
+  font-weight: 600;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.nav-prefs__reset-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 /* Custom-group accent — heading uses --ink (never brand). */
 
 .nav-prefs__group-rename {

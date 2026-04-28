@@ -843,6 +843,7 @@ export default function NavPreferencesPage() {
   const [newGroupLabel, setNewGroupLabel] = useState("");
   const [createGroupErr, setCreateGroupErr] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   // Draft persistence for the "New custom page" form. The draft only
   // Silently restore whatever the user was typing last — no banner.
@@ -1524,6 +1525,7 @@ export default function NavPreferencesPage() {
     setError(null);
     try {
       await reset();
+      setConfirmingReset(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to reset");
     } finally {
@@ -1783,12 +1785,41 @@ export default function NavPreferencesPage() {
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
       {error && <p className="nav-prefs__error" role="alert">{error}</p>}
 
+      {confirmingReset && (
+        <div className="nav-prefs__reset-confirm" role="alertdialog" aria-label="Confirm reset to defaults">
+          <p className="nav-prefs__reset-confirm-title">
+            Reset {activeProfile ? `"${activeProfile.label}"` : "this profile"} to defaults?
+          </p>
+          <ul className="nav-prefs__reset-confirm-list">
+            <li>All pinned pages will be replaced with the system default set.</li>
+            <li>Custom groups you created in this profile will be removed.</li>
+            <li>Pin order, group placements, and your start page will revert.</li>
+            <li>Other profiles and your custom pages themselves are not affected.</li>
+          </ul>
+          <p className="nav-prefs__reset-confirm-warning">This cannot be undone.</p>
+          <div className="nav-prefs__reset-confirm-actions">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setConfirmingReset(false)}
+              disabled={saving}
+            >Cancel</button>
+            <button
+              type="button"
+              className="btn btn--danger"
+              onClick={handleReset}
+              disabled={saving}
+            >{saving ? "Resetting…" : "Yes, reset to defaults"}</button>
+          </div>
+        </div>
+      )}
+
       <div className="nav-prefs__actions-bar">
         <button
           type="button"
           className="btn btn--ghost"
-          onClick={handleReset}
-          disabled={saving}
+          onClick={() => setConfirmingReset(true)}
+          disabled={saving || confirmingReset}
         >Reset to defaults</button>
         <button
           type="button"
