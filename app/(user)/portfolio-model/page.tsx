@@ -330,7 +330,14 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
           <span className="pill pill--neutral">{m.visibility}</span>
         </div>
         {m.description && (
-          <p className="model-preview__description">{m.description}</p>
+          <div className="model-preview__description">
+            {m.description.split("\n\n").map((para, i) => {
+              const h = para.match(/^\*\*(.+)\*\*$/);
+              return h
+                ? <p key={i} className="model-preview__description-heading"><strong>{h[1]}</strong></p>
+                : <p key={i} className="model-preview__description-para">{para}</p>;
+            })}
+          </div>
         )}
         <dl className="model-preview__meta">
           <div className="model-preview__meta-row">
