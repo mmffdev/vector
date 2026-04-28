@@ -2230,6 +2230,125 @@ table.tbl tbody tr:hover td {
   width: 400px;
 }
 
+.auth-card--vector {
+  width: 440px;
+  padding-top: 110px;
+  position: relative;
+  overflow: visible;
+}
+
+.auth-card__brand {
+  position: absolute;
+  top: -100px;
+  left: var(--space-6);
+  right: var(--space-6);
+  height: 190px;
+  pointer-events: none;
+}
+
+.auth-card__logo-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 190px;
+  height: 190px;
+}
+
+.auth-card__logo {
+  width: 100%;
+  height: 100%;
+  border: 4px solid #1A1A1A;
+  background: #FFFFFF;
+  display: block;
+  object-fit: contain;
+}
+
+.auth-card__plus {
+  position: absolute;
+  top: -32px;
+  right: -36px;
+  width: 72px;
+  height: 72px;
+}
+
+.auth-card__plus::before,
+.auth-card__plus::after {
+  content: "";
+  position: absolute;
+  background: #ee2a2a;
+}
+
+.auth-card__plus::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 20px;
+  transform: translateY(-50%);
+}
+
+.auth-card__plus::after {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  transform: translateX(-50%);
+}
+
+.auth-card__wordmark {
+  position: absolute;
+  top: 130px;
+  right: 0;
+  text-align: right;
+  font-family: var(--font-sans);
+  line-height: 1.1;
+}
+
+.auth-card__wordmark-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-subtle);
+  display: block;
+}
+
+.auth-card__wordmark-version {
+  font-size: 13px;
+  color: var(--ink-subtle);
+  display: block;
+  margin-top: 4px;
+}
+
+.auth-card--vector .form__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.auth-card--vector .form__input {
+  background: var(--info-bg);
+  height: 48px;
+  font-size: 15px;
+  border-color: var(--border-strong);
+}
+
+.auth-card--vector .form__input:focus {
+  background: var(--info-bg);
+  border-color: var(--ink);
+}
+
+.auth-card--vector .btn--primary {
+  height: 56px;
+  font-size: 16px;
+}
+
+.auth-card--vector .auth-card__link {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
 .auth-card__title {
   font-family: var(--font-sans);
   font-size: var(--text-md);
@@ -2581,6 +2700,131 @@ table.tbl tbody tr:hover td {
   padding: 0 16px;
 }
 
+/* Palette flyout — hover the trigger to reveal a swatch-grid panel
+   docked to the LEFT of the avatar dropdown (which itself is right-anchored). */
+.avatar-menu__palette-group {
+  position: relative;
+}
+
+.avatar-menu__palette-trigger {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.avatar-menu__palette-trigger .sidebar-item__label {
+  flex: 1 1 auto;
+}
+
+.avatar-menu__chev {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  margin-left: 6px;
+}
+
+.avatar-menu__flyout {
+  position: absolute;
+  top: 0;
+  /* Overlap the trigger's left edge by 1px so the cursor can never
+     fall through a sub-pixel gap between trigger and flyout
+     (mouseLeave on the group would close the panel). */
+  right: calc(100% - 1px);
+  min-width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: var(--space-2) 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-menu__flyout-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 2px 16px 8px 16px;
+  border-bottom: 1px solid var(--line-1);
+  margin-bottom: 8px;
+}
+
+.avatar-menu__flyout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 12px 6px 12px;
+}
+
+.avatar-menu__flyout-error {
+  margin: 6px 12px 10px 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-2);
+}
+
+.palette-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+
+.palette-card:hover {
+  border-color: var(--ink-1);
+  background: var(--surface-sunken);
+}
+
+.palette-card--active {
+  border-color: var(--ink-1);
+  background: var(--surface-sunken);
+}
+
+.palette-card__swatches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border: 1px solid var(--line-1);
+  overflow: hidden;
+}
+
+.palette-card__swatch {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.palette-card__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-1);
+  line-height: 1.2;
+}
+
 /* ============================================================
    Dashboard tiles (Vector kit)
    - Outer grid auto-wraps to a single column on narrow screens.
@@ -2719,6 +2963,563 @@ table.tbl tbody tr:hover td {
 
 .chart-legend__swatch--cmp {
   background: var(--ink-muted);
+}
+
+/* ----------- Petal chart (Vector neutral palette) -----------
+   Eight rounded petals radiating from a small core. Petal length
+   scales with value; tone slot picks a warm-neutral fill so the
+   chart respects "no decorative colour". */
+.chart-card--petal {
+  align-items: center;
+}
+
+/* Half-width chart card — caps the card around 50% of the dashboard
+   so charts that read fine at smaller scale (e.g. the probability
+   ladder) don't visually dominate full-width rows. The SVG inside
+   scales down via its viewBox; min-width keeps it usable on narrow
+   screens. */
+.chart-card--half {
+  max-width: 720px;
+  width: 100%;
+}
+
+.petal-chart {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  display: block;
+}
+
+.petal-chart__petal {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: opacity 160ms ease;
+}
+
+.petal-chart__petal:hover {
+  opacity: 0.82;
+}
+
+.petal-chart__petal--tone-1 { fill: var(--surface); }
+.petal-chart__petal--tone-2 { fill: var(--surface-sunken); }
+.petal-chart__petal--tone-3 { fill: var(--border); }
+.petal-chart__petal--tone-4 { fill: var(--border-strong); }
+
+.petal-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.petal-chart__value {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.petal-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+/* Auto-contrast flip: text overlays the petal of the same tone, so
+   tones 1–2 (light fills) keep dark text, tones 3–4 (dark fills) flip
+   to --ink-contrast. Theme packs redefine --ink-contrast so the flip
+   stays correct on any palette. See AUTO-CONTRAST CHART TEXT note
+   further down the file. */
+.petal-chart__value--tone-1,
+.petal-chart__value--tone-2 { fill: var(--ink); }
+.petal-chart__value--tone-3,
+.petal-chart__value--tone-4 { fill: var(--ink-contrast); }
+
+.petal-chart__label--tone-1,
+.petal-chart__label--tone-2 { fill: var(--ink-muted); }
+.petal-chart__label--tone-3,
+.petal-chart__label--tone-4 { fill: var(--ink-contrast); }
+
+/* ----------- Filled petal chart -----------
+   N equilateral outer petals (track) with an inner petal (fill)
+   scaled by value%. Inner stroke uses non-scaling-stroke in markup
+   so its visible edge width matches the outer petal exactly. */
+.filled-petal-chart {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  display: block;
+}
+
+.filled-petal-chart__outer {
+  fill: var(--surface-sunken);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.filled-petal-chart__inner {
+  fill: var(--ink-faint);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: opacity 160ms ease;
+}
+
+.filled-petal-chart__inner:hover {
+  opacity: 0.85;
+}
+
+.filled-petal-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.filled-petal-chart__value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.filled-petal-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+/* ----------- Raydale chart -----------
+   Radial polygon plot across N axes. Two harmonic tone slots:
+   tone-1 = brand accent (front), tone-2 = ink (behind). Both use
+   the soft-fill / strong-stroke pairing so any active theme keeps
+   the two series visually distinct without going outside palette. */
+.raydale-chart {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.raydale-chart__ring {
+  fill: none;
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+}
+
+.raydale-chart__spoke {
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+}
+
+.raydale-chart__tick {
+  stroke: var(--ink-muted);
+  stroke-width: 1;
+}
+
+.raydale-chart__poly {
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  transition: opacity 160ms ease;
+}
+
+.raydale-chart__poly:hover {
+  opacity: 0.85;
+}
+
+.raydale-chart__poly--tone-1 {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.raydale-chart__poly--tone-2 {
+  fill: var(--ink-faint);
+  stroke: var(--ink);
+}
+
+.raydale-chart__dot--tone-1 {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.raydale-chart__dot--tone-2 {
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+
+.raydale-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+/* PREVIEW-ONLY host wrap + re-roll button (only mounted when the
+   `randomize` prop is set). Sits in the top-right of the chart card
+   so it doesn't intrude on real-data renders. */
+.raydale-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.raydale-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.raydale-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* PREVIEW-ONLY shared host + re-roll button used by every other chart
+   when its `randomize` prop is set. Same visual contract as the raydale
+   pair above; one set of rules so all preview controls stay aligned. */
+.chart-demo-host {
+  position: relative;
+  width: 100%;
+}
+
+.chart-demo-reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.chart-demo-reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* ===================================================================
+   AUTO-CONTRAST CHART TEXT (hard rule — all charts)
+   -------------------------------------------------------------------
+   Chart text elements that sit OVER a coloured fill must flip their
+   own fill so dark text appears on light fills and light text appears
+   on dark fills. The chart component owns this: when it paints a
+   <text> over a segment of tone N, it tags the text with the matching
+   tone modifier (e.g. `petal-chart__value--tone-3`). The per-chart
+   rules below map each tone modifier to either `var(--ink)` (dark
+   text, used on light tones) or `var(--ink-contrast)` (light text,
+   used on dark tones). Theme packs redefine `--ink-contrast` so the
+   flip remains correct on any palette.
+
+   Text that sits OUTSIDE the chart geometry (axis labels, donut
+   leader-line callouts, raydale axis labels) does NOT need a flip —
+   it lives on the page surface and uses the default ink token.
+
+   When you scaffold a new chart via the <chart> skill, decide per
+   text element: does it overlay a tone? If yes, thread the tone
+   number into the className modifier and add the matching CSS
+   mapping below the chart's base text rule. If no, leave it as a
+   single rule with `fill: var(--ink…)`.
+   =================================================================== */
+
+/* ----------- Fill petal equal chart -----------
+   N pie-wedge petals filling 360°. Adjacent petals share radial
+   boundaries (no spokes). Inner petal occupies the same angular
+   slot and grows radially with value/max. */
+.fill-petal-equal-chart {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  display: block;
+}
+
+.fill-petal-equal-chart__outer {
+  fill: var(--surface-sunken);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.fill-petal-equal-chart__inner {
+  fill: var(--ink-faint);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: opacity 160ms ease;
+}
+
+.fill-petal-equal-chart__inner:hover {
+  opacity: 0.85;
+}
+
+.fill-petal-equal-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.fill-petal-equal-chart__value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.fill-petal-equal-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+/* ----------- Fill petal equal chart, rounded -----------
+   Same pie-wedge geometry as fill-petal-equal-chart, but every corner
+   is filleted so the petals form a soft, scalloped flower. */
+.fill-petal-equal-rounded-chart {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  display: block;
+}
+
+.fill-petal-equal-rounded-chart__outer {
+  fill: var(--surface-sunken);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.fill-petal-equal-rounded-chart__inner {
+  fill: var(--ink-faint);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: opacity 160ms ease;
+}
+
+.fill-petal-equal-rounded-chart__inner:hover {
+  opacity: 0.85;
+}
+
+.fill-petal-equal-rounded-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.fill-petal-equal-rounded-chart__value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.fill-petal-equal-rounded-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+/* ----------- Concentric arc chart -----------
+   N concentric rings sweeping clockwise from 12 o'clock by value/max.
+   Track shows full ring at low contrast; tone slot graduates the
+   stroke colour by ring index. */
+.concentric-arc-chart {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  display: block;
+}
+
+.concentric-arc-chart__track {
+  fill: none;
+  stroke: var(--border);
+  opacity: 0.55;
+}
+
+.concentric-arc-chart__arc {
+  fill: none;
+  stroke-linecap: round;
+  transition: opacity 160ms ease;
+}
+
+.concentric-arc-chart__arc:hover {
+  opacity: 0.85;
+}
+
+.concentric-arc-chart__arc--tone-1 { stroke: var(--ink-faint); }
+.concentric-arc-chart__arc--tone-2 { stroke: var(--border-strong); }
+.concentric-arc-chart__arc--tone-3 { stroke: var(--ink-subtle); }
+.concentric-arc-chart__arc--tone-4 { stroke: var(--ink-muted); }
+
+.concentric-arc-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.concentric-arc-chart__value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.concentric-arc-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+.concentric-arc-chart__rule {
+  stroke: var(--ink-muted);
+  stroke-width: 1;
+}
+
+/* ----------- Concentric arc chart, non-closed -----------
+   Same geometry as concentric-arc-chart but with no background track,
+   so under-filled arcs read as open sweeps rather than partial rings. */
+.concentric-arc-nc-chart {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  display: block;
+}
+
+.concentric-arc-nc-chart__arc {
+  fill: none;
+  stroke-linecap: round;
+  transition: opacity 160ms ease;
+}
+
+.concentric-arc-nc-chart__arc:hover {
+  opacity: 0.85;
+}
+
+.concentric-arc-nc-chart__arc--tone-1 { stroke: var(--ink-faint); }
+.concentric-arc-nc-chart__arc--tone-2 { stroke: var(--border-strong); }
+.concentric-arc-nc-chart__arc--tone-3 { stroke: var(--ink-subtle); }
+.concentric-arc-nc-chart__arc--tone-4 { stroke: var(--ink-muted); }
+
+.concentric-arc-nc-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.concentric-arc-nc-chart__value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.concentric-arc-nc-chart__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+.concentric-arc-nc-chart__rule {
+  stroke: var(--ink-muted);
+  stroke-width: 1;
+}
+
+/* ----------- Donut chart -----------
+   Single ring of N segments proportional to value. Six graduated
+   warm-neutral tone slots cycle by index; one slice can be flagged
+   highlight for the accent stroke + leader-line callout. */
+.donut-chart {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  display: block;
+}
+
+.donut-chart__seg {
+  fill: none;
+  stroke-linecap: butt;
+  transition: opacity 160ms ease;
+}
+
+.donut-chart__seg:hover {
+  opacity: 0.85;
+}
+
+.donut-chart__seg--tone-1 { stroke: var(--surface-sunken); }
+.donut-chart__seg--tone-2 { stroke: var(--ink-faint); }
+.donut-chart__seg--tone-3 { stroke: var(--border); }
+.donut-chart__seg--tone-4 { stroke: var(--border-strong); }
+.donut-chart__seg--tone-5 { stroke: var(--ink-subtle); }
+.donut-chart__seg--tone-6 { stroke: var(--ink-muted); }
+.donut-chart__seg--accent { stroke: var(--accent); }
+
+.donut-chart__leader {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 1;
+}
+
+.donut-chart__label-pct {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  fill: var(--ink);
+}
+
+.donut-chart__label-pct--accent {
+  font-size: 15px;
+  fill: var(--accent);
+}
+
+.donut-chart__label-name {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+
+.donut-chart__label-name--accent {
+  fill: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+
+/* Multi-chart row: auto-fits 1–4 columns based on width. */
+.dashboard-charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-4);
 }
 
 .chart-tooltip {
@@ -3632,6 +4433,94 @@ table.tbl tbody tr:hover td {
   font-variant-numeric: tabular-nums;
 }
 
+/* Theme packs — two-button surface for swapping the global stylesheet
+   on the fly. One button per pack: shows label + 4 representative
+   swatches + Active/Apply state. */
+.theme-packs__grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+.theme-packs__error {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-2);
+}
+
+.theme-pack-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.theme-pack-btn:hover {
+  background: var(--surface-sunken);
+}
+
+.theme-pack-btn--active {
+  border-color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+.theme-pack-btn__swatches {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.theme-pack-btn__swatch {
+  width: 28px;
+  height: 56px;
+  display: block;
+}
+
+.theme-pack-btn__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-pack-btn__label {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.theme-pack-btn__desc {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.theme-pack-btn__state {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.theme-pack-btn--active .theme-pack-btn__state {
+  color: var(--ink);
+}
+
 /* ============================================================
    Theme maker — input panel (story 00106)
    ============================================================ */
@@ -3961,6 +4850,20 @@ table.tbl tbody tr:hover td {
   font-size: 13px;
   color: var(--ink-2);
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-preview__description-heading {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+.model-preview__description-para {
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .model-preview__meta {
@@ -5207,6 +6110,105 @@ table.tbl tbody tr:hover td {
   min-width: 0;
 }
 
+/* === Ladder chart ===
+   Probability ladder matrix — rows = entities (teams, candidates),
+   columns = outcome ranks. Cell intensity is driven by the
+   --ladder-cell-tone CSS custom property set per cell from the
+   component (the only "dynamic" surface; classes own everything
+   else). Cells use --accent so the heatmap restyles with the
+   active theme pack; one cell per render may be highlighted via
+   --warning to mark a focal outcome.
+*/
+.ladder-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.ladder-chart__colsep {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+.ladder-chart__colhead {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ladder-chart__rowlabel {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  fill: var(--ink-muted);
+}
+
+.ladder-chart__cell {
+  fill: var(--accent);
+  fill-opacity: var(--ladder-cell-tone, 0.08);
+  transition: fill-opacity 120ms ease;
+}
+
+.ladder-chart__cell--max {
+  fill: var(--accent);
+  fill-opacity: 1;
+}
+
+.ladder-chart__cell--highlight {
+  fill: var(--warning);
+  fill-opacity: 1;
+}
+
+.ladder-chart__cellnum {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.ladder-chart__cellnum--on-solid {
+  fill: var(--ink-contrast);
+}
+
+/* PREVIEW-ONLY host wrap + re-roll button (mounted only when
+   `randomize` is set). Matches the raydale-chart-host pattern so
+   the catalog page reads consistently across chart families. */
+.ladder-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.ladder-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.ladder-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
 /* Table row skeleton — mirrors LayersTable row (drag handle + name + tag + desc) */
 .skeleton-table-row {
   display: flex;
@@ -5237,5 +6239,905 @@ table.tbl tbody tr:hover td {
 .skeleton-svg {
   display: block;
   border-radius: 0;
+}
+
+/* === Journey dome chart ===
+   Semicircular concentric-stage chart. N rings stack from a small
+   central title core out to an outer ring; each ring carries a
+   curved label (rendered via <textPath>) plus an icon callout that
+   sits outside the dome on a satellite ring. Ring tones step from
+   --ink-faint (outermost) to --ink (innermost) so the eye is drawn
+   inward toward the title. No brand colour — the dome reads as
+   layered ink depth.
+*/
+.journey-dome-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.journey-dome-chart__ring {
+  stroke: none;
+}
+
+/* Tone slots — outermost = lightest, innermost = nearly solid.
+   Mirrors the concentric-arc-chart tone progression so the two
+   chart families look harmonised when placed in the same row. */
+.journey-dome-chart__ring--tone-1 { fill: var(--ink-faint); }
+.journey-dome-chart__ring--tone-2 { fill: var(--border-strong); }
+.journey-dome-chart__ring--tone-3 { fill: var(--ink-subtle); }
+.journey-dome-chart__ring--tone-4 { fill: var(--ink-muted); }
+.journey-dome-chart__ring--tone-5 { fill: var(--ink); }
+
+.journey-dome-chart__label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.10em;
+}
+
+/* AUTO-CONTRAST flip — light ring tones (1-3) get dark ink text;
+   dark ring tones (4-5) get the contrast token (light text on
+   default theme, dark text on inverted theme packs). Tone slots
+   match the ring tone classes above. */
+.journey-dome-chart__label--tone-1 { fill: var(--ink); }
+.journey-dome-chart__label--tone-2 { fill: var(--ink); }
+.journey-dome-chart__label--tone-3 { fill: var(--ink); }
+.journey-dome-chart__label--tone-4 { fill: var(--ink-contrast); }
+.journey-dome-chart__label--tone-5 { fill: var(--ink-contrast); }
+
+.journey-dome-chart__core {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.journey-dome-chart__title {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  fill: var(--ink-muted);
+  letter-spacing: 0.14em;
+}
+
+.journey-dome-chart__leader {
+  stroke: var(--border);
+  stroke-width: 1;
+  fill: none;
+}
+
+.journey-dome-chart__icon-bg {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.journey-dome-chart__icon-glyph {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  fill: var(--ink);
+}
+
+/* PREVIEW-ONLY host wrap + re-roll button (mounted only when
+   `randomize` is set). Matches the raydale-chart-host pattern. */
+.journey-dome-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.journey-dome-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+.journey-dome-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* === SankeyFlow chart ===
+   2-layer flow diagram. Source bars line the top; destination bars
+   line the bottom; bezier curves carry weight between them. Sources
+   step through a 4-tone ink gradient (--tone-1 lightest → --tone-4
+   darkest) so the eye can trace each origin's contribution. Brand
+   color is reserved for the single highlighted destination. Labels
+   sit OUTSIDE the chart geometry on the card surface, so they use
+   ink tokens directly with no auto-contrast flip. */
+.sankeyflow-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.sankeyflow-chart__sourcebar {
+  stroke: var(--border);
+  stroke-width: 0.5;
+}
+
+.sankeyflow-chart__sourcebar--tone-1 { fill: var(--ink-faint); }
+.sankeyflow-chart__sourcebar--tone-2 { fill: var(--ink-subtle); }
+.sankeyflow-chart__sourcebar--tone-3 { fill: var(--ink-muted); }
+.sankeyflow-chart__sourcebar--tone-4 { fill: var(--ink); }
+
+.sankeyflow-chart__sourcelabel {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+
+.sankeyflow-chart__flow {
+  fill: none;
+  /* butt (not round) — round caps extend a half-circle of radius
+     stroke-width/2 PAST the endpoint, which protrudes above the
+     destination bar and below the source bar. butt terminates the
+     stroke flush with the bar edge so the bars cover every endpoint. */
+  stroke-linecap: butt;
+  transition: stroke-opacity 120ms ease;
+}
+
+/* Flow tones echo the source bar tones but at low opacity so the
+   bundle reads as a hazy diffuse fan rather than hard ribbons. */
+.sankeyflow-chart__flow--tone-1 {
+  stroke: var(--ink-faint);
+  stroke-opacity: 0.55;
+}
+
+.sankeyflow-chart__flow--tone-2 {
+  stroke: var(--ink-subtle);
+  stroke-opacity: 0.42;
+}
+
+.sankeyflow-chart__flow--tone-3 {
+  stroke: var(--ink-muted);
+  stroke-opacity: 0.32;
+}
+
+.sankeyflow-chart__flow--tone-4 {
+  stroke: var(--ink);
+  stroke-opacity: 0.24;
+}
+
+.sankeyflow-chart__destbar {
+  fill: var(--ink-muted);
+  /* 1px ink border on every destination box. --ink is the theme's
+     "near-black" (literal #000 under vector-mono, #1A1A1A under
+     default), so the rule stays true to the request on every pack. */
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.sankeyflow-chart__destbar--highlight {
+  fill: var(--accent);
+  /* Inherits stroke from the base rule above so the highlighted box
+     keeps the same 1px ink border as its peers. */
+}
+
+.sankeyflow-chart__destlabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+.sankeyflow-chart__destlabel--highlight {
+  fill: var(--accent);
+  font-weight: var(--weight-medium);
+}
+
+/* PREVIEW-ONLY host wrap + re-roll button (mounted only when
+   `randomize` is set). Matches the raydale-chart-host pattern. */
+.sankeyflow-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.sankeyflow-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.sankeyflow-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* === Portfolio graph chart ===
+   Force-directed node-link diagram for the Vector portfolio
+   hierarchy. Drop-down picks the root level (Workspaces → Tasks),
+   click a node to expand its children, drag to organise. Spring
+   physics keeps edges taut while nodes settle. Node tones step from
+   --ink-faint (root, depth 0) through --ink (deepest visible, depth
+   4+) so the eye can read hierarchy depth at a glance. The +/−
+   glyph inside parent nodes uses the AUTO-CONTRAST tone flip. */
+.portfolio-graph-host {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.portfolio-graph__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.portfolio-graph__select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.portfolio-graph__select-label {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: var(--weight-medium);
+}
+
+.portfolio-graph__select {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.portfolio-graph__select:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.portfolio-graph__btn {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.portfolio-graph__btn:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.portfolio-graph__btn--reroll {
+  margin-left: auto;
+  width: 30px;
+  padding: 0;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.portfolio-graph {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.portfolio-graph__edge {
+  stroke: var(--border-strong);
+  stroke-width: 1.25;
+  fill: none;
+}
+
+.portfolio-graph__node {
+  cursor: grab;
+}
+
+.portfolio-graph__node:active {
+  cursor: grabbing;
+}
+
+.portfolio-graph__node-bg {
+  stroke: var(--border);
+  stroke-width: 1;
+  transition: stroke 120ms ease;
+}
+
+.portfolio-graph__node:hover .portfolio-graph__node-bg {
+  stroke: var(--ink);
+}
+
+/* Tone slots — depth from root step from light → dark so users
+   can read tree depth at a glance. Mirrors the journey-dome ring
+   tone progression for visual harmony across radial-ish shapes. */
+.portfolio-graph__node-bg--tone-1 { fill: var(--ink-faint); }
+.portfolio-graph__node-bg--tone-2 { fill: var(--border-strong); }
+.portfolio-graph__node-bg--tone-3 { fill: var(--ink-subtle); }
+.portfolio-graph__node-bg--tone-4 { fill: var(--ink-muted); }
+.portfolio-graph__node-bg--tone-5 { fill: var(--ink); }
+
+.portfolio-graph__node-glyph {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: var(--weight-medium);
+  pointer-events: none;
+}
+
+/* AUTO-CONTRAST flip — light tones (1-3) get dark ink glyph;
+   dark tones (4-5) get the contrast token. Tone slots match
+   the node-bg classes above. */
+.portfolio-graph__node-glyph--tone-1 { fill: var(--ink); }
+.portfolio-graph__node-glyph--tone-2 { fill: var(--ink); }
+.portfolio-graph__node-glyph--tone-3 { fill: var(--ink); }
+.portfolio-graph__node-glyph--tone-4 { fill: var(--ink-contrast); }
+.portfolio-graph__node-glyph--tone-5 { fill: var(--ink-contrast); }
+
+.portfolio-graph__node-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+  pointer-events: none;
+}
+
+/* Level-tag prefix sits inline before each node label (e.g. "FE - First-run wizard").
+   Painted in the active accent so users can scan hierarchy depth at a glance,
+   even when the label text reads as muted ink. */
+.portfolio-graph__node-tag {
+  fill: var(--accent);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+}
+
+/* === PercentileDot chart ===
+   Distribution dot plot. Each row carries a low / mid / high triple
+   joined by a thin connector line; rows sort top-down by spread so
+   the most uneven entities float to the top. All text sits in the
+   left gutter or above the plot — outside the plotted geometry —
+   so labels use ink tokens directly with no auto-contrast flip.
+   Dots use three harmonic tones: low + mid pull from the ink scale
+   so they read as paired data, while the high-tail dot picks up the
+   brand accent because that's the figure most users actually quote
+   ("the top of the range"). */
+.pctdot-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.pctdot-chart__axis-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  fill: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.pctdot-chart__bracket {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+  text-anchor: end;
+  letter-spacing: 0.02em;
+}
+
+.pctdot-chart__grid {
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.pctdot-chart__tick {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+.pctdot-chart__rowlabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink);
+}
+
+.pctdot-chart__connector {
+  stroke: var(--ink-subtle);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.pctdot-chart__dot {
+  stroke: var(--surface);
+  stroke-width: 1;
+  transition: opacity 160ms ease;
+}
+
+.pctdot-chart__dot:hover {
+  opacity: 0.82;
+}
+
+/* Tone slots — low / mid / high. Brand accent reserved for the
+   high-tail dot only; the spread endpoints lean on ink so the
+   median reads as the centre of mass without competing for
+   attention. */
+.pctdot-chart__dot--tone-1 { fill: var(--ink-muted); }
+.pctdot-chart__dot--tone-2 { fill: var(--ink); }
+.pctdot-chart__dot--tone-3 { fill: var(--accent); }
+
+/* PREVIEW-ONLY host wrap + re-roll button (mounted only when
+   `randomize` is set). Matches the raydale-chart-host pattern. */
+.pctdot-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.pctdot-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.pctdot-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* === HorizontalStack chart ===
+   100% horizontal stacked bar — categories down the Y axis, four series
+   stacked across each row to a fixed 100% width. Tones reuse the warm-
+   neutral slot ladder (surface → surface-sunken → border → border-strong).
+   All text in this chart sits OUTSIDE the bar fills (title, legend,
+   category labels, axis ticks) so per-tone flip is not required.
+   ============================================================ */
+.horizontal-stack-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.horizontal-stack-chart__title {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: var(--weight-medium);
+  fill: var(--ink);
+}
+
+.horizontal-stack-chart__legend-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+  dominant-baseline: middle;
+}
+
+.horizontal-stack-chart__swatch--tone-1 { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+.horizontal-stack-chart__swatch--tone-2 { fill: var(--surface-sunken); stroke: var(--border); stroke-width: 1; }
+.horizontal-stack-chart__swatch--tone-3 { fill: var(--border); }
+.horizontal-stack-chart__swatch--tone-4 { fill: var(--border-strong); }
+
+.horizontal-stack-chart__grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.4;
+}
+
+.horizontal-stack-chart__axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.horizontal-stack-chart__category {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink);
+}
+
+.horizontal-stack-chart__tick {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+.horizontal-stack-chart__segment {
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+.horizontal-stack-chart__segment--tone-1 { fill: var(--surface); }
+.horizontal-stack-chart__segment--tone-2 { fill: var(--surface-sunken); }
+.horizontal-stack-chart__segment--tone-3 { fill: var(--border); }
+.horizontal-stack-chart__segment--tone-4 { fill: var(--border-strong); }
+
+/* === Diverging heatmap chart ============================
+   Sparse two-pole heatmap matrix. Cells with positive values
+   paint with --heat-warm (semantic --danger), negatives with
+   --heat-cool (semantic --info); intensity rides on the
+   per-cell --heatmap-cell-tone CSS custom property. Empty
+   cells render no rect at all (the component returns null),
+   so the matrix can be sparse without faux-zeros bleeding
+   into the canvas. Brand color is intentionally NOT used —
+   this chart's whole point is the diverging signal, not a
+   highlight slot. Row + column labels live outside the
+   geometry so they keep --ink-muted without a contrast flip.
+   ============================================================ */
+.diverging-heatmap-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.diverging-heatmap-chart__colhead {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+
+.diverging-heatmap-chart__rowlabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  fill: var(--ink-muted);
+}
+
+.diverging-heatmap-chart__cell {
+  opacity: var(--heatmap-cell-tone, 1);
+  transition: opacity 120ms ease, stroke 120ms ease;
+  stroke: transparent;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.diverging-heatmap-chart__cell--warm {
+  fill: var(--heat-warm, var(--danger));
+}
+
+.diverging-heatmap-chart__cell--cool {
+  fill: var(--heat-cool, var(--info));
+}
+
+/* Hovered cell — outline in ink so the focal cell stays legible
+   regardless of its own opacity. Force opacity to 1 so faint cells
+   don't disappear under the stroke. */
+.diverging-heatmap-chart__cell--hover {
+  opacity: 1;
+  stroke: var(--ink);
+}
+
+/* Tooltip — absolutely positioned in the host wrapper, anchored to
+   the cursor with a small offset so it doesn't sit under the pointer.
+   pointer-events: none keeps it from stealing hover from cells
+   beneath it when the cursor moves under it. */
+.diverging-heatmap-chart__tooltip {
+  position: absolute;
+  transform: translate(12px, 12px);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(from var(--ink) r g b / 0.08);
+}
+
+.diverging-heatmap-chart__tooltip-row {
+  font-weight: var(--weight-medium);
+}
+
+.diverging-heatmap-chart__tooltip-col {
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+.diverging-heatmap-chart__tooltip-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+}
+
+.diverging-heatmap-chart__tooltip-value--warm {
+  color: var(--heat-warm, var(--danger));
+}
+
+.diverging-heatmap-chart__tooltip-value--cool {
+  color: var(--heat-cool, var(--info));
+}
+
+/* Host wrap — always mounted so the cursor-anchored tooltip has
+   a positioned ancestor. The re-roll button inside is preview-only
+   and only renders when the `randomize` prop is set. */
+.diverging-heatmap-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.diverging-heatmap-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.diverging-heatmap-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* === AdjacencyMatrix chart ============================================
+   Categorical adjacency matrix (symmetric, diagonal-empty). Cells hold
+   ordinal "priority" levels rendered as ink dots — radius carries the
+   primary signal, ink saturation amplifies it on a secondary axis. The
+   brand accent is reserved for the single highlighted focal cell so it
+   stays visually exclusive across the chart. */
+.adjacency-matrix-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.adjacency-matrix-chart__gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.adjacency-matrix-chart__diagonal {
+  fill: var(--surface-sunken, var(--surface));
+}
+
+.adjacency-matrix-chart__rowlabel,
+.adjacency-matrix-chart__collabel {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  fill: var(--ink-muted);
+  text-transform: uppercase;
+}
+
+.adjacency-matrix-chart__legend-title {
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  fill: var(--ink);
+  text-transform: uppercase;
+}
+
+.adjacency-matrix-chart__legend-text {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  fill: var(--ink-muted);
+  text-transform: uppercase;
+}
+
+/* Ordinal dot tones — radius is set inline (categorical signal); the
+   class controls colour. Level 1 (MAYBE) → faintest ink; level 3
+   (MUST) → full ink. Theme packs swap --ink/--ink-muted/--ink-subtle
+   so the same ranking holds on every palette. */
+.adjacency-matrix-chart__dot {
+  fill: var(--ink);
+  transition: fill 120ms ease;
+}
+
+.adjacency-matrix-chart__dot--level-1 {
+  fill: var(--ink-subtle);
+}
+
+.adjacency-matrix-chart__dot--level-2 {
+  fill: var(--ink-muted);
+}
+
+.adjacency-matrix-chart__dot--level-3 {
+  fill: var(--ink);
+}
+
+/* Brand-accent override — single focal cell. Sits LAST so it wins
+   regardless of level. */
+.adjacency-matrix-chart__dot--highlight {
+  fill: var(--accent);
+}
+
+.adjacency-matrix-chart-host {
+  position: relative;
+  width: 100%;
+}
+
+.adjacency-matrix-chart__reroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.adjacency-matrix-chart__reroll:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.adjacency-matrix-chart__hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.adjacency-matrix-chart__hit--hover {
+  stroke: var(--ink);
+  fill: rgb(from var(--ink) r g b / 0.04);
+}
+
+.adjacency-matrix-chart__tooltip {
+  position: absolute;
+  transform: translate(12px, 12px);
+  pointer-events: none;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border-strong, var(--border));
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(from var(--ink) r g b / 0.12);
+  z-index: 2;
+}
+
+.adjacency-matrix-chart__tooltip-row {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.adjacency-matrix-chart__tooltip-col {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.adjacency-matrix-chart__tooltip-value {
+  margin-top: 2px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.adjacency-matrix-chart__tooltip-value--level-3 {
+  color: var(--accent);
+}
+
+.adjacency-matrix-chart__tooltip-value--level-2 {
+  color: var(--ink);
+}
+
+.adjacency-matrix-chart__tooltip-value--level-1 {
+  color: var(--ink-muted);
+}
+
+/* === BarGrid3D chart ===
+   Interactive 3D bar grid rendered with three.js + @react-three/fiber.
+   This chart deliberately deviates from the SVG-only norm — the host
+   wrapper just sizes the WebGL canvas; all bar/colour rendering is
+   driven inside the component via getComputedStyle on theme tokens.
+   ============================================================ */
+.bargrid3d-chart {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  cursor: grab;
+  background: transparent;
+}
+
+.bargrid3d-chart:active {
+  cursor: grabbing;
+}
+
+.bargrid3d-chart canvas {
+  display: block;
+  outline: none;
+  border-radius: var(--radius-md, 6px);
 }
 

@@ -1,4 +1,22 @@
 import PageShell from "@/app/components/PageShell";
+import PetalChart from "@/app/components/PetalChart";
+import FilledPetalChart from "@/app/components/FilledPetalChart";
+import FillPetalEqualChart from "@/app/components/FillPetalEqualChart";
+import FillPetalEqualChartRounded from "@/app/components/FillPetalEqualChartRounded";
+import RaydaleChart from "@/app/components/RaydaleChart";
+import ConcentricArcChart from "@/app/components/ConcentricArcChart";
+import ConcentricArcChartNonClosed from "@/app/components/ConcentricArcChartNonClosed";
+import DonutChart from "@/app/components/DonutChart";
+import ThroughputChart from "@/app/components/ThroughputChart";
+import LadderChart from "@/app/components/LadderChart";
+import SankeyFlowChart from "@/app/components/SankeyFlowChart";
+import JourneyDomeChart from "@/app/components/JourneyDomeChart";
+import PortfolioGraphChart from "@/app/components/PortfolioGraphChart";
+import HorizontalStackChart from "@/app/components/HorizontalStackChart";
+import PercentileDotChart from "@/app/components/PercentileDotChart";
+import DivergingHeatmapChart from "@/app/components/DivergingHeatmapChart";
+import AdjacencyMatrixChart from "@/app/components/AdjacencyMatrixChart";
+import BarGrid3DChart from "@/app/components/BarGrid3DChart";
 
 // Phase 1 dashboard layout (Vector kit). Real data wiring lands in
 // later cards; for now the page demonstrates the metric-tile grid
@@ -27,27 +45,153 @@ export default function Dashboard() {
       </div>
 
       <h3 className="eyebrow" style={{ marginTop: "var(--space-8)" }}>
-        Throughput (last 12 weeks)
+        Portfolio dimensions
       </h3>
-      <div className="card chart-card">
-        {/* Inline mini-chart: two series (primary --ink, comparison
-            --ink-muted), dashed --border gridlines, --ink-subtle
-            axis labels. Brand colour never used. */}
-        <svg viewBox="0 0 600 200" className="chart-card__svg" role="img" aria-label="Throughput line chart">
-          <g className="chart-grid">
-            <line x1="40" y1="40"  x2="580" y2="40"  />
-            <line x1="40" y1="100" x2="580" y2="100" />
-            <line x1="40" y1="160" x2="580" y2="160" />
-          </g>
-          <text x="32" y="44"  className="chart-axis" textAnchor="end">100</text>
-          <text x="32" y="104" className="chart-axis" textAnchor="end">50</text>
-          <text x="32" y="164" className="chart-axis" textAnchor="end">0</text>
-          <polyline className="chart-series chart-series--cmp" points="40,150 90,140 140,135 190,120 240,125 290,110 340,118 390,100 440,95 490,90 540,82 580,75" />
-          <polyline className="chart-series chart-series--pri" points="40,160 90,148 140,140 190,118 240,110 290,90 340,95 390,72 440,68 490,55 540,48 580,38" />
-        </svg>
-        <div className="chart-card__legend">
-          <span className="chart-legend"><span className="chart-legend__swatch chart-legend__swatch--pri" /> This quarter</span>
-          <span className="chart-legend"><span className="chart-legend__swatch chart-legend__swatch--cmp" /> Last quarter</span>
+      <div className="dashboard-charts-row">
+        <div className="card chart-card chart-card--petal">
+          <PetalChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample weighting — petal length reflects relative value across eight dimensions.</span>
+          </div>
+        </div>
+        <div className="card chart-card chart-card--petal">
+          <FilledPetalChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample health — outer petals identical; inner fill scales with each dimension&rsquo;s score (0–100).</span>
+          </div>
+        </div>
+        <div className="card chart-card chart-card--petal">
+          <FillPetalEqualChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample fill — petals occupy equal angular slots and touch at boundaries; inner fill scales with score (0–100).</span>
+          </div>
+        </div>
+        <div className="card chart-card chart-card--petal">
+          <FillPetalEqualChartRounded randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample bloom — same equal-slot fill, with every corner filleted for a softer, flower-like silhouette.</span>
+          </div>
+        </div>
+        <div className="card chart-card chart-card--petal">
+          <RaydaleChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample raydale — two audiences plotted across 17 activity axes; vertex distance from centre = score (0–100). Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 className="eyebrow" style={{ marginTop: "var(--space-8)" }}>
+        Quarterly objectives
+      </h3>
+      <div className="dashboard-charts-row">
+        <div className="card chart-card">
+          <ConcentricArcChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample objectives — each ring sweeps clockwise by completion %, outermost first.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <ConcentricArcChartNonClosed randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Same data, no track — arcs read as open sweeps against the canvas.</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 className="eyebrow" style={{ marginTop: "var(--space-8)" }}>
+        More dimensions
+      </h3>
+      <div className="dashboard-charts-row">
+        <div className="card chart-card">
+          <h4 className="eyebrow">Throughput (last 12 weeks)</h4>
+          <ThroughputChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend"><span className="chart-legend__swatch chart-legend__swatch--pri" /> This quarter</span>
+            <span className="chart-legend"><span className="chart-legend__swatch chart-legend__swatch--cmp" /> Last quarter</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Resource allocation</h4>
+          <DonutChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample allocation — each slice scales with value; the highlighted slice gets a leader-line callout.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Stage journey</h4>
+          <JourneyDomeChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample stage dome — concentric rings represent ordered stages of a journey; icon callouts mark the focal moment of each stage. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Outcome distribution</h4>
+          <LadderChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample probability ladder — each row is an entity&rsquo;s distribution across ranked outcomes; cell intensity scales with probability, the highlighted cell marks a focal cell. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Origin → destination flow</h4>
+          <SankeyFlowChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample sankey — sources line the top, destinations the bottom; bezier curves carry mass between them and the highlighted destination picks up the brand accent. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Portfolio hierarchy</h4>
+          <PortfolioGraphChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample portfolio graph — pick a root level from the dropdown, click a node to expand or collapse its children, drag any node to reorganise. Spring physics pull child nodes along when you move a parent. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Regional sales mix</h4>
+          <HorizontalStackChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample regional split — each row sums to 100% across four series. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Distribution across entities</h4>
+          <PercentileDotChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample percentile dot plot — three dots per row (low, mid, high) joined by a connector line; rows sort top-down by spread so the most uneven entities float to the top. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Performance over time</h4>
+          <DivergingHeatmapChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample diverging heatmap — each row is an entity tracked across time-step columns; cells encode signed magnitude on a warm/cool scale, missing observations render empty. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card">
+          <h4 className="eyebrow">Spatial adjacency</h4>
+          <AdjacencyMatrixChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample adjacency matrix — symmetric across the diagonal; dot size and ink weight encode priority (MUST / SHOULD / MAYBE), brand accent marks the focal pairing. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 className="eyebrow" style={{ marginTop: "var(--space-8)" }}>
+        Source × day breakdown (3D)
+      </h3>
+      <div className="dashboard-charts-row">
+        <div className="card chart-card chart-card--half">
+          <h4 className="eyebrow">Mono — theme tones</h4>
+          <BarGrid3DChart randomize />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample 3D grid (mono) — drag horizontally to rotate; bar height = cell value, row tone cycles the four-tone ladder. Click ↻ to re-roll preview data.</span>
+          </div>
+        </div>
+        <div className="card chart-card chart-card--half">
+          <h4 className="eyebrow">Rainbow — heatmap mode</h4>
+          <BarGrid3DChart randomize colorMode="rainbow" />
+          <div className="chart-card__legend">
+            <span className="chart-legend">Sample 3D grid (rainbow) — same data shape, hue gradient encodes Z so colour conveys magnitude. Opt-in via the colorMode prop. Click ↻ to re-roll preview data.</span>
+          </div>
         </div>
       </div>
 
