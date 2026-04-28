@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
+import { AuthBrand } from "@/app/components/AuthBrand";
 
 function ConfirmForm() {
   const router = useRouter();
@@ -48,10 +49,9 @@ function ConfirmForm() {
 
   if (!token) {
     return (
-      <form className="auth-card" noValidate>
-        <h1 className="auth-card__title">
-          <span className="prefix prefix-pink">+++</span> Missing token
-        </h1>
+      <form className="auth-card auth-card--vector" noValidate>
+        <AuthBrand />
+        <h1 className="auth-card__title">Missing token</h1>
         <p className="auth-card__subtitle">
           This reset link is invalid or incomplete. Request a new one.
         </p>
@@ -61,12 +61,11 @@ function ConfirmForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="auth-card" noValidate>
-      <h1 className="auth-card__title">
-        <span className="prefix prefix-pink">+++</span> Set password
-      </h1>
+    <form onSubmit={onSubmit} className="auth-card auth-card--vector" noValidate>
+      <AuthBrand />
+      <h1 className="auth-card__title">Set password</h1>
       <label className="form__label">
-        New password
+        [1] New password
         <input
           type="password"
           autoComplete="new-password"
@@ -76,7 +75,7 @@ function ConfirmForm() {
         />
       </label>
       <label className="form__label">
-        Confirm
+        [2] Confirm
         <input
           type="password"
           autoComplete="new-password"

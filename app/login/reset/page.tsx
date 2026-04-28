@@ -10,6 +10,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
+import { AuthBrand } from "@/app/components/AuthBrand";
 
 export default function ResetRequestPage() {
   const [email, setEmail] = useState("");
@@ -38,10 +39,9 @@ export default function ResetRequestPage() {
 
   return (
     <div className="auth-page">
-      <form onSubmit={onSubmit} className="auth-card" noValidate>
-        <h1 className="auth-card__title">
-          [01] <span className="prefix prefix-pink">+++</span> Reset password
-        </h1>
+      <form onSubmit={onSubmit} className="auth-card auth-card--vector" noValidate>
+        <AuthBrand />
+        <h1 className="auth-card__title">Reset password</h1>
         {sent ? (
           <p className="auth-card__subtitle">
             If that email exists, a reset link has been sent. Check your inbox (or server log in dev).
@@ -49,7 +49,7 @@ export default function ResetRequestPage() {
         ) : (
           <>
             <label className="form__label">
-              Email
+              [1] Email
               <input
                 type="email"
                 autoComplete="email"
