@@ -1,7 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ResearchMeta } from "@/app/api/dev/research/route";
+
+function pickContrastFor(color: string): string {
+  if (typeof document === "undefined") return "#000";
+  const ctx = (pickContrastFor as any)._ctx as CanvasRenderingContext2D | undefined
+    ?? ((pickContrastFor as any)._ctx = (() => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 1;
+      return c.getContext("2d", { willReadFrequently: true })!;
+    })());
+  ctx.clearRect(0, 0, 1, 1);
+  try { ctx.fillStyle = color; } catch { return "#000"; }
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  // For low alpha, fall back to ink text
+  if (a < 64) return "currentColor";
+  return lum > 0.55 ? "#000" : "#fff";
+}
+
+function resolveSwatches(root: HTMLElement) {
+  const swatches = root.querySelectorAll<HTMLElement>("[data-color-token]");
+  const cs = getComputedStyle(document.documentElement);
+  swatches.forEach(el => {
+    const token = el.dataset.colorToken;
+    if (!token) return;
+    const value = cs.getPropertyValue(token).trim();
+    if (!value) {
+      el.textContent = token + " (unbound)";
+      return;
+    }
+    el.style.background = value;
+    el.style.color = pickContrastFor(value);
+    el.textContent = value;
+  });
+}
 
 const PAGE_SIZES = [5, 10, 25, 50, 0]; // 0 = All
 const DEFAULT_PAGE_SIZE = 25;
@@ -15,6 +50,27 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el || content === null) return;
+    resolveSwatches(el);
+
+    const reapply = () => resolveSwatches(el);
+    const rafReapply = () => requestAnimationFrame(() => requestAnimationFrame(reapply));
+
+    const docObs = new MutationObserver(rafReapply);
+    docObs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    const headObs = new MutationObserver(rafReapply);
+    headObs.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ["href"] });
+
+    return () => {
+      docObs.disconnect();
+      headObs.disconnect();
+    };
+  }, [content]);
 
   async function loadContent() {
     if (content !== null) return;
@@ -55,6 +111,7 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
           {error && <div className="dev-alert dev-alert--error">{error}</div>}
           {content !== null && !loading && (
             <div
+              ref={contentRef}
               className="dev-research-content"
               dangerouslySetInnerHTML={{ __html: content }}
             />

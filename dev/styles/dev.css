@@ -1589,3 +1589,26 @@ table.tbl tbody tr:hover td {
   border-top: 1px solid var(--border);
 }
 
+/* ID badges and live theme swatches inside research content.
+   Themed via tokens so they always reflect the active theme pack. */
+.dev-research-content code.dev-id-badge {
+  background: var(--ink);
+  color: var(--ink-contrast);
+  border: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.dev-research-content code.dev-color-swatch {
+  display: inline-block;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  min-width: 64px;
+  text-align: center;
+}
+
