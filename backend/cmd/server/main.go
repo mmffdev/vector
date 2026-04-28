@@ -281,6 +281,19 @@ func main() {
 		})
 	})
 
+	// ---- /api/me ----
+	// Per-user preference surface — small key/value endpoints scoped
+	// to the authenticated session. Theme pack persists which
+	// /public/themes/<pack>.css the Palette flyout has applied.
+	r.Route("/api/me", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/theme-pack", usersH.GetThemePack)
+		r.Put("/theme-pack", usersH.SetThemePack)
+	})
+
 	// ---- /api/nav ----
 	r.Route("/api/nav", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
