@@ -2700,130 +2700,6 @@ table.tbl tbody tr:hover td {
   padding: 0 16px;
 }
 
-/* Palette flyout — hover the trigger to reveal a swatch-grid panel
-   docked to the LEFT of the avatar dropdown (which itself is right-anchored). */
-.avatar-menu__palette-group {
-  position: relative;
-}
-
-.avatar-menu__palette-trigger {
-  width: 100%;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.avatar-menu__palette-trigger .sidebar-item__label {
-  flex: 1 1 auto;
-}
-
-.avatar-menu__chev {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-3);
-  margin-left: 6px;
-}
-
-.avatar-menu__flyout {
-  position: absolute;
-  top: 0;
-  /* Overlap the trigger's left edge by 1px so the cursor can never
-     fall through a sub-pixel gap between trigger and flyout
-     (mouseLeave on the group would close the panel). */
-  right: calc(100% - 1px);
-  min-width: 280px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: var(--space-2) 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-}
-
-.avatar-menu__flyout-heading {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  padding: 2px 16px 8px 16px;
-  border-bottom: 1px solid var(--line-1);
-  margin-bottom: 8px;
-}
-
-.avatar-menu__flyout-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 0 12px 6px 12px;
-}
-
-.avatar-menu__flyout-error {
-  margin: 6px 12px 10px 12px;
-  padding: 8px 10px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--danger);
-  background: var(--danger-bg);
-  border: 1px solid var(--danger);
-  border-radius: var(--radius-2);
-}
-
-.palette-card {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px;
-  background: var(--surface);
-  border: 1px solid var(--line-1);
-  border-radius: 0;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease,
-    transform 0.12s ease;
-}
-
-.palette-card:hover {
-  border-color: var(--ink-1);
-  background: var(--surface-sunken);
-}
-
-.palette-card--active {
-  border-color: var(--ink-1);
-  background: var(--surface-sunken);
-}
-
-.palette-card__swatches {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 2px;
-  width: 100%;
-  aspect-ratio: 2 / 1;
-  border: 1px solid var(--line-1);
-  overflow: hidden;
-}
-
-.palette-card__swatch {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.palette-card__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-1);
-  line-height: 1.2;
-}
 
 /* ============================================================
    Dashboard tiles (Vector kit)
@@ -2979,13 +2855,117 @@ table.tbl tbody tr:hover td {
    scales down via its viewBox; min-width keeps it usable on narrow
    screens. */
 .chart-card--half {
-  max-width: 720px;
   width: 100%;
+}
+
+/* === ChartWidget ===
+   Consistent card wrapper + expand-to-fullscreen overlay for all dashboard
+   charts. The expand button sits absolute top-right inside the card; the
+   overlay renders in a portal-like fixed layer above everything. */
+.chart-widget {
+  position: relative;
+}
+
+.chart-widget__expand {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-subtle);
+  cursor: pointer;
+  z-index: 1;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+
+.chart-widget__expand:hover {
+  color: var(--ink);
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+}
+
+.chart-widget__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgb(from var(--ink) r g b / 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.chart-widget__panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  width: min(calc(100vw - var(--sidebar-width) - var(--space-12)), 1200px);
+  max-height: calc(100vh - var(--space-12));
+  overflow: hidden;
+}
+
+.chart-widget__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.chart-widget__panel-title {
+  flex: 1;
+}
+
+.chart-widget__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-subtle);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+
+.chart-widget__close:hover {
+  color: var(--ink);
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+}
+
+.chart-widget__panel-chart {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-widget__panel-chart > * {
+  width: 100%;
+  max-height: calc(100vh - 220px);
+}
+
+.chart-widget__panel-legend {
+  flex-shrink: 0;
 }
 
 .petal-chart {
   width: 100%;
-  max-width: 480px;
   height: auto;
   display: block;
 }
@@ -3047,7 +3027,6 @@ table.tbl tbody tr:hover td {
    so its visible edge width matches the outer petal exactly. */
 .filled-petal-chart {
   width: 100%;
-  max-width: 480px;
   height: auto;
   display: block;
 }
@@ -3255,7 +3234,6 @@ table.tbl tbody tr:hover td {
    slot and grows radially with value/max. */
 .fill-petal-equal-chart {
   width: 100%;
-  max-width: 480px;
   height: auto;
   display: block;
 }
@@ -3304,7 +3282,6 @@ table.tbl tbody tr:hover td {
    is filleted so the petals form a soft, scalloped flower. */
 .fill-petal-equal-rounded-chart {
   width: 100%;
-  max-width: 480px;
   height: auto;
   display: block;
 }
@@ -3515,10 +3492,10 @@ table.tbl tbody tr:hover td {
   font-weight: var(--weight-semibold);
 }
 
-/* Multi-chart row: auto-fits 1–4 columns based on width. */
+/* Multi-chart row: fixed 3-column grid so charts sit three-across. */
 .dashboard-charts-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
 }
 
@@ -4812,6 +4789,403 @@ table.tbl tbody tr:hover td {
   color: var(--ink-muted);
   border-color: var(--border);
   background: var(--surface);
+}
+
+/* ============================================================
+   Theme library — full table view
+   ============================================================ */
+.theme-lib {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.theme-lib__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.theme-lib__search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.theme-lib__search::placeholder {
+  color: var(--ink-muted);
+}
+
+.theme-lib__search:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.theme-lib__count {
+  font-size: 12px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.theme-lib__table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.theme-lib__thead {
+  background: var(--surface-sunken);
+}
+
+.theme-lib__th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.theme-lib__col--preview { width: 420px; }
+.theme-lib__col--swatch  { width: 120px; }
+.theme-lib__col--info    { min-width: 200px; }
+.theme-lib__col--assign  { width: 110px; }
+
+.theme-lib__row {
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.theme-lib__row:last-child {
+  border-bottom: none;
+}
+
+.theme-lib__row--active {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.theme-lib__td {
+  padding: 14px;
+  vertical-align: top;
+}
+
+.theme-lib__empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+.theme-lib__name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+.theme-lib__desc {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.theme-lib__active-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  white-space: nowrap;
+}
+
+.theme-lib__pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.theme-lib__page-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-lib__page-size-label {
+  font-size: 12px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.theme-lib__page-info {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.theme-lib__page-nav {
+  display: flex;
+  gap: 4px;
+}
+
+/* ============================================================
+   Theme swatch strip
+   ============================================================ */
+.theme-swatch-strip {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.theme-swatch-strip__chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.12);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Theme preview card (tp-*) — isolated 400×600 mini-preview
+   All colours sourced from inline --tp-* CSS custom properties
+   set per-card; never reads global --canvas / --ink etc.
+   ============================================================ */
+.tp-card {
+  display: flex;
+  flex-direction: row;
+  width: 400px;
+  height: 600px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  background: var(--tp-canvas);
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+/* --- sidebar strip --- */
+.tp-sidebar {
+  width: 44px;
+  flex-shrink: 0;
+  background: var(--tp-sunken);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 6px;
+  border-right: 1px solid var(--tp-border);
+}
+
+.tp-sidebar__logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--tp-accent);
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.tp-sidebar__item {
+  width: 28px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--tp-ink-m);
+  opacity: 0.5;
+}
+
+.tp-sidebar__item--active {
+  background: var(--tp-nav);
+  opacity: 1;
+}
+
+/* --- body area --- */
+.tp-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--tp-canvas);
+}
+
+/* --- typography block --- */
+.tp-types {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tp-h1 { font-size: 16px; font-weight: 800; color: var(--tp-ink);   line-height: 1.2; }
+.tp-h2 { font-size: 14px; font-weight: 700; color: var(--tp-ink);   line-height: 1.2; }
+.tp-h3 { font-size: 12px; font-weight: 700; color: var(--tp-ink);   line-height: 1.2; }
+.tp-h4 { font-size: 11px; font-weight: 600; color: var(--tp-ink-m); line-height: 1.2; }
+.tp-h5 { font-size: 10px; font-weight: 600; color: var(--tp-ink-m); line-height: 1.2; }
+.tp-h6 { font-size: 9px;  font-weight: 600; color: var(--tp-ink-m); line-height: 1.2; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.tp-p {
+  font-size: 10px;
+  color: var(--tp-ink-m);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* --- form fields --- */
+.tp-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tp-field__label {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--tp-ink-m);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tp-field__input {
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--tp-border);
+  background: var(--tp-surface);
+  padding: 0 6px;
+  font-size: 9px;
+  color: var(--tp-ink);
+  display: flex;
+  align-items: center;
+}
+
+.tp-field__input--placeholder {
+  color: var(--tp-ink-m);
+  opacity: 0.6;
+}
+
+/* --- buttons --- */
+.tp-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  align-items: center;
+}
+
+.tp-btn {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tp-btn--primary {
+  background: var(--tp-accent);
+  color: var(--tp-ink-c);
+  border: 1px solid var(--tp-accent);
+}
+
+.tp-btn--secondary {
+  background: transparent;
+  color: var(--tp-accent);
+  border: 1px solid var(--tp-accent);
+}
+
+.tp-btn--ghost {
+  background: transparent;
+  color: var(--tp-ink-m);
+  border: 1px solid var(--tp-border);
+}
+
+/* --- mini table --- */
+.tp-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--tp-border);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 8px;
+}
+
+.tp-table__head {
+  display: flex;
+  flex-direction: row;
+  background: var(--tp-sunken);
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-table__row {
+  display: flex;
+  flex-direction: row;
+  background: var(--tp-surface);
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-table__row--alt {
+  background: var(--tp-canvas);
+}
+
+.tp-table__row:last-child {
+  border-bottom: none;
+}
+
+.tp-table__cell {
+  flex: 1;
+  padding: 3px 5px;
+  color: var(--tp-ink-m);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tp-table__cell--accent {
+  color: var(--tp-accent);
+  font-weight: 600;
+}
+
+/* --- nav highlight chip --- */
+.tp-nav-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8px;
+  color: var(--tp-ink-m);
+}
+
+.tp-nav-chip__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tp-nav);
+  flex-shrink: 0;
 }
 
 /* ============================================================
