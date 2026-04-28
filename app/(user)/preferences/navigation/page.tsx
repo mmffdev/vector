@@ -1602,7 +1602,7 @@ export default function NavPreferencesPage() {
             Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span>
           </h2>
         </header>
-        <ProfileBar animateEntrance />
+        <ProfileBar />
       </div>
 
       <div className="nav-prefs">

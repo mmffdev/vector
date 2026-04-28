@@ -11,7 +11,6 @@ import {
   type NavCustomGroup,
 } from "@/app/contexts/NavPrefsContext";
 import { NavIcon as IconFor } from "@/app/components/NavIcon";
-import ProfileBar from "@/app/components/ProfileBar";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
@@ -281,7 +280,6 @@ export default function AppSidebar_2() {
   const workspaceName = user.subscription_id === "00000000-0000-0000-0000-000000000001"
     ? "MMFFDev"
     : user.subscription_id.slice(0, 8).toUpperCase();
-  const initials = workspaceName.slice(0, 2).toUpperCase();
 
   return (
     <nav
@@ -296,7 +294,12 @@ export default function AppSidebar_2() {
       onBlur={(e) => { if (peeked && !e.currentTarget.contains(e.relatedTarget as Node)) setPeeked(false); }}
     >
       <div className="sidebar-brand" aria-label="Workspace">
-        <div className="sidebar-brand__logo" aria-hidden="true">{initials}</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-vector.png"
+          alt="Vector"
+          className="sidebar-brand__logo"
+        />
         <div className="sidebar-brand__label">
           <small>Agency</small>
           <strong>{workspaceName}</strong>
@@ -329,8 +332,6 @@ export default function AppSidebar_2() {
           <IconFor iconKey="pencil" />
         </Link>
       </div>
-
-      {open && <ProfileBar />}
 
       {renderGroups.map((g) => {
         if (g.items.length === 0 && g.kind === "tag") return null;

@@ -6,6 +6,7 @@ import { useAuth, type Role } from "@/app/contexts/AuthContext";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
 import EnvBadge from "@/app/components/EnvBadge";
+import ProfileBar from "@/app/components/ProfileBar";
 import { toTitleCase } from "@/app/lib/titleCase";
 
 const roleLabels: Record<Role, string> = {
@@ -26,6 +27,10 @@ export default function PageHeaderBar() {
           Vector <span className="prefix prefix-pink">+</span> {header?.title ? toTitleCase(header.title) : null}
         </h1>
         {header?.breadcrumbs && <div className="page-header__breadcrumbs">{header.breadcrumbs}</div>}
+      </div>
+
+      <div className="page-header__center">
+        <ProfileBar />
       </div>
 
       <div className="page-header__actions">
