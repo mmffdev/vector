@@ -2849,6 +2849,11 @@ table.tbl tbody tr:hover td {
   align-items: center;
 }
 
+/* Toolbar must span full card width even inside centered petal cards */
+.chart-card--petal .chart-widget__toolbar {
+  align-self: stretch;
+}
+
 /* Half-width chart card — caps the card around 50% of the dashboard
    so charts that read fine at smaller scale (e.g. the probability
    ladder) don't visually dominate full-width rows. The SVG inside
@@ -2860,19 +2865,31 @@ table.tbl tbody tr:hover td {
 
 /* === ChartWidget ===
    Consistent card wrapper + expand-to-fullscreen overlay for all dashboard
-   charts. The expand button sits absolute top-right inside the card; the
-   overlay renders in a portal-like fixed layer above everything. */
+   charts. The toolbar row sits above the chart content so the expand button
+   never overlaps the chart component's own reroll (↻) button.
+   Overlay is position:fixed with 50% black lightbox over the whole page. */
 .chart-widget {
-  position: relative;
+  /* no position:relative needed — toolbar is in-flow, overlay is fixed */
+}
+
+.chart-widget__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  gap: var(--space-2);
+}
+
+.chart-widget__toolbar-title {
+  flex: 1;
+  margin: 0;
 }
 
 .chart-widget__expand {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 28px;
   height: 28px;
   border: 1px solid var(--border);
@@ -2880,7 +2897,6 @@ table.tbl tbody tr:hover td {
   background: var(--surface);
   color: var(--ink-subtle);
   cursor: pointer;
-  z-index: 1;
   transition: color 120ms, border-color 120ms, background 120ms;
 }
 
@@ -2894,7 +2910,8 @@ table.tbl tbody tr:hover td {
   position: fixed;
   inset: 0;
   z-index: 900;
-  background: rgb(from var(--ink) r g b / 0.55);
+  /* 50% black lightbox over entire page including sidebar */
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2911,7 +2928,7 @@ table.tbl tbody tr:hover td {
   padding: var(--space-6);
   width: min(calc(100vw - var(--sidebar-width) - var(--space-12)), 1200px);
   max-height: calc(100vh - var(--space-12));
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .chart-widget__panel-header {
@@ -2919,6 +2936,7 @@ table.tbl tbody tr:hover td {
   align-items: center;
   justify-content: space-between;
   min-height: 28px;
+  flex-shrink: 0;
 }
 
 .chart-widget__panel-title {
@@ -2949,7 +2967,6 @@ table.tbl tbody tr:hover td {
 .chart-widget__panel-chart {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2957,7 +2974,6 @@ table.tbl tbody tr:hover td {
 
 .chart-widget__panel-chart > * {
   width: 100%;
-  max-height: calc(100vh - 220px);
 }
 
 .chart-widget__panel-legend {
@@ -4797,7 +4813,11 @@ table.tbl tbody tr:hover td {
 .theme-lib {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
+  /* Fill viewport below app-header + page-head + tabs bar + padding.
+     77px = --app-header-wrapper-height; 136px covers the rest. */
+  height: calc(100dvh - 77px - 136px);
+  min-height: 300px;
 }
 
 .theme-lib__bar {
@@ -4805,6 +4825,8 @@ table.tbl tbody tr:hover td {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 12px 0 10px;
 }
 
 .theme-lib__search {
@@ -4838,8 +4860,10 @@ table.tbl tbody tr:hover td {
 }
 
 .theme-lib__table {
-  width: 100%;
-  border-collapse: collapse;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -4847,7 +4871,16 @@ table.tbl tbody tr:hover td {
 }
 
 .theme-lib__thead {
+  display: flex;
+  flex-shrink: 0;
   background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.theme-lib__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .theme-lib__th {
@@ -4858,18 +4891,21 @@ table.tbl tbody tr:hover td {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink-muted);
-  border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.theme-lib__col--preview { width: 420px; }
-.theme-lib__col--swatch  { width: 120px; }
-.theme-lib__col--info    { min-width: 200px; }
-.theme-lib__col--assign  { width: 110px; }
+/* Column width contract — applied to both th and td */
+.theme-lib__col--preview { width: 428px; flex-shrink: 0; }
+.theme-lib__col--swatch  { width: 120px; flex-shrink: 0; }
+.theme-lib__col--info    { flex: 1; min-width: 200px; }
+.theme-lib__col--assign  { width: 120px; flex-shrink: 0; }
 
 .theme-lib__row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
 }
 
 .theme-lib__row:last-child {
@@ -4882,7 +4918,7 @@ table.tbl tbody tr:hover td {
 
 .theme-lib__td {
   padding: 14px;
-  vertical-align: top;
+  overflow: hidden;
 }
 
 .theme-lib__empty {
@@ -4923,6 +4959,8 @@ table.tbl tbody tr:hover td {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 10px 0 4px;
 }
 
 .theme-lib__page-size {

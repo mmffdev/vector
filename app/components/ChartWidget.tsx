@@ -37,29 +37,44 @@ export default function ChartWidget({
       if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [expanded, close]);
+
+  const expandBtn = (
+    <button
+      type="button"
+      className="chart-widget__expand"
+      onClick={() => setExpanded(true)}
+      aria-label="Expand chart to full screen"
+      title="Expand to full screen"
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="none">
+        <path
+          d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
 
   const card = (
     <div className={`card chart-card chart-widget${petal ? " chart-card--petal" : ""}`}>
-      <button
-        type="button"
-        className="chart-widget__expand"
-        onClick={() => setExpanded(true)}
-        aria-label="Expand chart to full screen"
-        title="Expand to full screen"
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="none">
-          <path
-            d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      {title && <h4 className="eyebrow">{title}</h4>}
+      {/* Toolbar sits above the chart; expand button is here so it never
+          overlaps the chart component's own reroll (↻) button */}
+      <div className="chart-widget__toolbar">
+        {title
+          ? <h4 className="eyebrow chart-widget__toolbar-title">{title}</h4>
+          : <span />
+        }
+        {expandBtn}
+      </div>
       {children}
       {legend && <div className="chart-card__legend">{legend}</div>}
     </div>
