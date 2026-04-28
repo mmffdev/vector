@@ -3,7 +3,7 @@
 **HARD RULE — NO EXCEPTIONS:** Never run any git command that can destroy or overwrite work (`reset --hard`, `push --force`, `checkout .`, `restore .`, `clean -f`, `branch -D`, `rebase` without review, etc.) without explicitly confirming with the user first. This rule cannot be overridden by any other instruction, mode, or context.
 
 <!-- ACTIVE_BACKEND_ENV:start -->
-> **ACTIVE BACKEND ENV: `staging`** — set 2026-04-27 23:12 by EnvBadge UI — DB target via tunnel `localhost:5436` — env file: `backend/.env.staging`
+> **ACTIVE BACKEND ENV: `dev`** — set 2026-04-28 02:37 by `<server> -d` — DB: dev VPS 77.68.33.216 via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.
@@ -66,6 +66,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter, title format, mandatory labels, deletion log.
 - **`<stories>` skill** → [`.claude/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
 - **`/writeweb` skill** → [`.claude/skills/writeweb/SKILL.md`](skills/writeweb/SKILL.md) — Human-AI collaborative website copy; flags `-t hero|feature|faq|about|explainer`, `-len`, `-context`, `-h`.
+- **`<theme>` skill** → [`.claude/skills/theme/SKILL.md`](skills/theme/SKILL.md) — image → Vector theme pack; deterministic L/C/H bucket → role mapping; spec at [`docs/c_theme_rules.md`](../docs/c_theme_rules.md).
+- **`<chart>` skill (`-m` make from image, `-p` place from plan)** → [`.claude/skills/chart/SKILL.md`](skills/chart/SKILL.md) — themed chart component in `app/components/`, stub data, sanitised preview random generator, dashboard catalog entry.
 - **Story acceptance gates** → [`docs/c_story_acceptance.md`](../docs/c_story_acceptance.md) — full gate spec, confidence thresholds (85%/90%), replan triggers.
 - **Feature areas (18)** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV; allocation rules.
 - **Error codes (cross-cutting)** → [`docs/c_c_error_codes.md`](../docs/c_c_error_codes.md) — adding codes via library migration, `reportError` call sites, severity mapping, decision tree.

@@ -1,107 +1,104 @@
 ---
-name: Session bootup — <server> shortcut + Service health unification (10s poll, progress bar, env-aware)
+name: Session bootup — Palette flyout + theme persistence + env-mismatch investigation
 description: Load when resuming after a break. Branch, story counter, what's committed, what's uncommitted, what's next.
 type: project
 originSessionId: 5b8bdf98-0f1b-4734-b76d-10cd228c3fe6
 ---
-## Current state (last updated: 2026-04-27)
+
+## Current state (last updated: 2026-04-28)
 
 **Active branch:** `main`
-**Story index last issued:** unknown (`docs/c_story_index.md` not present in repo)
-**Phase:** post Nav Profiles Phase 5 — tooling/dev-UX work stream
+**Story index last issued:** unknown (`docs/c_story_index.md` still not present in repo)
+**Phase:** Palette/theme-pack feature delivery + active env-mismatch root-cause investigation (auto mode)
 
 ---
 
 ## Planka card states
 
 **In progress / Doing:**
-- (none — work this session was tooling/dev-UX, not card-tracked)
+- (none — Palette + env work were direct asks, not card-tracked yet)
 
 **Completed (committed, move to Completed in Planka):**
 - (none new committed this session — all changes still uncommitted on main)
 
 **Parked:**
-- (none)
+- Pre-launch security checklist (per `project_pre_launch_security.md`)
 
 ---
 
 ## Uncommitted on branch
 
-**Modified:**
-- `.claude/CLAUDE.md` — added ACTIVE_BACKEND_ENV marker block (HTML-comment-delimited) + `<server>` and env-aware `<services>` entries.
-- `.claude/commands/c_services.md` — env-aware: parses `ACTIVE_BACKEND_ENV` marker to pick correct tunnel port.
-- `.claude/memory/MEMORY.md` — index entries for boot files etc.
-- `app/api/dev/services/route.ts` — probes all 3 DB tunnels (`:5434`/`:5435`/`:5436`); reads backend `/healthz`'s new `env` field; sets `active: true` on the matching tunnel row; returns `activeEnv` at top level.
-- `app/components/DevStatusFloat.tsx` — slimmed to float chrome only; uses shared `useServiceHealth` hook + `ServiceHealthPanel`. Dot status derived from same hook (no duplicate poll).
-- `backend/cmd/server/main.go` — added `envFromDBPort` closure (single source); `/healthz` now returns `"env":"..."`; `/api/env` reuses the same derivation.
-- `dev/pages/DevPage.tsx` — Setup tab now renders `<ServiceHealthPanel/>` (was `<DevServicesPanel/>`).
-- `dev/styles/dev.css` — added `.devf__progress` (5px blue bar, animation duration driven by `--devf-poll-ms`), `.devf__env--{dev,staging,production}` badges, `.devf__row--active` highlight.
-- Other modified files (`app/components/PageHeaderBar.tsx`, `ProfileBar.tsx`, `app/globals.css`, `backend/internal/nav/handler.go`) — pre-existing changes, not part of this session.
+**Modified (this session):**
+- `app/components/UserAvatarMenu.tsx` — added Palette flyout button between admin pages and Log out; hover-bridged via `onMouseEnter`/`onMouseLeave` on a wrapper; uses `useThemePack` to read/write the active pack.
+- `app/globals.css` — added ~100 lines after `.avatar-menu__item`: `.avatar-menu__palette-group`, `.avatar-menu__flyout` (right of menu), `.avatar-menu__flyout-grid` (2-col), `.palette-card`, `.palette-card--active`, `.palette-card__swatches` (2×2 grid, `aspect-ratio: 2/1`).
+- `backend/cmd/server/main.go` — added `/api/me` route group with `RequireAuth + RequireFreshPassword + httprate(120/min)` mounting `GET/PUT /api/me/theme-pack`. (Earlier in session: `envFromDBPort()` closure, `/healthz` env field, `/api/env` + `/api/env/switch`.)
 
-**Deleted:**
-- `dev/pages/DevServicesPanel.tsx` — replaced by shared `ServiceHealthPanel`.
+**Modified (pre-existing, not core to this session):**
+- `app/(user)/dashboard/page.tsx`, `app/(user)/theme/page.tsx`, `app/layout.tsx`, `app/login/page.tsx`, `app/login/reset/page.tsx`, `app/login/reset/confirm/page.tsx`, `middleware.ts` — login redesign + theme-page work
+- `.planka` — local Planka config drift
 
 **Untracked (this session):**
-- `app/components/ServiceHealthPanel.tsx` — single source of truth for the Service health UI (header + progress bar + table). Identified by `data-id="service-health"`.
-- `app/components/useServiceHealth.ts` — singleton polling hook (`SERVICE_HEALTH_POLL_MS = 10_000`). Module-level subscriber set; one fetch loop shared across all consumers.
-- `.claude/commands/c_server.md` — `<server> -d|-s|-p` shortcut spec (10-step procedure, `-p` requires typed "production").
-- `backend/.env.production` — clean env file for `BACKEND_ENV=production` (same DB target as `.env.local`).
-- `.claude/bin/switch-server` — appears to have been opened in IDE; not authored by this session.
-
-**Untracked (not from this session — pre-existing on disk):**
-- `.build/`, `Package.swift`, `Sources/`, `Tests/`, `MMFF Vector Launcher.app/`, `tools/`, `local-assets/`
-- `app/components/EnvBadge.tsx`, `db/schema/037_*.sql`, `db/schema/038_*.sql`, `dev/research/R003.json`, `mmffdev_builder_brief.md`
-- `.claude/commands/c_launcher.md`
+- `app/hooks/useThemePack.ts` — first paint loads from localStorage, then reconciles with `GET /api/me/theme-pack`; `choose()` applies immediately + `PUT`s in the background; swallows 401/403 (login pages) cleanly.
+- `backend/internal/users/prefs.go` — `Service.GetThemePack`/`SetThemePack` + handlers; allow-list `validThemePacks` map (`default`, `vector-mono`); `ErrInvalidThemePack` sentinel; JSON shape `{"pack":"<id>"}`.
+- `db/schema/039_user_theme_pack.sql` — `ALTER TABLE users ADD COLUMN theme_pack TEXT NOT NULL DEFAULT 'default'` + `CHECK (theme_pack IN ('default','vector-mono'))`. **NOT YET APPLIED to any env.**
+- `public/themes/` — vector-mono.css and any other pack stylesheets the hook injects.
+- `app/components/AuthBrand.tsx`, `app/components/PetalChart.tsx`, `app/components/FilledPetalChart.tsx`, `app/components/FillPetalEqualChart.tsx`, `app/components/FillPetalEqualChartRounded.tsx` — login + chart explorations.
+- `dev/research/R004.json` — research export.
+- Screenshots: `login-redesign-check.png`, `login-redesign-final.png`, `login-reset-confirm.png`, `login-reset.png`, `theme-page-default.png`, `themes-tab-*.png`, `vector-mono-*.png` — visual verifications during palette + login work.
+- `corp-ident/`, `local-assets/pages-designs/` — design-asset folders.
 
 ---
 
 ## What shipped this session
 
-**Backend (`backend/cmd/server/main.go`):**
-- Refactored env derivation into a single `envFromDBPort()` closure — used by both `/healthz` and `/api/env`. Source of truth is the live `DB_PORT` env var.
-- `/healthz` now returns `env` alongside `status/commit/build_time/started_at`. Backward-compatible (additive).
-- Restarted backend mid-session — `/healthz` confirmed returning `"env":"production"`.
+**Palette flyout (avatar dropdown):**
+- New "Palette" entry between admin pages and Log out. Hover the row → flyout opens to the right (`right: calc(100% + 6px)`), bridged via wrapper-level mouse handlers so the cursor traveling into the flyout keeps it open.
+- Each pack rendered as a `.palette-card` with a 2×2 swatch grid (`aspect-ratio: 2/1`). Click → `choose(pack)` → instant CSS swap.
+- `PALETTES` array in `UserAvatarMenu.tsx` is the single source for label + 4 representative swatches per pack. Adding a pack = (a) new entry here, (b) new `vector-mono`-style stylesheet under `/public/themes/`, (c) extend `PACK_HREF` in `useThemePack.ts`, (d) extend `validThemePacks` in `prefs.go`, (e) extend the SQL `CHECK` in a new migration.
 
-**`<server>` shortcut + supporting env file:**
-- Created `.claude/commands/c_server.md` with `-d|-s|-p` flags. Switches `BACKEND_ENV`, ensures the matching tunnel, kills + restarts backend on `:5100`, rewrites the HTML-comment-delimited `ACTIVE_BACKEND_ENV` marker block at the top of CLAUDE.md.
-- Created `backend/.env.production` (currently same DB target as `.env.local`; established as the canonical env file for `-p`).
-- Updated CLAUDE.md to register the marker block and the new `<server>` entry. Updated the `<services>` entry text to reflect env-awareness.
+**Theme persistence (DB + backend + frontend):**
+- Migration 039 adds `users.theme_pack` (TEXT NOT NULL DEFAULT 'default') with CHECK constraint mirroring the backend allow-list.
+- `backend/internal/users/prefs.go` exposes Service + Handler. Allow-list is the primary gate; CHECK is the safety net.
+- Mounted at `/api/me/theme-pack` (GET + PUT) under `RequireAuth + RequireFreshPassword + httprate(120/min)` in `backend/cmd/server/main.go`.
+- `useThemePack.ts` does **fast-paint-then-reconcile**: localStorage first to avoid palette flash on load, then GET to reconcile, then PUT on every `choose()`. 401/403 swallowed silently so login/reset pages don't spam warnings.
 
-**Service health unification:**
-- Single source of truth: `app/components/ServiceHealthPanel.tsx`. `data-id="service-health"`.
-- Singleton polling hook: `app/components/useServiceHealth.ts`. Module-level subscribers set, ref-counted start/stop, one in-flight guard. Both float and Setup-tab consumers share one fetch loop.
-- `app/api/dev/services/route.ts` rewritten to probe 3 tunnels in parallel and emit `active:true` on the row matching the backend's reported env.
-- `dev/styles/dev.css`: added `.devf__progress` 5px blue bar with `width 0→100%` animation driven by `--devf-poll-ms` custom property. Added env badges + active-row highlight.
-- `DevStatusFloat.tsx` reduced to float trigger + chrome; renders the shared panel inside.
-- `dev/pages/DevServicesPanel.tsx` deleted; `DevPage.tsx` imports the shared panel directly inside a `.dev-section` wrapper.
+**Env-mismatch investigation (DIAGNOSED, NOT YET FIXED):**
+- The running backend reports `env="production"` but `BACKEND_ENV` was nominally `staging` — investigated end-to-end:
+  - `backend/cmd/server/main.go:166-179` — `envFromDBPort()` derives the reported env from the live `DB_PORT` (5434=production, 5435=dev, 5436=staging). `/healthz`, `/api/env`, and the EnvBadge UI all consume **this** value, not `BACKEND_ENV` or `APP_ENV`.
+  - `.claude/bin/switch-server` exports `BACKEND_ENV` and execs `go run`, but **does not unset pre-existing `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD/APP_ENV`** in the parent shell. `godotenv.Load` does NOT override existing env vars, so any shell-exported value from a prior session beats the `.env.<env>` file.
+  - `backend/.env.local` has `DB_PORT=5434` + `APP_ENV=development` — internally contradictory (5434 is the production tunnel).
+  - `backend/.env.production` has `APP_ENV=development` — outright wrong.
+  - `backend/.env.dev` (5435/development) and `backend/.env.staging` (5436/staging) are correct.
+  - There is **no startup consistency check** in `main.go` that fatals when `BACKEND_ENV`'s expected mapping doesn't match the loaded `DB_PORT`/`APP_ENV`.
 
 ---
 
 ## Recent commits
 
 ```
+8544dd8 Header chrome: ProfileBar moved to centered top, sidebar logo, /product placeholder
+a1d04b3 Nav prefs: Custom Navigation pane + slinky pill entrance + Available count
+db2e596 Memory + workspace housekeeping
+131711c Migration 038: default-pin Product entity bookmark
+f111140 Migration 037: scope user_nav_prefs unique-position by parent
+4c21ca9 Backend env switch: /api/env + /api/env/switch + EnvBadge UI
+8d32dea Tooling: MMFF Vector Launcher (v0.1) + generic builder brief
 291f10e Tooling: <addpaper> research-paper shorthand + shared writer/format
-d76ef12 Backend: BACKEND_ENV switch + staging env support
-c3fad45 Migration 036: dedupe positions + force-immediate constraints before NOT NULL
-a483c67 Nav profiles Phase 5 — multi-profile sidebar + per-profile group placement (#11)
-0d9a51d Backup marker: pre-PR snapshot
-6dcd103 Planning: nav profiles feature design + research export R002
-d529f11 Nav: route product bookmarks to Strategic; lock Theme to avatar menu
-8f224f9 LayersTable: migrate inline editing to shared InlineEditField
 ```
 
 ---
 
 ## What's next
 
-1. **Commit this session's work** — likely two logical commits:
-   - `Tooling: <server> shortcut + .env.production + env-aware <services> + ACTIVE_BACKEND_ENV marker`
-   - `Dev UX: unify Service health (shared panel + singleton poll) + 10s progress bar + 3-tunnel probes + /healthz env field`
-2. **Consider a story card retroactively** for the Service health unification (per Storify-all-layers rule) if it should be tracked.
-3. **Verify `<server> -d` end-to-end** — switch to dev DB, confirm marker rewrite, confirm `/healthz env=dev`, confirm Setup-tab + float pop-up both highlight the dev row.
-4. **Decide on `<server> -p` UX in Claude** — `c_server.md` notes that with no TTY, the typed-confirmation step must become a chat question. Wire that into the runner if `<server> -p` is ever invoked through Claude.
-5. **Pre-launch security checklist** still pending (per memory `project_pre_launch_security.md`): scrub git history of committed `.env.local`, harden `ssh_manager.sh`, rotate secrets.
-6. **`docs/c_story_index.md`** is missing from the repo — needs creating per `<stories>` skill expectations, or the skill needs a fallback path.
+1. **Synthesize env-mismatch findings to user** (the immediate pending step from before compaction) — bullets in "What shipped" above are ready to relay.
+2. **Fix `.env.local`** — either align it with dev (`DB_PORT=5435 + APP_ENV=development`) or delete it so `<server>` flag-driven env files are the only source.
+3. **Fix `.env.production`** — set `APP_ENV=production` (currently incorrectly `development`).
+4. **Harden `.claude/bin/switch-server`** — prepend `unset DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD APP_ENV` before the `BACKEND_ENV="$ENV" nohup go run ./cmd/server` line so the `.env.<env>` file always wins.
+5. **Add startup consistency guard in `backend/cmd/server/main.go`** — after env load, if `BACKEND_ENV`'s expected `DB_PORT`/`APP_ENV` mapping doesn't match what was loaded, `log.Fatal` with a precise message naming the mismatch.
+6. **Apply migration 039** — pending decision on which env (current target should be dev once env files are corrected); `cd backend && go run ./cmd/migrate -dry-run -db vector -env .env.dev` first.
+7. **Commit Palette feature** — likely two logical commits: (a) `Palette: avatar flyout + theme pack switcher (frontend)`, (b) `Theme pack: migration 039 + /api/me/theme-pack handler`.
+8. **Storify retroactively** if Palette should be card-tracked (per Storify-all-layers rule covers UI + backend + migration).
+9. **Pre-launch security checklist** still parked.
 
 ---
 
@@ -117,8 +114,10 @@ d529f11 Nav: route product bookmarks to Strategic; lock Theme to avatar menu
 - **padmin test account:** `padmin@mmffdev.com` / `changeme123!`
 - **user test account:** `user@mmffdev.com` (password unknown — reset via backend hash endpoint if needed)
 - **DB password:** `grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-` — contains `&`, never shell-source
-- **Service health single source:** `app/components/ServiceHealthPanel.tsx` (`data-id="service-health"`); polled by singleton `useServiceHealth` hook in `app/components/useServiceHealth.ts`. `SERVICE_HEALTH_POLL_MS = 10_000`. Both the float pop-up and the Dev → Setup tab consume the same hook — never duplicate render or fetch.
-- **Active env detection:** `/healthz` returns `env` derived from `DB_PORT` (5434=production, 5435=dev, 5436=staging). `/api/dev/services` reads it and marks the matching tunnel row `active`. CSS `.devf__row--active` highlights it.
-- **CLAUDE.md ACTIVE_BACKEND_ENV marker** is delimited by `<!-- ACTIVE_BACKEND_ENV:start --> ... <!-- ACTIVE_BACKEND_ENV:end -->` — `<server>` rewrites the contents via Python `re.subn` with `re.DOTALL`. Removing the comments breaks `<server>`.
-- **`.env.production`** is identical to `.env.local` in DB target (both → mmffdev.com via `:5434`). It exists so `BACKEND_ENV=production` has a canonical home; `.env.local` remains the no-flag default.
-- **Progress-bar duration is constant-driven:** the React component sets `--devf-poll-ms` CSS variable from the same `SERVICE_HEALTH_POLL_MS`. Changing the constant retunes both the polling cadence and the bar animation in lockstep.
+- **Env-derivation truth source:** `/healthz.env` is derived from live `DB_PORT` (5434=production, 5435=dev, 5436=staging) via `envFromDBPort()` in `backend/cmd/server/main.go:166-179`. `BACKEND_ENV` is INTENT only; the reported env is GROUND TRUTH from the actual DB connection. They can diverge silently — that is the bug currently being fixed.
+- **godotenv quirk:** `godotenv.Load(".env.<env>")` does **not** override existing process env vars. Anything exported in the parent shell wins. This is why `switch-server` must `unset` DB_*/APP_ENV before relaunch.
+- **Env file health (as of 2026-04-28):** `.env.local` 5434+development (contradictory), `.env.production` 5434+development (APP_ENV wrong), `.env.dev` 5435+development (correct), `.env.staging` 5436+staging (correct).
+- **Theme-pack three-way sync:** the set of valid packs lives in THREE places and must stay in lockstep — (a) `validThemePacks` map in `backend/internal/users/prefs.go`, (b) the SQL `CHECK` constraint on `users.theme_pack` (latest migration: 039), (c) `VALID_PACKS` + `PACK_HREF` in `app/hooks/useThemePack.ts`. Plus the file basename in `/public/themes/<pack>.css`. Comment at top of `prefs.go` documents this.
+- **Palette flyout hover-bridging:** `.avatar-menu__palette-group` is the wrapper; mouse handlers are on the wrapper, not the row, so the cursor can travel from row → flyout without `mouseleave` firing prematurely.
+- **Frontend hook reconciliation:** `useThemePack` swallows 401/403 silently because the hook may mount on auth-less pages (login, password reset). Other failures fall back to the cached pack and warn to console.
+- **`docs/c_story_index.md` is missing** — the `<stories>` skill expects it. Either create it on first issuance or fix the skill.
