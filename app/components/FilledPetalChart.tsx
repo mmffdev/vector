@@ -58,6 +58,13 @@ function randomPetals(): FilledPetal[] {
   }));
 }
 
+function octagonPoints(cx: number, cy: number, r: number): string {
+  return Array.from({ length: 8 }, (_, i) => {
+    const a = Math.PI / 8 + i * Math.PI / 4;
+    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+}
+
 function petalWidthsFor(N: number): { wIn: number; wOut: number } {
   const slotHalf = Math.PI / N;
   const wOut = OUTER_R * Math.sin(slotHalf) * GAP_FACTOR;
@@ -141,10 +148,8 @@ export default function FilledPetalChart({
         );
       })}
 
-      <circle
-        cx={CENTER}
-        cy={CENTER}
-        r={INNER_R - 14}
+      <polygon
+        points={octagonPoints(CENTER, CENTER, INNER_R + 22)}
         className="filled-petal-chart__core"
       />
 

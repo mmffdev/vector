@@ -114,16 +114,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Normal = lime with near-black text, hover = pale-sky with near-black text.
-   Mirrors the table-row contract; lime L≈88 → dark text enforced. */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #D0F040;
   color: #080810;
   border-color: #D0F040;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #C8DFF0;
   color: #080810;
@@ -149,22 +148,27 @@ table.tbl thead th,
 }
 
 /* ---------- Zone-toggle bands (Strategy / Execution) ----------
-   Bind to the polarity-aware ink/ink-contrast pair so the band
-   inverts correctly in dark mode. Group-separator gets a forced
-   surface-sunken band with pale-sky text — explicit so it
-   survives both polarities. */
+   Bind to the active-nav accent pair (lime + near-black) so the
+   expand-toggle band shares one visual language with the active
+   sidebar item. W/W/B/B-safe: lime L≈88 → --accent-ink resolves
+   to near-black, never landing same-tone on same-tone. */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: var(--ink-contrast);
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: var(--ink-contrast);
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: var(--ink-contrast);
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

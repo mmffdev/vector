@@ -83,11 +83,11 @@ model_id_resolved AS (
 -- ─── Layers ─────────────────────────────────────────────────────────
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 SELECT * FROM (VALUES
-    ('00000000-0000-0000-0000-00000000ab01'::uuid, (SELECT id FROM model_id_resolved), 'Portfolio Runway',  'PRW', 10, NULL::uuid,                                          'route',     'Strategic horizon — multi-year programme of intent.',                TRUE,  FALSE),
-    ('00000000-0000-0000-0000-00000000ab02'::uuid, (SELECT id FROM model_id_resolved), 'Product',           'PR',  20, '00000000-0000-0000-0000-00000000ab01'::uuid,         'package',   'Long-lived value stream owned by a product team.',                   TRUE,  FALSE),
+    ('00000000-0000-0000-0000-00000000ab01'::uuid, (SELECT id FROM model_id_resolved), 'Portfolio Runway',  'PRW', 50, NULL::uuid,                                          'route',     'Strategic horizon — multi-year programme of intent.',                TRUE,  FALSE),
+    ('00000000-0000-0000-0000-00000000ab02'::uuid, (SELECT id FROM model_id_resolved), 'Product',           'PR',  40, '00000000-0000-0000-0000-00000000ab01'::uuid,         'package',   'Long-lived value stream owned by a product team.',                   TRUE,  FALSE),
     ('00000000-0000-0000-0000-00000000ab03'::uuid, (SELECT id FROM model_id_resolved), 'Business Objective','BO',  30, '00000000-0000-0000-0000-00000000ab02'::uuid,         'target',    'Measurable outcome the product is pursuing this period.',            TRUE,  FALSE),
-    ('00000000-0000-0000-0000-00000000ab04'::uuid, (SELECT id FROM model_id_resolved), 'Theme',             'TH',  40, '00000000-0000-0000-0000-00000000ab03'::uuid,         'layers',    'Release-sized scope: a coherent slice of work that ships together.', TRUE,  FALSE),
-    ('00000000-0000-0000-0000-00000000ab05'::uuid, (SELECT id FROM model_id_resolved), 'Feature',           'FT',  50, '00000000-0000-0000-0000-00000000ab04'::uuid,         'star',      'Adoptable user-facing change. The leaf of the portfolio stack.',     TRUE,  TRUE)
+    ('00000000-0000-0000-0000-00000000ab04'::uuid, (SELECT id FROM model_id_resolved), 'Theme',             'TH',  20, '00000000-0000-0000-0000-00000000ab03'::uuid,         'layers',    'Release-sized scope: a coherent slice of work that ships together.', TRUE,  FALSE),
+    ('00000000-0000-0000-0000-00000000ab05'::uuid, (SELECT id FROM model_id_resolved), 'Feature',           'FT',  10, '00000000-0000-0000-0000-00000000ab04'::uuid,         'star',      'Adoptable user-facing change. The leaf of the portfolio stack.',     TRUE,  TRUE)
 ) AS v(id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 ON CONFLICT (model_id, tag) DO NOTHING;
 

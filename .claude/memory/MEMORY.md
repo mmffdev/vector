@@ -1,3 +1,4 @@
+- [User background and expertise](user_background.md) — UX/Art History degree, 20+ years Agile Coach & transformation lead; no formal engineering training
 - [Read source when stuck or flying blind](feedback_read_source_when_stuck.md) — If a fix doesn't work, STOP and read 100–200 lines of source around the affected area before grepping, curling, or blaming cache. Source is truth.
 - [Never create debt — fix now, flag if detected](feedback_no_debt.md) — Overrides standing register's cap-and-defer; introduce no new debt, surface detected debt immediately.
 - [Card lifecycle — move states on every task](feedback_card_lifecycle.md) — Backlog→To Do→Doing→Completed on every task, including quick fixes. No code before card is in Doing.

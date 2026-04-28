@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
+import { useTheme } from "@/app/hooks/useTheme";
 
 type Status = "exposed" | "new-token" | "future";
 
@@ -398,308 +399,806 @@ function MakerPanel({
   );
 }
 
+// ─── Theme token data ────────────────────────────────────────────────────────
+// Key resolved values extracted from /public/themes/*.css (first :root block).
+// Used to render isolated preview cards without loading pack CSS globally.
+interface ThemeTokens {
+  canvas: string;
+  surface: string;
+  surfaceSunken: string;
+  ink: string;
+  inkMuted: string;
+  inkContrast: string;
+  border: string;
+  accent: string;
+  navHover: string;
+}
+
+interface ThemeEntry {
+  id: ThemePack;
+  label: string;
+  description: string;
+  keywords: string[];
+  swatches: [string, string, string, string];
+  tokens: ThemeTokens;
+  darkTokens?: ThemeTokens;
+}
+
+const THEMES: ThemeEntry[] = [
+  {
+    id: "default",
+    label: "Default",
+    description: "Warm neutrals — the current Vector look across the app.",
+    keywords: ["warm", "neutral", "cream", "default", "light"],
+    swatches: ["#FFFFFF", "#EDEAE4", "#1A1A1A", "#E5E1DA"],
+    tokens: { canvas:"#FFFFFF", surface:"#FFFFFF", surfaceSunken:"#EDEAE4", ink:"#1A1A1A", inkMuted:"rgba(92,92,92,0.75)", inkContrast:"#FFFFFF", border:"#E5E1DA", accent:"#1A1A1A", navHover:"#EDEAE4" },
+    darkTokens: { canvas:"#1A1816", surface:"#232120", surfaceSunken:"#1F1D1B", ink:"#F4F2EE", inkMuted:"#B0ADA6", inkContrast:"#1A1816", border:"#2E2B28", accent:"#F4F2EE", navHover:"#1F1D1B" },
+  },
+  {
+    id: "vector-mono",
+    label: "Vector Mono",
+    description: "Strict palette: hot pink, black, page gray, secondary gray.",
+    keywords: ["pink", "black", "gray", "mono", "dark", "bold"],
+    swatches: ["#FF346E", "#000000", "#C9CACF", "#ACAFBA"],
+    tokens: { canvas:"#C9CACF", surface:"#C9CACF", surfaceSunken:"#ACAFBA", ink:"#000000", inkMuted:"rgba(0,0,0,0.65)", inkContrast:"#FFFFFF", border:"#000000", accent:"#FF346E", navHover:"#FF346E" },
+    darkTokens: { canvas:"#000000", surface:"#1A1A1A", surfaceSunken:"#ACAFBA", ink:"#FFFFFF", inkMuted:"rgba(255,255,255,0.72)", inkContrast:"#000000", border:"#FFFFFF", accent:"#FF346E", navHover:"#FF346E" },
+  },
+  {
+    id: "charcoal-amber",
+    label: "Charcoal Amber",
+    description: "Editorial dark palette: vivid amber, warm cream, charcoal canvas, pure-black header band.",
+    keywords: ["amber", "charcoal", "dark", "editorial", "warm"],
+    swatches: ["#E8A437", "#ECE2C8", "#2A2C2E", "#000000"],
+    tokens: { canvas:"#ECE2C8", surface:"#ECE2C8", surfaceSunken:"#D5C9A8", ink:"#2A2C2E", inkMuted:"rgba(42,44,46,0.65)", inkContrast:"#ECE2C8", border:"#2A2C2E", accent:"#E8A437", navHover:"#E8A437" },
+    darkTokens: { canvas:"#2A2C2E", surface:"#2A2C2E", surfaceSunken:"#000000", ink:"#ECE2C8", inkMuted:"rgba(236,226,200,0.78)", inkContrast:"#2A2C2E", border:"#ECE2C8", accent:"#E8A437", navHover:"#E8A437" },
+  },
+  {
+    id: "vector-marine",
+    label: "Vector Marine",
+    description: "Warm rose canvas with midnight-teal ink and a vivid lime-zing priority highlight.",
+    keywords: ["marine", "lime", "teal", "rose", "green", "nautical"],
+    swatches: ["#B3F938", "#082429", "#ECD5C5", "#CED9D9"],
+    tokens: { canvas:"#ECD5C5", surface:"#ECD5C5", surfaceSunken:"#CED9D9", ink:"#082429", inkMuted:"rgba(8,36,41,0.65)", inkContrast:"#FFFEF3", border:"#082429", accent:"#B3F938", navHover:"#B3F938" },
+    darkTokens: { canvas:"#082429", surface:"#0E454E", surfaceSunken:"#1A6671", ink:"#FFFEF3", inkMuted:"rgba(255,254,243,0.78)", inkContrast:"#082429", border:"#FFFEF3", accent:"#B3F938", navHover:"#B3F938" },
+  },
+  {
+    id: "atlas",
+    label: "Atlas",
+    description: "Customer-journey palette: green accent on white canvas, deep-navy attention tone.",
+    keywords: ["green", "white", "navy", "clean", "light", "atlas"],
+    swatches: ["#5FA547", "#1F3D8E", "#FFFFFF", "#D6D8DA"],
+    tokens: { canvas:"#FFFFFF", surface:"#FFFFFF", surfaceSunken:"#D6D8DA", ink:"#000000", inkMuted:"rgba(0,0,0,0.65)", inkContrast:"#FFFFFF", border:"#000000", accent:"#5FA547", navHover:"#5FA547" },
+    darkTokens: { canvas:"#000000", surface:"#1A1A1A", surfaceSunken:"#2A2A2A", ink:"#FFFFFF", inkMuted:"rgba(255,255,255,0.72)", inkContrast:"#000000", border:"#FFFFFF", accent:"#5FA547", navHover:"#5FA547" },
+  },
+  {
+    id: "coral-tide",
+    label: "Coral Tide",
+    description: "Warm coral accent meeting deep-teal ink across cool grey neutrals.",
+    keywords: ["coral", "teal", "grey", "coastal", "light"],
+    swatches: ["#FF6A5B", "#064A60", "#EAEAEA", "#CDCDCD"],
+    tokens: { canvas:"#EAEAEA", surface:"#EAEAEA", surfaceSunken:"#CDCDCD", ink:"#064A60", inkMuted:"rgba(6,74,96,0.75)", inkContrast:"#FFFFFF", border:"#064A60", accent:"#FF6A5B", navHover:"#FF6A5B" },
+    darkTokens: { canvas:"#064A60", surface:"#064A60", surfaceSunken:"#032E3F", ink:"#FFFFFF", inkMuted:"rgba(255,255,255,0.75)", inkContrast:"#064A60", border:"#FFFFFF", accent:"#FF6A5B", navHover:"#FF6A5B" },
+  },
+  {
+    id: "slate",
+    label: "Slate",
+    description: "Cool monochromatic palette: deep slate-navy ink doubles as accent, sage and pale-lavender surfaces.",
+    keywords: ["slate", "navy", "blue", "cool", "mono", "lavender"],
+    swatches: ["#2C3E50", "#778899", "#DFE3EE", "#A2B9BC"],
+    tokens: { canvas:"#DFE3EE", surface:"#DFE3EE", surfaceSunken:"#A2B9BC", ink:"#2C3E50", inkMuted:"rgba(44,62,80,0.85)", inkContrast:"#DFE3EE", border:"#2C3E50", accent:"#2C3E50", navHover:"#2C3E50" },
+    darkTokens: { canvas:"#2C3E50", surface:"#2C3E50", surfaceSunken:"#778899", ink:"#DFE3EE", inkMuted:"rgba(223,227,238,0.78)", inkContrast:"#2C3E50", border:"#DFE3EE", accent:"#DFE3EE", navHover:"#DFE3EE" },
+  },
+  {
+    id: "harbor",
+    label: "Harbor",
+    description: "Nautical infographic palette: warm cream canvas, deep navy ink, terracotta orange accent.",
+    keywords: ["harbor", "nautical", "cream", "navy", "terracotta", "orange"],
+    swatches: ["#DD6A3C", "#26333E", "#F2EAD6", "#D3CEBF"],
+    tokens: { canvas:"#F2EAD6", surface:"#F2EAD6", surfaceSunken:"#D3CEBF", ink:"#26333E", inkMuted:"rgba(38,51,62,0.78)", inkContrast:"#F2EAD6", border:"#26333E", accent:"#DD6A3C", navHover:"#DD6A3C" },
+    darkTokens: { canvas:"#26333E", surface:"#26333E", surfaceSunken:"#1F6F87", ink:"#F2EAD6", inkMuted:"rgba(242,234,214,0.78)", inkContrast:"#26333E", border:"#F2EAD6", accent:"#DD6A3C", navHover:"#DD6A3C" },
+  },
+  {
+    id: "dusk-mauve",
+    label: "Dusk Mauve",
+    description: "Soft monochrome palette: pale pink-lavender canvas, near-black navy ink, mauve highlight.",
+    keywords: ["mauve", "lavender", "pink", "purple", "soft", "dusk"],
+    swatches: ["#B080B4", "#161A2F", "#DDC8D8", "#9AB0D0"],
+    tokens: { canvas:"#DDC8D8", surface:"#DDC8D8", surfaceSunken:"#9AB0D0", ink:"#161A2F", inkMuted:"rgba(22,26,47,0.70)", inkContrast:"#FFFFFF", border:"#161A2F", accent:"#B080B4", navHover:"#B080B4" },
+    darkTokens: { canvas:"#161A2F", surface:"#161A2F", surfaceSunken:"#1A2348", ink:"#FFFFFF", inkMuted:"rgba(255,255,255,0.75)", inkContrast:"#161A2F", border:"#FFFFFF", accent:"#B080B4", navHover:"#B080B4" },
+  },
+  {
+    id: "sea-glass",
+    label: "Sea Glass",
+    description: "Soft pastel coastal palette: mint canvas, deep-sage ink, light-blue priority highlight.",
+    keywords: ["mint", "sage", "blue", "pastel", "coastal", "green"],
+    swatches: ["#99CDD8", "#475048", "#DAEBE3", "#CFD6C4"],
+    tokens: { canvas:"#DAEBE3", surface:"#DAEBE3", surfaceSunken:"#CFD6C4", ink:"#475048", inkMuted:"rgba(71,80,72,0.70)", inkContrast:"#FDE8D3", border:"#475048", accent:"#99CDD8", navHover:"#99CDD8" },
+    darkTokens: { canvas:"#2D3631", surface:"#475048", surfaceSunken:"#5A6660", ink:"#FDE8D3", inkMuted:"rgba(253,232,211,0.78)", inkContrast:"#2D3631", border:"#FDE8D3", accent:"#99CDD8", navHover:"#99CDD8" },
+  },
+  {
+    id: "vesper",
+    label: "Vesper",
+    description: "Twilight palette: blush canvas, midnight-purple ink, warm orange highlight.",
+    keywords: ["twilight", "blush", "purple", "orange", "warm", "evening"],
+    swatches: ["#EB9F5A", "#1D0A39", "#DBBCB9", "#C4A7AA"],
+    tokens: { canvas:"#DBBCB9", surface:"#DBBCB9", surfaceSunken:"#C4A7AA", ink:"#1D0A39", inkMuted:"rgba(29,10,57,0.65)", inkContrast:"#FFFFFF", border:"#1D0A39", accent:"#EB9F5A", navHover:"#EB9F5A" },
+    darkTokens: { canvas:"#1D0A39", surface:"#1D0A39", surfaceSunken:"#461952", ink:"#DBBCB9", inkMuted:"rgba(219,188,185,0.72)", inkContrast:"#1D0A39", border:"#DBBCB9", accent:"#EB9F5A", navHover:"#EB9F5A" },
+  },
+  {
+    id: "dusk-slate",
+    label: "Dusk Slate",
+    description: "Monochromatic blue-gray-mauve palette: light neutral canvas, near-black navy ink.",
+    keywords: ["slate", "blue", "gray", "mauve", "neutral", "dusk"],
+    swatches: ["#5C707A", "#181D23", "#DCDCDC", "#A89DAB"],
+    tokens: { canvas:"#DCDCDC", surface:"#DCDCDC", surfaceSunken:"#A89DAB", ink:"#181D23", inkMuted:"rgba(24,29,35,0.65)", inkContrast:"#FFFFFF", border:"#181D23", accent:"#5C707A", navHover:"#5C707A" },
+    darkTokens: { canvas:"#181D23", surface:"#2C3D44", surfaceSunken:"#A89DAB", ink:"#DCDCDC", inkMuted:"rgba(220,220,220,0.72)", inkContrast:"#181D23", border:"#DCDCDC", accent:"#83919F", navHover:"#83919F" },
+  },
+  {
+    id: "sundown",
+    label: "Sundown",
+    description: "Warm-pop on cool canvas: pale sky-blue surface, deep navy ink, vivid orange accent.",
+    keywords: ["sundown", "orange", "sky", "blue", "navy", "warm"],
+    swatches: ["#E1762E", "#10314A", "#A6CDD8", "#88AEBC"],
+    tokens: { canvas:"#A6CDD8", surface:"#A6CDD8", surfaceSunken:"#88AEBC", ink:"#10314A", inkMuted:"rgba(16,49,74,0.78)", inkContrast:"#A6CDD8", border:"#10314A", accent:"#E1762E", navHover:"#E1762E" },
+    darkTokens: { canvas:"#10314A", surface:"#10314A", surfaceSunken:"#5E6F7C", ink:"#E9C588", inkMuted:"rgba(233,197,136,0.78)", inkContrast:"#10314A", border:"#E9C588", accent:"#E1762E", navHover:"#E1762E" },
+  },
+  {
+    id: "vector-bloom",
+    label: "Vector Bloom",
+    description: "Soft floral palette: cream canvas, pale lavender header band, raspberry accent.",
+    keywords: ["floral", "cream", "lavender", "raspberry", "pink", "bloom"],
+    swatches: ["#C9495F", "#2E3340", "#F5F0E8", "#EDE7EC"],
+    tokens: { canvas:"#F5F0E8", surface:"#F5F0E8", surfaceSunken:"#EDE7EC", ink:"#2E3340", inkMuted:"rgba(46,51,64,0.70)", inkContrast:"#FFFFFF", border:"#5C6479", accent:"#C9495F", navHover:"#C9495F" },
+    darkTokens: { canvas:"#1A1D26", surface:"#252934", surfaceSunken:"#5C6479", ink:"#F5F0E8", inkMuted:"rgba(245,240,232,0.72)", inkContrast:"#1A1D26", border:"#F5F0E8", accent:"#C9495F", navHover:"#C9495F" },
+  },
+  {
+    id: "tideline",
+    label: "Tideline",
+    description: "Coastal palette: pale sky-blue canvas, near-black warm ink, vivid coral-orange accent.",
+    keywords: ["coastal", "sky", "blue", "coral", "orange", "warm"],
+    swatches: ["#EE9763", "#080807", "#CDEDF7", "#6F7C72"],
+    tokens: { canvas:"#CDEDF7", surface:"#CDEDF7", surfaceSunken:"#6F7C72", ink:"#080807", inkMuted:"rgba(8,8,7,0.65)", inkContrast:"#FFFFFF", border:"#080807", accent:"#EE9763", navHover:"#EE9763" },
+    darkTokens: { canvas:"#080807", surface:"#3D3431", surfaceSunken:"#6F7C72", ink:"#CDEDF7", inkMuted:"rgba(205,237,247,0.72)", inkContrast:"#080807", border:"#CDEDF7", accent:"#EE9763", navHover:"#EE9763" },
+  },
+  {
+    id: "sorbet",
+    label: "Sorbet",
+    description: "Bright pastel palette: white canvas, blush header band, warm-orange accent.",
+    keywords: ["sorbet", "pastel", "white", "blush", "orange", "light"],
+    swatches: ["#E89236", "#1A1A1A", "#FFFFFF", "#F0D5DA"],
+    tokens: { canvas:"#FFFFFF", surface:"#FFFFFF", surfaceSunken:"#F0D5DA", ink:"#1A1A1A", inkMuted:"rgba(26,26,26,0.65)", inkContrast:"#FFFFFF", border:"#1A1A1A", accent:"#E89236", navHover:"#E89236" },
+    darkTokens: { canvas:"#1A1A1A", surface:"#1A1A1A", surfaceSunken:"#2E1820", ink:"#FFFFFF", inkMuted:"rgba(255,255,255,0.72)", inkContrast:"#1A1A1A", border:"#FFFFFF", accent:"#E89236", navHover:"#E89236" },
+  },
+  {
+    id: "mesa",
+    label: "Mesa",
+    description: "Desert-landscape palette: pale ivory canvas, deep maroon ink, copper accent.",
+    keywords: ["desert", "mesa", "copper", "maroon", "ivory", "warm"],
+    swatches: ["#C5764A", "#5C2A1B", "#DDDDD8", "#A6B0BC"],
+    tokens: { canvas:"#DDDDD8", surface:"#DDDDD8", surfaceSunken:"#A6B0BC", ink:"#5C2A1B", inkMuted:"rgba(92,42,27,0.78)", inkContrast:"#DDDDD8", border:"#5C2A1B", accent:"#C5764A", navHover:"#C5764A" },
+    darkTokens: { canvas:"#5C2A1B", surface:"#5C2A1B", surfaceSunken:"#764E41", ink:"#DDDDD8", inkMuted:"rgba(221,221,216,0.78)", inkContrast:"#5C2A1B", border:"#DDDDD8", accent:"#C5764A", navHover:"#C5764A" },
+  },
+  {
+    id: "oyster",
+    label: "Oyster",
+    description: "Architectural greyscale palette: warm cream canvas, silver surface-sunken, deep navy-charcoal ink.",
+    keywords: ["oyster", "grey", "cream", "silver", "charcoal", "neutral"],
+    swatches: ["#7C746C", "#2D3540", "#F2EEE8", "#D2D5D8"],
+    tokens: { canvas:"#F2EEE8", surface:"#F2EEE8", surfaceSunken:"#D2D5D8", ink:"#2D3540", inkMuted:"rgba(45,53,64,0.72)", inkContrast:"#FFFFFF", border:"#2D3540", accent:"#7C746C", navHover:"#7C746C" },
+    darkTokens: { canvas:"#2D3540", surface:"#2D3540", surfaceSunken:"#3A424E", ink:"#FFFFFF", inkMuted:"rgba(255,255,255,0.75)", inkContrast:"#2D3540", border:"#FFFFFF", accent:"#7C746C", navHover:"#7C746C" },
+  },
+  {
+    id: "kelp",
+    label: "Kelp",
+    description: "Marine ramp palette: lime canvas, navy ink, bright-cyan priority highlight.",
+    keywords: ["kelp", "lime", "green", "navy", "marine", "teal"],
+    swatches: ["#5BC4BD", "#1A3D54", "#A6E891", "#7DDBA8"],
+    tokens: { canvas:"#A6E891", surface:"#A6E891", surfaceSunken:"#7DDBA8", ink:"#1A3D54", inkMuted:"rgba(26,61,84,0.70)", inkContrast:"#A6E891", border:"#1A3D54", accent:"#5BC4BD", navHover:"#5BC4BD" },
+    darkTokens: { canvas:"#1A3D54", surface:"#1F6168", surfaceSunken:"#3F8E91", ink:"#A6E891", inkMuted:"rgba(166,232,145,0.78)", inkContrast:"#1A3D54", border:"#A6E891", accent:"#5BC4BD", navHover:"#5BC4BD" },
+  },
+  {
+    id: "linen",
+    label: "Linen",
+    description: "Soft warm-and-cool neutrals: warm off-white canvas, medium-warm-gray accent.",
+    keywords: ["linen", "warm", "neutral", "grey", "soft", "minimal"],
+    swatches: ["#B8B5B0", "#2A2925", "#EDECE9", "#D5D7DB"],
+    tokens: { canvas:"#EDECE9", surface:"#EDECE9", surfaceSunken:"#D5D7DB", ink:"#2A2925", inkMuted:"rgba(42,41,37,0.70)", inkContrast:"#EDECE9", border:"#2A2925", accent:"#B8B5B0", navHover:"#B8B5B0" },
+    darkTokens: { canvas:"#2A2925", surface:"#3A3833", surfaceSunken:"#4A4842", ink:"#EDECE9", inkMuted:"rgba(237,236,233,0.80)", inkContrast:"#2A2925", border:"#EDECE9", accent:"#B8B5B0", navHover:"#B8B5B0" },
+  },
+  {
+    id: "meadow-pop",
+    label: "Meadow Pop",
+    description: "Garden-bloom palette: raspberry-pink accent and chartreuse pop on a pale-mint canvas.",
+    keywords: ["meadow", "raspberry", "pink", "mint", "green", "bright"],
+    swatches: ["#D85072", "#1B313D", "#BFE0BC", "#ABCBAD"],
+    tokens: { canvas:"#BFE0BC", surface:"#BFE0BC", surfaceSunken:"#ABCBAD", ink:"#1B313D", inkMuted:"rgba(27,49,61,0.65)", inkContrast:"#FFFFFF", border:"#1B313D", accent:"#D85072", navHover:"#D85072" },
+    darkTokens: { canvas:"#1B313D", surface:"#1B313D", surfaceSunken:"#2F464C", ink:"#BFE0BC", inkMuted:"rgba(191,224,188,0.72)", inkContrast:"#000000", border:"#BFE0BC", accent:"#D85072", navHover:"#D85072" },
+  },
+  {
+    id: "cobalt-lime",
+    label: "Cobalt Lime",
+    description: "Dark cobalt-ink canvas with electric lime-yellow accent — maximum contrast dark theme.",
+    keywords: ["cobalt", "lime", "yellow", "dark", "electric", "bold"],
+    swatches: ["#D0F040", "#080810", "#080810", "#161C35"],
+    tokens: { canvas:"#EEF4FA", surface:"#EEF4FA", surfaceSunken:"#C8DFF0", ink:"#0A0C14", inkMuted:"rgba(10,12,20,0.68)", inkContrast:"#EEF4FA", border:"#0A0C14", accent:"#D0F040", navHover:"#D0F040" },
+    darkTokens: { canvas:"#080810", surface:"#0D1020", surfaceSunken:"#161C35", ink:"#C8DFF0", inkMuted:"rgba(200,223,240,0.75)", inkContrast:"#080810", border:"#C8DFF0", accent:"#D0F040", navHover:"#D0F040" },
+  },
+  {
+    id: "cobalt-day",
+    label: "Cobalt Day",
+    description: "Light polarity twin of Cobalt Lime: clean off-white canvas with the same electric lime accent.",
+    keywords: ["cobalt", "lime", "yellow", "light", "sky", "blue"],
+    swatches: ["#D0F040", "#0A0C14", "#EEF4FA", "#C8DFF0"],
+    tokens: { canvas:"#EEF4FA", surface:"#EEF4FA", surfaceSunken:"#C8DFF0", ink:"#0A0C14", inkMuted:"rgba(10,12,20,0.68)", inkContrast:"#EEF4FA", border:"#0A0C14", accent:"#D0F040", navHover:"#D0F040" },
+    darkTokens: { canvas:"#0A0C14", surface:"#12162A", surfaceSunken:"#1B2540", ink:"#EEF4FA", inkMuted:"rgba(238,244,250,0.78)", inkContrast:"#0A0C14", border:"#EEF4FA", accent:"#D0F040", navHover:"#D0F040" },
+  },
+  {
+    id: "abyss",
+    label: "Abyss",
+    description: "Deep ocean dark theme: steel-blue accent on a very dark navy canvas.",
+    keywords: ["abyss", "dark", "navy", "steel", "blue", "ocean"],
+    swatches: ["#4A8FA8", "#0A1A2F", "#0A1A2F", "#143352"],
+    tokens: { canvas:"#E4EDE8", surface:"#E4EDE8", surfaceSunken:"#C8D8DE", ink:"#0A1A2F", inkMuted:"rgba(10,26,47,0.65)", inkContrast:"#E4EDE8", border:"#0A1A2F", accent:"#4A8FA8", navHover:"#4A8FA8" },
+    darkTokens: { canvas:"#0A1A2F", surface:"#0E2240", surfaceSunken:"#143352", ink:"#E4EDE8", inkMuted:"rgba(228,237,232,0.75)", inkContrast:"#0A1A2F", border:"#E4EDE8", accent:"#4A8FA8", navHover:"#4A8FA8" },
+  },
+  {
+    id: "tidal-amber",
+    label: "Tidal Amber",
+    description: "Complementary flip of Abyss: warm amber replaces the steel-blue accent on the same deep-navy backdrop.",
+    keywords: ["amber", "dark", "navy", "warm", "tidal", "deep"],
+    swatches: ["#C87840", "#0A1A2F", "#0A1A2F", "#143352"],
+    tokens: { canvas:"#F0E4C8", surface:"#F0E4C8", surfaceSunken:"#DDD0A8", ink:"#0A1A2F", inkMuted:"rgba(10,26,47,0.70)", inkContrast:"#F0E4C8", border:"#0A1A2F", accent:"#C87840", navHover:"#C87840" },
+    darkTokens: { canvas:"#0A1A2F", surface:"#0E2240", surfaceSunken:"#143352", ink:"#F0E4C8", inkMuted:"rgba(240,228,200,0.75)", inkContrast:"#0A1A2F", border:"#F0E4C8", accent:"#C87840", navHover:"#C87840" },
+  },
+  {
+    id: "taupe-navy",
+    label: "Taupe Navy",
+    description: "Mid-dark slate canvas with warm taupe accent — muted and corporate.",
+    keywords: ["taupe", "navy", "dark", "slate", "warm", "corporate"],
+    swatches: ["#B0A090", "#2B3A4A", "#2B3A4A", "#374858"],
+    tokens: { canvas:"#F0EBE0", surface:"#F0EBE0", surfaceSunken:"#DDD8CE", ink:"#2B3A4A", inkMuted:"rgba(43,58,74,0.70)", inkContrast:"#F0EBE0", border:"#2B3A4A", accent:"#B0A090", navHover:"#B0A090" },
+    darkTokens: { canvas:"#2B3A4A", surface:"#2B3A4A", surfaceSunken:"#374858", ink:"#F0EBE0", inkMuted:"rgba(240,235,224,0.75)", inkContrast:"#2B3A4A", border:"#F0EBE0", accent:"#B0A090", navHover:"#B0A090" },
+  },
+  {
+    id: "chalk-navy",
+    label: "Chalk Navy",
+    description: "Light polarity flip of Taupe Navy: warm chalk-white canvas with deep navy ink.",
+    keywords: ["chalk", "navy", "light", "warm", "white", "minimal"],
+    swatches: ["#2B3A4A", "#2B3A4A", "#F0EBE0", "#DDD8CE"],
+    tokens: { canvas:"#F0EBE0", surface:"#F0EBE0", surfaceSunken:"#DDD8CE", ink:"#2B3A4A", inkMuted:"rgba(43,58,74,0.70)", inkContrast:"#F0EBE0", border:"#2B3A4A", accent:"#2B3A4A", navHover:"#2B3A4A" },
+    darkTokens: { canvas:"#2B3A4A", surface:"#374858", surfaceSunken:"#455870", ink:"#F0EBE0", inkMuted:"rgba(240,235,224,0.75)", inkContrast:"#2B3A4A", border:"#F0EBE0", accent:"#B0A090", navHover:"#B0A090" },
+  },
+  {
+    id: "buckthorn",
+    label: "Buckthorn",
+    description: "Dark navy canvas with warm buckthorn-tan accent — earthy sophistication.",
+    keywords: ["buckthorn", "tan", "navy", "dark", "earthy", "warm"],
+    swatches: ["#A67B5B", "#002850", "#002850", "#003A6B"],
+    tokens: { canvas:"#F0F0F8", surface:"#F0F0F8", surfaceSunken:"#E0E0EC", ink:"#002850", inkMuted:"rgba(0,40,80,0.70)", inkContrast:"#F0F0F8", border:"#002850", accent:"#A67B5B", navHover:"#A67B5B" },
+    darkTokens: { canvas:"#002850", surface:"#002850", surfaceSunken:"#003A6B", ink:"#E8E8F2", inkMuted:"rgba(232,232,242,0.75)", inkContrast:"#002850", border:"#E8E8F2", accent:"#A67B5B", navHover:"#A67B5B" },
+  },
+  {
+    id: "moonlit",
+    label: "Moonlit",
+    description: "Light twin of Buckthorn: pale silver-white canvas with the same warm tan accent.",
+    keywords: ["moonlit", "silver", "white", "tan", "light", "soft"],
+    swatches: ["#A67B5B", "#002850", "#F0F0F8", "#E0E0EC"],
+    tokens: { canvas:"#F0F0F8", surface:"#F0F0F8", surfaceSunken:"#E0E0EC", ink:"#002850", inkMuted:"rgba(0,40,80,0.70)", inkContrast:"#F0F0F8", border:"#002850", accent:"#A67B5B", navHover:"#A67B5B" },
+    darkTokens: { canvas:"#002850", surface:"#003A6B", surfaceSunken:"#0A4A80", ink:"#F0F0F8", inkMuted:"rgba(240,240,248,0.75)", inkContrast:"#002850", border:"#F0F0F8", accent:"#A67B5B", navHover:"#A67B5B" },
+  },
+  {
+    id: "nightberry",
+    label: "Nightberry",
+    description: "Vivid hot-pink accent blazes against a near-black canvas — high-drama dark theme.",
+    keywords: ["pink", "black", "dark", "vivid", "bold", "dramatic"],
+    swatches: ["#FC5A8D", "#1A1A1A", "#1A1A1A", "#2A1E22"],
+    tokens: { canvas:"#F8F0F4", surface:"#F8F0F4", surfaceSunken:"#EDD8E2", ink:"#3C1A2A", inkMuted:"rgba(60,26,42,0.68)", inkContrast:"#F8F0F4", border:"#3C1A2A", accent:"#FC5A8D", navHover:"#FC5A8D" },
+    darkTokens: { canvas:"#1A1A1A", surface:"#1A1A1A", surfaceSunken:"#2A1E22", ink:"#F8E8EE", inkMuted:"rgba(248,232,238,0.75)", inkContrast:"#1A1A1A", border:"#F8E8EE", accent:"#FC5A8D", navHover:"#FC5A8D" },
+  },
+  {
+    id: "berry-dawn",
+    label: "Berry Dawn",
+    description: "Light polarity of Nightberry: soft rose-cream canvas with the same hot-pink accent.",
+    keywords: ["rose", "pink", "cream", "light", "soft", "feminine"],
+    swatches: ["#FC5A8D", "#3C1A2A", "#F8F0F4", "#EDD8E2"],
+    tokens: { canvas:"#F8F0F4", surface:"#F8F0F4", surfaceSunken:"#EDD8E2", ink:"#3C1A2A", inkMuted:"rgba(60,26,42,0.68)", inkContrast:"#F8F0F4", border:"#3C1A2A", accent:"#FC5A8D", navHover:"#FC5A8D" },
+    darkTokens: { canvas:"#1A1A1A", surface:"#2A1E22", surfaceSunken:"#3A2830", ink:"#F8E8EE", inkMuted:"rgba(248,232,238,0.75)", inkContrast:"#1A1A1A", border:"#F8E8EE", accent:"#FC5A8D", navHover:"#FC5A8D" },
+  },
+  {
+    id: "ember-wine",
+    label: "Ember Wine",
+    description: "Smouldering red-orange accent on a deep garnet canvas — rich and dramatic.",
+    keywords: ["ember", "wine", "red", "garnet", "dark", "dramatic"],
+    swatches: ["#C1440E", "#3A0008", "#3A0008", "#5E0010"],
+    tokens: { canvas:"#F4E8DC", surface:"#F4E8DC", surfaceSunken:"#E4D0BC", ink:"#3A0008", inkMuted:"rgba(58,0,8,0.65)", inkContrast:"#F4E8DC", border:"#3A0008", accent:"#C1440E", navHover:"#C1440E" },
+    darkTokens: { canvas:"#3A0008", surface:"#3A0008", surfaceSunken:"#5E0010", ink:"#F4E8DC", inkMuted:"rgba(244,232,220,0.75)", inkContrast:"#3A0008", border:"#F4E8DC", accent:"#C1440E", navHover:"#C1440E" },
+  },
+  {
+    id: "saffron-tide",
+    label: "Saffron Tide",
+    description: "Golden saffron accent on a warm cream canvas with dusty-violet structure.",
+    keywords: ["saffron", "gold", "cream", "violet", "warm", "mediterranean"],
+    swatches: ["#F4C430", "#1E1A26", "#F2EEE3", "#E2DCCC"],
+    tokens: { canvas:"#F2EEE3", surface:"#F2EEE3", surfaceSunken:"#E2DCCC", ink:"#1E1A26", inkMuted:"rgba(30,26,38,0.68)", inkContrast:"#F2EEE3", border:"#1E1A26", accent:"#F4C430", navHover:"#F4C430" },
+    darkTokens: { canvas:"#1E1A26", surface:"#2A2635", surfaceSunken:"#383445", ink:"#F2EEE3", inkMuted:"rgba(242,238,227,0.75)", inkContrast:"#1E1A26", border:"#F2EEE3", accent:"#F4C430", navHover:"#F4C430" },
+  },
+  {
+    id: "spectrum",
+    label: "Spectrum",
+    description: "Light palette with a terracotta-orange accent on warm parchment.",
+    keywords: ["spectrum", "terracotta", "orange", "parchment", "warm", "light"],
+    swatches: ["#E07030", "#1A2B4A", "#F0E8D0", "#DDD0B0"],
+    tokens: { canvas:"#F0E8D0", surface:"#F0E8D0", surfaceSunken:"#DDD0B0", ink:"#1A2B4A", inkMuted:"rgba(26,43,74,0.70)", inkContrast:"#F0E8D0", border:"#1A2B4A", accent:"#E07030", navHover:"#E07030" },
+    darkTokens: { canvas:"#1A2B4A", surface:"#243760", surfaceSunken:"#304578", ink:"#F0E8D0", inkMuted:"rgba(240,232,208,0.80)", inkContrast:"#1A2B4A", border:"#F0E8D0", accent:"#E07030", navHover:"#E07030" },
+  },
+  {
+    id: "spectrum-dusk",
+    label: "Spectrum Dusk",
+    description: "Dark twin of Spectrum: same orange accent set against deep ink-blue canvas.",
+    keywords: ["spectrum", "orange", "dark", "navy", "blue", "dusk"],
+    swatches: ["#E07030", "#1A2B4A", "#1A2B4A", "#243760"],
+    tokens: { canvas:"#F0E8D0", surface:"#F0E8D0", surfaceSunken:"#DDD0B0", ink:"#1A2B4A", inkMuted:"rgba(26,43,74,0.70)", inkContrast:"#F0E8D0", border:"#1A2B4A", accent:"#E07030", navHover:"#E07030" },
+    darkTokens: { canvas:"#1A2B4A", surface:"#1A2B4A", surfaceSunken:"#243760", ink:"#F0E8D0", inkMuted:"rgba(240,232,208,0.75)", inkContrast:"#1A2B4A", border:"#F0E8D0", accent:"#E07030", navHover:"#E07030" },
+  },
+  {
+    id: "stratum",
+    label: "Stratum",
+    description: "Warm coral-red accent on a dark charcoal canvas — geologic layers of warmth.",
+    keywords: ["stratum", "coral", "charcoal", "dark", "red", "warm"],
+    swatches: ["#E06050", "#2D3035", "#2D3035", "#3A4048"],
+    tokens: { canvas:"#EBE5D8", surface:"#EBE5D8", surfaceSunken:"#D8D0C2", ink:"#1E2025", inkMuted:"rgba(30,32,37,0.70)", inkContrast:"#EBE5D8", border:"#1E2025", accent:"#E06050", navHover:"#E06050" },
+    darkTokens: { canvas:"#2D3035", surface:"#2D3035", surfaceSunken:"#3A4048", ink:"#EAE2D8", inkMuted:"rgba(234,226,216,0.75)", inkContrast:"#2D3035", border:"#EAE2D8", accent:"#E06050", navHover:"#E06050" },
+  },
+  {
+    id: "coral-chalk",
+    label: "Coral Chalk",
+    description: "Light polarity of Stratum: the same coral-red accent on chalky white canvas.",
+    keywords: ["coral", "chalk", "red", "white", "light", "summer"],
+    swatches: ["#E06050", "#1E2025", "#EBE5D8", "#D8D0C2"],
+    tokens: { canvas:"#EBE5D8", surface:"#EBE5D8", surfaceSunken:"#D8D0C2", ink:"#1E2025", inkMuted:"rgba(30,32,37,0.70)", inkContrast:"#EBE5D8", border:"#1E2025", accent:"#E06050", navHover:"#E06050" },
+    darkTokens: { canvas:"#1E2025", surface:"#2A2D35", surfaceSunken:"#383C45", ink:"#EBE5D8", inkMuted:"rgba(235,229,216,0.75)", inkContrast:"#1E2025", border:"#EBE5D8", accent:"#E06050", navHover:"#E06050" },
+  },
+  {
+    id: "oslo",
+    label: "Oslo",
+    description: "Nordic cool: muted teal-blue accent on deep midnight canvas — minimal, cold, Scandinavian.",
+    keywords: ["oslo", "nordic", "teal", "blue", "dark", "minimal"],
+    swatches: ["#4C8EA0", "#0D2137", "#0D2137", "#153048"],
+    tokens: { canvas:"#C8DDE4", surface:"#C8DDE4", surfaceSunken:"#B0C8D0", ink:"#0D2137", inkMuted:"rgba(13,33,55,0.70)", inkContrast:"#C8DDE4", border:"#0D2137", accent:"#4C8EA0", navHover:"#4C8EA0" },
+    darkTokens: { canvas:"#0D2137", surface:"#0D2137", surfaceSunken:"#153048", ink:"#C8DDE4", inkMuted:"rgba(200,221,228,0.75)", inkContrast:"#0D2137", border:"#C8DDE4", accent:"#4C8EA0", navHover:"#4C8EA0" },
+  },
+  {
+    id: "blush-steel",
+    label: "Blush Steel",
+    description: "Warm blush-copper accent on a deep steel-blue canvas — industrial romanticism.",
+    keywords: ["blush", "steel", "copper", "blue", "warm", "dark"],
+    swatches: ["#D89060", "#1A2A3A", "#F5EBE8", "#E8D5D0"],
+    tokens: { canvas:"#F5EBE8", surface:"#F5EBE8", surfaceSunken:"#E8D5D0", ink:"#1A2A3A", inkMuted:"rgba(26,42,58,0.70)", inkContrast:"#F5EBE8", border:"#1A2A3A", accent:"#D89060", navHover:"#D89060" },
+    darkTokens: { canvas:"#1A2A3A", surface:"#253548", surfaceSunken:"#334055", ink:"#F5EBE8", inkMuted:"rgba(245,235,232,0.75)", inkContrast:"#1A2A3A", border:"#F5EBE8", accent:"#D89060", navHover:"#D89060" },
+  },
+  {
+    id: "maritime",
+    label: "Maritime",
+    description: "Dark navy canvas with a vivid tangerine accent — the classic nautical contrast.",
+    keywords: ["maritime", "navy", "tangerine", "orange", "dark", "nautical"],
+    swatches: ["#E06020", "#1A2B4A", "#1A2B4A", "#243760"],
+    tokens: { canvas:"#F2EDE4", surface:"#F2EDE4", surfaceSunken:"#E4D8C8", ink:"#1A2B4A", inkMuted:"rgba(26,43,74,0.70)", inkContrast:"#F2EDE4", border:"#1A2B4A", accent:"#E06020", navHover:"#E06020" },
+    darkTokens: { canvas:"#1A2B4A", surface:"#1A2B4A", surfaceSunken:"#243760", ink:"#F2EDE4", inkMuted:"rgba(242,237,228,0.75)", inkContrast:"#1A2B4A", border:"#F2EDE4", accent:"#E06020", navHover:"#E06020" },
+  },
+  {
+    id: "aurora",
+    label: "Aurora",
+    description: "Periwinkle-blue accent over a luminous lime-mint canvas — ethereal northern lights.",
+    keywords: ["aurora", "periwinkle", "blue", "lime", "mint", "light"],
+    swatches: ["#8090D0", "#1A2060", "#EAF8D8", "#C8F0A0"],
+    tokens: { canvas:"#EAF8D8", surface:"#EAF8D8", surfaceSunken:"#C8F0A0", ink:"#1A2060", inkMuted:"rgba(26,32,96,0.70)", inkContrast:"#EAF8D8", border:"#1A2060", accent:"#8090D0", navHover:"#8090D0" },
+    darkTokens: { canvas:"#1A2060", surface:"#222A78", surfaceSunken:"#2C3590", ink:"#EAF8D8", inkMuted:"rgba(234,248,216,0.80)", inkContrast:"#1A2060", border:"#EAF8D8", accent:"#C8F0A0", navHover:"#C8F0A0" },
+  },
+  {
+    id: "ironworks",
+    label: "Ironworks",
+    description: "Burnished gold accent on a near-black iron canvas — foundry heat and industrial weight.",
+    keywords: ["iron", "gold", "dark", "black", "industrial", "warm"],
+    swatches: ["#C87820", "#1A1C1E", "#1A1C1E", "#252830"],
+    tokens: { canvas:"#D8DCE2", surface:"#D8DCE2", surfaceSunken:"#C0C4CC", ink:"#1A1C1E", inkMuted:"rgba(26,28,30,0.65)", inkContrast:"#D8DCE2", border:"#1A1C1E", accent:"#C87820", navHover:"#C87820" },
+    darkTokens: { canvas:"#1A1C1E", surface:"#1A1C1E", surfaceSunken:"#252830", ink:"#D8DCE2", inkMuted:"rgba(216,220,226,0.75)", inkContrast:"#1A1C1E", border:"#D8DCE2", accent:"#C87820", navHover:"#C87820" },
+  },
+  {
+    id: "rosewood",
+    label: "Rosewood",
+    description: "Deep rose-red accent on a warm ivory canvas — antique elegance with botanical character.",
+    keywords: ["rosewood", "rose", "red", "ivory", "warm", "elegant"],
+    swatches: ["#6B2737", "#2A1018", "#F5EEF0", "#E8D4D8"],
+    tokens: { canvas:"#F5EEF0", surface:"#F5EEF0", surfaceSunken:"#E8D4D8", ink:"#2A1018", inkMuted:"rgba(42,16,24,0.70)", inkContrast:"#F5EEF0", border:"#2A1018", accent:"#6B2737", navHover:"#6B2737" },
+    darkTokens: { canvas:"#2A1018", surface:"#3A1C24", surfaceSunken:"#4A2830", ink:"#F5EEF0", inkMuted:"rgba(245,238,240,0.80)", inkContrast:"#2A1018", border:"#F5EEF0", accent:"#6B2737", navHover:"#6B2737" },
+  },
+];
+
+// ─── Theme preview card ───────────────────────────────────────────────────────
+function ThemePreviewCard({ theme, mode = "light" }: { theme: ThemeEntry; mode?: "light" | "dark" }) {
+  const t = (mode === "dark" && theme.darkTokens) ? theme.darkTokens : theme.tokens;
+  const vars: React.CSSProperties = {
+    "--tp-canvas":   t.canvas,
+    "--tp-surface":  t.surface,
+    "--tp-sunken":   t.surfaceSunken,
+    "--tp-ink":      t.ink,
+    "--tp-ink-m":    t.inkMuted,
+    "--tp-ink-c":    t.inkContrast,
+    "--tp-border":   t.border,
+    "--tp-accent":   t.accent,
+    "--tp-nav":      t.navHover,
+  } as React.CSSProperties;
+
+  return (
+    <div className="tp-card" style={vars} aria-label={`${theme.label} preview`}>
+      {/* Simulated sidebar strip */}
+      <div className="tp-sidebar">
+        <div className="tp-sidebar__logo" />
+        <div className="tp-sidebar__item tp-sidebar__item--active" />
+        <div className="tp-sidebar__item" />
+        <div className="tp-sidebar__item" />
+        <div className="tp-sidebar__item" />
+      </div>
+
+      {/* Main content area */}
+      <div className="tp-body">
+        {/* Type specimen */}
+        <div className="tp-types">
+          <div className="tp-h1">H1 Heading</div>
+          <div className="tp-h2">H2 Heading</div>
+          <div className="tp-h3">H3 Subheading</div>
+          <div className="tp-h4">H4 Label</div>
+          <div className="tp-h5">H5 Caption</div>
+          <div className="tp-h6">H6 Micro</div>
+          <div className="tp-p">Body paragraph text — the quick brown fox jumps over the lazy dog.</div>
+        </div>
+
+        {/* Form fields */}
+        <div className="tp-fields">
+          <div className="tp-field">
+            <div className="tp-field__label">Field label</div>
+            <div className="tp-field__input">Sample input value</div>
+          </div>
+          <div className="tp-field">
+            <div className="tp-field__label">Another field</div>
+            <div className="tp-field__input tp-field__input--placeholder">Placeholder text</div>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="tp-buttons">
+          <div className="tp-btn tp-btn--primary">Primary</div>
+          <div className="tp-btn tp-btn--secondary">Secondary</div>
+          <div className="tp-btn tp-btn--ghost">Ghost</div>
+        </div>
+
+        {/* Mini table */}
+        <div className="tp-table">
+          <div className="tp-table__head">
+            <div className="tp-table__cell">Name</div>
+            <div className="tp-table__cell">Value</div>
+            <div className="tp-table__cell">Status</div>
+          </div>
+          <div className="tp-table__row">
+            <div className="tp-table__cell">Alpha</div>
+            <div className="tp-table__cell">100</div>
+            <div className="tp-table__cell tp-table__cell--accent">Active</div>
+          </div>
+          <div className="tp-table__row tp-table__row--alt">
+            <div className="tp-table__cell">Beta</div>
+            <div className="tp-table__cell">42</div>
+            <div className="tp-table__cell">Draft</div>
+          </div>
+          <div className="tp-table__row">
+            <div className="tp-table__cell">Gamma</div>
+            <div className="tp-table__cell">8</div>
+            <div className="tp-table__cell">Closed</div>
+          </div>
+        </div>
+
+        {/* Nav highlight chip */}
+        <div className="tp-nav-chip">
+          <div className="tp-nav-chip__dot" />
+          <span>Nav highlight</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Swatch strip ─────────────────────────────────────────────────────────────
+function SwatchStrip({ colors }: { colors: [string, string, string, string] }) {
+  return (
+    <div className="theme-swatch-strip" aria-hidden="true">
+      {colors.map((c, i) => (
+        <span key={i} className="theme-swatch-strip__chip" style={{ background: c }} title={c} />
+      ))}
+    </div>
+  );
+}
+
+// ─── Themes tab ───────────────────────────────────────────────────────────────
+const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 50, 100, "all"] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
 type TopTab = "maker" | "themes";
 
 function ThemesTab() {
   const { pack, choose, mounted, saveError } = useThemePack();
-  const swatch = (color: string) => ({ background: color });
+  const { theme: globalMode, setMode: setGlobalMode } = useTheme();
+  const [cardModes, setCardModes] = useState<Record<string, "light" | "dark">>({});
 
-  const buttons: Array<{
-    id: ThemePack;
-    label: string;
-    description: string;
-    swatches: string[];
-  }> = [
-    {
-      id: "default",
-      label: "Default theme",
-      description: "Warm neutrals — the current Vector look across the app.",
-      swatches: ["#FFFFFF", "#EDEAE4", "#1A1A1A", "#E5E1DA"],
-    },
-    {
-      id: "vector-mono",
-      label: "Vector Mono",
-      description: "Strict palette: hot pink, black, page gray, secondary gray. Loaded on the fly.",
-      swatches: ["#FF346E", "#000000", "#C9CACF", "#ACAFBA"],
-    },
-    {
-      id: "charcoal-amber",
-      label: "Charcoal Amber",
-      description: "Editorial dark palette: vivid amber, warm cream, charcoal canvas, pure-black header band.",
-      swatches: ["#E8A437", "#ECE2C8", "#2A2C2E", "#000000"],
-    },
-    {
-      id: "vector-marine",
-      label: "Vector Marine",
-      description: "Warm rose canvas with midnight-teal ink and a vivid lime-zing priority highlight — drawn from the marine brand palette card.",
-      swatches: ["#B3F938", "#082429", "#ECD5C5", "#CED9D9"],
-    },
-    {
-      id: "atlas",
-      label: "Atlas",
-      description: "Customer-journey palette: green accent (black ink for legibility) on white canvas, deep-navy attention tone, black body ink.",
-      swatches: ["#5FA547", "#1F3D8E", "#FFFFFF", "#D6D8DA"],
-    },
-    {
-      id: "coral-tide",
-      label: "Coral Tide",
-      description: "Warm coral accent meeting deep-teal ink across cool grey neutrals — drawn from a coastal brand palette card.",
-      swatches: ["#FF6A5B", "#064A60", "#EAEAEA", "#CDCDCD"],
-    },
-    {
-      id: "slate",
-      label: "Slate",
-      description: "Cool monochromatic palette: deep slate-navy ink doubles as accent, sage and pale-lavender surfaces, LightSlateGray mid-tone.",
-      swatches: ["#2C3E50", "#778899", "#DFE3EE", "#A2B9BC"],
-    },
-    {
-      id: "harbor",
-      label: "Harbor",
-      description: "Nautical infographic palette: warm cream canvas, deep navy ink, terracotta orange accent (black ink for legibility), teal and mid-blue status tones.",
-      swatches: ["#DD6A3C", "#26333E", "#F2EAD6", "#D3CEBF"],
-    },
-    {
-      id: "dusk-mauve",
-      label: "Dusk Mauve",
-      description: "Soft monochrome palette: pale pink-lavender canvas, near-black navy ink, mauve as the only highlight (palette has no true accents — promoted from muted bucket), periwinkle surfaces, slate group-sep band.",
-      swatches: ["#B080B4", "#161A2F", "#DDC8D8", "#9AB0D0"],
-    },
-    {
-      id: "sea-glass",
-      label: "Sea Glass",
-      description: "Soft pastel coastal palette: mint canvas, deep-sage ink (derived to clear AA), light-blue priority highlight with dark-on-blue contrast. Rose group-sep band, peach auth cards.",
-      swatches: ["#99CDD8", "#475048", "#DAEBE3", "#CFD6C4"],
-    },
-    {
-      id: "vesper",
-      label: "Vesper",
-      description: "Twilight palette: blush canvas, midnight-purple ink, warm orange highlight, deep purple group-sep band — drawn from a sunset-on-orchid color study.",
-      swatches: ["#EB9F5A", "#1D0A39", "#DBBCB9", "#C4A7AA"],
-    },
-    {
-      id: "dusk-slate",
-      label: "Dusk Slate",
-      description: "Monochromatic blue-gray-mauve palette: light neutral canvas, near-black navy ink, slate-blue accent (palette has no true accent — promoted from muted bucket), dusty lavender header band, deep teal-slate group-sep band.",
-      swatches: ["#5C707A", "#181D23", "#DCDCDC", "#A89DAB"],
-    },
-    {
-      id: "sundown",
-      label: "Sundown",
-      description: "Warm-pop on cool canvas: pale sky-blue surface, deep navy ink, vivid orange accent (black ink for legibility), brick-red danger and group-sep band, sand info tint.",
-      swatches: ["#E1762E", "#10314A", "#A6CDD8", "#88AEBC"],
-    },
-    {
-      id: "vector-bloom",
-      label: "Vector Bloom",
-      description: "Soft floral palette: cream canvas, pale lavender header band, raspberry accent for interactive states, slate group-sep band, deep slate ink synthesised so body text holds 11:1 contrast against cream.",
-      swatches: ["#C9495F", "#2E3340", "#F5F0E8", "#EDE7EC"],
-    },
-    {
-      id: "tideline",
-      label: "Tideline",
-      description: "Coastal palette: pale sky-blue canvas, near-black warm ink, vivid coral-orange accent, sage-green header band, dark warm-brown group-sep band — sky muted promoted to canvas so body text reads at 16:1.",
-      swatches: ["#EE9763", "#080807", "#CDEDF7", "#6F7C72"],
-    },
-    {
-      id: "sorbet",
-      label: "Sorbet",
-      description: "Bright pastel palette: white canvas, blush header band, warm-orange accent, chartreuse group-sep, vivid pink as decorative third — ink synthesized to #1A1A1A since the source has no dark color.",
-      swatches: ["#E89236", "#1A1A1A", "#FFFFFF", "#F0D5DA"],
-    },
-    {
-      id: "mesa",
-      label: "Mesa",
-      description: "Desert-landscape palette: pale ivory canvas, deep maroon ink, copper accent (black ink for legibility), blue-gray cool surface-sunken counterpoint, sand info/group-sep tone.",
-      swatches: ["#C5764A", "#5C2A1B", "#DDDDD8", "#A6B0BC"],
-    },
-    {
-      id: "oyster",
-      label: "Oyster",
-      description: "Architectural greyscale palette: warm cream canvas, silver surface-sunken, deep navy-charcoal ink, warm taupe as the only highlight (palette has no true accents — promoted from muted bucket), synthesized cool slate group-sep.",
-      swatches: ["#7C746C", "#2D3540", "#F2EEE8", "#D2D5D8"],
-    },
-    {
-      id: "kelp",
-      label: "Kelp",
-      description: "Marine ramp palette with no neutrals — Stage 4 fallback puts lime as canvas and navy as ink. Bright-cyan priority highlight (dark-on-cyan auto-flip), deep-teal group-sep band, sea-green auth cards.",
-      swatches: ["#5BC4BD", "#1A3D54", "#A6E891", "#7DDBA8"],
-    },
-    {
-      id: "linen",
-      label: "Linen",
-      description: "Soft warm-and-cool neutrals: warm off-white canvas, cool light-gray header band, medium-warm-gray accent (dark-on-gray auto-flip). Ink derived to deep warm-neutral since the source had no dark — clears 13:1 against canvas.",
-      swatches: ["#B8B5B0", "#2A2925", "#EDECE9", "#D5D7DB"],
-    },
-    {
-      id: "meadow-pop",
-      label: "Meadow Pop",
-      description: "Garden-bloom palette: raspberry-pink accent (black ink) and chartreuse pop on a pale-mint canvas with deep navy-teal ink. Forest band marks group separators. No true neutrals — muted bucket promoted to surfaces; mid-tone surface-sunken synthesised so body text holds 7.5:1 contrast.",
-      swatches: ["#D85072", "#1B313D", "#BFE0BC", "#ABCBAD"],
-    },
-    {
-      id: "cobalt-lime",
-      label: "Cobalt Lime",
-      description: "Dark cobalt-ink canvas with electric lime-yellow accent — maximum contrast dark theme with a single eye-catching pop colour.",
-      swatches: ["#D0F040", "#080810", "#080810", "#161C35"],
-    },
-    {
-      id: "cobalt-day",
-      label: "Cobalt Day",
-      description: "Light polarity twin of Cobalt Lime: clean off-white canvas with the same electric lime accent on a sky-blue surface.",
-      swatches: ["#D0F040", "#0A0C14", "#EEF4FA", "#C8DFF0"],
-    },
-    {
-      id: "abyss",
-      label: "Abyss",
-      description: "Deep ocean dark theme: steel-blue accent on a very dark navy canvas — understated and technical.",
-      swatches: ["#4A8FA8", "#0A1A2F", "#0A1A2F", "#143352"],
-    },
-    {
-      id: "tidal-amber",
-      label: "Tidal Amber",
-      description: "Complementary flip of Abyss: warm amber replaces the steel-blue accent on the same deep-navy backdrop.",
-      swatches: ["#C87840", "#0A1A2F", "#0A1A2F", "#143352"],
-    },
-    {
-      id: "taupe-navy",
-      label: "Taupe Navy",
-      description: "Mid-dark slate canvas with warm taupe accent — muted and corporate with just enough warmth to feel considered.",
-      swatches: ["#B0A090", "#2B3A4A", "#2B3A4A", "#374858"],
-    },
-    {
-      id: "chalk-navy",
-      label: "Chalk Navy",
-      description: "Light polarity flip of Taupe Navy: warm chalk-white canvas with the deep navy as the dominant ink and structural accent.",
-      swatches: ["#2B3A4A", "#2B3A4A", "#F0EBE0", "#DDD8CE"],
-    },
-    {
-      id: "buckthorn",
-      label: "Buckthorn",
-      description: "Dark navy canvas with warm buckthorn-tan accent — earthy sophistication with deep maritime structure.",
-      swatches: ["#A67B5B", "#002850", "#002850", "#003A6B"],
-    },
-    {
-      id: "moonlit",
-      label: "Moonlit",
-      description: "Light twin of Buckthorn: pale silver-white canvas with the same warm tan accent, evoking moonlit stone.",
-      swatches: ["#A67B5B", "#002850", "#F0F0F8", "#E0E0EC"],
-    },
-    {
-      id: "nightberry",
-      label: "Nightberry",
-      description: "Vivid hot-pink accent blazes against a near-black canvas — high-drama dark theme with nightclub energy.",
-      swatches: ["#FC5A8D", "#1A1A1A", "#1A1A1A", "#2A1E22"],
-    },
-    {
-      id: "berry-dawn",
-      label: "Berry Dawn",
-      description: "Light polarity of Nightberry: soft rose-cream canvas with the same hot-pink accent, airy and feminine.",
-      swatches: ["#FC5A8D", "#3C1A2A", "#F8F0F4", "#EDD8E2"],
-    },
-    {
-      id: "ember-wine",
-      label: "Ember Wine",
-      description: "Smouldering red-orange accent on a deep garnet canvas — rich and dramatic like dying firelight on dark wood.",
-      swatches: ["#C1440E", "#3A0008", "#3A0008", "#5E0010"],
-    },
-    {
-      id: "saffron-tide",
-      label: "Saffron Tide",
-      description: "Golden saffron accent on a warm cream canvas with dusty-violet structure — Mediterranean warmth with editorial clarity.",
-      swatches: ["#F4C430", "#1E1A26", "#F2EEE3", "#E2DCCC"],
-    },
-    {
-      id: "spectrum",
-      label: "Spectrum",
-      description: "Light palette with a terracotta-orange accent on warm parchment — sun-bleached and energetic.",
-      swatches: ["#E07030", "#1A2B4A", "#F0E8D0", "#DDD0B0"],
-    },
-    {
-      id: "spectrum-dusk",
-      label: "Spectrum Dusk",
-      description: "Dark twin of Spectrum: same orange accent set against deep ink-blue canvas for high-contrast dusk atmosphere.",
-      swatches: ["#E07030", "#1A2B4A", "#1A2B4A", "#243760"],
-    },
-    {
-      id: "stratum",
-      label: "Stratum",
-      description: "Warm coral-red accent on a dark charcoal canvas — geologic layers of warmth on cool-dark structure.",
-      swatches: ["#E06050", "#2D3035", "#2D3035", "#3A4048"],
-    },
-    {
-      id: "coral-chalk",
-      label: "Coral Chalk",
-      description: "Light polarity of Stratum: the same coral-red accent on chalky white canvas — bright and summery.",
-      swatches: ["#E06050", "#1E2025", "#EBE5D8", "#D8D0C2"],
-    },
-    {
-      id: "oslo",
-      label: "Oslo",
-      description: "Nordic cool: muted teal-blue accent on deep midnight canvas — minimal, cold, Scandinavian.",
-      swatches: ["#4C8EA0", "#0D2137", "#0D2137", "#153048"],
-    },
-    {
-      id: "blush-steel",
-      label: "Blush Steel",
-      description: "Warm blush-copper accent on a deep steel-blue canvas — industrial romanticism, warm tones over cold structure.",
-      swatches: ["#D89060", "#1A2A3A", "#F5EBE8", "#E8D5D0"],
-    },
-    {
-      id: "maritime",
-      label: "Maritime",
-      description: "Dark navy canvas with a vivid tangerine accent — the classic nautical contrast of deep sea and signal flare.",
-      swatches: ["#E06020", "#1A2B4A", "#1A2B4A", "#243760"],
-    },
-    {
-      id: "aurora",
-      label: "Aurora",
-      description: "Periwinkle-blue accent over a luminous lime-mint canvas — ethereal northern lights energy in light mode.",
-      swatches: ["#8090D0", "#1A2060", "#EAF8D8", "#C8F0A0"],
-    },
-    {
-      id: "ironworks",
-      label: "Ironworks",
-      description: "Burnished gold accent on a near-black iron canvas — foundry heat and industrial weight.",
-      swatches: ["#C87820", "#1A1C1E", "#1A1C1E", "#252830"],
-    },
-    {
-      id: "rosewood",
-      label: "Rosewood",
-      description: "Deep rose-red accent on a warm ivory canvas — antique elegance with refined botanical character.",
-      swatches: ["#6B2737", "#2A1018", "#F5EEF0", "#E8D4D8"],
-    },
-  ];
+  const effectiveMode = (id: string): "light" | "dark" =>
+    cardModes[id] ?? (globalMode === "dark" ? "dark" : "light");
+
+  const toggleCardMode = (id: string) =>
+    setCardModes((prev) => ({ ...prev, [id]: effectiveMode(id) === "light" ? "dark" : "light" }));
+
+  const [query,    setQuery]    = useState("");
+  const [polarity, setPolarity] = useState<"light" | "dark">(globalMode === "dark" ? "dark" : "light");
+
+  useEffect(() => {
+    setPolarity(globalMode === "dark" ? "dark" : "light");
+    setPage(1);
+  }, [globalMode]);
+  const [hue,      setHue]      = useState<"" | "warm" | "cool" | "green" | "pink" | "neutral">("");
+  const [vibe,     setVibe]     = useState<"" | "bold" | "soft" | "minimal" | "coastal">("");
+  const [page, setPage]   = useState(1);
+  const [size, setSize]   = useState<PageSize>(() => {
+    if (typeof window === "undefined") return 50;
+    const stored = window.localStorage.getItem("theme-lib:page-size");
+    if (stored === "all") return "all";
+    const n = Number(stored);
+    return (PAGE_SIZE_OPTIONS as readonly (number | string)[]).includes(n) ? (n as PageSize) : 50;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("theme-lib:page-size", String(size));
+  }, [size]);
+
+  const HUE_KEYS: Record<string, string[]> = {
+    warm:    ["amber", "orange", "coral", "red", "gold", "terracotta", "copper", "warm", "ember", "garnet", "saffron"],
+    cool:    ["blue", "teal", "navy", "marine", "slate", "cobalt", "cool", "arctic", "sky", "steel", "oslo", "nordic"],
+    green:   ["green", "lime", "mint", "sage", "kelp", "meadow"],
+    pink:    ["pink", "lavender", "mauve", "berry", "purple", "blush", "raspberry", "rose"],
+    neutral: ["grey", "gray", "cream", "white", "ivory", "silver", "black", "neutral", "mono", "charcoal", "linen", "chalk"],
+  };
+  const VIBE_KEYS: Record<string, string[]> = {
+    bold:    ["bold", "vivid", "dramatic", "electric", "bright"],
+    soft:    ["soft", "pastel", "feminine", "gentle"],
+    minimal: ["minimal", "clean", "mono", "neutral"],
+    coastal: ["coastal", "nautical", "marine", "nordic", "ocean"],
+  };
+
+  const filtered = useMemo(() => {
+    let result = THEMES as typeof THEMES;
+
+    const q = query.toLowerCase().trim();
+    if (q) {
+      result = result.filter((t) => {
+        const haystack = [t.label, t.description, ...t.keywords, ...t.swatches, ...Object.values(t.tokens)].join(" ").toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    if (polarity) result = result.filter((t) => t.keywords.includes(polarity));
+    if (hue)      result = result.filter((t) => t.keywords.some((k) => HUE_KEYS[hue]?.includes(k)));
+    if (vibe)     result = result.filter((t) => t.keywords.some((k) => VIBE_KEYS[vibe]?.includes(k)));
+
+    return result;
+  }, [query, polarity, hue, vibe]);
+
+  const totalPages = size === "all" ? 1 : Math.max(1, Math.ceil(filtered.length / (size as number)));
+  const safePage   = Math.min(page, totalPages);
+  const rows       = size === "all" ? filtered : filtered.slice((safePage - 1) * (size as number), safePage * (size as number));
+
+  const handleQuery    = (v: string) => { setQuery(v);    setPage(1); };
+  const handlePolarity = (v: "light" | "dark") => { setPolarity(v); setPage(1); };
+  const handleHue      = (v: string) => { setHue(v as "" | "warm" | "cool" | "green" | "pink" | "neutral"); setPage(1); };
+  const handleVibe     = (v: string) => { setVibe(v as "" | "bold" | "soft" | "minimal" | "coastal"); setPage(1); };
+  const handleSize     = (v: PageSize) => { setSize(v); setPage(1); };
+  const hasFilters = !!(query || hue || vibe);
+  const resetFilters = () => { setQuery(""); setHue(""); setVibe(""); setPage(1); };
+
+  const renderPaginationBar = (position: "top" | "bottom") => (
+    <div className={`theme-lib__pagination${position === "bottom" ? " theme-lib__pagination--bottom" : ""}`}>
+      <div className="theme-lib__page-size">
+        <span className="theme-lib__page-size-label">Show</span>
+        {PAGE_SIZE_OPTIONS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`btn btn--sm ${size === n ? "btn--secondary" : "btn--primary"}`}
+            onClick={() => handleSize(n)}
+            aria-pressed={size === n}
+          >
+            {n === "all" ? "All" : n}
+          </button>
+        ))}
+      </div>
+      {size !== "all" && (
+        <>
+          <div className="theme-lib__page-info">
+            Page {safePage} of {totalPages}
+          </div>
+          <div className="theme-lib__page-nav">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              ‹ Prev
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              Next ›
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   return (
-    <section className="theme-panel theme-packs" aria-label="Theme packs">
-      <header className="theme-panel__header">
-        <h2 className="theme-panel__title">THEMES</h2>
-      </header>
-      <div className="theme-packs__grid">
-        {buttons.map((b) => {
-          const active = mounted && pack === b.id;
-          return (
+    <section className="theme-panel theme-lib" aria-label="Theme library">
+      {/* Controls bar */}
+      <div className="theme-lib__bar">
+        <input
+          type="search"
+          className="form__input theme-lib__search"
+          placeholder="Search by name, keyword, or hex…"
+          value={query}
+          onChange={(e) => handleQuery(e.target.value)}
+          aria-label="Filter themes"
+        />
+        <div className="theme-lib__filters">
+          <div className="theme-lib__polarity" role="group" aria-label="Filter by polarity">
             <button
-              key={b.id}
               type="button"
-              className={`theme-pack-btn${active ? " theme-pack-btn--active" : ""}`}
-              onClick={() => { void choose(b.id); }}
-              aria-pressed={active}
+              className={`btn btn--sm ${polarity === "light" ? "btn--secondary" : "btn--primary"}`}
+              onClick={() => handlePolarity("light")}
+              aria-pressed={polarity === "light"}
+              aria-label="Show light themes"
+              title="Light themes"
             >
-              <span className="theme-pack-btn__swatches" aria-hidden="true">
-                {b.swatches.map((c, i) => (
-                  <span key={i} className="theme-pack-btn__swatch" style={swatch(c)} />
-                ))}
-              </span>
-              <span className="theme-pack-btn__body">
-                <span className="theme-pack-btn__label">{b.label}</span>
-                <span className="theme-pack-btn__desc">{b.description}</span>
-              </span>
-              <span className="theme-pack-btn__state">{active ? "Active" : "Apply"}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+              Light
             </button>
-          );
-        })}
+            <button
+              type="button"
+              className={`btn btn--sm ${polarity === "dark" ? "btn--secondary" : "btn--primary"}`}
+              onClick={() => handlePolarity("dark")}
+              aria-pressed={polarity === "dark"}
+              aria-label="Show dark themes"
+              title="Dark themes"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              Dark
+            </button>
+          </div>
+          <select
+            className="form__select form__select--sm theme-lib__filter-select"
+            value={hue}
+            onChange={(e) => handleHue(e.target.value)}
+            aria-label="Filter by colour family"
+          >
+            <option value="">All Colours</option>
+            <option value="warm">Warm</option>
+            <option value="cool">Cool</option>
+            <option value="green">Green</option>
+            <option value="pink">Pink &amp; Purple</option>
+            <option value="neutral">Neutral</option>
+          </select>
+          <select
+            className="form__select form__select--sm theme-lib__filter-select"
+            value={vibe}
+            onChange={(e) => handleVibe(e.target.value)}
+            aria-label="Filter by vibe"
+          >
+            <option value="">All Vibes</option>
+            <option value="bold">Bold</option>
+            <option value="soft">Soft</option>
+            <option value="minimal">Minimal</option>
+            <option value="coastal">Coastal</option>
+          </select>
+          {hasFilters && (
+            <button
+              type="button"
+              className="theme-lib__filter-clear"
+              onClick={resetFilters}
+              aria-label="Clear all filters"
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+        <div className="theme-lib__count" aria-live="polite" aria-atomic="true">
+          {filtered.length} theme{filtered.length !== 1 ? "s" : ""}
+        </div>
       </div>
+
+      {renderPaginationBar("top")}
+
+      {/* Card grid — standard table-wrap container, 4 cols, hairline dividers */}
+      <div className="table-wrap theme-lib__table-wrap">
+        <div className="theme-lib__scroll">
+          {rows.length === 0 ? (
+            <div className="theme-lib__empty">
+              No themes match the current filters.{" "}
+              <button type="button" className="theme-lib__filter-clear theme-lib__filter-clear--inline" onClick={resetFilters}>Clear filters</button>
+            </div>
+          ) : (
+            <div className="theme-lib__grid">
+              {rows.map((theme) => {
+                const cardMode = effectiveMode(theme.id);
+                const active = mounted && pack === theme.id && cardMode === globalMode;
+                const hasDark = !!theme.darkTokens;
+                return (
+                  <div
+                    key={theme.id}
+                    className={`theme-lib__item${active ? " theme-lib__item--active" : ""}`}
+                  >
+                    <ThemePreviewCard theme={theme} mode={cardMode} />
+                    <div className="theme-lib__meta">
+                      <div className="theme-lib__meta-top">
+                        <SwatchStrip colors={theme.swatches} />
+                        <div className="theme-lib__meta-actions">
+                          {hasDark && (
+                            <button
+                              type="button"
+                              className="theme-card-mode-toggle"
+                              onClick={() => toggleCardMode(theme.id)}
+                              aria-label={`Switch ${theme.label} preview to ${cardMode === "light" ? "dark" : "light"} mode`}
+                              title={cardMode === "light" ? "Show dark mode preview" : "Show light mode preview"}
+                            >
+                              <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                                <rect x="0.5" y="0.5" width="19" height="19" fill={cardMode === "light" ? "#ffffff" : "#000000"} stroke={cardMode === "light" ? "#000000" : "#ffffff"} strokeWidth="1" />
+                                <rect x="3.5" y="3.5" width="13" height="13" fill={cardMode === "light" ? "#000000" : "#ffffff"} />
+                              </svg>
+                            </button>
+                          )}
+                          {active ? (
+                            <span className="theme-lib__active-badge">Active</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn--primary btn--sm"
+                              onClick={() => {
+                                void choose(theme.id);
+                                setGlobalMode(cardMode);
+                              }}
+                            >
+                              Apply
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <h2 className="theme-lib__name">{theme.label}</h2>
+                      <p className="theme-lib__desc">{theme.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {renderPaginationBar("bottom")}
+
       {saveError && (
         <div className="theme-packs__error" role="alert" aria-live="polite">
           {saveError}
@@ -713,7 +1212,7 @@ export default function ThemePage() {
   const { user } = useAuth();
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
-  const [topTab, setTopTab] = useState<TopTab>("maker");
+  const [topTab, setTopTab] = useState<TopTab>("themes");
 
   const shades = useMemo(() => shadesFromSeed(seed), [seed]);
   const seedName = useMemo(() => {
@@ -735,20 +1234,20 @@ export default function ThemePage() {
         <button
           type="button"
           role="tab"
-          aria-selected={topTab === "maker"}
-          className={`tabs__tab${topTab === "maker" ? " tabs__tab--active" : ""}`}
-          onClick={() => setTopTab("maker")}
-        >
-          Maker
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={topTab === "themes"}
           className={`tabs__tab${topTab === "themes" ? " tabs__tab--active" : ""}`}
           onClick={() => setTopTab("themes")}
         >
           Themes
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={topTab === "maker"}
+          className={`tabs__tab${topTab === "maker" ? " tabs__tab--active" : ""}`}
+          onClick={() => setTopTab("maker")}
+        >
+          Maker
         </button>
       </div>
 

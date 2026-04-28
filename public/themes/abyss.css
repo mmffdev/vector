@@ -114,17 +114,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Normal = ocean-steel with deep-navy text; hover = off-white with
-   deep-navy text. Auto-contrast enforced because steel mid-L fails
-   on white. */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #4A8FA8;
   color: #0A1A2F;
   border-color: #4A8FA8;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #E4EDE8;
   color: #0A1A2F;
@@ -152,17 +150,22 @@ table.tbl thead th,
    Binds to polarity-aware ink/ink-contrast pair. Group-separator
    uses mid-navy band with off-white text (11.2:1 ✓). */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: var(--ink-contrast);
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: var(--ink-contrast);
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: var(--ink-contrast);
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

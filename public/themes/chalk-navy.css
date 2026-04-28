@@ -116,16 +116,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Normal = dark-navy with cream text (10.8:1 ✓), hover = cream
-   with dark-navy text + border (10.8:1 ✓). */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #2B3A4A;
   color: #F0EBE0;
   border-color: #2B3A4A;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #F0EBE0;
   color: #2B3A4A;
@@ -154,17 +153,22 @@ table.tbl thead th,
    uses sunken-cream band with dark-navy text — explicit to survive
    both slot contexts. */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: var(--ink-contrast);
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: var(--ink-contrast);
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: var(--ink-contrast);
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

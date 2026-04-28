@@ -285,15 +285,15 @@ The original six cards (00118–00123) are too coarse for traceable progress. Re
 
 ### Schema (3 stories) — runs first; everything else depends on it
 
-- [ ] **S1 — SQL: create `user_nav_profiles` + `user_nav_profile_groups`.** Both new tables, indexes (one Default per user, position uniqueness, label uniqueness), check constraints (label 1–32, position ≥ 0), caps trigger or app-layer cap of 10 profiles.
-- [ ] **S2 — SQL: alter existing tables for profiles.** `user_nav_prefs.profile_id` SET NOT NULL + FK ON DELETE CASCADE. `users.active_nav_profile_id` UUID NULL + FK ON DELETE SET NULL. `user_nav_groups` is **not** altered.
-- [ ] **S3 — SQL: data migration script.** Insert one Default per user found in `user_nav_prefs ∪ user_nav_groups`; UPDATE prefs to set profile_id; INSERT `user_nav_profile_groups` rows from existing `user_nav_groups`; UPDATE `users.active_nav_profile_id`. Idempotent + dry-run mode via existing `cmd/migrate -dry-run` flag.
+- [x] **S1 — SQL: create `user_nav_profiles` + `user_nav_profile_groups`.** Both new tables, indexes (one Default per user, position uniqueness, label uniqueness), check constraints (label 1–32, position ≥ 0), caps trigger or app-layer cap of 10 profiles.
+- [x] **S2 — SQL: alter existing tables for profiles.** `user_nav_prefs.profile_id` SET NOT NULL + FK ON DELETE CASCADE. `users.active_nav_profile_id` UUID NULL + FK ON DELETE SET NULL. `user_nav_groups` is **not** altered.
+- [x] **S3 — SQL: data migration script.** Insert one Default per user found in `user_nav_prefs ∪ user_nav_groups`; UPDATE prefs to set profile_id; INSERT `user_nav_profile_groups` rows from existing `user_nav_groups`; UPDATE `users.active_nav_profile_id`. Idempotent + dry-run mode via existing `cmd/migrate -dry-run` flag.
 
 ### Backend (6 stories) — S1–S3 must be merged first
 
-- [ ] **B1 — API: `requireOwnedProfile` helper.** `nav.RequireOwnedProfile(ctx, userID, subID, profileID) error` returns sentinel `ErrProfileNotFound`. Unit tests: owned-OK, wrong-user, wrong-tenant, missing. **Foundational — every other API story depends on this.**
-- [ ] **B2 — API: profiles CRUD.** `GET /api/nav/profiles`, `POST` (cap of 10, label 1–32, case-insensitive uniqueness), `PATCH /:id` (rejects `is_default`), `DELETE /:id` (rejects `is_default`, cascades).
-- [ ] **B3 — API: order + activate.** `PATCH /api/nav/profiles/order` with two-phase write to dodge unique-index collision. `PUT /api/nav/profiles/:id/activate` sets `users.active_nav_profile_id`.
+- [x] **B1 — API: `requireOwnedProfile` helper.** `nav.RequireOwnedProfile(ctx, userID, subID, profileID) error` returns sentinel `ErrProfileNotFound`. Unit tests: owned-OK, wrong-user, wrong-tenant, missing. **Foundational — every other API story depends on this.**
+- [x] **B2 — API: profiles CRUD.** `GET /api/nav/profiles`, `POST` (cap of 10, label 1–32, case-insensitive uniqueness), `PATCH /:id` (rejects `is_default`), `DELETE /:id` (rejects `is_default`, cascades).
+- [x] **B3 — API: order + activate.** `PATCH /api/nav/profiles/order` with two-phase write to dodge unique-index collision. `PUT /api/nav/profiles/:id/activate` sets `users.active_nav_profile_id`.
 - [ ] **B4 — API: extend prefs/start-page/bookmark with profile scope.** `?profile=` query param on `GET/PUT/DELETE /api/nav/prefs` and `GET /api/nav/start-page`. `profile_id` body field on `POST/DELETE /api/nav/bookmark` + `?profile=` on `/check`. Default behaviour when omitted: caller's active profile.
 - [ ] **B5 — API: lazy-seed + role-aware Default.** First `GET /api/nav/prefs` for a user with no Default → server creates one, populates pins from catalogue's `defaultPinned ∧ roles ⊇ user.role`, picks role-appropriate `start_page_key`.
 - [ ] **B6 — API: group-placement invariant on prefs PUT.** Reject any pin that references a `group_id` lacking a `user_nav_profile_groups` row for the target profile. On group placement removal, refuse if any pin still references it. Cleanup logic for orphans.

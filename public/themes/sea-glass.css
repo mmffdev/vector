@@ -129,17 +129,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Normal = light-blue with deep-sage text, hover = deep-sage with
-   peach text. Mirrors the table-row contract; auto-contrast
-   enforced because white-on-blue fails. */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #99CDD8;
   color: #475048;
   border-color: #99CDD8;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #475048;
   color: #FDE8D3;
@@ -170,17 +168,22 @@ table.tbl thead th,
    rose band with deep-sage text — explicit so it survives both
    polarities. */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: var(--ink-contrast);
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: var(--ink-contrast);
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: var(--ink-contrast);
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

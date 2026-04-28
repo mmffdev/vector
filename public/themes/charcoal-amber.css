@@ -108,16 +108,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Rest = amber, hover = ink (cream). Both pairs verified ≥6.5:1 vs
-   their fg. */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #E8A437;
   color: #2A2C2E;
   border-color: #E8A437;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #ECE2C8;
   color: #2A2C2E;
@@ -145,17 +144,22 @@ table.tbl thead th,
    Slate text is forced to cream (4.3:1) regardless of polarity so
    nested labels never inherit charcoal-on-slate (2.5:1 fail). */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: #2A2C2E;
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: #2A2C2E;
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: #2A2C2E;
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

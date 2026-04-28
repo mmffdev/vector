@@ -55,6 +55,13 @@ function randomPetals(): Petal[] {
   }));
 }
 
+function octagonPoints(cx: number, cy: number, r: number): string {
+  return Array.from({ length: 8 }, (_, i) => {
+    const a = Math.PI / 8 + i * Math.PI / 4;
+    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+}
+
 function petalPath(len: number): string {
   const wIn = 22;
   const wOut = 38;
@@ -110,10 +117,8 @@ export default function PetalChart({
         );
       })}
 
-      <circle
-        cx={CENTER}
-        cy={CENTER}
-        r={INNER_R - 12}
+      <polygon
+        points={octagonPoints(CENTER, CENTER, INNER_R + 2)}
         className="petal-chart__core"
       />
 

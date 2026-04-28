@@ -85,15 +85,16 @@ table.tbl thead th,
   color: #080807;
 }
 
-/* ---------- Buttons ---------- */
-.btn,
+/* ---------- Buttons ----------
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #EE9763;
   color: #080807;
   border-color: #EE9763;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #080807;
   color: #FFFFFF;
@@ -118,17 +119,22 @@ table.tbl thead th,
 
 /* ---------- Zone-toggle bands ---------- */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: #FFFFFF;
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: #FFFFFF;
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: #FFFFFF;
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

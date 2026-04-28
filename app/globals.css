@@ -123,7 +123,7 @@
   --accent: var(--brand-product);
   --accent-soft: rgba(26, 26, 26, 0.06);
   --accent-border: rgba(26, 26, 26, 0.20);
-  --accent-ink: var(--ink);
+  --accent-ink: var(--brand-product-contrast);
 
   --good:  var(--success);
   --warn:  var(--warning);
@@ -178,7 +178,7 @@
   --accent: var(--ink);
   --accent-soft: rgba(244, 242, 238, 0.06);
   --accent-border: rgba(244, 242, 238, 0.20);
-  --accent-ink: var(--ink);
+  --accent-ink: var(--ink-contrast);
 
   --good:  var(--success);
   --warn:  var(--warning);
@@ -778,11 +778,25 @@ button {
      used as section sub-headings throughout the kit.
    ============================================================ */
 .page-body {
-  padding: 0 20px 20px;
+  padding: 8px 20px 20px;
 }
 
 .page-body__inner {
   width: 100%;
+}
+
+.page-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 14px 24px var(--space-6) 35px;
+  background: var(--bg);
+}
+
+.page-title-row__text {
+  min-width: 0;
 }
 
 .page__head {
@@ -1129,40 +1143,41 @@ button {
   cursor: not-allowed;
 }
 
-/* Synonym for the default look — kept so callers can mark intent
-   explicitly. Identical to the bare `.btn`. */
+/* The three button states must match the style-card contract
+   (.tp-btn--primary / --secondary / --ghost) — the preview card
+   on the theme page is the design source of truth. */
 .btn--primary {
-  background: var(--ink);
-  color: var(--ink-contrast);
-  border-color: var(--ink);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--surface);
-  color: var(--ink);
-  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 15%, var(--accent));
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
 
 .btn--secondary {
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
 }
 .btn--secondary:hover:not(:disabled) {
-  background: var(--surface-sunken);
-  color: var(--ink);
-  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .btn--ghost {
-  border-color: transparent;
   background: transparent;
   color: var(--ink-muted);
+  border: 1px solid var(--border);
 }
 .btn--ghost:hover:not(:disabled) {
-  background: var(--surface-sunken);
+  background: color-mix(in srgb, currentColor 8%, transparent);
   color: var(--ink);
-  border-color: transparent;
+  border-color: var(--border);
 }
 
 .btn--danger {
@@ -4034,9 +4049,12 @@ table.tbl tbody tr:hover td {
 }
 
 /* Shared inline-edit wrapper. Renders an input + a confirm (✓) button so
-   users can save with Enter, blur, or by clicking the trailing button. */
+   users can save with Enter, blur, or by clicking the trailing button.
+   The input fills the wrapper edge-to-edge; buttons overlay the right side
+   so the field's effective width stays identical between display and edit. */
 .inline-edit {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   align-items: stretch;
   flex: 1;
   min-width: 0;
@@ -4045,21 +4063,38 @@ table.tbl tbody tr:hover td {
 .inline-edit__input {
   flex: 1;
   min-width: 0;
+  width: 100%;
 }
 .inline-edit__input:focus {
   position: relative;
   z-index: 1;
 }
+.inline-edit:not(.inline-edit--multiline) .inline-edit__input {
+  padding-right: 60px;
+}
 .inline-edit__btn {
+  position: absolute;
+  top: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 28px;
-  margin-left: -1px;
+  height: 100%;
   border: 1px solid var(--ink);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+  z-index: 2;
+}
+.inline-edit__btn--cancel {
+  right: 28px;
+}
+.inline-edit__btn--accept {
+  right: 0;
+}
+.inline-edit--multiline .inline-edit__btn {
+  top: auto;
+  bottom: 0;
+  height: 28px;
 }
 .inline-edit__btn--cancel {
   background: var(--danger, #dc2626);
@@ -4080,8 +4115,7 @@ table.tbl tbody tr:hover td {
 .inline-edit__btn:focus {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
-  position: relative;
-  z-index: 1;
+  z-index: 3;
 }
 
 .nav-prefs__icon--pool-btn {
@@ -4363,7 +4397,7 @@ table.tbl tbody tr:hover td {
 
 .theme-panel {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 0;
   padding: var(--space-6);
   display: flex;
@@ -4831,8 +4865,8 @@ table.tbl tbody tr:hover td {
 
 .theme-lib__search {
   flex: 1;
-  min-width: 200px;
-  max-width: 360px;
+  min-width: 180px;
+  max-width: 280px;
   padding: 7px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -4844,6 +4878,53 @@ table.tbl tbody tr:hover td {
 
 .theme-lib__search::placeholder {
   color: var(--ink-muted);
+}
+
+.theme-lib__filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.theme-lib__polarity {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.theme-lib__filter-select {
+  width: auto;
+  min-width: 110px;
+  height: 32px;
+}
+
+.theme-lib__filter-clear {
+  height: 32px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.theme-lib__filter-clear:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+.theme-lib__filter-clear--inline {
+  border: none;
+  padding: 0;
+  height: auto;
+  font-size: inherit;
+  color: var(--brand);
+  text-decoration: underline;
+}
+.theme-lib__filter-clear--inline:hover {
+  border: none;
+  color: var(--ink);
 }
 
 .theme-lib__search:focus {
@@ -4859,84 +4940,119 @@ table.tbl tbody tr:hover td {
   margin-left: auto;
 }
 
-.theme-lib__table {
-  display: flex;
-  flex-direction: column;
+/* table-wrap override: let inner scroll container handle overflow; no outer border */
+.theme-lib__table-wrap {
   flex: 1;
   min-height: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface);
-}
-
-.theme-lib__thead {
   display: flex;
-  flex-shrink: 0;
-  background: var(--surface-sunken);
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
 }
 
-.theme-lib__body {
+/* Scrollable region inside the table-wrap border */
+.theme-lib__scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
 
-.theme-lib__th {
-  padding: 10px 14px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-muted);
-  white-space: nowrap;
+/* 4-column grid — no gap; hairline borders separate cells */
+.theme-lib__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+/* Individual card — no inner borders; outer border from table-wrap only */
+.theme-lib__item {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  overflow: hidden;
+  transition: background 0.15s ease;
+  padding: 10px;
+}
+
+.theme-lib__item--active {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+/* tp-card inside item — fills column width, fixed 400px height, no border */
+.theme-lib__item .tp-card {
+  width: 100%;
+  height: 400px;
+  flex-shrink: 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+/* Meta section — 10px gap below the card, no border */
+.theme-lib__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--surface-sunken);
+  border: none;
+  margin-top: 10px;
+  flex: 1;
+}
+
+/* Top row: swatches left, Apply/Active button right, vertically centred */
+.theme-lib__meta-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Right-side action cluster: mode toggle + Apply/Active, flush together */
+.theme-lib__meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 
-/* Column width contract — applied to both th and td */
-.theme-lib__col--preview { width: 428px; flex-shrink: 0; }
-.theme-lib__col--swatch  { width: 120px; flex-shrink: 0; }
-.theme-lib__col--info    { flex: 1; min-width: 200px; }
-.theme-lib__col--assign  { width: 120px; flex-shrink: 0; }
-
-.theme-lib__row {
+/* Mode toggle button — square icon button, same height as btn--sm (32px) */
+.theme-card-mode-toggle {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
 }
-
-.theme-lib__row:last-child {
-  border-bottom: none;
-}
-
-.theme-lib__row--active {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-
-.theme-lib__td {
-  padding: 14px;
-  overflow: hidden;
+.theme-card-mode-toggle:hover {
+  opacity: 1;
 }
 
 .theme-lib__empty {
-  padding: 40px;
+  padding: 60px 16px;
   text-align: center;
   color: var(--ink-muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
+/* Match table body text sizes */
 .theme-lib__name {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
-  margin: 0 0 6px;
+  margin: 0;
 }
 
 .theme-lib__desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-muted);
   line-height: 1.5;
   margin: 0;
@@ -4960,7 +5076,12 @@ table.tbl tbody tr:hover td {
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
-  padding: 10px 0 4px;
+  padding: 20px 0 14px;
+  margin: 0 0 20px 0;
+}
+
+.theme-lib__pagination--bottom {
+  padding: 15px 0 4px;
 }
 
 .theme-lib__page-size {
@@ -5012,6 +5133,8 @@ table.tbl tbody tr:hover td {
 .tp-card {
   display: flex;
   flex-direction: row;
+  /* Standalone: fixed 400×600. Inside .theme-lib__item the parent overrides
+     width:100% and aspect-ratio:2/3 so it fills the column. */
   width: 400px;
   height: 600px;
   border-radius: 8px;
@@ -6171,10 +6294,15 @@ table.tbl tbody tr:hover td {
 .layers-editor__drag-handle {
   display: inline-block;
   font-size: var(--text-base);
-  color: var(--ink-subtle);
+  color: currentColor;
+  opacity: 0.55;
   line-height: 1;
   user-select: none;
   padding: 0 var(--space-2);
+  transition: opacity 120ms ease;
+}
+.layers-editor__drag-handle:hover {
+  opacity: 1;
 }
 
 /* ── Row states ───────────────────────────────────────────── */
@@ -6198,10 +6326,10 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__col--drag  { width: 32px; }
-.layers-editor__col--order { width: 64px; }
-.layers-editor__col--tag   { width: 96px; }
-.layers-editor__col--name  { width: 22%; }
-.layers-editor__col--desc  { /* takes remaining space */ }
+.layers-editor__col--order { width: 1%; white-space: nowrap; }
+.layers-editor__col--tag   { width: 10%; }
+.layers-editor__col--name  { width: 45%; }
+.layers-editor__col--desc  { width: 45%; }
 
 .layers-editor__cell {
   position: relative;
@@ -6212,7 +6340,7 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__cell--clickable:hover {
-  background: var(--surface-sunken);
+  background: color-mix(in srgb, currentColor 8%, transparent);
 }
 
 .layers-editor__cell--editing {
@@ -6243,7 +6371,6 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__cell-text--tag {
-  max-width: 80px;
   font-family: var(--font-mono, monospace);
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
@@ -6284,7 +6411,6 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__input--tag {
-  max-width: 80px;
   font-family: var(--font-mono, monospace);
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;

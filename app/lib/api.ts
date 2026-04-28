@@ -1,6 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
 let _accessToken: string | null = null;
+// Registered by AuthContext so api() can silently refresh an expired JWT
+// and retry rather than surfacing a 401 to the caller.
+let _refreshCallback: (() => Promise<void>) | null = null;
+// Dedup: only one refresh flight at a time; concurrent 401s share the same promise.
+let _refreshPromise: Promise<void> | null = null;
 
 export function setApiToken(t: string | null) {
   _accessToken = t;
@@ -8,6 +13,10 @@ export function setApiToken(t: string | null) {
 
 export function getApiToken() {
   return _accessToken;
+}
+
+export function setRefreshCallback(fn: (() => Promise<void>) | null) {
+  _refreshCallback = fn;
 }
 
 export class ApiError extends Error {
@@ -20,7 +29,7 @@ export class ApiError extends Error {
   }
 }
 
-type ApiOpts = RequestInit & { skipAuth?: boolean };
+type ApiOpts = RequestInit & { skipAuth?: boolean; _retried?: boolean };
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -54,6 +63,17 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
     body = text ? JSON.parse(text) : null;
   } catch {
     // leave as text
+  }
+
+  if (res.status === 401 && !opts.skipAuth && !opts._retried && _refreshCallback) {
+    // Silent refresh-and-retry: deduplicate concurrent 401s onto one flight.
+    if (!_refreshPromise) {
+      _refreshPromise = _refreshCallback().finally(() => { _refreshPromise = null; });
+    }
+    await _refreshPromise;
+    if (_accessToken) {
+      return api<T>(path, { ...opts, _retried: true });
+    }
   }
 
   if (!res.ok) {

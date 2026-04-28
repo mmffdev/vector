@@ -205,12 +205,16 @@ Rest = vivid; hover = ink. Always. Never invert that polarity.
 
 ### Accordion / zone-toggle bands
 
+The expand-toggle bands ("main rows" that open/close groups — e.g. `.layers-editor__zone-toggle`, any future accordion header) inherit the **same accent treatment used by the active sidebar nav item**, so the user sees a single visual language for "this row is interactive / important".
+
 | Selector | Bind |
 |---|---|
-| Rest band (closed) | bg = `--canvas` |
-| Expanded band header | bg = `--surface-sunken` |
-| Hover row | bg = `--accent`, color = `--accent-ink` |
+| Rest band (closed) | bg = `--accent`, color = `--accent-ink`, chevron border = `--accent-ink` |
+| Expanded band header | bg = `--accent`, color = `--accent-ink` (same as rest — the chevron rotation alone signals state) |
+| Hover row | bg = `--accent` darkened ~10% (alpha-blend `--ink` over `--accent` at 10%), color = `--accent-ink` |
 | Group separator strip | bg = mid neutral that's *not* `--ink` (e.g. muted bucket if present, otherwise `--surface-sunken` darkened 15%) |
+
+**W/W/B/B rule (hard):** when binding text on top of an accent-filled band, never emit white-on-white or black-on-black. The `--accent-ink` token is computed from the accent's luminance (Stage 4 rule: `L < 55` → white, else black) precisely to prevent this — bind to it directly, never reuse `--ink` (which tracks the canvas polarity, not the accent's). Verify the pair under Stage 4.5 #8.
 
 ### Status surfaces
 

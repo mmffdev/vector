@@ -184,7 +184,7 @@ export default function JourneyDomeChart({
         titleWords.slice(Math.ceil(titleWords.length / 2)).join(" "),
       ];
   const titleLh = 16;
-  const titleYStart = CY - ((titleLines.length - 1) * titleLh) / 2 - 6;
+  const titleYStart = CY - ((titleLines.length - 1) * titleLh) / 2 - R_CORE * 0.35;
 
   const svg = (
     <svg

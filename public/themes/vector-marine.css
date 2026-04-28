@@ -123,16 +123,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Normal = lime with midnight text, hover = midnight with cream
-   text. Mirrors the table-row contract; auto-contrast enforced. */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #B3F938;
   color: #082429;
   border-color: #B3F938;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #082429;
   color: #FFFEF3;
@@ -163,17 +162,22 @@ table.tbl thead th,
    ocean-teal band with cream text — explicit so it survives both
    polarities. */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: var(--ink-contrast);
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: var(--ink-contrast);
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: var(--ink-contrast);
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

@@ -8,6 +8,7 @@ import PageWrapper from "@/app/components/PageWrapper";
 import AppSidebar_2 from "@/app/components/AppSidebar_2";
 import AppFooter from "@/app/components/AppFooter";
 import PageHeaderBar from "@/app/components/PageHeaderBar";
+import PageTitleRow from "@/app/components/PageTitleRow";
 import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
@@ -40,6 +41,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           <AppSidebar_2 />
           <div className="app-main-column">
             <PageHeaderBar />
+            <PageTitleRow />
             <AppViewport className="app-viewport-container">
               <PageWrapper className="page-wrapper">{children}</PageWrapper>
             </AppViewport>

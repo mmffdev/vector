@@ -66,11 +66,11 @@ A five-layer chain for organisations that separate strategic intent from deliver
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 SELECT * FROM (VALUES
-    ('00000000-0000-0000-0000-00000000bb11'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Strategic Objective', 'SO', 10, NULL::uuid,                                          'route',   'Top-level strategic intent.',                          TRUE,  FALSE),
-    ('00000000-0000-0000-0000-00000000bb12'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Portfolio Objective', 'PO', 20, '00000000-0000-0000-0000-00000000bb11'::uuid,         'target',  'Portfolio-level objective laddering to strategy.',     TRUE,  FALSE),
+    ('00000000-0000-0000-0000-00000000bb11'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Strategic Objective', 'SO', 50, NULL::uuid,                                          'route',   'Top-level strategic intent.',                          TRUE,  FALSE),
+    ('00000000-0000-0000-0000-00000000bb12'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Portfolio Objective', 'PO', 40, '00000000-0000-0000-0000-00000000bb11'::uuid,         'target',  'Portfolio-level objective laddering to strategy.',     TRUE,  FALSE),
     ('00000000-0000-0000-0000-00000000bb13'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Business Epic',       'BE', 30, '00000000-0000-0000-0000-00000000bb12'::uuid,         'package', 'Major scope of work delivering portfolio value.',      TRUE,  FALSE),
-    ('00000000-0000-0000-0000-00000000bb14'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Business Outcome',    'BC', 40, '00000000-0000-0000-0000-00000000bb13'::uuid,         'layers',  'Measurable outcome the epic produces.',                TRUE,  FALSE),
-    ('00000000-0000-0000-0000-00000000bb15'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Feature',             'FE', 50, '00000000-0000-0000-0000-00000000bb14'::uuid,         'star',    'Adoptable user-facing change.',                        TRUE,  TRUE)
+    ('00000000-0000-0000-0000-00000000bb14'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Business Outcome',    'BC', 20, '00000000-0000-0000-0000-00000000bb13'::uuid,         'layers',  'Measurable outcome the epic produces.',                TRUE,  FALSE),
+    ('00000000-0000-0000-0000-00000000bb15'::uuid, '00000000-0000-0000-0000-00000000bb01'::uuid, 'Feature',             'FE', 10, '00000000-0000-0000-0000-00000000bb14'::uuid,         'star',    'Adoptable user-facing change.',                        TRUE,  TRUE)
 ) AS v(id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 ON CONFLICT (model_id, tag) DO NOTHING;
 
@@ -161,9 +161,9 @@ A lean three-layer chain based on Rally portfolio management.
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 SELECT * FROM (VALUES
-    ('00000000-0000-0000-0000-00000000cc11'::uuid, '00000000-0000-0000-0000-00000000cc01'::uuid, 'Strategy',   'ST', 10, NULL::uuid,                                          'route',   'Strategic intent.',                       TRUE, FALSE),
+    ('00000000-0000-0000-0000-00000000cc11'::uuid, '00000000-0000-0000-0000-00000000cc01'::uuid, 'Strategy',   'ST', 30, NULL::uuid,                                          'route',   'Strategic intent.',                       TRUE, FALSE),
     ('00000000-0000-0000-0000-00000000cc12'::uuid, '00000000-0000-0000-0000-00000000cc01'::uuid, 'Initiative', 'IN', 20, '00000000-0000-0000-0000-00000000cc11'::uuid,         'package', 'Initiative laddering up to strategy.',    TRUE, FALSE),
-    ('00000000-0000-0000-0000-00000000cc13'::uuid, '00000000-0000-0000-0000-00000000cc01'::uuid, 'Feature',    'FE', 30, '00000000-0000-0000-0000-00000000cc12'::uuid,         'star',    'Adoptable user-facing change.',           TRUE, TRUE)
+    ('00000000-0000-0000-0000-00000000cc13'::uuid, '00000000-0000-0000-0000-00000000cc01'::uuid, 'Feature',    'FE', 10, '00000000-0000-0000-0000-00000000cc12'::uuid,         'star',    'Adoptable user-facing change.',           TRUE, TRUE)
 ) AS v(id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 ON CONFLICT (model_id, tag) DO NOTHING;
 
@@ -308,10 +308,10 @@ Four-layer SAFe portfolio chain connecting enterprise strategy to releasable fea
 )
 INSERT INTO portfolio_model_layers (id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 SELECT * FROM (VALUES
-    ('00000000-0000-0000-0000-00000000ee11'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Strategic Theme',    'STH', 10, NULL::uuid,                                          'route',   'Strategic theme.',                          TRUE, FALSE),
-    ('00000000-0000-0000-0000-00000000ee12'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Portfolio Backlog',  'PBL', 20, '00000000-0000-0000-0000-00000000ee11'::uuid,         'layers',  'Portfolio-level backlog.',                  TRUE, FALSE),
-    ('00000000-0000-0000-0000-00000000ee13'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Programme Backlog',  'PGB', 30, '00000000-0000-0000-0000-00000000ee12'::uuid,         'package', 'Programme-level backlog.',                  TRUE, FALSE),
-    ('00000000-0000-0000-0000-00000000ee14'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Feature',            'FE',  40, '00000000-0000-0000-0000-00000000ee13'::uuid,         'star',    'Adoptable user-facing change.',             TRUE, TRUE)
+    ('00000000-0000-0000-0000-00000000ee11'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Strategic Theme',    'STH', 40, NULL::uuid,                                          'route',   'Strategic theme.',                          TRUE, FALSE),
+    ('00000000-0000-0000-0000-00000000ee12'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Portfolio Backlog',  'PBL', 30, '00000000-0000-0000-0000-00000000ee11'::uuid,         'layers',  'Portfolio-level backlog.',                  TRUE, FALSE),
+    ('00000000-0000-0000-0000-00000000ee13'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Programme Backlog',  'PGB', 20, '00000000-0000-0000-0000-00000000ee12'::uuid,         'package', 'Programme-level backlog.',                  TRUE, FALSE),
+    ('00000000-0000-0000-0000-00000000ee14'::uuid, '00000000-0000-0000-0000-00000000ee01'::uuid, 'Feature',            'FE',  10, '00000000-0000-0000-0000-00000000ee13'::uuid,         'star',    'Adoptable user-facing change.',             TRUE, TRUE)
 ) AS v(id, model_id, name, tag, sort_order, parent_layer_id, icon, description_md, allows_children, is_leaf)
 ON CONFLICT (model_id, tag) DO NOTHING;
 

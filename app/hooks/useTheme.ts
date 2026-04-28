@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
 
+// Module-level singleton: all useTheme instances share one notification channel.
+// When any consumer calls toggle(), every other mounted consumer re-renders.
+const subscribers = new Set<(t: Theme) => void>();
+
+function applyTheme(next: Theme) {
+  localStorage.setItem("theme", next);
+  document.documentElement.setAttribute("data-theme", next);
+  subscribers.forEach((fn) => fn(next));
+}
+
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
@@ -14,14 +24,18 @@ export function useTheme() {
     setTheme(initial);
     document.documentElement.setAttribute("data-theme", initial);
     setMounted(true);
+
+    subscribers.add(setTheme);
+    return () => { subscribers.delete(setTheme); };
   }, []);
 
   const toggle = () => {
-    const next: Theme = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    document.documentElement.setAttribute("data-theme", next);
+    applyTheme(theme === "light" ? "dark" : "light");
   };
 
-  return { theme, toggle, mounted };
+  const setMode = (next: Theme) => {
+    if (next !== theme) applyTheme(next);
+  };
+
+  return { theme, toggle, setMode, mounted };
 }

@@ -93,17 +93,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Normal = deep slate with pale-lavender ink, hover = pure black
-   (mirrors Vector Mono's hover-to-black pattern for the highest
-   visual delta on a monochromatic palette). */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #2C3E50;
   color: #DFE3EE;
   border-color: #2C3E50;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #000000;
   color: #FFFFFF;
@@ -130,17 +128,22 @@ table.tbl thead th,
 
 /* ---------- Zone-toggle bands (Strategy / Execution) ---------- */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: #DFE3EE;
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: #DFE3EE;
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: #DFE3EE;
+  border-color: var(--accent-ink);
 }
 
 /* Group-sep band uses the LightSlateGray mid-tone (#778899) so it

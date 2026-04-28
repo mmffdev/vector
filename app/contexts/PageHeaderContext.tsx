@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 
 export interface PageHeaderState {
   title: string;
+  subtitle?: string;
   breadcrumbs?: React.ReactNode;
   actions?: React.ReactNode;
 }
@@ -33,9 +34,9 @@ export function usePageHeader(h: PageHeaderState) {
   if (!ctx) throw new Error("usePageHeader must be inside PageHeaderProvider");
   const { setHeader } = ctx;
   const set = useCallback(setHeader, [setHeader]);
-  const { title, breadcrumbs, actions } = h;
+  const { title, subtitle, breadcrumbs, actions } = h;
   useEffect(() => {
-    set({ title, breadcrumbs, actions });
+    set({ title, subtitle, breadcrumbs, actions });
     return () => set(null);
-  }, [set, title, breadcrumbs, actions]);
+  }, [set, title, subtitle, breadcrumbs, actions]);
 }

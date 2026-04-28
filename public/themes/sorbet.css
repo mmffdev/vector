@@ -90,15 +90,16 @@ table.tbl thead th,
   color: #1A1A1A;
 }
 
-/* ---------- Buttons ---------- */
-.btn,
+/* ---------- Buttons ----------
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #E89236;
   color: #000000;
   border-color: #E89236;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #1A1A1A;
   color: #FFFFFF;
@@ -123,17 +124,22 @@ table.tbl thead th,
 
 /* ---------- Zone-toggle bands (Strategy / Execution) ---------- */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: #FFFFFF;
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: #FFFFFF;
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: #FFFFFF;
+  border-color: var(--accent-ink);
 }
 
 /* Group-sep uses chartreuse — must force ink text since the row sits

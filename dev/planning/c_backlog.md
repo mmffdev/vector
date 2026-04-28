@@ -60,7 +60,21 @@
 - 2026-04-25 — Governance 
 - 2026-04-25 — Language Packs  
 - 2026-04-25 — Branding Strategic
-- 2026-04-25 — Branding Product Sub Level Ident 
+- 2026-04-25 — Branding Product Sub Level Ident
+
+### OPERATOR PLATFORM — mmff.io (or similar)
+> The website and back-office platform for MMFF as owner/operator of Vector and all associated systems. Separate from the product itself. Think of it as the control tower.
+
+- 2026-04-28 — Public marketing site — product overview, pricing, feature highlights for Vector and sibling products
+- 2026-04-28 — Operator login — owner/operator authentication, separate from gadmin/padmin/user roles inside the product
+- 2026-04-28 — Tenant management — create, suspend, delete customer organisations; view plan, usage, billing status
+- 2026-04-28 — Subscription & billing management — plan assignment, trial controls, invoice history, Stripe or equivalent integration
+- 2026-04-28 — System health dashboard — service status across dev/staging/prod; DB migration version per environment; uptime indicators
+- 2026-04-28 — DB schema sync monitor — confirm which migrations have run on each environment (dev / staging / prod) so drift is visible at a glance
+- 2026-04-28 — Release management — push new versions, flag breaking changes, manage staged rollouts
+- 2026-04-28 — Support ticket console — view and respond to support requests raised from within the product
+- 2026-04-28 — Audit log viewer — cross-tenant audit trail for compliance and incident review
+- 2026-04-28 — Feature flag control — enable/disable features per tenant or globally without a deploy
 
 ### Breakout Ideas
 - 2026-04-25 — Rebuild Planka container from fork: add column/list headers showing X/X item counts and rolling averages (cycle time, lead time) across lists.

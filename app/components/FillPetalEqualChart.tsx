@@ -55,6 +55,13 @@ function randomPetals(): FillPetalEqual[] {
   }));
 }
 
+function octagonPoints(cx: number, cy: number, r: number): string {
+  return Array.from({ length: 8 }, (_, i) => {
+    const a = Math.PI / 8 + i * Math.PI / 4;
+    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+}
+
 function sectorPath(a1: number, a2: number, rIn: number, rOut: number): string {
   const f = (n: number) => n.toFixed(2);
   const pIsX = rIn * Math.cos(a1), pIsY = rIn * Math.sin(a1);
@@ -129,10 +136,8 @@ export default function FillPetalEqualChart({
           );
         })}
 
-        <circle
-          cx={0}
-          cy={0}
-          r={INNER_R - 14}
+        <polygon
+          points={octagonPoints(0, 0, INNER_R + 2)}
           className="fill-petal-equal-chart__core"
         />
       </g>

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError, setApiToken } from "@/app/lib/api";
+import { api, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 
 export type Role = "user" | "padmin" | "gadmin";
@@ -65,7 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyLogin]);
 
   useEffect(() => {
+    setRefreshCallback(refresh);
     refresh().finally(() => setLoading(false));
+    return () => setRefreshCallback(null);
   }, [refresh]);
 
   const login = useCallback(

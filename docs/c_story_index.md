@@ -1,6 +1,6 @@
 # Story Index
 
-**Last issued:** `00125`
+**Last issued:** `00135`
 
 ## Active phase
 

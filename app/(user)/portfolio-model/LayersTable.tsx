@@ -409,14 +409,12 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           value={layer.description_md ?? ""}
           onCommit={(next) => commitField(layer.id, "description_md", next)}
           ariaLabel="Layer description"
-          inputClassName="layers-editor__textarea"
-          displayClassName="layers-editor__cell--clickable"
+          inputClassName="layers-editor__input layers-editor__input--desc"
+          displayClassName="layers-editor__cell-text layers-editor__cell--clickable"
           errorClassName="layers-editor__input--error"
           hasError={Boolean(err)}
           clickToEdit
           allowEmpty
-          multiline
-          rows={3}
           maxLength={2000}
           emptyDisplay="—"
         />

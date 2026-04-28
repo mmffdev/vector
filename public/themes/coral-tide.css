@@ -91,15 +91,15 @@ table.tbl thead th,
 }
 
 /* ---------- Buttons ----------
-   Rest = coral, hover = deep teal. Black text on coral, white on teal. */
-.btn,
+   Primary only. Bare .btn, .btn--secondary, .btn--ghost are left to
+   globals.css so the three states match the style-card contract
+   (PRIMARY filled accent, SECONDARY outlined accent, GHOST muted). */
 .btn--primary {
   background: #FF6A5B;
   color: #000000;
   border-color: #FF6A5B;
 }
 
-.btn:hover:not(:disabled),
 .btn--primary:hover:not(:disabled) {
   background: #064A60;
   color: #FFFFFF;
@@ -127,17 +127,22 @@ table.tbl thead th,
    the steel-blue accent (rank 3) so the divider reads as a related
    but distinct mid-tone band. White text passes 3:1 on steel blue. */
 button.layers-editor__zone-toggle {
-  background: var(--ink);
-  color: #FFFFFF;
+  background: var(--accent);
+  color: var(--accent-ink);
   padding: 0 20px;
 }
 
+button.layers-editor__zone-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 10%, var(--accent));
+  color: var(--accent-ink);
+}
+
 button.layers-editor__zone-toggle .eyebrow {
-  color: #FFFFFF;
+  color: var(--accent-ink);
 }
 
 button.layers-editor__zone-toggle .accordion__chevron {
-  border-color: #FFFFFF;
+  border-color: var(--accent-ink);
 }
 
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell {

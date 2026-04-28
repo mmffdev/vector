@@ -116,8 +116,11 @@ Quick reference table to fill in for the user (one row per verified pair):
 | `--ink` on `--surface-sunken` | … | … | … | 4.5 | ✓/✗ |
 | `--ink-contrast` on `--ink` | … | … | … | 4.5 | ✓/✗ |
 | `--accent-ink` on `--accent` | … | … | … | 4.5 | ✓/✗ |
+| zone-toggle text (`--accent-ink`) on zone-toggle bg (`--accent`) | … | … | … | 4.5 | ✓/✗ |
 | `--ink-subtle` (blended) on `--surface-sunken` | … | … | … | 3.0 | ✓/✗ |
 | group-sep text on group-sep band | … | … | … | 4.5 | ✓/✗ |
+
+**W/W/B/B rule (hard):** the zone-toggle/accordion band uses the same accent fill as the active sidebar item, so the text on it MUST be `--accent-ink` (computed from accent luminance per Stage 4) — never `--ink` (which tracks canvas polarity and can collide with a same-polarity accent, producing white-on-white or black-on-black).
 
 If any pair fails, apply the auto-correction order from Stage 4.5:
 1. Foreground swap (try `--ink-contrast`).
@@ -177,8 +180,18 @@ Write `public/themes/<slug>.css` mirroring the structure of `public/themes/vecto
 .app-sidebar-container { border-right: none; }
 .sidebar-brand { border-bottom: none; }
 
-/* ---------- Zone-toggle bands ---------- */
-button.layers-editor__zone-toggle { ... }
+/* ---------- Zone-toggle bands ----------
+   Main expand/collapse row inherits the active-nav accent treatment so
+   the user sees one visual language for "interactive row". Bind text to
+   --accent-ink (NOT --ink) to honour the W/W/B/B rule — never let white
+   land on a near-white accent or black on a near-black accent. */
+button.layers-editor__zone-toggle {
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0 20px;
+}
+button.layers-editor__zone-toggle .eyebrow { color: var(--accent-ink); }
+button.layers-editor__zone-toggle .accordion__chevron { border-color: var(--accent-ink); }
 .layers-editor__row--group-sep td.layers-editor__group-sep-cell { ... }
 
 /* ---------- Dark slot ---------- */

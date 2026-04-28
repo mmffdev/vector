@@ -120,18 +120,14 @@ function makeLabelSprite(text: string, color: string): THREE.Sprite {
   const texture = new THREE.CanvasTexture(canvas);
   texture.anisotropy = 4;
   texture.needsUpdate = true;
-  // Always-on-top overlay: depthTest off so the label ignores any bar in
-  // front of it, depthWrite off so it doesn't block other transparents,
-  // and a high renderOrder so it's the last thing painted in the frame.
   const material = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
-    depthTest: false,
+    depthTest: true,
     depthWrite: false,
   });
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(1.4, 0.35, 1);
-  sprite.renderOrder = 999;
   return sprite;
 }
 
