@@ -1,0 +1,198 @@
+/* ============================================================
+   Vector Mono — strict palette (revised)
+   Page bg + side nav:        #C9CACF
+   Highlights / rollovers:    #FF346E
+   Buttons:                   normal #FF346E, hover #000000
+   Tables main rows:          #000000
+   Tables secondary rows:     #ACAFBA
+   Text:                      black on light, white on dark
+   ============================================================ */
+
+:root {
+  /* Foundation */
+  --canvas:         #C9CACF;
+  --surface:        #C9CACF;
+  --surface-sunken: #ACAFBA;
+
+  --ink:          #000000;
+  --ink-muted:    rgba(0, 0, 0, 0.65);
+  --ink-subtle:   rgba(0, 0, 0, 0.45);
+  --ink-faint:    rgba(0, 0, 0, 0.28);
+  --ink-contrast: #FFFFFF;
+
+  --border:        #000000;
+  --border-strong: #000000;
+
+  /* Status — collapsed onto pink + black */
+  --success:    #000000;
+  --success-bg: #C9CACF;
+  --warning:    #FF346E;
+  --warning-bg: #C9CACF;
+  --danger:     #FF346E;
+  --danger-bg:  #C9CACF;
+  --info:       #000000;
+  --info-bg:    #ACAFBA;
+
+  /* Brand slots */
+  --brand-tenant:           #FF346E;
+  --brand-tenant-contrast:  #FFFFFF;
+  --brand-product:          #FF346E;
+  --brand-product-contrast: #FFFFFF;
+}
+
+:root[data-theme="light"], :root {
+  --accent: #FF346E;
+  --accent-soft: rgba(255, 52, 110, 0.12);
+  --accent-border: rgba(255, 52, 110, 0.40);
+  --accent-ink: #FFFFFF;
+  --accent-pink: #FF346E;
+  --hot-pink: #FF346E;
+
+  --paper: #C9CACF;
+  --cream: #C9CACF;
+
+  --nav-item-hover-bg: #FF346E;
+  --nav-item-active-bg: #FF346E;
+}
+
+/* ---------- Tables ----------
+   Body rows go fully black with white text; headers go medium-gray
+   with black text. The default theme uses surface-sunken for the
+   thead background already, so we set surface-sunken to #ACAFBA and
+   then force black on tbody rows here. */
+.table tbody tr,
+table.tbl tbody tr,
+.table__row {
+  background: #000000;
+}
+
+.table tbody td,
+table.tbl tbody td,
+.table__cell {
+  background: #000000;
+  color: #FFFFFF;
+  border-bottom-color: #000000;
+}
+
+.table tbody tr:hover td,
+table.tbl tbody tr:hover td,
+.table__row:hover .table__cell {
+  background: #FF346E;
+  color: #FFFFFF;
+}
+
+.table__head .table__cell,
+table.tbl thead th,
+.table__head {
+  background: #ACAFBA;
+  color: #000000;
+}
+
+/* ---------- Buttons ----------
+   Normal = pink, hover = black. Covers the bare .btn (which globals.css
+   maps to --ink) plus the explicit --primary variant. */
+.btn,
+.btn--primary {
+  background: #FF346E;
+  color: #FFFFFF;
+  border-color: #FF346E;
+}
+
+.btn:hover:not(:disabled),
+.btn--primary:hover:not(:disabled) {
+  background: #000000;
+  color: #FFFFFF;
+  border-color: #000000;
+}
+
+/* ---------- Sidebar nav rollover / active ----------
+   Pink highlight instead of the default surface-sunken gray. */
+.sidebar-item:hover,
+.sidebar-item.active {
+  background: #FF346E;
+  color: #FFFFFF;
+}
+
+/* ---------- Sidebar borders ----------
+   Drop the vertical rail border and the horizontal divider under
+   the logo + agency block. */
+.app-sidebar-container {
+  border-right: none;
+}
+
+.sidebar-brand {
+  border-bottom: none;
+}
+
+/* ---------- Zone-toggle bands (Strategy / Execution) ----------
+   Distinguish the zone-section headers from the black body rows.
+   Background lives on the parent <td> so the band always spans the
+   full row width; padding lives on the inner <button> so the chevron
+   + label indent without shrinking the colored band. The td selector
+   chains two classes to outrank `.table tbody td { background: #000 }`. */
+button.layers-editor__zone-toggle {
+  background: var(--ink);
+  color: #FFFFFF;
+  padding: 0 20px;
+}
+
+button.layers-editor__zone-toggle .eyebrow {
+  color: #FFFFFF;
+}
+
+button.layers-editor__zone-toggle .accordion__chevron {
+  border-color: #FFFFFF;
+}
+
+.layers-editor__row--group-sep td.layers-editor__group-sep-cell {
+  background: #393657;
+  padding: 0;
+}
+
+.layers-editor__row--group-sep:hover td.layers-editor__group-sep-cell {
+  background: #393657;
+}
+
+/* ---------- Dark slot ----------
+   Inverts canvas to black, ink to white, keeps pink as the highlight. */
+:root[data-theme="dark"] {
+  --canvas:         #000000;
+  --surface:        #1A1A1A;
+  --surface-sunken: #ACAFBA;
+
+  --ink:          #FFFFFF;
+  --ink-muted:    rgba(255, 255, 255, 0.72);
+  --ink-subtle:   rgba(255, 255, 255, 0.50);
+  --ink-faint:    rgba(255, 255, 255, 0.30);
+  --ink-contrast: #000000;
+
+  --border:        #FFFFFF;
+  --border-strong: #FFFFFF;
+
+  --success:    #FFFFFF;
+  --success-bg: #1A1A1A;
+  --warning:    #FF346E;
+  --warning-bg: #1A1A1A;
+  --danger:     #FF346E;
+  --danger-bg:  #1A1A1A;
+  --info:       #FFFFFF;
+  --info-bg:    #1A1A1A;
+
+  --brand-tenant:           #FF346E;
+  --brand-tenant-contrast:  #FFFFFF;
+  --brand-product:          #FF346E;
+  --brand-product-contrast: #FFFFFF;
+
+  --accent: #FF346E;
+  --accent-soft: rgba(255, 52, 110, 0.18);
+  --accent-border: rgba(255, 52, 110, 0.50);
+  --accent-ink: #FFFFFF;
+  --accent-pink: #FF346E;
+  --hot-pink: #FF346E;
+
+  --paper: #1A1A1A;
+  --cream: #000000;
+
+  --nav-item-hover-bg: #FF346E;
+  --nav-item-active-bg: #FF346E;
+}
