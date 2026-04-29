@@ -29,6 +29,9 @@ const securityHeaders = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+  turbopack: {
+    root: __dirname,
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

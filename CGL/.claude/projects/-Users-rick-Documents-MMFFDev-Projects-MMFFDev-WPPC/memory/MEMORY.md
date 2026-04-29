@@ -1,0 +1,27 @@
+# Memory Index
+
+- [NCY command — no code](feedback_ncy_command.md) — NCY = no code, respond with answer/confirmation/question only
+- [Always end with DONE](feedback_end_with_done.md) — Every response must end with DONE
+- [mycopyright shorthand](feedback_mycopyright.md) — mycopyright = "Copyright © 2026 MMFFDev. All rights reserved."
+- [No code/file summaries in chat](feedback_no_code_in_chat.md) — Don't list file changes after work, user reads diffs
+- [UI alignment verification](feedback_ui_alignment.md) — Always verify column/row alignment with headers when modifying structured layouts
+- [ALLDOC files in web/documents/](project_alldoc_location.md) — All docs live in web/documents/, root README deleted
+- [Doc sensitivity boundary](feedback_doc_sensitivity.md) — User docs: no sensitive data. Dev docs: full internal detail
+- [Never restart server without flag](feedback_restart_backend.md) — NEVER stop/restart server unless `<server>` flag is in the message
+- [App definition](feedback_app_definition.md) — Apps are self-contained dynamic modules, not static chrome or layout
+- [Silent register updates](feedback_silent_register_updates.md) — Agent action register updates must be silent, never reported in chat
+- [Use FeatureTable for all tables](feedback_use_feature_table.md) — Always use FeatureTable + feature_table.css + global ui-filterbar classes, no bespoke table styles
+- [Use FeatureTable native features](feedback_feature_table_native.md) — Don't suppress filterbar/search/buttonFilter — lean into native features for consistent UX
+- [User profile](user_profile.md) — First-time Claude Code user, product-minded, learns through building
+- [Platform pivot — Docker DevOps](project_platform_pivot.md) — Sprint 009: WPPC → generic Docker DevOps platform, WordPress becomes premium sub-feature
+- [Validate big decisions](feedback_validate_big_decisions.md) — Acknowledge/challenge significant scope/arch decisions, don't just silently execute
+- [No permission prompts](feedback_no_permission_prompts.md) — Full file access granted, never prompt yes/no on edits
+- [Research = feature profiles](feedback_research_feature_profiles.md) — Research skill outputs feature catalogues, never user stories or gap analysis
+- [Agents on demand](feedback_agents_on_demand.md) — Don't preload agents at sprint start, invoke when task warrants it
+- [Commit after each feature](feedback_commit_frequently.md) — Don't batch — commit after each feature/fix to catch type errors early
+- [Detail row overflow pattern](feedback_detail_row_overflow.md) — ResizeObserver on wrapper div, not table, to constrain expandable detail content
+- [Agile mechanics context](project_agile_context.md) — Sprint system is a showcase asset + practical tool, not formal Scrum — future standalone agile platform planned
+- [Operations manual → Admin page](project_ops_admin_page.md) — Port R020 ops manual to AdminDashboardPage as live data-driven sections
+- [<plan> Changelog consolidation](project_changelog_consolidation_plan.md) — Pending: remove changelog from mstories, keep only sprint-close + manual
+- [Silent git output](feedback_silent_git_output.md) — Never show raw git output in chat unless -SD flag present
+- [Silent execution](feedback_silent_execution.md) — During large tasks, show ONLY todo updates — no bash/edit output

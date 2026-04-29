@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-15
 // PercentileDot chart — distribution of a metric across many entities
 // (cities, regions, products, etc.) shown as three dots per row: a low
 // percentile (e.g. p20), a median (p50), and a high percentile (p95).

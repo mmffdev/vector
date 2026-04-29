@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-09
 // JourneyDomeChart — semicircular concentric-stage chart. N rings
 // stack from a small central title core out to an outer ring; each
 // ring carries a curved label and an icon callout positioned at a

@@ -1,0 +1,18 @@
+- [Database schema reference](database_schema_reference.md) — sprints, backlog_items, research_meta table schemas. Check before writing SQL.
+- [Project architecture map](project_architecture.md) — tiers, managers, DBs, api client, pages. Read before exploring the repo.
+- [Database query best practices](feedback_database_queries.md) — verify schema first, never parallel bash for SQL without pre-confirmed schema, check memory
+- [Stay on the stated task](feedback_focus.md) — read the page component first, one-line fix means one-line fix.
+- [Sprints are work bundles, not time boxes](feedback_sprints.md) — don't split work across sprints by point totals; sprints have no fixed duration.
+- [Split stories larger than 13 points](feedback_story_sizing.md) — >13pts signals ambiguity or unclear AC; split, don't stretch.
+- [Sprint pickers: default to current + "— Current" suffix](feedback_sprint_display_rule.md) — hard rule for every UI that shows sprints.
+- [Bare 401 is the future login hook](project_401_to_login.md) — Unauthorized in App.tsx becomes the login redirect once auth lands.
+- [Sanity-check ACs against each target](feedback_ac_sanity_check.md) — when an AC names an output format + target list, walk each target before committing the story.
+- [.claude/c_*.md overrides ~/.claude/ globals](project_claude_md_overrides.md) — edit the project copies; globals serve other projects (WPPC uses wppc.db).
+- [App is stateless and DB-driven](project_stateless_db_driven.md) — no caching, no server state dependency. Mutate DB directly; app reads fresh on each view.
+- [Database backups for schema changes](feedback_database_backups.md) — major DB changes require timestamped backups committed to git.
+- [Claude Code portability system](project_claude_code_portability.md) — init/sync scripts for consistent configs across machines and projects.
+- [Claude protocols are executable specs for future E2E features](project_claude_dev_only.md) — Claude is dev-only. Every content shortcut (addpaper, mstories, defect, changelog, etc.) must be rebuilt as UI + authed API + DB write before go-live.
+- [Chart data points need { ts, value } shape](feedback_chart_series_shape.md) — `<Chart>` series.data must be ChartDataPoint[], not number[]. `as any` on data prop is a red flag.
+- [Two Postgres instances: local Docker (5433) vs remote SSH tunnel (5434)](project_two_postgres_dbs.md) — backend uses 5434; docker exec hits 5433. Always verify/insert via 5434.
+- [SEC-15 split plan (sprint019)](project_sec15_split_plan.md) — PENDING EXEC: split SEC-15 13→5pts, add SEC-22/SEC-23 (5/5). Commit via `<backupdb>` dump, NOT ops.db (stale). Also flags DEP-01 as sitting uncommitted in PG.
+- [Trust-no-one security foundation](project_trust_no_one_foundation.md) — zero-trust pillars: session-only identity, zod strict, prepared statements, execFile, project_id stamping, defaults deny. Deeplink hashes = obfuscation only, not auth.

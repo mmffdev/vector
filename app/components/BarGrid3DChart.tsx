@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+// Chart ref: C-17
 // BarGrid3D chart — interactive 3D scalar grid (rows × cols matrix).
 // Each bar's X = column index, Z = row index, Y (height) = cell value.
 // Drag horizontally to rotate the scene around the vertical axis.

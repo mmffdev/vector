@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-08
 // Vector raydale chart — radial polygon plot across N categorical axes,
 // with one or more overlaid series. Two stub series ship by default;
 // replace `series` with real data when wiring up. Colours come from the

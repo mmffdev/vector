@@ -1,104 +1,116 @@
 ---
-name: Session bootup — Palette flyout + theme persistence + env-mismatch investigation
+name: Session bootup — R010 architectural pivot, 10 pop-up Qs resolved, R012 pgvector deep-dive
 description: Load when resuming after a break. Branch, story counter, what's committed, what's uncommitted, what's next.
 type: project
-originSessionId: 5b8bdf98-0f1b-4734-b76d-10cd228c3fe6
+originSessionId: a5f9602b-0644-4cea-999f-b70468753594
 ---
 
-## Current state (last updated: 2026-04-28)
+## Current state (last updated: 2026-04-29)
 
 **Active branch:** `main`
-**Story index last issued:** unknown (`docs/c_story_index.md` still not present in repo)
-**Phase:** Palette/theme-pack feature delivery + active env-mismatch root-cause investigation (auto mode)
+**Story index last issued:** `00150`
+**Phase:** PH-0005 — template-driven artefact pivot (planning complete, no migrations written yet)
 
 ---
 
 ## Planka card states
 
 **In progress / Doing:**
-- (none — Palette + env work were direct asks, not card-tracked yet)
+- None — session was design / research only.
 
 **Completed (committed, move to Completed in Planka):**
-- (none new committed this session — all changes still uncommitted on main)
+- Most recent commits cover charts, nav prefs reset, backup-on-push, pgxpool tuning — all from prior sessions.
 
 **Parked:**
-- Pre-launch security checklist (per `project_pre_launch_security.md`)
+- All Phase-1 template-artefact stories — to be created via `/stories` once we move from design to implementation.
 
 ---
 
 ## Uncommitted on branch
 
-**Modified (this session):**
-- `app/components/UserAvatarMenu.tsx` — added Palette flyout button between admin pages and Log out; hover-bridged via `onMouseEnter`/`onMouseLeave` on a wrapper; uses `useThemePack` to read/write the active pack.
-- `app/globals.css` — added ~100 lines after `.avatar-menu__item`: `.avatar-menu__palette-group`, `.avatar-menu__flyout` (right of menu), `.avatar-menu__flyout-grid` (2-col), `.palette-card`, `.palette-card--active`, `.palette-card__swatches` (2×2 grid, `aspect-ratio: 2/1`).
-- `backend/cmd/server/main.go` — added `/api/me` route group with `RequireAuth + RequireFreshPassword + httprate(120/min)` mounting `GET/PUT /api/me/theme-pack`. (Earlier in session: `envFromDBPort()` closure, `/healthz` env field, `/api/env` + `/api/env/switch`.)
+**Tracked file edits (not yet staged):**
+- `.claude/CLAUDE.md`, `.claude/commands/c_accounts.md`, `c_research.md`, `c_services.md` — minor session-scoped tweaks
+- `.claude/memory/MEMORY.md`, `planka_api_access.md` — memory index touched
+- `.claude/skills/stories/SKILL.md` — stories skill edits
+- `MMFFDev - Vector Assets/sow/StatementOfWork_Original r1.0.1.md`
+- `app/(user)/dashboard/page.tsx`, `app/(user)/workspace-settings/page.tsx`
+- 12 chart components — `AdjacencyMatrixChart`, `BarGrid3DChart`, `ChartWidget`, `DivergingHeatmapChart`, `DonutChart`, `HorizontalStackChart`, `JourneyDomeChart`, `LadderChart`, `PercentileDotChart`, `PortfolioGraphChart`, `RaydaleChart`, `SankeyFlowChart`, `ThroughputChart`
+- `app/globals.css`, `backend/cmd/server/main.go`, `docs/c_feature_areas.md`, `docs/c_story_index.md`, `docs/css-guide.md`, `next.config.ts`, `package.json`
 
-**Modified (pre-existing, not core to this session):**
-- `app/(user)/dashboard/page.tsx`, `app/(user)/theme/page.tsx`, `app/layout.tsx`, `app/login/page.tsx`, `app/login/reset/page.tsx`, `app/login/reset/confirm/page.tsx`, `middleware.ts` — login redesign + theme-page work
-- `.planka` — local Planka config drift
-
-**Untracked (this session):**
-- `app/hooks/useThemePack.ts` — first paint loads from localStorage, then reconciles with `GET /api/me/theme-pack`; `choose()` applies immediately + `PUT`s in the background; swallows 401/403 (login pages) cleanly.
-- `backend/internal/users/prefs.go` — `Service.GetThemePack`/`SetThemePack` + handlers; allow-list `validThemePacks` map (`default`, `vector-mono`); `ErrInvalidThemePack` sentinel; JSON shape `{"pack":"<id>"}`.
-- `db/schema/039_user_theme_pack.sql` — `ALTER TABLE users ADD COLUMN theme_pack TEXT NOT NULL DEFAULT 'default'` + `CHECK (theme_pack IN ('default','vector-mono'))`. **NOT YET APPLIED to any env.**
-- `public/themes/` — vector-mono.css and any other pack stylesheets the hook injects.
-- `app/components/AuthBrand.tsx`, `app/components/PetalChart.tsx`, `app/components/FilledPetalChart.tsx`, `app/components/FillPetalEqualChart.tsx`, `app/components/FillPetalEqualChartRounded.tsx` — login + chart explorations.
-- `dev/research/R004.json` — research export.
-- Screenshots: `login-redesign-check.png`, `login-redesign-final.png`, `login-reset-confirm.png`, `login-reset.png`, `theme-page-default.png`, `themes-tab-*.png`, `vector-mono-*.png` — visual verifications during palette + login work.
-- `corp-ident/`, `local-assets/pages-designs/` — design-asset folders.
+**Untracked (new files):**
+- `app/components/PillToggle.tsx`, `app/components/ToggleBtn.tsx`
+- `backend/internal/defects/`, `backend/internal/portfolioitems/`, `backend/internal/userstories/` — service skeletons (NOT YET WIRED into router)
+- `db/schema/043_user_stories.sql`, `044_defects.sql`, `045_item_labels_tags.sql`, `046_portfolio_items.sql`, `047_custom_fields.sql`, `048_item_field_options.sql` — migrations drafted but **not run**, and now superseded by R010 template-artefact direction
+- `dev/backups/`
+- `dev/research/R005.json` through `R012.json` — research papers (key ones: R007 strategic fields, R008 execution fields, R009 strategic-vs-execution comparison, R010 architectural spec, R011, R012 pgvector deep-dive)
+- `examples/`
 
 ---
 
 ## What shipped this session
 
-**Palette flyout (avatar dropdown):**
-- New "Palette" entry between admin pages and Log out. Hover the row → flyout opens to the right (`right: calc(100% + 6px)`), bridged via wrapper-level mouse handlers so the cursor traveling into the flyout keeps it open.
-- Each pack rendered as a `.palette-card` with a 2×2 swatch grid (`aspect-ratio: 2/1`). Click → `choose(pack)` → instant CSS swap.
-- `PALETTES` array in `UserAvatarMenu.tsx` is the single source for label + 4 representative swatches per pack. Adding a pack = (a) new entry here, (b) new `vector-mono`-style stylesheet under `/public/themes/`, (c) extend `PACK_HREF` in `useThemePack.ts`, (d) extend `validThemePacks` in `prefs.go`, (e) extend the SQL `CHECK` in a new migration.
+**R010 — Template-driven artefact architecture (the central design doc):**
+- Section 2.0 added — open-source-first principle as foundational rule
+- Section 3.0 added — templates are form definitions, NOT content containers
+- Section 3.1 — content stored as `JSONB` (Lexical state) + `content_plain_text TEXT` for FTS
+- Q5–Q9 resolved inline:
+  - Q5: Craft.js for page builder (MIT, React-native, headless)
+  - Q6: Lexical (Meta) for WYSIWYG over Tiptap (Tiptap has paid tier)
+  - Q7: storage = JSONB Lexical state + denormalised plain text
+  - Q8: two-table sequence-scope (immutable `scope_key` + mutable `display_prefix`) — preserves user-renamable tags
+  - Q9: pgvector overlay across the entire site
+- **Q10 resolved this session — Option D hybrid backup**: PITR + pg_dump for disaster recovery, per-artefact `artefact_versions` table for user-facing undo, per-cell audit deferred until compliance customer asks. Added to §12 with full rationale.
+- Section 13 — page builder architecture (Craft.js + `page_blocks` + `page_block_comments` schemas)
+- Section 14 — search & embedding architecture (TSVECTOR + pgvector, async worker)
+  - 14.8 — vector DB as strategic capability (15 product use cases catalogued)
+  - 14.9 — documentation as vector-indexed surface (`doc_pages`, `doc_code_examples`, 10 doc use cases)
 
-**Theme persistence (DB + backend + frontend):**
-- Migration 039 adds `users.theme_pack` (TEXT NOT NULL DEFAULT 'default') with CHECK constraint mirroring the backend allow-list.
-- `backend/internal/users/prefs.go` exposes Service + Handler. Allow-list is the primary gate; CHECK is the safety net.
-- Mounted at `/api/me/theme-pack` (GET + PUT) under `RequireAuth + RequireFreshPassword + httprate(120/min)` in `backend/cmd/server/main.go`.
-- `useThemePack.ts` does **fast-paint-then-reconcile**: localStorage first to avoid palette flash on load, then GET to reconcile, then PUT on every `choose()`. 401/403 swallowed silently so login/reset pages don't spam warnings.
+**R012 — pgvector deep-dive (sub-agent research, saved this session):**
+- Validated pgvector decision for Vector PM's planning horizon (good until ~50M vectors/tenant or 5,000 QPS)
+- Five corrections back-applied to R010:
+  1. **§14.2** — IVFFlat → HNSW (better recall, self-maintaining, faster on continuous writes; pgvector 0.7.0 made build 30× faster)
+  2. **§14.4** — pinned default model to `nomic-embed-text-v1.5` (Apache 2.0, 768 dims, 8K context — BGE's 512 would silently truncate long ACs)
+  3. **§14.5** — bare NOTIFY/LISTEN replaced with **outbox table + payload-less NOTIFY wake-up + polling fallback** (at-least-once, restart-safe; bare NOTIFY drops messages on connection loss)
+  4. **§14.6** — weighted-score fusion replaced with proper **Supabase-pattern RRF** (`1.0/(60 + rank)`); tenant + visibility predicates pushed inside CTEs (post-filtering causes 50ms→5s latency cliff per Simon Willison Nov 2025)
+  5. **§14.6.1 (new)** — Postgres RLS on every embedding-bearing table as defence-in-depth (`current_setting('app.current_subscription_id')`)
+- Each embedding row gets `embedding_model TEXT` column for safe model migrations
+- Partial index `WHERE archived_at IS NULL` mandatory on every HNSW index
+- `halfvec(768)` migration deferred until shared_buffers pressure (~1% recall loss for 50% RAM saving)
 
-**Env-mismatch investigation (DIAGNOSED, NOT YET FIXED):**
-- The running backend reports `env="production"` but `BACKEND_ENV` was nominally `staging` — investigated end-to-end:
-  - `backend/cmd/server/main.go:166-179` — `envFromDBPort()` derives the reported env from the live `DB_PORT` (5434=production, 5435=dev, 5436=staging). `/healthz`, `/api/env`, and the EnvBadge UI all consume **this** value, not `BACKEND_ENV` or `APP_ENV`.
-  - `.claude/bin/switch-server` exports `BACKEND_ENV` and execs `go run`, but **does not unset pre-existing `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD/APP_ENV`** in the parent shell. `godotenv.Load` does NOT override existing env vars, so any shell-exported value from a prior session beats the `.env.<env>` file.
-  - `backend/.env.local` has `DB_PORT=5434` + `APP_ENV=development` — internally contradictory (5434 is the production tunnel).
-  - `backend/.env.production` has `APP_ENV=development` — outright wrong.
-  - `backend/.env.dev` (5435/development) and `backend/.env.staging` (5436/staging) are correct.
-  - There is **no startup consistency check** in `main.go` that fatals when `BACKEND_ENV`'s expected mapping doesn't match the loaded `DB_PORT`/`APP_ENV`.
+**Memory:**
+- New file `project_open_source_first.md` — open-source-first stack rule (MIT/BSD → self-host → build → paid SaaS last)
+- Indexed in MEMORY.md
 
 ---
 
 ## Recent commits
 
 ```
-8544dd8 Header chrome: ProfileBar moved to centered top, sidebar logo, /product placeholder
-a1d04b3 Nav prefs: Custom Navigation pane + slinky pill entrance + Available count
-db2e596 Memory + workspace housekeeping
-131711c Migration 038: default-pin Product entity bookmark
-f111140 Migration 037: scope user_nav_prefs unique-position by parent
-4c21ca9 Backend env switch: /api/env + /api/env/switch + EnvBadge UI
-8d32dea Tooling: MMFF Vector Launcher (v0.1) + generic builder brief
-291f10e Tooling: <addpaper> research-paper shorthand + shared writer/format
+3cbfa4b Backend: pgxpool MinConns=2, MaxConnIdleTime=5m — fix idle cold-start lag
+8a0587b Nav: useTabState hook — tab/filter state synced to URL for deep-link + reload
+ff0ad55 Charts: petal geometry tightened, octagon→circle centres, arc core circles removed
+b39f07f UI: Nav prefs reset to defaults — two-stage confirmation
+3b8af90 Backup: extend backup-on-push.sh to dump both mmff_vector and mmff_library
+c0148ef Theme system: dark-mode toggle, filter UI, chart core fixes, 3D label depth (00126-00130)
+2d86307 UI: ChartWidget — toolbar row fixes expand/reroll overlap + 50% black lightbox
+490cad1 UI: ChartWidget wrapper with expand-to-fullscreen overlay (00124-00125)
 ```
 
 ---
 
 ## What's next
 
-1. **Synthesize env-mismatch findings to user** (the immediate pending step from before compaction) — bullets in "What shipped" above are ready to relay.
-2. **Fix `.env.local`** — either align it with dev (`DB_PORT=5435 + APP_ENV=development`) or delete it so `<server>` flag-driven env files are the only source.
-3. **Fix `.env.production`** — set `APP_ENV=production` (currently incorrectly `development`).
-4. **Harden `.claude/bin/switch-server`** — prepend `unset DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD APP_ENV` before the `BACKEND_ENV="$ENV" nohup go run ./cmd/server` line so the `.env.<env>` file always wins.
-5. **Add startup consistency guard in `backend/cmd/server/main.go`** — after env load, if `BACKEND_ENV`'s expected `DB_PORT`/`APP_ENV` mapping doesn't match what was loaded, `log.Fatal` with a precise message naming the mismatch.
-6. **Apply migration 039** — pending decision on which env (current target should be dev once env files are corrected); `cd backend && go run ./cmd/migrate -dry-run -db vector -env .env.dev` first.
-7. **Commit Palette feature** — likely two logical commits: (a) `Palette: avatar flyout + theme pack switcher (frontend)`, (b) `Theme pack: migration 039 + /api/me/theme-pack handler`.
-8. **Storify retroactively** if Palette should be card-tracked (per Storify-all-layers rule covers UI + backend + migration).
-9. **Pre-launch security checklist** still parked.
+1. **Decompose Phase 1 template-artefact pivot across all layers** before invoking `/stories` (storify-all-layers rule):
+   - Backend migrations: core artefact tables, `_template_forms`, `_field_values` with cell visibility, `artefact_versions` (Q10), `search_index_outbox` (R012), embedding columns + `embedding_model`, RLS policies, sequence-scope two-table split, `page_blocks` + `page_block_comments`
+   - Backend services: artefact CRUD, template form CRUD, field-value writer with visibility filter, version snapshotter, outbox claimer worker, Ollama embedding client
+   - Frontend: Craft.js shell, Lexical editor wiring, search-and-compose authoring UX, page-builder block registry, dual-mode (read/edit) renderer
+   - Search worker (Go): outbox claim + SKIP LOCKED, Ollama HTTP call, TSVECTOR + embedding writeback
+   - Tests: tenant isolation canary, RLS leak test, RRF query plan, outbox restart safety, embedding model migration
+2. **Decide story batch sizing** — Phase 1 is large; will likely need a phase plan before /stories so we don't blow past F13
+3. **The 6 superseded migrations** (`043`–`048`) need a decision: archive into `dev/superseded/` or delete; the new template-artefact schema replaces them
+4. **The 3 service skeletons** (`portfolioitems/`, `userstories/`, `defects/`) similarly need a decision — they were the column-locked direction now superseded
+5. **R012 may warrant a stories card itself** for the pgvector overlay work, separate from the template-artefact pivot
+6. Decide whether to commit the 12 chart-component edits + nav/dashboard/workspace tweaks as their own PR before starting the pivot — keeps this branch clean
 
 ---
 
@@ -114,10 +126,19 @@ f111140 Migration 037: scope user_nav_prefs unique-position by parent
 - **padmin test account:** `padmin@mmffdev.com` / `changeme123!`
 - **user test account:** `user@mmffdev.com` (password unknown — reset via backend hash endpoint if needed)
 - **DB password:** `grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-` — contains `&`, never shell-source
-- **Env-derivation truth source:** `/healthz.env` is derived from live `DB_PORT` (5434=production, 5435=dev, 5436=staging) via `envFromDBPort()` in `backend/cmd/server/main.go:166-179`. `BACKEND_ENV` is INTENT only; the reported env is GROUND TRUTH from the actual DB connection. They can diverge silently — that is the bug currently being fixed.
-- **godotenv quirk:** `godotenv.Load(".env.<env>")` does **not** override existing process env vars. Anything exported in the parent shell wins. This is why `switch-server` must `unset` DB_*/APP_ENV before relaunch.
-- **Env file health (as of 2026-04-28):** `.env.local` 5434+development (contradictory), `.env.production` 5434+development (APP_ENV wrong), `.env.dev` 5435+development (correct), `.env.staging` 5436+staging (correct).
-- **Theme-pack three-way sync:** the set of valid packs lives in THREE places and must stay in lockstep — (a) `validThemePacks` map in `backend/internal/users/prefs.go`, (b) the SQL `CHECK` constraint on `users.theme_pack` (latest migration: 039), (c) `VALID_PACKS` + `PACK_HREF` in `app/hooks/useThemePack.ts`. Plus the file basename in `/public/themes/<pack>.css`. Comment at top of `prefs.go` documents this.
-- **Palette flyout hover-bridging:** `.avatar-menu__palette-group` is the wrapper; mouse handlers are on the wrapper, not the row, so the cursor can travel from row → flyout without `mouseleave` firing prematurely.
-- **Frontend hook reconciliation:** `useThemePack` swallows 401/403 silently because the hook may mount on auth-less pages (login, password reset). Other failures fall back to the cached pack and warn to console.
-- **`docs/c_story_index.md` is missing** — the `<stories>` skill expects it. Either create it on first issuance or fix the skill.
+
+**Session-specific (template-artefact pivot):**
+- **R010 is the canonical spec** for the architectural pivot — read it first, not the superseded migrations.
+- **R012 amends R010** — the pgvector section in R010 is now correct (HNSW, outbox, RRF, RLS); don't re-derive from earlier drafts.
+- **Default embedding model is `nomic-embed-text-v1.5`** — 768 dims, 8K context, Apache 2.0. Don't use BGE-base (512-token cap will truncate ACs).
+- **HNSW not IVFFlat** — every embedding index uses HNSW with `WHERE archived_at IS NULL`.
+- **Outbox + NOTIFY-as-wake-up** — never bare NOTIFY/LISTEN (drops messages on restart).
+- **RRF for hybrid search** — never weighted score fusion; predicates inside CTEs, never post-filter.
+- **Every embedding-bearing table gets RLS** — `current_setting('app.current_subscription_id')` set per-request via `SET LOCAL`.
+- **Q10 is Option D** — PITR + per-artefact versions; cell-level audit deferred.
+- **Templates are artefact-type-bound** — no inheritance across types; "story templates" cannot be applied to defects.
+- **WYSIWYG = Lexical (Meta)**, not Tiptap. Lexical state stored in `content JSONB`; denormalised `content_plain_text TEXT` powers FTS + previews.
+- **Page builder = Craft.js** — committed for Phase 1, not deferred. `page_blocks` + `page_block_comments` is the universal store.
+- **Sequence-scope split** — `artefact_type_registry` (immutable `scope_key`) + `subscription_artefact_type_overrides` (mutable `display_prefix`) preserves user-renamable tags.
+- **Samantha SDK** — root namespace `samantha.portfolio.*` for the custom-app API.
+- **The `043`–`048` migrations are superseded** — do NOT run them; they reflect the column-locked direction we just abandoned.

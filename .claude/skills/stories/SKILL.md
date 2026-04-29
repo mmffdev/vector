@@ -25,7 +25,7 @@ Every card created by `/stories` MUST end the run carrying ALL SEVEN of:
 1. **Story ID + Title** — `NNNNN — Title` (5-digit zero-padded ID, em dash, title)
 2. **AIGEN label** — creation source (id `1761454228267599083`, color lagoon-blue)
 3. **Phase label** — `PH-NNNN` (e.g., `PH-0005`)
-4. **Feature area label** — `FE-AAAANNNN` (3-letter area code + 4-digit counter; e.g., `FE-DEV0001`)
+4. **Feature area label** — `FE-AAA-0001` or `FE-AAA-BBB-0001` (domain + optional sub-domain + 4-digit counter; e.g., `FE-DEV-0001`, `FE-POR-API-0001`, `FE-PAY-0001`)
 5. **Estimation label** — `EST-F#` (Fibonacci F0–F13 only; F21+ triggers automatic split)
 6. **Risk label** — `RISK-LOW` / `RISK-MED` / `RISK-HIGH`
 7. **Description** — User story format with 3+ "As Proven by" acceptance criteria
@@ -48,7 +48,7 @@ This step gates everything. Do not skip any sub-step.
 2. **Scan the board's card titles** for the highest existing `NNNNN —` prefix. If higher than the file, use the scan value (another agent may have incremented).
 3. **Compute starting ID** = `max(file, scan) + 1`. Allocate one ID per story. Write them explicitly (e.g., `STORY_IDS = [00050, 00051, 00052]`).
 4. **Determine phase label** (e.g., `PH-0005`). Read `docs/c_story_index.md` for active phase. If the label doesn't exist on the board, create it via `mcp__planka__create_label` (color: `midnight-blue`). Record `PH_LABEL_ID`.
-5. **Determine feature area label.** Read `docs/c_feature_areas.md`. If a matching `FE-AAAANNNN` exists, reuse its ID. If not, propose the next sequential counter to the user; on approval, create via `mcp__planka__create_label` (color: `tank-green`). Record `FE_LABEL_ID`.
+5. **Determine feature area label.** Read `docs/c_feature_areas.md`. Label format is `FE-AAA-0001` (single domain) or `FE-AAA-BBB-0001` (domain + sub-domain). If a matching label exists, reuse its ID. If not, propose the new label name to the user; on approval, create via `mcp__planka__create_label` (color: `tank-green`). Record `FE_LABEL_ID`.
 
 **Self-check:** Can you state exact values for `STORY_IDS`, `PH_LABEL_ID`, and `FE_LABEL_ID` before proceeding? If any is "I'll figure it out later", stop and complete it now.
 
@@ -209,7 +209,7 @@ _Agent: stories | <DATE> | <BRANCH>_
 Required labels to attach (4 mandatory + 1 optional):
 1. `AIGEN` (id `1761454228267599083`)
 2. `PH-NNNN` (id from Step 0: `PH_LABEL_ID`)
-3. `FE-AAAANNNN` (id from Step 0: `FE_LABEL_ID`)
+3. `FE-AAA-0001` or `FE-AAA-BBB-0001` (id from Step 0: `FE_LABEL_ID`)
 4. `EST-F#` (e.g., id `1761454230876456173` for `EST-F0`)
 5. `RISK-LOW/MED/HIGH` (e.g., id `1761454246445712635` for `RISK-LOW`)
 6. `MULTI AGENT` (id `1760728388919624826`) — only if Step 2b qualified
@@ -223,10 +223,15 @@ After all cards in this batch are created, verify each card has its full label s
 **You MUST run this exact script:**
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:3333/api/access-tokens \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"admin@mmffdev.com","password":"changeme123!"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['item'])")
+TOKEN=$(python3 -c "
+import json,urllib.request,pathlib
+env=pathlib.Path('/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend/.env.local').read_text()
+creds={l.split('=')[0]:'='.join(l.split('=')[1:]).strip() for l in env.splitlines() if '=' in l}
+req=urllib.request.Request('http://localhost:3333/api/access-tokens',
+  data=json.dumps({'emailOrUsername':creds['PLANKA_AGENT_USER'],'password':creds['PLANKA_AGENT_PASS']}).encode(),
+  headers={'Content-Type':'application/json'},method='POST')
+print(json.loads(urllib.request.urlopen(req).read())['item'])
+")
 
 # Comma-separated card IDs from this batch:
 CARD_IDS="<id1>,<id2>,<id3>"

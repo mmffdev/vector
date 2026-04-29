@@ -23,6 +23,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
+	"github.com/mmffdev/vector-backend/internal/defects"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
@@ -30,8 +31,10 @@ import (
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/portfolioitems"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
 	"github.com/mmffdev/vector-backend/internal/security"
+	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/users"
 )
 
@@ -130,6 +133,15 @@ func main() {
 	libReleasesRec.Start(ctx)
 	defer libReleasesRec.Stop()
 	libReleasesH := libraryreleases.NewHandler(libPools.RO, pool, auditLog, libReleasesRec)
+
+	userStoriesSvc := userstories.New(pool)
+	userStoriesH := userstories.NewHandler(userStoriesSvc)
+
+	defectsSvc := defects.New(pool)
+	defectsH := defects.NewHandler(defectsSvc)
+
+	portfolioItemsSvc := portfolioitems.New(pool)
+	portfolioItemsH := portfolioitems.NewHandler(portfolioItemsSvc)
 
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
@@ -420,6 +432,42 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
 		r.Post("/report", errorsReportH.Report)
+	})
+
+	// ---- /api/user-stories ----
+	r.Route("/api/user-stories", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Post("/", userStoriesH.Create)
+		r.Get("/{id}", userStoriesH.Get)
+		r.Patch("/{id}", userStoriesH.Patch)
+		r.Delete("/{id}", userStoriesH.Archive)
+	})
+
+	// ---- /api/defects ----
+	r.Route("/api/defects", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Post("/", defectsH.Create)
+		r.Get("/{id}", defectsH.Get)
+		r.Patch("/{id}", defectsH.Patch)
+		r.Delete("/{id}", defectsH.Archive)
+	})
+
+	// ---- /api/portfolio-items ----
+	r.Route("/api/portfolio-items", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Post("/", portfolioItemsH.Create)
+		r.Get("/{id}", portfolioItemsH.Get)
+		r.Patch("/{id}", portfolioItemsH.Patch)
+		r.Delete("/{id}", portfolioItemsH.Archive)
 	})
 
 	// ---- /api/admin ----

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-14
 // AdjacencyMatrixChart — categorical relationship matrix.
 // Each row and column is a category (room, team, capability). Each
 // off-diagonal cell holds an ordinal "priority" level encoding how

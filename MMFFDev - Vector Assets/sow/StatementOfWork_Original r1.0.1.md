@@ -20,6 +20,8 @@ The platform is offered in two modes, and the data model is portable between the
 
 On‑premise deployments introduce an **update‑distribution** concern that hosted does not: how does a release reach the customer, get verified, and apply its database migrations safely? A dedicated update channel is planned — signed release artefacts, an opt‑in customer‑side updater, explicit version pinning, and deterministic migration ordering from `db/schema/*.sql`. This is called out as a known follow‑up so it is not forgotten during capacity planning; it does not change the schema design.
 
+**Schema migration delivery** uses direct ALTER TABLE (not shadow tables or JSONB). New columns are added as nullable first so no downtime or table lock is required; backfill and constraints are applied as a follow‑up step. Migrations are tracked in a `schema_migrations` table within each customer's database. On every server startup the backend will automatically apply any pending migrations before accepting traffic — meaning a customer upgrades simply by pulling the new container image, and the schema keeps pace with the binary without any manual intervention.
+
 ## 2. Core Work Hierarchy: Execution vs. Portfolio
 
 The system splits work into two connected but distinct spaces.

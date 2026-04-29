@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 
+// Chart ref: C-18
 // PortfolioGraphChart — force-directed node-link diagram for the
 // Vector portfolio hierarchy. A drop-down picks the root level
 // (Workspaces → Tasks); clicking a node toggles its children;

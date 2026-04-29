@@ -1,0 +1,46 @@
+{
+  "theme": "nord",
+  "display": {
+    "style": "powerline",
+    "charset": "unicode",
+    "padding": 0,
+    "autoWrap": false,
+    "lines": [
+      {
+        "segments": {
+          "directory": { "enabled": true, "style": "basename" },
+          "git": {
+            "enabled": true,
+            "showSha": false,
+            "showWorkingTree": false,
+            "showOperation": false,
+            "showStashCount": false,
+            "showUpstream": false,
+            "showRepoName": false
+          }
+        }
+      },
+      {
+        "segments": {
+          "model": { "enabled": true },
+          "session": {
+            "enabled": true,
+            "type": "both",
+            "costSource": "calculated"
+          },
+          "block": { "enabled": true, "displayStyle": "text" },
+          "weekly": { "enabled": true, "displayStyle": "text" },
+          "context": {
+            "enabled": true,
+            "displayStyle": "text",
+            "autocompactBuffer": 33000
+          }
+        }
+      }
+    ],
+    "modelContextLimits": {
+      "opus": 1000000,
+      "sonnet": 1000000
+    }
+  }
+}

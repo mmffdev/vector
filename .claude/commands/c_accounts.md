@@ -28,10 +28,15 @@ This is the authoritative list. If login fails, check this first — the user ma
 | Field | Value |
 |---|---|
 | URL | `http://localhost:3333` |
-| Email | `admin@mmffdev.com` |
-| Password | `changeme123!` |
+| Human admin email | `admin@mmffdev.com` |
+| Human admin password | `changeme123!` (browser login only) |
+| **Agent email** | `claude@mmffdev.com` |
+| **Agent password** | `myApples27@` |
 
-These credentials are for the Planka kanban board only. They do not work for the app at `:5101`.
+**Agents MUST use the agent credentials** (`claude@mmffdev.com` / `myApples27@`). The admin password is for browser login only and will auth-fail from scripts. The `.env.local` vars `PLANKA_AGENT_USER` / `PLANKA_AGENT_PASS` hold these — the `bin/planka` helper reads them automatically. Never hardcode `changeme123!` in any skill or script.
+
+**Agents MUST USE the Planka API**
+The API for Planka must be used at all times, curl is not an option
 
 ## Reset an app user password
 

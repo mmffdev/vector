@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-11
 // HorizontalStackChart — 100% horizontal stacked bar chart. Each row
 // is one category; each row sums to 100% across N series segments.
 // Stub data ships by default; pass `data` / `categories` / `series`

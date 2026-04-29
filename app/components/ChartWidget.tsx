@@ -18,6 +18,7 @@ export default function ChartWidget({
   title,
   legend,
   petal = false,
+  chartRef,
   children,
 }: {
   title?: string;
@@ -25,6 +26,8 @@ export default function ChartWidget({
   legend?: ReactNode;
   /** Adds chart-card--petal for square radial charts */
   petal?: boolean;
+  /** Chart reference ID shown top-left, e.g. "C-01" */
+  chartRef?: string;
   children: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -69,10 +72,15 @@ export default function ChartWidget({
       {/* Toolbar sits above the chart; expand button is here so it never
           overlaps the chart component's own reroll (↻) button */}
       <div className="chart-widget__toolbar">
-        {title
-          ? <h4 className="eyebrow chart-widget__toolbar-title">{title}</h4>
-          : <span />
-        }
+        <div className="chart-widget__toolbar-left">
+          {chartRef && (
+            <span className="chart-widget__ref">{chartRef}</span>
+          )}
+          {title
+            ? <h4 className="eyebrow chart-widget__toolbar-title">{title}</h4>
+            : null
+          }
+        </div>
         {expandBtn}
       </div>
       {children}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-10
 // Vector throughput chart — two-series line chart over 12 weeks.
 // Primary series in --ink, comparison series in --ink-muted. Dashed
 // gridlines at the 0/50/100 marks; --ink-subtle axis labels. Brand

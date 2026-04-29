@@ -23,6 +23,10 @@
 - [Session restore — 2026-04-27 instance 4](boot4.md) — rebrand + tooling session.
 - [MMFF Vector Launcher — backlog](project_launcher_backlog.md) — Swift macOS launcher (tunnel + backend + frontend + DB env) backlog & build plan.
 
+- [Jira Cloud — mmffdev connection](reference_jira.md) — mmffdev.atlassian.net, services@mmffdev.com, API token, projects, hierarchy. Transitioning from Planka.
+- [Button and interactive element CSS enforcement](feedback_button_classes.md) — Every button needs .btn + variant; custom elements use --accent/--accent-ink not --brand
+- [Open-source-first stack, no subscription costs](project_open_source_first.md) — Hobby-funded, unlimited timeline. Prefer MIT/BSD OSS → self-hosted → build our own → paid SaaS last resort.
+
 ### Rules
 
 1. When you learn something worth remembering, write it to the right file immediately. 

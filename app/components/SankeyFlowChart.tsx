@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-16
 // SankeyFlow chart — 2-layer flow diagram. Source nodes line the top
 // edge, destination nodes line the bottom edge, and bezier curves
 // carry weight from each source to each destination. Source bars and

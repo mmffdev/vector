@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-12
 // LadderChart — probability ladder matrix (per-row stochastic heatmap).
 // Each row represents an entity (team, candidate, project) and each
 // column represents a possible outcome rank (1st, 2nd, ... Nth). Cell

@@ -4,10 +4,13 @@ Single source of truth for styling. Read this before adding CSS.
 
 ## Rules
 
-1. **No inline styles.** No `style={{...}}`, no style attributes. Every rule lives in `app/globals.css`.
-2. **No Tailwind, no CSS-in-JS.** Plain CSS + CSS variables.
+**HARD RULE — ALL ELEMENTS:** Every element placed on a page MUST be styled via `app/globals.css` classes and CSS variables. This is non-negotiable. Specifically:
+
+1. **No inline styles — ever.** `style={{...}}` and style attributes are prohibited. If you catch yourself writing one, stop: add a class to `globals.css` instead. The only permitted exception is a genuinely dynamic value that cannot be expressed as a CSS variable — in that case, expose it as a CSS custom property (`style={{ "--my-var": value }}`) and reference it from a rule in `globals.css`.
+2. **No Tailwind, no CSS-in-JS.** Plain CSS + CSS variables only.
 3. **All values via CSS variables** — `color: var(--ink-1)`, never `color: #1f1f1f`.
-4. **One block class + modifiers per element** — `<button class="btn btn--primary btn--sm">`, not a utility-class soup.
+4. **One block class + modifiers per element** — `<button class="btn btn--primary btn--sm">`, not utility-class soup.
+5. **Use the catalog first.** Before writing any new class, check the component catalog below. If an existing block + modifier covers the case, use it. Only create a new class if nothing fits — then follow the "When you need a new component" checklist.
 
 ## Naming convention — BEM-lite
 
@@ -60,13 +63,26 @@ These are the canonical components. If you need something similar, extend with a
 
 ### Buttons
 
+**HARD RULE:** Every `<button>` in the app MUST carry `.btn` plus exactly one variant. A naked `<button>` with no class is a defect — full stop.
+
+| Intent | Classes |
+|---|---|
+| Default action | `.btn` |
+| Primary CTA (one per region) | `.btn btn--primary` |
+| Cancel / secondary | `.btn btn--secondary` |
+| Quiet / icon-only | `.btn btn--ghost` |
+| Destructive | `.btn btn--danger` |
+| Smaller | add `.btn--sm` |
+| Larger | add `.btn--lg` |
+
+**Custom interactive elements** (toggle tiles, segmented controls, day-pickers) that are structurally not navigation buttons still MUST compose from the token set below — never invent new token names or use `--brand` for interactive states.
+
 ```
-.btn                 /* base: padding, font, border */
-.btn--primary        /* accent background */
-.btn--secondary      /* transparent + line border */
-.btn--ghost          /* no border, hover-only */
-.btn--danger         /* red for destructive */
-.btn--sm / .btn--lg  /* size modifiers */
+Active state  → background: var(--accent);  color: var(--accent-ink);  border-color: var(--accent);
+Inactive      → background: var(--surface); color: var(--ink);         border: 1px solid var(--border-strong);
+Hover         → background: var(--surface-sunken); color: var(--ink);
+Transitions   → transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+Shape         → border-radius: 0;  height: 40px; (matches .btn geometry)
 ```
 
 ### Tables

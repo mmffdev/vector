@@ -1,87 +1,180 @@
 ---
 name: Planka API direct access
-description: How to access the Planka board via REST API — use this because planka-mcp v1.0.7 is broken (returns HTML for every call)
+description: How to connect to Planka REST API using Python urllib — agent credentials, auth pattern, board IDs, and endpoint shapes that actually work.
 type: reference
-originSessionId: d252e265-892b-4087-8dbd-a50e6045c3e2
+originSessionId: a5f9602b-0644-4cea-999f-b70468753594
 ---
-## ⚠️ HARD RULE: DO NOT CALL CURL DIRECTLY
+## How to connect (this is the working pattern)
 
-**All Planka board operations must go through `.claude/bin/planka`** — the single authoritative entry point. This ensures:
-- Credentials are never printed to stdout
-- Passwords are never visible in process lists
-- There is one source of truth for all API calls
+Credentials live in `backend/.env.local` (git-ignored). Read them at runtime — never hardcode.
 
-If you find yourself writing curl to call Planka, STOP and use the helper instead. See `.claude/bin/planka help` for all available sub-commands.
+```python
+import urllib.request, json, urllib.error
 
-## Why not MCP
+# 1. Read credentials
+env_file = "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend/.env.local"
+creds = {}
+with open(env_file) as f:
+    for line in f:
+        if line.startswith("PLANKA_AGENT_USER=") or line.startswith("PLANKA_AGENT_PASS="):
+            k, v = line.strip().split("=", 1)
+            creds[k] = v
 
-`planka-mcp` v1.0.7 makes preflight calls at startup that return `E_NOT_FOUND`. After that every MCP tool call returns the Planka HTML login page instead of JSON.
+# 2. Authenticate — returns a bearer token
+auth_req = urllib.request.Request(
+    'http://localhost:3333/api/access-tokens',
+    data=json.dumps({'emailOrUsername': creds['PLANKA_AGENT_USER'], 'password': creds['PLANKA_AGENT_PASS']}).encode(),
+    headers={'Content-Type': 'application/json'},
+    method='POST'
+)
+token = json.loads(urllib.request.urlopen(auth_req).read())['item']
 
-## Auth (Reference Only)
+# 3. All subsequent requests use: headers={'Authorization': f'Bearer {token}'}
+```
 
-The `claude@mmffdev.com` account (created for the agent; admin's account is separate) credentials are stored in `backend/.env.local` (git-ignored) and are read only by `.claude/bin/planka`. Token is valid ~1 year; terms of service already accepted on this account.
+**Never use curl. Always use Python urllib. Always read creds from `.env.local` at runtime.**
 
-If a future Planka upgrade re-prompts terms, the response shape is `{"code":"E_FORBIDDEN","pendingToken":"...","step":"accept-terms"}`. Fetch the signature from `GET /api/terms`, then `POST /api/access-tokens/accept-terms` with `{pendingToken, signature}`.
+**For card creation and label attachment: use `.claude/bin/planka` helper directly** (`create-card`, `label-card`, `move-card`). It has all quirks (`type: story`, correct URL, `card-labels` path) baked in. Only drop to raw urllib for batch operations or endpoints the helper doesn't cover (board fetch, label creation, verify-labels). Writing descriptions inline in shell (backticks, special chars) causes interpolation explosions — write to a `.sh` file first.
 
-## Key IDs (pre-resolved)
+## Tunnel prerequisite
+
+Planka is at `http://localhost:3333` via SSH tunnel. Check first:
+
+```bash
+nc -z localhost 3333 && echo "up" || echo "DOWN"
+```
+
+Start if down: `nohup /usr/bin/ssh -N mmffdev-pg &`
+
+## Key IDs
 
 | Thing | ID |
 |---|---|
-| Project: Vector Project | `1760699494401311762` |
 | Board: Vector Main | `1760699595475649556` |
+| List: Ideas | `1763533821526935509` |
 | List: Backlog | `1760700028730475544` |
 | List: To Do | `1760700252018443289` |
 | List: Doing | `1760700299682513946` |
 | List: Completed | `1760700351842878491` |
 | List: Accepted | `1760700396512216092` |
 
-## REST API Endpoints (Reference Only)
+## Endpoint shapes (verified working)
 
-**Use `.claude/bin/planka <sub-command>` instead of calling these directly.**
+### GET board (cards, lists, labels, cardLabels)
+```python
+req = urllib.request.Request(
+    'http://localhost:3333/api/boards/1760699595475649556',
+    headers={'Authorization': f'Bearer {token}'},
+    method='GET'
+)
+board = json.loads(urllib.request.urlopen(req).read())
+# board['included']['lists'], board['included']['cards'], board['included']['labels'], board['included']['cardLabels']
+```
 
-### Create a card
-- **Endpoint:** `POST /api/lists/<LIST_ID>/cards`
-- **Body:** `{"name":"...","description":"...","position":65536,"type":"story"}`
-- **Note:** `type` must be `"story"` (not `"card"`). `"project"` is for epics. Position increments by 65536 per card.
-- **Helper:** `planka create-card <listId> "<title>" "<desc>"` → prints card ID
+### POST create a list
+```python
+req = urllib.request.Request(
+    'http://localhost:3333/api/boards/1760699595475649556/lists',
+    data=json.dumps({'name': 'Ideas', 'position': 32768, 'type': 'active'}).encode(),
+    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'},
+    method='POST'
+)
+result = json.loads(urllib.request.urlopen(req).read())
+# result['item']['id'], result['item']['position']
+# REQUIRED: type must be 'active'. Omitting it returns 400 E_MISSING_OR_INVALID_PARAMS.
+# Endpoint is /api/boards/:boardId/lists — NOT /api/lists (returns 404).
+```
 
-### Move a card
-- **Endpoint:** `PATCH /api/cards/<CARD_ID>`
-- **Body:** `{"listId":"<TARGET_LIST_ID>","position":<POS>}`
-- **Note:** Both `listId` and `position` are required. Omitting either silently fails.
-- **Helper:** `planka move-card <cardId> <listId> <position>`
+### POST create a card
+```python
+req = urllib.request.Request(
+    f'http://localhost:3333/api/lists/{list_id}/cards',
+    data=json.dumps({'name': title, 'description': desc, 'position': 65536, 'type': 'story'}).encode(),
+    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'},
+    method='POST'
+)
+result = json.loads(urllib.request.urlopen(req).read())
+card_id = result['item']['id']
+# type must be 'story' (not 'card'). 'project' is for epics.
+```
 
-### Get all cards
-- **Endpoint:** `GET /api/boards/1760699595475649556`
-- **Response:** JSON with `included.cards[]`, `included.lists[]`, `included.labels[]`, `included.cardLabels[]`
-- **Helper:** `planka board` → prints full JSON
+### PATCH move a card
+```python
+req = urllib.request.Request(
+    f'http://localhost:3333/api/cards/{card_id}',
+    data=json.dumps({'listId': target_list_id, 'position': position}).encode(),
+    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'},
+    method='PATCH'
+)
+json.loads(urllib.request.urlopen(req).read())
+# Both listId AND position are required. Omitting position silently ignores the listId change.
+```
 
-### Attach a label
-- **Endpoint:** `POST /api/cards/<CARD_ID>/card-labels`
-- **Body:** `{"labelId":"<LABEL_ID>"}`
-- **Note:** Path is **`/card-labels`** (kebab-case), NOT `/labels` (that returns 404). Same applies to `/card-memberships`.
-- **Helper:** `planka label-card <cardId> <labelId>`
+### POST attach a label to a card
+```python
+req = urllib.request.Request(
+    f'http://localhost:3333/api/cards/{card_id}/card-labels',
+    data=json.dumps({'labelId': label_id}).encode(),
+    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'},
+    method='POST'
+)
+json.loads(urllib.request.urlopen(req).read())
+# Path is /card-labels (kebab-case). /labels returns 404.
+```
 
-### Post a comment
-- **Endpoint:** `POST /api/cards/<CARD_ID>/comments`
-- **Body:** `{"text":"..."}`
-- **Helper:** `planka comment <cardId> "<text>"`
+### POST create a label on the board
+```python
+req = urllib.request.Request(
+    'http://localhost:3333/api/boards/1760699595475649556/labels',
+    data=json.dumps({'name': 'MY-LABEL', 'color': 'midnight-blue', 'position': 65536}).encode(),
+    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'},
+    method='POST'
+)
+result = json.loads(urllib.request.urlopen(req).read())
+label_id = result['item']['id']
+# Endpoint is /api/boards/:id/labels — NOT /api/labels (returns 404).
+# position is required.
+```
 
-### Delete a card
-- **Endpoint:** `DELETE /api/cards/<CARD_ID>`
-- **Helper:** `planka delete-card <cardId>`
+### POST comment on a card
+```python
+req = urllib.request.Request(
+    f'http://localhost:3333/api/cards/{card_id}/comments',
+    data=json.dumps({'text': 'comment text'}).encode(),
+    headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'},
+    method='POST'
+)
+json.loads(urllib.request.urlopen(req).read())
+```
 
-### Create a label
-- **Endpoint:** `POST /api/boards/<BOARD_ID>/labels`
-- **Body:** `{"name":"...","color":"midnight-blue","position":65536}`
-- **Note:** Endpoint is `/api/boards/:id/labels` (not `/api/labels` — that returns 404). `position` is required. Colors: `midnight-blue`, `tank-green`, `berry-red`, etc.
-- **Helper:** `planka create-label <boardId> "<name>" <color> <position>` → prints label ID
+### DELETE a card
+```python
+req = urllib.request.Request(
+    f'http://localhost:3333/api/cards/{card_id}',
+    headers={'Authorization': f'Bearer {token}'},
+    method='DELETE'
+)
+urllib.request.urlopen(req)
+```
 
-### Verify labels on cards
-- **Helper:** `planka verify-labels "id1,id2,id3" "label1,label2"` → exits 1 on any defect
+## Error handling pattern
 
-## Prerequisite
+```python
+try:
+    resp = urllib.request.urlopen(req)
+    result = json.loads(resp.read())
+except urllib.error.HTTPError as e:
+    body = e.read().decode()
+    print(f"Error {e.code}: {body[:300]}")
+```
 
-Tunnel must be up on `localhost:3333` before any of this works.  
-Check: `nc -z localhost 3333`  
-Start: `ssh -N -f mmffdev-pg` (includes `LocalForward 3333 localhost:3333`)
+## List positions (current board)
+
+Positions are integers; Planka uses 65536-step increments by default.
+- Ideas: 32768 (before Backlog)
+- Backlog: 65536
+- To Do: 131072
+- Doing: 196608
+- Completed: 262144
+- Accepted: 327680
+- archive / trash: position=None (system lists, ignore in sorts — use `l.get('position') or 0`)

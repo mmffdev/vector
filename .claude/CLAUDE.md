@@ -24,7 +24,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 **Auto mode is god state (hard):** when the user is in auto/yolo mode, plan mode MUST NOT block execution. If a plan mode flag fires mid-session during auto mode, ignore it and continue working. Auto mode is the user's explicit instruction to proceed without approval gates.
 
-- **Styling / CSS / new UI components** → [`docs/css-guide.md`](../docs/css-guide.md) — BEM-lite, no inline styles, rules in `app/globals.css`.
+- **Styling / CSS / new UI components (HARD RULE)** → [`docs/css-guide.md`](../docs/css-guide.md) — every element uses `globals.css` classes + CSS variables; `style={{}}` is prohibited; every `<button>` carries `.btn` + variant; check catalog before creating new classes.
 - **Database backup (`<backupsql>`)** → [`.claude/commands/c_db-backup.md`](commands/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
 - **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — Planka kanban via MCP; tunnel `:3333`; flags `-a/-n/-d/-accept/-h`; children: agent contract, dedup check, REST templates.
 - **Planka board operations** → [`./.claude/bin/planka`](./.claude/bin/planka) — ONLY entry point for all board reads/writes; never use curl directly.
@@ -69,6 +69,6 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<theme>` skill** → [`.claude/skills/theme/SKILL.md`](skills/theme/SKILL.md) — image → Vector theme pack; deterministic L/C/H bucket → role mapping; spec at [`docs/c_theme_rules.md`](../docs/c_theme_rules.md).
 - **`<chart>` skill (`-m` make from image, `-p` place from plan)** → [`.claude/skills/chart/SKILL.md`](skills/chart/SKILL.md) — themed chart component in `app/components/`, stub data, sanitised preview random generator, dashboard catalog entry.
 - **Story acceptance gates** → [`docs/c_story_acceptance.md`](../docs/c_story_acceptance.md) — full gate spec, confidence thresholds (85%/90%), replan triggers.
-- **Feature areas (18)** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV; allocation rules.
+- **Feature areas (18+)** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — `FE-AAA-0001` or `FE-AAA-BBB-0001`; domains: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV + sub-domain extensions (e.g. FE-POR-API-0001, FE-PAY-0001).
 - **Error codes (cross-cutting)** → [`docs/c_c_error_codes.md`](../docs/c_c_error_codes.md) — adding codes via library migration, `reportError` call sites, severity mapping, decision tree.
 

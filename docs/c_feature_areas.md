@@ -1,6 +1,11 @@
-# Feature Areas — 3-letter functional taxonomy
+# Feature Areas — hierarchical label taxonomy
 
-Every story card MUST carry exactly one feature label with a 3-letter area code: `FE-<AREA>NNNN`.
+Every story card MUST carry exactly one feature label. Format:
+
+- **Single domain:** `FE-AAA-0001` (e.g. `FE-DEV-0001`, `FE-SQL-0001`)
+- **Domain + sub-domain:** `FE-AAA-BBB-0001` (e.g. `FE-POR-API-0001`, `FE-PAY-ITM-0001`)
+
+The `-` separator is mandatory. 4-digit zero-padded counter is mandatory.
 
 This is a **hard gate** — `<stories>` skill will not create a card without explicit area allocation.
 
@@ -197,6 +202,10 @@ Each area starts at 0001 and increments independently:
 | DCR | `FE-DCR0001`, `FE-DCR0002`, ... |
 | ALG | `FE-ALG0001`, `FE-ALG0002`, ... |
 | DEV | `FE-DEV0001`, `FE-DEV0002`, ... |
+| POR-API | `FE-POR-API-0001`, `FE-POR-API-0002`, ... |
+| POR-ITM | `FE-POR-ITM-0001`, `FE-POR-ITM-0002`, ... |
+
+**Sub-domain codes** (`FE-AAA-BBB-0001`) scope work to a specific layer within a domain. Any valid 3-letter pair is allowed; propose + confirm before first use.
 
 When a new counter is needed, propose the next sequential number; user confirms, allocate it, and add to the registry.
 
@@ -223,13 +232,22 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API0002` | 2/? | `1761991023807956485` | Active | Layer batch rename/reorder endpoint |
 | API | `FE-API0003` | 3/? | `1762013369910429311` | Active | Layer change history endpoint |
 | API | `FE-API0004` | 4/? | `1762137672404436439` | Active | Samantha SDK — custom app developer API |
-| SQL | — | 0/? | — | Ready | Database / schema / migrations |
+| API | `FE-API0005` | 5/? | `1762271935724521022` | Active | Navigation profile CRUD API |
+| API | `FE-API0006` | 6/? | `1763620459506566186` | Active | User story CRUD API |
+| API | `FE-API0007` | 7/? | `1763620460387370027` | Active | Defect CRUD API |
+| SQL | `FE-SQL-0001` | 1/? | `1762271910986516028` | Active | Execution item migrations (user_stories, defects, item_labels, item_tags) |
+| SQL | `FE-SQL-0002` | 2/? | `1763620456000128038` | Active | user_stories table migration |
+| SQL | `FE-SQL-0003` | 3/? | `1763620456629273639` | Active | defects table migration |
+| SQL | `FE-SQL-0004` | 4/? | `1763620458105668648` | Active | item_labels junction table migration |
+| SQL | `FE-SQL-0005` | 5/? | `1763620458768368681` | Active | item_tags junction table migration |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | — | 0/? | — | Ready | Algorithms / search / matching |
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
 | DEV | `FE-DEV0002` | 2/? | `1761301483015374767` | Active | Planning docs (database mapping) |
 | DEV | `FE-DEV0003` | 3/? | `1761469925852972291` | Active | Portfolio adoption action paths |
 | DEV | `FE-DEV0004` | 4/? | `1762105753893602703` | Active | Service health panel (DevServicesPanel, DevStatusFloat, /api/dev/services) |
+| POR-API | `FE-POR-API-0001` | 1/? | `1763600697053415384` | Active | Portfolio item metadata + custom fields API |
+| POR-ITM | `FE-POR-ITM-0001` | 1/? | `1763600697623840729` | Active | Portfolio item rollup count materialisation |
 
 ---
 

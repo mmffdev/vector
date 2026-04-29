@@ -79,8 +79,11 @@ Scan existing `dev/research/R*.json` files to find the highest existing ID, then
 **Content format rules:**
 - Use semantic HTML: `<h2>`, `<h3>`, `<p>`, `<ul>/<ol>/<li>`, `<table>/<thead>/<tbody>/<tr>/<th>/<td>`, `<code>`, `<pre><code>`
 - No `<script>`, `<style>`, or event handlers
-- Escape HTML entities in attribute values
 - No JSX syntax — pure HTML string
+- **HARD RULE — JSON safety:** The `content` value is a JSON string. Raw double-quote characters (`"`) inside HTML attributes (e.g. `sandbox="..."`, `href="..."`) will silently truncate the file and cause it to fail JSON parsing. Always use one of these two safe paths:
+  1. Replace all HTML attribute double quotes with `&quot;` entities — e.g. `sandbox=&quot;allow-scripts&quot;`
+  2. Build the object in a Node script and write it via `JSON.stringify()` (safest for reports containing code examples)
+- **Validate before finishing:** run `node -e "JSON.parse(require('fs').readFileSync('dev/research/RXXX.json','utf-8'))"` and confirm no error before reporting the task complete
 
 ## Quality Rules
 

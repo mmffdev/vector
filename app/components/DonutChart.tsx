@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-07
 // Vector "Donut Chart" — single ring of N segments proportional to value.
 // Every slice gets a leader line + label (name + percentage) on the
 // nearest side; one slice can be flagged `highlight: true` for the

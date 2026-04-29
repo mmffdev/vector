@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-13
 // DivergingHeatmapChart — sparse diverging heatmap matrix. Each row is
 // an entity (player, candidate, project) and each column a time-step
 // or category bucket. Cells encode a signed magnitude on a two-pole

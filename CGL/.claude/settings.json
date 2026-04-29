@@ -1,0 +1,311 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "WebSearch",
+      "WebFetch(domain:localhost)",
+      "Bash(curl -sf http://localhost:3344/api/status)",
+      "Bash(curl -sf http://localhost:5002/api/health)",
+      "Bash(curl -sf http://localhost:5001/api/health)",
+      "Bash(curl -sf \"http://localhost:3344/api/dev/auth/current\")",
+      "Bash(curl -sf http://localhost:3344/api/dev/users)",
+      "Bash(sed 's|backend/data/wppc\\\\.db|backend/data/ops.db|g' ~/.claude/c_mstories-protocol.md)",
+      "Bash(sed 's|backend/data/wppc\\\\.db|backend/data/ops.db|g' ~/.claude/c_defect-protocol.md)",
+      "Bash(cp /tmp/state.md.orig .claude/commands/state.md)",
+      "Bash(git add *)",
+      "Edit(/.claude/skills/uglobal/**)",
+      "Edit(/.claude/skills/ubackend/**)",
+      "Edit(/.claude/skills/ufrontend/**)",
+      "Edit(/.claude/skills/udocs/**)",
+      "Bash(cp /tmp/sprint-start.orig .claude/commands/sprint-start.md)",
+      "Bash(git show *)",
+      "Edit(/.claude/skills/auditmd/**)",
+      "Bash(rm -v /Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/commands/ubackend.md)",
+      "Bash(rm -v /Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/commands/ufrontend.md)",
+      "Bash(rm -v /Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/commands/uglobal.md)",
+      "Bash(rm -v /Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/commands/udocs.md)",
+      "Edit(/.claude/skills/uresearch/**)",
+      "Edit(/.claude/skills/backupdb/**)",
+      "Edit(/.claude/skills/restoredb/**)",
+      "Edit(/.claude/skills/failover/**)",
+      "WebFetch(domain:sdk-design.js.org)",
+      "WebFetch(domain:addyosmani.com)",
+      "WebFetch(domain:docs.discord.com)",
+      "WebFetch(domain:www.metabase.com)",
+      "WebFetch(domain:www.figma.com)",
+      "WebFetch(domain:shopify.dev)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/Users/rick/.claude",
+      "/Users/rick/Library/Application Support/Code/User",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev-WPPC/.claude",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev-WPPC/.claude/handoffs",
+      "/Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/skills/uglobal",
+      "/Users/rick/.claude/protocols",
+      "/Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/skills",
+      "/Users/rick/Documents/MMFFDev-Projects/mmff-Ops/.claude/commands"
+    ]
+  },
+  "hooks": {
+    "ConfigChange": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "CwdChanged": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "Elicitation": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "ElicitationResult": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/rick/Library/Application Support/GitKrakenCLI/gk\" ai hook run --host claude-code"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "claude-powerline",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "swift-lsp@claude-plugins-official": true
+  },
+  "outputStyle": "minimal",
+  "effortLevel": "high",
+  "autoCompactWindow": 160000,
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "light",
+  "model": "sonnet"
+}
