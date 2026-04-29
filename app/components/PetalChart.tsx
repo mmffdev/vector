@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-01
 // Vector petal chart — eight rounded petals radiating from a small core.
 // Petal length scales with value; tone slot picks a neutral fill so the
 // chart respects the design system rule "no decorative colour".
@@ -29,9 +30,9 @@ const DEFAULT_PETALS: Petal[] = [
 
 const SIZE = 480;
 const CENTER = SIZE / 2;
-const INNER_R = 46;
-const MIN_LEN = 110;
-const MAX_LEN = 215;
+const INNER_R = 32;
+const MIN_LEN = 90;
+const MAX_LEN = 185;
 
 // =============================================================
 // PREVIEW-ONLY — random data generator. Not part of the normal
@@ -55,12 +56,6 @@ function randomPetals(): Petal[] {
   }));
 }
 
-function octagonPoints(cx: number, cy: number, r: number): string {
-  return Array.from({ length: 8 }, (_, i) => {
-    const a = Math.PI / 8 + i * Math.PI / 4;
-    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-  }).join(" ");
-}
 
 function petalPath(len: number): string {
   const wIn = 22;
@@ -117,8 +112,10 @@ export default function PetalChart({
         );
       })}
 
-      <polygon
-        points={octagonPoints(CENTER, CENTER, INNER_R + 2)}
+      <circle
+        cx={CENTER}
+        cy={CENTER}
+        r={38}
         className="petal-chart__core"
       />
 

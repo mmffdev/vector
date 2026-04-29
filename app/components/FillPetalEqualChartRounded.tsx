@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-03
 // Vector "Fill Petal Equal Chart Rounded" — same pie-wedge geometry as
 // FillPetalEqualChart, but every corner of every petal (outer and inner)
 // is filleted with a uniform radius. Adjacent petals share radial
@@ -172,12 +173,6 @@ export default function FillPetalEqualChartRounded({
           );
         })}
 
-        <circle
-          cx={0}
-          cy={0}
-          r={INNER_R - 14}
-          className="fill-petal-equal-rounded-chart__core"
-        />
       </g>
 
       {petals.map((p, i) => {

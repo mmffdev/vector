@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-02
 // Vector "Fill Petal Equal" chart — N pie-wedge petals filling the
 // full 360° around the core. Adjacent petals touch on shared radial
 // boundaries (no spokes). Inner petal occupies the same angular slot
@@ -30,7 +31,7 @@ const DEFAULT_PETALS: FillPetalEqual[] = [
 
 const SIZE = 480;
 const CENTER = SIZE / 2;
-const INNER_R = 46;
+const INNER_R = 32;
 const OUTER_R = 215;
 const FULL_LEN = OUTER_R - INNER_R;
 
@@ -55,12 +56,6 @@ function randomPetals(): FillPetalEqual[] {
   }));
 }
 
-function octagonPoints(cx: number, cy: number, r: number): string {
-  return Array.from({ length: 8 }, (_, i) => {
-    const a = Math.PI / 8 + i * Math.PI / 4;
-    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-  }).join(" ");
-}
 
 function sectorPath(a1: number, a2: number, rIn: number, rOut: number): string {
   const f = (n: number) => n.toFixed(2);
@@ -136,8 +131,10 @@ export default function FillPetalEqualChart({
           );
         })}
 
-        <polygon
-          points={octagonPoints(0, 0, INNER_R + 2)}
+        <circle
+          cx={0}
+          cy={0}
+          r={38}
           className="fill-petal-equal-chart__core"
         />
       </g>

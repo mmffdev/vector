@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-04
 // Vector filled-petal chart — N equilateral outer petals (one per data
 // point) with an inner petal whose uniform scale equals value/max.
 // All outer petals are identical regardless of value; the inner petal
@@ -29,8 +30,8 @@ const DEFAULT_PETALS: FilledPetal[] = [
 
 const SIZE = 480;
 const CENTER = SIZE / 2;
-const INNER_R = 46;
-const OUTER_R = 215;
+const INNER_R = 32;
+const OUTER_R = 210;
 const FULL_LEN = OUTER_R - INNER_R;
 
 // At N=8 this resolves to wOut≈38, matching the original petal chart's
@@ -58,12 +59,6 @@ function randomPetals(): FilledPetal[] {
   }));
 }
 
-function octagonPoints(cx: number, cy: number, r: number): string {
-  return Array.from({ length: 8 }, (_, i) => {
-    const a = Math.PI / 8 + i * Math.PI / 4;
-    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-  }).join(" ");
-}
 
 function petalWidthsFor(N: number): { wIn: number; wOut: number } {
   const slotHalf = Math.PI / N;
@@ -148,8 +143,10 @@ export default function FilledPetalChart({
         );
       })}
 
-      <polygon
-        points={octagonPoints(CENTER, CENTER, INNER_R + 22)}
+      <circle
+        cx={CENTER}
+        cy={CENTER}
+        r={42}
         className="filled-petal-chart__core"
       />
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-06
 // Vector "Concentric Arc Chart, Non-Closed" — same geometry as
 // ConcentricArcChart, but with no background track rings. Each arc
 // sweeps clockwise from 12 o'clock by value/max of a full circle and
@@ -31,7 +32,7 @@ const CHART_CY = 240;
 const OUTER_R = 200;
 const RING_GAP = 38;
 const STROKE = 22;
-const CORE_R = 36;
+const CORE_R = 58;
 const LABEL_X = 30;
 
 // =============================================================
@@ -110,13 +111,6 @@ export default function ConcentricArcChartNonClosed({
           />
         );
       })}
-
-      <circle
-        cx={CHART_CX}
-        cy={CHART_CY}
-        r={CORE_R}
-        className="concentric-arc-nc-chart__core"
-      />
 
       {arcs.map((a, i) => {
         const r = OUTER_R - i * RING_GAP;

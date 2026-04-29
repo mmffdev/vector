@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 
+// Chart ref: C-05
 // Vector "Concentric Arc Chart" — N concentric rings, each sweeping
 // clockwise from 12 o'clock by value/max of a full circle. A faint
 // track behind each arc keeps low-fill values legible. Labels stack
@@ -31,7 +32,7 @@ const CHART_CY = 240;
 const OUTER_R = 200;
 const RING_GAP = 38;
 const STROKE = 22;
-const CORE_R = 36;
+const CORE_R = 58;
 const LABEL_X = 30;
 
 // =============================================================
@@ -124,13 +125,6 @@ export default function ConcentricArcChart({
           />
         );
       })}
-
-      <circle
-        cx={CHART_CX}
-        cy={CHART_CY}
-        r={CORE_R}
-        className="concentric-arc-chart__core"
-      />
 
       {arcs.map((a, i) => {
         const r = OUTER_R - i * RING_GAP;
