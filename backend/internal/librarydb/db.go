@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/secrets"
@@ -99,9 +100,15 @@ func openPool(ctx context.Context, host, port, dbname, user, pwd, label string) 
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=mmff_library_%s",
 		host, port, user, pwd, dbname, label,
 	)
-	pool, err := pgxpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("librarydb %s: pgxpool.New: %w", label, err)
+		return nil, fmt.Errorf("librarydb %s: pgxpool.ParseConfig: %w", label, err)
+	}
+	cfg.MinConns = 2
+	cfg.MaxConnIdleTime = 5 * time.Minute
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("librarydb %s: pgxpool.NewWithConfig: %w", label, err)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
