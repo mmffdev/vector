@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useTabState } from "@/app/hooks/useTabState";
 import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
@@ -921,8 +922,6 @@ function SwatchStrip({ colors }: { colors: [string, string, string, string] }) {
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 50, 100, "all"] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
-type TopTab = "maker" | "themes";
-
 function ThemesTab() {
   const { pack, choose, mounted, saveError } = useThemePack();
   const { theme: globalMode, setMode: setGlobalMode } = useTheme();
@@ -1212,7 +1211,7 @@ export default function ThemePage() {
   const { user } = useAuth();
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
-  const [topTab, setTopTab] = useState<TopTab>("themes");
+  const [topTab, setTopTab] = useTabState(["themes", "maker"] as const, "themes");
 
   const shades = useMemo(() => shadesFromSeed(seed), [seed]);
   const seedName = useMemo(() => {

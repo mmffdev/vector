@@ -32,7 +32,6 @@ const CHART_CY = 240;
 const OUTER_R = 200;
 const RING_GAP = 38;
 const STROKE = 22;
-const CORE_R = 58;
 const LABEL_X = 30;
 
 // =============================================================

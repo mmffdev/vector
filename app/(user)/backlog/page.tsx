@@ -10,9 +10,10 @@
 // rows below are a placeholder until 00094 lands.
 
 import { useState } from "react";
+import { useTabState } from "@/app/hooks/useTabState";
 import PageShell from "@/app/components/PageShell";
 
-const FILTERS: Array<{ key: string; label: string }> = [
+const FILTERS: Array<{ key: "all" | "mine" | "open" | "blocked" | "due"; label: string }> = [
   { key: "all", label: "All" },
   { key: "mine", label: "Assigned to me" },
   { key: "open", label: "Open" },
@@ -22,7 +23,11 @@ const FILTERS: Array<{ key: string; label: string }> = [
 
 export default function Backlog() {
   const [search, setSearch] = useState("");
-  const [active, setActive] = useState<string>("all");
+  const [active, setActive] = useTabState(
+    ["all", "mine", "open", "blocked", "due"] as const,
+    "all",
+    "filter",
+  );
 
   return (
     <PageShell

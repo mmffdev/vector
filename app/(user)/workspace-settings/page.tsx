@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTabState } from "@/app/hooks/useTabState";
 import PageShell from "@/app/components/PageShell";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
@@ -28,12 +29,12 @@ interface AdminUser {
   created_at: string;
 }
 
-type Tab = "organization" | "users" | "permissions";
+const TABS = ["organization", "users", "permissions"] as const;
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("organization");
+  const [tab, setTab] = useTabState(TABS, "organization");
 
   useEffect(() => {
     if (user && user.role !== "gadmin") router.replace("/dashboard");
