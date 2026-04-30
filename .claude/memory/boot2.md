@@ -1,116 +1,92 @@
 ---
-name: Session bootup — R010 architectural pivot, 10 pop-up Qs resolved, R012 pgvector deep-dive
+name: Session bootup — three-table artefact schema design + research papers R013–R015 + stories 00151–00157
 description: Load when resuming after a break. Branch, story counter, what's committed, what's uncommitted, what's next.
 type: project
 originSessionId: a5f9602b-0644-4cea-999f-b70468753594
 ---
 
-## Current state (last updated: 2026-04-29)
+## Current state (last updated: 2026-04-30)
 
 **Active branch:** `main`
-**Story index last issued:** `00150`
-**Phase:** PH-0005 — template-driven artefact pivot (planning complete, no migrations written yet)
+**Story index last issued:** `00157`
+**Phase:** PH-0005
 
 ---
 
 ## Planka card states
 
 **In progress / Doing:**
-- None — session was design / research only.
+- None — board is clean after deleting stale cards
 
-**Completed (committed, move to Completed in Planka):**
-- Most recent commits cover charts, nav prefs reset, backup-on-push, pgxpool tuning — all from prior sessions.
+**Backlog (ready to start):**
+- 00151 — SQL: Drop _template_forms tables, create _schema tables for all 5 Phase 1 artefact types (EST-F5, RISK-MED)
+- 00152 — SQL: Reshape _field_values tables — typed columns + schema_field_id FK (EST-F5, RISK-HIGH)
+- 00153 — Backend: Generic artefact CRUD service and handler for all 5 Phase 1 types (EST-F8, RISK-MED)
+- 00154 — Backend: Schema management API for padmin — field definitions per workspace (EST-F5, RISK-MED)
+- 00155 — Backend: Field values read/write API — per-artefact typed value access (EST-F5, RISK-MED)
+- 00156 — Backend: Search index outbox worker — TSVECTOR + embedding via Ollama (EST-F8, RISK-HIGH)
+- 00157 — Dev doc: Samantha SDK fields API contract — renderField, getSchema, getValue/setValue (EST-F3, RISK-LOW)
 
-**Parked:**
-- All Phase-1 template-artefact stories — to be created via `/stories` once we move from design to implementation.
+**To Do (unrelated, still valid):**
+- 00066 — Backend: log layer changes to audit_log
+- 00067 — Backend: GET /api/subscription/layers/history
+- 00068 — Frontend: layer change history panel
+- 00120–00123 — Navigation profiles feature (profile-scoped prefs, UI, seed)
+
+**Deleted this session (stale, superseded by three-table design):**
+- 00116, 00139–00148 — old four-table / portfolio item pattern cards
 
 ---
 
 ## Uncommitted on branch
 
-**Tracked file edits (not yet staged):**
-- `.claude/CLAUDE.md`, `.claude/commands/c_accounts.md`, `c_research.md`, `c_services.md` — minor session-scoped tweaks
-- `.claude/memory/MEMORY.md`, `planka_api_access.md` — memory index touched
-- `.claude/skills/stories/SKILL.md` — stories skill edits
-- `MMFFDev - Vector Assets/sow/StatementOfWork_Original r1.0.1.md`
-- `app/(user)/dashboard/page.tsx`, `app/(user)/workspace-settings/page.tsx`
-- 12 chart components — `AdjacencyMatrixChart`, `BarGrid3DChart`, `ChartWidget`, `DivergingHeatmapChart`, `DonutChart`, `HorizontalStackChart`, `JourneyDomeChart`, `LadderChart`, `PercentileDotChart`, `PortfolioGraphChart`, `RaydaleChart`, `SankeyFlowChart`, `ThroughputChart`
-- `app/globals.css`, `backend/cmd/server/main.go`, `docs/c_feature_areas.md`, `docs/c_story_index.md`, `docs/css-guide.md`, `next.config.ts`, `package.json`
-
-**Untracked (new files):**
-- `app/components/PillToggle.tsx`, `app/components/ToggleBtn.tsx`
-- `backend/internal/defects/`, `backend/internal/portfolioitems/`, `backend/internal/userstories/` — service skeletons (NOT YET WIRED into router)
-- `db/schema/043_user_stories.sql`, `044_defects.sql`, `045_item_labels_tags.sql`, `046_portfolio_items.sql`, `047_custom_fields.sql`, `048_item_field_options.sql` — migrations drafted but **not run**, and now superseded by R010 template-artefact direction
-- `dev/backups/`
-- `dev/research/R005.json` through `R012.json` — research papers (key ones: R007 strategic fields, R008 execution fields, R009 strategic-vs-execution comparison, R010 architectural spec, R011, R012 pgvector deep-dive)
-- `examples/`
+- `dev/research/R010.json` — fully rewritten to three-table pattern: §3 DDL, §4 workspace isolation SQL, §5 Samantha fields API (all three control levels + type→renderer map), §7 core column set, §8 Phase 1 type list
+- `dev/research/R013.json` — NEW: Jira custom fields architecture (5-layer, EAV typed columns, context scoping, implications for Vector)
+- `dev/research/R014.json` — NEW: Samantha fields API surface — renderField options object full schema, three control levels, staged-write flow
+- `dev/research/R015.json` — NEW: Rally custom fields — TypeDefinition/AttributeDefinition/AllowedValues, RealAttributeType, workspace vs project scoping
+- `docs/c_story_index.md` — Last issued updated from 00150 → 00157
 
 ---
 
 ## What shipped this session
 
-**R010 — Template-driven artefact architecture (the central design doc):**
-- Section 2.0 added — open-source-first principle as foundational rule
-- Section 3.0 added — templates are form definitions, NOT content containers
-- Section 3.1 — content stored as `JSONB` (Lexical state) + `content_plain_text TEXT` for FTS
-- Q5–Q9 resolved inline:
-  - Q5: Craft.js for page builder (MIT, React-native, headless)
-  - Q6: Lexical (Meta) for WYSIWYG over Tiptap (Tiptap has paid tier)
-  - Q7: storage = JSONB Lexical state + denormalised plain text
-  - Q8: two-table sequence-scope (immutable `scope_key` + mutable `display_prefix`) — preserves user-renamable tags
-  - Q9: pgvector overlay across the entire site
-- **Q10 resolved this session — Option D hybrid backup**: PITR + pg_dump for disaster recovery, per-artefact `artefact_versions` table for user-facing undo, per-cell audit deferred until compliance customer asks. Added to §12 with full rationale.
-- Section 13 — page builder architecture (Craft.js + `page_blocks` + `page_block_comments` schemas)
-- Section 14 — search & embedding architecture (TSVECTOR + pgvector, async worker)
-  - 14.8 — vector DB as strategic capability (15 product use cases catalogued)
-  - 14.9 — documentation as vector-indexed surface (`doc_pages`, `doc_code_examples`, 10 doc use cases)
-
-**R012 — pgvector deep-dive (sub-agent research, saved this session):**
-- Validated pgvector decision for Vector PM's planning horizon (good until ~50M vectors/tenant or 5,000 QPS)
-- Five corrections back-applied to R010:
-  1. **§14.2** — IVFFlat → HNSW (better recall, self-maintaining, faster on continuous writes; pgvector 0.7.0 made build 30× faster)
-  2. **§14.4** — pinned default model to `nomic-embed-text-v1.5` (Apache 2.0, 768 dims, 8K context — BGE's 512 would silently truncate long ACs)
-  3. **§14.5** — bare NOTIFY/LISTEN replaced with **outbox table + payload-less NOTIFY wake-up + polling fallback** (at-least-once, restart-safe; bare NOTIFY drops messages on connection loss)
-  4. **§14.6** — weighted-score fusion replaced with proper **Supabase-pattern RRF** (`1.0/(60 + rank)`); tenant + visibility predicates pushed inside CTEs (post-filtering causes 50ms→5s latency cliff per Simon Willison Nov 2025)
-  5. **§14.6.1 (new)** — Postgres RLS on every embedding-bearing table as defence-in-depth (`current_setting('app.current_subscription_id')`)
-- Each embedding row gets `embedding_model TEXT` column for safe model migrations
-- Partial index `WHERE archived_at IS NULL` mandatory on every HNSW index
-- `halfvec(768)` migration deferred until shared_buffers pressure (~1% recall loss for 50% RAM saving)
-
-**Memory:**
-- New file `project_open_source_first.md` — open-source-first stack rule (MIT/BSD → self-host → build → paid SaaS last)
-- Indexed in MEMORY.md
+- **Design pivot:** four-table pattern → three-table pattern (core + _schema + _field_values)
+- **_schema table:** UNIQUE(subscription_id, field_name) for workspace isolation; type TEXT CHECK constraint as renderer selector; options_json JSONB on schema row
+- **_field_values typed columns:** string_value TEXT, number_value NUMERIC(19,4), text_value TEXT, date_value DATE — mirrors Jira's customfieldvalue EAV pattern
+- **R010 complete rewrite** — finalised three-table design, Samantha fields API, workspace A/B isolation examples
+- **R013** — Jira custom field architecture research
+- **R014** — Samantha fields API surface formal paper
+- **R015** — Rally custom field architecture research (TypeDefinition → AttributeDefinition → AllowedValues)
+- **Stories 00151–00157** — 7 Planka cards created, all labels verified
+- **Board cleanup** — 11 stale cards deleted (00116, 00139–00148)
 
 ---
 
 ## Recent commits
 
 ```
+87196a4 Schema: o_ artefact tables 049–059 + R010 §6.4/§7 update
+66a6523 WIP: template-artefact pivot (R010) + pgvector validation (R012) + CGL backup
 3cbfa4b Backend: pgxpool MinConns=2, MaxConnIdleTime=5m — fix idle cold-start lag
 8a0587b Nav: useTabState hook — tab/filter state synced to URL for deep-link + reload
 ff0ad55 Charts: petal geometry tightened, octagon→circle centres, arc core circles removed
 b39f07f UI: Nav prefs reset to defaults — two-stage confirmation
 3b8af90 Backup: extend backup-on-push.sh to dump both mmff_vector and mmff_library
 c0148ef Theme system: dark-mode toggle, filter UI, chart core fixes, 3D label depth (00126-00130)
-2d86307 UI: ChartWidget — toolbar row fixes expand/reroll overlap + 50% black lightbox
-490cad1 UI: ChartWidget wrapper with expand-to-fullscreen overlay (00124-00125)
 ```
 
 ---
 
 ## What's next
 
-1. **Decompose Phase 1 template-artefact pivot across all layers** before invoking `/stories` (storify-all-layers rule):
-   - Backend migrations: core artefact tables, `_template_forms`, `_field_values` with cell visibility, `artefact_versions` (Q10), `search_index_outbox` (R012), embedding columns + `embedding_model`, RLS policies, sequence-scope two-table split, `page_blocks` + `page_block_comments`
-   - Backend services: artefact CRUD, template form CRUD, field-value writer with visibility filter, version snapshotter, outbox claimer worker, Ollama embedding client
-   - Frontend: Craft.js shell, Lexical editor wiring, search-and-compose authoring UX, page-builder block registry, dual-mode (read/edit) renderer
-   - Search worker (Go): outbox claim + SKIP LOCKED, Ollama HTTP call, TSVECTOR + embedding writeback
-   - Tests: tenant isolation canary, RLS leak test, RRF query plan, outbox restart safety, embedding model migration
-2. **Decide story batch sizing** — Phase 1 is large; will likely need a phase plan before /stories so we don't blow past F13
-3. **The 6 superseded migrations** (`043`–`048`) need a decision: archive into `dev/superseded/` or delete; the new template-artefact schema replaces them
-4. **The 3 service skeletons** (`portfolioitems/`, `userstories/`, `defects/`) similarly need a decision — they were the column-locked direction now superseded
-5. **R012 may warrant a stories card itself** for the pgvector overlay work, separate from the template-artefact pivot
-6. Decide whether to commit the 12 chart-component edits + nav/dashboard/workspace tweaks as their own PR before starting the pivot — keeps this branch clean
+1. Commit the 5 uncommitted files (R010, R013, R014, R015, c_story_index.md)
+2. Say "go" on 00151 — write migration 060: drop _template_forms/_template_form_fields, create all 5 _schema tables
+3. Say "go" on 00152 — write migration 061: reshape all 5 _field_values tables (typed columns + schema_field_id FK)
+4. Say "go" on 00153 — generic artefact CRUD Go service + handler (POST/GET/PATCH/DELETE /api/artefacts/:type/:id)
+5. Say "go" on 00154 — schema management API (padmin-only, type immutability enforcement via 409)
+6. Say "go" on 00155 — field values read/write API (visibility-filtered, upsert, bulk)
+7. Say "go" on 00156 — search index outbox Go worker (FOR UPDATE SKIP LOCKED, Ollama HTTP, TSVECTOR writeback)
+8. Say "go" on 00157 — Samantha SDK fields API contract doc
 
 ---
 
@@ -126,19 +102,12 @@ c0148ef Theme system: dark-mode toggle, filter UI, chart core fixes, 3D label de
 - **padmin test account:** `padmin@mmffdev.com` / `changeme123!`
 - **user test account:** `user@mmffdev.com` (password unknown — reset via backend hash endpoint if needed)
 - **DB password:** `grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-` — contains `&`, never shell-source
-
-**Session-specific (template-artefact pivot):**
-- **R010 is the canonical spec** for the architectural pivot — read it first, not the superseded migrations.
-- **R012 amends R010** — the pgvector section in R010 is now correct (HNSW, outbox, RRF, RLS); don't re-derive from earlier drafts.
-- **Default embedding model is `nomic-embed-text-v1.5`** — 768 dims, 8K context, Apache 2.0. Don't use BGE-base (512-token cap will truncate ACs).
-- **HNSW not IVFFlat** — every embedding index uses HNSW with `WHERE archived_at IS NULL`.
-- **Outbox + NOTIFY-as-wake-up** — never bare NOTIFY/LISTEN (drops messages on restart).
-- **RRF for hybrid search** — never weighted score fusion; predicates inside CTEs, never post-filter.
-- **Every embedding-bearing table gets RLS** — `current_setting('app.current_subscription_id')` set per-request via `SET LOCAL`.
-- **Q10 is Option D** — PITR + per-artefact versions; cell-level audit deferred.
-- **Templates are artefact-type-bound** — no inheritance across types; "story templates" cannot be applied to defects.
-- **WYSIWYG = Lexical (Meta)**, not Tiptap. Lexical state stored in `content JSONB`; denormalised `content_plain_text TEXT` powers FTS + previews.
-- **Page builder = Craft.js** — committed for Phase 1, not deferred. `page_blocks` + `page_block_comments` is the universal store.
-- **Sequence-scope split** — `artefact_type_registry` (immutable `scope_key`) + `subscription_artefact_type_overrides` (mutable `display_prefix`) preserves user-renamable tags.
-- **Samantha SDK** — root namespace `samantha.portfolio.*` for the custom-app API.
-- **The `043`–`048` migrations are superseded** — do NOT run them; they reflect the column-locked direction we just abandoned.
+- **Three-table pattern:** core + _schema (UNIQUE subscription_id+field_name) + _field_values (typed: string_value, number_value, text_value, date_value)
+- **_schema.type drives rendering:** textbox/richtext/integer/decimal/date/boolean/select/multiselect/radio/user/url → React component registry
+- **schema_field_id FK:** nullable ON DELETE SET NULL — values survive schema row deletion; field_name denormalised for queries
+- **Workspace isolation:** subscription_id row-level filtering on _schema only — no separate schema tables per workspace
+- **f_ prefix:** custom fields in Samantha API responses (vs system fields with no prefix); analogous to Rally's c_ prefix
+- **Samantha SDK namespace:** `samantha.fields.*` for field API; `samantha.portfolio.*` for portfolio API
+- **Planka POST requires type field:** `"type": "story"` must be in POST /api/lists/:id/cards payload or returns 400
+- **Active DB env:** dev — tunnel localhost:5435 → VPS 77.68.33.216
+- **R010 is canonical spec** for the three-table artefact architecture — read it before touching any artefact schema work

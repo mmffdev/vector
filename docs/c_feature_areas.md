@@ -216,7 +216,9 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | Area | Label | Counter | Planka ID | Status | Notes |
 |---|---|---|---|---|---|
 | POR | `FE-POR0001` | 1/? | `1761991021719193091` | Active | Portfolio layer customisation (rename, reorder) |
-| LIB | — | 0/? | — | Ready | Library releases |
+| POR | `FE-POR0002` | 2/? | `1764908162969765183` | Active | (reserved) |
+| POR | `FE-POR0003` | 3/? | `1764920807571588543` | Active | Model selector consumes portfolio_templates layers array |
+| LIB | `FE-LIB0001` | 1/? | `1764920805885478333` | Active | Portfolio template seed data |
 | ITM | — | 0/? | — | Ready | Work items / state machines |
 | DAT | — | 0/? | — | Ready | Data visualization / graphs |
 | UI | `FE-UI0001` | 1/? | `1761472628301759780` | Active | Portfolio wizard + adoption pages |
@@ -235,11 +237,16 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API0005` | 5/? | `1762271935724521022` | Active | Navigation profile CRUD API |
 | API | `FE-API0006` | 6/? | `1763620459506566186` | Active | User story CRUD API |
 | API | `FE-API0007` | 7/? | `1763620460387370027` | Active | Defect CRUD API |
+| API | `FE-API0008` | 8/? | `1764908156065940793` | Active | (reserved) |
+| API | `FE-API0009` | 9/? | `1764920806707561918` | Active | portfolio-templates read endpoint |
 | SQL | `FE-SQL-0001` | 1/? | `1762271910986516028` | Active | Execution item migrations (user_stories, defects, item_labels, item_tags) |
 | SQL | `FE-SQL-0002` | 2/? | `1763620456000128038` | Active | user_stories table migration |
 | SQL | `FE-SQL-0003` | 3/? | `1763620456629273639` | Active | defects table migration |
 | SQL | `FE-SQL-0004` | 4/? | `1763620458105668648` | Active | item_labels junction table migration |
 | SQL | `FE-SQL-0005` | 5/? | `1763620458768368681` | Active | item_tags junction table migration |
+| SQL | `FE-SQL-0006` | 6/? | `1763638918076433604` | Active | (reserved) |
+| SQL | `FE-SQL-0007` | 7/? | `1764908153691964727` | Active | (reserved) |
+| SQL | `FE-SQL-0008` | 8/? | `1764920805046617532` | Active | portfolio_templates schema (replace portfolio_models + layers) |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | — | 0/? | — | Ready | Algorithms / search / matching |
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
