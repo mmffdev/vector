@@ -8,14 +8,16 @@ import {
   adoptModelPath,
 } from "./adoptionConstants";
 
+export interface TemplateLayer {
+  tag: string;
+  name: string;
+}
+
 export interface PortfolioModelListItem {
   id: string;
   name: string;
   description: string | null;
-  layer_summary: string;
-  layer_count: number;
-  version: number;
-  model_family_id: string;
+  layers: TemplateLayer[];
 }
 
 interface ModelListResponse {
@@ -95,11 +97,7 @@ export default function WizardModelCardList({
       try {
         const res = await api<ModelListResponse>(PORTFOLIO_MODELS_LIST_PATH);
         if (cancelled) return;
-        const models = (res.models ?? []).sort((a, b) => {
-          if (a.key === "mmff") return -1;
-          if (b.key === "mmff") return 1;
-          return a.name.localeCompare(b.name);
-        });
+        const models = res.models ?? [];
         if (models.length === 0) {
           setFetchState({ kind: "empty" });
         } else {
@@ -173,9 +171,7 @@ export default function WizardModelCardList({
         <div className="accordion" role="list">
           {fetchState.models.map((m) => {
             const isOpen = openId === m.id;
-            const layerNames = m.layer_summary
-              ? m.layer_summary.split(",").map((s) => s.trim()).filter(Boolean)
-              : [];
+            const layers = m.layers ?? [];
             return (
               <div
                 key={m.id}
@@ -196,9 +192,6 @@ export default function WizardModelCardList({
                   />
                   <span className="accordion__toggle-name">
                     {m.name}
-                  </span>
-                  <span className="wizard-model-cards__card-version">
-                    v{m.version}
                   </span>
                 </button>
 
@@ -232,26 +225,25 @@ export default function WizardModelCardList({
                             )}
                           </td>
                           <td className="model-chooser-grid__cell model-chooser-grid__cell--count">
-                            {m.layer_count} Layer{m.layer_count === 1 ? "" : "s"}
+                            {layers.length} Layer{layers.length === 1 ? "" : "s"}
                           </td>
                           <td className="model-chooser-grid__cell">
-                            {layerNames.length > 0 && (
+                            {layers.length > 0 && (
                               <ol
                                 className="layer-hierarchy"
                                 aria-label={`${m.name} layer hierarchy`}
                               >
-                                {layerNames.flatMap((name, i) => {
+                                {layers.flatMap((layer, i) => {
                                   const nodes: React.ReactNode[] = [
                                     <li
                                       key={`${m.id}-layer-${i}`}
                                       className="layer-hierarchy__box"
                                     >
-                                      <span className="layer-hierarchy__name">
-                                        {name}
-                                      </span>
+                                      <span className="layer-hierarchy__tag u-mono">{layer.tag}</span>
+                                      <span className="layer-hierarchy__name">{layer.name}</span>
                                     </li>,
                                   ];
-                                  if (i < layerNames.length - 1) {
+                                  if (i < layers.length - 1) {
                                     nodes.push(
                                       <li
                                         key={`${m.id}-arrow-${i}`}
@@ -282,9 +274,6 @@ export default function WizardModelCardList({
                                   ? "Starting adoption…"
                                   : "Accept"}
                               </button>
-                              <span className="wizard-model-cards__card-version">
-                                v{m.version}
-                              </span>
                             </div>
                           </td>
                         </tr>

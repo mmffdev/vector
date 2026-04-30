@@ -261,11 +261,9 @@ func (o *Orchestrator) Adopt(
 		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
 	}
 
-	bundle, err := librarydb.FetchByModelID(ctx, o.LibRO, modelID)
-	// FetchByModelID opens its own short tx and commits — that's
-	// fine; our libTx is the snapshot guarantee for re-reads inside
-	// later steps. If the row was archived between our existence
-	// check and now, FetchByModelID returns ErrBundleNotFound.
+	bundle, err := librarydb.FetchTemplateByID(ctx, o.LibRO, modelID)
+	// FetchTemplateByID reads from portfolio_templates (flat JSONB layers).
+	// If the template was removed between the list call and now, it returns ErrBundleNotFound.
 	if errors.Is(err, librarydb.ErrBundleNotFound) {
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
 		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptBundleNotFound)

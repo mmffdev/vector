@@ -2,6 +2,7 @@ package librarydb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -13,6 +14,64 @@ import (
 // ErrBundleNotFound is returned when no spine row exists for the
 // requested model id or family id.
 var ErrBundleNotFound = errors.New("librarydb: bundle not found")
+
+// FetchTemplateByID loads a portfolio_templates row and returns it as a
+// Bundle so the adoption saga can consume it without knowing the source
+// table changed. Workflows / Transitions / Artifacts / Terminology are
+// empty — templates don't define them; the saga steps will be no-ops.
+// Layers are synthesised from the JSONB array: sort_order = index,
+// is_leaf = last element, allows_children = !is_leaf.
+func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.UUID) (*Bundle, error) {
+	var (
+		name       string
+		desc       *string
+		layersRaw  []byte
+	)
+	err := pool.QueryRow(ctx,
+		`SELECT name, description, layers FROM portfolio_templates WHERE id = $1`,
+		templateID,
+	).Scan(&name, &desc, &layersRaw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrBundleNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("librarydb: fetch template: %w", err)
+	}
+
+	var tLayers []TemplateLayer
+	if err := json.Unmarshal(layersRaw, &tLayers); err != nil { //nolint:musttag
+		return nil, fmt.Errorf("librarydb: unmarshal template layers: %w", err)
+	}
+
+	layers := make([]Layer, len(tLayers))
+	for i, tl := range tLayers {
+		isLeaf := i == len(tLayers)-1
+		layers[i] = Layer{
+			ID:             uuid.New(),
+			ModelID:        templateID,
+			Name:           tl.Name,
+			Tag:            tl.Tag,
+			SortOrder:      int32(i * 10), //nolint:gosec
+			AllowsChildren: !isLeaf,
+			IsLeaf:         isLeaf,
+		}
+	}
+
+	return &Bundle{
+		Model: Model{
+			ID:      templateID,
+			Name:    name,
+			Description: desc,
+			Version: 1,
+			Scope:   "system",
+		},
+		Layers:      layers,
+		Workflows:   nil,
+		Transitions: nil,
+		Artifacts:   nil,
+		Terminology: nil,
+	}, nil
+}
 
 // FetchByModelID loads the full bundle for one model row id.
 // Caller normally passes the RO pool; the fetcher only reads.
