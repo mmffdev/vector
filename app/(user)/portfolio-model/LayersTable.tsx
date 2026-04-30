@@ -436,6 +436,34 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
 
   return (
     <div className="layers-editor">
+      {isDirty && (
+        <div className="layers-editor__change-banner" role="alert">
+          <span className="layers-editor__change-banner-text">
+            Changes detected — press <strong>Confirm Changes</strong> to save.
+          </span>
+          {formError && (
+            <span className="layers-editor__change-banner-error">{formError}</span>
+          )}
+          <div className="layers-editor__change-banner-actions">
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={handleCancel}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={handleConfirm}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Confirm Changes"}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="table-wrap">
         <table className="table layers-editor__table">
           <colgroup>
@@ -546,38 +574,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
         </table>
       </div>
 
-      {isDirty && (
-        <div className="layers-editor__confirm-bar" role="region" aria-label="Unsaved changes">
-          <div className="layers-editor__confirm-bar-inner">
-            <span className="layers-editor__confirm-bar-label">
-              Unsaved changes
-            </span>
-            {formError && (
-              <span className="layers-editor__confirm-bar-error" role="alert">
-                {formError}
-              </span>
-            )}
-            <div className="layers-editor__confirm-bar-actions">
-              <button
-                type="button"
-                className="btn btn--secondary btn--sm"
-                onClick={handleCancel}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn--primary btn--sm"
-                onClick={handleConfirm}
-                disabled={saving}
-              >
-                {saving ? "Saving…" : "Confirm Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

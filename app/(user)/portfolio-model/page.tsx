@@ -40,23 +40,14 @@ import AdoptionOverlay, {
 } from "./AdoptionOverlay";
 import LayersTable, { type LayerDTO } from "./LayersTable";
 
-// Phase 5 will list bundles via a /api/portfolio-models endpoint; until
-// then the seeded MMFF Standard family id is the only thing to render.
-// See TD-LIB-006 in docs/c_tech_debt.md.
-const SEEDED_FAMILY_ID = "00000000-0000-0000-0000-00000000a000";
-
+// Post-R010: portfolio_templates are flat — no family, no version. The
+// preview fetches the adopted template by its UUID (from
+// adoption-state.model_id). The legacy /{id}/latest route is kept for
+// path stability; backend now resolves it to the same template fetch.
 interface ModelDTO {
   id: string;
-  model_family_id: string;
-  key: string;
   name: string;
   description: string | null;
-  instructions_md: string | null;
-  scope: string;
-  visibility: string;
-  version: number;
-  library_version: string | null;
-  archived_at: string | null;
 }
 
 interface WorkflowDTO {
@@ -167,11 +158,12 @@ export default function PortfolioModelPage() {
   // the adoption-state row.
   useEffect(() => {
     if (view.kind !== "adopted") return;
+    const adoptedModelId = view.modelId;
     let cancelled = false;
     (async () => {
       try {
         const bundle = await api<BundleDTO>(
-          `/api/portfolio-models/${SEEDED_FAMILY_ID}/latest`
+          `/api/portfolio-models/${adoptedModelId}`
         );
         if (cancelled) return;
         setView({ kind: "preview", bundle });
@@ -325,9 +317,6 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
       <header className="model-preview__header">
         <div className="model-preview__title-row">
           <h2 className="model-preview__title">{m.name}</h2>
-          <span className="pill pill--success">v{m.version}</span>
-          <span className="pill pill--neutral">{m.scope}</span>
-          <span className="pill pill--neutral">{m.visibility}</span>
         </div>
         {m.description && (
           <div className="model-preview__description">
@@ -339,12 +328,6 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
             })}
           </div>
         )}
-        <dl className="model-preview__meta">
-          <div className="model-preview__meta-row">
-            <dt>Library version</dt>
-            <dd className="u-mono">{m.library_version ?? "—"}</dd>
-          </div>
-        </dl>
       </header>
 
       <Section title="Portfolio Hierarchy">
@@ -356,53 +339,57 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
         />
       </Section>
 
-      <Section title="Artifacts">
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">Key</th>
-                <th className="table__cell">Enabled</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bundle.artifacts.map((a) => (
-                <tr key={a.id} className="table__row">
-                  <td className="table__cell u-mono">{a.artifact_key}</td>
-                  <td className="table__cell">
-                    {a.enabled ? (
-                      <span className="pill pill--success">on</span>
-                    ) : (
-                      <span className="pill pill--neutral">off</span>
-                    )}
-                  </td>
+      {bundle.artifacts.length > 0 && (
+        <Section title="Artifacts">
+          <div className="table-wrap">
+            <table className="table">
+              <thead className="table__head">
+                <tr className="table__row">
+                  <th className="table__cell">Key</th>
+                  <th className="table__cell">Enabled</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+              </thead>
+              <tbody>
+                {bundle.artifacts.map((a) => (
+                  <tr key={a.id} className="table__row">
+                    <td className="table__cell u-mono">{a.artifact_key}</td>
+                    <td className="table__cell">
+                      {a.enabled ? (
+                        <span className="pill pill--success">on</span>
+                      ) : (
+                        <span className="pill pill--neutral">off</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
 
-      <Section title="Terminology">
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">Key</th>
-                <th className="table__cell">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bundle.terminology.map((t) => (
-                <tr key={t.id} className="table__row">
-                  <td className="table__cell u-mono">{t.key}</td>
-                  <td className="table__cell">{t.value}</td>
+      {bundle.terminology.length > 0 && (
+        <Section title="Terminology">
+          <div className="table-wrap">
+            <table className="table">
+              <thead className="table__head">
+                <tr className="table__row">
+                  <th className="table__cell">Key</th>
+                  <th className="table__cell">Value</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+              </thead>
+              <tbody>
+                {bundle.terminology.map((t) => (
+                  <tr key={t.id} className="table__row">
+                    <td className="table__cell u-mono">{t.key}</td>
+                    <td className="table__cell">{t.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

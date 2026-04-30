@@ -43,15 +43,20 @@ func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.
 		return nil, fmt.Errorf("librarydb: unmarshal template layers: %w", err)
 	}
 
-	layers := make([]Layer, len(tLayers))
+	n := len(tLayers)
+	layers := make([]Layer, n)
 	for i, tl := range tLayers {
-		isLeaf := i == len(tLayers)-1
+		isLeaf := i == n-1
+		// sort_order must decrease as hierarchy depth increases so that when
+		// the display reverses the array (highest first) the top tier appears
+		// first. Index 0 = top tier → highest sort_order; index n-1 = leaf →
+		// lowest sort_order.
 		layers[i] = Layer{
 			ID:             uuid.New(),
 			ModelID:        templateID,
 			Name:           tl.Name,
 			Tag:            tl.Tag,
-			SortOrder:      int32(i * 10), //nolint:gosec
+			SortOrder:      int32((n-1-i) * 10), //nolint:gosec
 			AllowsChildren: !isLeaf,
 			IsLeaf:         isLeaf,
 		}

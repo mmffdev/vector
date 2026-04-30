@@ -35,13 +35,17 @@ type Handler struct {
 func NewHandler(ro *pgxpool.Pool) *Handler { return &Handler{RO: ro} }
 
 // GetLatestByFamily — GET /api/portfolio-models/{family}/latest
+//
+// Post-R010: families/versions are gone; the path param now identifies
+// a portfolio_templates row directly. The /latest suffix is kept so the
+// frontend route doesn't need to change.
 func (h *Handler) GetLatestByFamily(w http.ResponseWriter, r *http.Request) {
-	familyID, err := uuid.Parse(chi.URLParam(r, "family"))
+	templateID, err := uuid.Parse(chi.URLParam(r, "family"))
 	if err != nil {
-		http.Error(w, "invalid family id", http.StatusBadRequest)
+		http.Error(w, "invalid template id", http.StatusBadRequest)
 		return
 	}
-	bundle, err := librarydb.FetchLatestByFamily(r.Context(), h.RO, familyID)
+	bundle, err := librarydb.FetchTemplateByID(r.Context(), h.RO, templateID)
 	if err != nil {
 		writeBundleErr(w, err)
 		return
@@ -56,7 +60,7 @@ func (h *Handler) GetByModelID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid model id", http.StatusBadRequest)
 		return
 	}
-	bundle, err := librarydb.FetchByModelID(r.Context(), h.RO, modelID)
+	bundle, err := librarydb.FetchTemplateByID(r.Context(), h.RO, modelID)
 	if err != nil {
 		writeBundleErr(w, err)
 		return
