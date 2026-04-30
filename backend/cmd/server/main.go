@@ -32,6 +32,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/artefacts"
+	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolioitems"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
 	"github.com/mmffdev/vector-backend/internal/security"
@@ -550,6 +551,16 @@ func main() {
 
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Start search index outbox worker.
+	swCfg := searchworker.Config{
+		OllamaURL:   os.Getenv("OLLAMA_URL"),
+		OllamaModel: os.Getenv("OLLAMA_MODEL"),
+	}
+	if swCfg.OllamaURL == "" {
+		swCfg.OllamaURL = "http://localhost:11434"
+	}
+	go searchworker.New(pool, swCfg).Run(shutdownCtx)
 
 	serverErr := make(chan error, 1)
 	go func() {
