@@ -3,7 +3,7 @@
 -- Detects by process name (pgrep -f), verifies liveness by port, and fully detaches children so they
 -- survive Terminal/Claude Code exit via `nohup ... & disown` inside a login bash (so Homebrew PATH loads).
 
-property projectRoot : "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+property projectRoot : "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
 property tunnelLog : "/tmp/mmff-tunnel.log"
 property serverLog : "/tmp/mmff-server.log"
 property nextLog : "/tmp/mmff-next.log"

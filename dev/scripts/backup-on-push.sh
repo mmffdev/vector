@@ -12,7 +12,7 @@
 
 set -u
 
-PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
 cd "$PROJECT_ROOT" 2>/dev/null || exit 0
 
 BACKUP_DIR="$PROJECT_ROOT/local-assets/backups"

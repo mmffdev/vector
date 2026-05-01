@@ -7,8 +7,8 @@ Enterprise agile / portfolio management platform. Private repo, Mac-only dev.
 **Prereqs:** Node 20+, Go 1.22+ (only if rebuilding the backend binary), Docker Desktop (only if running E2E tests), SSH key `~/.ssh/id_ed25519` with access to `mmffdev.com`.
 
 ```bash
-git clone git@github.com:mmffdev/vector.git "MMFFDev - PM"
-cd "MMFFDev - PM"
+git clone git@github.com:mmffdev/vector.git "MMFFDev - Vector"
+cd "MMFFDev - Vector"
 npm install
 ```
 

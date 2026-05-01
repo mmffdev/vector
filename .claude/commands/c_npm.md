@@ -7,7 +7,7 @@ Starts the Next dev server on `http://localhost:5101` — but only if one isn't 
 Finds any live `next dev` / `next-server` process on this machine (any port) and reports its URL. If none exists, starts `npm run dev` in the background and reports the URL once the server is listening.
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" && \
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" && \
 found=""; \
 for pid in $(pgrep -f "next dev|next-server" 2>/dev/null); do
   port=$(lsof -aP -p "$pid" -iTCP -sTCP:LISTEN 2>/dev/null | awk 'NR>1 {split($9,a,":"); print a[length(a)]; exit}')

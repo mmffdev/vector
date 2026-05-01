@@ -8,7 +8,7 @@ Every migration lives at `db/schema/NNN_name.sql`. Each file already wraps its D
 ## Apply pattern (from the laptop, via the tunnel)
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" \
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" \
   && PW=$(grep '^DB_PASSWORD' backend/.env.local | cut -d= -f2-) \
   && PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
        -h localhost -p 5434 -U mmff_dev -d mmff_vector \

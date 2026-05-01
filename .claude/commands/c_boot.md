@@ -2,7 +2,7 @@
 
 Reads or creates boot files in the project memory directory.
 
-**Memory dir:** `/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---PM/memory/`
+**Memory dir:** `/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/`
 
 ## Syntax
 
@@ -44,9 +44,9 @@ Gather the following, then write the file.
 ### 1 — Gather git state (run in parallel)
 
 ```bash
-git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse --abbrev-ref HEAD
-git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" log --oneline -8
-git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" status --short
+git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" rev-parse --abbrev-ref HEAD
+git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" log --oneline -8
+git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" status --short
 ```
 
 ### 2 — Gather story counter
@@ -154,9 +154,9 @@ Writes `bootA.md` — a comprehensive record of everything done across the entir
 ### 1 — Gather git state (run in parallel)
 
 ```bash
-git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse --abbrev-ref HEAD
-git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" log --oneline -20
-git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" status --short
+git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" rev-parse --abbrev-ref HEAD
+git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" log --oneline -20
+git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" status --short
 ```
 
 ### 2 — Gather story counter

@@ -69,7 +69,7 @@ Channel B emits the banner via `hookSpecificOutput.additionalContext` so Claude 
 ## Install (after a fresh clone)
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
 ln -sf ../../dev/git-hooks/pre-push .git/hooks/pre-push
 chmod +x dev/git-hooks/pre-push dev/scripts/backup-on-push.sh .claude/hooks/push-backup-gate.sh
 ```

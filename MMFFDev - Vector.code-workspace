@@ -16,21 +16,21 @@
 				"type": "swift",
 				"request": "launch",
 				"args": [],
-				"cwd": "${workspaceFolder:MMFFDev - PM}",
-				"name": "Debug MMFFVectorLauncher (MMFFDev - PM)",
+				"cwd": "${workspaceFolder:MMFFDev - Vector}",
+				"name": "Debug MMFFVectorLauncher (MMFFDev - Vector)",
 				"target": "MMFFVectorLauncher",
 				"configuration": "debug",
-				"preLaunchTask": "swift: Build Debug MMFFVectorLauncher (MMFFDev - PM)"
+				"preLaunchTask": "swift: Build Debug MMFFVectorLauncher (MMFFDev - Vector)"
 			},
 			{
 				"type": "swift",
 				"request": "launch",
 				"args": [],
-				"cwd": "${workspaceFolder:MMFFDev - PM}",
-				"name": "Release MMFFVectorLauncher (MMFFDev - PM)",
+				"cwd": "${workspaceFolder:MMFFDev - Vector}",
+				"name": "Release MMFFVectorLauncher (MMFFDev - Vector)",
 				"target": "MMFFVectorLauncher",
 				"configuration": "release",
-				"preLaunchTask": "swift: Build Release MMFFVectorLauncher (MMFFDev - PM)"
+				"preLaunchTask": "swift: Build Release MMFFVectorLauncher (MMFFDev - Vector)"
 			}
 		]
 	}

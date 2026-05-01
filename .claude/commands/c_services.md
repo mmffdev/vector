@@ -13,10 +13,10 @@ The backend section also probes `/healthz` and compares the running process's `c
 The tunnel row resolves the active env from the `ACTIVE_BACKEND_ENV` marker in CLAUDE.md so it always probes the DB the backend is actually configured for.
 
 ```bash
-HEAD_COMMIT=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" rev-parse HEAD 2>/dev/null)
+HEAD_COMMIT=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" rev-parse HEAD 2>/dev/null)
 
 # Resolve active env → tunnel port + ssh pattern from the CLAUDE.md marker.
-ACTIVE_ENV=$(grep -oE 'ACTIVE BACKEND ENV: `[a-z]+`' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/CLAUDE.md" | head -1 | sed -E 's/.*`([a-z]+)`/\1/')
+ACTIVE_ENV=$(grep -oE 'ACTIVE BACKEND ENV: `[a-z]+`' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/CLAUDE.md" | head -1 | sed -E 's/.*`([a-z]+)`/\1/')
 case "$ACTIVE_ENV" in
   dev)        TUN_PORT=5435; TUN_PAT='ssh.*vector-dev-pg' ;;
   staging)    TUN_PORT=5436; TUN_PAT='ssh.*vector-staging-pg' ;;
@@ -65,8 +65,8 @@ case "$ACTIVE_ENV" in
   production) ENV_FILE=backend/.env.production ;;
   *)          ENV_FILE=backend/.env.local ;;
 esac
-[ -f "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/$ENV_FILE" ] || ENV_FILE=backend/.env.local
-PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/$ENV_FILE" | cut -d= -f2-) \
+[ -f "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/$ENV_FILE" ] || ENV_FILE=backend/.env.local
+PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/$ENV_FILE" | cut -d= -f2-) \
 /opt/homebrew/opt/libpq/bin/psql -h localhost -p "$TUN_PORT" -U mmff_dev -d mmff_vector \
   -c "SELECT email, role, is_active, force_password_change FROM users ORDER BY role, email;"
 ```

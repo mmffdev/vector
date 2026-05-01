@@ -25,7 +25,7 @@ enum Paths {
         // Hard-coded fallback for this user's machine. Acceptable because this
         // launcher is dev-only and tied to this repo.
         return URL(fileURLWithPath:
-            "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM",
+            "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector",
             isDirectory: true)
     }
 

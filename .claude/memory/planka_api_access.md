@@ -12,7 +12,7 @@ Credentials live in `backend/.env.local` (git-ignored). Read them at runtime —
 import urllib.request, json, urllib.error
 
 # 1. Read credentials
-env_file = "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend/.env.local"
+env_file = "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local"
 creds = {}
 with open(env_file) as f:
     for line in f:

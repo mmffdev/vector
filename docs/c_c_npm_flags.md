@@ -65,7 +65,7 @@ fi
 Stop the running Next dev server, then start it on the **same port** it was using. If nothing was running, start fresh on the default port.
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" && \
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" && \
 pid=$(pgrep -f "next dev|next-server" | head -1); \
 port=""; \
 if [ -n "$pid" ]; then
@@ -95,7 +95,7 @@ Restart (or start) the Next dev server on the given port. If the port is already
 
 ```bash
 PORT=3005   # ← substitute the requested port
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" && \
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" && \
 holder=$(lsof -tiTCP:$PORT -sTCP:LISTEN -n -P 2>/dev/null | head -1); \
 holder_is_next=""; \
 if [ -n "$holder" ]; then

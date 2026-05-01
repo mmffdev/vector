@@ -29,7 +29,7 @@ The writer stamps `date` itself — callers do not supply it.
 ### 1. Allocate next ID (filesystem)
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/dev/research"
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev/research"
 LAST=$(ls R*.json 2>/dev/null | sort | tail -1 | sed -E 's/R0*([0-9]+)\.json/\1/')
 NEXT=$(printf "R%03d" $((${LAST:-0} + 1)))
 echo "Next ID: $NEXT"

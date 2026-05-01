@@ -28,7 +28,7 @@ The dashboard supervises three components and reads the active env from the `ACT
 ## Build (no full Xcode required)
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" \
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" \
   && DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build -c release \
   && ./tools/launcher/package.sh
 ```

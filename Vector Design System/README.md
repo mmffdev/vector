@@ -40,7 +40,7 @@ Four layers. Only one expresses colour in any region at a time. This is **the ru
 |---|---|---|
 | Design brief | `research/MMFFDev-Vector-design-system.md` | Authoritative spec — all tokens are derived from this |
 | Reference dashboard | `assets/Spark-Pixal.jpg` | "Reference vibe" — clean, warm, monochrome with restrained status colour |
-| Reference codebase | `MMFFDev - PM/` (mounted, read-only) | Next.js 15 app at `app/`, key components in `app/components/`, current global CSS in `app/globals.css` |
+| Reference codebase | `MMFFDev - Vector/` (mounted, read-only) | Next.js 15 app at `app/`, key components in `app/components/`, current global CSS in `app/globals.css` |
 | Uploaded fonts | `fonts/ZenMaruGothic-*.ttf` | Kept available for accent / legacy use; **not** the system default |
 
 > The reference codebase currently uses Zen Maru Gothic + Archivo Black + JetBrains Mono and a hot-pink / lime-green accent system. **The design system here intentionally departs from that** — the brief calls for Inter throughout and warm neutrals with no decorative colour. The codebase is the prior art; the brief is the future state. All tokens here follow the brief.

@@ -16,7 +16,7 @@ Opens `dev/shortcuts.html` in the default browser — a formatted table of every
 ## Default (no flags) — open
 
 ```bash
-open "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/dev/shortcuts.html"
+open "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev/shortcuts.html"
 ```
 
 If the file does not exist, run the `-u` procedure to generate it first.
@@ -46,7 +46,7 @@ Rescan all registered shortcut sources, regenerate `dev/shortcuts.html`, then op
 5. Open the file:
 
 ```bash
-open "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/dev/shortcuts.html"
+open "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev/shortcuts.html"
 ```
 
 6. Report: `Shortcuts page updated — N shortcuts across M categories. Opened in browser.`

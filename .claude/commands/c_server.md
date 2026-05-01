@@ -1,8 +1,8 @@
 # `<server>` — switch backend DB env (dev / staging / production)
 
-> Last verified: 2026-04-27
+> Last verified: 2026-05-01
 
-Switches the backend's `BACKEND_ENV` (which selects `backend/.env.<env>`), restarts the Go backend on `:5100` so it picks up the new DB connection, and rewrites the `ACTIVE_BACKEND_ENV` marker block at the top of [`.claude/CLAUDE.md`](../CLAUDE.md). Future Claude sessions read that marker on load to know which DB they're pointing at.
+Switches the backend's `BACKEND_ENV` (which selects `backend/.env.<env>`), restarts the Go backend on `:5100` so it picks up the new DB connection, ensures the Next.js frontend is running on `:5101`, and rewrites the `ACTIVE_BACKEND_ENV` marker block at the top of [`.claude/CLAUDE.md`](../CLAUDE.md). Future Claude sessions read that marker on load to know which DB they're pointing at.
 
 | Flag | `BACKEND_ENV` | Env file | DB target | Tunnel | SSH alias |
 |---|---|---|---|---|---|
@@ -46,7 +46,7 @@ When invoked through Claude, ask the user this question in chat instead of using
 ### 4. Verify the env file exists
 
 ```bash
-[ -f "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/$ENV_FILE" ] \
+[ -f "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/$ENV_FILE" ] \
   || { echo "missing $ENV_FILE — run setup or copy from .env.local"; exit 1; }
 ```
 
@@ -79,7 +79,7 @@ fi
 ### 7. Launch backend with new env
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend"
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend"
 : > /tmp/mmff-server.log
 BACKEND_ENV="$ENV" nohup go run ./cmd/server > /tmp/mmff-server.log 2>&1 &
 disown
@@ -100,7 +100,36 @@ curl -sS --max-time 1 http://localhost:5100/healthz | grep -q '"status":"ok"' \
   || { echo "backend never reported healthy — tail /tmp/mmff-server.log"; exit 1; }
 ```
 
-### 9. Rewrite the `ACTIVE_BACKEND_ENV` marker in CLAUDE.md
+### 9. Ensure the Next.js frontend is running on `:5101`
+
+Start `next dev` only if it isn't already up (idempotent — never restarts a live frontend, which would lose HMR state). Mirrors the logic in [`c_npm.md`](c_npm.md).
+
+```bash
+found=""
+for pid in $(pgrep -f "next dev|next-server" 2>/dev/null); do
+  port=$(lsof -aP -p "$pid" -iTCP -sTCP:LISTEN 2>/dev/null | awk 'NR>1 {split($9,a,":"); print a[length(a)]; exit}')
+  [ -z "$port" ] && continue
+  found="http://localhost:$port (pid $pid)"; break
+done
+if [ -n "$found" ]; then
+  echo "✓ frontend already running → $found"
+else
+  cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
+  : > /tmp/mmff-next.log
+  nohup npm run dev -- -p 5101 >/tmp/mmff-next.log 2>&1 &
+  disown
+  for _ in $(seq 1 60); do
+    url=$(grep -Eom1 'https?://localhost:[0-9]+' /tmp/mmff-next.log)
+    [ -n "$url" ] && { echo "✓ frontend started → $url"; break; }
+    sleep 1
+  done
+  [ -z "$url" ] && echo "⚠ frontend did not report a URL within 60s — tail /tmp/mmff-next.log"
+fi
+```
+
+This step is non-fatal: if the frontend fails to come up, the backend env switch still succeeds and the marker is still rewritten. The user can run `<npm>` separately to retry.
+
+### 10. Rewrite the `ACTIVE_BACKEND_ENV` marker in CLAUDE.md
 
 The marker block is delimited by HTML comments so it can be replaced deterministically. Use Python (always present on macOS) for safe in-place rewrite:
 
@@ -110,7 +139,7 @@ LINE="> **ACTIVE BACKEND ENV: \`$ENV\`** — set $TS by \`<server> $FLAG\` — D
 
 python3 - <<PY
 import re, sys
-path = "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/CLAUDE.md"
+path = "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/CLAUDE.md"
 new  = """$LINE"""
 src  = open(path).read()
 block = "<!-- ACTIVE_BACKEND_ENV:start -->\n" + new + "\n<!-- ACTIVE_BACKEND_ENV:end -->"
@@ -127,15 +156,16 @@ print("CLAUDE.md marker → " + "$ENV")
 PY
 ```
 
-### 10. Print summary
+### 11. Print summary
 
 ```
 ✓ Backend now on $ENV
   env file : $ENV_FILE
   DB       : $LABEL
   tunnel   : localhost:$PORT (alias $ALIAS)
+  frontend : http://localhost:5101  (started or already running)
   marker   : .claude/CLAUDE.md updated
-  log      : /tmp/mmff-server.log
+  logs     : /tmp/mmff-server.log, /tmp/mmff-next.log
 
 To verify from another shell:
   curl -s http://localhost:5100/healthz
@@ -154,7 +184,7 @@ To verify from another shell:
 
 ## What this shortcut does NOT do
 
-- Does **not** start the Next.js frontend — use `<npm>` or the dev launcher.
+- Does **not** restart a frontend that is already running — only starts one if `:5101` is free (so HMR state is preserved).
 - Does **not** start Planka / Adminer tunnels — use the dev launcher.
 - Does **not** run migrations against the new DB — use `<backupsql>` and the migration tooling separately.
 - Does **not** touch `.env.local`. That file remains the no-flag default for `go run` invocations outside this shortcut.

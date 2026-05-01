@@ -6,7 +6,7 @@
 
 set -u
 
-PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
 SCRIPT="$PROJECT_ROOT/dev/scripts/backup-on-push.sh"
 
 INPUT=$(cat)

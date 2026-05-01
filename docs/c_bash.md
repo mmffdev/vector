@@ -6,7 +6,7 @@ Only commands that have actually been run on this machine. If you can't point at
 
 ## Rules
 
-1. **Quote paths with spaces.** The repo root is `"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"` — unquoted breaks word-split.
+1. **Quote paths with spaces.** The repo root is `"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"` — unquoted breaks word-split.
 2. **Absolute paths preferred** over `cd`. Keeps pwd stable across multi-step runs.
 3. **No `| xargs`** — word-splits. Use `read -r f; …` from a single-value pipeline, or a `while read` loop.
 4. **Use `pg_dump` at `/opt/homebrew/opt/libpq/bin/pg_dump`** — libpq is keg-only on macOS; not on PATH.

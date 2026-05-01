@@ -65,7 +65,7 @@ Use: `ssh mmffdev-admin` for interactive sessions, or `ssh mmffdev-admin '<cmd>'
 | `mmffdev-pg` | `~/.ssh/id_ed25519` (default) |
 | `mmffdev-admin` | `~/.ssh/id_ed25519` (default) |
 
-Confirmed in [auto-memory/ssh_auth.md](../.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---PM/memory/ssh_auth.md): `id_ed25519` for `root@mmffdev.com`.
+Confirmed in [auto-memory/ssh_auth.md](../.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/ssh_auth.md): `id_ed25519` for `root@mmffdev.com`.
 
 ## Bash recipes
 

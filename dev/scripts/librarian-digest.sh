@@ -4,7 +4,7 @@
 
 set -u
 
-PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
 FLAGS="$PROJECT_ROOT/local-assets/security-flags.jsonl"
 LOG="$PROJECT_ROOT/local-assets/backups/librarian-log.jsonl"
 DOCS="$PROJECT_ROOT/docs"

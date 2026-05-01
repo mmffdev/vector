@@ -280,7 +280,7 @@ func main() {
 			return
 		}
 
-		script := "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/bin/switch-server"
+		script := "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/bin/switch-server"
 		if _, err := os.Stat(script); err != nil {
 			http.Error(w, "switch-server script missing", http.StatusInternalServerError)
 			return

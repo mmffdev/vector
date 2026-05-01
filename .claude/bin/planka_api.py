@@ -18,7 +18,7 @@ TOKEN_FILE = f"/tmp/.planka_token_{os.getpid()}"
 
 def get_credential(key):
     """Read credential from backend/.env.local safely"""
-    env_path = Path("/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend/.env.local")
+    env_path = Path("/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local")
     if not env_path.exists():
         return None
     with open(env_path) as f:

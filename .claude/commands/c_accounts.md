@@ -7,7 +7,7 @@ Use this before guessing any credentials. Do not substitute Planka creds for app
 Requires tunnel on `:5434`. Query:
 
 ```bash
-PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/backend/.env.local" | cut -d= -f2-) \
+PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local" | cut -d= -f2-) \
 /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5434 -U mmff_dev -d mmff_vector \
   -c "SELECT email, role, is_active, force_password_change FROM users ORDER BY role, email;"
 ```

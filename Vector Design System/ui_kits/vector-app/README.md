@@ -1,6 +1,6 @@
 # Vector App — UI Kit
 
-High-fidelity recreation of the Vector enterprise SaaS app, built against the design brief in `../../research/MMFFDev-Vector-design-system.md` and informed by the reference codebase at `MMFFDev - PM/`.
+High-fidelity recreation of the Vector enterprise SaaS app, built against the design brief in `../../research/MMFFDev-Vector-design-system.md` and informed by the reference codebase at `MMFFDev - Vector/`.
 
 ## What's in here
 

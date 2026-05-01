@@ -31,7 +31,7 @@ Launch via Spotlight ("MMFF Vector Dev"), Dock, or `open -a "MMFF Vector Dev"`. 
 ## Rebuild after edits
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM" \
+cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" \
   && osacompile -o "MMFF Vector Dev.app" "MMFF Vector Dev.applescript"
 ```
 

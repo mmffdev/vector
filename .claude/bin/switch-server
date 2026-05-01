@@ -24,7 +24,7 @@ case "$ENV" in
   *) echo "usage: switch-server dev|staging|production" >&2; exit 2 ;;
 esac
 
-REPO="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM"
+REPO="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
 ENV_FILE="$REPO/backend/.env.$ENV"
 LOG=/tmp/mmff-switch.log
 

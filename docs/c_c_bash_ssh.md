@@ -58,7 +58,7 @@ ssh mmffdev-admin 'docker ps | grep postgres'
 ## Setup helper (has all of this wrapped)
 
 ```bash
-bash "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/dev/scripts/ssh_manager.sh"
+bash "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev/scripts/ssh_manager.sh"
 ```
 
 Interactive setup that installs libpq, adds SSH config blocks, starts the tunnel, writes `backend/.env.local`. Safe to re-run — every step asks before doing anything.
