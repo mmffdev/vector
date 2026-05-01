@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:MMFFDev - Vector}",
+            "name": "Debug MMFFVectorLauncher",
+            "target": "MMFFVectorLauncher",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug MMFFVectorLauncher"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:MMFFDev - Vector}",
+            "name": "Release MMFFVectorLauncher",
+            "target": "MMFFVectorLauncher",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release MMFFVectorLauncher"
+        }
+    ]
+}

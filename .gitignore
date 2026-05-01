@@ -24,4 +24,10 @@ MMFFDev - Vector Assets/Vector Design System.zip
 .build/
 dev/cgl-volatile-do-not-commit/
 dev/backups/
+backend/server
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
 
