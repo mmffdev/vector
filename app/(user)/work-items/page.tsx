@@ -213,13 +213,13 @@ function WorkItemRow({
       <td className="table__cell work-items-tree__tag-cell">
         <div className="work-items-tree__tag-inner">
           {depth === 0 && (() => {
-            // Top-level spine. Absolutely-positioned SVG sits over the icon column
-            // so it doesn't shift layout. Icon center sits 19px from cell edge
-            // (8px tag-inner pad + 4px tag pad + 7px to icon center).
+            // Top-level spine. Absolutely-positioned SVG aligned to the same
+            // column children's verticals use (lineX = STEP/2 = 12 from the
+            // tag-inner content edge), so the spine continues straight into them.
             const H = 48;
             const MID = H / 2;
             const W = 24;
-            const X = 19;
+            const X = 12;
             const STUB_GAP = 10;
             const paths: string[] = [];
             if (!isFirst) paths.push(`M${X} 0 L${X} ${MID - STUB_GAP}`);
