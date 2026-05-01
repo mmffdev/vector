@@ -24,8 +24,9 @@ enum Paths {
         }
         // Hard-coded fallback for this user's machine. Acceptable because this
         // launcher is dev-only and tied to this repo.
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         return URL(fileURLWithPath:
-            "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector",
+            home + "/Documents/Projetcs - Claude/MMFFDev - Vector Plan",
             isDirectory: true)
     }
 

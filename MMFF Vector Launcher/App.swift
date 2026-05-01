@@ -9,9 +9,15 @@ struct MMFFVectorLauncherApp: App {
 
     var body: some Scene {
         WindowGroup("MMFF Vector Launcher") {
-            DashboardView()
-                .environmentObject(state)
-                .frame(minWidth: 760, minHeight: 520)
+            Group {
+                if state.portCheckPassed {
+                    DashboardView()
+                } else {
+                    PortCheckView()
+                }
+            }
+            .environmentObject(state)
+            .frame(minWidth: 760, minHeight: 520)
         }
         .windowResizability(.contentSize)
     }

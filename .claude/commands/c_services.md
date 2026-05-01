@@ -1,8 +1,8 @@
 # `<services>` — check dev services
 
-> Last verified: 2026-04-27
+> Last verified: 2026-05-01
 
-One-shot status check for the three local dev services managed by `MMFF Vector Dev.app`: the **active env's DB tunnel** (port per top-of-CLAUDE.md `ACTIVE_BACKEND_ENV` marker), Go backend (`:5100`), Next.js frontend (`:5101`).
+One-shot status check for the three local dev services managed by `MMFF Vector Launcher.app`: the **active env's DB tunnel** (port per top-of-CLAUDE.md `ACTIVE_BACKEND_ENV` marker), Go backend (`:5100`), Next.js frontend (`:5101`).
 
 Read-only. Does not start, restart, or kill anything — use the launcher (or `<npm>` / `<server>`) for that.
 
@@ -85,4 +85,4 @@ Full credential reference: [`.claude/commands/c_accounts.md`](c_accounts.md)
 
 ## Bring services back up
 
-`open -a "MMFF Vector Dev"` — the launcher detects what's missing and starts only those. See [`c_dev-launcher.md`](c_dev-launcher.md).
+`open -a "MMFF Vector Launcher"` — SwiftUI dashboard with per-component start/stop/restart. See [`c_launcher.md`](c_launcher.md).

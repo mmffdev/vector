@@ -16,7 +16,7 @@ Env files (`backend/.env.local`) are committed — no manual setup.
 
 ### Quickest path: the launcher
 
-Double-click `MMFF Vector Dev.app` — it brings up all three local services in one go: SSH tunnel (`localhost:5434` → remote Postgres), Go backend (`:5100`), Next.js frontend (`:5101`). See [`docs/c_dev-launcher.md`](docs/c_dev-launcher.md).
+Double-click `MMFF Vector Launcher.app` — SwiftUI dashboard with per-component start/stop/restart for SSH tunnel, Go backend (`:5100`), and Next.js frontend (`:5101`), plus DB env switching. See [`.claude/commands/c_launcher.md`](.claude/commands/c_launcher.md).
 
 ### Manual path
 
@@ -31,12 +31,8 @@ npm run dev                          # http://localhost:5101
 
 # 3. Backend (new terminal)
 cd backend
-./server                             # tracked arm64 binary — http://localhost:5100
-# or rebuild from source:
-go build -o server ./cmd/server && ./server
+go run ./cmd/server                  # http://localhost:5100
 ```
-
-If macOS blocks the tracked binary on first run: `xattr -dr com.apple.quarantine backend/server`.
 
 ### Optional: E2E tests
 

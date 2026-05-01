@@ -10,16 +10,19 @@ import Darwin
 
 actor BackendManager {
     private(set) var state: ServiceState = .down
-    private(set) var env: BackendEnv = .dev
+    private(set) var env: BackendEnv
     private var pgid: Int32 = -1
     private let port: UInt16 = 5100
+
+    init(env: BackendEnv = .production) { self.env = env }
     private let policy = RetryPolicy.backend
     private var watcherTask: Task<Void, Never>?
 
     func setEnv(_ e: BackendEnv) { self.env = e }
 
     func start() async {
-        if case .up = state { return }
+        if case .up      = state { return }
+        if case .starting = state { return }
         state = .starting
 
         // Adopt running backend if /healthz answers
@@ -45,8 +48,8 @@ actor BackendManager {
                     bashLogin: cmd, cwd: Paths.repoRoot, env: envVars, logTag: .backend)
                 self.pgid = r.pgid
 
-                // Probe up to 30s
-                let deadline = Date().addingTimeInterval(30)
+                // Probe up to 90s — covers cold `go build` (~60s) + startup
+                let deadline = Date().addingTimeInterval(90)
                 while Date() < deadline {
                     let p = await HealthProbe.httpHealthz(url: healthURL, expectCommitMatch: false, timeout: 1.5)
                     if p.ok {

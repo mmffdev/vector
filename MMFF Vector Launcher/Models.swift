@@ -22,7 +22,7 @@ enum BackendEnv: String, CaseIterable, Codable, Sendable {
         switch self {
         case .dev: return "backend/.env.dev"
         case .staging: return "backend/.env.staging"
-        case .production: return "backend/.env.production"
+        case .production: return "backend/.env.local"   // .env.production doesn't exist; .env.local is the production file
         }
     }
     var displayName: String {

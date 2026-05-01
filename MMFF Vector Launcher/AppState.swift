@@ -11,13 +11,14 @@ final class AppState: ObservableObject {
 
     let orchestrator = Orchestrator()
 
-    @Published var currentEnv: BackendEnv = .dev
+    @Published var currentEnv: BackendEnv = .production
     @Published var tunnelLabel: String = "down"
     @Published var backendLabel: String = "down"
     @Published var frontendLabel: String = "down"
     @Published var logTail: [LogEntry] = []
     @Published var bridgePort: UInt16 = 7787
     @Published var bridgeRunning: Bool = false
+    @Published var portCheckPassed: Bool = false
 
     private var pollTask: Task<Void, Never>?
     private var tailTask: Task<Void, Never>?

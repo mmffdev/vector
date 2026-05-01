@@ -31,8 +31,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Planka board operations** → [`./.claude/bin/planka`](./.claude/bin/planka) — ONLY entry point for all board reads/writes; never use curl directly.
 - **Card lifecycle (hard):** on "go"/"start"/approval → move card Backlog→To Do; on first code edit → move To Do→Doing; on code-complete → Doing→Completed. See [`docs/c_c_backlog_agent.md`](../docs/c_c_backlog_agent.md).
 - **Dev server (`<npm>`)** → [`.claude/commands/c_npm.md`](commands/c_npm.md) — start Next.js on `:3000`.
-- **Dev launcher (`MMFF Vector Dev.app`)** → [`.claude/commands/c_dev-launcher.md`](commands/c_dev-launcher.md) — AppleScript app that starts tunnel, backend, frontend.
-- **Vector Launcher (`<launcher>`, `MMFF Vector Launcher.app`)** → [`.claude/commands/c_launcher.md`](commands/c_launcher.md) — SwiftUI dashboard with per-component start/stop/restart, env switch, JSONL log; coexists with the AppleScript launcher.
+- **Vector Launcher (`<launcher>`, `MMFF Vector Launcher.app`)** → [`.claude/commands/c_launcher.md`](commands/c_launcher.md) — SwiftUI dashboard with per-component start/stop/restart, env switch, JSONL log.
 - **Boot file manager (`<b> -<N> -R|-C`, `<b> -A -C`)** → [`.claude/commands/c_boot.md`](commands/c_boot.md) — read (`-R`) or create/update (`-C`) numbered session snapshot; `-A -C` writes comprehensive master record `bootA.md`; lazy-loads on read.
 - **Context scanner (`<memory> -A|-M|-S|-C|-H`)** → [`.claude/commands/c_memory.md`](commands/c_memory.md) — scans `.claude/` for health across memory, skills, commands, hooks; writes timestamped file to `dev/reports/`; view in Dev → Reports tab.
 - **Shortcuts reference (`<?>`, `<?> -u`)** → [`.claude/commands/c_shortcuts.md`](commands/c_shortcuts.md) — open `dev/shortcuts.html` in browser; `-u` rescans all command + skill docs and regenerates the page.

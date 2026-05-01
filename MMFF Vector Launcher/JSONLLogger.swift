@@ -4,7 +4,7 @@
 import Foundation
 
 enum LogLevel: String, Codable, Sendable { case debug, info, warn, error }
-enum LogTag: String, Codable, Sendable {
+enum LogTag: String, Codable, Sendable, CaseIterable {
     case app, tunnel, backend, frontend, env, bridge, probe, test
 }
 

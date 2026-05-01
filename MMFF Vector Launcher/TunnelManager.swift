@@ -9,10 +9,11 @@ import Darwin
 
 actor TunnelManager {
     private(set) var state: ServiceState = .down
-    private(set) var env: BackendEnv = .dev
+    private(set) var env: BackendEnv
     private let policy = RetryPolicy.tunnel
     private var watcherTask: Task<Void, Never>?
 
+    init(env: BackendEnv = .production) { self.env = env }
     func setEnv(_ e: BackendEnv) { self.env = e }
 
     func start() async {
