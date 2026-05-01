@@ -213,12 +213,13 @@ function WorkItemRow({
       <td className="table__cell work-items-tree__tag-cell">
         <div className="work-items-tree__tag-inner">
           {depth === 0 && (() => {
-            // Top-level spine. Width-0 SVG with overflow:visible draws stubs at
-            // the icon's column without shifting the icon. Icon center in SVG-local
-            // coords: 4px tag left-pad + 7px to icon center = 11.
+            // Top-level spine. Absolutely-positioned SVG sits over the icon column
+            // so it doesn't shift layout. Icon center sits 19px from cell edge
+            // (8px tag-inner pad + 4px tag pad + 7px to icon center).
             const H = 48;
             const MID = H / 2;
-            const X = 11;
+            const W = 24;
+            const X = 19;
             const STUB_GAP = 10;
             const paths: string[] = [];
             if (!isFirst) paths.push(`M${X} 0 L${X} ${MID - STUB_GAP}`);
@@ -226,10 +227,10 @@ function WorkItemRow({
             if (paths.length === 0) return null;
             return (
               <svg
-                width={0}
+                width={W}
                 height={H}
-                viewBox={`0 0 0 ${H}`}
-                className="work-items-tree__svg"
+                viewBox={`0 0 ${W} ${H}`}
+                className="work-items-tree__svg work-items-tree__svg--root-spine"
                 aria-hidden="true"
               >
                 {paths.map((d, i) => (

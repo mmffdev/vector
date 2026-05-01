@@ -917,33 +917,43 @@ button {
 
 .sidebar-item--child {
   position: relative;
-  padding-left: 46px;
+  padding-left: 16px;
+  padding-right: 12px;
   height: 32px;
   font-size: 13px;
+  gap: 0;
+  animation: sidebar-child-in 160ms ease both;
 }
 
-/* Tree connector — top half: vertical line down + horizontal turn toward icon */
-.sidebar-item--child::before {
-  content: '';
-  position: absolute;
-  left: 32px;
-  top: 0;
-  height: 50%;
-  width: 10px;
-  border-left: 1px solid var(--ink);
-  border-bottom: 1px solid var(--ink);
-  pointer-events: none;
+@keyframes sidebar-child-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Tree connector — bottom half: continue vertical trunk (non-last items only) */
-.sidebar-item--child:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 32px;
-  top: 50%;
-  bottom: 0;
-  border-left: 1px solid var(--ink);
-  pointer-events: none;
+/* Tree connector SVG — fixed width so the icon column never shifts */
+.sidebar-item__tree-icon {
+  flex-shrink: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-subtle);
+  opacity: 0.5;
+}
+
+/* Child page icon — fixed width to match parent icon column */
+.sidebar-item__child-icon {
+  flex-shrink: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+}
+
+.sidebar-item__child-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .sidebar-group {
@@ -1167,6 +1177,22 @@ button {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--accent);
   border-color: var(--accent);
+}
+
+.btn--row-expander {
+  background: transparent;
+  color: inherit;
+  border: none;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.btn--row-expander:hover:not(:disabled) {
+  background: transparent;
+  color: inherit;
+  border: none;
+  opacity: 0.7;
 }
 
 .btn--ghost {
@@ -1578,6 +1604,8 @@ table.tbl {
   font-size: 13px;
 }
 
+/* table.work-items-tree { table-layout: fixed; } */
+
 .table__head,
 table.tbl thead {
   background: var(--surface-sunken);
@@ -1616,6 +1644,7 @@ table.tbl tbody tr:last-child td {
 table.tbl tbody td {
   padding: 0 16px;
   height: var(--row-height);
+  background: var(--surface);
   color: var(--ink);
   vertical-align: middle;
   border-bottom: 1px solid var(--border);
@@ -1624,6 +1653,10 @@ table.tbl tbody td {
 .table__row:hover .table__cell,
 table.tbl tbody tr:hover td {
   background: var(--surface-sunken);
+}
+
+.table__row--selected .table__cell {
+  background: var(--accent-subtle, color-mix(in srgb, var(--accent) 10%, transparent));
 }
 
 .table__cell--numeric,
@@ -5776,6 +5809,11 @@ table.tbl tbody tr:hover td {
   margin-top: auto;
 }
 
+.release-row__summary {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
 /* ── Blocking release gate ─────────────────────────────────────────────────── */
 
 /* Blocking release gate — Vector kit (story 00100)
@@ -6401,10 +6439,10 @@ table.tbl tbody tr:hover td {
 }
 
 .layers-editor__col--drag  { width: 32px; }
-.layers-editor__col--order { width: 1%; white-space: nowrap; }
-.layers-editor__col--tag   { width: 10%; }
-.layers-editor__col--name  { width: 45%; }
-.layers-editor__col--desc  { width: 45%; }
+.layers-editor__col--order { width: 60px; }
+.layers-editor__col--tag   { width: 80px; }
+.layers-editor__col--name  { width: auto; }
+.layers-editor__col--desc  { width: 40%; }
 
 .layers-editor__cell {
   position: relative;
@@ -6553,6 +6591,19 @@ table.tbl tbody tr:hover td {
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
+}
+
+/* Zone column-header row rendered inside <tbody> between zone separators */
+.layers-editor__zone-head th {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .layers-editor__row--group-sep td {
@@ -8149,4 +8200,314 @@ table.tbl tbody tr:hover td {
     opacity: 1;
     width: calc(100% - calc(var(--sz) / 5 * 4));
   }
+}
+
+/* ============================================================
+   Work Items — tree grid + detail panel (stories 00183–00188)
+   ============================================================ */
+
+/* Split layout: tree on the left, detail panel on the right */
+.work-items-layout {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.work-items-layout__tree {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Detail panel aside */
+.work-items-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.work-items-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.work-items-panel__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.work-items-panel__title {
+  margin: 4px 0 0;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.work-items-panel__header-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.work-items-panel__edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.work-items-panel__field-label {
+  font-size: 12px;
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.work-items-panel__field-label .form__input,
+.work-items-panel__field-label .form__select {
+  width: 100%;
+}
+
+.work-items-panel__edit-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* Read-only info grid */
+.work-items-panel__info-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-4);
+}
+
+.work-items-panel__info-item dt {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.work-items-panel__info-item dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.work-items-panel__section-label {
+  margin: 0 0 var(--space-2);
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.work-items-panel__custom-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.work-items-panel__updated {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-subtle);
+}
+
+/* Column borders */
+.work-items-tree .table__cell {
+  border-right: 1px solid var(--border);
+}
+.work-items-tree .table__cell:last-child {
+  border-right: none;
+}
+
+/* Tree column widths */
+.work-items-tree__col--toggle { width: 68px; }
+.work-items-tree__col--tag    { width: 80px; }
+.work-items-tree__col--status { width: 120px; }
+.work-items-tree__col--pri    { width: 100px; }
+.work-items-tree__col--pts    { width: 60px; }
+
+/* Clickable tree rows */
+.work-items-tree__row { cursor: pointer; }
+
+@keyframes work-items-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.work-items-tree__row--child {
+  animation: work-items-row-in 160ms ease both;
+}
+
+/* Loading child row */
+.work-items-tree__loading { font-size: 12px; }
+
+/* Tree row: expand toggle cell (narrow, no depth indent) */
+.work-items-tree__toggle-cell {
+  width: 40px;
+  padding: 0;
+  text-align: center;
+}
+
+.work-items-tree__toggle-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tag cell: positioned container for full-height tree lines */
+/* Tag cell: no padding, flex row */
+.work-items-tree__tag-cell {
+  padding: 0 !important;
+}
+
+/* Flex row: inline SVG + tag text */
+.work-items-tree__tag-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 100%;
+  min-height: var(--row-height);
+  padding-left: 8px;
+  position: relative;
+}
+
+/* Inline SVG tree lines */
+.work-items-tree__svg {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Root spine: absolutely positioned over the icon column so it doesn't
+   take flex space and shift the tag right. */
+.work-items-tree__svg--root-spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+/* Tag pill: type icon + key text */
+.work-items-tree__tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0.7;
+  padding: 0 8px 0 4px;
+  white-space: nowrap;
+}
+
+.work-items-tree__type-icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.work-items-tree__expander-icon {
+  display: block;
+  flex-shrink: 0;
+  transition: transform 180ms ease;
+}
+
+.work-items-tree__expander-icon--open {
+  transform: rotate(90deg);
+}
+
+/* Expand/collapse buttons in the toggle header cell */
+.work-items-tree__th--toggle {
+  padding: 0;
+}
+
+.work-items-tree__toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.btn.work-items-tree__toolbar-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.btn.work-items-tree__toolbar-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+
+/* Sortable header cell */
+.work-items-tree__th {
+  position: relative;
+  padding-right: 12px;
+}
+
+.work-items-tree__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.work-items-tree__sort-btn:hover {
+  color: var(--ink);
+}
+
+.work-items-tree__sort-btn--active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.work-items-tree__sort-icon {
+  font-size: 10px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.work-items-tree__sort-btn--active .work-items-tree__sort-icon {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* Column resize handle */
+.work-items-tree__resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  user-select: none;
+}
+
+.work-items-tree__resize-handle:hover,
+.work-items-tree__resize-handle:active {
+  background: var(--accent);
+  opacity: 0.4;
 }
