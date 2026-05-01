@@ -27,6 +27,7 @@
 - [Open-source-first stack, no subscription costs](project_open_source_first.md) — Hobby-funded, unlimited timeline. Prefer MIT/BSD OSS → self-hosted → build our own → paid SaaS last resort.
 - [Canonical table HTML structure](feedback_table_structure.md) — thead/tbody/table__head/table__row/table__cell always; table__head never on a tr inside tbody
 - [Never change passwords](feedback_never_change_passwords.md) — Never touch password_hash in DB under any circumstances; ask Rick if credentials are needed
+- [Verify backend env after every start](feedback_verify_backend_env_after_start.md) — Curl /api/env immediately after backend start; never assume ENV_FILE flag worked; auth failures = wrong DB before wrong password
 - [Dev app login credentials](reference_dev_app_login.md) — padmin/user/gadmin @mmffdev.com / TestPass1! on dev env; for browser & Playwright sessions
 - [Session boot1 snapshot](boot1.md) — Portfolio templates, VPS stability, bug investigation session state.
 - [Session boot2 snapshot](boot2.md) — Boot file reorganisation + DevSetup inline confirmation snapshot.

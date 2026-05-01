@@ -13,11 +13,10 @@ backend/.env.dev
 backend/.env.staging
 backend/.env.production
 dev/remote_setup.html
-.claude/hooks/
-.claude/memory/
 .claude/settings.json
 .claude/settings.json.bak
 .claude/worktrees/
+.claude/handoffs/*.tar.gz
 .planka/
 MMFFDev - Vector Assets/backups/
 MMFFDev - Vector Assets/security-flags.jsonl
