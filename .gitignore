@@ -24,6 +24,13 @@ MMFFDev - Vector Assets/Vector Design System.zip
 .build/
 dev/cgl-volatile-do-not-commit/
 dev/backups/
+
+# Launcher build artifacts (regenerate via `xcodegen generate` + xcodebuild)
+MMFF Vector Launcher.xcodeproj/
+MMFF Vector Launcher.app/
+MMFF Vector Launcher/Info.plist
+build/
+local-assets/launcher/logs/
 backend/server
 .vscode/*
 !.vscode/launch.json

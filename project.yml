@@ -1,0 +1,39 @@
+name: MMFF Vector Launcher
+options:
+  bundleIdPrefix: dev.mmff.vector
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    ENABLE_HARDENED_RUNTIME: NO
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  MMFF Vector Launcher:
+    type: application
+    platform: macOS
+    sources:
+      - path: "MMFF Vector Launcher"
+    info:
+      path: "MMFF Vector Launcher/Info.plist"
+      properties:
+        CFBundleName: "MMFF Vector Launcher"
+        CFBundleDisplayName: "MMFF Vector Launcher"
+        CFBundleIdentifier: "dev.mmff.vector.launcher"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+        NSHumanReadableCopyright: "© MMFFDev"
+        LSApplicationCategoryType: "public.app-category.developer-tools"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: "dev.mmff.vector.launcher"
+        PRODUCT_NAME: "MMFF Vector Launcher"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: "MMFF Vector Launcher/Info.plist"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""

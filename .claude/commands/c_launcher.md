@@ -10,9 +10,14 @@ Native SwiftUI macOS dashboard that orchestrates the Vector dev stack (SSH tunne
 
 ## Build
 
-The repo holds source only — the Xcode project (`.xcodeproj`) lives outside the repo and references these files in place. Open the project in Xcode, **Product → Archive** (or **Run** for debug), then drop the resulting `MMFF Vector Launcher.app` wherever you want (e.g. `/Applications`).
+The repo holds source only. The Xcode project is generated from [`../../project.yml`](../../project.yml) by [xcodegen](https://github.com/yonaskolb/XcodeGen) — the `.xcodeproj` and the resulting `.app` are gitignored so each laptop builds its own.
 
-If the project file is missing on a fresh clone, recreate it: in Xcode, **File → New → Project → macOS → App**, set product name `MMFF Vector Launcher`, bundle id `dev.mmff.vector.launcher`, then drag the `MMFF Vector Launcher/` folder in as a group.
+```bash
+brew install xcodegen   # one-time
+./scripts/build-launcher.sh   # regenerate, build, ad-hoc sign → ./MMFF Vector Launcher.app
+```
+
+Build log: `/tmp/mmff-launcher-build.log`. macOS deployment target is 14.0 (LogViewerView uses the macOS 14 `onChange(of:initial:_:)` API).
 
 ## Usage
 
