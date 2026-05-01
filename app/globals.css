@@ -8395,12 +8395,9 @@ table.tbl tbody tr:hover td {
   overflow: visible;
 }
 
-/* Root spine: absolutely positioned over the icon column so it doesn't
-   take flex space and shift the tag right. */
+/* Root spine: 1px-wide SVG with overflow:visible draws verticals at x=12
+   (children's lineX) without shifting the icon meaningfully. */
 .work-items-tree__svg--root-spine {
-  position: absolute;
-  left: 0;
-  top: 0;
   pointer-events: none;
 }
 

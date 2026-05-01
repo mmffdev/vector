@@ -213,12 +213,12 @@ function WorkItemRow({
       <td className="table__cell work-items-tree__tag-cell">
         <div className="work-items-tree__tag-inner">
           {depth === 0 && (() => {
-            // Top-level spine. Absolutely-positioned SVG aligned to the same
-            // column children's verticals use (lineX = STEP/2 = 12 from the
-            // tag-inner content edge), so the spine continues straight into them.
+            // Top-level spine. Real-width SVG (1px) sits in flex flow so the
+            // icon doesn't shift, but overflow:visible lets paths paint outside
+            // its box. X=12 matches children's lineX (STEP/2) so the spine flows
+            // straight into the depth-1 verticals below.
             const H = 48;
             const MID = H / 2;
-            const W = 24;
             const X = 12;
             const STUB_GAP = 10;
             const paths: string[] = [];
@@ -227,9 +227,9 @@ function WorkItemRow({
             if (paths.length === 0) return null;
             return (
               <svg
-                width={W}
+                width={1}
                 height={H}
-                viewBox={`0 0 ${W} ${H}`}
+                viewBox={`0 0 1 ${H}`}
                 className="work-items-tree__svg work-items-tree__svg--root-spine"
                 aria-hidden="true"
               >
