@@ -18,6 +18,11 @@ Env files (`backend/.env.local`) are committed — no manual setup.
 
 Double-click `MMFF Vector Launcher.app` — SwiftUI dashboard with per-component start/stop/restart for SSH tunnel, Go backend (`:5100`), and Next.js frontend (`:5101`), plus DB env switching. See [`.claude/commands/c_launcher.md`](.claude/commands/c_launcher.md).
 
+### MBP17
+
+git fetch && git checkout -b mbp17-stream002 origin/main && git push -u origin mbp17-stream002
+
+https://prod.liveshare.vsengsaas.visualstudio.com/join?72101E4DB4E44A69011C3ED3B0423C4430B1
 ### Manual path
 
 ```bash
