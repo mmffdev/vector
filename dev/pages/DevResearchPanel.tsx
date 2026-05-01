@@ -66,9 +66,68 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
     const headObs = new MutationObserver(rafReapply);
     headObs.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ["href"] });
 
+    // TOC scroll-spy + click highlight.
+    const headings = Array.from(el.querySelectorAll<HTMLElement>("h2[id]"));
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>(".r-toc__list a"));
+    const linkById = new Map(links.map(a => [a.getAttribute("href")?.slice(1) ?? "", a]));
+    let clickLockUntil = 0;
+
+    const setActive = (id: string | null) => {
+      links.forEach(a => a.classList.remove("is-active"));
+      if (id) linkById.get(id)?.classList.add("is-active");
+    };
+
+    const onLinkClick = (e: Event) => {
+      const a = e.currentTarget as HTMLAnchorElement;
+      const id = a.getAttribute("href")?.slice(1);
+      if (!id) return;
+      clickLockUntil = Date.now() + 800;
+      setActive(id);
+    };
+    links.forEach(a => a.addEventListener("click", onLinkClick));
+
+    let io: IntersectionObserver | null = null;
+    if (headings.length) {
+      const visible = new Map<string, number>();
+      io = new IntersectionObserver(
+        entries => {
+          if (Date.now() < clickLockUntil) return;
+          entries.forEach(en => {
+            const id = (en.target as HTMLElement).id;
+            if (en.isIntersecting) visible.set(id, en.intersectionRatio);
+            else visible.delete(id);
+          });
+          if (visible.size) {
+            // Pick the heading nearest the top of the viewport.
+            let topId: string | null = null;
+            let topY = Infinity;
+            visible.forEach((_, id) => {
+              const h = headings.find(h => h.id === id);
+              if (!h) return;
+              const y = h.getBoundingClientRect().top;
+              if (y < topY) { topY = y; topId = id; }
+            });
+            setActive(topId);
+          } else {
+            // Nothing intersecting — fall back to last heading scrolled past.
+            const above = headings
+              .filter(h => h.getBoundingClientRect().top < 80)
+              .pop();
+            if (above) setActive(above.id);
+          }
+        },
+        { rootMargin: "-72px 0px -65% 0px", threshold: [0, 0.1, 0.5, 1] }
+      );
+      headings.forEach(h => io!.observe(h));
+      // Seed: first heading active by default.
+      setActive(headings[0].id);
+    }
+
     return () => {
       docObs.disconnect();
       headObs.disconnect();
+      io?.disconnect();
+      links.forEach(a => a.removeEventListener("click", onLinkClick));
     };
   }, [content]);
 
@@ -153,7 +212,8 @@ export default function DevResearchPanel() {
         r.title.toLowerCase().includes(q) ||
         r.category.toLowerCase().includes(q) ||
         r.topic.toLowerCase().includes(q) ||
-        r.summary.toLowerCase().includes(q)
+        r.summary.toLowerCase().includes(q) ||
+        r.content_text.toLowerCase().includes(q)
       )
     : reports;
 

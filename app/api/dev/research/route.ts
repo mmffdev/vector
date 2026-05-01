@@ -9,6 +9,7 @@ export type ResearchMeta = {
   topic: string;
   date: string;
   summary: string;
+  content_text: string;
 };
 
 export type ResearchReport = ResearchMeta & {
@@ -53,8 +54,11 @@ export async function GET(request: Request) {
     for (const file of files) {
       try {
         const raw = fs.readFileSync(path.join(RESEARCH_DIR, file), "utf-8");
-        const { content: _content, ...meta } = JSON.parse(raw);
-        reports.push(meta as ResearchMeta);
+        const { content, ...meta } = JSON.parse(raw);
+        const content_text = typeof content === "string"
+          ? content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+          : "";
+        reports.push({ ...meta, content_text } as ResearchMeta);
       } catch {
         // skip malformed
       }
