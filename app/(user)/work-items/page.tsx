@@ -222,7 +222,7 @@ function WorkItemRow({
             const STUB_GAP = 10;
             const paths: string[] = [];
             if (!isFirst) paths.push(`M${X} 0 L${X} ${MID - STUB_GAP}`);
-            if (!isLast)  paths.push(`M${X} ${MID + STUB_GAP} L${X} ${H}`);
+            if (!isLast || hasVisibleChildren) paths.push(`M${X} ${MID + STUB_GAP} L${X} ${H}`);
             if (paths.length === 0) return null;
             return (
               <svg
