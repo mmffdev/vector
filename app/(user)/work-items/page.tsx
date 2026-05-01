@@ -164,6 +164,7 @@ function WorkItemRow({
   onSelect,
   selected,
   animIndex,
+  isFirst,
   isLast,
   continuations,
   hasVisibleChildren,
@@ -176,6 +177,7 @@ function WorkItemRow({
   onSelect: () => void;
   selected: boolean;
   animIndex?: number;
+  isFirst?: boolean;
   isLast?: boolean;
   continuations?: boolean[];
   hasVisibleChildren?: boolean;
@@ -210,6 +212,32 @@ function WorkItemRow({
       {/* Tag cell — SVG tree lines + icon + key */}
       <td className="table__cell work-items-tree__tag-cell">
         <div className="work-items-tree__tag-inner">
+          {depth === 0 && (() => {
+            // Top-level spine. Width-0 SVG with overflow:visible draws stubs at
+            // the icon's column without shifting the icon. Icon center in SVG-local
+            // coords: 4px tag left-pad + 7px to icon center = 11.
+            const H = 48;
+            const MID = H / 2;
+            const X = 11;
+            const STUB_GAP = 10;
+            const paths: string[] = [];
+            if (!isFirst) paths.push(`M${X} 0 L${X} ${MID - STUB_GAP}`);
+            if (!isLast)  paths.push(`M${X} ${MID + STUB_GAP} L${X} ${H}`);
+            if (paths.length === 0) return null;
+            return (
+              <svg
+                width={0}
+                height={H}
+                viewBox={`0 0 0 ${H}`}
+                className="work-items-tree__svg"
+                aria-hidden="true"
+              >
+                {paths.map((d, i) => (
+                  <path key={`r${i}`} d={d} stroke="var(--border)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                ))}
+              </svg>
+            );
+          })()}
           {depth > 0 && (() => {
             // STEP: width per depth level. SVG is exactly depth*STEP wide.
             // Vertical line for own depth sits at x = (depth-1)*STEP + STEP/2.
@@ -525,6 +553,7 @@ function WorkItemsTree({
             onSelect={() => onSelect(item)}
             selected={selectedId === item.id}
             animIndex={depth > 0 ? rowIndex : undefined}
+            isFirst={idx === 0}
             isLast={isLast}
             continuations={ancestorContinuations}
             hasVisibleChildren={isExpanded && children.length > 0}
