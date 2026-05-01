@@ -12,8 +12,9 @@ import (
 // TemplateLayer is one entry in a portfolio template's layer stack.
 // Index 0 = top tier (strategy), last = leaf (feature/execution).
 type TemplateLayer struct {
-	Tag  string `json:"tag"`
-	Name string `json:"name"`
+	Tag         string  `json:"tag"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
 }
 
 // ModelSummary is the slim row returned by ListPublishedModels.

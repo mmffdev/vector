@@ -18,11 +18,11 @@ Portfolio Runway captures where the portfolio is heading over the next one to th
 
 Pick Vector Standard if you have no existing framework requirement, or if you want a model that stays current as MMFF develops. Platform updates and new capabilities are built and tested against this structure first.$$,
 '[
-  {"tag": "PRW", "name": "Portfolio Runway"},
-  {"tag": "PR",  "name": "Product"},
-  {"tag": "BO",  "name": "Business Objective"},
-  {"tag": "TH",  "name": "Theme"},
-  {"tag": "FT",  "name": "Feature"}
+  {"tag": "PRW", "name": "Portfolio Runway",    "description": "The long-horizon strategic direction of the portfolio. Captures where investment is heading without committing to a delivery roadmap or a fixed timescale."},
+  {"tag": "PR",  "name": "Product",             "description": "A distinct product or platform receiving investment. Groups business objectives that advance the same product line and connects strategic intent to measurable outcomes."},
+  {"tag": "BO",  "name": "Business Objective",  "description": "A measurable improvement the product must deliver. Defines what is being improved and why before work reaches the delivery layers."},
+  {"tag": "TH",  "name": "Theme",               "description": "A cluster of related features shipping within a planning period. Organises delivery work under a shared intent so teams understand the outcome they are contributing to."},
+  {"tag": "FT",  "name": "Feature",             "description": "A discrete increment of value delivered by a team within a quarter. The lowest portfolio layer; everything below lives in the execution stack."}
 ]'::jsonb),
 
 ('00000000-0000-0000-0000-00000000bb01', 'Enterprise',
@@ -38,11 +38,11 @@ Strategic Objectives capture the multi-year business commitments the organisatio
 
 Use Enterprise when you run formal portfolio governance across multiple delivery programmes under a shared strategic plan, or when you need clear traceability from board-level goals to released software. The extra layers are worth the effort only if you have the governance structure in place to maintain them.$$,
 '[
-  {"tag": "SO",  "name": "Strategic Objective"},
-  {"tag": "PO",  "name": "Portfolio Objective"},
-  {"tag": "BE",  "name": "Business Epic"},
-  {"tag": "BC",  "name": "Business Outcome"},
-  {"tag": "FE",  "name": "Feature"}
+  {"tag": "SO",  "name": "Strategic Objective",  "description": "A multi-year business commitment set at executive level. Defines the long-horizon outcome the organisation must deliver and governs where portfolio investment is directed."},
+  {"tag": "PO",  "name": "Portfolio Objective",  "description": "A measurable target that advances a strategic objective across one or two planning periods. Translates executive direction into accountable portfolio commitments."},
+  {"tag": "BE",  "name": "Business Epic",         "description": "A major value initiative that delivers against a portfolio objective. Spans multiple teams and planning increments; requires a funding decision before work begins."},
+  {"tag": "BC",  "name": "Business Outcome",      "description": "A checkpoint confirming that a business epic has produced a real result. Sits between investment approval and feature delivery to prevent output being mistaken for outcome."},
+  {"tag": "FE",  "name": "Feature",               "description": "A discrete increment of value delivered by a team within a sprint cycle. The lowest portfolio layer; everything below lives in the execution stack."}
 ]'::jsonb),
 
 ('00000000-0000-0000-0000-00000000cc01', 'Rally',
@@ -58,9 +58,9 @@ Strategy at the top sets the investment themes that govern where funding goes. I
 
 Use Rally when your teams already work in a Rally environment and want familiar terminology in MMFF, or when you need something lighter than Enterprise but still want a distinct strategic layer above delivery work. The three-layer structure works well for programmes running fewer than ten delivery teams.$$,
 '[
-  {"tag": "ST", "name": "Strategy"},
-  {"tag": "IN", "name": "Initiative"},
-  {"tag": "FE", "name": "Feature"}
+  {"tag": "ST", "name": "Strategy",   "description": "The investment themes that govern where funding and effort are directed. Set at portfolio level and reviewed each planning increment."},
+  {"tag": "IN", "name": "Initiative", "description": "A work package that acts on a strategic theme, typically spanning one or more planning increments and owned at programme level."},
+  {"tag": "FE", "name": "Feature",    "description": "A discrete increment of value connecting strategic intent to the sprint-level work delivery teams pick up day to day."}
 ]'::jsonb),
 
 ('00000000-0000-0000-0000-00000000ee01', 'SAFe',
@@ -76,10 +76,10 @@ Strategic Themes represent the enterprise-level priorities that guide investment
 
 Use SAFe when your organisation runs PI planning, ART synchronisation, and portfolio Kanban and you want a model that fits that structure. The four-layer chain works well for programmes running multiple Agile Release Trains.$$,
 '[
-  {"tag": "STH", "name": "Strategic Theme"},
-  {"tag": "PBL", "name": "Portfolio Backlog"},
-  {"tag": "PGB", "name": "Programme Backlog"},
-  {"tag": "FE",  "name": "Feature"}
+  {"tag": "STH", "name": "Strategic Theme",    "description": "An enterprise-level priority that guides investment decisions, reviewed through the portfolio canvas or Business Agility Review."},
+  {"tag": "PBL", "name": "Portfolio Backlog",  "description": "Epics that are ready or approaching a funding decision. Managed through portfolio Kanban before entering a programme for elaboration."},
+  {"tag": "PGB", "name": "Programme Backlog",  "description": "Approved work broken into PI-sized deliverables and ready for Agile Release Train assignment during PI planning."},
+  {"tag": "FE",  "name": "Feature",            "description": "A discrete increment of value that teams pick up in PI planning and deliver across sprints. The lowest portfolio layer."}
 ]'::jsonb),
 
 ('00000000-0000-0000-0000-00000000dd01', 'Jira',
@@ -95,5 +95,5 @@ Initiatives are large strategic containers, broadly equivalent to Jira Initiativ
 
 Use Jira when you have an established Jira workflow your teams rely on and do not want to change. A single portfolio layer gives portfolio managers visibility into strategic commitments without asking delivery teams to adopt a new structure. This model requires the least change from an existing Jira setup.$$,
 '[
-  {"tag": "IN", "name": "Initiative"}
+  {"tag": "IN", "name": "Initiative", "description": "A strategic container grouping delivery work under a declared portfolio commitment. Equivalent to a Jira Initiative or top-level Epic depending on your configuration."}
 ]'::jsonb);

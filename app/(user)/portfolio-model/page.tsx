@@ -293,22 +293,22 @@ function PortfolioRouterBody({
 }
 
 function BundleView({ bundle }: { bundle: BundleDTO }) {
-  // localLayers seeds from bundle for immediate render, then is replaced
-  // by a GET /api/subscription/layers fetch so IDs are subscription UUIDs
-  // (required by PATCH /api/subscription/layers/batch).
-  const [localLayers, setLocalLayers] = useState<LayerDTO[]>(() =>
-    [...bundle.layers].sort((a, b) => a.sort_order - b.sort_order)
-  );
+  // Layers come exclusively from subscription_layers — the tenant's own
+  // copy written at adoption time. The library bundle is never used as a
+  // display source after adoption so library-side edits never bleed through.
+  const [localLayers, setLocalLayers] = useState<LayerDTO[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     api<LayerDTO[]>("/api/subscription/layers").then((rows) => {
       if (!cancelled) setLocalLayers(rows.sort((a, b) => a.sort_order - b.sort_order));
     }).catch(() => {
-      // Keep bundle seed on error — table will show but PATCH will fail
+      // On error fall back to bundle layers so the page isn't blank,
+      // but edits will fail since these IDs are library UUIDs not subscription UUIDs.
+      if (!cancelled) setLocalLayers([...bundle.layers].sort((a, b) => a.sort_order - b.sort_order));
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [bundle.layers]);
 
   const m = bundle.model;
 
@@ -331,12 +331,15 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
       </header>
 
       <Section title="Portfolio Hierarchy">
-        <LayersTable
-          initialLayers={localLayers}
-          onLayersUpdated={setLocalLayers}
-          fixedItems={STRATEGY_FIXED_ITEMS}
-          topAnchorTag="PRW"
-        />
+        {localLayers === null
+          ? <div className="placeholder"><h3 className="placeholder__title">Loading…</h3></div>
+          : <LayersTable
+              initialLayers={localLayers}
+              onLayersUpdated={setLocalLayers}
+              fixedItems={STRATEGY_FIXED_ITEMS}
+              topAnchorTag="PRW"
+            />
+        }
       </Section>
 
       {bundle.artifacts.length > 0 && (
