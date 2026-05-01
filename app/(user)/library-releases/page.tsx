@@ -141,7 +141,7 @@ export default function LibraryReleasesPage() {
                 <th className="table__cell">Title</th>
                 <th className="table__cell">Severity</th>
                 <th className="table__cell">Released</th>
-                <th className="table__cell" style={{ textAlign: "right" }}>Action</th>
+                <th className="table__cell table__cell--numeric">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -192,10 +192,8 @@ function ReleaseRow({
     <tr className="table__row">
       <td className="table__cell t-mono">v{release.library_version}</td>
       <td className="table__cell">
-        <div style={{ color: "var(--ink)" }}>{release.title}</div>
-        <div style={{ color: "var(--ink-muted)", fontSize: "var(--text-xs)" }}>
-          {release.summary_md}
-        </div>
+        <div>{release.title}</div>
+        <div className="release-row__summary">{release.summary_md}</div>
       </td>
       <td className="table__cell">
         <span className={`pill ${severityPillClass(release.severity)}`}>
@@ -203,7 +201,7 @@ function ReleaseRow({
         </span>
       </td>
       <td className="table__cell table__cell--muted">{releasedAt}</td>
-      <td className="table__cell" style={{ textAlign: "right" }}>
+      <td className="table__cell table__cell--numeric">
         <button
           type="button"
           className="btn btn--primary"

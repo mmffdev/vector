@@ -47,6 +47,8 @@ TODAY=$(date "+%Y-%m-%d")
 
 **Read [`c_research-paper-format.md`](c_research-paper-format.md)** for the canonical JSON shape and content-HTML rules. All template rules live there — this file only handles the CREATE flow.
 
+> **TOC wrapper is mandatory.** Before writing, wrap the supplied `content` in the left-column TOC layout defined under "Left-column TOC wrapper" in the format spec — one `<li>` per `<h2>`, matching `id`/`href` slugs, no inline styles. Skip only if the paper has fewer than 2 `<h2>` sections.
+
 ### 4. Write the JSON file
 
 Create `dev/research/{NEXT}.json` with the shape defined in `c_research-paper-format.md`. Substitute:

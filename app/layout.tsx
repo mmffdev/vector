@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/contexts/AuthContext";
+import { DevTabProvider } from "@/app/contexts/DevTabContext";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
 
 const inter = Inter({
@@ -38,7 +39,9 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <AuthProvider>{children}</AuthProvider>
+        <DevTabProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </DevTabProvider>
         <DevStatusFloat />
       </body>
     </html>

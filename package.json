@@ -13,10 +13,16 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@heroicons/react": "^2.2.0",
+    "feather-icons": "^4.29.2",
     "gsap": "^3.15.0",
+    "iconoir": "^7.11.0",
+    "lucide-react": "^1.14.0",
     "next": "^15.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-feather": "^2.0.10",
+    "react-icons": "^5.6.0",
     "three": "^0.184.0"
   },
   "devDependencies": {

@@ -1612,3 +1612,126 @@ table.tbl tbody tr:hover td {
   text-align: center;
 }
 
+/* Research paper left-column TOC.
+   Mirrors the global .sidebar-item rollover so the TOC reads as a
+   secondary nav inside the research panel. Colors come from the
+   master template via var(--*) tokens. */
+.r-toc-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.r-toc {
+  position: sticky;
+  top: var(--space-3);
+  align-self: start;
+  border-right: 1px solid var(--border);
+  padding-right: var(--space-4);
+}
+
+.r-toc__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  padding: 0 var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.r-toc__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.r-toc__list a {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px var(--space-3);
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-decoration: none;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  border-radius: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.r-toc__list a:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+.r-toc__list a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.r-toc__list a.is-active {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.r-toc-body {
+  min-width: 0;
+}
+
+/* Story checklist at the top of a research paper. */
+.r-storylist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.r-storylist__item {
+  display: grid;
+  grid-template-columns: 24px 64px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.r-storylist__item:hover {
+  background: var(--surface-sunken);
+}
+
+.r-storylist__mark {
+  font-weight: 700;
+  text-align: center;
+  font-size: 14px;
+}
+
+.r-storylist__mark--done { color: var(--accent, #2e7d32); }
+.r-storylist__mark--todo { color: var(--danger, #b00020); }
+
+.r-storylist__id {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.r-storylist__title {
+  color: var(--ink);
+}
+

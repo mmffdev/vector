@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
@@ -35,9 +36,12 @@ import (
 	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolioitems"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
+	"github.com/mmffdev/vector-backend/internal/ranking"
+	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
 	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/users"
+	"github.com/mmffdev/vector-backend/internal/workitems"
 )
 
 // Build-time identity. Set via -ldflags "-X main.Commit=… -X main.BuildTime=…"
@@ -147,6 +151,30 @@ func main() {
 
 	artefactsSvc := artefacts.New(pool)
 	artefactsH := artefacts.NewHandler(artefactsSvc)
+
+	workItemsSvc := workitems.New(pool)
+	workItemsH := workitems.NewHandler(workItemsSvc)
+
+	// Generic rank service. Resource registration happens here so the
+	// PermissionChecker can delegate to the owning package's authz —
+	// the loadRowForUpdate scopes by subscription_id, so a permissive
+	// checker is safe (tenant isolation is enforced at the SQL boundary).
+	ranking.Register("work_item", ranking.ResourceConfig{
+		Table:       "o_artefacts_execution_work_items",
+		ScopeColumn: "sprint_id",
+		Permissions: ranking.PermissionCheckerFunc(func(ctx context.Context, subscriptionID, rowID uuid.UUID) (bool, error) {
+			return true, nil
+		}),
+	})
+	rankSvc := ranking.New(pool)
+	rankH := ranking.NewHandler(rankSvc)
+
+	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
+	// bridge runs LISTEN rank_changed on a dedicated connection and
+	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
+	// in db/schema/069) to subscribed clients.
+	rtHub := realtime.NewHub()
+	realtime.StartRankListener(context.Background(), pool, rtHub)
 
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
@@ -488,6 +516,87 @@ func main() {
 			r.Patch("/schema/{schema_id}", artefactsH.PatchSchema)
 			r.Delete("/schema/{schema_id}", artefactsH.ArchiveSchema)
 		})
+	})
+
+	// ---- /api/rank ----
+	// One generic endpoint serves every registered resource. The
+	// resource_type field in the body picks the registry entry; the
+	// service enforces tenant isolation by scoping every query by
+	// subscription_id from the session (never the body).
+	r.Route("/api/rank", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(240, time.Minute))
+
+		r.Post("/move", rankH.Move)
+	})
+
+	// ---- /ws ----
+	// One WebSocket per connected client; topic-based fan-out via the
+	// realtime hub. Auth: session-cookie required (RequireAuth runs on
+	// the upgrade request before Accept). Tenant isolation: every
+	// subscribe frame is rejected unless the topic carries the caller's
+	// own subscription_id — see Client.topicAllowed.
+	r.Group(func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Get("/ws", realtime.ServeWS(rtHub))
+	})
+
+	// ---- /api/work-items ----
+	r.Route("/api/work-items", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", workItemsH.List)
+		r.Post("/", workItemsH.Create)
+		r.Get("/{id}", workItemsH.Get)
+		r.Patch("/{id}", workItemsH.Patch)
+		r.Delete("/{id}", workItemsH.Archive)
+		r.Get("/{id}/children", workItemsH.ListChildren)
+		r.Get("/{id}/field-values", workItemsH.ListFieldValues)
+		r.Put("/{id}/field-values", workItemsH.UpsertFieldValues)
+		r.Delete("/{id}/field-values/{field_library_id}", workItemsH.DeleteFieldValue)
+	})
+
+	// ---- /api/sprints ----
+	r.Route("/api/sprints", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", workItemsH.ListSprints)
+		r.Post("/", workItemsH.CreateSprint)
+		r.Get("/{id}", workItemsH.GetSprint)
+		r.Patch("/{id}", workItemsH.PatchSprint)
+		r.Delete("/{id}", workItemsH.ArchiveSprint)
+	})
+
+	// ---- /api/custom-field-library ----
+	r.Route("/api/custom-field-library", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", workItemsH.ListCustomFields)
+		r.Post("/", workItemsH.CreateCustomField)
+		r.Get("/{id}", workItemsH.GetCustomField)
+		r.Patch("/{id}", workItemsH.PatchCustomField)
+		r.Delete("/{id}", workItemsH.ArchiveCustomField)
+	})
+
+	// ---- /api/work-item-templates ----
+	r.Route("/api/work-item-templates", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", workItemsH.ListTemplates)
+		r.Post("/", workItemsH.CreateTemplate)
+		r.Get("/{id}", workItemsH.GetTemplate)
+		r.Post("/{id}/fields", workItemsH.AddTemplateField)
+		r.Delete("/{id}/fields/{field_library_id}", workItemsH.RemoveTemplateField)
 	})
 
 	// ---- /api/portfolio-items ----

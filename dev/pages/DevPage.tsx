@@ -3,16 +3,16 @@
 import { useState } from "react";
 import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
+import { useDevTab } from "@/app/contexts/DevTabContext";
 import { api } from "@/app/lib/api";
 import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
 import DevShortcutsPanel from "./DevShortcutsPanel";
 import DevReportsPanel from "./DevReportsPanel";
 import DevResearchPanel from "./DevResearchPanel";
-
-type DevTab = "setup" | "shortcuts" | "reports" | "research";
+import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 export default function DevPage() {
-  const [tab, setTab] = useState<DevTab>("setup");
+  const { activeTab: tab, setActiveTab: setTab } = useDevTab();
   const [copied, setCopied] = useState(false);
   const { enabled: masterDebug, setEnabled: setMasterDebug } = useMasterDebug();
   const [resetLoading, setResetLoading] = useState(false);
@@ -82,11 +82,22 @@ export default function DevPage() {
         >
           Research
         </button>
+        <button
+          className={`dev-tab${tab === "icons" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("icons")}
+        >
+          Icons
+        </button>
       </nav>
 
       {tab === "shortcuts" && <DevShortcutsPanel />}
       {tab === "reports" && <DevReportsPanel />}
       {tab === "research" && <DevResearchPanel />}
+      {tab === "icons" && (
+        <div style={{ height: "calc(100vh - 160px)" }}>
+          <UiAppIconbrowser />
+        </div>
+      )}
 
       {tab === "setup" && <div className="dev-doc">
         <section className="dev-section">

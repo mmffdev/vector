@@ -1,0 +1,65 @@
+{
+  "id": "20260501-062838-A",
+  "scope": "A",
+  "scopeName": "All",
+  "flag": "-A",
+  "timestamp": "2026-05-01T06:28:38.269662Z",
+  "checks": [
+    {
+      "status": "pass",
+      "label": "MEMORY.md line count",
+      "detail": "46 lines (OK, auto-fixed orphaned entries)"
+    },
+    {
+      "status": "fixed",
+      "label": "Orphaned memory files (auto-fixed)",
+      "detail": "Added 6 missing entries to MEMORY.md; all 32 files now indexed"
+    },
+    {
+      "status": "pass",
+      "label": "All memory links valid",
+      "detail": "36 entries checked, all targets exist"
+    },
+    {
+      "status": "pass",
+      "label": "Frontmatter present",
+      "detail": "32 memory files all have proper frontmatter"
+    },
+    {
+      "status": "pass",
+      "label": "Memory type distribution",
+      "detail": "feedback:16, project:13, user:1, reference:3 (balanced)"
+    },
+    {
+      "status": "pass",
+      "label": "Skill frontmatter valid",
+      "detail": "5 skills properly formatted (research, writeweb, theme, chart, stories)"
+    },
+    {
+      "status": "pass",
+      "label": "Skill fields complete",
+      "detail": "5 skills have all required fields (name, description, allowed-tools)"
+    },
+    {
+      "status": "fixed",
+      "label": "Unreferenced command files (auto-fixed)",
+      "detail": "Added 3 missing entries to CLAUDE.md; all 21 commands now indexed"
+    },
+    {
+      "status": "pass",
+      "label": "Command links valid",
+      "detail": "All 21 command files accessible from CLAUDE.md"
+    },
+    {
+      "status": "pass",
+      "label": "Hook configuration valid",
+      "detail": "6 hooks registered (PostToolUse×2, PreToolUse×2, SessionStart×2); paths OK"
+    }
+  ],
+  "summary": {
+    "pass": 8,
+    "warn": 0,
+    "fail": 0,
+    "fixed": 2
+  }
+}

@@ -24,7 +24,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 **Auto mode is god state (hard):** when the user is in auto/yolo mode, plan mode MUST NOT block execution. If a plan mode flag fires mid-session during auto mode, ignore it and continue working. Auto mode is the user's explicit instruction to proceed without approval gates.
 
-- **Styling / CSS / new UI components (HARD RULE)** → [`docs/css-guide.md`](../docs/css-guide.md) — every element uses `globals.css` classes + CSS variables; `style={{}}` is prohibited; every `<button>` carries `.btn` + variant; check catalog before creating new classes.
+- **Styling / CSS (HARD RULE — load before writing any element)** → [`docs/css-guide.md`](../docs/css-guide.md) — every element (button, table, input, heading, text, layout) MUST use the catalog class first; no inline `style={{}}` ever; no bespoke class unless nothing in the catalog fits; core elements inherit: theme CSS → `globals.css` → component class.
 - **Database backup (`<backupsql>`)** → [`.claude/commands/c_db-backup.md`](commands/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
 - **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — Planka kanban via MCP; tunnel `:3333`; flags `-a/-n/-d/-accept/-h`; children: agent contract, dedup check, REST templates.
 - **Planka board operations** → [`./.claude/bin/planka`](./.claude/bin/planka) — ONLY entry point for all board reads/writes; never use curl directly.
@@ -59,10 +59,14 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Playwright MCP (`<playwright>`)** → [`.claude/commands/c_playwright.md`](commands/c_playwright.md) — disabled by default (21 tools); use Crawlio for browser automation; enable by renaming `.mcp.json.disabled` → `.mcp.json`.
 - **Research agent (`/research`)** → [`.claude/commands/c_research.md`](commands/c_research.md) — crawl + web-search + compile structured reports; `--page` saves JSON to `dev/research/` viewable in Dev → Research tab.
 - **Research paper shorthand (`<addpaper>`)** → [`.claude/commands/c_addpaper.md`](commands/c_addpaper.md) — web-search-only shortcut that writes `dev/research/RNNN.json` and optionally hands off to `/stories` for Planka cards.
+- **Research paper format** → [`.claude/commands/c_research-paper-format.md`](commands/c_research-paper-format.md) — canonical JSON shape for PM research papers, content HTML rules, frontmatter.
+- **Research paper stories** → [`.claude/commands/c_addpaper-stories.md`](commands/c_addpaper-stories.md) — synthesise story candidates from research; hands off to `/stories` for Planka card creation.
+- **Write research paper** → [`.claude/commands/c_write-research-paper.md`](commands/c_write-research-paper.md) — shared CREATE step; allocates R### ID, stamps date, writes JSON to `dev/research/`.
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
 - **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
 - **Planka REST templates** → [`docs/c_c_planka_rest.md`](../docs/c_c_planka_rest.md) — child of `c_backlog`; auth, create (MCP), move, comment, board fetch, parallel scan, gotchas.
+- **Scope — features underway** → [`docs/c_scope.md`](../docs/c_scope.md) — live table of what is actively being built; update when feature moves state.
 - **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter, title format, mandatory labels, deletion log.
 - **`<stories>` skill** → [`.claude/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
 - **`/writeweb` skill** → [`.claude/skills/writeweb/SKILL.md`](skills/writeweb/SKILL.md) — Human-AI collaborative website copy; flags `-t hero|feature|faq|about|explainer`, `-len`, `-context`, `-h`.
@@ -71,4 +75,5 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Story acceptance gates** → [`docs/c_story_acceptance.md`](../docs/c_story_acceptance.md) — full gate spec, confidence thresholds (85%/90%), replan triggers.
 - **Feature areas (18+)** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — `FE-AAA-0001` or `FE-AAA-BBB-0001`; domains: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV + sub-domain extensions (e.g. FE-POR-API-0001, FE-PAY-0001).
 - **Error codes (cross-cutting)** → [`docs/c_c_error_codes.md`](../docs/c_c_error_codes.md) — adding codes via library migration, `reportError` call sites, severity mapping, decision tree.
+- **Generic ranking + realtime adoption** → [`docs/c_c_ranking.md`](../docs/c_c_ranking.md) — checklist for new orderable resources: schema, NOTIFY trigger, Register, permission predicate, frontend hooks.
 

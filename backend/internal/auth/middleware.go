@@ -28,12 +28,19 @@ func WithUserForTest(ctx context.Context, u *models.User) context.Context {
 
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Browsers cannot set Authorization headers on the WebSocket
+		// upgrade handshake, so we also accept ?access_token=... for
+		// the /ws route. Header takes precedence when both are sent.
 		authz := r.Header.Get("Authorization")
-		if !strings.HasPrefix(authz, "Bearer ") {
+		var raw string
+		if strings.HasPrefix(authz, "Bearer ") {
+			raw = strings.TrimPrefix(authz, "Bearer ")
+		} else if q := r.URL.Query().Get("access_token"); q != "" {
+			raw = q
+		} else {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		raw := strings.TrimPrefix(authz, "Bearer ")
 		claims, err := ParseAccessToken(raw)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)

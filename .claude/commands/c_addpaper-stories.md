@@ -129,7 +129,7 @@ After `/stories` reports success, print:
 PM's `/stories` skill enforces 7 mandatory gates that protect the backlog from incomplete cards. Bypassing it would create cards missing labels, IDs, or acceptance criteria — which is a defect per the project's hard rules. Always go through `/stories`.
 
 ### Decomposition across layers
-PM's **storify-all-layers rule** (`feedback_storify_all_layers.md`): before invoking `/stories`, decompose the feature across backend, frontend, migration, and tests. A research-derived story for "add deeplinks" probably needs at least three cards — one per layer. Catch this in Step 1, not after Planka is full of half-cards.
+PM's **stories-all-layers rule** (`feedback_stories_all_layers.md`): before invoking `/stories`, decompose the feature across backend, frontend, migration, and tests. A research-derived story for "add deeplinks" probably needs at least three cards — one per layer. Catch this in Step 1, not after Planka is full of half-cards.
 
 ### When in doubt, decline
 The user can always say `<addpaper>` again and ask for stories later. Better to write the paper without stories than to create weak cards that need rework.

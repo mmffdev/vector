@@ -95,7 +95,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	if !u.IsActive {
 		return nil, ErrAccountInactive
 	}
-	if u.LockedUntil != nil && u.LockedUntil.After(time.Now()) {
+	if envInt("LOCKOUT_THRESHOLD", 5) > 0 && u.LockedUntil != nil && u.LockedUntil.After(time.Now()) {
 		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip, Metadata: map[string]any{"reason": "locked"}})
 		return nil, ErrAccountLocked
 	}
@@ -143,9 +143,12 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 }
 
 func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip string) {
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip})
 	threshold := envInt("LOCKOUT_THRESHOLD", 5)
+	if threshold == 0 {
+		return
+	}
 	dur := parseDurationEnv("LOCKOUT_DURATION", 15*time.Minute)
-
 	newCount := u.FailedLoginCount + 1
 	if newCount >= threshold {
 		lockUntil := time.Now().Add(dur)
@@ -156,7 +159,6 @@ func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip stri
 	} else {
 		_, _ = s.Pool.Exec(ctx, `UPDATE users SET failed_login_count = $1 WHERE id = $2`, newCount, u.ID)
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip})
 }
 
 func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*LoginResult, error) {

@@ -97,6 +97,19 @@ def move_card(card_id, list_id, position):
         data={"listId": list_id, "position": position},
         token=token)
 
+def update_card(card_id, name, description):
+    """Update a card's title and/or description. Pass empty string to leave unchanged."""
+    token = get_token()
+    payload = {}
+    if name:
+        payload["name"] = name
+    if description:
+        payload["description"] = description
+    if not payload:
+        print("ERROR: update-card requires at least one of name/description", file=sys.stderr)
+        sys.exit(1)
+    http_request("PATCH", f"{PLANKA_URL}/api/cards/{card_id}", data=payload, token=token)
+
 def comment(card_id, text):
     """Post a comment on a card"""
     token = get_token()
@@ -184,6 +197,8 @@ if __name__ == "__main__":
             label_card(sys.argv[2], sys.argv[3])
         elif cmd == "move-card":
             move_card(sys.argv[2], sys.argv[3], int(sys.argv[4]))
+        elif cmd == "update-card":
+            update_card(sys.argv[2], sys.argv[3], sys.argv[4])
         elif cmd == "comment":
             comment(sys.argv[2], sys.argv[3])
         elif cmd == "delete-card":

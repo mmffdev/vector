@@ -1,0 +1,133 @@
+/* Icon Browser dev app */
+
+.icon-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--font-sans);
+}
+
+.icon-browser__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.icon-browser__search {
+  flex: 1;
+}
+
+.icon-browser__tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.icon-browser__tab {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.icon-browser__tab--active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.icon-browser__grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.icon-browser__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.icon-browser__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--surface);
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.icon-browser__item:hover {
+  background: var(--surface-sunken);
+  border-color: var(--accent);
+}
+
+.icon-browser__item--copied {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.icon-browser__icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.icon-browser__name {
+  font-size: 9px;
+  color: var(--ink-muted);
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.3;
+  max-width: 100%;
+}
+
+.icon-browser__count {
+  font-size: 11px;
+  color: var(--ink-muted);
+  padding: 4px 0 0 0;
+}
+
+.icon-browser__empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+  padding: 40px 0;
+}
+
+.icon-browser__toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--ink-contrast);
+  padding: 8px 16px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.icon-browser__toast--hidden {
+  opacity: 0;
+}

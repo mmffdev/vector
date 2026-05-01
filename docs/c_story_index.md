@@ -1,6 +1,8 @@
 # Story Index
 
-**Last issued:** `00170`
+**Last issued:** `00223`
+
+**Note:** IDs 00175–00187 were previously allocated to Work Items feature area. PageBuilder stories start at 00188 (IDs 00188–00201, 14 stories total across 5 phases).
 
 ## Active phase
 

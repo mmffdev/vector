@@ -219,10 +219,16 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | POR | `FE-POR0002` | 2/? | `1764908162969765183` | Active | (reserved) |
 | POR | `FE-POR0003` | 3/? | `1764920807571588543` | Active | Model selector consumes portfolio_templates layers array |
 | LIB | `FE-LIB0001` | 1/? | `1764920805885478333` | Active | Portfolio template seed data |
-| ITM | — | 0/? | — | Ready | Work items / state machines |
+| ITM | `FE-ITM-0001` | 1/? | `1765028025088345746` | Active | Work Items page — filter bar (type chips) |
+| ITM | `FE-ITM-0002` | 2/? | `1765028025952372371` | Active | Work Items tree grid — expandable 3-level hierarchy |
+| ITM | `FE-ITM-0003` | 3/? | `1765028026841564820` | Active | Work item detail panel — core fields inline edit |
+| ITM | `FE-ITM-0004` | 4/? | `1765028027713980053` | Active | Sprint selector on work item list/detail |
+| ITM | `FE-ITM-0005` | 5/? | `1765028028636726934` | Active | Custom field library manager + template builder + extended fields form |
+| ITM | `FE-ITM-0006` | 6/? | `1765161699268101298` | Active | Work items tree as first adopter of generic ranking UI (paired with FE-RNK-0001 for the cross-cutting hooks/components) |
 | DAT | — | 0/? | — | Ready | Data visualization / graphs |
 | UI | `FE-UI0001` | 1/? | `1761472628301759780` | Active | Portfolio wizard + adoption pages |
 | UI | `FE-UI0002` | 2/? | `1762058691722348184` | Active | Vector Design System facelift (all pages + components, branch: vector-rebrand-001) |
+| UI | `FE-UI-0003` | 3/? | `1765161701960844468` | Active | Shared `useRealtimeSubscription` + `useResourceRank` + `<DragHandleColumn />` (resource-agnostic; consumed by every adopter via FE-RNK-0001) |
 | UX | — | 0/? | — | Ready | User experience / workflows |
 | SEC | `FE-SEC0001` | 1/? | `1760810747115341214` | Active | Security baseline |
 | SEC | `FE-SEC0005` | 5/? | `1762205064870495730` | Active | Remote client access — MMFFDev admin login and dev panel access (PH-0020) |
@@ -239,6 +245,13 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API0007` | 7/? | `1763620460387370027` | Active | Defect CRUD API |
 | API | `FE-API0008` | 8/? | `1764908156065940793` | Active | (reserved) |
 | API | `FE-API0009` | 9/? | `1764920806707561918` | Active | portfolio-templates read endpoint |
+| API | `FE-API-0010` | 10/? | `1765028020894041741` | Active | Work items list endpoint (paginated, filterable) |
+| API | `FE-API-0011` | 11/? | `1765028021749679758` | Active | Work items children endpoint (tree expand) |
+| API | `FE-API-0012` | 12/? | `1765028022622094991` | Active | Work item CRUD (create, read, update, archive) |
+| API | `FE-API-0013` | 13/? | `1765028023435789968` | Active | Sprints CRUD |
+| API | `FE-API-0014` | 14/? | `1765028024257873553` | Active | Custom field library + templates CRUD + field values API |
+| API | `FE-API-0015` | 15/? | `1765161692095841454` | Active | Work item rank service + move endpoint + scoped list ordering + sprint membership transitions |
+| API | `FE-API-0016` | 16/? | `1765161694587258032` | Active | WebSocket hub + LISTEN/NOTIFY bridge + heartbeat/drain + work-item write publish hook |
 | SQL | `FE-SQL-0001` | 1/? | `1762271910986516028` | Active | Execution item migrations (user_stories, defects, item_labels, item_tags) |
 | SQL | `FE-SQL-0002` | 2/? | `1763620456000128038` | Active | user_stories table migration |
 | SQL | `FE-SQL-0003` | 3/? | `1763620456629273639` | Active | defects table migration |
@@ -247,14 +260,37 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | SQL | `FE-SQL-0006` | 6/? | `1763638918076433604` | Active | (reserved) |
 | SQL | `FE-SQL-0007` | 7/? | `1764908153691964727` | Active | (reserved) |
 | SQL | `FE-SQL-0008` | 8/? | `1764920805046617532` | Active | portfolio_templates schema (replace portfolio_models + layers) |
+| SQL | `FE-SQL-0009` | 9/? | `1765028019954517644` | Active | Work items schema migrations 063–065 (rename, epics, field library, sprints, core columns) |
+| SQL | `FE-SQL-0010` | 10/? | `1765161688908170412` | Active | Work item position columns (backlog_position, sprint_position) + NOTIFY trigger (migration 066) |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | — | 0/? | — | Ready | Algorithms / search / matching |
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
 | DEV | `FE-DEV0002` | 2/? | `1761301483015374767` | Active | Planning docs (database mapping) |
 | DEV | `FE-DEV0003` | 3/? | `1761469925852972291` | Active | Portfolio adoption action paths |
 | DEV | `FE-DEV0004` | 4/? | `1762105753893602703` | Active | Service health panel (DevServicesPanel, DevStatusFloat, /api/dev/services) |
+| DEV | `FE-DEV-0005` | 5/? | `1765161704259323062` | Active | Drag-and-drop + realtime test infrastructure (concurrent move tests, Playwright DnD, WebSocket integration) |
 | POR-API | `FE-POR-API-0001` | 1/? | `1763600697053415384` | Active | Portfolio item metadata + custom fields API |
 | POR-ITM | `FE-POR-ITM-0001` | 1/? | `1763600697623840729` | Active | Portfolio item rollup count materialisation |
+| RNK | `FE-RNK-0001` | 1/? | `1765168379871626688` | Active | Generic ranking — registry, position-columns convention, NOTIFY trigger, drag hooks (cross-cutting; applies to work items, defects, portfolio levels, library items, any future orderable resource) |
+| PGB | `FE-PGB-0001` | 1/? | `1765030735346927470` | Active | Page builder feature area (standalone, paywalled) |
+| PGB | `FE-PGB-0002` | 2/? | `1765030737485874878` | Active | — |
+| PGB | `FE-PGB-0003` | 3/? | `1765030739665707958` | Active | — |
+| PGB | `FE-PGB-0004` | 4/? | `1765030741741539349` | Active | — |
+| PGB | `FE-PGB-0005` | 5/? | `1765030743825827878` | Active | — |
+| PGB | `FE-PGB-0006` | 6/? | `1765030745910116407` | Active | — |
+| PGB | `FE-PGB-0007` | 7/? | `1765030748089049084` | Active | — |
+| PGB | `FE-PGB-0008` | 8/? | `1765030750209990682` | Active | — |
+| PGB | `FE-PGB-0009` | 9/? | `1765030752330932280` | Active | — |
+| PGB | `FE-PGB-0010` | 10/? | `1765030754451873878` | Active | — |
+| PGB | `FE-PGB-0011` | 11/? | `1765030756572815476` | Active | — |
+| PGB | `FE-PGB-0012` | 12/? | `1765030758693757074` | Active | — |
+| PGB | `FE-PGB-0013` | 13/? | `1765030760084932486` | Active | — |
+
+---
+
+## Decomposition Strategy: 100 Stories Across 6 Phases
+
+PageBuilder is decomposed into 100 stories across 6 phases (Phase 0–6), per the research paper `dev/research/R019.json`. Each phase builds on the previous; see the research paper for full dependency order, story-level EST/RISK, and detailed acceptance criteria.
 
 ---
 

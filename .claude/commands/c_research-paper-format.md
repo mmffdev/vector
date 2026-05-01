@@ -57,6 +57,55 @@ The `content` field is a **single HTML string** — semantic HTML only.
 
 ---
 
+## Left-column TOC wrapper (mandatory when ≥2 `<h2>` sections)
+
+Every paper with two or more `<h2>` sections **must** wrap its content in a left-column table-of-contents layout. The Dev → Research panel renders this as a sticky sidebar with sidebar-style hover and scroll-spy highlighting (driven by `dev/styles/dev.css` — no inline styles).
+
+### Required HTML pattern
+
+```html
+<div class="r-toc-layout">
+  <aside class="r-toc">
+    <div class="r-toc__label">Contents</div>
+    <ol class="r-toc__list">
+      <li><a href="#section-slug-1">1. Section Title One</a></li>
+      <li><a href="#section-slug-2">2. Section Title Two</a></li>
+      <!-- one <li> per <h2> in the body, in document order -->
+    </ol>
+  </aside>
+  <div class="r-toc-body">
+    <h2 id="section-slug-1">1. Section Title One</h2>
+    <p>...</p>
+    <h2 id="section-slug-2">2. Section Title Two</h2>
+    <p>...</p>
+    <!-- rest of the paper -->
+  </div>
+</div>
+```
+
+### Slug rules
+
+For each `<h2>`, derive its `id` and matching anchor `href` by:
+
+1. Strip inner HTML tags from the heading text.
+2. Lowercase, replace any run of non-alphanumeric chars with `-`.
+3. Trim leading/trailing `-`. If empty, use `section`.
+4. If the slug collides with an earlier one in the same paper, append `-2`, `-3`, etc.
+
+Examples:
+- `7. Core Column Set (universal, every artefact type)` → `7-core-column-set-universal-every-artefact-type`
+- `Phase 1 Implementation Status (2026-05-01)` → `phase-1-implementation-status-2026-05-01`
+
+### Hard rules
+
+- **No inline `style=` attributes** anywhere in the wrapper. All styling lives in `dev/styles/dev.css` under `.r-toc*`.
+- **Class names are exact**: `r-toc-layout`, `r-toc`, `r-toc__label`, `r-toc__list`, `r-toc-body`. Don't rename.
+- **Every `<h2>` in the body must have an `id`** matching its TOC entry's `href` — otherwise scroll-spy breaks.
+- **Skip the wrapper** entirely when the paper has 0 or 1 `<h2>` — a one-item TOC is noise.
+- **Sub-headings** (`<h3>` and below) are not included in the TOC.
+
+---
+
 ## Recommended sections
 
 For consistency across papers, prefer this section order:

@@ -487,12 +487,12 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
                 </button>
               </td>
             </tr>
-            {strategyOpen && <tr className="table__head">
-              <th className="table__cell layers-editor__drag-header" aria-label="Drag to reorder" />
-              <th className="table__cell">Order</th>
-              <th className="table__cell">Tag</th>
-              <th className="table__cell">Name</th>
-              <th className="table__cell">Description</th>
+            {strategyOpen && <tr className="layers-editor__zone-head">
+              <th className="layers-editor__drag-header" aria-label="Drag to reorder" />
+              <th>Order</th>
+              <th>Tag</th>
+              <th>Name</th>
+              <th>Description</th>
             </tr>}
             {strategyOpen && displayLayers.map((layer, index) => {
               const isDragOver = dropTargetIndex === index;
@@ -550,12 +550,12 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
                     </button>
                   </td>
                 </tr>
-                {executionOpen && <tr className="table__head">
-                  <th className="table__cell layers-editor__drag-header" aria-label="Drag to reorder" />
-                  <th className="table__cell">Order</th>
-                  <th className="table__cell">Tag</th>
-                  <th className="table__cell">Name</th>
-                  <th className="table__cell">Description</th>
+                {executionOpen && <tr className="layers-editor__zone-head">
+                  <th className="layers-editor__drag-header" aria-label="Drag to reorder" />
+                  <th>Order</th>
+                  <th>Tag</th>
+                  <th>Name</th>
+                  <th>Description</th>
                 </tr>}
                 {executionOpen && displayFixed.map((item) => (
                   <tr key={item.id} className="table__row layers-editor__row">

@@ -1,16 +1,14 @@
 # CSS Guide — Vector PM
 
-Single source of truth for styling. Read this before adding CSS.
+Single source of truth for styling. **Load this file before writing any HTML or JSX element.**
 
-## Rules
+## Pre-flight (run this before every element you write)
 
-**HARD RULE — ALL ELEMENTS:** Every element placed on a page MUST be styled via `app/globals.css` classes and CSS variables. This is non-negotiable. Specifically:
-
-1. **No inline styles — ever.** `style={{...}}` and style attributes are prohibited. If you catch yourself writing one, stop: add a class to `globals.css` instead. The only permitted exception is a genuinely dynamic value that cannot be expressed as a CSS variable — in that case, expose it as a CSS custom property (`style={{ "--my-var": value }}`) and reference it from a rule in `globals.css`.
-2. **No Tailwind, no CSS-in-JS.** Plain CSS + CSS variables only.
-3. **All values via CSS variables** — `color: var(--ink-1)`, never `color: #1f1f1f`.
-4. **One block class + modifiers per element** — `<button class="btn btn--primary btn--sm">`, not utility-class soup.
-5. **Use the catalog first.** Before writing any new class, check the component catalog below. If an existing block + modifier covers the case, use it. Only create a new class if nothing fits — then follow the "When you need a new component" checklist.
+1. **Is there a catalog class for this element?** → use it. Tables use `.table` + `.table__row` + `.table__cell`. Buttons use `.btn` + variant. Inputs use `.form__input`. Headings and body text inherit from `globals.css` via the theme. Do not invent a bespoke class if one already exists.
+2. **Inheritance chain — do not skip levels:** theme CSS (`globals.css` `:root` variables) → `globals.css` component classes → your JSX `className`. Never bypass this with inline styles or hardcoded values.
+3. **No `style={{...}}` — ever.** The only permitted exception: a runtime-computed value that is genuinely impossible to express as a static class (e.g. `paddingLeft: depth * 20`). In that case expose it as a CSS custom property and reference it from a `globals.css` rule.
+4. **No hardcoded colours, sizes, or fonts.** Use `var(--ink)`, `var(--surface)`, `var(--font-mono)`, etc. See the Tokens section.
+5. **Need something new?** Follow the "When you need a new component" checklist at the bottom — catalog check → add to `globals.css` → update this guide → then use in JSX.
 
 ## Naming convention — BEM-lite
 
@@ -71,6 +69,7 @@ These are the canonical components. If you need something similar, extend with a
 | Primary CTA (one per region) | `.btn btn--primary` |
 | Cancel / secondary | `.btn btn--secondary` |
 | Quiet / icon-only | `.btn btn--ghost` |
+| Row expander / tree toggle | `.btn btn--icon btn--row-expander` |
 | Destructive | `.btn btn--danger` |
 | Smaller | add `.btn--sm` |
 | Larger | add `.btn--lg` |
@@ -87,16 +86,39 @@ Shape         → border-radius: 0;  height: 40px; (matches .btn geometry)
 
 ### Tables
 
+**HARD RULE — canonical structure. Every table in the app MUST follow this exact shape. No variations.**
+
+```jsx
+<div className="table-wrap">
+  <table className="table" aria-label="…">
+    <colgroup>…</colgroup>          {/* optional but recommended for fixed widths */}
+    <thead className="table__head">
+      <tr>
+        <th className="table__cell">Column</th>
+        <th className="table__cell table__cell--numeric">Pts</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr className="table__row">
+        <td className="table__cell">Value</td>
+        <td className="table__cell table__cell--numeric">5</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 ```
-.table
-.table__head
-.table__body
-.table__row
-.table__cell
-.table__cell--numeric  /* right-aligned */
-.table__cell--muted    /* de-emphasized */
-.table-wrap            /* scroll container */
-```
+
+| Class | Where | Purpose |
+|---|---|---|
+| `.table-wrap` | outer `<div>` | surface bg, border, overflow:hidden |
+| `.table` | `<table>` | full-width, border-collapse |
+| `.table__head` | `<thead>` | sunken header background |
+| `.table__cell` | `<th>` and `<td>` | padding, height, ink colour, border |
+| `.table__row` | `<tr>` in `<tbody>` only | hover state, border-bottom |
+| `.table__cell--numeric` | modifier on `<th>`/`<td>` | right-aligned, tabular nums |
+| `.table__cell--muted` | modifier on `<td>` | de-emphasised ink colour |
+
+**Never put `table__head` on a `<tr>` inside `<tbody>`.** Header rows belong in `<thead>`. If a table needs mid-body section headings (e.g. zone separators), use a dedicated separator class (e.g. `.layers-editor__row--group-sep`), not a re-use of `.table__head`.
 
 ### Forms
 

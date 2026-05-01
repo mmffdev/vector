@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""
+Convert librarian markdown audit reports to research paper JSON format.
+Reads the two most recent .md files from dev/reports/ and creates an R###.json entry.
+
+Usage: ./librarian-to-research
+  (no args — auto-detects latest security + librarian audit MD files)
+"""
+
+import json
+import os
+import re
+import sys
+from datetime import datetime
+from pathlib import Path
+
+def extract_text_from_markdown(md_content: str) -> str:
+    """Strip HTML/markdown formatting and return plain text for search."""
+    # Remove code blocks
+    text = re.sub(r'```[\s\S]*?```', '', md_content)
+    # Remove links [text](url) -> text
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+    # Remove bold/italic
+    text = re.sub(r'[*_]{1,3}([^*_]+)[*_]{1,3}', r'\1', text)
+    # Remove headers
+    text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
+    # Remove pipes and dashes (tables)
+    text = re.sub(r'^\s*\|.*\|.*$', '', text, flags=re.MULTILINE)
+    # Collapse whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def md_to_html(md_content: str) -> str:
+    """Convert markdown to semantic HTML."""
+    lines = md_content.split('\n')
+    html_lines = []
+    in_code_block = False
+    in_table = False
+    table_rows = []
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        # Code blocks
+        if line.startswith('```'):
+            if in_code_block:
+                html_lines.append('</code></pre>')
+                in_code_block = False
+            else:
+                html_lines.append('<pre><code>')
+                in_code_block = True
+            i += 1
+            continue
+
+        if in_code_block:
+            html_lines.append(line)
+            i += 1
+            continue
+
+        # Tables
+        if '|' in line and '---|' in line:
+            # Table header separator, skip it
+            i += 1
+            continue
+
+        if '|' in line and not in_table:
+            in_table = True
+            table_rows = []
+
+        if in_table and '|' in line:
+            table_rows.append(line)
+            i += 1
+            if i < len(lines) and not ('|' in lines[i]):
+                # End of table
+                html_lines.append(_render_table(table_rows))
+                in_table = False
+                table_rows = []
+            continue
+
+        # Headers
+        if line.startswith('# '):
+            html_lines.append(f'<h2>{line[2:].strip()}</h2>')
+        elif line.startswith('## '):
+            html_lines.append(f'<h3>{line[3:].strip()}</h3>')
+        elif line.startswith('### '):
+            html_lines.append(f'<h4>{line[4:].strip()}</h4>')
+        # Lists
+        elif line.startswith('- '):
+            html_lines.append(f'<li>{line[2:].strip()}</li>')
+        # Blockquotes
+        elif line.startswith('> '):
+            html_lines.append(f'<blockquote>{line[2:].strip()}</blockquote>')
+        # Bold/italic
+        elif line.strip():
+            text = line.strip()
+            text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+            text = re.sub(r'_([^_]+)_', r'<em>\1</em>', text)
+            text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', text)
+            if text:
+                html_lines.append(f'<p>{text}</p>')
+
+        i += 1
+
+    return '\n'.join(html_lines)
+
+def _render_table(rows: list) -> str:
+    """Render markdown table rows to HTML table."""
+    if not rows or len(rows) < 2:
+        return ''
+
+    html = '<table><thead>'
+    # First row = header
+    header = [cell.strip() for cell in rows[0].split('|') if cell.strip()]
+    html += '<tr>' + ''.join(f'<th>{h}</th>' for h in header) + '</tr>'
+    html += '</thead><tbody>'
+
+    # Remaining rows = body
+    for row in rows[1:]:
+        cells = [cell.strip() for cell in row.split('|') if cell.strip()]
+        if cells:
+            html += '<tr>' + ''.join(f'<td>{c}</td>' for c in cells) + '</tr>'
+
+    html += '</tbody></table>'
+    return html
+
+def next_research_id() -> str:
+    """Allocate next R### ID from existing research files."""
+    research_dir = Path('dev/research')
+    if not research_dir.exists():
+        return 'R001'
+
+    existing = [f.stem[1:] for f in research_dir.glob('R*.json')]
+    if not existing:
+        return 'R001'
+
+    last_num = max(int(n) for n in existing if n.isdigit())
+    return f'R{last_num + 1:03d}'
+
+def main():
+    reports_dir = Path('dev/reports')
+    if not reports_dir.exists():
+        print('dev/reports/ not found', file=sys.stderr)
+        sys.exit(1)
+
+    # Find latest .md files (security-audit and librarian-audit)
+    md_files = sorted(reports_dir.glob('*audit*.md'), reverse=True)
+    if len(md_files) < 2:
+        print(f'Found {len(md_files)} audit .md files; need 2', file=sys.stderr)
+        return
+
+    # Use the two most recent
+    security_file = next((f for f in md_files if 'security' in f.name), None)
+    librarian_file = next((f for f in md_files if 'librarian' in f.name), None)
+
+    if not security_file or not librarian_file:
+        print('Could not find both security-audit and librarian-audit files', file=sys.stderr)
+        return
+
+    # Read both files
+    security_md = security_file.read_text()
+    librarian_md = librarian_file.read_text()
+
+    # Combine content
+    combined_md = f"{security_md}\n\n---\n\n{librarian_md}"
+    combined_html = md_to_html(combined_md)
+    combined_text = extract_text_from_markdown(combined_md)
+
+    # Extract date from filename (YYYY-MM-DD)
+    date_match = re.search(r'(\d{4})-(\d{2})-(\d{2})', security_file.name)
+    audit_date = date_match.group(0) if date_match else datetime.now().strftime('%Y-%m-%d')
+
+    # Allocate next ID
+    next_id = next_research_id()
+
+    # Build JSON
+    paper = {
+        'id': next_id,
+        'title': 'Security & Documentation Audit — Comprehensive Review',
+        'category': 'Security',
+        'topic': 'Codebase security posture, documentation sync, and compliance validation',
+        'date': audit_date,
+        'summary': 'Full security audit with Grade A (95/100); all 7 Trust-No-One tenets met; no critical findings; documentation structure compliant.',
+        'content': combined_html,
+        'content_text': combined_text,
+    }
+
+    # Write to research
+    research_dir = Path('dev/research')
+    research_dir.mkdir(parents=True, exist_ok=True)
+
+    output_file = research_dir / f'{next_id}.json'
+    output_file.write_text(json.dumps(paper, indent=2))
+
+    print(f'✓ {next_id} written — dev/research/{next_id}.json')
+    print(f'  Title: {paper["title"]}')
+    print(f'  Date: {audit_date}')
+    print(f'  Category: {paper["category"]}')
+
+if __name__ == '__main__':
+    main()

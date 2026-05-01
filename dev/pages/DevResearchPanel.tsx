@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDevTab } from "@/app/contexts/DevTabContext";
 import type { ResearchMeta } from "@/app/api/dev/research/route";
 
 function pickContrastFor(color: string): string {
@@ -46,11 +47,35 @@ function pageSizeLabel(n: number) {
 }
 
 function ResearchItem({ meta }: { meta: ResearchMeta }) {
-  const [open, setOpen] = useState(false);
+  const { openResearchPapers, toggleResearchPaper } = useDevTab();
+  const [open, setOpen] = useState(() => openResearchPapers.has(meta.id));
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+
+  // Load content if paper should be open on mount or when openResearchPapers changes
+  useEffect(() => {
+    const shouldBeOpen = openResearchPapers.has(meta.id);
+    if (shouldBeOpen && content === null) {
+      // Paper should be open and content not yet loaded, so load it
+      (async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const res = await fetch(`/api/dev/research?id=${encodeURIComponent(meta.id)}`);
+          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          const data = await res.json();
+          setContent(data.content ?? "");
+          setOpen(true);
+        } catch (e: any) {
+          setError(e?.message ?? "Failed to load report.");
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [openResearchPapers, meta.id, content]);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -148,8 +173,10 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
   }
 
   function toggle() {
-    if (!open) loadContent();
-    setOpen(o => !o);
+    const newOpen = !open;
+    if (newOpen) loadContent();
+    setOpen(newOpen);
+    toggleResearchPaper(meta.id, newOpen);
   }
 
   return (

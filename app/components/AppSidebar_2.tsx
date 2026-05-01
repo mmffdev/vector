@@ -123,16 +123,33 @@ function SidebarItem({
 
       {hasChildren && expanded && (
         <div className="sidebar-children">
-          {childItems.map((child) => (
-            <Link
-              key={child.key}
-              href={child.href}
-              className={`sidebar-item sidebar-item--child ${isActivePath(pathname, child.href) ? "active" : ""}`}
-            >
-              <IconFor iconKey={childIconByKey[child.key] ?? child.icon} />
-              <span className="sidebar-item__label">{child.label}</span>
-            </Link>
-          ))}
+          {childItems.map((child, i) => {
+            const isLast = i === childItems.length - 1;
+            return (
+              <Link
+                key={child.key}
+                href={child.href}
+                className={`sidebar-item sidebar-item--child ${isActivePath(pathname, child.href) ? "active" : ""}`}
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <span className="sidebar-item__tree-icon" aria-hidden="true">
+                  {isLast ? (
+                    <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
+                      <path d="M0 0 L0 8 L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
+                      <path d="M0 0 L0 16 M0 8 L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  )}
+                </span>
+                <span className="sidebar-item__child-icon">
+                  <IconFor iconKey={childIconByKey[child.key] ?? child.icon} />
+                </span>
+                <span className="sidebar-item__label">{child.label}</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
