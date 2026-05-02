@@ -9220,3 +9220,33 @@ table.tbl tbody tr:hover td {
   font-size: 16px;
   line-height: 1;
 }
+
+/* PLA-0006 / 00277 — stress fixture page wrapper */
+
+.diagram-canvas-stress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 600px;
+}
+
+.diagram-canvas-stress__header {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.diagram-canvas-stress__metric {
+  white-space: nowrap;
+}
+
+.diagram-canvas-stress__canvas {
+  flex: 1 1 auto;
+  min-height: 600px;
+}
