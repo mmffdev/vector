@@ -9150,3 +9150,103 @@ table.tbl tbody tr:hover td {
     background-color: transparent;
   }
 }
+
+/* ============================================================
+   PLA-0006 / 00274 — DiagramCanvas primitive
+   ============================================================ */
+
+.diagram-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.diagram-canvas:active {
+  cursor: grabbing;
+}
+
+.diagram-canvas__layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.diagram-canvas__layer--static {
+  z-index: 1;
+}
+
+.diagram-canvas__layer--overlay {
+  z-index: 2;
+}
+
+.diagram-canvas__minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  padding: 0;
+  pointer-events: none;
+}
+
+.diagram-canvas__minimap canvas {
+  display: block;
+}
+
+.diagram-canvas__controls {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diagram-canvas__control-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* PLA-0006 / 00277 — stress fixture page wrapper */
+
+.diagram-canvas-stress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 600px;
+}
+
+.diagram-canvas-stress__header {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.diagram-canvas-stress__metric {
+  white-space: nowrap;
+}
+
+.diagram-canvas-stress__canvas {
+  flex: 1 1 auto;
+  min-height: 600px;
+}
