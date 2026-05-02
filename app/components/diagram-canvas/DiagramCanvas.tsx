@@ -11,8 +11,10 @@
 // 00274 shipped Canvas2D, hit-test, drag, MiniMap, fitView.
 // 00275 added d3-zoom for wheel + bg pan, a Web Worker dagre layout,
 //   and viewport virtualisation in the static painter.
-// 00276 will turn the gridSize prop into snap behaviour (commit-rounded
-//   drops + dagre output snapping).
+// 00276 turned the gridSize prop into snap behaviour: drag commits
+//   round to the nearest gridSize, and dagre output is snapped before
+//   becoming an override. Live drag still tracks the raw pointer so
+//   feedback feels analog — only the commit lands on the lattice.
 //
 // Addressable substrate: registers as
 // `samantha._viewport.<slot>._diagram_canvas.<name>` via the substrate
@@ -66,6 +68,14 @@ interface DragState {
   liveX: number;
   liveY: number;
   moved: boolean;
+}
+
+// 00276 — round a world coord to the nearest gridSize multiple. Used
+// for both drag commits and dagre output so positions stay aligned to
+// the visible dotted grid.
+function snapToGrid(value: number, gridSize: number): number {
+  if (gridSize <= 0) return value;
+  return Math.round(value / gridSize) * gridSize;
 }
 
 const DiagramCanvas = forwardRef<DiagramCanvasHandle, DiagramCanvasProps>(function DiagramCanvas(
@@ -374,7 +384,10 @@ const DiagramCanvas = forwardRef<DiagramCanvasHandle, DiagramCanvasProps>(functi
       setOverrides((prev) => {
         const next = new Map(prev);
         for (const [id, p] of Object.entries(result.positions)) {
-          next.set(id, p);
+          next.set(id, {
+            x: snapToGrid(p.x, gridSize),
+            y: snapToGrid(p.y, gridSize),
+          });
         }
         return next;
       });
@@ -605,8 +618,10 @@ const DiagramCanvas = forwardRef<DiagramCanvasHandle, DiagramCanvasProps>(functi
     dragRef.current = null;
 
     if (drag && drag.moved) {
-      const x = drag.liveX;
-      const y = drag.liveY;
+      // 00276 — snap commit to the lattice. Live drag tracked the raw
+      // pointer so feedback felt analog; the drop lands on grid.
+      const x = snapToGrid(drag.liveX, gridSize);
+      const y = snapToGrid(drag.liveY, gridSize);
       // Persist as local override so the drop position survives until
       // the consumer round-trips through props.
       setOverrides((prev) => {
