@@ -15,7 +15,7 @@ import { test, expect, Page } from "@playwright/test";
 // plan-amendment commit referencing PLA-0006.
 
 const LOGIN_EMAIL = "padmin@mmffdev.com";
-const LOGIN_PASSWORD = "TestPass1!";
+const LOGIN_PASSWORD = "password";
 
 const INITIAL_LOAD_BUDGET_MS = 1500;
 const MIN_DRAG_FPS = 30;
