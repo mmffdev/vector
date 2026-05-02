@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import type { ResearchMeta } from "@/app/api/dev/research/route";
+import { DevAccordion, DevAccordionItem } from "@dev/components/DevAccordion";
 
 function pickContrastFor(color: string): string {
   if (typeof document === "undefined") return "#000";
@@ -48,34 +49,35 @@ function pageSizeLabel(n: number) {
 
 function ResearchItem({ meta }: { meta: ResearchMeta }) {
   const { openResearchPapers, toggleResearchPaper } = useDevTab();
-  const [open, setOpen] = useState(() => openResearchPapers.has(meta.id));
+  const isOpen = openResearchPapers.has(meta.id);
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
-  // Load content if paper should be open on mount or when openResearchPapers changes
-  useEffect(() => {
-    const shouldBeOpen = openResearchPapers.has(meta.id);
-    if (shouldBeOpen && content === null) {
-      // Paper should be open and content not yet loaded, so load it
-      (async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const res = await fetch(`/api/dev/research?id=${encodeURIComponent(meta.id)}`);
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          const data = await res.json();
-          setContent(data.content ?? "");
-          setOpen(true);
-        } catch (e: any) {
-          setError(e?.message ?? "Failed to load report.");
-        } finally {
-          setLoading(false);
-        }
-      })();
+  async function loadContent() {
+    if (content !== null) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/dev/research?id=${encodeURIComponent(meta.id)}`);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const data = await res.json();
+      setContent(data.content ?? "");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load report.");
+    } finally {
+      setLoading(false);
     }
-  }, [openResearchPapers, meta.id, content]);
+  }
+
+  // Restore-from-storage: if this paper should be open at mount, fetch its content.
+  useEffect(() => {
+    if (isOpen && content === null && !loading) {
+      loadContent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -123,7 +125,6 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
             else visible.delete(id);
           });
           if (visible.size) {
-            // Pick the heading nearest the top of the viewport.
             let topId: string | null = null;
             let topY = Infinity;
             visible.forEach((_, id) => {
@@ -134,7 +135,6 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
             });
             setActive(topId);
           } else {
-            // Nothing intersecting — fall back to last heading scrolled past.
             const above = headings
               .filter(h => h.getBoundingClientRect().top < 80)
               .pop();
@@ -144,7 +144,6 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
         { rootMargin: "-72px 0px -65% 0px", threshold: [0, 0.1, 0.5, 1] }
       );
       headings.forEach(h => io!.observe(h));
-      // Seed: first heading active by default.
       setActive(headings[0].id);
     }
 
@@ -156,55 +155,39 @@ function ResearchItem({ meta }: { meta: ResearchMeta }) {
     };
   }, [content]);
 
-  async function loadContent() {
-    if (content !== null) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/dev/research?id=${encodeURIComponent(meta.id)}`);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const data = await res.json();
-      setContent(data.content ?? "");
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load report.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function toggle() {
-    const newOpen = !open;
-    if (newOpen) loadContent();
-    setOpen(newOpen);
-    toggleResearchPaper(meta.id, newOpen);
-  }
+  const header = (
+    <>
+      <span className="dev-research-id">{meta.id}</span>
+      <span className="dev-research-meta">
+        <span className="dev-research-title">{meta.title}</span>
+        <span className="dev-research-category">{meta.category}</span>
+        <span className="dev-research-date">{meta.date}</span>
+      </span>
+      <span className="dev-research-summary">{meta.summary}</span>
+    </>
+  );
 
   return (
-    <div className="accordion__item">
-      <button className="accordion__toggle" onClick={toggle}>
-        <span className="dev-research-id">{meta.id}</span>
-        <span className="dev-research-meta">
-          <span className="dev-research-title">{meta.title}</span>
-          <span className="dev-research-category">{meta.category}</span>
-          <span className="dev-research-date">{meta.date}</span>
-        </span>
-        <span className="dev-research-summary">{meta.summary}</span>
-        <span className={`accordion__chevron${open ? "" : " accordion__chevron--closed"}`} />
-      </button>
-      {open && (
-        <div className="accordion__body dev-research-body">
-          {loading && <div className="dev-research-loading">Loading…</div>}
-          {error && <div className="dev-alert dev-alert--error">{error}</div>}
-          {content !== null && !loading && (
-            <div
-              ref={contentRef}
-              className="dev-research-content"
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
-          )}
-        </div>
-      )}
-    </div>
+    <DevAccordionItem
+      header={header}
+      open={isOpen}
+      onOpenChange={(next) => {
+        if (next) loadContent();
+        toggleResearchPaper(meta.id, next);
+      }}
+    >
+      <div className="dev-research-body">
+        {loading && <div className="dev-research-loading">Loading…</div>}
+        {error && <div className="dev-alert dev-alert--error">{error}</div>}
+        {content !== null && !loading && (
+          <div
+            ref={contentRef}
+            className="dev-research-content"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+        )}
+      </div>
+    </DevAccordionItem>
   );
 }
 
@@ -304,9 +287,9 @@ export default function DevResearchPanel() {
 
       {filtered.length > 0 && (
         <>
-          <div className="accordion">
+          <DevAccordion>
             {visible.map(r => <ResearchItem key={r.id} meta={r} />)}
-          </div>
+          </DevAccordion>
 
           {pageSize !== 0 && totalPages > 1 && (
             <div className="dev-research-pagination">

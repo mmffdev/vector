@@ -111,7 +111,7 @@ export default function FilledPetalChart({
       role="img"
       aria-label="Filled petal chart"
     >
-      {petals.map((p, i) => {
+      {petals.map((_, i) => {
         const angle = i * angleStep;
         return (
           <g

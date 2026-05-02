@@ -1,0 +1,40 @@
+{
+  "id": "20260502-034747-paneIds",
+  "scope": "H",
+  "scopeName": "paneIds",
+  "flag": "lint:panes",
+  "timestamp": "2026-05-02T03:47:47",
+  "checks": [
+    {
+      "status": "pass",
+      "label": "nav-prefs.available",
+      "detail": "1 usage(s) \u2014 app/(user)/preferences/navigation/page.tsx:683"
+    },
+    {
+      "status": "pass",
+      "label": "nav-prefs.custom-nav",
+      "detail": "1 usage(s) \u2014 app/(user)/preferences/navigation/page.tsx:1609"
+    },
+    {
+      "status": "pass",
+      "label": "nav-prefs.new-group",
+      "detail": "1 usage(s) \u2014 app/(user)/preferences/navigation/page.tsx:1748"
+    },
+    {
+      "status": "pass",
+      "label": "nav-prefs.new-page",
+      "detail": "1 usage(s) \u2014 app/(user)/preferences/navigation/page.tsx:1688"
+    },
+    {
+      "status": "pass",
+      "label": "nav-prefs.pinned",
+      "detail": "1 usage(s) \u2014 app/(user)/preferences/navigation/page.tsx:1625"
+    }
+  ],
+  "summary": {
+    "pass": 5,
+    "warn": 0,
+    "fail": 0,
+    "fixed": 0
+  }
+}

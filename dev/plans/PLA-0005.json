@@ -1,0 +1,561 @@
+{
+  "id": "PLA-0005",
+  "title": "Universal addressable element registry — DB-backed, Dashboard-first, full-site sweep",
+  "date_created": "2026-05-02",
+  "date_started": null,
+  "date_last_updated": "2026-05-02",
+  "date_finished": null,
+  "phase": "PH-0005",
+  "scope": "<p>Replace ad-hoc <code>&lt;PaneHeader&gt;</code> adoption (5 panels, one page) with a single canonical addressable-element substrate that becomes the only blessed way to render a panel, table, or navigation block anywhere in the codebase. Every addressable element is one row in a new <code>page_addressables</code> Postgres table; one Go service (<code>addressables.Service</code>) is the only writer; one runtime registry (<code>DomRegistry</code>) walks the React tree, resolves addresses via <code>AddressContext</code>, and verifies live mounts against the DB.</p><p>Addresses follow the form <code>samantha._viewport.&lt;slot&gt;._kind.name[._kind.name…]</code> with leading underscore on every system segment so the address is self-tokenizing. Six closed-vocabulary viewport slots: <code>app | header | footer | side_bar | modal | toast</code>. No <code>_pageID</code> — addresses are page-scoped by where they mount, so custom apps composed via the Samantha SDK are zero-config.</p><p>Help bodies move to a new <code>page_help</code> table keyed by the addressable's UUID (not by string paneId), with a sibling <code>library_help_defaults</code> table that auto-seeds new addressables with canonical help copy keyed by <code>(kind, name_pattern)</code>. Locale column from day one. Existing <code>pane_help</code> rows are migrated forward then dropped.</p><p><strong>Phase A</strong> proves the substrate on <code>/dashboard</code> only (highest panel density). <strong>Phase B</strong> sweeps every other page in risk-ordered clusters. Lint flips to strict-by-default once the last cluster lands.</p>",
+  "value": "<ul><li>Every panel, table, and navigation block in the product becomes a stable, UUID-addressable element — bug reports, chat, screenshots, devtools, accessibility audits, and the help system all reference the same identity.</li><li>One component to evolve, one service to enforce writes, one lint to police adoption — zero forgotten panels.</li><li>Custom apps written via Samantha SDK pick up addresses automatically by composition; no manifest registration, no codemod, no per-app config.</li><li>Help authoring becomes one-to-many on a stable UUID — renames, locale variants, and library-default rollouts work without breaking links.</li><li>Address devtool (hover any element → copy full address) makes user feedback self-quoting.</li></ul>",
+  "implementation_plan": [
+    "Migration A: page_addressables table (UUID PK, parent self-FK, unique (parent_id, kind, name), source enum, soft_archive, last_seen_at, indexes on address + page_route).",
+    "Migration B: page_help (UUID FK to addressable, locale default 'en', body_html, soft_archive) + library_help_defaults (kind + name_pattern + body_html + library_ref).",
+    "Backend: addressables.Service (Go) — RegisterFromBuild, RegisterFromRuntime, Snapshot, library-default lookup, hard write boundary (only writer); REST surface POST /api/addressables/build-reconcile + POST /api/addressables/register + GET /api/addressables/snapshot + GET /api/page-help/:addressable_id.",
+    "UI substrate: DomRegistryProvider, useRegisterAddressable, AddressContext, <ViewportSlot kind=…>; calls /api/addressables/register on mount when context-derived address is missing (dev mode + custom-app only; prod refuses).",
+    "UI adopters: <Panel> (replaces <PaneHeader>), <Table>, <Navigation> — each ~10 lines on top of the substrate; <Panel> retains the TbHelpHexagon trigger, popover, and click-to-copy address pill.",
+    "Phase A — audit /dashboard inventory (count + classify every panel-shaped element so the wrap card can be estimated honestly).",
+    "Phase A — wrap every addressable on /dashboard; flip /dashboard to strict mode; verify registry rows + library-seeded help bodies render.",
+    "Live address devtool — hover overlay, address pill, copy-to-clipboard, ⌥click toggles.",
+    "Gadmin /dev/page-help editor (replaces /dev/pane-help from PLA-0004; same UX, joins through addressables; archive orphaned rows).",
+    "PLA-0004 carry-forward — migrate the 5 nav-prefs pane_help rows into page_help keyed by registry UUIDs; drop pane_help table.",
+    "Phase B sweep — /preferences/** (already partially adopted; mechanical re-wrap onto new substrate).",
+    "Phase B sweep — /dev/** (internal-only; failures don't reach users).",
+    "Phase B sweep — /portfolio-settings + /portfolio-model (gadmin-heavy but stable).",
+    "Phase B sweep — /work-items + /backlog (high-traffic but well-tested).",
+    "Phase B sweep — /library-releases (cross-tenant visibility; do last).",
+    "Lint flip — structural rule (any heading-as-first-child container MUST be <Panel>) + CI gate; default strict; per-page exemption list shrinks as sweep cards land; final story flips the last lenient page and removes the exemption table.",
+    "Samantha SDK contract — custom apps register at runtime via the substrate; help defaults try library → SDK manifest → null; documented as a hard rule.",
+    "Docs — docs/c_c_addressables.md leaf doc + CLAUDE.md pointer + c_scope.md Underway row + PLA-0004 closure note (pane_help architecture superseded; help system now under addressables)."
+  ],
+  "areas_impacted": [
+    "SQL: three new migrations (074 page_addressables, 075 page_help + library_help_defaults, 076 pane_help drop after backfill).",
+    "API: new addressables.Service Go module with hard write boundary; four new REST endpoints; one deprecated endpoint (/api/pane-help bulk and PUT).",
+    "UI: new substrate (DomRegistry, AddressContext, ViewportSlot) + three adopters (Panel, Table, Navigation) + every panel-shaped element on every page wrapped.",
+    "DEV: live address devtool, lint:addressables (replaces lint:panes), audit script for /dashboard, per-page sweep cards.",
+    "GOV: gadmin /dev/page-help editor (rename + new backend) replaces /dev/pane-help.",
+    "SEC: trust-no-one boundary at addressables.Service — direct INSERTs into page_addressables outside the service are forbidden; reconcile endpoint requires CI service-account auth; runtime register endpoint gated by NODE_ENV !== 'production' OR custom-app auth.",
+    "DOC: new leaf doc, CLAUDE.md pointer, c_scope.md row, PLA-0004 closure note."
+  ],
+  "feature_list": [
+    "page_addressables table — UUID PK, parent self-FK, unique sibling triple, soft-archive, source enum, last_seen_at GC marker.",
+    "page_help table keyed by addressable_id UUID + library_help_defaults table for canonical help copy keyed by (kind, name_pattern).",
+    "addressables.Service Go module — RegisterFromBuild / RegisterFromRuntime / Snapshot / library lookup; sole writer.",
+    "REST surface — build-reconcile (CI-only), register (dev/custom-app only), snapshot (read), page-help by addressable_id.",
+    "DomRegistry + AddressContext + useRegisterAddressable + <ViewportSlot> substrate (six viewport slots: app | header | footer | side_bar | modal | toast).",
+    "<Panel> (replaces <PaneHeader>), <Table>, <Navigation> adopters; <Panel> keeps TbHelpHexagon + popover + click-to-copy address pill.",
+    "/dashboard fully adopted (Phase A proving ground), strict mode on.",
+    "Live address devtool — hover overlay + address pill + copy-to-clipboard.",
+    "/dev/page-help gadmin editor (replaces /dev/pane-help; new backend).",
+    "Per-page-cluster sweeps for /preferences, /dev, /portfolio, /work-items + /backlog, /library-releases.",
+    "lint:addressables — structural rule + CI gate; per-page exemption list.",
+    "Samantha SDK help-manifest contract; addresses inherited from host context."
+  ],
+  "features_extended": [
+    "<strong>PLA-0004 extends:</strong> <code>&lt;PaneHeader&gt;</code> generalises into <code>&lt;Panel&gt;</code> as the first <code>kind</code> on a wider addressable substrate; help system migrates from string paneId → UUID FK.",
+    "<strong>PLA-0004 extends:</strong> <code>/dev/pane-help</code> editor renames to <code>/dev/page-help</code> with the same UX but a new backend join through addressables.",
+    "<strong>PLA-0004 extends:</strong> <code>lint:panes</code> upgrades into <code>lint:addressables</code> with structural rules and a strict-by-default CI gate."
+  ],
+  "features_removed": [
+    "pane_help table (string PK) — superseded by page_help (UUID FK); rows migrated forward then table dropped.",
+    "GET /api/pane-help bulk endpoint and PUT /api/pane-help/:paneId — replaced by GET /api/page-help/:addressable_id and the gadmin editor's writes through the same service.",
+    "Hand-maintained dev/registries/paneIds.json — replaced by the DB-backed registry + GET /api/addressables/snapshot."
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "SQL: page_addressables table migration (074) — UUID PK, parent self-FK, unique sibling triple, source enum, soft-archive, last_seen_at",
+      "story_id": "00244",
+      "status": "todo"
+    },
+    {
+      "order": 2,
+      "title": "SQL: page_help + library_help_defaults migration (075) — UUID FK to addressables, locale default 'en', soft-archive; library defaults keyed by (kind, name_pattern)",
+      "story_id": "00245",
+      "status": "todo"
+    },
+    {
+      "order": 3,
+      "title": "API: addressables.Service Go module — RegisterFromBuild / RegisterFromRuntime / Snapshot / library lookup; sole-writer trust boundary",
+      "story_id": "00246",
+      "status": "todo"
+    },
+    {
+      "order": 4,
+      "title": "API: REST surface — POST /api/addressables/build-reconcile + POST /api/addressables/register + GET /api/addressables/snapshot + GET /api/page-help/:addressable_id",
+      "story_id": "00247",
+      "status": "todo"
+    },
+    {
+      "order": 5,
+      "title": "UI: DomRegistry + AddressContext + useRegisterAddressable + <ViewportSlot> substrate (six closed-vocabulary slots)",
+      "story_id": "00248",
+      "status": "todo"
+    },
+    {
+      "order": 6,
+      "title": "UI: <Panel> + <Table> + <Navigation> adopters on the substrate; <Panel> retains TbHelpHexagon trigger + popover + click-to-copy address pill",
+      "story_id": "00249",
+      "status": "todo"
+    },
+    {
+      "order": 7,
+      "title": "DEV: audit /dashboard panel inventory — count + classify every panel-shaped element so the wrap card can be estimated honestly",
+      "story_id": "00250",
+      "status": "todo"
+    },
+    {
+      "order": 8,
+      "title": "UI: Phase A — wrap every addressable on /dashboard; flip /dashboard to strict mode; verify registry rows + library-seeded help bodies",
+      "story_id": "00251",
+      "status": "todo"
+    },
+    {
+      "order": 9,
+      "title": "DEV: live address devtool — hover overlay + address pill + copy-to-clipboard; ⌥click toggles",
+      "story_id": "00252",
+      "status": "todo"
+    },
+    {
+      "order": 10,
+      "title": "GOV: gadmin /dev/page-help editor — replaces /dev/pane-help; lists rows by address; inline edit + preview + library-default origin shown",
+      "story_id": "00253",
+      "status": "todo"
+    },
+    {
+      "order": 11,
+      "title": "SQL+API: migrate 5 nav-prefs pane_help rows → page_help UUIDs; drop pane_help table (migration 076); deprecate /api/pane-help endpoints",
+      "story_id": "00254",
+      "status": "todo"
+    },
+    {
+      "order": 12,
+      "title": "UI sweep: /preferences/** — re-wrap existing 5 PaneHeader adopters onto new <Panel> substrate; flip strict",
+      "story_id": "00255",
+      "status": "todo"
+    },
+    {
+      "order": 13,
+      "title": "UI sweep: /dev/** — wrap every panel/table/nav across DevPage, DevPlansPanel, DevReportsPanel, DevResearchPanel, DevPaneHelpPanel, DevShortcutsPanel; flip strict",
+      "story_id": "00256",
+      "status": "todo"
+    },
+    {
+      "order": 14,
+      "title": "UI sweep: /portfolio-settings + /portfolio-model — wrap addressables; flip strict",
+      "story_id": "00257",
+      "status": "todo"
+    },
+    {
+      "order": 15,
+      "title": "UI sweep: /work-items + /backlog — wrap addressables (highest-traffic surfaces); flip strict",
+      "story_id": "00258",
+      "status": "todo"
+    },
+    {
+      "order": 16,
+      "title": "UI sweep: /library-releases — wrap addressables; flip strict",
+      "story_id": "00259",
+      "status": "todo"
+    },
+    {
+      "order": 17,
+      "title": "DEV: lint:addressables — structural rule (heading-as-first-child container MUST be <Panel>) + CI gate; default strict; final story removes the exemption list",
+      "story_id": "00260",
+      "status": "todo"
+    },
+    {
+      "order": 18,
+      "title": "API+DOC: Samantha SDK help-manifest contract — custom apps register at runtime via substrate; help defaults try library → SDK manifest → null; documented as a hard rule",
+      "story_id": "00261",
+      "status": "todo"
+    },
+    {
+      "order": 19,
+      "title": "DOC: docs/c_c_addressables.md leaf + CLAUDE.md pointer + c_scope.md Underway row + PLA-0004 closure note",
+      "story_id": "00262",
+      "status": "todo"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "db/schema/074_page_addressables.sql creates page_addressables with id uuid PK, parent_id uuid self-FK nullable, kind text NOT NULL, name text NOT NULL, address text NOT NULL, source text CHECK in ('build','runtime','custom_app'), custom_app_id uuid nullable, soft_archived bool default false, last_seen_at timestamptz, created_at + updated_at",
+      "proven_by": "migration file inspection",
+      "story_id": "00244",
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "Unique constraint enforces (parent_id, kind, name) with WHERE soft_archived=false; partial index on address for fast snapshot reads; index on (page_route, soft_archived)",
+      "proven_by": "psql \\d page_addressables",
+      "story_id": "00244",
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "Migration runs cleanly against dev DB; SELECT count(*) FROM page_addressables returns 0; constraint violations on duplicate sibling triples return 23505",
+      "proven_by": "psql verification + insert smoke test",
+      "story_id": "00244",
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "db/schema/075_page_help.sql creates page_help (id uuid PK, addressable_id uuid FK ON DELETE RESTRICT, body_html, locale default 'en', seeded_from, library_ref uuid, soft_archived, updated_at, updated_by) with unique (addressable_id, locale) WHERE soft_archived=false",
+      "proven_by": "migration file inspection",
+      "story_id": "00245",
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "Same migration creates library_help_defaults (id uuid PK, kind text, name_pattern text, body_html text, locale default 'en') and seeds default rows for kind in ('panel','table','navigation') with generic placeholder bodies",
+      "proven_by": "psql verification (3+ rows)",
+      "story_id": "00245",
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "addressables.Service Go module exposes RegisterFromBuild(pageRoute, configTree), RegisterFromRuntime(pageRoute, parentAddress, kind, name, source, customAppId), Snapshot(pageRoute), all returning canonical address strings; library-default lookup runs inside RegisterFrom* and inserts page_help row with seeded_from='library' on conflict do nothing",
+      "proven_by": "Go unit tests (mocked pgxpool)",
+      "story_id": "00246",
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "Service is the ONLY package that issues INSERT/UPDATE/DELETE against page_addressables or page_help — verified by grep for SQL strings touching these tables outside backend/internal/addressables/",
+      "proven_by": "ripgrep + Go test that asserts package boundary",
+      "story_id": "00246",
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "POST /api/addressables/build-reconcile accepts JSON tree, requires CI service-account auth (X-CI-Token header), reconciles in one transaction (insert new, soft-archive missing, bump last_seen_at on matched), returns counts {inserted,archived,unchanged}",
+      "proven_by": "integration test against dev DB",
+      "story_id": "00247",
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "POST /api/addressables/register requires NODE_ENV !== 'production' OR valid custom-app token; returns 403 in production without custom-app auth; returns 200 with {id, address} on success; idempotent on (parent_id, kind, name) collisions where source='build' (returns existing build row, refuses to overwrite)",
+      "proven_by": "integration test (3 cases: dev, prod-no-token, prod-with-token)",
+      "story_id": "00247",
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "GET /api/addressables/snapshot?route=/dashboard returns full addressable tree (depth-first) with address strings; GET /api/page-help/:addressable_id returns body_html (locale=en); 404 for unknown addressable; lazy-seeds page_help row from library_help_defaults if matching pattern exists",
+      "proven_by": "integration test (4 cases: known route, unknown route, known addressable, unknown addressable + matching library default)",
+      "story_id": "00247",
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "DomRegistryProvider mounts an in-memory registry seeded from /api/addressables/snapshot for the current route on first render; useRegisterAddressable({kind, name}) reads parent address from AddressContext, returns {address, addressable_id}, calls register endpoint when context-derived address is missing in registry",
+      "proven_by": "React Testing Library mount tests",
+      "story_id": "00248",
+      "done": false
+    },
+    {
+      "order": 12,
+      "criterion": "<ViewportSlot kind='app|header|footer|side_bar|modal|toast'> seeds AddressContext with samantha._viewport.<slot>; TypeScript union type rejects any other value at compile time; sibling collisions (two addressables with same parent+kind+name) throw in dev mode and emit a console.error in prod with samantha._collision.<address> fallback",
+      "proven_by": "tsc + RTL collision test",
+      "story_id": "00248",
+      "done": false
+    },
+    {
+      "order": 13,
+      "criterion": "<Panel name=…> renders with default border + padding from CSS catalog, registers addressable via useRegisterAddressable({kind:'panel', name}), shows TbHelpHexagon button top-right, opens popover on click with address pill (click-to-copy) + body_html fetched from /api/page-help/:addressable_id; ESC + outside-click dismiss",
+      "proven_by": "RTL render + interaction test",
+      "story_id": "00249",
+      "done": false
+    },
+    {
+      "order": 14,
+      "criterion": "<Table name=…> and <Navigation name=…> register their respective kinds via the same hook, expose composition slots, do NOT render a help button (kind metadata helpable=false in library)",
+      "proven_by": "RTL render + registry inspection test",
+      "story_id": "00249",
+      "done": false
+    },
+    {
+      "order": 15,
+      "criterion": "dev/reports/dashboard_panel_audit.md is generated by `npm run audit:dashboard` and lists every <h1>/<h2>/<h3>-as-first-child element on /dashboard with file path, line number, classification (panel/info/heading/chart-without-frame), and proposed name segment",
+      "proven_by": "script run + report inspection",
+      "story_id": "00250",
+      "done": false
+    },
+    {
+      "order": 16,
+      "criterion": "Audit count is recorded in PLA-0005 (this plan) so story 00251's estimate is grounded in real numbers; if count > 30, story 00251 is split before card creation",
+      "proven_by": "plan update with audit count",
+      "story_id": "00250",
+      "done": false
+    },
+    {
+      "order": 17,
+      "criterion": "Every panel-shaped element on /dashboard is wrapped in <Panel name=…> (or <Table>/<Navigation> where appropriate); /dashboard's page config sets mode='strict'; build-reconcile run produces N inserts (N = audit count), 0 archives",
+      "proven_by": "page render + reconcile log",
+      "story_id": "00251",
+      "done": false
+    },
+    {
+      "order": 18,
+      "criterion": "Every wrapped panel on /dashboard shows the help hexagon top-right; clicking each opens a popover with a distinct address (samantha._viewport.app._panel.<name>…) and either a library-seeded body or a 'no help yet' placeholder; copy-address pill works",
+      "proven_by": "manual visual + RTL integration",
+      "story_id": "00251",
+      "done": false
+    },
+    {
+      "order": 19,
+      "criterion": "Existing /dashboard functionality (charts render, tables paginate, click handlers fire) is unchanged — no behavioural regression",
+      "proven_by": "no-regression check against pre-wrap screenshots",
+      "story_id": "00251",
+      "done": false
+    },
+    {
+      "order": 20,
+      "criterion": "Live address devtool (toggle via ⌥A) overlays a hover indicator on every registered addressable; hovering reveals an address pill with copy-to-clipboard; ⌥click freezes the overlay so it can be screenshotted",
+      "proven_by": "manual interaction test on /dashboard",
+      "story_id": "00252",
+      "done": false
+    },
+    {
+      "order": 21,
+      "criterion": "Devtool is gated to NODE_ENV !== 'production' AND user.role === 'gadmin' in production; no overlay in user-facing prod sessions",
+      "proven_by": "RTL gating test (3 environments)",
+      "story_id": "00252",
+      "done": false
+    },
+    {
+      "order": 22,
+      "criterion": "/dev/page-help lists every page_help row joined to addressables, grouped by page_route; each row shows address, kind, current body preview, library-default badge if seeded_from='library' and never edited, last-updated, last-editor; gadmin-only role gate (403 otherwise)",
+      "proven_by": "page render against dev DB with seeded data",
+      "story_id": "00253",
+      "done": false
+    },
+    {
+      "order": 23,
+      "criterion": "Inline editor opens on row click; live HTML preview; Save calls a write through addressables.Service (NOT a bare PUT) that bumps updated_at + updated_by + flips seeded_from to 'gadmin'; Cancel discards; archive button soft-archives the help row (not the addressable)",
+      "proven_by": "edit + archive flow tests",
+      "story_id": "00253",
+      "done": false
+    },
+    {
+      "order": 24,
+      "criterion": "/dev tab bar replaces 'Pane Help' tab with 'Page Help' (URL /dev?tab=page-help); old /dev?tab=pane-help redirects; saved edits visible on next bulk fetch from any wrapped page",
+      "proven_by": "tab navigation + integration",
+      "story_id": "00253",
+      "done": false
+    },
+    {
+      "order": 25,
+      "criterion": "db/schema/076_drop_pane_help.sql first runs an INSERT INTO page_help SELECT … FROM pane_help that maps each existing paneId to its registry UUID (registry rows pre-seeded by build-reconcile against /preferences/navigation), then DROP TABLE pane_help",
+      "proven_by": "migration runs cleanly; SELECT count(*) FROM page_help WHERE seeded_from='gadmin' returns ≥ 5 (the migrated rows)",
+      "story_id": "00254",
+      "done": false
+    },
+    {
+      "order": 26,
+      "criterion": "/api/pane-help and /api/pane-help/:paneId return 410 Gone with a Link header pointing to /api/page-help/:addressable_id; backend route registration removed; CLAUDE.md and docs reflect the deprecation",
+      "proven_by": "curl test + route registration inspection",
+      "story_id": "00254",
+      "done": false
+    },
+    {
+      "order": 27,
+      "criterion": "All 5 panels on /preferences/navigation are re-wrapped from <PaneHeader> to <Panel name=…>; build-reconcile produces 0 new inserts on this route (rows already exist post-migration) and 0 archives; the 5 migrated help bodies render unchanged",
+      "proven_by": "page render + reconcile log + visual diff",
+      "story_id": "00255",
+      "done": false
+    },
+    {
+      "order": 28,
+      "criterion": "/preferences page config flips from 'lenient' to 'strict'; lint:addressables exemption row removed; CI passes",
+      "proven_by": "config diff + CI run",
+      "story_id": "00255",
+      "done": false
+    },
+    {
+      "order": 29,
+      "criterion": "Every panel/table/nav-shaped element across DevPage, DevPlansPanel, DevReportsPanel, DevResearchPanel, DevPaneHelpPanel, DevShortcutsPanel is wrapped; build-reconcile inserts each as new addressables; help bodies seeded from library or 'no help yet' placeholder",
+      "proven_by": "reconcile log + visual sweep of /dev/* tabs",
+      "story_id": "00256",
+      "done": false
+    },
+    {
+      "order": 30,
+      "criterion": "/dev page config flips to strict; lint exemption removed; CI passes",
+      "proven_by": "config diff + CI run",
+      "story_id": "00256",
+      "done": false
+    },
+    {
+      "order": 31,
+      "criterion": "Every addressable on /portfolio-settings and /portfolio-model is wrapped; reconcile inserts new rows; help bodies render; both pages flip to strict; lint exemption rows removed",
+      "proven_by": "reconcile log + visual sweep + CI run",
+      "story_id": "00257",
+      "done": false
+    },
+    {
+      "order": 32,
+      "criterion": "Every addressable on /work-items and /backlog is wrapped; reconcile inserts new rows; help bodies render; both pages flip to strict; lint exemption rows removed; no behavioural regression on drag-and-drop or filters",
+      "proven_by": "reconcile log + visual sweep + DnD smoke test + CI run",
+      "story_id": "00258",
+      "done": false
+    },
+    {
+      "order": 33,
+      "criterion": "Every addressable on /library-releases is wrapped; reconcile inserts new rows; help bodies render; page flips to strict; lint exemption row removed",
+      "proven_by": "reconcile log + visual sweep + CI run",
+      "story_id": "00259",
+      "done": false
+    },
+    {
+      "order": 34,
+      "criterion": "lint:addressables npm script runs as a structural AST rule: any element whose first child is a heading element AND that uses border + padding tokens MUST be <Panel> or one of the audited exemption components (<InfoPanel>, <SectionHeading>); rule fails on offending file with line number",
+      "proven_by": "lint script run on a fixture file with both passing + failing examples",
+      "story_id": "00260",
+      "done": false
+    },
+    {
+      "order": 35,
+      "criterion": "Pre-commit hook runs lint:addressables; CI workflow includes a separate step that runs it standalone; per-page exemption list is empty (final story removes the last entry); /dev → Reports tab shows a row labelled 'addressables' with last run timestamp + result",
+      "proven_by": "pre-commit hook + CI workflow + reports tab inspection",
+      "story_id": "00260",
+      "done": false
+    },
+    {
+      "order": 36,
+      "criterion": "Samantha SDK includes a help-manifest contract: custom apps export an optional helpDefaults: Record<kind:name_pattern, body_html> object; substrate calls RegisterFromRuntime with source='custom_app' + customAppId; library lookup runs first, then SDK manifest, then null body",
+      "proven_by": "SDK fixture test (custom app mounts inside /dashboard, registers a panel, help body resolved via SDK manifest fallback)",
+      "story_id": "00261",
+      "done": false
+    },
+    {
+      "order": 37,
+      "criterion": "docs/c_c_addressables.md covers: addressing scheme + _prefix rule, six viewport slots, addressables.Service contract + write-boundary, page_help vs library_help_defaults, /dev/page-help workflow, lint:addressables rule, Samantha SDK contract, PLA-0004 closure note",
+      "proven_by": "file existence + librarian dry-run reports clean",
+      "story_id": "00262",
+      "done": false
+    },
+    {
+      "order": 38,
+      "criterion": ".claude/CLAUDE.md gains one-line pointer to docs/c_c_addressables.md per the Authoring rule; PLA-0004 closure entry in c_scope.md notes that pane_help is superseded; PLA-0005 row added to docs/c_plan_index.md",
+      "proven_by": "index + scope diff",
+      "story_id": "00262",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "Backfill blast radius — wrapping every panel on every page risks visual regression across the whole product",
+      "mitigation": "Phase A proves on /dashboard alone behind a build flag; Phase B sweeps run one cluster per card with screenshot-diff verification before strict-mode flip; lenient mode default during sweep allows mixed-state pages"
+    },
+    {
+      "impact": 3,
+      "risk": "DB write-boundary leak — anyone bypassing addressables.Service to INSERT page_addressables corrupts the registry irreversibly",
+      "mitigation": "ripgrep test in CI fails any file outside backend/internal/addressables/ that contains 'page_addressables' in a SQL context; trust-no-one checklist updated; service has a single write transaction wrapper"
+    },
+    {
+      "impact": 2,
+      "risk": "Custom-app collision — third-party app registers a name that conflicts with a build-declared addressable",
+      "mitigation": "Build wins: register endpoint refuses to overwrite source='build' rows; custom-app authors must rename; collision returns 409 with the existing canonical address so the app can adapt"
+    },
+    {
+      "impact": 2,
+      "risk": "Snapshot fetch latency on first page load — every wrapped page calls /api/addressables/snapshot before any addressable mounts",
+      "mitigation": "Server-side cache with ETag (route + last_seen_at_max as cache key); snapshot embedded in initial HTML for SSR; client falls back to API call on cache miss; soft target < 50ms p95"
+    },
+    {
+      "impact": 2,
+      "risk": "Help-body library churn — updating a library default silently changes help text for every lazy-seeded page",
+      "mitigation": "Lazy seed materializes the library body into page_help on first fetch (snapshot-in-time); subsequent library updates do NOT auto-propagate; gadmin can opt-in to 're-seed from library' per row in /dev/page-help"
+    },
+    {
+      "impact": 1,
+      "risk": "Locale column unused on day one creates dead complexity",
+      "mitigation": "Cheap insurance — single column, default 'en', no UI; removing later costs a migration, adding later costs the same migration plus a backfill"
+    },
+    {
+      "impact": 1,
+      "risk": "Address devtool overlay leaks into production screenshots",
+      "mitigation": "Hard-gated NODE_ENV !== 'production' AND user.role === 'gadmin' in production; off by default; ⌥A toggle is the only entry point"
+    },
+    {
+      "impact": 2,
+      "risk": "PLA-0004 work just shipped (5 nav-prefs panels) gets re-done in this plan",
+      "mitigation": "PLA-0004 is the proof of concept — this plan extends it, doesn't replace it. The 5 panels get migrated forward (story 00254) not rewritten; <PaneHeader> is renamed to <Panel> in one PR"
+    }
+  ],
+  "open_decisions_locked": [
+    "Address scheme: samantha._viewport.<slot>._kind.name[._kind.name…] with leading underscore on every system segment (self-tokenizing).",
+    "Six viewport slots: app | header | footer | side_bar | modal | toast.",
+    "No _pageID — addresses are page-scoped by mount location; custom apps inherit address from host context.",
+    "Sibling collision rule: lint blocks duplicate (parent, kind, name) triples; runtime registry rejects with 409.",
+    "Orphan rendering: subtrees outside any <ViewportSlot> render under samantha._orphan.… with dev-console warning (visible, not crashing).",
+    "Source of truth: page_addressables Postgres table; build-time reconcile + runtime register; no page.config.ts files.",
+    "Sole writer: addressables.Service Go module; CI lint blocks direct table writes from anywhere else.",
+    "Build wins on conflict: runtime register refuses to overwrite source='build' rows.",
+    "Soft-archive on disappearance: rows stay for audit; help bodies survive panel re-add.",
+    "Dev-mode auto-register: enabled (NODE_ENV !== 'production' OR custom-app auth); prod refuses unauthenticated registers.",
+    "Custom apps as first-class: app_id partition column; same app embedded in two pages keeps one canonical sub-tree.",
+    "Help table: page_help keyed by addressable_id UUID, NOT by string paneId.",
+    "FK behaviour: ON DELETE RESTRICT + soft_archive on both sides; preserves gadmin-edited bodies if a panel is re-added.",
+    "Lazy library seed: register-time auto-seed AND read-time fallback both populate page_help; library churn does NOT silently propagate after first seed.",
+    "Locale column from day one: default 'en', no UI surface yet.",
+    "Custom-app help: hybrid — library_help_defaults first, then SDK manifest, then null body.",
+    "Adoption order: Dashboard (Phase A) → preferences → dev → portfolio → work-items+backlog → library-releases (Phase B clusters)."
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "PLA-0004 — pane help system (parent plan; this plan extends and supersedes the architecture)",
+      "href": "dev/plans/PLA-0004.json"
+    },
+    {
+      "kind": "internal",
+      "label": "Existing <PaneHeader> component (becomes <Panel> in this plan)",
+      "href": "app/components/PaneHeader.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Existing /preferences/navigation page (5 panels migrate forward)",
+      "href": "app/(user)/preferences/navigation/page.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Existing /dev/pane-help editor (renames to /dev/page-help)",
+      "href": "dev/pages/DevPaneHelpPanel.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Existing pane_help table + service (migrated forward then dropped)",
+      "href": "backend/internal/panehelp/service.go"
+    },
+    {
+      "kind": "internal",
+      "label": "Trust-No-One security checklist — addressables.Service write boundary",
+      "href": "docs/c_security.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Dev Plans tab (where this plan renders for review)",
+      "href": "dev/pages/DevPlansPanel.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Plan ID index",
+      "href": "docs/c_plan_index.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Story ID index",
+      "href": "docs/c_story_index.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Feature areas registry",
+      "href": "docs/c_feature_areas.md"
+    }
+  ]
+}

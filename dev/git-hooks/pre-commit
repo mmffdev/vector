@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# git pre-commit hook — runs registry lint(s) before each commit.
+# Tracked source; .git/hooks/pre-commit is a symlink to this file.
+# Each lint writes a report to dev/reports/ so the Dev → Reports tab
+# always shows the latest result. A non-zero exit blocks the commit.
+
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+
+if ! python3 "$ROOT/dev/scripts/lint_panes.py" --report; then
+  echo "" >&2
+  echo "Commit blocked by lint:panes — register the paneId(s) above in" >&2
+  echo "dev/registries/paneIds.json or remove the unregistered usage." >&2
+  exit 1
+fi
+
+exit 0

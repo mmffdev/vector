@@ -153,8 +153,6 @@ const DEFAULT_PAIRS: AdjacencyPair[] = [
 const DEFAULT_HIGHLIGHT: AdjacencyHighlight = { row: 14, col: 16 }; // GRAND THEATER × REHEARSAL
 
 // --- Geometry --------------------------------------------------------
-const VBW = 760;
-const VBH = 760;
 const LABEL_W = 150;
 const HEADER_H = 150;
 const CELL_SIZE = 28;

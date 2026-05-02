@@ -9,6 +9,8 @@ import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
 import DevShortcutsPanel from "./DevShortcutsPanel";
 import DevReportsPanel from "./DevReportsPanel";
 import DevResearchPanel from "./DevResearchPanel";
+import DevPlansPanel from "./DevPlansPanel";
+import DevPaneHelpPanel from "./DevPaneHelpPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 export default function DevPage() {
@@ -35,7 +37,7 @@ export default function DevPage() {
     setResetResult(null);
 
     try {
-      const response = await api("/api/admin/dev/adoption-reset", { method: "POST" });
+      const response = (await api("/api/admin/dev/adoption-reset", { method: "POST" })) as { message?: string };
       setResetResult({
         success: true,
         message: response.message || "Adoption state reset successfully.",
@@ -58,6 +60,12 @@ export default function DevPage() {
       </header>
 
       <nav className="dev-tabs">
+        <button
+          className={`dev-tab${tab === "plans" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("plans")}
+        >
+          Plans
+        </button>
         <button
           className={`dev-tab${tab === "setup" ? " dev-tab--active" : ""}`}
           onClick={() => setTab("setup")}
@@ -88,11 +96,19 @@ export default function DevPage() {
         >
           Icons
         </button>
+        <button
+          className={`dev-tab${tab === "pane-help" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("pane-help")}
+        >
+          Pane Help
+        </button>
       </nav>
 
       {tab === "shortcuts" && <DevShortcutsPanel />}
       {tab === "reports" && <DevReportsPanel />}
       {tab === "research" && <DevResearchPanel />}
+      {tab === "plans" && <DevPlansPanel />}
+      {tab === "pane-help" && <DevPaneHelpPanel />}
       {tab === "icons" && (
         <div style={{ height: "calc(100vh - 160px)" }}>
           <UiAppIconbrowser />

@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import AppShell from "@/app/components/AppShell";
 import AppViewport from "@/app/components/AppViewport";
 import PageWrapper from "@/app/components/PageWrapper";
 import AppSidebar_2 from "@/app/components/AppSidebar_2";

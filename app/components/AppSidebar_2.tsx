@@ -134,12 +134,12 @@ function SidebarItem({
               >
                 <span className="sidebar-item__tree-icon" aria-hidden="true">
                   {isLast ? (
-                    <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
-                      <path d="M0 0 L0 8 L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <svg width="24" height="32" viewBox="0 0 24 32" fill="none" preserveAspectRatio="none">
+                      <path d="M16 0 L16 16 L24 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   ) : (
-                    <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
-                      <path d="M0 0 L0 16 M0 8 L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <svg width="24" height="32" viewBox="0 0 24 32" fill="none" preserveAspectRatio="none">
+                      <path d="M16 0 L16 32 M16 16 L24 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   )}
                 </span>

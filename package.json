@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 5101",
     "lint": "next lint",
+    "lint:panes": "python3 dev/scripts/lint_panes.py",
     "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'"
   },
   "dependencies": {

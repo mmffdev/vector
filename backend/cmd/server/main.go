@@ -31,6 +31,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
+	"github.com/mmffdev/vector-backend/internal/panehelp"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/artefacts"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
@@ -119,6 +120,9 @@ func main() {
 	navBookmarks := nav.NewBookmarks(pool, navRegistry)
 	customPagesSvc := custompages.New(pool)
 	customPagesH := custompages.NewHandler(customPagesSvc)
+
+	paneHelpSvc := panehelp.New(pool)
+	paneHelpH := panehelp.NewHandler(paneHelpSvc)
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
@@ -382,6 +386,21 @@ func main() {
 		r.Get("/{id}", customPagesH.Get)
 		r.Patch("/{id}", customPagesH.Patch)
 		r.Delete("/{id}", customPagesH.Delete)
+	})
+
+	// ---- /api/pane-help ----
+	// GET is open to any authenticated user (60s in-process cache).
+	// PUT is gated by gadmin role; body is sanitised on write.
+	r.Route("/api/pane-help", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/", paneHelpH.GetAll)
+		r.With(auth.RequireRole(models.RoleGAdmin)).
+			Get("/admin", paneHelpH.GetAllAdmin)
+		r.With(auth.RequireRole(models.RoleGAdmin)).
+			Put("/{paneId}", paneHelpH.Put)
 	})
 
 	// ---- /api/portfolio-models ----

@@ -229,10 +229,12 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | UI | `FE-UI0001` | 1/? | `1761472628301759780` | Active | Portfolio wizard + adoption pages |
 | UI | `FE-UI0002` | 2/? | `1762058691722348184` | Active | Vector Design System facelift (all pages + components, branch: vector-rebrand-001) |
 | UI | `FE-UI-0003` | 3/? | `1765161701960844468` | Active | Shared `useRealtimeSubscription` + `useResourceRank` + `<DragHandleColumn />` (resource-agnostic; consumed by every adopter via FE-RNK-0001) |
+| UI | `FE-UI-0004` | 4/? | `1765771299981887168` | Active | `<PaneHeader>` wrapper component (TbHelpHexagon trigger + click popover + paneId display) |
+| UI | `FE-UI-0005` | 5/? | `1765771302414583490` | Active | Adopt `<PaneHeader>` on `/preferences/navigation` (5 panels) |
 | UX | — | 0/? | — | Ready | User experience / workflows |
 | SEC | `FE-SEC0001` | 1/? | `1760810747115341214` | Active | Security baseline |
 | SEC | `FE-SEC0005` | 5/? | `1762205064870495730` | Active | Remote client access — MMFFDev admin login and dev panel access (PH-0020) |
-| GOV | — | 0/? | — | Ready | Governance / feature flags |
+| GOV | `FE-GOV-0001` | 1/? | `1765771317497300684` | Active | Gadmin `/dev/pane-help` editor page (list, edit, preview, save) |
 | AUD | `FE-AUD0001` | 1/? | `1762012948181550696` | Active | Layer change audit logging |
 | RED | — | 0/? | — | Ready | Redundancy / HA / backup |
 | RUL | — | 0/? | — | Ready | Rules & logic / validators |
@@ -252,6 +254,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API-0014` | 14/? | `1765028024257873553` | Active | Custom field library + templates CRUD + field values API |
 | API | `FE-API-0015` | 15/? | `1765161692095841454` | Active | Work item rank service + move endpoint + scoped list ordering + sprint membership transitions |
 | API | `FE-API-0016` | 16/? | `1765161694587258032` | Active | WebSocket hub + LISTEN/NOTIFY bridge + heartbeat/drain + work-item write publish hook |
+| API | `FE-API-0017` | 17/? | `1765771314569676490` | Active | `GET /api/pane-help` (bulk, 60s cache) + `PUT /api/pane-help/:paneId` (gadmin-gated, sanitised) |
 | SQL | `FE-SQL-0001` | 1/? | `1762271910986516028` | Active | Execution item migrations (user_stories, defects, item_labels, item_tags) |
 | SQL | `FE-SQL-0002` | 2/? | `1763620456000128038` | Active | user_stories table migration |
 | SQL | `FE-SQL-0003` | 3/? | `1763620456629273639` | Active | defects table migration |
@@ -262,6 +265,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | SQL | `FE-SQL-0008` | 8/? | `1764920805046617532` | Active | portfolio_templates schema (replace portfolio_models + layers) |
 | SQL | `FE-SQL-0009` | 9/? | `1765028019954517644` | Active | Work items schema migrations 063–065 (rename, epics, field library, sprints, core columns) |
 | SQL | `FE-SQL-0010` | 10/? | `1765161688908170412` | Active | Work item position columns (backlog_position, sprint_position) + NOTIFY trigger (migration 066) |
+| SQL | `FE-SQL-0011` | 11/? | `1765771311155513032` | Active | `pane_help` table migration 071 + 5 seed rows for nav-prefs panes |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | — | 0/? | — | Ready | Algorithms / search / matching |
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
@@ -269,6 +273,8 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | DEV | `FE-DEV0003` | 3/? | `1761469925852972291` | Active | Portfolio adoption action paths |
 | DEV | `FE-DEV0004` | 4/? | `1762105753893602703` | Active | Service health panel (DevServicesPanel, DevStatusFloat, /api/dev/services) |
 | DEV | `FE-DEV-0005` | 5/? | `1765161704259323062` | Active | Drag-and-drop + realtime test infrastructure (concurrent move tests, Playwright DnD, WebSocket integration) |
+| DEV | `FE-DEV-0006` | 6/? | `1765771306030073540` | Active | `paneIds.json` registry + `npm run lint:panes` enforcement |
+| DEV | `FE-DEV-0007` | 7/? | `1765771308680873670` | Active | `docs/c_c_pane_help.md` leaf doc + CLAUDE.md pointer + `c_scope.md` row |
 | POR-API | `FE-POR-API-0001` | 1/? | `1763600697053415384` | Active | Portfolio item metadata + custom fields API |
 | POR-ITM | `FE-POR-ITM-0001` | 1/? | `1763600697623840729` | Active | Portfolio item rollup count materialisation |
 | RNK | `FE-RNK-0001` | 1/? | `1765168379871626688` | Active | Generic ranking — registry, position-columns convention, NOTIFY trigger, drag hooks (cross-cutting; applies to work items, defects, portfolio levels, library items, any future orderable resource) |

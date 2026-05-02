@@ -23,6 +23,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
 import { NavIcon } from "@/app/components/NavIcon";
+import PaneHeader from "@/app/components/PaneHeader";
+import { BsPinAngle } from "react-icons/bs";
 import ProfileBar, { MAX_PROFILES } from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -629,6 +631,7 @@ function AvailablePanel({
   libraryEntries,
   atCap,
   customPagesTotal,
+  profileLabel,
   onPin,
   onRenameCustom,
   onDeleteCustom,
@@ -639,6 +642,7 @@ function AvailablePanel({
   libraryEntries: import("@/app/contexts/NavPrefsContext").NavCatalogEntry[];
   atCap: boolean;
   customPagesTotal: number;
+  profileLabel: string;
   onPin: (key: string) => void;
   onRenameCustom: (key: string, label: string) => void;
   onDeleteCustom: (key: string) => void;
@@ -676,11 +680,14 @@ function AvailablePanel({
       className={`nav-prefs__pane nav-prefs__pane--available${isOver ? " nav-prefs__pane--drop-target" : ""}`}
       aria-label="Available"
     >
-      <header className="nav-prefs__pane-header">
-        <h2 className="nav-prefs__pane-title">
-          Available <span className="nav-prefs__count">{customPagesTotal}/{MAX_CUSTOM_PAGES}</span>
-        </h2>
-      </header>
+      <PaneHeader
+        paneId="nav-prefs.available"
+        title={<>Available <span className="nav-prefs__count">{customPagesTotal}/{MAX_CUSTOM_PAGES}</span></>}
+      >
+        <p className="nav-prefs__pane-desc">
+          Pages you can add to <strong>{profileLabel}</strong> — pin one to send it to your sidebar.
+        </p>
+      </PaneHeader>
       {empty ? (
         <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
       ) : (
@@ -809,7 +816,7 @@ function PoolItem({
           aria-label={`Pin ${entry.label}`}
           title={atCap ? `Pinned limit (${MAX_PINNED}) reached` : "Pin"}
           onPointerDown={(e) => e.stopPropagation()}
-        >+</button>
+        ><BsPinAngle aria-hidden="true" /></button>
         {confirmingDelete && onDeleteCustom && (
           <DeleteConfirm
             label={entry.label}
@@ -1599,11 +1606,10 @@ export default function NavPreferencesPage() {
       }
     >
       <div className="nav-prefs__pane nav-prefs__quick-bar">
-        <header className="nav-prefs__pane-header">
-          <h2 className="nav-prefs__pane-title">
-            Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span>
-          </h2>
-        </header>
+        <PaneHeader
+          paneId="nav-prefs.custom-nav"
+          title={<>Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span></>}
+        />
         <ProfileBar />
       </div>
 
@@ -1616,11 +1622,15 @@ export default function NavPreferencesPage() {
           onDragCancel={onDragCancel}
         >
           <section className="nav-prefs__pane" aria-label="Pinned">
-            <header className="nav-prefs__pane-header">
-              <h2 className="nav-prefs__pane-title">
-                Pinned <span className="nav-prefs__count">{totalPinned}/{MAX_PINNED}</span>
-              </h2>
-            </header>
+            <PaneHeader
+              paneId="nav-prefs.pinned"
+              title={<>Pinned <span className="nav-prefs__count">{totalPinned}/{MAX_PINNED}</span></>}
+            >
+              <p className="nav-prefs__pane-desc">
+                Pages currently in your sidebar for{" "}
+                <strong>{activeProfile?.label ?? "this profile"}</strong>. Drag to reorder, group, or unpin.
+              </p>
+            </PaneHeader>
             {draft.bucketOrder.length === 0 ? (
               <p className="nav-prefs__empty">Nothing pinned — the sidebar will show defaults until you pin something.</p>
             ) : (
@@ -1667,6 +1677,7 @@ export default function NavPreferencesPage() {
             libraryEntries={libraryEntries}
             atCap={atCap}
             customPagesTotal={customPagesTotal}
+            profileLabel={activeProfile?.label ?? "this profile"}
             onPin={pin}
             onRenameCustom={handleRenameCustomPage}
             onDeleteCustom={handleDeleteCustomPage}
@@ -1674,9 +1685,10 @@ export default function NavPreferencesPage() {
           />
 
           <section className="nav-prefs__pane nav-prefs__pane--new-page" aria-label="New custom page">
-            <header className="nav-prefs__pane-header">
-              <h2 className="nav-prefs__pane-title">New custom page</h2>
-            </header>
+            <PaneHeader
+              paneId="nav-prefs.new-page"
+              title="New custom page"
+            />
             <p className="nav-prefs__new-page-card-hint">
               Holds timeline, board, or list views. New pages appear in <strong>Library</strong> above — drag one into Pinned to add it to the sidebar.
             </p>
@@ -1733,11 +1745,10 @@ export default function NavPreferencesPage() {
           </section>
 
           <section className="nav-prefs__pane nav-prefs__pane--new-group" aria-label="New custom group">
-            <header className="nav-prefs__pane-header">
-              <h2 className="nav-prefs__pane-title">
-                New custom group <span className="nav-prefs__count">{draft.customGroups.length}/{MAX_CUSTOM_GROUPS}</span>
-              </h2>
-            </header>
+            <PaneHeader
+              paneId="nav-prefs.new-group"
+              title={<>New custom group <span className="nav-prefs__count">{draft.customGroups.length}/{MAX_CUSTOM_GROUPS}</span></>}
+            />
             <p className="nav-prefs__new-page-card-hint">
               Custom groups appear in <strong>Pinned</strong> and can hold any custom pages you create. Drag groups by their handle to reorder.
             </p>

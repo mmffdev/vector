@@ -2,8 +2,13 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import PageShell from "@/app/components/PageShell";
-import { api } from "@/app/lib/api";
+import { api, ApiError } from "@/app/lib/api";
 import WorkItemDetailPanel from "./WorkItemDetailPanel";
+import DragHandleColumn from "@/app/components/DragHandleColumn";
+import { useResourceRank, type MoveResult } from "@/app/hooks/useResourceRank";
+import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
+import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { MdOutlineCreateNewFolder, MdOutlineFolder, MdChecklist, MdOutlineBugReport, MdOutlineArrowForwardIos } from "react-icons/md";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -168,6 +173,8 @@ function WorkItemRow({
   isLast,
   continuations,
   hasVisibleChildren,
+  rowProps,
+  handleProps,
 }: {
   item: WorkItem;
   depth: number;
@@ -181,14 +188,24 @@ function WorkItemRow({
   isLast?: boolean;
   continuations?: boolean[];
   hasVisibleChildren?: boolean;
+  rowProps: React.HTMLAttributes<HTMLTableRowElement> & { "data-rank-row-id"?: string };
+  handleProps: React.HTMLAttributes<HTMLTableCellElement> & { draggable?: boolean };
 }) {
   const TypeIcon = TYPE_ICON[item.item_type] ?? null;
+  const { className: rankClass = "", ...restRowProps } = rowProps;
   return (
     <tr
-      className={"table__row work-items-tree__row" + (selected ? " table__row--selected" : "") + (animIndex !== undefined ? " work-items-tree__row--child" : "")}
+      {...restRowProps}
+      className={
+        "table__row work-items-tree__row" +
+        (selected ? " table__row--selected" : "") +
+        (animIndex !== undefined ? " work-items-tree__row--child" : "") +
+        (rankClass ? " " + rankClass : "")
+      }
       style={animIndex !== undefined ? { animationDelay: `${animIndex * 30}ms` } : undefined}
       onClick={onSelect}
     >
+      <DragHandleColumn {...handleProps} onClick={(e) => e.stopPropagation()} />
       {/* Toggle cell — no depth indent, always centred */}
       <td className="table__cell work-items-tree__toggle-cell">
         <span className="work-items-tree__toggle-inner">
@@ -406,14 +423,16 @@ function SortTh({
 
 // ─── Tree Grid ────────────────────────────────────────────────────────────────
 
-const DEFAULT_COL_WIDTHS = { toggle: 40, tag: 120, title: 0, status: 120, priority: 100, pts: 60 };
+const DEFAULT_COL_WIDTHS = { drag: 32, toggle: 40, tag: 120, title: 0, status: 120, priority: 100, pts: 60 };
 
 function WorkItemsTree({
   items,
+  setItems,
   selectedId,
   onSelect,
 }: {
   items: WorkItem[];
+  setItems: (next: WorkItem[]) => void;
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
 }) {
@@ -424,6 +443,82 @@ function WorkItemsTree({
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: "asc" });
   const [colWidths, setColWidths] = useState(DEFAULT_COL_WIDTHS);
   const resizeRef = useRef<{ col: keyof typeof DEFAULT_COL_WIDTHS; startX: number; startW: number } | null>(null);
+
+  // Generic ranking + tree-aware optimistic reorder. The hook owns drag state
+  // and the /api/rank/move POST; here we apply the local mutation against
+  // either the roots list (`items`) or the parent's child array
+  // (`childMap[parentId]`) depending on where the moved row lives. Backend
+  // orders children among their siblings only, so a child drag must reorder
+  // the parent's own child array — not the flat roots list.
+  const reorderSnapshot = useRef<
+    | { kind: "roots"; prev: WorkItem[] }
+    | { kind: "child"; parentId: string; prev: WorkItem[] }
+    | null
+  >(null);
+  const applyDrop = useCallback(
+    (moverID: string, pos: "above" | "below", targetID: string) => {
+      if (moverID === targetID) return;
+      const reorderList = (list: WorkItem[]): WorkItem[] | null => {
+        const fromIdx = list.findIndex((r) => r.id === moverID);
+        const toIdx = list.findIndex((r) => r.id === targetID);
+        if (fromIdx < 0 || toIdx < 0) return null;
+        const next = list.slice();
+        const [moved] = next.splice(fromIdx, 1);
+        const adjustedTargetIdx = fromIdx < toIdx ? toIdx - 1 : toIdx;
+        const insertAt = pos === "above" ? adjustedTargetIdx : adjustedTargetIdx + 1;
+        next.splice(insertAt, 0, moved);
+        return next;
+      };
+      // Roots first.
+      const rootsNext = reorderList(items);
+      if (rootsNext) {
+        reorderSnapshot.current = { kind: "roots", prev: items };
+        setItems(rootsNext);
+        return;
+      }
+      // Otherwise find the parent whose child array contains both rows.
+      for (const [parentId, kids] of Object.entries(childMap)) {
+        const next = reorderList(kids);
+        if (next) {
+          reorderSnapshot.current = { kind: "child", parentId, prev: kids };
+          setChildMap((prev) => ({ ...prev, [parentId]: next }));
+          return;
+        }
+      }
+    },
+    [items, childMap]
+  );
+  const reconcile = useCallback((_r: MoveResult) => {
+    reorderSnapshot.current = null;
+  }, []);
+  const rollback = useCallback((_e: ApiError) => {
+    const snap = reorderSnapshot.current;
+    if (!snap) return;
+    if (snap.kind === "roots") setItems(snap.prev);
+    else setChildMap((prev) => ({ ...prev, [snap.parentId]: snap.prev }));
+    reorderSnapshot.current = null;
+  }, []);
+  const getDescendants = useCallback(
+    (id: string): string[] => {
+      const out: string[] = [];
+      const walk = (parentId: string) => {
+        const kids = childMap[parentId] ?? [];
+        for (const k of kids) {
+          out.push(k.id);
+          walk(k.id);
+        }
+      };
+      walk(id);
+      return out;
+    },
+    [childMap]
+  );
+  const rank = useResourceRank({
+    resourceType: "work_item",
+    onMoved: reconcile,
+    onError: rollback,
+    getDescendants,
+  });
 
   const handleSort = useCallback((key: SortKey) => {
     setSort((prev) => ({
@@ -511,6 +606,37 @@ function WorkItemsTree({
     setAllExpanded(false);
   }, []);
 
+  // When the roots list changes (filter switch or realtime-push refetch),
+  // also refresh the children of every currently-expanded parent so child
+  // reorders from other tabs/users become visible without requiring the
+  // user to collapse + re-expand. Skips on initial mount when nothing is
+  // expanded yet.
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    if (itemsRef.current === items) return;
+    itemsRef.current = items;
+    if (expanded.size === 0) return;
+    const ids = Array.from(expanded);
+    let cancelled = false;
+    Promise.all(
+      ids.map((id) =>
+        api<{ items: WorkItem[] }>(`/api/work-items/${id}/children`)
+          .then((res) => ({ id, items: res.items }))
+          .catch(() => null)
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      setChildMap((prev) => {
+        const next = { ...prev };
+        for (const r of results) if (r) next[r.id] = r.items;
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [items, expanded]);
+
   const toggle = useCallback(async (item: WorkItem) => {
     const id = item.id;
     if (expanded.has(id)) {
@@ -528,6 +654,29 @@ function WorkItemsTree({
     }
     setExpanded((prev) => new Set(prev).add(id));
   }, [expanded, childMap]);
+
+  // Compose row props: hook owns the drag listeners + class names, but its
+  // built-in onDrop only fires the network call. We need to apply the
+  // optimistic mutation locally first so the row visibly snaps before the
+  // server confirms.
+  const composeRowProps = useCallback(
+    (id: string) => {
+      const base = rank.rowProps(id);
+      const baseOnDrop = base.onDrop;
+      return {
+        ...base,
+        onDrop: (e: React.DragEvent<HTMLTableRowElement>) => {
+          const moverId = rank.draggingId;
+          const target = rank.dropTarget;
+          if (moverId && target && moverId !== target.id) {
+            applyDrop(moverId, target.pos, target.id);
+          }
+          baseOnDrop?.(e as unknown as React.DragEvent);
+        },
+      };
+    },
+    [rank, applyDrop]
+  );
 
   const roots = items.filter((i) => !i.parent_id);
   const sortedRoots = sort.key ? sortItems(roots, sort.key, sort.dir) : roots;
@@ -558,10 +707,12 @@ function WorkItemsTree({
             isLast={isLast}
             continuations={ancestorContinuations}
             hasVisibleChildren={isExpanded && children.length > 0}
+            rowProps={composeRowProps(item.id)}
+            handleProps={rank.handleProps(item.id)}
           />
           {loadingId === item.id && (
             <tr key={item.id + "-loading"}>
-              <td className="table__cell table__cell--muted work-items-tree__loading" colSpan={6}>
+              <td className="table__cell table__cell--muted work-items-tree__loading" colSpan={7}>
                 Loading…
               </td>
             </tr>
@@ -585,6 +736,7 @@ function WorkItemsTree({
       <div className="table-wrap">
         <table className="table work-items-tree" aria-label="Work items">
           <colgroup>
+            <col style={{ width: colWidths.drag }} />
             <col style={{ width: colWidths.toggle }} />
             <col style={{ width: colWidths.tag }} />
             <col style={colWidths.title ? { width: colWidths.title } : undefined} />
@@ -594,6 +746,10 @@ function WorkItemsTree({
           </colgroup>
           <thead className="table__head">
             <tr>
+              <th
+                className="table__cell work-items-tree__th work-items-tree__th--drag"
+                aria-label="Drag handle column"
+              />
               <th className="table__cell work-items-tree__th work-items-tree__th--toggle">
                 <div className="work-items-tree__toggle-header">
                   <button
@@ -627,6 +783,7 @@ function WorkItemsTree({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function WorkItemsPage() {
+  const { user } = useAuth();
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     status: "",
@@ -649,14 +806,14 @@ export default function WorkItemsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  const refetch = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
     if (filters.status) params.set("status", filters.status);
     if (filters.sprint_id) params.set("sprint_id", filters.sprint_id);
     if (filters.item_type) params.set("item_type", filters.item_type);
     const qs = params.toString();
-    api<{ items: WorkItem[] }>(`/api/work-items${qs ? "?" + qs : ""}`)
+    return api<{ items: WorkItem[] }>(`/api/work-items${qs ? "?" + qs : ""}`)
       .then((r) => {
         let rows = r.items;
         if (filters.search.trim()) {
@@ -672,6 +829,23 @@ export default function WorkItemsPage() {
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, [filters]);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  // Realtime subscription: refetch when any other tab/user reorders work
+  // items in the same scope. Scope is "sprint" + sprintID when filtering by
+  // sprint, otherwise "backlog" + the user's subscriptionID. Topic is null
+  // until the user is loaded, which keeps the WS dormant on first paint.
+  const subscriptionID = user?.subscription_id ?? null;
+  const sprintID = filters.sprint_id || null;
+  const topic = subscriptionID
+    ? sprintID
+      ? rankTopic("work_item", subscriptionID, "sprint", sprintID)
+      : rankTopic("work_item", subscriptionID, "backlog", subscriptionID)
+    : null;
+  useRefetchOnPush({ topic, refetch });
 
   return (
     <PageShell
@@ -701,6 +875,7 @@ export default function WorkItemsPage() {
           <div className="work-items-layout__tree">
             <WorkItemsTree
               items={items}
+              setItems={setItems}
               selectedId={selectedItem?.id ?? null}
               onSelect={setSelectedItem}
             />

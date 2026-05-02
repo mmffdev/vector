@@ -1,0 +1,302 @@
+{
+  "id": "PLA-0004",
+  "title": "Reusable per-panel Help popover with paneId registry → backend-served help store",
+  "date_created": "2026-05-02",
+  "date_started": "2026-05-02",
+  "date_last_updated": "2026-05-02",
+  "date_finished": null,
+  "phase": "PH-0005",
+  "scope": "<p>Every panel on every page gets a small <code>TbHelpHexagon</code> icon top-right. Clicking it opens a popover that shows: (1) a <strong>unique <code>paneId</code></strong> the user can quote in bug reports and chat, (2) a short help body explaining what the panel does, and (3) a close affordance.</p><p>The paneId is sourced from a build-time registry; the help copy is sourced from the backend so gadmins can edit it without a deploy. First adopter is <code>/preferences/navigation</code> (5 panels).</p>",
+  "value": "<ul><li>Users can reference any panel unambiguously (e.g. \"the popover on <code>nav-prefs.pinned</code> is wrong\") instead of describing it.</li><li>Onboarding cost drops — every panel self-explains.</li><li>Gadmins iterate help copy live; no PR cycle.</li></ul>",
+  "implementation_plan": [
+    "Build <PaneHeader paneId title> wrapper component with TbHelpHexagon trigger, click popover, ESC + outside-click dismiss, ARIA, focus return.",
+    "Adopt <PaneHeader> across the 5 panels on /preferences/navigation as the first consumer.",
+    "Add dev/registries/paneIds.json + a build-time lint check that every paneId on screen is registered.",
+    "Migration 071: pane_help table (paneid PK, body_html, updated_at, updated_by_user_id).",
+    "Go API: GET /api/pane-help (bulk, 60s server cache) + PUT /api/pane-help/:paneId (gadmin-only, sanitised).",
+    "Gadmin /dev/pane-help editor page (list → edit → preview → save).",
+    "Docs: docs/c_c_pane_help.md leaf doc, CLAUDE.md pointer, c_scope.md Underway row."
+  ],
+  "areas_impacted": [
+    "UI: new shared <PaneHeader> component + adoption on /preferences/navigation.",
+    "DEV: paneIds.json registry + lint script + leaf doc + scope update.",
+    "SQL: new pane_help table (migration 071) + 5 seed rows.",
+    "API: two new endpoints under /api/pane-help (GET bulk, PUT per-pane gadmin).",
+    "GOV: gadmin-only /dev/pane-help editor surface."
+  ],
+  "feature_list": [
+    "<PaneHeader> wrapper component (TbHelpHexagon trigger, click popover, ESC + outside-click dismiss, ARIA dialog, focus return).",
+    "paneIds.json registry + npm run lint:panes enforcement.",
+    "pane_help Postgres table + 5 seed rows for nav-prefs panes.",
+    "GET /api/pane-help (60s server cache) + PUT /api/pane-help/:paneId (gadmin-gated, sanitised).",
+    "/dev/pane-help gadmin editor page.",
+    "docs/c_c_pane_help.md leaf doc + CLAUDE.md index entry + c_scope.md Underway row."
+  ],
+  "features_extended": [],
+  "features_removed": [],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "UI: <PaneHeader> wrapper component with TbHelpHexagon trigger + click popover",
+      "story_id": "00237",
+      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "status": "completed"
+    },
+    {
+      "order": 2,
+      "title": "UI: adopt <PaneHeader> on /preferences/navigation page (5 panels)",
+      "story_id": "00238",
+      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "status": "completed"
+    },
+    {
+      "order": 3,
+      "title": "DEV: paneIds.json registry + lint check that every paneId on screen is registered",
+      "story_id": "00239",
+      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "status": "completed"
+    },
+    {
+      "order": 4,
+      "title": "SQL: pane_help table migration + seed (migration 071)",
+      "story_id": "00240",
+      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "status": "completed"
+    },
+    {
+      "order": 5,
+      "title": "API: GET /api/pane-help (bulk) + PUT /api/pane-help/:paneId (gadmin only)",
+      "story_id": "00241",
+      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "status": "completed"
+    },
+    {
+      "order": 6,
+      "title": "GOV: gadmin /dev/pane-help editor page (list, edit, preview, save)",
+      "story_id": "00242",
+      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "status": "completed"
+    },
+    {
+      "order": 7,
+      "title": "DEV: docs/c_c_pane_help.md leaf doc + CLAUDE.md pointer + c_scope.md row",
+      "story_id": "00243",
+      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "status": "todo"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "<PaneHeader paneId title> renders title left and TbHelpHexagon button top-right within the panel header",
+      "proven_by": "component render test",
+      "story_id": "00237",
+      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "Clicking the help button opens a popover with paneId pill (click-to-copy), help body, and close button; ESC + outside-click dismiss; focus returns to trigger",
+      "proven_by": "interaction test",
+      "story_id": "00237",
+      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "Trigger has aria-expanded toggling; popover has role=dialog and aria-labelledby; tab order trapped while open",
+      "proven_by": "ARIA snapshot",
+      "story_id": "00237",
+      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "All five nav-prefs panels (Custom Navigation, Pinned, Available, New Custom Page, New Custom Group) show the help icon top-right",
+      "proven_by": "visual render",
+      "story_id": "00238",
+      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "Each help icon opens a popover with a distinct paneId (nav-prefs.custom-nav, nav-prefs.pinned, nav-prefs.available, nav-prefs.new-page, nav-prefs.new-group) and seeded help copy",
+      "proven_by": "paneId rendering test",
+      "story_id": "00238",
+      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "Existing pane descriptions, drag-reorder, pin/unpin, and add-page flows still work; CSS catalog classes used",
+      "proven_by": "no-regression check",
+      "story_id": "00238",
+      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "dev/registries/paneIds.json exists with one entry per paneId (paneId, page, panel, defaultTitle, defaultBody) seeded with 5 nav-prefs entries",
+      "proven_by": "file existence",
+      "story_id": "00239",
+      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "npm run lint:panes greps the codebase for <PaneHeader paneId> usages, fails on missing entries, prints offending file and line",
+      "proven_by": "npm script run",
+      "story_id": "00239",
+      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "done": true
+    },
+    {
+      "order": 9,
+      "criterion": "lint runs in pre-commit hook; result appears in /dev → Reports tab as a row labelled paneIds",
+      "proven_by": "CI surface check",
+      "story_id": "00239",
+      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "done": true
+    },
+    {
+      "order": 10,
+      "criterion": "db/schema/071_pane_help.sql creates pane_help with paneid PK, body_html NOT NULL DEFAULT '', updated_at, updated_by_user_id FK to users",
+      "proven_by": "migration file",
+      "story_id": "00240",
+      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "done": true
+    },
+    {
+      "order": 11,
+      "criterion": "Migration inserts 5 seed rows for nav-prefs.custom-nav, nav-prefs.pinned, nav-prefs.available, nav-prefs.new-page, nav-prefs.new-group",
+      "proven_by": "seed insertion",
+      "story_id": "00240",
+      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "done": true
+    },
+    {
+      "order": 12,
+      "criterion": "SELECT count(*) FROM pane_help returns 5 against dev DB; \\d pane_help shows PK and FK as specified",
+      "proven_by": "psql verification",
+      "story_id": "00240",
+      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "done": true
+    },
+    {
+      "order": 13,
+      "criterion": "GET /api/pane-help returns {paneId: body_html} map for all rows, served from a 60s server-side cache (cache hit/miss in headers)",
+      "proven_by": "GET integration test",
+      "story_id": "00241",
+      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "done": true
+    },
+    {
+      "order": 14,
+      "criterion": "PUT /api/pane-help/:paneId with gadmin auth + valid body writes row, sets updated_by/updated_at, busts cache, returns 200; non-gadmin → 403; unknown paneId → 404",
+      "proven_by": "PUT integration test",
+      "story_id": "00241",
+      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "done": true
+    },
+    {
+      "order": 15,
+      "criterion": "PUT body containing <script> and onclick= is sanitised on write so persisted body_html contains neither",
+      "proven_by": "sanitisation test",
+      "story_id": "00241",
+      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "done": true
+    },
+    {
+      "order": 16,
+      "criterion": "/dev/pane-help lists every paneId from paneIds.json with current body preview, last-updated timestamp, last editor; gadmin-only role gate (403 view for others)",
+      "proven_by": "page render",
+      "story_id": "00242",
+      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "done": true
+    },
+    {
+      "order": 17,
+      "criterion": "Clicking a row opens inline editor with sanitised rich-text input + live preview; Save calls PUT and shows success toast; Cancel discards",
+      "proven_by": "edit flow",
+      "story_id": "00242",
+      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "done": true
+    },
+    {
+      "order": 18,
+      "criterion": "Page appears as a new tab in /dev tab bar alongside Plans, Reports, Research; saved edits visible on next bulk fetch from any page",
+      "proven_by": "integration",
+      "story_id": "00242",
+      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "done": true
+    },
+    {
+      "order": 19,
+      "criterion": "docs/c_c_pane_help.md covers <PaneHeader> API, paneId naming convention, registry workflow, migration pattern, GET/PUT contract, gadmin editor link",
+      "proven_by": "file existence",
+      "story_id": "00243",
+      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "done": false
+    },
+    {
+      "order": 20,
+      "criterion": ".claude/CLAUDE.md has a one-line pointer to the new leaf doc per the Authoring rule (bold label, arrow, link, half-sentence hook)",
+      "proven_by": "index entry",
+      "story_id": "00243",
+      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "done": false
+    },
+    {
+      "order": 21,
+      "criterion": "docs/c_scope.md Underway has a new row for the pane help system referencing migration 071 and stories 00237–00243; <librarian> dry-run reports clean",
+      "proven_by": "scope update",
+      "story_id": "00243",
+      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "HTML injection via body_html on PUT",
+      "mitigation": "Server-side sanitisation on PUT (strip <script>, on*= handlers); render via vetted client sanitiser."
+    },
+    {
+      "impact": 1,
+      "risk": "paneId churn (renames break references in chat / bug reports)",
+      "mitigation": "Registry-only renames go through a migration that copies the old row to the new paneId; old paneIds remain queryable for a deprecation window."
+    },
+    {
+      "impact": 1,
+      "risk": "Cache staleness after gadmin edit",
+      "mitigation": "PUT handler explicitly busts the 60s GET cache; gadmin editor verifies via re-fetch."
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "First adopter — navigation preferences page",
+      "href": "app/(user)/preferences/navigation/page.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Trust-No-One security checklist (PUT endpoint)",
+      "href": "docs/c_security.md"
+    },
+    {
+      "kind": "internal",
+      "label": "/dev tab pattern that the gadmin editor mirrors",
+      "href": "dev/pages/DevPlansPanel.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Plan ID index",
+      "href": "docs/c_plan_index.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Story ID index",
+      "href": "docs/c_story_index.md"
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { MemoryReport, ReportCheck } from "@/app/api/dev/memory-reports/route";
+import { DevAccordion, DevAccordionItem, DevAccordionToolbar } from "@dev/components/DevAccordion";
 
 const SCOPE_LABELS: Record<string, string> = {
   A: "All",
@@ -15,7 +16,7 @@ const PAGE_SIZE = 25;
 
 type StatusFilter = "all" | "pass" | "warn" | "fail" | "fixed";
 
-const FILTERS: { key: StatusFilter; label: string }[] = [
+const FILTER_DEFS: { key: StatusFilter; label: string }[] = [
   { key: "all",   label: "All"    },
   { key: "pass",  label: "Pass"   },
   { key: "warn",  label: "Medium" },
@@ -58,7 +59,6 @@ function SummaryPill({ count, type }: { count: number; type: "pass" | "warn" | "
 }
 
 function ReportItem({ report }: { report: MemoryReport }) {
-  const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const hasFail = report.summary.fail > 0;
@@ -70,93 +70,64 @@ function ReportItem({ report }: { report: MemoryReport }) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  function applyFilter(f: StatusFilter) {
-    setFilter(f);
-    setPage(1);
-  }
-
   function countFor(f: StatusFilter) {
     if (f === "all") return report.checks.length;
     return report.checks.filter(c => c.status === f).length;
   }
 
-  return (
-    <div className={`accordion__item${hasFail ? " dev-accordion-item--fail" : ""}`}>
-      <button
-        className="accordion__toggle"
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className="dev-report-scope">{report.scope}</span>
-        <span className="dev-report-meta">
-          <span className="dev-report-name">{SCOPE_LABELS[report.scope] ?? report.scope} scan</span>
-          <span className="dev-report-flag">{report.flag}</span>
-          <span className="dev-report-ts">{formatTs(report.timestamp)}</span>
-        </span>
-        <span className="dev-report-pills">
-          <SummaryPill count={report.summary.pass} type="pass" />
-          <SummaryPill count={report.summary.warn} type="warn" />
-          <SummaryPill count={report.summary.fail} type="fail" />
-          <SummaryPill count={report.summary.fixed ?? 0} type="fixed" />
-        </span>
-        <span className={`accordion__chevron${open ? "" : " accordion__chevron--closed"}`} />
-      </button>
-      {open && (
-        <div className="accordion__body">
-          <div className="dev-accordion-toolbar">
-            <div className="dev-accordion-toolbar__filters">
-              {FILTERS.map(f => (
-                <button
-                  key={f.key}
-                  className={`dev-accordion-toolbar__filter${filter === f.key ? " dev-accordion-toolbar__filter--active" : ""}`}
-                  onClick={() => applyFilter(f.key)}
-                >
-                  {f.label}
-                  <span className="dev-accordion-toolbar__count">{countFor(f.key)}</span>
-                </button>
-              ))}
-            </div>
-            <div className="dev-accordion-toolbar__pagination">
-              <button
-                className="dev-accordion-toolbar__page-btn"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                aria-label="Previous page"
-              >‹</button>
-              <span className="dev-accordion-toolbar__page-info">{page} / {totalPages}</span>
-              <button
-                className="dev-accordion-toolbar__page-btn"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                aria-label="Next page"
-              >›</button>
-            </div>
-          </div>
+  const filters = FILTER_DEFS.map(f => ({ key: f.key, label: f.label, count: countFor(f.key) }));
 
-          <table className="table">
-            <thead>
-              <tr className="table__head">
-                <th className="table__cell dev-report-col--icon" />
-                <th className="table__cell dev-report-col--label">Check</th>
-                <th className="table__cell dev-report-col--detail">Detail</th>
-                <th className="table__cell dev-report-col--badge">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((c, i) => (
-                <tr key={i} className={`table__row dev-report-row dev-report-row--${c.status}`}>
-                  <td className="table__cell dev-report-col--icon dev-report-row__icon">{statusIcon(c.status)}</td>
-                  <td className="table__cell dev-report-col--label dev-report-row__label">{c.label}</td>
-                  <td className="table__cell dev-report-col--detail dev-report-row__detail">{c.detail}</td>
-                  <td className="table__cell dev-report-col--badge">
-                    <span className={badgeClass(c.status)}>{badgeLabel(c.status)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+  const header = (
+    <>
+      <span className="dev-report-scope">{report.scope}</span>
+      <span className="dev-report-meta">
+        <span className="dev-report-name">{SCOPE_LABELS[report.scope] ?? report.scope} scan</span>
+        <span className="dev-report-flag">{report.flag}</span>
+        <span className="dev-report-ts">{formatTs(report.timestamp)}</span>
+      </span>
+      <span className="dev-report-pills">
+        <SummaryPill count={report.summary.pass} type="pass" />
+        <SummaryPill count={report.summary.warn} type="warn" />
+        <SummaryPill count={report.summary.fail} type="fail" />
+        <SummaryPill count={report.summary.fixed ?? 0} type="fixed" />
+      </span>
+    </>
+  );
+
+  return (
+    <DevAccordionItem header={header} accent={hasFail ? "fail" : null}>
+      <DevAccordionToolbar
+        filters={filters}
+        activeFilter={filter}
+        onFilterChange={f => { setFilter(f); setPage(1); }}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
+
+      <table className="table">
+        <thead>
+          <tr className="table__head">
+            <th className="table__cell dev-report-col--icon" />
+            <th className="table__cell dev-report-col--label">Check</th>
+            <th className="table__cell dev-report-col--detail">Detail</th>
+            <th className="table__cell dev-report-col--badge">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((c, i) => (
+            <tr key={i} className={`table__row dev-report-row dev-report-row--${c.status}`}>
+              <td className="table__cell dev-report-col--icon dev-report-row__icon">{statusIcon(c.status)}</td>
+              <td className="table__cell dev-report-col--label dev-report-row__label">{c.label}</td>
+              <td className="table__cell dev-report-col--detail dev-report-row__detail">{c.detail}</td>
+              <td className="table__cell dev-report-col--badge">
+                <span className={badgeClass(c.status)}>{badgeLabel(c.status)}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DevAccordionItem>
   );
 }
 
@@ -206,9 +177,9 @@ export default function DevReportsPanel() {
       )}
 
       {reports.length > 0 && (
-        <div className="accordion">
+        <DevAccordion>
           {reports.map(r => <ReportItem key={r.id} report={r} />)}
-        </div>
+        </DevAccordion>
       )}
     </div>
   );

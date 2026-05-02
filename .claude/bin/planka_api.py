@@ -122,6 +122,11 @@ def delete_card(card_id):
     token = get_token()
     http_request("DELETE", f"{PLANKA_URL}/api/cards/{card_id}", token=token)
 
+def delete_label(label_id):
+    """Delete a label from the board"""
+    token = get_token()
+    http_request("DELETE", f"{PLANKA_URL}/api/labels/{label_id}", token=token)
+
 def create_label(board_id, name, color, position):
     """Create a label and return its ID"""
     token = get_token()
@@ -203,6 +208,8 @@ if __name__ == "__main__":
             comment(sys.argv[2], sys.argv[3])
         elif cmd == "delete-card":
             delete_card(sys.argv[2])
+        elif cmd == "delete-label":
+            delete_label(sys.argv[2])
         elif cmd == "create-label":
             create_label(sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]))
         elif cmd == "board":

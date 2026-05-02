@@ -144,7 +144,7 @@ export default function FillPetalEqualChartRounded({
       aria-label="Fill petal equal rounded chart"
     >
       <g transform={`translate(${CENTER} ${CENTER})`}>
-        {petals.map((p, i) => {
+        {petals.map((_, i) => {
           const centerAngle = -Math.PI / 2 + i * slotAngle;
           const a1 = centerAngle - slotAngle / 2;
           const a2 = centerAngle + slotAngle / 2;
