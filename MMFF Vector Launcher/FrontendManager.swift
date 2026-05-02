@@ -104,17 +104,20 @@ actor FrontendManager {
     private func startWatcher() {
         watcherTask?.cancel()
         watcherTask = Task { [port] in
-            let url = URL(string: "http://127.0.0.1:\(port)/")!
+            // Fix A: 30s startup grace before first health check, then TCP-port
+            // liveness every 10s. Two consecutive failures → crash. This avoids
+            // false-positives caused by Next.js grandchild PID drift — we probe
+            // the listener, not the wrapper process.
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
             var consecutive = 0
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
-                let r = await HealthProbe.htmlReady(url: url, timeout: 2.0)
-                if r.ok { consecutive = 0; continue }
-                consecutive += 1
-                if consecutive >= 3 {
+                let r = await HealthProbe.portListen(host: "127.0.0.1", port: port, timeout: 2.0)
+                if r.ok { consecutive = 0 } else { consecutive += 1 }
+                if consecutive >= 2 {
                     await self.handleCrash()
                     return
                 }
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
             }
         }
     }
@@ -124,6 +127,16 @@ actor FrontendManager {
         await JSONLLogger.shared.log(LogEntry(
             level: .warn, tag: .frontend, action: "crash", result: "detected"
         ))
+        // Frontend is not env-scoped, but the active env's lock applies.
+        let activeEnv = BackendEnv(rawValue: MarkerLock.readActiveEnv() ?? "") ?? .production
+        if await LockRegistry.shared.isLocked(env: activeEnv, kind: .frontend) {
+            await JSONLLogger.shared.log(LogEntry(
+                level: .info, tag: .frontend, action: "auto-restart",
+                result: "skipped-locked"
+            ))
+            state = .down
+            return
+        }
         await restart()
     }
 }

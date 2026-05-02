@@ -86,7 +86,7 @@ struct LogFilterBar: View {
             if !filter.rules.isEmpty {
                 HStack(spacing: 8) {
                     ForEach($filter.rules) { $rule in
-                        HStack(spacing: 4) {
+                        HStack(spacing: 8) {
                             TextField("highlight…", text: $rule.text)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 130)
@@ -94,13 +94,14 @@ struct LogFilterBar: View {
                             ColorPicker("", selection: $rule.color)
                                 .labelsHidden()
                                 .frame(width: 28)
+                                .padding(.trailing, 4)
                             Button { filter.removeRule(rule.id) } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(Theme.fgMuted)
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(rule.color.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 5))
                     }

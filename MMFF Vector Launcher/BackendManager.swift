@@ -39,7 +39,10 @@ actor BackendManager {
             return
         }
 
-        let cmd = "cd \(shellEscape(Paths.repoRoot.appendingPathComponent("backend").path)) && go run ./cmd/server"
+        // Fix B: compile-then-run so the 180s grace covers server boot only, not
+        // Go compilation. `go build` is idempotent (cached) on subsequent starts.
+        let backendDir = shellEscape(Paths.repoRoot.appendingPathComponent("backend").path)
+        let cmd = "cd \(backendDir) && go build -o /tmp/vector-backend ./cmd/server && /tmp/vector-backend"
         let envVars = ["BACKEND_ENV": env.rawValue]
 
         for attempt in 0..<policy.maxAttempts {
@@ -48,8 +51,8 @@ actor BackendManager {
                     bashLogin: cmd, cwd: Paths.repoRoot, env: envVars, logTag: .backend)
                 self.pgid = r.pgid
 
-                // Probe up to 90s — covers cold `go build` (~60s) + startup
-                let deadline = Date().addingTimeInterval(90)
+                // Fix B: 180s grace — covers cold compile (~90s) + server startup
+                let deadline = Date().addingTimeInterval(180)
                 while Date() < deadline {
                     let p = await HealthProbe.httpHealthz(url: healthURL, expectCommitMatch: false, timeout: 1.5)
                     if p.ok {
@@ -132,6 +135,14 @@ actor BackendManager {
         await JSONLLogger.shared.log(LogEntry(
             level: .warn, tag: .backend, action: "crash", result: "detected"
         ))
+        if await LockRegistry.shared.isLocked(env: env, kind: .backend) {
+            await JSONLLogger.shared.log(LogEntry(
+                level: .info, tag: .backend, action: "auto-restart",
+                result: "skipped-locked", extra: ["env": env.rawValue]
+            ))
+            state = .down
+            return
+        }
         await restart()
     }
 

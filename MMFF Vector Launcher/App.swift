@@ -17,7 +17,7 @@ struct MMFFVectorLauncherApp: App {
                 }
             }
             .environmentObject(state)
-            .frame(minWidth: 760, minHeight: 520)
+            .frame(minWidth: 1280, idealWidth: 1400, minHeight: 920, idealHeight: 980)
         }
         .windowResizability(.contentSize)
     }

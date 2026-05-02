@@ -110,22 +110,53 @@ actor TunnelManager {
     private func startWatcher() {
         watcherTask?.cancel()
         watcherTask = Task { [env] in
-            // Drop confirmation: 10s of consecutive REFUSED before declaring drop
-            var consecutive = 0
+            // Fix C: primary liveness = kill -0 on the SSH pid (process alive).
+            // Secondary = TCP connect on tunnel port, checked every 60s with 5s
+            // timeout. Only declare drop when primary fails OR secondary fails
+            // twice in a row. This prevents false-drops from transient TCP stalls.
+            var tcpConsecutiveFail = 0
+            var lastTCPCheck = Date.distantPast
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                let r = await HealthProbe.portListen(host: "127.0.0.1", port: env.tunnelPort, timeout: 1.0)
-                if r.ok {
-                    consecutive = 0
-                    continue
+                try? await Task.sleep(nanoseconds: 15_000_000_000) // wake every 15s
+
+                // Primary: is the SSH process still alive?
+                let pid: Int32
+                switch await self.currentPID() {
+                case let p where p > 1:
+                    pid = p
+                default:
+                    // No valid PID tracked — fall through to TCP-only check
+                    pid = -1
                 }
-                consecutive += 1
-                if consecutive >= 5 {
+                if pid > 1 && kill(pid, 0) != 0 {
+                    // kill -0 failed → process is definitely gone
                     await self.handleDrop()
                     return
                 }
+
+                // Secondary: TCP probe every 60s
+                let now = Date()
+                guard now.timeIntervalSince(lastTCPCheck) >= 60 else { continue }
+                lastTCPCheck = now
+                let r = await HealthProbe.portListen(
+                    host: "127.0.0.1", port: env.tunnelPort, timeout: 5.0)
+                if r.ok {
+                    tcpConsecutiveFail = 0
+                } else {
+                    tcpConsecutiveFail += 1
+                    if tcpConsecutiveFail >= 2 {
+                        await self.handleDrop()
+                        return
+                    }
+                }
             }
         }
+    }
+
+    /// Extract the PID from the current state without leaving actor isolation.
+    private func currentPID() async -> Int32 {
+        if case .up(let pid, _) = state { return pid }
+        return -1
     }
 
     private func handleDrop() async {
@@ -133,6 +164,13 @@ actor TunnelManager {
         await JSONLLogger.shared.log(LogEntry(
             level: .warn, tag: .tunnel, action: "drop", result: "detected"
         ))
+        if await LockRegistry.shared.isLocked(env: env, kind: .tunnel) {
+            await JSONLLogger.shared.log(LogEntry(
+                level: .info, tag: .tunnel, action: "auto-restart",
+                result: "skipped-locked", extra: ["env": env.rawValue]
+            ))
+            return
+        }
         await restart()
     }
 }
