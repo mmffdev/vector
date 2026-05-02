@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
+import Panel from "@/app/components/Panel";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api } from "@/app/lib/api";
 import { useTabState } from "@/app/hooks/useTabState";
@@ -480,6 +482,7 @@ export default function WorkItemsSettingsPage() {
   if (!user || user.role !== "padmin") return null;
 
   return (
+    <StrictRoute>
     <PageShell
       title="Work Items Settings"
       subtitle="Custom field library and item templates"
@@ -503,7 +506,16 @@ export default function WorkItemsSettingsPage() {
         ))}
       </div>
 
-      {tab === "fields" ? <CustomFieldLibrary /> : <TemplateBuilder />}
+      {tab === "fields" ? (
+        <Panel name="work_items_settings_fields" title="Custom field library">
+          <CustomFieldLibrary />
+        </Panel>
+      ) : (
+        <Panel name="work_items_settings_templates" title="Item templates">
+          <TemplateBuilder />
+        </Panel>
+      )}
     </PageShell>
+    </StrictRoute>
   );
 }

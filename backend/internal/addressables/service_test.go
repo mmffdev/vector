@@ -1,0 +1,345 @@
+package addressables_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+
+	"github.com/mmffdev/vector-backend/internal/addressables"
+)
+
+// Integration tests for addressables.Service against the real dev DB.
+// Each test writes to a synthetic page_route ('/_test/<uuid>') so rows
+// are isolated per test and easy to clean up. The tunnel must be up;
+// otherwise tests are skipped (matching the ranking package convention).
+
+func testPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	// Active env marker (CLAUDE.md top-of-file ACTIVE_BACKEND_ENV) currently
+	// pins dev — load .env.dev preferentially. Fall back to .env.local for
+	// devs running tests against a different tunnel.
+	for _, rel := range []string{".env.dev", "../../.env.dev", ".env.local", "../../.env.local"} {
+		abs, _ := filepath.Abs(rel)
+		if _, err := os.Stat(abs); err == nil {
+			_ = godotenv.Load(abs)
+			break
+		}
+	}
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"))
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Skipf("cannot open pool (tunnel down?): %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		t.Skipf("cannot ping (tunnel down?): %v", err)
+	}
+	return pool
+}
+
+func uniqueRoute(prefix string) string {
+	return fmt.Sprintf("/_test/%s/%s", prefix, uuid.NewString()[:8])
+}
+
+func cleanupRoute(t *testing.T, pool *pgxpool.Pool, route string) {
+	t.Helper()
+	ctx := context.Background()
+	// page_help rows first (FK ON DELETE RESTRICT); use the addressable ids.
+	_, _ = pool.Exec(ctx, `
+		DELETE FROM page_help WHERE addressable_id IN (
+			SELECT id FROM page_addressables WHERE page_route = $1
+		)`, route)
+	_, _ = pool.Exec(ctx, `DELETE FROM page_addressables WHERE page_route = $1`, route)
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// BuildAddress: pure function, no DB.
+// ─────────────────────────────────────────────────────────────────────
+
+func TestBuildAddress_Root(t *testing.T) {
+	got, err := addressables.BuildAddress("", addressables.SlotApp, "panel", "kpi_grid")
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	want := "samantha._viewport.app._panel.kpi_grid"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestBuildAddress_Nested(t *testing.T) {
+	parent := "samantha._viewport.app._panel.kpi_grid"
+	got, err := addressables.BuildAddress(parent, addressables.SlotApp, "table", "rows")
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	want := parent + "._table.rows"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestBuildAddress_RejectsBadInputs(t *testing.T) {
+	cases := []struct {
+		name           string
+		parent         string
+		slot           addressables.ViewportSlot
+		kind, nameArg  string
+		wantErr        error
+	}{
+		{"bad slot", "", "sidebar", "panel", "x", addressables.ErrInvalidViewportSlot},
+		{"bad kind: caps", "", addressables.SlotApp, "Panel", "x", addressables.ErrInvalidKind},
+		{"bad kind: dash", "", addressables.SlotApp, "panel-grid", "x", addressables.ErrInvalidKind},
+		{"empty name", "", addressables.SlotApp, "panel", "", addressables.ErrInvalidName},
+		{"name with caps", "", addressables.SlotApp, "panel", "Foo", addressables.ErrInvalidName},
+		{"name with hyphen", "", addressables.SlotApp, "panel", "kpi-grid", addressables.ErrInvalidName},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := addressables.BuildAddress(tc.parent, tc.slot, tc.kind, tc.nameArg)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got %v want %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// RegisterFromBuild: tree insert + reconcile.
+// ─────────────────────────────────────────────────────────────────────
+
+func TestRegisterFromBuild_InsertsTree_AndSeedsHelp(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("build_insert")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	tree := []addressables.BuildNode{
+		{Kind: "panel", Name: "kpi_grid", Children: []addressables.BuildNode{
+			{Kind: "table", Name: "rows"},
+		}},
+		{Kind: "panel", Name: "activity"},
+	}
+
+	addrs, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree)
+	if err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	wantAddrs := []string{
+		"samantha._viewport.app._panel.kpi_grid",
+		"samantha._viewport.app._panel.kpi_grid._table.rows",
+		"samantha._viewport.app._panel.activity",
+	}
+	if len(addrs) != len(wantAddrs) {
+		t.Fatalf("addresses: got %v want %v", addrs, wantAddrs)
+	}
+	for i, w := range wantAddrs {
+		if addrs[i] != w {
+			t.Fatalf("addr[%d]: got %q want %q", i, addrs[i], w)
+		}
+	}
+
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if len(snap) != 3 {
+		t.Fatalf("snapshot rows: got %d want 3", len(snap))
+	}
+
+	// Every row must have a page_help row seeded from the library wildcard.
+	for _, a := range snap {
+		body, found, err := svc.HelpFor(ctx, a.ID, "en")
+		if err != nil {
+			t.Fatalf("HelpFor: %v", err)
+		}
+		if !found {
+			t.Fatalf("expected page_help seeded for %s", a.Address)
+		}
+		if body == "" {
+			t.Fatalf("expected non-empty body for %s", a.Address)
+		}
+	}
+}
+
+func TestRegisterFromBuild_Idempotent(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("build_idem")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	tree := []addressables.BuildNode{{Kind: "panel", Name: "kpi_grid"}}
+
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if len(snap) != 1 {
+		t.Fatalf("expected 1 row after idempotent re-register, got %d", len(snap))
+	}
+}
+
+func TestRegisterFromBuild_ArchivesDroppedRows(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("build_archive")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	first := []addressables.BuildNode{
+		{Kind: "panel", Name: "kpi_grid"},
+		{Kind: "panel", Name: "activity"},
+	}
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, first); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	second := []addressables.BuildNode{
+		{Kind: "panel", Name: "kpi_grid"}, // activity dropped
+	}
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, second); err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if len(snap) != 1 || snap[0].Name != "kpi_grid" {
+		t.Fatalf("expected only kpi_grid live, got %+v", snap)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// RegisterFromRuntime
+// ─────────────────────────────────────────────────────────────────────
+
+func TestRegisterFromRuntime_InsertsRoot(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("rt_root")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	addr, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "scratch", addressables.SourceRuntime, nil)
+	if err != nil {
+		t.Fatalf("runtime register: %v", err)
+	}
+	want := "samantha._viewport.app._panel.scratch"
+	if addr != want {
+		t.Fatalf("got %q want %q", addr, want)
+	}
+}
+
+func TestRegisterFromRuntime_RefusedInProduction(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, true) // inProduction=true
+	ctx := context.Background()
+	route := uniqueRoute("rt_prod")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	_, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "x", addressables.SourceRuntime, nil)
+	if !errors.Is(err, addressables.ErrRuntimeRegisterInProduction) {
+		t.Fatalf("got %v want ErrRuntimeRegisterInProduction", err)
+	}
+}
+
+func TestRegisterFromRuntime_RejectsBuildSource(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("rt_buildsrc")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	_, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "x", addressables.SourceBuild, nil)
+	if !errors.Is(err, addressables.ErrInvalidSource) {
+		t.Fatalf("got %v want ErrInvalidSource", err)
+	}
+}
+
+func TestRegisterFromRuntime_NestedRequiresParent(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("rt_nested")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	parent := "samantha._viewport.app._panel.scratch"
+	_, err := svc.RegisterFromRuntime(ctx, route, parent, addressables.SlotApp, "table", "x", addressables.SourceRuntime, nil)
+	if !errors.Is(err, addressables.ErrParentNotFound) {
+		t.Fatalf("got %v want ErrParentNotFound", err)
+	}
+	// Now create the parent then retry — must succeed.
+	if _, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "scratch", addressables.SourceRuntime, nil); err != nil {
+		t.Fatalf("create parent: %v", err)
+	}
+	addr, err := svc.RegisterFromRuntime(ctx, route, parent, addressables.SlotApp, "table", "x", addressables.SourceRuntime, nil)
+	if err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	want := parent + "._table.x"
+	if addr != want {
+		t.Fatalf("got %q want %q", addr, want)
+	}
+}
+
+func TestRegisterFromRuntime_CustomAppCannotOverwriteBuild(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("rt_collision")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	// Build owns the (panel, scratch) slot.
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, []addressables.BuildNode{{Kind: "panel", Name: "scratch"}}); err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	appID := uuid.New()
+	_, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "scratch", addressables.SourceCustomApp, &appID)
+	if !errors.Is(err, addressables.ErrCustomAppCollision) {
+		t.Fatalf("got %v want ErrCustomAppCollision", err)
+	}
+}
+
+func TestRegisterFromRuntime_RuntimeReregisterIsIdempotent(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("rt_idem")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	addr1, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "scratch", addressables.SourceRuntime, nil)
+	if err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	addr2, err := svc.RegisterFromRuntime(ctx, route, "", addressables.SlotApp, "panel", "scratch", addressables.SourceRuntime, nil)
+	if err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	if addr1 != addr2 {
+		t.Fatalf("idempotent address: got %q vs %q", addr1, addr2)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if len(snap) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(snap))
+	}
+}

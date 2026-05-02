@@ -12,6 +12,7 @@ import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
+import { DomRegistryProvider, ViewportSlot } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -36,17 +37,23 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     <LibraryReleasesProvider>
     <NavPrefsProvider>
       <PageHeaderProvider>
-        <div className="app-root">
-          <AppSidebar_2 />
-          <div className="app-main-column">
-            <PageHeaderBar />
-            <PageTitleRow />
-            <AppViewport className="app-viewport-container">
-              <PageWrapper className="page-wrapper">{children}</PageWrapper>
-            </AppViewport>
-            <AppFooter />
+        <DomRegistryProvider>
+          <div className="app-root">
+            <ViewportSlot kind="side_bar"><AppSidebar_2 /></ViewportSlot>
+            <div className="app-main-column">
+              <ViewportSlot kind="header">
+                <PageHeaderBar />
+                <PageTitleRow />
+              </ViewportSlot>
+              <ViewportSlot kind="app">
+                <AppViewport className="app-viewport-container">
+                  <PageWrapper className="page-wrapper">{children}</PageWrapper>
+                </AppViewport>
+              </ViewportSlot>
+              <ViewportSlot kind="footer"><AppFooter /></ViewportSlot>
+            </div>
           </div>
-        </div>
+        </DomRegistryProvider>
       </PageHeaderProvider>
     </NavPrefsProvider>
     </LibraryReleasesProvider>

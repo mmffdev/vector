@@ -31,6 +31,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
+import Panel from "@/app/components/Panel";
+import Header from "@/app/components/Header";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 import WizardModelCardList from "./WizardModelCardList";
@@ -216,6 +219,7 @@ export default function PortfolioModelPage() {
   if (authLoading || !user || user.role !== "padmin") return null;
 
   return (
+    <StrictRoute>
     <PageShell
       title="Portfolio Model"
       subtitle="Adopt a model or preview your subscription's adopted bundle"
@@ -228,6 +232,7 @@ export default function PortfolioModelPage() {
         onOverlayFail={handleOverlayFail}
       />
     </PageShell>
+    </StrictRoute>
   );
 }
 
@@ -314,10 +319,11 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
 
   return (
     <div className="model-preview">
-      <header className="model-preview__header">
-        <div className="model-preview__title-row">
-          <h2 className="model-preview__title">{m.name}</h2>
-        </div>
+      <Header
+        name="portfolio_model_active"
+        className="model-preview__header"
+        title={<span className="model-preview__title">{m.name}</span>}
+      >
         {m.description && (
           <div className="model-preview__description">
             {m.description.split("\n\n").map((para, i) => {
@@ -328,9 +334,9 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
             })}
           </div>
         )}
-      </header>
+      </Header>
 
-      <Section title="Portfolio Hierarchy">
+      <Panel name="portfolio_model_hierarchy" title="Portfolio Hierarchy">
         {localLayers === null
           ? <div className="placeholder"><h3 className="placeholder__title">Loading…</h3></div>
           : <LayersTable
@@ -340,10 +346,10 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
               topAnchorTag="PRW"
             />
         }
-      </Section>
+      </Panel>
 
       {bundle.artifacts.length > 0 && (
-        <Section title="Artifacts">
+        <Panel name="portfolio_model_artifacts" title="Artifacts">
           <div className="table-wrap">
             <table className="table">
               <thead className="table__head">
@@ -368,11 +374,11 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
               </tbody>
             </table>
           </div>
-        </Section>
+        </Panel>
       )}
 
       {bundle.terminology.length > 0 && (
-        <Section title="Terminology">
+        <Panel name="portfolio_model_terminology" title="Terminology">
           <div className="table-wrap">
             <table className="table">
               <thead className="table__head">
@@ -391,7 +397,7 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
               </tbody>
             </table>
           </div>
-        </Section>
+        </Panel>
       )}
     </div>
   );
@@ -405,11 +411,3 @@ const STRATEGY_FIXED_ITEMS: LayerDTO[] = [
   { id: "fixed-def", tag: "DEF", name: "Defect", sort_order: 0, description_md: "A deviation from expected behaviour requiring a fix" },
 ];
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="model-preview__section">
-      <h3 className="model-preview__section-title">{title}</h3>
-      {children}
-    </section>
-  );
-}

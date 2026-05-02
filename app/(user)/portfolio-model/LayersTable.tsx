@@ -437,14 +437,14 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
   return (
     <div className="layers-editor">
       {isDirty && (
-        <div className="layers-editor__change-banner" role="alert">
-          <span className="layers-editor__change-banner-text">
+        <div className="pop-up-change-banner" role="alert">
+          <span className="pop-up-change-banner__text">
             Changes detected — press <strong>Confirm Changes</strong> to save.
           </span>
           {formError && (
-            <span className="layers-editor__change-banner-error">{formError}</span>
+            <span className="pop-up-change-banner__error">{formError}</span>
           )}
-          <div className="layers-editor__change-banner-actions">
+          <div className="pop-up-change-banner__actions">
             <button
               type="button"
               className="btn btn--secondary btn--sm"

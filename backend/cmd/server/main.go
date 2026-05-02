@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 
+	"github.com/mmffdev/vector-backend/internal/addressables"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
@@ -31,7 +32,6 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
-	"github.com/mmffdev/vector-backend/internal/panehelp"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/artefacts"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
@@ -121,8 +121,17 @@ func main() {
 	customPagesSvc := custompages.New(pool)
 	customPagesH := custompages.NewHandler(customPagesSvc)
 
-	paneHelpSvc := panehelp.New(pool)
-	paneHelpH := panehelp.NewHandler(paneHelpSvc)
+	// Universal addressables registry (PLA-0005). Service is the SOLE
+	// writer for page_addressables / page_help. Handler fronts four
+	// endpoints — see backend/internal/addressables/handler.go for the
+	// auth contract (CI token gate on /build-reconcile, prod gate on
+	// /register).
+	addressablesSvc := addressables.New(pool, appEnv == "production")
+	addressablesH := addressables.NewHandler(
+		addressablesSvc,
+		os.Getenv("CI_SERVICE_TOKEN"),
+		os.Getenv("CUSTOM_APP_TOKEN"),
+	)
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
@@ -388,19 +397,43 @@ func main() {
 		r.Delete("/{id}", customPagesH.Delete)
 	})
 
-	// ---- /api/pane-help ----
-	// GET is open to any authenticated user (60s in-process cache).
-	// PUT is gated by gadmin role; body is sanitised on write.
-	r.Route("/api/pane-help", func(r chi.Router) {
+	// ---- /api/pane-help — REMOVED in PLA-0005 / 00254 ----
+	// The pane_help table was migrated into page_help and dropped in
+	// migration 076. Every endpoint returns 410 Gone with a pointer to
+	// the replacement so any stale caller fails loudly.
+	paneHelpGone := func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusGone)
+		_, _ = w.Write([]byte(`{"error":"pane_help removed; use /api/page-help/{addressable_id} (substrate-keyed) and /api/page-help/admin (gadmin)"}`))
+	}
+	r.Get("/api/pane-help", paneHelpGone)
+	r.Get("/api/pane-help/admin", paneHelpGone)
+	r.Put("/api/pane-help/*", paneHelpGone)
+
+	// ---- /api/addressables and /api/page-help/{addressable_id} (PLA-0005) ----
+	// build-reconcile: CI service-account token (X-CI-Token).
+	// register:        dev unrestricted; prod requires X-Custom-App-Token.
+	// snapshot, page-help GET: unauthenticated by design (substrate metadata).
+	// page-help admin (list / PUT / DELETE): gadmin-only, story 00253.
+	r.Post("/api/addressables/build-reconcile", addressablesH.BuildReconcile)
+	r.Post("/api/addressables/register", addressablesH.Register)
+	r.Get("/api/addressables/snapshot", addressablesH.Snapshot)
+	r.Get("/api/page-help/{addressable_id}", addressablesH.PageHelp)
+	r.Route("/api/page-help/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequireRole(models.RoleGAdmin))
 		r.Use(httprate.LimitByIP(120, time.Minute))
-
-		r.Get("/", paneHelpH.GetAll)
-		r.With(auth.RequireRole(models.RoleGAdmin)).
-			Get("/admin", paneHelpH.GetAllAdmin)
-		r.With(auth.RequireRole(models.RoleGAdmin)).
-			Put("/{paneId}", paneHelpH.Put)
+		r.Get("/", addressablesH.PageHelpAdminList)
+		r.Put("/{addressable_id}", addressablesH.PageHelpAdminPut)
+		r.Delete("/{addressable_id}", addressablesH.PageHelpAdminDelete)
+	})
+	r.Route("/api/addressables/admin", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequireRole(models.RoleGAdmin))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Patch("/{id}/helpable", addressablesH.AdminUpdateHelpable)
 	})
 
 	// ---- /api/portfolio-models ----

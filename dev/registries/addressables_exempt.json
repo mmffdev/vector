@@ -1,0 +1,4 @@
+{
+  "description": "Per-page exemption list for lint:addressables (PLA-0005). Each entry is a repo-relative path that the lint will warn-rather-than-fail on. The list is INTENTIONALLY EMPTY after the PLA-0005 sweep (stories 00255–00259). Adding an entry requires a justification in the description and a follow-up plan to wrap and remove. Treat the empty list as a hard architectural invariant.",
+  "exempt_paths": []
+}

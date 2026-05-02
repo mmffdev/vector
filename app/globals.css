@@ -3662,10 +3662,10 @@ table.tbl tbody tr:hover td {
 /* ============================================================
    Navigation preferences page (/preferences/navigation)
    ============================================================ */
-.nav-prefs__pane.nav-prefs__quick-bar {
-  /* Inherits .nav-prefs__pane chrome (surface, border, padding, gap).
-     Symmetric 24px margin sits this band evenly between the page header
-     above and the Pinned/Available row below. */
+.nav-prefs__quick-bar {
+  /* Symmetric 24px margin sits this band evenly between the page
+     header above and the Pinned/Available row below. The visible
+     surface/chrome is the inner <Panel>; this wrapper just spaces. */
   margin: var(--space-6) 0;
 }
 
@@ -3699,12 +3699,12 @@ table.tbl tbody tr:hover td {
     grid-template-rows: auto 1fr;
   }
 
-  .nav-prefs__pane[aria-label="Pinned"] {
+  .nav-prefs > [aria-label="Pinned"] {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .nav-prefs__pane[aria-label="Available"] {
+  .nav-prefs > [aria-label="Available"] {
     grid-column: 2;
     grid-row: 1;
   }
@@ -3736,15 +3736,10 @@ table.tbl tbody tr:hover td {
    .pill-like accent ONLY when "active" (start page) — accent is
    --ink (never brand colour). Danger uses --danger.
    ============================================================ */
-.nav-prefs__pane {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
+/* .nav-prefs__pane base chrome removed — wrappers no longer paint a
+   surface; the visible chrome is now the inner <Panel>. Modifier
+   classes (--available, --new-page, --new-group, --drop-target) and
+   --pane-desc remain in use for layout/spacing. */
 
 .nav-prefs__pane-header {
   display: flex;
@@ -6575,7 +6570,7 @@ table.tbl tbody tr:hover td {
 
 /* ── Change-detected banner (replaces sticky confirm bar) ─── */
 
-.layers-editor__change-banner {
+.pop-up-change-banner {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -6590,18 +6585,18 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
 }
 
-.layers-editor__change-banner-text {
+.pop-up-change-banner__text {
   flex: 1 1 auto;
 }
 
-.layers-editor__change-banner-error {
+.pop-up-change-banner__error {
   font-size: var(--text-xs);
   color: var(--danger);
   flex: 1 1 100%;
   order: 10;
 }
 
-.layers-editor__change-banner-actions {
+.pop-up-change-banner__actions {
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
@@ -8713,4 +8708,445 @@ table.tbl tbody tr:hover td {
 .pane-header__popover-empty {
   color: var(--ink-muted);
   font-style: italic;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Panel primitive — PLA-0005 AC13.
+ * Border + padding from the catalog; help button + popover mirror
+ * .pane-header but live on the panel itself.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.panel__title {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel__title--empty {
+  display: block;
+  height: 0;
+  flex: 1 1 auto;
+}
+
+.panel__help-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.panel__help-btn:hover,
+.panel__help-btn:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.panel__help-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.panel__body {
+  display: block;
+}
+
+.panel__popover {
+  position: absolute;
+  top: calc(var(--space-4) + 28px);
+  right: var(--space-4);
+  z-index: 40;
+  min-width: 260px;
+  max-width: 360px;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-strong, var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.panel__popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.panel__address-pill {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  word-break: break-all;
+  text-align: left;
+}
+
+.panel__address-pill:hover,
+.panel__address-pill:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.panel__copy-state {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.panel__close {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+.panel__close:hover,
+.panel__close:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.panel__popover-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.panel__popover-body p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.panel__popover-body p:last-child {
+  margin-bottom: 0;
+}
+
+.panel__popover-empty {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Header primitive — PLA-0006 / 00264.
+ * Identity strip adopter: same substrate plumbing as .panel but with
+ * no border, no background, no padding of its own. Caller-supplied
+ * className handles layout. The .addr-header__* helpers cover the
+ * help button + popover only.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.addr-header {
+  position: relative;
+  display: block;
+}
+
+.addr-header__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.addr-header__title-block {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.addr-header__title {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.addr-header__subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  margin: var(--space-1) 0 0 0;
+}
+
+.addr-header__help-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.addr-header__help-btn:hover,
+.addr-header__help-btn:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.addr-header__help-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.addr-header__body {
+  display: block;
+  margin-top: var(--space-2);
+}
+
+.addr-header__popover {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 40;
+  min-width: 260px;
+  max-width: 360px;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-strong, var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.addr-header__popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.addr-header__address-pill {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  word-break: break-all;
+  text-align: left;
+}
+
+.addr-header__address-pill:hover,
+.addr-header__address-pill:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.addr-header__copy-state {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.addr-header__close {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+.addr-header__close:hover,
+.addr-header__close:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.addr-header__popover-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.addr-header__popover-body p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.addr-header__popover-body p:last-child {
+  margin-bottom: 0;
+}
+
+.addr-header__popover-empty {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Navigation primitive — PLA-0005 AC14.
+ * Bare semantic <nav> with no chrome — caller composes its own item
+ * list. Block exists so the address-substrate has a hook to attach
+ * to (data-address / data-addressable-id).
+ * ─────────────────────────────────────────────────────────────────── */
+
+.navigation {
+  display: block;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Address devtool — PLA-0005 AC20/21.
+ * Live overlay rendered over the page when ⌥A is armed; hover finds
+ * the nearest [data-address], outlines it, and shows a copy pill.
+ * Pointer-events:none on the outline so the overlay never swallows
+ * clicks meant for the page underneath; the pill itself is clickable.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.address-devtool__hint {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-3);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.address-devtool__outline {
+  position: fixed;
+  z-index: 9998;
+  border: 2px solid var(--accent);
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+  pointer-events: none;
+}
+
+.address-devtool__pill {
+  position: fixed;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  padding: 2px var(--space-2);
+}
+
+.address-devtool__address {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  word-break: break-all;
+  text-align: left;
+}
+
+.address-devtool__address:hover,
+.address-devtool__address:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.address-devtool__copy-state {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.address-devtool__share {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 0;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.address-devtool__share:hover,
+.address-devtool__share:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+/* PLA-0006 / 00266 — anchor-target highlight pulse for deep-links. */
+.is-anchor-target {
+  animation: addr-anchor-pulse 1500ms ease-out;
+  scroll-margin-block: var(--space-6, 24px);
+}
+
+@keyframes addr-anchor-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 70%, transparent);
+    background-color: color-mix(in oklch, var(--accent) 14%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 6px color-mix(in oklch, var(--accent) 0%, transparent);
+    background-color: color-mix(in oklch, var(--accent) 6%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+  }
 }

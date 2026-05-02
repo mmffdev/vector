@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthProvider } from "@/app/contexts/AuthContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
+import AddressDevtool from "@/app/components/AddressDevtool";
+import AddressAnchorResolver from "@/app/components/AddressAnchorResolver";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -40,7 +42,11 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <DevTabProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <AddressDevtool />
+            <AddressAnchorResolver />
+          </AuthProvider>
         </DevTabProvider>
         <DevStatusFloat />
       </body>

@@ -444,13 +444,19 @@ func (s *Service) ReplacePrefsForProfile(
 	}
 
 	// Insert groups first so FK targets exist for any prefs row that
-	// references them.
+	// references them. On Default the pool was wiped above, so straight
+	// INSERTs are safe. On non-default the pool survives — use
+	// ON CONFLICT DO UPDATE so re-sending an existing group's row is
+	// idempotent (label/position get refreshed, no PK clash). New rows
+	// (minted from "new:" stubs) insert as usual.
 	if len(normalisedGroups) > 0 {
 		batch := &pgx.Batch{}
 		for _, g := range normalisedGroups {
 			batch.Queue(`
 				INSERT INTO user_nav_groups (id, user_id, label, position)
-				VALUES ($1, $2, $3, $4)`,
+				VALUES ($1, $2, $3, $4)
+				ON CONFLICT (id) DO UPDATE
+				SET label = EXCLUDED.label, position = EXCLUDED.position`,
 				g.ID, userID, g.Label, g.Position)
 		}
 		br := tx.SendBatch(ctx, batch)

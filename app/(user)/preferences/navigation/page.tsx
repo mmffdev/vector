@@ -22,8 +22,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import PageShell from "@/app/components/PageShell";
+import Panel from "@/app/components/Panel";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { NavIcon } from "@/app/components/NavIcon";
-import PaneHeader from "@/app/components/PaneHeader";
 import { BsPinAngle } from "react-icons/bs";
 import ProfileBar, { MAX_PROFILES } from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
@@ -675,19 +676,18 @@ function AvailablePanel({
   );
   const empty = poolTags.length === 0 && libraryEntries.length === 0;
   return (
-    <section
+    <div
       ref={setNodeRef}
-      className={`nav-prefs__pane nav-prefs__pane--available${isOver ? " nav-prefs__pane--drop-target" : ""}`}
+      className={`nav-prefs__pane--available${isOver ? " nav-prefs__pane--drop-target" : ""}`}
       aria-label="Available"
     >
-      <PaneHeader
-        paneId="nav-prefs.available"
+      <Panel
+        name="nav_prefs_available"
         title={<>Available <span className="nav-prefs__count">{customPagesTotal}/{MAX_CUSTOM_PAGES}</span></>}
       >
         <p className="nav-prefs__pane-desc">
           Pages you can add to <strong>{profileLabel}</strong> — pin one to send it to your sidebar.
         </p>
-      </PaneHeader>
       {empty ? (
         <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
       ) : (
@@ -716,7 +716,8 @@ function AvailablePanel({
           ))}
         </>
       )}
-    </section>
+      </Panel>
+    </div>
   );
 }
 
@@ -832,7 +833,7 @@ function PoolItem({
 export default function NavPreferencesPage() {
   const { user } = useAuth();
   const {
-    prefs, customGroups, save, reset, catalogue, refetch, patchCatalogueEntry,
+    prefs, customGroups, save, catalogue, refetch, patchCatalogueEntry,
     defaultPinned, findEntry, tagByEnum, tags,
     profiles, activeProfileId, setProfileGroups,
   } = useNavPrefs();
@@ -841,6 +842,11 @@ export default function NavPreferencesPage() {
     [profiles, activeProfileId],
   );
   const [draft, setDraft] = useState<DraftState | null>(null);
+  // Snapshot of the last server-hydrated draft. Used to compute
+  // `isDirty` (any unsaved local edit) and to power the inline
+  // Cancel button on the change-banner between Custom Navigation
+  // and Pinned. Reset by the hydration effect after every refetch.
+  const [baseline, setBaseline] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
@@ -850,7 +856,6 @@ export default function NavPreferencesPage() {
   const [newGroupLabel, setNewGroupLabel] = useState("");
   const [createGroupErr, setCreateGroupErr] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [confirmingReset, setConfirmingReset] = useState(false);
 
   // Draft persistence for the "New custom page" form. The draft only
   // Silently restore whatever the user was typing last — no banner.
@@ -955,14 +960,16 @@ export default function NavPreferencesPage() {
       if (p.icon_override) iconOverrides[p.item_key] = p.icon_override;
     }
 
-    setDraft({
+    const hydrated: DraftState = {
       bucketOrder: orderSeen,
       itemsByBucket,
       childrenByParent,
       customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position })),
       startPageKey,
       iconOverrides,
-    });
+    };
+    setDraft(hydrated);
+    setBaseline(hydrated);
     setError(null);
     // Intentionally key on content hashes, not array refs. `prefs/customGroups/
     // tags` get fresh array identities on every refetch — including refetches
@@ -984,6 +991,14 @@ export default function NavPreferencesPage() {
     for (const cks of Object.values(draft.childrenByParent)) n += cks.length;
     return n;
   }, [draft]);
+
+  // Cheap deep-equality via JSON.stringify — DraftState is plain
+  // arrays/objects of strings, no Dates, no Maps. Mirrors the
+  // hashing approach already used for prefs/customGroups/tags above.
+  const isDirty = useMemo(() => {
+    if (!draft || !baseline) return false;
+    return JSON.stringify(draft) !== JSON.stringify(baseline);
+  }, [draft, baseline]);
 
   // Total custom pages the user has authored (pinned + unpinned). Counts
   // every catalogue entry of kind "user_custom" — this is the figure that
@@ -1481,33 +1496,22 @@ export default function NavPreferencesPage() {
         label: g.label,
         position: i,
       }));
-      // Non-default profiles share the pool — they must NOT carry a groups
-      // payload (backend wipes-and-reinserts the pool only on Default).
-      const isDefaultProfile = activeProfile?.is_default ?? true;
-      const body: PutPrefsBody = isDefaultProfile
-        ? { pinned, start_page_key: draft.startPageKey, groups }
-        : { pinned, start_page_key: draft.startPageKey };
+      const body: PutPrefsBody = { pinned, start_page_key: draft.startPageKey, groups };
       const canonical = await save(body);
       // Persist this profile's group-placement junction. Server-returned
-      // canonical groups arrive in payload order, so when we sent groups
-      // they line up index-for-index with draft.customGroups; on
-      // non-default profiles we sent nothing, so canonical is the
-      // existing pool — already canonical UUIDs.
+      // canonical groups arrive in payload order and line up index-for-index
+      // with draft.customGroups, so we can remap any synthetic "new:" ids
+      // to their canonical UUIDs.
       if (activeProfileId) {
         const localToCanonical = new Map<string, string>();
-        if (isDefaultProfile) {
-          draft.customGroups.forEach((g, i) => {
-            const c = canonical[i];
-            if (c) localToCanonical.set(g.id, c.id);
-          });
-        }
+        draft.customGroups.forEach((g, i) => {
+          const c = canonical[i];
+          if (c) localToCanonical.set(g.id, c.id);
+        });
         const groupBuckets = draft.bucketOrder.filter((b) => b.startsWith("group:"));
         const placements = groupBuckets
           .map((b, position) => {
             const localId = b.slice("group:".length);
-            // Synthetic ids only get remapped on default profile (where
-            // we sent the groups payload). On non-default they shouldn't
-            // exist (UI prevents creation) — drop defensively.
             if (localId.startsWith("new:")) {
               const remapped = localToCanonical.get(localId);
               return remapped ? { group_id: remapped, position } : null;
@@ -1522,19 +1526,6 @@ export default function NavPreferencesPage() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to save");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleReset = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      await reset();
-      setConfirmingReset(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "failed to reset");
     } finally {
       setSaving(false);
     }
@@ -1605,13 +1596,36 @@ export default function NavPreferencesPage() {
           : `Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
       }
     >
-      <div className="nav-prefs__pane nav-prefs__quick-bar">
-        <PaneHeader
-          paneId="nav-prefs.custom-nav"
+      <StrictRoute>
+      <div className="nav-prefs__quick-bar">
+        <Panel
+          name="nav_prefs_custom_nav"
           title={<>Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span></>}
-        />
-        <ProfileBar />
+        >
+          <ProfileBar />
+        </Panel>
       </div>
+
+      {isDirty && (
+        <div className="pop-up-change-banner" role="alert">
+          <span className="pop-up-change-banner__text">
+            Changes detected — press <strong>Confirm Changes</strong> to save.
+          </span>
+          {error && (
+            <span className="pop-up-change-banner__error">{error}</span>
+          )}
+          <div className="pop-up-change-banner__actions">
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Confirm Changes"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="nav-prefs">
         <DndContext
@@ -1621,16 +1635,15 @@ export default function NavPreferencesPage() {
           onDragEnd={onDragEnd}
           onDragCancel={onDragCancel}
         >
-          <section className="nav-prefs__pane" aria-label="Pinned">
-            <PaneHeader
-              paneId="nav-prefs.pinned"
+          <section aria-label="Pinned">
+            <Panel
+              name="nav_prefs_pinned"
               title={<>Pinned <span className="nav-prefs__count">{totalPinned}/{MAX_PINNED}</span></>}
             >
               <p className="nav-prefs__pane-desc">
                 Pages currently in your sidebar for{" "}
                 <strong>{activeProfile?.label ?? "this profile"}</strong>. Drag to reorder, group, or unpin.
               </p>
-            </PaneHeader>
             {draft.bucketOrder.length === 0 ? (
               <p className="nav-prefs__empty">Nothing pinned — the sidebar will show defaults until you pin something.</p>
             ) : (
@@ -1669,6 +1682,7 @@ export default function NavPreferencesPage() {
                 })}
               </SortableContext>
             )}
+            </Panel>
           </section>
 
           <AvailablePanel
@@ -1684,11 +1698,11 @@ export default function NavPreferencesPage() {
             onSetPoolIcon={handleSetPoolIcon}
           />
 
-          <section className="nav-prefs__pane nav-prefs__pane--new-page" aria-label="New custom page">
-            <PaneHeader
-              paneId="nav-prefs.new-page"
+          <section className="nav-prefs__pane--new-page" aria-label="New custom page">
+            <Panel
+              name="nav_prefs_new_page"
               title="New custom page"
-            />
+            >
             <p className="nav-prefs__new-page-card-hint">
               Holds timeline, board, or list views. New pages appear in <strong>Library</strong> above — drag one into Pinned to add it to the sidebar.
             </p>
@@ -1742,13 +1756,14 @@ export default function NavPreferencesPage() {
               </button>
             </form>
             {createPageErr && <p className="nav-prefs__error" role="alert">{createPageErr}</p>}
+            </Panel>
           </section>
 
-          <section className="nav-prefs__pane nav-prefs__pane--new-group" aria-label="New custom group">
-            <PaneHeader
-              paneId="nav-prefs.new-group"
+          <section className="nav-prefs__pane--new-group" aria-label="New custom group">
+            <Panel
+              name="nav_prefs_new_group"
               title={<>New custom group <span className="nav-prefs__count">{draft.customGroups.length}/{MAX_CUSTOM_GROUPS}</span></>}
-            />
+            >
             <p className="nav-prefs__new-page-card-hint">
               Custom groups appear in <strong>Pinned</strong> and can hold any custom pages you create. Drag groups by their handle to reorder.
             </p>
@@ -1788,6 +1803,7 @@ export default function NavPreferencesPage() {
               </button>
             </form>
             {createGroupErr && <p className="nav-prefs__error" role="alert">{createGroupErr}</p>}
+            </Panel>
           </section>
         </DndContext>
 
@@ -1795,50 +1811,7 @@ export default function NavPreferencesPage() {
 
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
       {error && <p className="nav-prefs__error" role="alert">{error}</p>}
-
-      {confirmingReset && (
-        <div className="nav-prefs__reset-confirm" role="alertdialog" aria-label="Confirm reset to defaults">
-          <p className="nav-prefs__reset-confirm-title">
-            Reset {activeProfile ? `"${activeProfile.label}"` : "this profile"} to defaults?
-          </p>
-          <ul className="nav-prefs__reset-confirm-list">
-            <li>All pinned pages will be replaced with the system default set.</li>
-            <li>Custom groups you created in this profile will be removed.</li>
-            <li>Pin order, group placements, and your start page will revert.</li>
-            <li>Other profiles and your custom pages themselves are not affected.</li>
-          </ul>
-          <p className="nav-prefs__reset-confirm-warning">This cannot be undone.</p>
-          <div className="nav-prefs__reset-confirm-actions">
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => setConfirmingReset(false)}
-              disabled={saving}
-            >Cancel</button>
-            <button
-              type="button"
-              className="btn btn--danger"
-              onClick={handleReset}
-              disabled={saving}
-            >{saving ? "Resetting…" : "Yes, reset to defaults"}</button>
-          </div>
-        </div>
-      )}
-
-      <div className="nav-prefs__actions-bar">
-        <button
-          type="button"
-          className="btn btn--ghost"
-          onClick={() => setConfirmingReset(true)}
-          disabled={saving || confirmingReset}
-        >Reset to defaults</button>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={handleSave}
-          disabled={saving}
-        >{saving ? "Saving…" : "Save"}</button>
-      </div>
+      </StrictRoute>
     </PageShell>
   );
 }

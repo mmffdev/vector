@@ -2,6 +2,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import PageShell from "@/app/components/PageShell";
+import Panel from "@/app/components/Panel";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { api, ApiError } from "@/app/lib/api";
 import WorkItemDetailPanel from "./WorkItemDetailPanel";
 import DragHandleColumn from "@/app/components/DragHandleColumn";
@@ -848,6 +850,7 @@ export default function WorkItemsPage() {
   useRefetchOnPush({ topic, refetch });
 
   return (
+    <StrictRoute>
     <PageShell
       title="Work Items"
       subtitle="Epics, stories, and their custom fields"
@@ -859,39 +862,44 @@ export default function WorkItemsPage() {
         ) : undefined
       }
     >
-      <WorkItemsFilterBar
-        filters={filters}
-        sprints={sprints}
-        onChange={patchFilter}
-        onNew={() => {}}
-      />
+      <Panel name="work_items_filters" title="Filters">
+        <WorkItemsFilterBar
+          filters={filters}
+          sprints={sprints}
+          onChange={patchFilter}
+          onNew={() => {}}
+        />
+      </Panel>
 
-      {loading ? (
-        <div className="placeholder">
-          <p className="placeholder__body">Loading…</p>
-        </div>
-      ) : (
-        <div className="work-items-layout">
-          <div className="work-items-layout__tree">
-            <WorkItemsTree
-              items={items}
-              setItems={setItems}
-              selectedId={selectedItem?.id ?? null}
-              onSelect={setSelectedItem}
-            />
+      <Panel name="work_items_tree" title="Work items">
+        {loading ? (
+          <div className="placeholder">
+            <p className="placeholder__body">Loading…</p>
           </div>
-          {selectedItem && (
-            <WorkItemDetailPanel
-              item={selectedItem}
-              onClose={() => setSelectedItem(null)}
-              onUpdated={(updated) => {
-                setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
-                setSelectedItem(updated);
-              }}
-            />
-          )}
-        </div>
-      )}
+        ) : (
+          <div className="work-items-layout">
+            <div className="work-items-layout__tree">
+              <WorkItemsTree
+                items={items}
+                setItems={setItems}
+                selectedId={selectedItem?.id ?? null}
+                onSelect={setSelectedItem}
+              />
+            </div>
+            {selectedItem && (
+              <WorkItemDetailPanel
+                item={selectedItem}
+                onClose={() => setSelectedItem(null)}
+                onUpdated={(updated) => {
+                  setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+                  setSelectedItem(updated);
+                }}
+              />
+            )}
+          </div>
+        )}
+      </Panel>
     </PageShell>
+    </StrictRoute>
   );
 }

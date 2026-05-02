@@ -81,7 +81,8 @@ func isCSRFExempt(path string) bool {
 	case "/api/auth/login",
 		"/api/auth/refresh",
 		"/api/auth/password-reset",
-		"/api/auth/password-reset/confirm":
+		"/api/auth/password-reset/confirm",
+		"/api/addressables/build-reconcile":
 		return true
 	}
 	return false

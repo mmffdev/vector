@@ -14,6 +14,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
+import Panel from "@/app/components/Panel";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 
@@ -110,54 +112,52 @@ export default function LibraryReleasesPage() {
   if (!user || user.role !== "gadmin") return null;
 
   return (
+    <StrictRoute>
     <PageShell
       title="Library Releases"
       subtitle="Acknowledge updates published to the MMFF library on behalf of your subscription"
     >
-      {state.kind === "loading" && (
-        <div className="placeholder">
-          <h3 className="placeholder__title">Loading…</h3>
-        </div>
-      )}
-      {state.kind === "error" && <div className="form__error">{state.message}</div>}
-      {state.kind === "ready" && state.releases.length === 0 && (
-        <div className="placeholder">
-          <h3 className="placeholder__title">All caught up</h3>
-          <p className="placeholder__body">No outstanding library releases.</p>
-        </div>
-      )}
-      {state.kind === "ready" && state.releases.length > 0 && (
-        // Story 00099 — list rendered as a Vector table. Surface +
-        // 1px --border + --radius-lg from .table-wrap; sunken thead
-        // with eyebrow column heads + 48px rows from the base
-        // .table block. Severity uses .pill variants per AC:
-        // CRITICAL/breaking=danger, action=warning, info=info,
-        // unknown/low=neutral.
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">Version</th>
-                <th className="table__cell">Title</th>
-                <th className="table__cell">Severity</th>
-                <th className="table__cell">Released</th>
-                <th className="table__cell table__cell--numeric">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.releases.map((r) => (
-                <ReleaseRow
-                  key={r.id}
-                  release={r}
-                  acking={acking === r.id}
-                  onAck={ack}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Panel name="library_releases_outstanding" title="Outstanding releases">
+        {state.kind === "loading" && (
+          <div className="placeholder">
+            <h3 className="placeholder__title">Loading…</h3>
+          </div>
+        )}
+        {state.kind === "error" && <div className="form__error">{state.message}</div>}
+        {state.kind === "ready" && state.releases.length === 0 && (
+          <div className="placeholder">
+            <h3 className="placeholder__title">All caught up</h3>
+            <p className="placeholder__body">No outstanding library releases.</p>
+          </div>
+        )}
+        {state.kind === "ready" && state.releases.length > 0 && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead className="table__head">
+                <tr className="table__row">
+                  <th className="table__cell">Version</th>
+                  <th className="table__cell">Title</th>
+                  <th className="table__cell">Severity</th>
+                  <th className="table__cell">Released</th>
+                  <th className="table__cell table__cell--numeric">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.releases.map((r) => (
+                  <ReleaseRow
+                    key={r.id}
+                    release={r}
+                    acking={acking === r.id}
+                    onAck={ack}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
     </PageShell>
+    </StrictRoute>
   );
 }
 

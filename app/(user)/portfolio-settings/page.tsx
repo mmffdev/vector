@@ -15,6 +15,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
+import Panel from "@/app/components/Panel";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function PortfolioSettingsPage() {
@@ -28,6 +30,7 @@ export default function PortfolioSettingsPage() {
   if (!user || user.role === "user") return null;
 
   return (
+    <StrictRoute>
     <PageShell
       title="Portfolio Settings"
       subtitle="Manage portfolios, products, and stakeholders"
@@ -43,8 +46,7 @@ export default function PortfolioSettingsPage() {
       }
     >
       <form className="form" onSubmit={(e) => e.preventDefault()}>
-        <section>
-          <h3 className="eyebrow">Identity</h3>
+        <Panel name="portfolio_settings_identity" title="Identity">
           <div className="form__row">
             <label className="form__label" htmlFor="ps-name">Display name</label>
             <input
@@ -67,10 +69,9 @@ export default function PortfolioSettingsPage() {
               defaultValue=""
             />
           </div>
-        </section>
+        </Panel>
 
-        <section style={{ marginTop: "var(--space-6)" }}>
-          <h3 className="eyebrow">Stakeholders</h3>
+        <Panel name="portfolio_settings_stakeholders" title="Stakeholders">
           <div className="form__row">
             <label className="form__label" htmlFor="ps-owner">Default owner</label>
             <select id="ps-owner" className="form__select" disabled defaultValue="">
@@ -87,10 +88,9 @@ export default function PortfolioSettingsPage() {
               defaultValue=""
             />
           </div>
-        </section>
+        </Panel>
 
-        <section style={{ marginTop: "var(--space-6)" }}>
-          <h3 className="eyebrow">Danger zone</h3>
+        <Panel name="portfolio_settings_danger_zone" title="Danger zone">
           <p className="form__hint" style={{ marginBottom: "var(--space-3)" }}>
             Archive removes the portfolio from active selection. Existing data
             is preserved and can be restored by a gadmin.
@@ -98,8 +98,9 @@ export default function PortfolioSettingsPage() {
           <button type="button" className="btn btn--danger" disabled>
             Archive portfolio
           </button>
-        </section>
+        </Panel>
       </form>
     </PageShell>
+    </StrictRoute>
   );
 }

@@ -165,6 +165,8 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrTooManyGroups),
 			errors.Is(err, ErrTooManyChildren),
 			errors.Is(err, ErrGroupLabelTooLong):
+			log.Printf("nav.PutPrefs: 400 user=%s sub=%s pid=%s pinned=%d groups=%d: %v",
+				u.ID, u.SubscriptionID, pid, len(req.Pinned), len(req.Groups), err)
 			// Generic 400 — do not echo the offending key back to the client.
 			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
