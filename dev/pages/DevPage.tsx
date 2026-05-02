@@ -5,12 +5,14 @@ import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import { api } from "@/app/lib/api";
+import Panel from "@/app/components/Panel";
+import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
 import DevShortcutsPanel from "./DevShortcutsPanel";
 import DevReportsPanel from "./DevReportsPanel";
 import DevResearchPanel from "./DevResearchPanel";
 import DevPlansPanel from "./DevPlansPanel";
-import DevPaneHelpPanel from "./DevPaneHelpPanel";
+import DevPageHelpPanel from "./DevPageHelpPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 export default function DevPage() {
@@ -53,6 +55,7 @@ export default function DevPage() {
   };
 
   return (
+    <StrictRoute>
     <div className="dev-root">
       <header className="dev-page-header">
         <h1 className="dev-page-header__title">Dev Setup</h1>
@@ -97,10 +100,10 @@ export default function DevPage() {
           Icons
         </button>
         <button
-          className={`dev-tab${tab === "pane-help" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("pane-help")}
+          className={`dev-tab${tab === "page-help" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("page-help")}
         >
-          Pane Help
+          Page Help
         </button>
       </nav>
 
@@ -108,7 +111,7 @@ export default function DevPage() {
       {tab === "reports" && <DevReportsPanel />}
       {tab === "research" && <DevResearchPanel />}
       {tab === "plans" && <DevPlansPanel />}
-      {tab === "pane-help" && <DevPaneHelpPanel />}
+      {tab === "page-help" && <DevPageHelpPanel />}
       {tab === "icons" && (
         <div style={{ height: "calc(100vh - 160px)" }}>
           <UiAppIconbrowser />
@@ -116,12 +119,11 @@ export default function DevPage() {
       )}
 
       {tab === "setup" && <div className="dev-doc">
-        <section className="dev-section">
+        <Panel name="dev_health" title="Service health">
           <ServiceHealthPanel />
-        </section>
+        </Panel>
 
-        <section className="dev-section">
-          <h2 className="dev-h2">Debug</h2>
+        <Panel name="dev_debug" title="Debug">
           <label className="form__switch">
             <input
               type="checkbox"
@@ -133,10 +135,9 @@ export default function DevPage() {
           <p className="dev-p">
             Session-scoped flag (resets on tab close / hard reload). Read it via <code>useMasterDebug()</code>.
           </p>
-        </section>
+        </Panel>
 
-        <section className="dev-section">
-          <h2 className="dev-h2">Portfolio Adoption</h2>
+        <Panel name="dev_portfolio_adoption" title="Portfolio Adoption">
           <p className="dev-p">
             Reset adoption state to zero (gadmin only). Deletes all adoption records and mirror tables.
           </p>
@@ -172,10 +173,9 @@ export default function DevPage() {
               {resetResult.message}
             </div>
           )}
-        </section>
+        </Panel>
 
-        <section className="dev-section">
-          <h2 className="dev-h2">SSH Tunnel Setup</h2>
+        <Panel name="dev_ssh_tunnel" title="SSH Tunnel Setup">
           <p className="dev-p">
             Run the setup script to configure your laptop for server access:
           </p>
@@ -185,10 +185,9 @@ export default function DevPage() {
           <button onClick={copyCommand} className="dev-btn dev-btn--primary">
             {copied ? "Copied!" : "Copy Command"}
           </button>
-        </section>
+        </Panel>
 
-        <section className="dev-section">
-          <h3 className="dev-h3">What it does:</h3>
+        <Panel name="dev_ssh_what" title="What it does">
           <ul className="dev-list">
             <li>Installs Homebrew, libpq, autossh, Node 20</li>
             <li>Generates or verifies SSH ed25519 key</li>
@@ -198,17 +197,17 @@ export default function DevPage() {
             <li>Writes backend/.env.local with tunnel DB config</li>
             <li>Verifies PostgreSQL connectivity</li>
           </ul>
-        </section>
+        </Panel>
 
-        <section className="dev-section">
-          <h3 className="dev-h3">Requirements:</h3>
+        <Panel name="dev_ssh_reqs" title="Requirements">
           <ul className="dev-list">
             <li>macOS with Homebrew</li>
             <li>SSH access to server (mmffdev.com)</li>
             <li>Server password (will be prompted)</li>
           </ul>
-        </section>
+        </Panel>
       </div>}
     </div>
+    </StrictRoute>
   );
 }

@@ -8,6 +8,8 @@
     "start": "next start -p 5101",
     "lint": "next lint",
     "lint:panes": "python3 dev/scripts/lint_panes.py",
+    "lint:addressables": "python3 dev/scripts/lint_addressables.py",
+    "audit:dashboard": "python3 dev/scripts/audit_dashboard.py",
     "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'"
   },
   "dependencies": {

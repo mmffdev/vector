@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type DevTab = "setup" | "shortcuts" | "reports" | "research" | "icons" | "plans" | "pane-help";
+type DevTab = "setup" | "shortcuts" | "reports" | "research" | "icons" | "plans" | "page-help";
 
 interface DevTabContextValue {
   activeTab: DevTab;
@@ -20,10 +20,14 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
   const [openResearchPapers, setOpenResearchPapers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Restore active tab
-    const savedTab = localStorage.getItem(TAB_STORAGE_KEY) as DevTab | null;
-    if (savedTab && ["setup", "shortcuts", "reports", "research", "icons", "plans", "pane-help"].includes(savedTab)) {
-      setActiveTabState(savedTab);
+    // Restore active tab. Migrate legacy "pane-help" → "page-help" (story 00253).
+    let savedTab = localStorage.getItem(TAB_STORAGE_KEY);
+    if (savedTab === "pane-help") {
+      savedTab = "page-help";
+      localStorage.setItem(TAB_STORAGE_KEY, savedTab);
+    }
+    if (savedTab && ["setup", "shortcuts", "reports", "research", "icons", "plans", "page-help"].includes(savedTab)) {
+      setActiveTabState(savedTab as DevTab);
     }
     // Restore open research papers
     const savedResearch = localStorage.getItem(RESEARCH_STORAGE_KEY);

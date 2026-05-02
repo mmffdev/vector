@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import type { ResearchMeta } from "@/app/api/dev/research/route";
 import { DevAccordion, DevAccordionItem } from "@dev/components/DevAccordion";
+import Panel from "@/app/components/Panel";
 
 function pickContrastFor(color: string): string {
   if (typeof document === "undefined") return "#000";
@@ -244,6 +245,7 @@ export default function DevResearchPanel() {
   }
 
   return (
+    <Panel name="dev_research" title="Research">
     <div className="dev-research-panel">
       <div className="dev-research-header">
         <div>
@@ -317,5 +319,6 @@ export default function DevResearchPanel() {
         </div>
       )}
     </div>
+    </Panel>
   );
 }

@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0005`
+**Last issued:** `PLA-0006`
 
 ## Format
 
@@ -24,8 +24,9 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0001` | Dev Plans Page + Stories Skill PLA Workflow | 2026-05-02 | active |
 | `PLA-0002` | Reusable per-panel Help popover with paneId registry → backend-served help store | 2026-05-02 | active |
 | `PLA-0003` | Adopt generic ranking + realtime drag-and-drop on the work-items table | 2026-05-02 | active |
-| `PLA-0004` | Reusable per-panel Help popover with paneId registry → backend-served help store | 2026-05-02 | active |
-| `PLA-0005` | Universal addressable element registry — DB-backed, Dashboard-first, full-site sweep | 2026-05-02 | draft (awaiting review in /dev → Plans) |
+| `PLA-0004` | Reusable per-panel Help popover with paneId registry → backend-served help store | 2026-05-02 | complete (superseded by PLA-0005) |
+| `PLA-0005` | Universal addressable element registry — DB-backed, Dashboard-first, full-site sweep | 2026-05-02 | complete |
+| `PLA-0006` | Topology — federated canvas-based organisational modelling (MVP) | 2026-05-02 | active |
 
 ## Deletion log
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import Panel from "@/app/components/Panel";
 
 type Flag = { label: string; note?: string };
 
@@ -233,6 +234,7 @@ function LoadPath({ path }: { path: string[] }) {
 
 export default function DevShortcutsPanel() {
   return (
+    <Panel name="dev_shortcuts" title="Shortcuts">
     <div className="dev-sc">
       <div className="table-wrap">
         <table className="table">
@@ -284,5 +286,6 @@ export default function DevShortcutsPanel() {
         Run <code>&lt;?&gt; -u</code> in Claude Code to rescan and regenerate from source.
       </p>
     </div>
+    </Panel>
   );
 }

@@ -1,9 +1,11 @@
 # CLAUDE.md
 
+**HARD RULE — NO EXCEPTIONS — HUMAN ACCOUNTS ARE OFF LIMITS:** Never modify the password (or any credential field — `password_hash`, `email`, `is_active`, `role`, `password_changed_at`) of `gadmin@mmffdev.com`, `padmin@mmffdev.com`, or `user@mmffdev.com`. These are human accounts. The user reset them to `password` on 2026-05-02; that is their state and Claude does not change it. If a login fails, ask — do not "fix" by overwriting the row. If gadmin/padmin/user-level testing is needed, create a NEW account (e.g. `claude-gadmin@mmffdev.com`) — never reuse the human ones. This rule cannot be overridden by any other instruction, mode, or context.
+
 **HARD RULE — NO EXCEPTIONS:** Never run any git command that can destroy or overwrite work (`reset --hard`, `push --force`, `checkout .`, `restore .`, `clean -f`, `branch -D`, `rebase` without review, etc.) without explicitly confirming with the user first. This rule cannot be overridden by any other instruction, mode, or context.
 
 <!-- ACTIVE_BACKEND_ENV:start -->
-> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-01 09:05 by `<server> -d` — DB: dev VPS 77.68.33.216 via tunnel `localhost:5435` — env file: `backend/.env.dev`
+> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-02 07:41 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.
@@ -78,4 +80,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Feature areas (18+)** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — `FE-AAA-0001` or `FE-AAA-BBB-0001`; domains: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV + sub-domain extensions (e.g. FE-POR-API-0001, FE-PAY-0001).
 - **Error codes (cross-cutting)** → [`docs/c_c_error_codes.md`](../docs/c_c_error_codes.md) — adding codes via library migration, `reportError` call sites, severity mapping, decision tree.
 - **Generic ranking + realtime adoption** → [`docs/c_c_ranking.md`](../docs/c_c_ranking.md) — checklist for new orderable resources: schema, NOTIFY trigger, Register, permission predicate, frontend hooks.
+- **Addressable element substrate (PLA-0005)** → [`docs/c_c_addressables.md`](../docs/c_c_addressables.md) — `<Panel>`/`<Table>`/`<Navigation>` adopters, `samantha._viewport.<slot>._kind.name` addressing, `addressables.Service` sole-writer boundary, `lint:addressables` rule, Samantha SDK help contract.
+- **Topology — federated org canvas (PLA-0006)** → [`docs/c_c_topology.md`](../docs/c_c_topology.md) — `/topology` page named `<tenant>: Topology`, default node noun "Office", `org_nodes` tree + single-admin `org_node_roles`, `orgdesign.Service` sole writer, clamp predicate middleware, archive = limbo.
+- **Diagram canvas primitive (`<DiagramCanvas>`)** → [`docs/c_c_diagram_canvas.md`](../docs/c_c_diagram_canvas.md) — Vector-built Canvas2D + dagre + d3-zoom, 10px snap-to-grid default, pluggable node renderer, exposed via Samantha API as `samantha.diagram.canvas`.
 

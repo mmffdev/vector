@@ -14,4 +14,13 @@ if ! python3 "$ROOT/dev/scripts/lint_panes.py" --report; then
   exit 1
 fi
 
+if ! python3 "$ROOT/dev/scripts/lint_addressables.py" --report; then
+  echo "" >&2
+  echo "Commit blocked by lint:addressables — wrap the raw panel shape(s)" >&2
+  echo "above in <Panel name='…'> from app/components/Panel.tsx, or add" >&2
+  echo "the file to dev/registries/addressables_exempt.json with a" >&2
+  echo "justification (the exemption list is normally empty)." >&2
+  exit 1
+fi
+
 exit 0

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { MemoryReport, ReportCheck } from "@/app/api/dev/memory-reports/route";
 import { DevAccordion, DevAccordionItem, DevAccordionToolbar } from "@dev/components/DevAccordion";
+import Panel from "@/app/components/Panel";
 
 const SCOPE_LABELS: Record<string, string> = {
   A: "All",
@@ -154,6 +155,7 @@ export default function DevReportsPanel() {
   useEffect(() => { load(); }, []);
 
   return (
+    <Panel name="dev_reports" title="Reports">
     <div className="dev-reports-panel">
       <div className="dev-reports-header">
         <div>
@@ -182,5 +184,6 @@ export default function DevReportsPanel() {
         </DevAccordion>
       )}
     </div>
+    </Panel>
   );
 }

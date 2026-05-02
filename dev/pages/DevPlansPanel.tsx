@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PlanDoc, PlanMeta } from "@/app/api/dev/plans/route";
 import { DevAccordion, DevAccordionItem } from "@dev/components/DevAccordion";
+import Panel from "@/app/components/Panel";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -333,6 +334,7 @@ export default function DevPlansPanel() {
     : plans;
 
   return (
+    <Panel name="dev_plans" title="Plans">
     <div className="dev-plans-panel">
       <div className="dev-research-header">
         <div>
@@ -375,5 +377,6 @@ export default function DevPlansPanel() {
         </div>
       )}
     </div>
+    </Panel>
   );
 }
