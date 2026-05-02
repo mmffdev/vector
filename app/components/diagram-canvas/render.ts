@@ -178,10 +178,33 @@ export function drawBezierEdge(
   ctx.restore();
 }
 
+// Viewport-space culling. Returns true if any part of the world-space
+// rect (x,y,w,h) overlaps the visible canvas. A small padding keeps
+// edges that connect to just-off-screen nodes from popping at the
+// border.
+export function isNodeVisible(
+  node: DiagramNode,
+  size: ViewportSize,
+  vp: Viewport,
+  pad = 32,
+): boolean {
+  const sx = node.x * vp.scale + vp.x;
+  const sy = node.y * vp.scale + vp.y;
+  const sw = node.width * vp.scale;
+  const sh = node.height * vp.scale;
+  return (
+    sx + sw + pad >= 0 &&
+    sy + sh + pad >= 0 &&
+    sx - pad <= size.width &&
+    sy - pad <= size.height
+  );
+}
+
 // Top-level static-layer paint: grid → edges → nodes. Caller is
 // responsible for the DPR transform and the world transform; this
 // function paints in world coordinates after the caller has applied
-// them.
+// them. Returns counts so the harness/dev tools can verify
+// virtualisation is doing its job.
 export function paintStatic(args: {
   ctx: CanvasRenderingContext2D;
   size: ViewportSize;
@@ -197,7 +220,7 @@ export function paintStatic(args: {
   selectedId: string | null;
   hoveredId: string | null;
   draggingId: string | null;
-}): void {
+}): { nodes: number; edges: number } {
   const {
     ctx,
     size,
@@ -225,21 +248,26 @@ export function paintStatic(args: {
   ctx.translate(vp.x, vp.y);
   ctx.scale(vp.scale, vp.scale);
 
+  let edgeCount = 0;
   for (const e of edges) {
     if (e.hidden) continue;
     const from = nodeIndex.get(e.source);
     const to = nodeIndex.get(e.target);
     if (!from || !to) continue;
     if (from.hidden || to.hidden) continue;
+    if (!isNodeVisible(from, size, vp) && !isNodeVisible(to, size, vp)) continue;
     if (edgeStyle === "bezier") {
       drawBezierEdge(ctx, from, to, colors.inkMuted);
     } else {
       drawOrthogonalEdge(ctx, from, to, colors.inkMuted);
     }
+    edgeCount++;
   }
 
+  let nodeCount = 0;
   for (const n of nodes) {
     if (n.hidden) continue;
+    if (!isNodeVisible(n, size, vp)) continue;
     renderNode(n, {
       ctx,
       selected: n.id === selectedId,
@@ -247,7 +275,9 @@ export function paintStatic(args: {
       dragging: n.id === draggingId,
       scale: vp.scale,
     });
+    nodeCount++;
   }
 
   ctx.restore();
+  return { nodes: nodeCount, edges: edgeCount };
 }

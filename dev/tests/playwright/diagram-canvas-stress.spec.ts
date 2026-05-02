@@ -6,17 +6,13 @@ import { test, expect, Page } from "@playwright/test";
 // against the performance contract documented in
 // docs/c_c_diagram_canvas.md:
 //
-//   • Initial load   <1.5s   — measured here
-//   • Drag FPS       ≥30     — measured here
-//   • Rendered set   <500    — depends on collapse + virtualisation
-//                              landing in 00275; auto-skipped by reading
-//                              window.__DIAGRAM_PERF__.capabilities.
-//   • Subtree layout <1s     — depends on dagre worker (00275); ditto.
+//   • Initial load   <1.5s
+//   • Drag FPS       ≥30
+//   • Rendered set   <500   (00275 — virtualisation in paintStatic)
+//   • Subtree layout <1s    (00275 — dagre Web Worker)
 //
-// This spec ships with 00274 so the perf gate exists from day one and
-// flips on more assertions automatically as 00275 / 00276 fill in
-// capabilities. The numeric thresholds below MUST NOT be relaxed
-// without an explicit plan-amendment commit referencing PLA-0006.
+// The numeric thresholds below MUST NOT be relaxed without an explicit
+// plan-amendment commit referencing PLA-0006.
 
 const LOGIN_EMAIL = "padmin@mmffdev.com";
 const LOGIN_PASSWORD = "TestPass1!";
@@ -25,6 +21,7 @@ const INITIAL_LOAD_BUDGET_MS = 1500;
 const MIN_DRAG_FPS = 30;
 const RENDERED_SET_CAP = 500;
 const SUBTREE_LAYOUT_BUDGET_MS = 1000;
+const TARGET_DRAG_NODE_ID = "n1530";
 
 async function login(page: Page) {
   await page.goto("/login");
@@ -36,6 +33,9 @@ async function login(page: Page) {
 
 async function waitForPerf(page: Page) {
   await page.waitForFunction(() => Boolean(window.__DIAGRAM_PERF__?.ready), null, {
+    timeout: 5000,
+  });
+  await page.waitForFunction(() => Boolean(window.__DIAGRAM_HARNESS__), null, {
     timeout: 5000,
   });
 }
@@ -69,17 +69,21 @@ test.describe("diagram-canvas stress (3,000 nodes)", () => {
     await page.goto("/dev/diagram-canvas-stress");
     await waitForPerf(page);
 
-    // Drive a 1-second drag through the canvas centre and sample rAF
-    // intervals from inside the page so we measure what the renderer
-    // actually produced, not what playwright's coarse timer suggests.
-    const fps = await page.evaluate<number>(async () => {
-      const canvas = document.querySelector(
-        ".diagram-canvas__layer--overlay",
-      ) as HTMLCanvasElement | null;
-      if (!canvas) throw new Error("overlay canvas not found");
-      const rect = canvas.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
+    // Resolve the target node's screen position via the harness so the
+    // drag actually grips a node — measuring rendering throughput, not
+    // an empty-canvas idle loop.
+    const center = await page.evaluate((id: string) => {
+      return window.__DIAGRAM_HARNESS__?.getNodeScreenCenter(id) ?? null;
+    }, TARGET_DRAG_NODE_ID);
+    if (!center) throw new Error(`could not resolve center of ${TARGET_DRAG_NODE_ID}`);
+
+    // Drive a 1-second drag through the resolved node centre and sample
+    // rAF intervals from inside the page so we measure what the
+    // renderer actually produced, not what playwright's coarse timer
+    // suggests.
+    const fps = await page.evaluate<number, { cx: number; cy: number }>(async ({ cx, cy }) => {
+      const root = document.querySelector(".diagram-canvas") as HTMLElement | null;
+      if (!root) throw new Error("diagram-canvas root not found");
 
       const samples: number[] = [];
       let last = performance.now();
@@ -92,12 +96,14 @@ test.describe("diagram-canvas stress (3,000 nodes)", () => {
       requestAnimationFrame(tick);
 
       const dispatch = (type: string, x: number, y: number) =>
-        canvas.dispatchEvent(
+        root.dispatchEvent(
           new PointerEvent(type, {
             clientX: x,
             clientY: y,
             bubbles: true,
             pointerType: "mouse",
+            pointerId: 1,
+            isPrimary: true,
             button: 0,
             buttons: type === "pointerup" ? 0 : 1,
           }),
@@ -119,45 +125,37 @@ test.describe("diagram-canvas stress (3,000 nodes)", () => {
       if (valid.length === 0) return 0;
       const meanFrameMs = valid.reduce((a, b) => a + b, 0) / valid.length;
       return 1000 / meanFrameMs;
-    });
+    }, center);
 
     expect(fps).toBeGreaterThanOrEqual(MIN_DRAG_FPS);
   });
 
-  test("rendered-set stays below cap (gated by virtualisation in 00275)", async ({ page }) => {
+  test("rendered-set stays below cap", async ({ page }) => {
     await page.goto("/dev/diagram-canvas-stress");
     await waitForPerf(page);
-    const perf = await readPerf(page);
-    test.skip(
-      !perf.capabilities.virtualisation,
-      "virtualisation lands in 00275 — assertion auto-enables once shipped",
-    );
-    const rendered = await page.evaluate<number>(() => {
-      // 00275 will expose rendered-set count via window.__DIAGRAM_PERF__
-      // — until then, this branch is unreachable (test.skip above).
-      const w = window as unknown as { __DIAGRAM_RENDERED_COUNT__?: number };
-      return w.__DIAGRAM_RENDERED_COUNT__ ?? 0;
+    // Wait for at least one paint pass to have stamped a count.
+    await page.waitForFunction(() => typeof window.__DIAGRAM_RENDERED_COUNT__ === "number", null, {
+      timeout: 5000,
     });
+    const rendered = await page.evaluate<number>(() => {
+      return window.__DIAGRAM_RENDERED_COUNT__ ?? 0;
+    });
+    expect(rendered).toBeGreaterThan(0);
     expect(rendered).toBeLessThan(RENDERED_SET_CAP);
   });
 
-  test("subtree layout completes within budget (gated by worker in 00275)", async ({ page }) => {
+  test("subtree layout completes within budget", async ({ page }) => {
     await page.goto("/dev/diagram-canvas-stress");
     await waitForPerf(page);
-    const perf = await readPerf(page);
-    test.skip(
-      !perf.capabilities.layoutWorker,
-      "dagre worker lands in 00275 — assertion auto-enables once shipped",
-    );
     const ms = await page.evaluate<number>(async () => {
-      // 00275 will expose `relayoutSubtree(rootId)` via the canvas
-      // handle and stamp `__DIAGRAM_PERF__.lastSubtreeMs`. Until then,
-      // this branch is unreachable (test.skip above).
-      const w = window as unknown as {
-        __DIAGRAM_PERF__?: { lastSubtreeMs?: number };
-      };
-      return w.__DIAGRAM_PERF__?.lastSubtreeMs ?? 0;
+      const harness = window.__DIAGRAM_HARNESS__;
+      if (!harness) throw new Error("harness missing");
+      // Lay out the subtree rooted at n0 — the whole graph for our
+      // single-tree fixture, which exercises the worst-case worker
+      // payload.
+      return harness.relayoutSubtree("n0");
     });
+    expect(ms).toBeGreaterThan(0);
     expect(ms).toBeLessThan(SUBTREE_LAYOUT_BUDGET_MS);
   });
 });

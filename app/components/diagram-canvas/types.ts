@@ -49,6 +49,10 @@ export interface DiagramCanvasHandle {
   zoomTo: (scale: number) => void;
   centerOn: (nodeId: string) => void;
   getViewport: () => Viewport;
+  // Re-runs dagre on the subtree rooted at `rootId`, or on the whole
+  // graph if omitted. Resolves with the worker's elapsed milliseconds.
+  // Layout output respects gridSize via snap-to-grid.
+  relayoutSubtree: (rootId?: string) => Promise<number>;
 }
 
 export interface DiagramCanvasProps {
