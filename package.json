@@ -17,6 +17,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@heroicons/react": "^2.2.0",
+    "d3-zoom": "^3.0.0",
+    "dagre": "^0.8.5",
     "feather-icons": "^4.29.2",
     "gsap": "^3.15.0",
     "iconoir": "^7.11.0",
@@ -29,6 +31,8 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@types/d3-zoom": "^3.0.8",
+    "@types/dagre": "^0.7.54",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
