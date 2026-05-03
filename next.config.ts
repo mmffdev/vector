@@ -7,6 +7,10 @@ const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'" + (isProd ? "" : " 'unsafe-eval'"),
+  // Web Workers (e.g. DiagramCanvas dagre layout worker) — Turbopack
+  // bundles workers as blob: URLs in dev; bundled chunks are served
+  // same-origin in prod.
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data:",
   "font-src 'self' data: https://fonts.gstatic.com",

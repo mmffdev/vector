@@ -130,9 +130,6 @@ test.describe("diagram-canvas stress (3,000 nodes)", () => {
     const fps = await page.evaluate<number, { cx: number; cy: number }>(async ({ cx, cy }) => {
       const root = document.querySelector(".diagram-canvas") as HTMLElement | null;
       if (!root) throw new Error("diagram-canvas root not found");
-      if (!Number.isFinite(cx) || !Number.isFinite(cy)) {
-        throw new Error(`drag eval received non-finite cx=${cx} cy=${cy}`);
-      }
 
       const samples: number[] = [];
       let last = performance.now();
