@@ -18,8 +18,15 @@ async function login(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(LOGIN_EMAIL);
   await page.getByLabel(/password/i).fill(LOGIN_PASSWORD);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+  // Submit via Enter — `next dev --turbo` mounts a <nextjs-portal>
+  // overlay that intercepts pointer events on the submit button.
+  await page.getByLabel(/password/i).press("Enter");
+  try {
+    await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 3000 });
+  } catch {
+    await page.getByRole("button", { name: /sign in/i }).click({ force: true });
+    await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+  }
 }
 
 async function visibleWorkItemTitles(page: Page): Promise<string[]> {
