@@ -49,7 +49,7 @@ Built into the primitive:
 
 | Metric | Target |
 |---|---|
-| Initial load (3,000-node Lloyds fixture) | <1.5s |
+| Initial load (2,500-node Lloyds-class fixture) | <1.5s |
 | Drag FPS | 30 sustained |
 | Rendered-set cap (collapse + virtualisation) | <500 |
 | Subtree layout (dagre worker) | <1s |

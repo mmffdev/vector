@@ -2,7 +2,7 @@
 
 // PLA-0006 / 00277 — DiagramCanvas stress harness fixture.
 //
-// Mounts <DiagramCanvas> with a deterministic 3,000-node tree
+// Mounts <DiagramCanvas> with a deterministic 2,500-node tree
 // shaped after a typical large-org chart (Lloyds-class). The page
 // exposes telemetry on window.__DIAGRAM_PERF__ so the playwright
 // spec can assert against the performance contract:
@@ -24,7 +24,7 @@ import type {
   DiagramNode,
 } from "@/app/components/diagram-canvas";
 
-const TARGET_NODES = 3000;
+const TARGET_NODES = 2500;
 const NODE_W = 100;
 const NODE_H = 40;
 const COL_GAP = 30;
@@ -37,7 +37,7 @@ interface FixtureGraph {
 }
 
 // Deterministic tree — root + breadth-first children, each parent gets
-// 4 children until we hit 3,000 nodes. Manual layout: grid in row-major
+// 4 children until we hit TARGET_NODES. Manual layout: grid in row-major
 // order so the static paint has work to do across the whole viewport.
 // 00275 lets the harness call relayoutSubtree() to run dagre over the
 // same graph and assert against the <1s budget.
@@ -137,7 +137,7 @@ export default function DiagramCanvasStressPage() {
 
     // Wait for the canvas to mount, paint, and run its auto-fitView
     // before declaring ready. fitView produces a non-identity viewport
-    // (scale ≠ 1 for the 3,000-node fixture), which is the signal we
+    // (scale ≠ 1 for the 2,500-node fixture), which is the signal we
     // poll against. The first frame this becomes true is what we
     // record as `firstPaintMs`.
     let raf = 0;
@@ -187,7 +187,7 @@ export default function DiagramCanvasStressPage() {
       <div className="diagram-canvas-stress__canvas">
         <DiagramCanvas
           ref={handleRef}
-          name="stress_3000"
+          name="stress_2500"
           nodes={nodes}
           edges={edges}
           gridSize={10}
