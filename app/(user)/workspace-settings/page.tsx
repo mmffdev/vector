@@ -18,6 +18,11 @@ import ToggleBtn from "@/app/components/ToggleBtn";
 import PageShell from "@/app/components/PageShell";
 import { useAuth, type Role } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
+import { DiagramCanvas } from "@/app/components/diagram-canvas";
+import type {
+  DiagramEdge,
+  DiagramNode,
+} from "@/app/components/diagram-canvas";
 
 interface AdminUser {
   id: string;
@@ -30,7 +35,7 @@ interface AdminUser {
   created_at: string;
 }
 
-const TABS = ["organization", "users", "permissions"] as const;
+const TABS = ["organization", "users", "permissions", "diagram-canvas"] as const;
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
@@ -59,10 +64,14 @@ export default function WorkspaceSettingsPage() {
         <TabButton active={tab === "permissions"} onClick={() => setTab("permissions")}>
           Permissions
         </TabButton>
+        <TabButton active={tab === "diagram-canvas"} onClick={() => setTab("diagram-canvas")}>
+          Diagram canvas
+        </TabButton>
       </div>
       {tab === "organization" && <OrganizationTab />}
       {tab === "users" && <UsersTab />}
       {tab === "permissions" && <PermissionsTab />}
+      {tab === "diagram-canvas" && <DiagramCanvasTab />}
     </PageShell>
   );
 }
@@ -863,6 +872,68 @@ function PermissionsTab() {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+// PLA-0006 — embeds the DiagramCanvas stress/demo fixture (same
+// 3,000-node Lloyds-class tree used by the perf gate at
+// /dev/diagram-canvas-stress) so gadmins can preview the primitive
+// without leaving Workspace Settings. The window.__DIAGRAM_PERF__
+// harness is intentionally NOT mounted here — that telemetry is
+// owned by the dedicated stress route.
+const DC_TARGET_NODES = 3000;
+const DC_NODE_W = 100;
+const DC_NODE_H = 40;
+const DC_COL_GAP = 30;
+const DC_ROW_GAP = 30;
+const DC_COLS_PER_ROW = 60;
+const DC_FAN = 4;
+
+function buildDiagramFixture(): { nodes: DiagramNode[]; edges: DiagramEdge[] } {
+  const nodes: DiagramNode[] = [];
+  const edges: DiagramEdge[] = [];
+  for (let i = 0; i < DC_TARGET_NODES; i++) {
+    const col = i % DC_COLS_PER_ROW;
+    const row = Math.floor(i / DC_COLS_PER_ROW);
+    nodes.push({
+      id: `n${i}`,
+      x: col * (DC_NODE_W + DC_COL_GAP),
+      y: row * (DC_NODE_H + DC_ROW_GAP),
+      width: DC_NODE_W,
+      height: DC_NODE_H,
+    });
+    if (i > 0) {
+      const parent = Math.floor((i - 1) / DC_FAN);
+      edges.push({ id: `e${i}`, source: `n${parent}`, target: `n${i}` });
+    }
+  }
+  return { nodes, edges };
+}
+
+function DiagramCanvasTab() {
+  const { nodes, edges } = useMemo(() => buildDiagramFixture(), []);
+  return (
+    <div className="diagram-canvas-stress">
+      <header className="diagram-canvas-stress__header">
+        <span className="diagram-canvas-stress__metric">
+          Nodes: {nodes.length.toLocaleString()}
+        </span>
+        <span className="diagram-canvas-stress__metric">
+          Edges: {edges.length.toLocaleString()}
+        </span>
+      </header>
+      <div className="diagram-canvas-stress__canvas">
+        <DiagramCanvas
+          name="workspace_settings_diagram_canvas"
+          nodes={nodes}
+          edges={edges}
+          gridSize={10}
+          showGrid
+          miniMap
+          controls
+        />
       </div>
     </div>
   );
