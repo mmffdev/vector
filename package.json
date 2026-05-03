@@ -33,6 +33,7 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/d3-zoom": "^3.0.8",
     "@types/dagre": "^0.7.54",
     "@types/node": "^20",

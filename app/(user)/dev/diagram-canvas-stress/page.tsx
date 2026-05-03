@@ -82,6 +82,9 @@ declare global {
     __DIAGRAM_HARNESS__?: {
       relayoutSubtree: (rootId?: string) => Promise<number>;
       getNodeScreenCenter: (id: string) => { x: number; y: number } | null;
+      zoomTo: (scale: number) => void;
+      centerOn: (id: string) => void;
+      getViewport: () => { x: number; y: number; scale: number } | null;
     };
   }
 }
@@ -120,8 +123,16 @@ export default function DiagramCanvasStressPage() {
         const rect = root.getBoundingClientRect();
         const cx = (n.x + n.width / 2) * vp.scale + vp.x + rect.left;
         const cy = (n.y + n.height / 2) * vp.scale + vp.y + rect.top;
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
         return { x: cx, y: cy };
       },
+      zoomTo: (scale: number) => {
+        handleRef.current?.zoomTo(scale);
+      },
+      centerOn: (id: string) => {
+        handleRef.current?.centerOn(id);
+      },
+      getViewport: () => handleRef.current?.getViewport() ?? null,
     };
 
     // Wait for the canvas to mount, paint, and run its auto-fitView
