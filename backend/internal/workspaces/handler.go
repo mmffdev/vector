@@ -11,6 +11,7 @@ package workspaces
 // to HTTP statuses per the contract documented on errors.go:
 //
 //	GET    /api/workspaces            → ListBySubscription(false)        AC1
+//	GET    /api/workspaces?archived=true → ListBySubscription(true)       00381 AC (archived list)
 //	POST   /api/workspaces            → Create                            AC2
 //	PATCH  /api/workspaces/{id}       → Rename                            00380 AC
 //	POST   /api/workspaces/{id}/archive  → Archive                        AC3
@@ -74,14 +75,33 @@ type patchReq struct {
 
 // GET /api/workspaces — AC1. Returns the live (non-archived)
 // workspaces for the caller's tenant ordered by created_at ASC.
-// Reads are not permission-gated at the service layer; the auth
-// middleware on the route is the only gate.
+//
+// When called with ?archived=true (story 00381) the list switches to
+// archived rows only and the service layer enforces the
+// workspace.view_archived permission — non-holders get 403 here. The
+// frontend hides the archived section on that 403 / when the gate
+// returns false, so a caller without the permission never reaches
+// this branch in the happy path.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, false, u.ID)
+	includeArchived := r.URL.Query().Get("archived") == "true"
+	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, includeArchived, u.ID)
 	if err != nil {
 		writeErr(w, err)
 		return
+	}
+	if includeArchived {
+		// Filter to archived-only when the caller asked for the
+		// archived view. ListBySubscription(true) returns ALL rows
+		// (live + archived) per its current contract; the archived
+		// section UI only wants the limbo set.
+		out := rows[:0]
+		for _, x := range rows {
+			if x.ArchivedAt != nil {
+				out = append(out, x)
+			}
+		}
+		rows = out
 	}
 	writeJSON(w, http.StatusOK, rows)
 }

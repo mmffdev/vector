@@ -623,8 +623,19 @@ function TabButton({
 
 function WorkspacesTab() {
   const canArchive = useHasPermission("workspace.archive");
+  // PLA-0006/00381 — Archived section is hidden entirely when the
+  // actor lacks workspace.view_archived. The fetch is also skipped
+  // (the GET ?archived=true endpoint is permission-gated and would
+  // 403). Restore is a separate code — most tenants grant
+  // view_archived + restore together, but we render the button
+  // conditionally so a permissions split (e.g. read-only auditor)
+  // shows the section without action affordances.
+  const canViewArchived = useHasPermission("workspace.view_archived");
+  const canRestore = useHasPermission("workspace.restore");
   const [rows, setRows] = useState<Workspace[] | null>(null);
+  const [archivedRows, setArchivedRows] = useState<Workspace[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [archivedErr, setArchivedErr] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -638,7 +649,19 @@ function WorkspacesTab() {
     }
   }, []);
 
+  const loadArchived = useCallback(async () => {
+    if (!canViewArchived) return;
+    setArchivedErr(null);
+    try {
+      const data = await workspacesApi.listArchived();
+      setArchivedRows(data);
+    } catch (e) {
+      setArchivedErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Failed to load archived workspaces");
+    }
+  }, [canViewArchived]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadArchived(); }, [loadArchived]);
 
   async function renameWorkspace(id: string, name: string) {
     await workspacesApi.rename(id, name);
@@ -650,7 +673,18 @@ function WorkspacesTab() {
   async function archiveWorkspace(id: string) {
     await workspacesApi.archive(id);
     emitWorkspacesChanged();
-    await load();
+    // Both lists change shape on archive (live shrinks, archived
+    // grows) — keep them in sync without a page reload.
+    await Promise.all([load(), loadArchived()]);
+  }
+
+  async function restoreWorkspace(id: string) {
+    await workspacesApi.restore(id);
+    // Symmetric to archive: live grows, archived shrinks. Notify the
+    // topology header switcher (story 00379) to refetch its dropdown
+    // via the workspaces:changed event.
+    emitWorkspacesChanged();
+    await Promise.all([load(), loadArchived()]);
   }
 
   return (
@@ -702,6 +736,20 @@ function WorkspacesTab() {
         </div>
       )}
 
+      {/* PLA-0006/00381 — Archived workspaces section. The whole
+          section, including the heading + table, is hidden when the
+          actor lacks workspace.view_archived. The gadmin role grants
+          all three workspace.* codes in MVP, so most operators see
+          it. */}
+      {canViewArchived && (
+        <ArchivedWorkspacesSection
+          rows={archivedRows}
+          err={archivedErr}
+          canRestore={canRestore}
+          onRestore={restoreWorkspace}
+        />
+      )}
+
       {showCreate && (
         <CreateWorkspaceModal
           onClose={() => setShowCreate(false)}
@@ -709,6 +757,119 @@ function WorkspacesTab() {
         />
       )}
     </div>
+  );
+}
+
+// PLA-0006/00381 — Archived workspaces section. Sits below the live
+// list inside the same Workspaces tab. Hidden entirely by the parent
+// when the actor lacks workspace.view_archived; renders a Restore
+// button per row when the actor also holds workspace.restore.
+function ArchivedWorkspacesSection({
+  rows,
+  err,
+  canRestore,
+  onRestore,
+}: {
+  rows: Workspace[] | null;
+  err: string | null;
+  canRestore: boolean;
+  onRestore: (id: string) => Promise<void>;
+}) {
+  return (
+    <div className="settings-panel">
+      <h3 className="eyebrow">Archived workspaces</h3>
+      <p className="form__hint">
+        Archived workspaces are hidden from the live list and the topology switcher. Restore brings the workspace back into the live set without losing any content.
+      </p>
+
+      {err && <div className="form__error">{err}</div>}
+
+      {rows && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead className="table__head">
+              <tr className="table__row">
+                <th className="table__cell">Name</th>
+                <th className="table__cell">Slug</th>
+                <th className="table__cell">Archived</th>
+                <th className="table__cell" aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((w) => (
+                <ArchivedWorkspaceRow
+                  key={w.id}
+                  w={w}
+                  canRestore={canRestore}
+                  onRestore={() => onRestore(w.id)}
+                />
+              ))}
+              {rows.length === 0 && (
+                <tr className="table__row">
+                  <td className="table__cell table__cell--muted" colSpan={4}>
+                    No archived workspaces.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ArchivedWorkspaceRow({
+  w,
+  canRestore,
+  onRestore,
+}: {
+  w: Workspace;
+  canRestore: boolean;
+  onRestore: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // archived_at is non-null for any row in this list (the GET
+  // ?archived=true endpoint filters at the handler), but the wire
+  // type allows null so we fall back to em-dash defensively.
+  const archivedDate = w.archived_at ? new Date(w.archived_at).toLocaleDateString() : "—";
+
+  async function restore() {
+    if (!confirm(`Restore workspace "${w.name}"? It will reappear in the live list and switcher.`)) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await onRestore();
+    } catch (e) {
+      setErr(e instanceof ApiError ? String(e.body ?? `Error ${e.status}`) : "Restore failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <tr className="table__row">
+      <td className="table__cell">{w.name}</td>
+      <td className="table__cell t-mono">{w.slug}</td>
+      <td className="table__cell table__cell--muted">{archivedDate}</td>
+      <td className="table__cell">
+        <div className="table__cell-meta">
+          {canRestore && (
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={restore}
+              disabled={busy}
+            >
+              {busy ? "Restoring…" : "Restore"}
+            </button>
+          )}
+          {err && <span className="form__error">{err}</span>}
+        </div>
+      </td>
+    </tr>
   );
 }
 
