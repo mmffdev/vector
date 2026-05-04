@@ -499,10 +499,17 @@ export default function TopologyTreeFlyout({
                         </button>
                       </span>
                     </th>
-                    {/* Invisible placeholder matches the width of a body
-                        row's actions cell with one kebab button so the
-                        admin tag-cell starts at the same x-position as
-                        the swatch on body rows. */}
+                    {/* Invisible placeholders match the widths of a body
+                        row's warn + actions cells so the admin tag-cell
+                        starts at the same x-position as the swatch on
+                        body rows. */}
+                    <th className="table__cell topo-tree-table__warn-cell" aria-hidden="true">
+                      <span
+                        className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn"
+                        style={{ visibility: "hidden", pointerEvents: "none" }}
+                        aria-hidden="true"
+                      />
+                    </th>
                     <th className="table__cell topo-tree-table__actions-cell" aria-hidden="true">
                       <span
                         className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn"
@@ -648,7 +655,7 @@ function TreeRow({
           the kebab is always present so every row carries the same row-
           menu affordance as the canvas card. */}
       <td
-        className="table__cell topo-tree-table__actions-cell"
+        className="table__cell topo-tree-table__warn-cell"
         onClick={(e) => e.stopPropagation()}
       >
         {archivedDescendantCount > 0 && (
@@ -662,6 +669,11 @@ function TreeRow({
             <TbAlertTriangle aria-hidden="true" />
           </button>
         )}
+      </td>
+      <td
+        className="table__cell topo-tree-table__actions-cell"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           type="button"
           className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn"

@@ -10335,7 +10335,7 @@ table.tbl tbody tr:hover td {
 }
 
 /* Drag-grip cell — matches the canonical drag-handle-cell width. The
-   5px left bar is the per-row node accent (see --node-accent on the
+   15px left bar is the per-row node accent (see --node-accent on the
    row); for nodes without a colour the var falls back to transparent
    so the bar disappears entirely. */
 .topo-tree-table__grip-cell {
@@ -10344,7 +10344,7 @@ table.tbl tbody tr:hover td {
   cursor: grab;
   user-select: none;
   border-right: 1px solid var(--border, #e5e1da);
-  border-left: 5px solid var(--node-accent, transparent);
+  border-left: 15px solid var(--node-accent, transparent);
 }
 
 .topo-tree-table__grip-cell:active {
@@ -10379,16 +10379,18 @@ table.tbl tbody tr:hover td {
   border-right: none;
 }
 
-/* Admin grip cell carries no node accent — suppress the 5px coloured bar. */
+/* Admin grip cell carries no node accent — suppress the 15px coloured bar. */
 .topo-tree-table__admin-grip {
-  border-left: 5px solid transparent !important;
+  border-left: 15px solid transparent !important;
   cursor: default;
 }
 
 /* Title cell aligns its text to the swatch column of body rows.
    Body row math: tag-inner padding-left 8px + 1px root spine + tag
-   padding-left 6px = 15px from the cell edge to the swatch. */
-.topo-tree-table__admin-title {
+   padding-left 6px = 15px from the cell edge to the swatch.
+   Stacked selector beats `.topo-tree-table__tag-cell { padding: 0 !important }`
+   declared lower in this file so the title's right padding actually applies. */
+.topo-tree-table__tag-cell.topo-tree-table__admin-title {
   text-align: left;
   letter-spacing: 0.01em;
   padding-left: 15px !important;
@@ -10509,15 +10511,29 @@ table.tbl tbody tr:hover td {
   color: var(--ink-muted, #5c5c5c);
 }
 
-/* ── tree-row actions cell (kebab + warning triangle) ───────────────── */
+/* ── tree-row warn cell (warning triangle column) ───────────────────────
+   Always rendered (even when empty) so column widths stay stable as the
+   triangle appears/disappears across rows. No right border — it visually
+   belongs to the adjacent kebab cell. */
+.topo-tree-table__warn-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  border-right: none !important;
+}
+
+/* ── tree-row actions cell (kebab) ──────────────────────────────────── */
 .topo-tree-table__actions-cell {
   width: 1%;
   white-space: nowrap;
-  text-align: right;
+  text-align: center;
+  padding-left: 6px !important;
   padding-right: 6px !important;
 }
 .topo-tree-table__action-btn {
-  margin-left: 2px;
+  margin: 0 1px;
 }
 .topo-tree-table__action-btn--warn {
   color: var(--warning, #d97706);

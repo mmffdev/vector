@@ -309,6 +309,10 @@ function layoutWithDagre(
       // Drag-reparent will be reinstated via an explicit "Move…" menu
       // action so dropping has a clear target list and undo path.
       draggable: false,
+      // Bake selection into the layout so the rfNodes-replacement effect
+      // (collapse/expand/rankdir change) doesn't drop the selected ring
+      // and resize the node back to its non-selected dimensions.
+      selected: isSel,
       data: {
         org,
         childCount: liveChildren,
