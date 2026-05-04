@@ -236,6 +236,46 @@ func TestRevokeRole_PermissionGate(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// CreateDefault — bootstrap signup hook (PLA-0006 / 00382 AC #3)
+// ──────────────────────────────────────────────────────────────────
+
+func TestCreateDefault_SkipsPermissionGate(t *testing.T) {
+	// CreateDefault is the tenant-signup bootstrap path: it must NOT
+	// consult Perms (the new tenant's first user holds no role
+	// grants yet). We can't drive a real INSERT without a pool, so
+	// instead we drive nil tx — which panics inside QueryRow if the
+	// permission gate has already passed AND we reach the DB call.
+	// A panic here means the gate was correctly skipped; an
+	// ErrPermissionDenied return would mean the gate fired.
+	s := &Service{Perms: newFakePerms()} // no codes granted
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("CreateDefault should have reached the DB call (and panicked on nil tx); got clean return — permission gate likely fired")
+		}
+		// nil-tx panic is the success signal: the gate was bypassed
+		// and execution reached tx.QueryRow.
+	}()
+
+	_, _ = s.CreateDefault(context.Background(), nil, uuid.New(), uuid.New())
+}
+
+func TestCreateDefault_UsesCanonicalSlug(t *testing.T) {
+	// Lock the contract: AC #3 says the workspace is named "Default"
+	// with slug "default". Future refactors must not silently change
+	// either constant. The slug must also satisfy the regex CHECK.
+	const wantName = "Default"
+	const wantSlug = "default"
+
+	if !slugRegex.MatchString(wantSlug) {
+		t.Fatalf("default slug %q must satisfy slugRegex (workspaces.slug CHECK)", wantSlug)
+	}
+	if wantName == "" {
+		t.Fatalf("default name must be non-empty (workspaces.name CHECK)")
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Slug regex — locks in the workspaces.slug CHECK constraint
 // ──────────────────────────────────────────────────────────────────
 

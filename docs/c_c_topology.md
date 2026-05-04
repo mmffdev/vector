@@ -24,13 +24,52 @@ Federated canvas-based organisational modelling. Plan: [`PLA-0006`](../dev/plans
 
 Service methods: `CreateNode`, `RenameNode`, `MoveNode` (cycle-checked), `ArchiveNode`, `GrantRole`, `RevokeRole`, `SetViewState`, `BulkPosition` (debounced canvas writes), `Subtree` (recursive-CTE walk), `AncestorsOf`, `ClampPredicate(user_id)`.
 
+## Hierarchy: tenant → workspaces → org_nodes
+
+The MVP locks a strict three-tier containment chain. Every read path narrows through these tiers in order; every write path must keep the row at one tier consistent with its tier-above parent.
+
+```
+subscriptions (tenant)
+    │ 1..N
+    ▼
+workspaces                       ← top-level tenant container; clamp scope; role grants narrow here
+    │ 1..N
+    ▼
+org_nodes (self-referential tree)  ← per-workspace org tree (Office / Team / …); free-form depth
+```
+
+- A **tenant** (`subscriptions` row) holds 1..N **workspaces**. A tenant must always own ≥1 live workspace at any time — `workspaces.Service.Archive` refuses the last-live archive.
+- A **workspace** (`workspaces` row) owns its own **org_nodes** tree. `org_nodes.workspace_id` is `NOT NULL` (migration 099) and ON DELETE RESTRICT — archive a workspace, never hard-delete it. Archive places the workspace AND its entire org_nodes subtree in limbo together.
+- An **org_node** is a free-form tree node inside one workspace (`parent_id` self-FK, nullable for root; default noun "Office", overrideable per node).
+
+Sole-writer boundary at each tier:
+
+| Tier | Sole writer (Go package) | Tables guarded |
+|---|---|---|
+| `subscriptions` | `backend/internal/auth` (signup) + admin tooling | `subscriptions` |
+| `workspaces` | [`backend/internal/workspaces.Service`](../backend/internal/workspaces/service.go) | `workspaces`, `workspace_roles` |
+| `org_nodes` | `backend/orgdesign.Service` | `org_nodes`, `org_node_roles`, `org_node_view_state` |
+
+`dev/scripts/lint_writer_boundary.py` enforces every entry in the right column at CI time — INSERT / UPDATE / DELETE against any guarded table from outside its sole-writer package fails the lint. The migration-time bootstrap seed in migration 099 (Default workspace per existing subscription) is the documented bootstrap exception.
+
+### Future: tenant-signup hook (PLA-0006 / 00382 AC #3)
+
+There is no tenant signup HTTP endpoint yet. When one is added (a future story), it MUST call [`workspaces.Service.CreateDefault(ctx, tx, subscriptionID, firstUserID)`](../backend/internal/workspaces/commands.go) **inside the same transaction** as the `INSERT INTO subscriptions` and the first-user `INSERT INTO users`. The contract:
+
+- Workspace name = `"Default"`, slug = `"default"`, description = `"Default workspace created at tenant signup."`.
+- The signup transaction commits all three rows (subscription + first user + Default workspace) atomically; a failure at any step rolls back the whole txn so a tenant is never observable without exactly one live workspace.
+- `CreateDefault` skips the `workspace.create` permission gate — the bootstrap actor holds no role grants yet — but emits the same `workspace.created` audit entry on success with `metadata.bootstrap = "tenant_signup"` so the audit trail is unambiguous.
+- A duplicate call inside the same txn surfaces `ErrSlugTaken` (the partial unique index `workspaces_subscription_slug_live` is the DB safety net); the signup endpoint must abort the txn rather than retry.
+
+Existing tenants were backfilled by migration 099's bootstrap seed (every live subscription has exactly one live workspace named "Default" with slug "default"); the signup hook keeps that invariant going forward.
+
 ## Workspaces (PLA-0006 / story 00376)
 
 `backend/internal/workspaces.Service` is the sole writer for `workspaces` and `workspace_roles`. The boundary is enforced by `dev/scripts/lint_writer_boundary.py` — INSERT / UPDATE / DELETE on either table from outside `backend/internal/workspaces/` fails CI. Same trust-no-one pattern as `orgdesign.Service` and the PLA-0005 addressables service.
 
 Service methods:
 
-- **Commands** — `Create(ctx, CreateInput) (Workspace, error)`, `Rename(ctx, subscriptionID, workspaceID, newName, actorID)`, `Archive(ctx, subscriptionID, workspaceID, actorID)`, `Restore(ctx, subscriptionID, workspaceID, actorID)`.
+- **Commands** — `Create(ctx, CreateInput) (Workspace, error)`, `CreateDefault(ctx, tx, subscriptionID, firstUserID) (Workspace, error)` (signup-bootstrap; skips permission gate; uses caller-supplied tx — see "Future: tenant-signup hook" above), `Rename(ctx, subscriptionID, workspaceID, newName, actorID)`, `Archive(ctx, subscriptionID, workspaceID, actorID)`, `Restore(ctx, subscriptionID, workspaceID, actorID)`.
 - **Reads** — `Get(ctx, subscriptionID, workspaceID)`, `ListBySubscription(ctx, subscriptionID, includeArchived, actorID)`.
 - **Role grants** — `GrantRole(ctx, subscriptionID, workspaceID, userID, role, actorID) (uuid.UUID, error)`, `RevokeRole(ctx, subscriptionID, workspaceID, userID, actorID)`, `ListRoles(ctx, subscriptionID, workspaceID)`.
 

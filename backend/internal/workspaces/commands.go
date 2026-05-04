@@ -105,6 +105,91 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 	return w, nil
 }
 
+// CreateDefault inserts the canonical "Default" workspace (slug
+// "default") for a freshly-created tenant. It is the API surface
+// that a future tenant-signup endpoint MUST call inside the same
+// transaction as the subscriptions INSERT, so a tenant is never
+// observable without exactly one live workspace (PLA-0006 / 00382
+// AC #3).
+//
+// Differences vs Create:
+//
+//   - Skips the workspace.create permission gate. Signup runs as a
+//     bootstrap path: the actor (the new tenant's first gadmin)
+//     does not yet hold any role grants, so the standard gate
+//     would reject the call. This mirrors the migration-time
+//     bootstrap exception documented in service.go (the migration
+//     099 seed is the same hole at the SQL layer).
+//   - Uses the caller-supplied transaction (tx pgx.Tx) so the
+//     Default workspace lands in the SAME transaction as the
+//     subscriptions row. A failed signup MUST roll the workspace
+//     back; commit/rollback ownership stays with the caller.
+//   - Audit-logs through s.auditLog (nil-safe) for parity with
+//     Create — but only after the caller commits, so callers MUST
+//     pass an audit logger that can tolerate the row not yet being
+//     visible to readers when the entry fires. In practice the
+//     signup flow logs after Commit; the audit hook here is a
+//     belt-and-braces marker that the bootstrap happened.
+//
+// Slug is fixed at "default"; the partial unique index
+// workspaces_subscription_slug_live (subscription_id, slug) WHERE
+// archived_at IS NULL guarantees a tenant cannot wind up with two
+// live "default" workspaces no matter how the signup endpoint is
+// retried. A duplicate INSERT surfaces as ErrSlugTaken — callers
+// should treat that as a programming error (signup ran twice
+// inside one txn) and abort the txn.
+//
+// firstUserID is the row id of the new tenant's first user (the
+// signup endpoint creates this in the same transaction). It is
+// stamped into both workspaces.created_by and the audit entry's
+// actor — there is no "system" user in this codebase, and using
+// the bootstrapped gadmin keeps the FK to users(id) honest.
+func (s *Service) CreateDefault(
+	ctx context.Context,
+	tx pgx.Tx,
+	subscriptionID, firstUserID uuid.UUID,
+) (Workspace, error) {
+	const (
+		defaultName = "Default"
+		defaultSlug = "default"
+		defaultDesc = "Default workspace created at tenant signup."
+	)
+
+	desc := defaultDesc
+
+	var w Workspace
+	err := tx.QueryRow(ctx, `
+		INSERT INTO workspaces (subscription_id, name, slug, description, created_by)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, subscription_id, name, slug, description,
+		          created_by, created_at, updated_at, archived_at, archived_by
+	`, subscriptionID, defaultName, defaultSlug, desc, firstUserID).Scan(
+		&w.ID, &w.SubscriptionID, &w.Name, &w.Slug, &w.Description,
+		&w.CreatedBy, &w.CreatedAt, &w.UpdatedAt, &w.ArchivedAt, &w.ArchivedBy,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return Workspace{}, ErrSlugTaken
+		}
+		return Workspace{}, err
+	}
+
+	wid := w.ID.String()
+	s.auditLog(ctx, audit.Entry{
+		UserID:         &firstUserID,
+		SubscriptionID: &subscriptionID,
+		Action:         "workspace.created",
+		Resource:       strPtr("workspace"),
+		ResourceID:     &wid,
+		Metadata: map[string]any{
+			"name":      w.Name,
+			"slug":      w.Slug,
+			"bootstrap": "tenant_signup",
+		},
+	})
+	return w, nil
+}
+
 // Rename updates the workspace name. Slug is immutable in MVP; a
 // future story can add a Reslug command if the product needs it.
 //

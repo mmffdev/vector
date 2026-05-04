@@ -35,6 +35,7 @@ These rules are the contract; every query/handler/migration honours them.
 | Domain | Tables |
 |---|---|
 | Subscription & auth | `subscriptions`, `users`, `sessions`, `password_resets` |
+| Topology — workspaces tier (PLA-0006) | `workspaces`, `workspace_roles` |
 | ACL | `user_workspace_permissions` |
 | Audit & history | `audit_log`, `item_state_history` |
 | Numbering | `subscription_sequence` |
@@ -125,6 +126,63 @@ Password-reset tokens. One row per request.
 | `used_at` | timestamptz | yes | — | non-null = consumed |
 | `requested_ip` | inet | yes | — | |
 | `created_at`* | timestamptz | no | `now()` | |
+
+### `workspaces`
+
+> **Naming note** — the older, unrelated portfolio-stack table is singular `workspace` (migration 004); this PLA-0006 table is plural `workspaces`. They share neither rows nor FKs. The legacy `user_workspace_permissions.workspace_id` still points at the singular `workspace` table; PLA-0006 role grants live in `workspace_roles` below.
+
+Workspace tier above `org_nodes` (migration 098, PLA-0006). A subscription holds 1..N workspaces; each workspace owns its own `org_nodes` tree. The workspace is the top-level tenant container — clamp predicate, role grants, and addressable scoping all narrow through here. Sole writer: [`backend/internal/workspaces.Service`](../backend/internal/workspaces/service.go); see [`c_c_topology.md`](c_c_topology.md). Enforced by `dev/scripts/lint_writer_boundary.py`.
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
+| `name`* | text | no | — | CHECK `length(trim(name)) > 0` |
+| `slug`* | text | no | — | CHECK regex `^[a-z0-9][a-z0-9-]*$` |
+| `description` | text | yes | — | optional free-form |
+| `created_by`* | uuid | no | — | → `users.id` (RESTRICT) |
+| `created_at`* | timestamptz | no | `now()` | |
+| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+| `archived_at` | timestamptz | yes | — | soft-archive (limbo) |
+| `archived_by` | uuid | yes | — | → `users.id` (RESTRICT) |
+
+Constraints + indexes:
+- `workspaces_archived_pair` CHECK — `archived_at` and `archived_by` are both NULL or both set (every archive records who did it).
+- **Partial unique slug index** `workspaces_subscription_slug_live ON (subscription_id, slug) WHERE archived_at IS NULL` — slug uniqueness only among LIVE workspaces in a subscription; archived rows release their slug for re-use.
+- `workspaces_subscription_idx ON (subscription_id)` — hot-path lookup "list workspaces for a tenant".
+- `trg_workspaces_updated_at BEFORE UPDATE` → `set_updated_at()`.
+
+Invariants enforced by the sole writer:
+- **Last-live guard** — `Service.Archive` refuses if the workspace is the only live one for its subscription (returns `ErrCannotArchiveLastLive`); a tenant must always own ≥1 live workspace so `org_nodes.workspace_id` stays satisfiable.
+- **Default workspace on tenant signup** — every tenant boots with exactly one live workspace named "Default" (slug `default`). Existing tenants were backfilled by migration 099's bootstrap seed; future signups must call `Service.CreateDefault` in the same transaction as the `subscriptions` INSERT (see [`c_c_topology.md`](c_c_topology.md) § "Future: tenant-signup hook").
+
+### `workspace_roles`
+
+Workspace-scoped role grants — admin / editor / viewer (migration 098, PLA-0006). Mirrors `org_node_roles` at the workspace tier. Sole writer: [`backend/internal/workspaces.Service`](../backend/internal/workspaces/service.go).
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `id`* | uuid | no | `gen_random_uuid()` | pk |
+| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
+| `workspace_id`* | uuid | no | — | → `workspaces.id` (RESTRICT) |
+| `user_id`* | uuid | no | — | → `users.id` (RESTRICT) |
+| `role`* | text | no | — | CHECK in (`admin`, `editor`, `viewer`) |
+| `can_redelegate`* | bool | no | `false` | column ships from day one (Phase X); MVP UI does not expose it |
+| `granted_by`* | uuid | no | — | → `users.id` (RESTRICT) |
+| `granted_at`* | timestamptz | no | `now()` | |
+| `revoked_at` | timestamptz | yes | — | non-null = revoked (soft) |
+| `revoked_by` | uuid | yes | — | → `users.id` (RESTRICT) |
+| `created_at`* | timestamptz | no | `now()` | |
+| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+
+Constraints + indexes:
+- `workspace_roles_revoked_pair` CHECK — `revoked_at` and `revoked_by` are both NULL or both set.
+- **Active-grant uniqueness** `workspace_roles_active_user UNIQUE ON (workspace_id, user_id) WHERE revoked_at IS NULL` — at most one active grant per (workspace, user); revoked rows are kept for audit, allowing re-grant after revoke.
+- **MVP single-admin invariant** `workspace_roles_single_admin UNIQUE ON (workspace_id) WHERE role = 'admin' AND revoked_at IS NULL` — at most one active admin per workspace; drop this index to enable multi-admin in Phase X.
+- `workspace_roles_user_idx ON (user_id) WHERE revoked_at IS NULL` — hot-path "which workspaces does user X touch" for the clamp predicate.
+- `trg_workspace_roles_updated_at BEFORE UPDATE` → `set_updated_at()`.
+
+The Service surfaces `ErrSingleAdminViolation` (translated from SQLSTATE 23505 on the partial unique index) so callers see a typed error rather than a raw constraint violation.
 
 ### `user_workspace_permissions`
 
@@ -637,6 +695,16 @@ users.subscription_id          → subscriptions.id      (RESTRICT)
 workspace.subscription_id      → subscriptions.id      (RESTRICT)
 workspace.company_roadmap_id   → company_roadmap.id    (RESTRICT)
 workspace.owner_user_id        → users.id              (RESTRICT)
+
+workspaces.subscription_id     → subscriptions.id      (RESTRICT)
+workspaces.created_by          → users.id              (RESTRICT)
+workspaces.archived_by         → users.id              (RESTRICT)
+
+workspace_roles.subscription_id → subscriptions.id     (RESTRICT)
+workspace_roles.workspace_id    → workspaces.id        (RESTRICT)
+workspace_roles.user_id         → users.id             (RESTRICT)
+workspace_roles.granted_by      → users.id             (RESTRICT)
+workspace_roles.revoked_by      → users.id             (RESTRICT)
 ```
 
 Pattern summary:
