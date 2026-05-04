@@ -432,21 +432,21 @@
       "title": "SQL: workspaces + workspace_roles tables",
       "story_id": "00373",
       "card_url": "http://localhost:3333/cards/1767390693149377847",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 45,
       "title": "SQL: org_nodes.workspace_id FK + Default backfill",
       "story_id": "00374",
       "card_url": "http://localhost:3333/cards/1767390781489808698",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 46,
       "title": "SEC: seed workspace permission codes in RBAC catalogue",
       "story_id": "00375",
       "card_url": "http://localhost:3333/cards/1767390878780884285",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 47,

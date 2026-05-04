@@ -72,7 +72,7 @@ Server-authoritative catalogue. The Go side declares every code as a typed const
 
 Test code references these UUIDs as constants (see [`backend/internal/users/protected_accounts_test.go`](../backend/internal/users/protected_accounts_test.go)).
 
-## Seeded permissions (21)
+## Seeded permissions (26)
 
 | Category | Code | Notes |
 |---|---|---|
@@ -97,6 +97,11 @@ Test code references these UUIDs as constants (see [`backend/internal/users/prot
 | roles | `roles.assign_permissions` | Grant permissions to a role. |
 | roles | `roles.revoke_permissions` | Revoke permissions from a role. |
 | portfolio | `portfolio.list` | Read portfolios visible to the actor (minimal example for the External archetype). |
+| workspace | `workspace.create` | Create new workspaces in this tenant (PLA-0006 / 00375). |
+| workspace | `workspace.rename` | Rename a workspace (PLA-0006 / 00375). |
+| workspace | `workspace.archive` | Archive a workspace — soft-delete; preserves grants and tree (PLA-0006 / 00375). |
+| workspace | `workspace.restore` | Restore an archived workspace (PLA-0006 / 00375). |
+| workspace | `workspace.view_archived` | View the archived workspaces section (PLA-0006 / 00375). |
 
 ## Grant matrix (seeded)
 
@@ -123,6 +128,11 @@ Test code references these UUIDs as constants (see [`backend/internal/users/prot
 | `roles.assign_permissions` | ✓ | | | | |
 | `roles.revoke_permissions` | ✓ | | | | |
 | `portfolio.list` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `workspace.create` | ✓ | ✓ | | | |
+| `workspace.rename` | ✓ | ✓ | | | |
+| `workspace.archive` | ✓ | | | | |
+| `workspace.restore` | ✓ | | | | |
+| `workspace.view_archived` | ✓ | | | | |
 
 team_lead carries identical grants to padmin in v0 per user direction. Ranks differ (20 vs 25) so role-ceiling preserves the ordering for promote/demote checks.
 
