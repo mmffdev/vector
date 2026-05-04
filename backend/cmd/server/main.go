@@ -47,6 +47,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/workitems"
+	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
 // Build-time identity. Set via -ldflags "-X main.Commit=… -X main.BuildTime=…"
@@ -221,6 +222,16 @@ func main() {
 	// publishes a per-user "topology-handoff" event (story 00283).
 	orgDesignSvc := orgdesign.New(pool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
 	orgDesignH := orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
+
+	// Workspaces (PLA-0006 / story 00377). workspaces is the SOLE
+	// writer for the workspaces and workspace_roles tables — see
+	// backend/internal/workspaces/service.go for the boundary contract
+	// and dev/scripts/lint_writer_boundary.py for the CI gate. The
+	// service holds its own permission resolver so /api/workspaces
+	// routes only need RequireAuth + RequireFreshPassword at the
+	// router; per-route gating happens inside Service.requirePermission.
+	workspacesSvc := workspaces.New(pool, auditLog, permResolver)
+	workspacesH := workspaces.NewHandler(workspacesSvc)
 
 	artefactsSvc := artefacts.New(pool)
 	artefactsH := artefacts.NewHandler(artefactsSvc)
@@ -772,6 +783,21 @@ func main() {
 		r.Patch("/levels/{id}", orgDesignH.RenameLevel)
 		r.Post("/commit", orgDesignH.Commit)
 		r.Post("/reset", orgDesignH.Reset)
+	})
+
+	// ---- /api/workspaces (PLA-0006 / story 00377) ----
+	// Workspaces are the top-level tenant container above org_nodes.
+	// Reads return the live workspaces in the caller's tenant; mutations
+	// gate inside workspaces.Service via the workspace.* permission
+	// codes (catalogue lives in internal/permissions/catalogue.go;
+	// migration 100 seeds the role grid). Non-gadmin callers get 403
+	// on archive/restore because only the gadmin grid carries those
+	// codes in MVP.
+	r.Route("/api/workspaces", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		workspacesH.Mount(r)
 	})
 
 	// ---- /api/portfolio-items ----
