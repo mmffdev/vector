@@ -102,10 +102,17 @@ export interface PreviewMoveResult {
 
 export const topologyApi = {
   // GET /api/topology/tree — when rootId is undefined the backend
-  // resolves the tenant root.
-  tree(rootId?: string) {
-    const q = rootId ? `?root=${encodeURIComponent(rootId)}` : "";
-    return api<OrgNode[]>(`/api/topology/tree${q}`);
+  // resolves the tenant root. When wsSlug is supplied it is forwarded
+  // as `?ws=<slug>` so the workspace clamp middleware narrows the
+  // tree to that workspace (story 00378). Absent → backend falls back
+  // to the actor's first live workspace, which is what the Default
+  // workspace seed guarantees exists.
+  tree(rootId?: string, wsSlug?: string) {
+    const params = new URLSearchParams();
+    if (rootId) params.set("root", rootId);
+    if (wsSlug) params.set("ws", wsSlug);
+    const q = params.toString();
+    return api<OrgNode[]>(`/api/topology/tree${q ? `?${q}` : ""}`);
   },
 
   ancestors(nodeId: string) {

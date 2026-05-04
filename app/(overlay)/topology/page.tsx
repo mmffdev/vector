@@ -38,6 +38,11 @@ import {
   type OrgNode,
   type PreviewMoveResult,
 } from "@/app/lib/topologyApi";
+import {
+  workspacesApi,
+  WORKSPACES_CHANGED_EVENT,
+  type Workspace,
+} from "@/app/lib/workspacesApi";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useTopologyHandoffs } from "@/app/hooks/useTopologyHandoffs";
 import Panel from "@/app/components/Panel";
@@ -409,6 +414,23 @@ function TopologyOverlayInner() {
     window.history.replaceState(null, "", url.toString());
   }, [expanded]);
 
+  // PLA-0006/00379 — workspace switcher.
+  //
+  // The selected workspace is canonicalised in the URL as `?ws=<slug>`.
+  // We seed `wsSlug` from the query string at mount-time so a deep-link
+  // (`/topology?ws=ops`) selects that workspace WITHOUT a flicker on the
+  // tenant default first — the very first /api/topology/tree request
+  // already carries the slug. When the slug is absent, we let the
+  // backend's WorkspaceClampMiddleware fall back to the actor's first
+  // live workspace, then display whichever workspace the workspaces
+  // list returns first (Default by created_at ASC).
+  //
+  // Source-of-truth ordering for the picker is the workspaces fetch;
+  // the tree fetch is downstream of `wsSlug` so changing the picker
+  // re-runs the tree query through the existing `reload()` callback.
+  const [wsSlug, setWsSlug] = useState<string | null>(() => search.get("ws"));
+  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
+
   const [tree, setTree] = useState<OrgNode[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
@@ -449,13 +471,13 @@ function TopologyOverlayInner() {
 
   const reload = useCallback(async () => {
     try {
-      const res = await topologyApi.tree();
+      const res = await topologyApi.tree(undefined, wsSlug ?? undefined);
       setTree(res);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load topology");
     }
-  }, []);
+  }, [wsSlug]);
 
   useTopologyHandoffs(user?.id ?? null, () => {
     void reload();
@@ -464,6 +486,86 @@ function TopologyOverlayInner() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // PLA-0006/00379 — fetch the live workspaces list. Drives the
+  // picker dropdown; the tree fetch is independent. If `?ws=<slug>`
+  // is absent on first load we adopt the first workspace's slug after
+  // the list resolves so the URL matches what the backend's clamp
+  // middleware already chose; we only do this when the slug is null
+  // so we never clobber a deep-link.
+  //
+  // We also subscribe to the `workspaces:changed` window event
+  // (00381) so mutations from other panels (Manage Workspaces,
+  // Archived Workspaces) cause the dropdown to refetch without a
+  // page reload.
+  const reloadWorkspaces = useCallback(async () => {
+    try {
+      const res = await workspacesApi.list();
+      setWorkspaces(res);
+      if (wsSlug == null && res.length > 0) {
+        const first = res[0]!;
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.set("ws", first.slug);
+          window.history.replaceState(null, "", url.toString());
+        }
+        setWsSlug(first.slug);
+      }
+    } catch {
+      // Silently leave `workspaces` null — the dropdown hides itself
+      // when the list isn't available; tree fetch failure is surfaced
+      // via loadError on its own path.
+    }
+  }, [wsSlug]);
+
+  useEffect(() => {
+    void reloadWorkspaces();
+    if (typeof window === "undefined") return;
+    const onChanged = () => {
+      void reloadWorkspaces();
+    };
+    window.addEventListener(WORKSPACES_CHANGED_EVENT, onChanged);
+    return () => {
+      window.removeEventListener(WORKSPACES_CHANGED_EVENT, onChanged);
+    };
+    // reloadWorkspaces depends on wsSlug, but we only care about the
+    // first-mount fetch + a stable subscription — re-running this
+    // effect on every slug change would double-fire fetches and tear
+    // the listener down/up unnecessarily.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fit view once after first non-empty layout. Re-armed on
+  // workspace switch (see onWorkspaceChange) so the new tree refits
+  // its own centre rather than inheriting the previous workspace's
+  // viewport.
+  const didFitRef = useRef(false);
+
+  // Selecting a workspace from the dropdown — update the URL via
+  // router.replace (no full reload, no history entry) and let the
+  // wsSlug-bound `reload` re-run the tree fetch with the new slug.
+  const onWorkspaceChange = useCallback(
+    (nextSlug: string) => {
+      if (nextSlug === wsSlug) return;
+      setWsSlug(nextSlug);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("ws", nextSlug);
+        // Use router.replace so the back button still returns to the
+        // pre-/topology page rather than each workspace toggle.
+        router.replace(url.pathname + url.search);
+      }
+      // Drop the selected node and any in-flight overlays — they
+      // belong to the old workspace's tree.
+      setSelectedId(null);
+      setEditingId(null);
+      setCollapsed(new Set());
+      // Re-arm the fit-view latch so the next non-empty layout fits
+      // the new workspace's tree from scratch.
+      didFitRef.current = false;
+    },
+    [wsSlug, router],
+  );
 
   const root = useMemo(() => tree?.find((n) => n.parent_id === null) ?? null, [tree]);
   const tenantName = root?.name ?? "Topology";
@@ -599,8 +701,9 @@ function TopologyOverlayInner() {
     setRfEdges(layout.edges);
   }, [layoutNodes, layout.edges, setRfNodes, setRfEdges]);
 
-  // Fit view once after first non-empty layout.
-  const didFitRef = useRef(false);
+  // Fit view once after first non-empty layout. The `didFitRef` is
+  // declared higher up next to onWorkspaceChange so the dropdown can
+  // re-arm it on workspace switch.
   useEffect(() => {
     if (didFitRef.current) return;
     if (rfNodes.length === 0) return;
@@ -941,6 +1044,26 @@ function TopologyOverlayInner() {
           <strong>Topology</strong>
         </div>
         <div className="topo-overlay__actions">
+          {/* PLA-0006/00379 — workspace switcher. Renders only when the
+              workspaces list has loaded AND the tenant has more than one
+              live workspace; a single-workspace tenant would just show
+              its own name with nothing to switch to. We use a native
+              <select> with the catalog's form__select--sm so the control
+              picks up the active theme without a bespoke class. */}
+          {workspaces && workspaces.length > 1 && (
+            <select
+              className="form__select form__select--sm topo-overlay__ws-select"
+              aria-label="Switch workspace"
+              value={wsSlug ?? ""}
+              onChange={(e) => onWorkspaceChange(e.target.value)}
+            >
+              {workspaces.map((w) => (
+                <option key={w.id} value={w.slug}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          )}
           <ToggleBtnN
             ariaLabel="Authoring mode"
             size="sm"

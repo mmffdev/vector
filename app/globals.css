@@ -9577,6 +9577,17 @@ table.tbl tbody tr:hover td {
 
 
 
+/* PLA-0006/00379 — workspace switcher dropdown. Sits at the head of
+   .topo-overlay__actions; the bare width on form__select--sm is 100%
+   which is wrong for an inline toolbar control, so we cap it at a
+   readable max and let the browser render the long-name ellipsis.
+   Positioning-only — colour, height, padding, focus ring all come
+   from the catalog .form__select / .form__select--sm rules. */
+.topo-overlay__ws-select {
+  width: auto;
+  max-width: 220px;
+}
+
 /* .topo-overlay__btn family — fully canonical now; every JSX node composes
    from .btn .btn--primary|--ghost|--danger .btn--sm. No bespoke CSS needed. */
 
