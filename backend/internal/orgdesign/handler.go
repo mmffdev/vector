@@ -529,19 +529,18 @@ func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 		// Resolve the tenant's single root. If there are multiple roots
 		// (legacy data), we return the lowest-position one — the canvas
 		// is welcome to ask explicitly for a different root id.
-		err := h.Svc.pool.QueryRow(r.Context(), `
-			SELECT id FROM org_nodes
-			 WHERE subscription_id = $1
-			   AND parent_id IS NULL
-			   AND archived_at IS NULL
-			 ORDER BY position
-			 LIMIT 1
-		`, u.SubscriptionID).Scan(&rootID)
+		//
+		// TenantRootID honours the workspace clamp seeded by
+		// WorkspaceClampMiddleware (story 00378), so the canvas paints
+		// the root of the resolved workspace — not a sibling workspace's
+		// root in the same subscription.
+		id, err := h.Svc.TenantRootID(r.Context(), u.SubscriptionID)
 		if err != nil {
 			// Empty topology → return [] not 500
 			writeJSON(w, http.StatusOK, []Node{})
 			return
 		}
+		rootID = id
 	} else {
 		parsed, err := uuid.Parse(rootParam)
 		if err != nil {

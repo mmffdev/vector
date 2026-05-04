@@ -890,6 +890,14 @@ func (s *Service) SetViewState(ctx context.Context, subscriptionID, nodeID, user
 // itself) inside the given subscription, ordered depth-first by
 // position. The recursive CTE is the same shape used by the clamp
 // predicate so query plans stay symmetric.
+//
+// When WorkspaceIDFromCtx is set (story 00378), every reference to
+// org_nodes is additionally filtered by workspace_id — a Topology
+// canvas request bound to workspace W cannot accidentally surface a
+// row anchored under a sibling workspace in the same tenant, even if
+// the recursive descent or an archived branch would otherwise cross
+// the boundary. Without a workspace clamp (admin tools / migrations)
+// the query falls back to subscription-only scoping.
 func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID) ([]Node, error) {
 	// `down` walks the live tree rooted at $1 (path-ordered, used by the
 	//   frontend to render).
@@ -901,22 +909,25 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 	//   each live node its archived_descendant_count: every archived row
 	//   reachable through it (directly via an archived child, plus
 	//   anything those archived branches transitively contain).
+	wsClause, args, slot := workspaceClause(ctx, "n", []any{rootID, subscriptionID})
+	wsClauseC := workspaceClauseAt("c", slot)
+	wsClauseA := workspaceClauseAt("a", slot)
 	rows, err := s.pool.Query(ctx, `
 		WITH RECURSIVE down AS (
 		    SELECT n.*, ARRAY[n.position, 0]::INT[] AS path
 		      FROM org_nodes n
-		     WHERE n.id = $1 AND n.subscription_id = $2 AND n.archived_at IS NULL
+		     WHERE n.id = $1 AND n.subscription_id = $2 AND n.archived_at IS NULL`+wsClause+`
 		    UNION ALL
 		    SELECT c.*, down.path || c.position
 		      FROM org_nodes c
 		      JOIN down ON c.parent_id = down.id
-		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL
+		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL`+wsClauseC+`
 		), archived_children AS (
 		    SELECT a.id AS arch_id, d.id AS anchor_id
 		      FROM org_nodes a
 		      JOIN down d ON a.parent_id = d.id
 		     WHERE a.subscription_id = $2
-		       AND a.archived_at IS NOT NULL
+		       AND a.archived_at IS NOT NULL`+wsClauseA+`
 		), archived_subtree AS (
 		    SELECT arch_id, anchor_id FROM archived_children
 		    UNION ALL
@@ -924,7 +935,7 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 		      FROM org_nodes c
 		      JOIN archived_subtree ast ON c.parent_id = ast.arch_id
 		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NOT NULL
+		       AND c.archived_at IS NOT NULL`+wsClauseC+`
 		), per_anchor AS (
 		    SELECT anchor_id, COUNT(*)::INT AS arch_count
 		      FROM archived_subtree
@@ -959,7 +970,7 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 		  FROM down d
 		  LEFT JOIN rollup r ON r.live_id = d.id
 		 ORDER BY d.path
-	`, rootID, subscriptionID)
+	`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1059,19 +1070,27 @@ func (s *Service) ArchivedDescendants(
 	// nearest live ancestor is deeper in the tree — and the rollup
 	// count on the canvas counts them, so the flyout would disagree
 	// with the warning triangle.
+	//
+	// Workspace clamp (story 00378): scope every org_nodes reference
+	// to the request's workspace_id when present. The anchor itself
+	// has already been load-checked above; the recursive descent and
+	// the archived-parent join still need the predicate.
+	wsClauseN, archArgs, slot := workspaceClause(ctx, "n", []any{nodeID, subscriptionID})
+	wsClauseC := workspaceClauseAt("c", slot)
+	wsClauseA := workspaceClauseAt("a", slot)
 	rows, err := tx.Query(ctx, `
 		WITH RECURSIVE live_down AS (
 		    SELECT n.id
 		      FROM org_nodes n
 		     WHERE n.id = $1
 		       AND n.subscription_id = $2
-		       AND n.archived_at IS NULL
+		       AND n.archived_at IS NULL`+wsClauseN+`
 		    UNION ALL
 		    SELECT c.id
 		      FROM org_nodes c
 		      JOIN live_down ld ON c.parent_id = ld.id
 		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NULL
+		       AND c.archived_at IS NULL`+wsClauseC+`
 		), arch AS (
 		    -- Archived children whose parent is any live node in the
 		    -- anchor's live subtree.
@@ -1079,20 +1098,20 @@ func (s *Service) ArchivedDescendants(
 		      FROM org_nodes a
 		      JOIN live_down ld ON a.parent_id = ld.id
 		     WHERE a.subscription_id = $2
-		       AND a.archived_at IS NOT NULL
+		       AND a.archived_at IS NOT NULL`+wsClauseA+`
 		    UNION ALL
 		    SELECT c.id, c.parent_id, c.name, c.archived_at
 		      FROM org_nodes c
 		      JOIN arch ON c.parent_id = arch.id
 		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NOT NULL
+		       AND c.archived_at IS NOT NULL`+wsClauseC+`
 		)
 		SELECT a.id, a.parent_id, a.name, a.archived_at,
 		       (p.archived_at IS NOT NULL) AS parent_is_archived
 		  FROM arch a
 		  LEFT JOIN org_nodes p ON p.id = a.parent_id
 		 ORDER BY a.archived_at DESC, a.name
-	`, nodeID, subscriptionID)
+	`, archArgs...)
 	if err != nil {
 		return nil, err
 	}

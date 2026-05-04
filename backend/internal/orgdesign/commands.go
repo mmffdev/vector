@@ -138,7 +138,19 @@ func (s *Service) DisconnectNode(ctx context.Context, subscriptionID, nodeID uui
 // "Canonical root" is defined as the lowest-position parent_id-NULL
 // node. Tenants will normally have exactly one root; multi-root
 // data is treated as: first root = canonical, the rest = disconnected.
+//
+// Workspace clamp (story 00378): when WorkspaceIDFromCtx is set,
+// "canonical root" is reinterpreted as "the canonical root within
+// this workspace" and disconnected returns the workspace's other
+// orphan roots — never roots from a sibling workspace in the same
+// tenant. Without a clamp the query falls back to subscription-only
+// scoping.
 func (s *Service) ListDisconnected(ctx context.Context, subscriptionID uuid.UUID) ([]Node, error) {
+	// The disconnected tray's two org_nodes references both need the
+	// same workspace_id, so we bind it once and re-splice via the
+	// `slot` returned from workspaceClause.
+	wsClauseRoots, args, slot := workspaceClause(ctx, "org_nodes", []any{subscriptionID})
+	wsClauseN := workspaceClauseAt("n", slot)
 	rows, err := s.pool.Query(ctx, `
 		WITH roots AS (
 		    SELECT id, position,
@@ -146,7 +158,7 @@ func (s *Service) ListDisconnected(ctx context.Context, subscriptionID uuid.UUID
 		      FROM org_nodes
 		     WHERE subscription_id = $1
 		       AND parent_id IS NULL
-		       AND archived_at IS NULL
+		       AND archived_at IS NULL`+wsClauseRoots+`
 		)
 		SELECT n.id, n.subscription_id, n.parent_id, n.level_id, n.name, n.description, n.label_override,
 		       n.icon, n.colour, n.avatar_url,
@@ -154,9 +166,9 @@ func (s *Service) ListDisconnected(ctx context.Context, subscriptionID uuid.UUID
 		       n.collapsed_default, n.position, n.archived_at, n.created_at, n.updated_at
 		  FROM org_nodes n
 		  JOIN roots r ON r.id = n.id
-		 WHERE r.rn > 1
+		 WHERE r.rn > 1`+wsClauseN+`
 		 ORDER BY n.position, n.created_at
-	`, subscriptionID)
+	`, args...)
 	if err != nil {
 		return nil, err
 	}

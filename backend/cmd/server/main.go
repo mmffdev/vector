@@ -759,14 +759,29 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
-		// Reads
-		r.Get("/tree", orgDesignH.Tree)
-		r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
-		r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
-		r.Get("/preview-move", orgDesignH.PreviewMove)
-		r.Get("/disconnected", orgDesignH.Disconnected)
-		r.Get("/levels", orgDesignH.ListLevels)
-		r.Get("/commit", orgDesignH.CommitStatus)
+		// Workspace clamp (PLA-0006 / story 00378): every list-style
+		// read narrows to one workspace, resolved per-request from
+		// `?ws=<slug>` (absent → actor's first live workspace; missing
+		// slug → 404; in-tenant but no role → 403). The middleware
+		// stashes workspace_id on the request context; service-layer
+		// reads (Subtree / ListDisconnected / ArchivedDescendants /
+		// TenantRootID) splice it into their WHERE clauses through
+		// orgdesign.WorkspaceIDFromCtx. Mounted on a read-only sub-
+		// router so write paths (which already constrain by
+		// subscription_id + per-node role inside orgdesign.Service)
+		// are not affected.
+		wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+		r.Group(func(r chi.Router) {
+			r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+
+			r.Get("/tree", orgDesignH.Tree)
+			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
+			r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
+			r.Get("/preview-move", orgDesignH.PreviewMove)
+			r.Get("/disconnected", orgDesignH.Disconnected)
+			r.Get("/levels", orgDesignH.ListLevels)
+			r.Get("/commit", orgDesignH.CommitStatus)
+		})
 
 		// Writes
 		r.Post("/nodes", orgDesignH.Create)
