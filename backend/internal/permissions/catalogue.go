@@ -26,6 +26,7 @@ func (c Code) String() string { return string(c) }
 //   - users.*      — users CRUD + creator-matrix
 //   - roles.*      — roles CRUD
 //   - portfolio.*  — portfolio resource
+//   - workspace.*  — workspace tier surface (PLA-0006 / migration 100)
 const (
 	// menu visibility
 	MenuAdminView Code = "menu.admin.view"
@@ -57,6 +58,13 @@ const (
 
 	// portfolio
 	PortfolioList Code = "portfolio.list"
+
+	// workspace tier (PLA-0006 / migration 100)
+	WorkspaceCreate       Code = "workspace.create"
+	WorkspaceRename       Code = "workspace.rename"
+	WorkspaceArchive      Code = "workspace.archive"
+	WorkspaceRestore      Code = "workspace.restore"
+	WorkspaceViewArchived Code = "workspace.view_archived"
 )
 
 // All is the canonical set of permission codes the Go side knows about.
@@ -87,6 +95,12 @@ var All = []Code{
 	RolesRevokePermissions,
 
 	PortfolioList,
+
+	WorkspaceCreate,
+	WorkspaceRename,
+	WorkspaceArchive,
+	WorkspaceRestore,
+	WorkspaceViewArchived,
 }
 
 // VerifyParity compares the DB permissions table against the Go All set.

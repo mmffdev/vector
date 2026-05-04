@@ -10,7 +10,9 @@ Federated canvas-based organisational modelling. Plan: [`PLA-0006`](../dev/plans
 
 | Table | Purpose |
 |---|---|
-| `org_nodes` | Self-referential tree (`parent_id` self-FK, nullable for root). Per-subscription. Carries name, gadmin-named `label_override` (default "Office"), icon, colour, layout metadata, soft-archive. Unique `(subscription_id, parent_id, name)`. |
+| `workspaces` | Workspace tier above `org_nodes` (PLA-0006 / migration 098). A subscription holds 1..N workspaces; each owns its own `org_nodes` tree. Per-subscription `slug` is unique among live rows; archived rows release their slug. Soft-archive via `archived_at` + `archived_by`. |
+| `workspace_roles` | Workspace-scoped role grants — admin / editor / viewer. Mirrors `org_node_roles`. `can_redelegate` ships as a column (Phase X) but is not exposed in MVP UI. MVP single-admin partial unique index `workspace_roles_single_admin`. |
+| `org_nodes` | Self-referential tree (`parent_id` self-FK, nullable for root). Per-subscription, narrowed to a `workspace_id` (migration 099). Carries name, gadmin-named `label_override` (default "Office"), icon, colour, layout metadata, soft-archive. Unique `(subscription_id, parent_id, name)`. |
 | `org_node_roles` | Node-scoped role grants — admin / editor / viewer. `can_redelegate` ships as a column (schema-ready for Phase X) but is not exposed in MVP UI. Auditable. MVP-only constraint: at most one active admin per node. |
 | `org_node_view_state` | Per-user collapse/expand state. Keeps canvas state per-user without polluting shared layout. |
 | `portfolio_items.org_node_id` | FK to `org_nodes`. Backfilled with per-subscription root node, then NOT NULL. |
@@ -21,6 +23,40 @@ Federated canvas-based organisational modelling. Plan: [`PLA-0006`](../dev/plans
 `backend/orgdesign.Service` is the sole writer for `org_nodes`, `org_node_roles`, `org_node_view_state`. Direct INSERTs from outside the service are blocked at the lint/CI level (same trust-no-one pattern as PLA-0005).
 
 Service methods: `CreateNode`, `RenameNode`, `MoveNode` (cycle-checked), `ArchiveNode`, `GrantRole`, `RevokeRole`, `SetViewState`, `BulkPosition` (debounced canvas writes), `Subtree` (recursive-CTE walk), `AncestorsOf`, `ClampPredicate(user_id)`.
+
+## Workspaces (PLA-0006 / story 00376)
+
+`backend/internal/workspaces.Service` is the sole writer for `workspaces` and `workspace_roles`. The boundary is enforced by `dev/scripts/lint_writer_boundary.py` — INSERT / UPDATE / DELETE on either table from outside `backend/internal/workspaces/` fails CI. Same trust-no-one pattern as `orgdesign.Service` and the PLA-0005 addressables service.
+
+Service methods:
+
+- **Commands** — `Create(ctx, CreateInput) (Workspace, error)`, `Rename(ctx, subscriptionID, workspaceID, newName, actorID)`, `Archive(ctx, subscriptionID, workspaceID, actorID)`, `Restore(ctx, subscriptionID, workspaceID, actorID)`.
+- **Reads** — `Get(ctx, subscriptionID, workspaceID)`, `ListBySubscription(ctx, subscriptionID, includeArchived, actorID)`.
+- **Role grants** — `GrantRole(ctx, subscriptionID, workspaceID, userID, role, actorID) (uuid.UUID, error)`, `RevokeRole(ctx, subscriptionID, workspaceID, userID, actorID)`, `ListRoles(ctx, subscriptionID, workspaceID)`.
+
+Permission gates are sourced from migration 100 (catalogue parity-checked at boot via `permissions.VerifyParity`):
+
+| Method | Permission code |
+|---|---|
+| `Create` | `workspace.create` |
+| `Rename` | `workspace.rename` |
+| `Archive` | `workspace.archive` |
+| `Restore` | `workspace.restore` |
+| `ListBySubscription(includeArchived=true)` | `workspace.view_archived` |
+| `GrantRole` / `RevokeRole` | `workspace.rename` (treated as the "manage this workspace" perm in MVP; future story can split into `.grant` / `.revoke`) |
+
+Sentinel errors (handlers map to HTTP shape — story 00377 owns the REST surface): `ErrNotFound`, `ErrSlugTaken`, `ErrAlreadyArchived`, `ErrNotArchived`, `ErrInvalidName`, `ErrInvalidSlug`, `ErrInvalidRole`, `ErrPermissionDenied`, `ErrSingleAdminViolation`, `ErrCannotArchiveLastLive`, `ErrGrantNotFound`.
+
+Invariants enforced at the service layer (defence-in-depth on top of DB constraints):
+
+- **Per-subscription unique slug among live rows** — partial unique index `workspaces_subscription_slug_live`. Archived rows release their slug; `Restore` re-checks against live siblings before lifting the archive flag.
+- **Last-live-workspace guard** — `Archive` refuses if the workspace is the only live one for its subscription (returns `ErrCannotArchiveLastLive`). A tenant must always own ≥1 live workspace.
+- **Single-admin per workspace (MVP)** — `GrantRole(role=admin)` checks for an existing active admin grant before INSERT; partial unique index `workspace_roles_single_admin` is the DB safety net (translated to `ErrSingleAdminViolation` on 23505).
+- **Idempotent grants** — re-granting the same `(workspaceID, userID)` with an active grant returns the existing grant id; the role is NOT mutated (a role change requires explicit revoke + re-grant).
+
+Audit logging happens at the service layer (mirrors `roles.Service`, not `orgdesign.Service` which audits in the handler). Actions emitted: `workspace.created`, `workspace.renamed`, `workspace.archived`, `workspace.restored`, `workspace.role_granted`, `workspace.role_revoked`. The `Audit *audit.Logger` field on `Service` is nil-safe so unit tests don't need a logger.
+
+Reads are NOT permission-gated — the route layer's clamp predicate decides what the actor sees. This matches the orgdesign read surface.
 
 ## Clamp predicate
 

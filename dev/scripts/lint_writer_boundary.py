@@ -17,6 +17,7 @@ Allowed packages by table (extend as new sole-writer services land):
 
     roles, permissions, role_permissions   →  backend/internal/roles/
     page_addressables                       →  backend/internal/addressables/
+    workspaces, workspace_roles             →  backend/internal/workspaces/
 
 Test files (`*_test.go`) are exempt — tests legitimately seed/clean
 fixtures.
@@ -40,6 +41,8 @@ WRITER_BOUNDARY: dict[str, str] = {
     "permissions":       "backend/internal/roles",
     "role_permissions":  "backend/internal/roles",
     "page_addressables": "backend/internal/addressables",
+    "workspaces":        "backend/internal/workspaces",
+    "workspace_roles":   "backend/internal/workspaces",
 }
 
 # Match `INSERT INTO <table>`, `UPDATE <table>`, `DELETE FROM <table>` —
