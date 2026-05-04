@@ -460,42 +460,42 @@
       "title": "API: /api/workspaces REST surface (list/create/rename/archive/restore)",
       "story_id": "00377",
       "card_url": "http://localhost:3333/cards/1767391084310168899",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 49,
       "title": "API: extend clamp predicate middleware to scope by workspace_id",
       "story_id": "00378",
       "card_url": "http://localhost:3333/cards/1767391179940300102",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 50,
       "title": "UI: workspace switcher dropdown in topology page header",
       "story_id": "00379",
       "card_url": "http://localhost:3333/cards/1767391287012492617",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 51,
       "title": "UI: Manage Workspaces panel \u2014 list, create, rename, archive",
       "story_id": "00380",
       "card_url": "http://localhost:3333/cards/1767391384706221388",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 52,
       "title": "UI: Archived Workspaces section + restore action (gadmin)",
       "story_id": "00381",
       "card_url": "http://localhost:3333/cards/1767391483884733775",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 53,
       "title": "DEV: workspace docs + auto-create Default workspace on tenant signup",
       "story_id": "00382",
       "card_url": "http://localhost:3333/cards/1767391600687711570",
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
@@ -1411,7 +1411,7 @@
       "proven_by": "curl_GET",
       "story_id": "00377",
       "card_url": "http://localhost:3333/cards/1767391084310168899",
-      "done": false
+      "done": true
     },
     {
       "order": 104,
@@ -1419,7 +1419,7 @@
       "proven_by": "curl_POST",
       "story_id": "00377",
       "card_url": "http://localhost:3333/cards/1767391084310168899",
-      "done": false
+      "done": true
     },
     {
       "order": 105,
@@ -1427,7 +1427,7 @@
       "proven_by": "permission_gate",
       "story_id": "00377",
       "card_url": "http://localhost:3333/cards/1767391084310168899",
-      "done": false
+      "done": true
     },
     {
       "order": 106,
@@ -1435,7 +1435,7 @@
       "proven_by": "integration_test",
       "story_id": "00378",
       "card_url": "http://localhost:3333/cards/1767391179940300102",
-      "done": false
+      "done": true
     },
     {
       "order": 107,
@@ -1443,7 +1443,7 @@
       "proven_by": "integration_test",
       "story_id": "00378",
       "card_url": "http://localhost:3333/cards/1767391179940300102",
-      "done": false
+      "done": true
     },
     {
       "order": 108,
@@ -1451,7 +1451,7 @@
       "proven_by": "integration_test",
       "story_id": "00378",
       "card_url": "http://localhost:3333/cards/1767391179940300102",
-      "done": false
+      "done": true
     },
     {
       "order": 109,
@@ -1459,7 +1459,7 @@
       "proven_by": "browser_test",
       "story_id": "00379",
       "card_url": "http://localhost:3333/cards/1767391287012492617",
-      "done": false
+      "done": true
     },
     {
       "order": 110,
@@ -1467,7 +1467,7 @@
       "proven_by": "browser_test",
       "story_id": "00379",
       "card_url": "http://localhost:3333/cards/1767391287012492617",
-      "done": false
+      "done": true
     },
     {
       "order": 111,
@@ -1475,7 +1475,7 @@
       "proven_by": "reload_test",
       "story_id": "00379",
       "card_url": "http://localhost:3333/cards/1767391287012492617",
-      "done": false
+      "done": true
     },
     {
       "order": 112,
@@ -1483,7 +1483,7 @@
       "proven_by": "browser_test",
       "story_id": "00380",
       "card_url": "http://localhost:3333/cards/1767391384706221388",
-      "done": false
+      "done": true
     },
     {
       "order": 113,
@@ -1491,7 +1491,7 @@
       "proven_by": "browser_test",
       "story_id": "00380",
       "card_url": "http://localhost:3333/cards/1767391384706221388",
-      "done": false
+      "done": true
     },
     {
       "order": 114,
@@ -1499,7 +1499,7 @@
       "proven_by": "permission_test",
       "story_id": "00380",
       "card_url": "http://localhost:3333/cards/1767391384706221388",
-      "done": false
+      "done": true
     },
     {
       "order": 115,
@@ -1507,7 +1507,7 @@
       "proven_by": "permission_test",
       "story_id": "00381",
       "card_url": "http://localhost:3333/cards/1767391483884733775",
-      "done": false
+      "done": true
     },
     {
       "order": 116,
@@ -1515,7 +1515,7 @@
       "proven_by": "browser_test",
       "story_id": "00381",
       "card_url": "http://localhost:3333/cards/1767391483884733775",
-      "done": false
+      "done": true
     },
     {
       "order": 117,
@@ -1523,7 +1523,7 @@
       "proven_by": "browser_test",
       "story_id": "00381",
       "card_url": "http://localhost:3333/cards/1767391483884733775",
-      "done": false
+      "done": true
     },
     {
       "order": 118,
@@ -1531,7 +1531,7 @@
       "proven_by": "docs_diff",
       "story_id": "00382",
       "card_url": "http://localhost:3333/cards/1767391600687711570",
-      "done": false
+      "done": true
     },
     {
       "order": 119,
@@ -1539,7 +1539,7 @@
       "proven_by": "docs_diff",
       "story_id": "00382",
       "card_url": "http://localhost:3333/cards/1767391600687711570",
-      "done": false
+      "done": true
     },
     {
       "order": 120,
@@ -1547,7 +1547,7 @@
       "proven_by": "signup_integration_test",
       "story_id": "00382",
       "card_url": "http://localhost:3333/cards/1767391600687711570",
-      "done": false
+      "done": true
     }
   ],
   "risks": [
