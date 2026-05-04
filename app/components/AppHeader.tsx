@@ -12,13 +12,7 @@ export default function AppHeader() {
 
   return (
     <header className={`app-header-wrapper app-header-wrapper--role-${user?.role.code ?? "user"}`}>
-      <div className="app-header-wrapper__center">
-        {user && (
-          <span className="role-badge" title="Your role (read-only)">
-            {user.role.label.toUpperCase()}
-          </span>
-        )}
-      </div>
+      <div className="app-header-wrapper__center" />
 
       <div className="app-header-wrapper__actions">
         {/* Library release notifications — gadmin-only badge, bell-only for others */}
