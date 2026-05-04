@@ -44,6 +44,7 @@ import Panel from "@/app/components/Panel";
 import ToggleBtnN from "@/app/components/ToggleBtnN";
 import TopologyTreeFlyout from "@/app/components/TopologyTreeFlyout";
 import { TbDots, TbChevronDown, TbChevronUp, TbAlertTriangle } from "react-icons/tb";
+import { BsArrowsFullscreen, BsFullscreenExit } from "react-icons/bs";
 import ArchiveMapFlyout from "@/app/components/ArchiveMapFlyout";
 
 // ── geometry ────────────────────────────────────────────────────────
@@ -928,11 +929,12 @@ function TopologyOverlayInner() {
           </button>
           <button
             type="button"
-            className="btn btn--ghost btn--sm topo-overlay__btn"
+            className="btn btn--icon btn--sm btn--ghost topo-overlay__btn"
             onClick={() => setExpanded((v) => !v)}
             title={expanded ? "Collapse to embedded view" : "Expand to fill the screen"}
+            aria-label={expanded ? "Collapse to embedded view" : "Expand to fill the screen"}
           >
-            {expanded ? "Collapse" : "Expand"}
+            {expanded ? <BsFullscreenExit aria-hidden="true" /> : <BsArrowsFullscreen aria-hidden="true" />}
           </button>
           <button
             type="button"
@@ -1056,6 +1058,15 @@ function TopologyOverlayInner() {
           onWidthChange={setTreeFlyoutWidth}
           onSelect={(id) => setSelectedId(id)}
           onActivate={(id) => setSelectedId(id)}
+          onRename={async (id, name) => {
+            try {
+              await topologyApi.patchFields(id, { name });
+              await reload();
+              return true;
+            } catch {
+              return false;
+            }
+          }}
         />
 
         {/* Edit flyout — lives inside __main so it anchors below the topology

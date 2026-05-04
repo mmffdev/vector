@@ -20,7 +20,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { OrgNode } from "@/app/lib/topologyApi";
 import Panel from "@/app/components/Panel";
+import InlineEditField from "@/app/components/InlineEditField";
 import { TbAlertTriangle, TbDots } from "react-icons/tb";
+import { RiExpandRightLine } from "react-icons/ri";
 
 // Width per depth level in the SVG tree-line cell. Matches the work-items
 // tree (24px) so the visual cadence is identical.
@@ -62,6 +64,11 @@ export type TopologyTreeFlyoutProps = {
   onOpenMenu: (id: string, screenX: number, screenY: number) => void;
   // Triangle (only rendered when the row's archived_descendant_count > 0).
   onOpenArchiveMap: (id: string, name: string) => void;
+  // Inline rename — invoked when the user commits a name change on a row.
+  // Returns true on success / false on validation failure (keeps the input
+  // open). Mirrors the contract on EditFlyout (which calls
+  // `topologyApi.patchFields(id, { name })`).
+  onRename: (id: string, name: string) => Promise<boolean> | boolean;
   // Effective overlay width in CSS px (0 when collapsed). Parent uses this
   // to offset its setCenter target so a clicked node lands in the visible
   // (right-of-flyout) half of the viewport, not behind the flyout.
@@ -152,6 +159,7 @@ export default function TopologyTreeFlyout({
   onCollapseAll,
   onOpenMenu,
   onOpenArchiveMap,
+  onRename,
   onWidthChange,
 }: TopologyTreeFlyoutProps) {
   // Mirrors AppSidebar_2: two boolean states. `pinned` (latched open by
@@ -165,6 +173,11 @@ export default function TopologyTreeFlyout({
   // dragging the right-edge handle adjusts it. Clamped to [360, 90vw].
   // Stored as a number of pixels so the inline style is a single source.
   const [width, setWidth] = useState<number | null>(null);
+  // Full-width toggle (RiExpandRightLine button). When true the panel
+  // overrides its own width to fill its parent (the topology __main slot)
+  // and the auto-fit measurement is suppressed so it doesn't fight the
+  // explicit override. Click again to revert to auto-fit.
+  const [fullWidth, setFullWidth] = useState(false);
   const asideRef = useRef<HTMLElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -245,6 +258,7 @@ export default function TopologyTreeFlyout({
   useLayoutEffect(() => {
     if (!open) return;
     if (userResizedRef.current) return;
+    if (fullWidth) return;
     const body = bodyRef.current;
     if (!body) return;
     const table = body.querySelector<HTMLTableElement>(".topo-tree-table");
@@ -276,7 +290,7 @@ export default function TopologyTreeFlyout({
       if (prev != null && Math.abs(next - prev) <= 1) return prev;
       return next;
     });
-  }, [rows, open]);
+  }, [rows, open, fullWidth]);
 
   // Admin-row toggle state: "all expanded" iff no parent with children is
   // currently in the collapsed set. Empty tree counts as fully expanded.
@@ -307,15 +321,67 @@ export default function TopologyTreeFlyout({
     setPeeked(false);
   }, []);
 
+  // Scroll the selected row into view when selection changes (e.g. user
+  // clicks a node on the canvas; mirror lands here on a row that may be
+  // outside the visible scroll area). Custom rAF tween (~150ms) instead
+  // of `scrollIntoView({ behavior: "smooth" })` because the native
+  // smooth-scroll duration is browser-controlled and noticeably slow
+  // (~400ms in Chrome). Only animates when the row is actually offscreen
+  // — rows already visible don't move.
+  useEffect(() => {
+    if (!open) return;
+    if (!selectedId) return;
+    const body = bodyRef.current;
+    if (!body) return;
+    const row = body.querySelector<HTMLTableRowElement>(
+      `.topo-tree-table__row[data-node-id="${CSS.escape(selectedId)}"]`,
+    );
+    if (!row) return;
+
+    const bodyRect = body.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    let delta = 0;
+    if (rowRect.top < bodyRect.top) {
+      delta = rowRect.top - bodyRect.top;
+    } else if (rowRect.bottom > bodyRect.bottom) {
+      delta = rowRect.bottom - bodyRect.bottom;
+    } else {
+      return; // already in view
+    }
+
+    const startTop = body.scrollTop;
+    const targetTop = startTop + delta;
+    const duration = 250;
+    const startedAt = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - startedAt) / duration);
+      // ease-out (cubic) — fast in, gentle settle.
+      const eased = 1 - Math.pow(1 - t, 3);
+      body.scrollTop = startTop + (targetTop - startTop) * eased;
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [selectedId, open, rows]);
+
   return (
     <aside
       ref={asideRef}
-      className={`topo-tree${open ? " is-open" : ""}${pinned ? " is-pinned" : ""}`}
+      className={`topo-tree${open ? " is-open" : ""}${pinned ? " is-pinned" : ""}${fullWidth ? " is-full-width" : ""}`}
       data-collapsed={open ? "false" : "true"}
       aria-label="Topology tree"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      style={open && width != null ? { width: `${width}px` } : undefined}
+      style={
+        open
+          ? fullWidth
+            ? { width: "100%" }
+            : width != null
+              ? { width: `${width}px` }
+              : undefined
+          : undefined
+      }
     >
       {/* Collapsed-state toolbar — when closed there is no Panel body to
           host the chevron, so we render a sibling toolbar that holds just
@@ -379,6 +445,16 @@ export default function TopologyTreeFlyout({
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
+            <button
+              type="button"
+              className={`topo-tree__fullwidth-toggle${fullWidth ? " is-active" : ""}`}
+              onClick={() => setFullWidth((v) => !v)}
+              title={fullWidth ? "Restore width" : "Expand to full width"}
+              aria-label={fullWidth ? "Restore width" : "Expand to full width"}
+              aria-pressed={fullWidth}
+            >
+              <RiExpandRightLine aria-hidden="true" />
+            </button>
           </div>
           <div className="topo-tree__body" ref={bodyRef}>
             {tree === null ? (
@@ -423,7 +499,17 @@ export default function TopologyTreeFlyout({
                         </button>
                       </span>
                     </th>
-                    <th className="table__cell topo-tree-table__actions-cell" aria-hidden="true" />
+                    {/* Invisible placeholder matches the width of a body
+                        row's actions cell with one kebab button so the
+                        admin tag-cell starts at the same x-position as
+                        the swatch on body rows. */}
+                    <th className="table__cell topo-tree-table__actions-cell" aria-hidden="true">
+                      <span
+                        className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn"
+                        style={{ visibility: "hidden", pointerEvents: "none" }}
+                        aria-hidden="true"
+                      />
+                    </th>
                     <th className="table__cell topo-tree-table__tag-cell topo-tree-table__admin-title">
                       Topology Tree Structure
                     </th>
@@ -440,6 +526,7 @@ export default function TopologyTreeFlyout({
                       onActivate={() => onActivate(row.node.id)}
                       onOpenMenu={(x, y) => onOpenMenu(row.node.id, x, y)}
                       onOpenArchiveMap={() => onOpenArchiveMap(row.node.id, row.node.name)}
+                      onRename={(name) => onRename(row.node.id, name)}
                     />
                   ))}
                 </tbody>
@@ -480,6 +567,7 @@ function TreeRow({
   onActivate,
   onOpenMenu,
   onOpenArchiveMap,
+  onRename,
 }: {
   row: FlattenedRow;
   selected: boolean;
@@ -488,9 +576,14 @@ function TreeRow({
   onActivate: () => void;
   onOpenMenu: (screenX: number, screenY: number) => void;
   onOpenArchiveMap: () => void;
+  onRename: (name: string) => Promise<boolean> | boolean;
 }) {
   const { node, depth, hasChildren, collapsed: rowCollapsed, isFirst, isLast, hasVisibleChildren, ancestorMoreChildren } = row;
   const archivedDescendantCount = node.archived_descendant_count ?? 0;
+  // Inline edit state for the row name. Controlled so double-click on the
+  // name only enters edit mode here (not the row's own onDoubleClick which
+  // pans the canvas) — wrappers below stop propagation.
+  const [editing, setEditing] = useState(false);
   // Per-row colour drives both the swatch fill and the 5px left bar on
   // the drag-grip cell. Mirrors the canvas card: explicit `colour` wins,
   // otherwise hash to a stable palette colour so every node carries a
@@ -505,6 +598,7 @@ function TreeRow({
       aria-level={depth + 1}
       aria-selected={selected}
       aria-expanded={hasChildren ? !rowCollapsed : undefined}
+      data-node-id={node.id}
       style={{ ["--node-accent" as string]: accent }}
     >
       {/* Drag-grip — placeholder; six-dot affordance for future reorder. */}
@@ -668,12 +762,39 @@ function TreeRow({
             );
           })()}
 
-          <span className="topo-tree-table__tag" title={node.name}>
+          <span className="topo-tree-table__tag" title={editing ? undefined : node.name}>
             {/* Swatch fill comes from --node-accent on the row, same
                 source as the 5px grip-cell bar — single source of truth
                 so they always match. */}
             <span className="topo-tree-table__swatch" aria-hidden="true" />
-            <span className="topo-tree-table__name">{node.name}</span>
+            {/* Wrapper stops the row's onDoubleClick (canvas-pan) from
+                firing when the user double-clicks the name to edit it.
+                Single-click on the name still bubbles to the row so
+                selection works normally. */}
+            <span
+              className="topo-tree-table__name-wrap"
+              onDoubleClick={(e) => e.stopPropagation()}
+              onClick={editing ? (e) => e.stopPropagation() : undefined}
+            >
+              <InlineEditField
+                value={node.name}
+                ariaLabel={`Rename ${node.name}`}
+                doubleClickToEdit
+                editing={editing}
+                onEditingChange={setEditing}
+                stopPointerOnInput
+                displayClassName="topo-tree-table__name"
+                inputClassName="topo-tree-table__name-input"
+                containerClassName="topo-tree-table__name-edit"
+                maxLength={120}
+                onCommit={(next) => {
+                  // Fire-and-forget — InlineEditField only reads sync
+                  // return values, so we exit edit mode immediately and
+                  // let the parent reload reconcile any server error.
+                  void onRename(next);
+                }}
+              />
+            </span>
           </span>
         </div>
       </td>
