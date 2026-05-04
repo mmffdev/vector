@@ -55,7 +55,10 @@ export default function ToggleBtn({
   }, [value]);
 
   return (
-    <div className={`toggle-btn${size === "sm" ? " toggle-btn--sm" : ""}`}>
+    <div
+      className={`toggle-btn${size === "sm" ? " toggle-btn--sm" : ""}`}
+      data-value={value ? "true" : "false"}
+    >
       <div className="toggle-btn__blob" ref={blobRef} />
       <button
         type="button"

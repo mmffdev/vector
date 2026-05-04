@@ -2,7 +2,6 @@
 
 import { usePageHeaderState } from "@/app/contexts/PageHeaderContext";
 import { useTheme } from "@/app/hooks/useTheme";
-import { useAuth } from "@/app/contexts/AuthContext";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
 import EnvBadge from "@/app/components/EnvBadge";
@@ -12,7 +11,6 @@ import { toTitleCase } from "@/app/lib/titleCase";
 export default function PageHeaderBar() {
   const header = usePageHeaderState();
   const { theme, toggle, mounted } = useTheme();
-  const { user } = useAuth();
 
   return (
     <header className="page-header">
@@ -28,12 +26,6 @@ export default function PageHeaderBar() {
       </div>
 
       <div className="page-header__actions">
-        {user && (
-          <span className="role-badge" title="Your role (read-only)">
-            {user.role.label.toUpperCase()}
-          </span>
-        )}
-
         <button className="btn btn--icon btn--ghost app-header-wrapper__icon-btn" title="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />

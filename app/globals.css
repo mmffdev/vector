@@ -1035,16 +1035,6 @@ input[type="reset"] {
   margin-top: 0;
 }
 
-.role-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 0;
-}
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -9137,15 +9127,74 @@ table.tbl tbody tr:hover td {
   border-top: 1px solid var(--border);
 }
 
+/* Last-column status badge — Active = green, Inactive = red, both with
+   black ink so the label stays legible against the saturated fill.
+   Square corners, no border; the cell collapses to fit the badge plus
+   10px padding on each side. */
+.users-table__status-cell {
+  white-space: nowrap;
+  width: 1%;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.users-table__status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+}
+.users-table__status-badge--active {
+  background: #00cc44;
+}
+.users-table__status-badge--inactive {
+  background: #ff0000;
+  color: #fff;
+}
+
 .users-edit-panel {
   padding: var(--space-4);
 }
 
 .users-edit-panel__state {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: 4px;
+  height: 40px;
+}
+.users-edit-panel__state .toggle-btn {
+  margin-top: 0;
+  background: var(--surface-2);
+  border: 1px solid #000;
+}
+/* Active selected (left cell, value=false) → green blob; Inactive
+   selected (right cell, value=true) → red blob. */
+.users-edit-panel__state .toggle-btn[data-value="false"] {
+  --accent: #00cc44;
+}
+.users-edit-panel__state .toggle-btn[data-value="true"] {
+  --accent: #ff0000;
+}
+.users-edit-panel__state .toggle-btn .toggle-btn__cell {
+  color: #000;
+}
+.users-edit-panel__state .toggle-btn .toggle-btn__cell[aria-pressed="true"] {
+  color: #fff;
+}
+
+/* Pending state-change warning notice — plain inline label next to
+   the toggle when isActive differs from u.is_active. Disappears as
+   soon as the toggle is reverted, so no-op flips don't nag. */
+.users-edit-panel__state-confirm-msg {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .users-edit-panel__actions {
@@ -9162,6 +9211,21 @@ table.tbl tbody tr:hover td {
   display: flex;
   gap: var(--space-2);
   align-items: center;
+}
+
+/* Remove user button — fixed red surface, inverts to black on hover.
+   Scoped to the users edit panel so it does not bleed into other
+   .btn--danger usages elsewhere in the app. */
+.users-edit-panel__remove-btn.btn--danger {
+  background: #ff0000;
+  color: #fff;
+  border-color: #ff0000;
+}
+.users-edit-panel__remove-btn.btn--danger:hover,
+.users-edit-panel__remove-btn.btn--danger:focus-visible {
+  background: #000;
+  color: #fff;
+  border-color: #000;
 }
 
 .users-table__pagination {

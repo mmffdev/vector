@@ -618,7 +618,6 @@ function UsersTab() {
   const [err, setErr] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [resetUrl, setResetUrl] = useState<{ email: string; url: string } | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
 
   // Filters + pagination state
   const [search, setSearch]         = useState("");
@@ -737,7 +736,6 @@ function UsersTab() {
   async function deleteUser(id: string) {
     await api(`/api/admin/users/${id}`, { method: "DELETE" });
     setExpandedId(null);
-    setConfirmDelete(null);
     await load();
   }
 
@@ -821,6 +819,7 @@ function UsersTab() {
                 <th className="table__cell">First name</th>
                 <th className="table__cell">Email</th>
                 <th className="table__cell">Department</th>
+                <th className="table__cell">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -836,13 +835,13 @@ function UsersTab() {
                     rowRef={(el) => { rowRefs.current.set(u.id, el); }}
                     onSave={patchUser}
                     onIssueReset={issueReset}
-                    onAskDelete={() => setConfirmDelete(u)}
+                    onDelete={() => deleteUser(u.id)}
                   />
                 );
               })}
               {pageRows.length === 0 && (
                 <tr className="table__row">
-                  <td className="table__cell table__cell--muted" colSpan={5}>
+                  <td className="table__cell table__cell--muted" colSpan={6}>
                     No users match the current filters.
                   </td>
                 </tr>
@@ -888,14 +887,6 @@ function UsersTab() {
       )}
 
       {resetUrl && <ResetLinkModal email={resetUrl.email} url={resetUrl.url} onClose={() => setResetUrl(null)} />}
-
-      {confirmDelete && (
-        <ConfirmDeleteModal
-          user={confirmDelete}
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={() => deleteUser(confirmDelete.id)}
-        />
-      )}
     </div>
   );
 }
@@ -908,7 +899,7 @@ function FragmentRow({
   rowRef,
   onSave,
   onIssueReset,
-  onAskDelete,
+  onDelete,
 }: {
   u: AdminUser;
   isOpen: boolean;
@@ -917,7 +908,7 @@ function FragmentRow({
   rowRef: (el: HTMLTableRowElement | null) => void;
   onSave: (id: string, patch: Partial<{ role: AdminUserRole; is_active: boolean; first_name: string; last_name: string; department: string }>) => Promise<void>;
   onIssueReset: (id: string) => Promise<void>;
-  onAskDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   return (
     <>
@@ -955,23 +946,30 @@ function FragmentRow({
                 pending pw
               </span>
             )}
-            {!u.is_active && (
-              <span className="pill pill--neutral" title="Account inactive">inactive</span>
-            )}
           </div>
         </td>
         <td className="table__cell" onClick={onToggle}>
           {u.department ?? <span className="table__cell--muted">—</span>}
         </td>
+        <td className="table__cell users-table__status-cell" onClick={onToggle}>
+          <span
+            className={
+              "users-table__status-badge" +
+              (u.is_active ? " users-table__status-badge--active" : " users-table__status-badge--inactive")
+            }
+          >
+            {u.is_active ? "Active" : "Inactive"}
+          </span>
+        </td>
       </tr>
       {isOpen && (
         <tr className="table__row users-table__panel-row">
-          <td className="table__cell users-table__panel-cell" colSpan={5}>
+          <td className="table__cell users-table__panel-cell" colSpan={6}>
             <UserEditPanel
               u={u}
               onSave={onSave}
               onIssueReset={onIssueReset}
-              onAskDelete={onAskDelete}
+              onDelete={onDelete}
             />
           </td>
         </tr>
@@ -984,18 +982,19 @@ function UserEditPanel({
   u,
   onSave,
   onIssueReset,
-  onAskDelete,
+  onDelete,
 }: {
   u: AdminUser;
   onSave: (id: string, patch: Partial<{ role: AdminUserRole; is_active: boolean; first_name: string; last_name: string; department: string }>) => Promise<void>;
   onIssueReset: (id: string) => Promise<void>;
-  onAskDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   const [firstName, setFirstName] = useState(u.first_name ?? "");
   const [lastName,  setLastName]  = useState(u.last_name ?? "");
   const [department, setDepartment] = useState(u.department ?? "");
   const [role, setRole] = useState<AdminUserRole>(u.role);
   const [isActive, setIsActive] = useState(u.is_active);
+  const [removeBusy, setRemoveBusy] = useState(false);
   // Creatable role list for the role <select>. Augmented with the
   // user's CURRENT role even if not creatable so the selected option
   // never silently disappears (e.g. when editing a user whose role
@@ -1127,20 +1126,6 @@ function UserEditPanel({
               ))}
             </select>
           </label>
-          <label className="form__label">
-            Account state
-            <span className="users-edit-panel__state">
-              <ToggleBtn
-                value={isActive}
-                onChange={setIsActive}
-                labels={["Inactive", "Active"]}
-                size="sm"
-              />
-              <span className={`pill ${isActive ? "pill--success" : "pill--neutral"}`}>
-                {isActive ? "Active" : "Inactive"}
-              </span>
-            </span>
-          </label>
         </div>
 
         {err && <div className="form__error">{err}</div>}
@@ -1157,16 +1142,45 @@ function UserEditPanel({
             >
               {resetBusy ? "Sending…" : "Send password reset"}
             </button>
-            <button
-              type="button"
-              className="btn btn--danger"
-              onClick={onAskDelete}
-              disabled={busy || resetBusy}
-            >
-              Remove user
-            </button>
           </div>
           <div className="users-edit-panel__actions-right">
+            {isActive !== u.is_active && (
+              <span
+                className="users-edit-panel__state-confirm-msg"
+                role="status"
+                aria-live="polite"
+              >
+                {isActive
+                  ? "Make this user account active? Click Confirm changes to apply."
+                  : "Disable this user account? Click Confirm changes to apply."}
+              </span>
+            )}
+            <span className="users-edit-panel__state" aria-label="Account state">
+              <ToggleBtn
+                value={!isActive}
+                onChange={(v) => setIsActive(!v)}
+                labels={["Active", "Inactive"]}
+              />
+            </span>
+            <button
+              type="button"
+              className="btn btn--danger users-edit-panel__remove-btn"
+              onClick={async () => {
+                if (removeBusy) return;
+                setRemoveBusy(true);
+                setErr(null);
+                try {
+                  await onDelete();
+                } catch (e) {
+                  setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Remove failed");
+                } finally {
+                  setRemoveBusy(false);
+                }
+              }}
+              disabled={busy || resetBusy || removeBusy}
+            >
+              {removeBusy ? "Removing…" : "Remove user"}
+            </button>
             <button
               type="submit"
               className="btn btn--primary"
@@ -1178,48 +1192,6 @@ function UserEditPanel({
         </div>
       </form>
     </div>
-  );
-}
-
-function ConfirmDeleteModal({
-  user,
-  onCancel,
-  onConfirm,
-}: {
-  user: AdminUser;
-  onCancel: () => void;
-  onConfirm: () => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  async function go() {
-    setBusy(true);
-    setErr(null);
-    try {
-      await onConfirm();
-    } catch (e) {
-      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Delete failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Modal onClose={onCancel} title="Remove user">
-      <div className="u-stack">
-        <p className="auth-card__subtitle">
-          Permanently remove <strong>{user.email}</strong>? This cannot be undone — their sessions, password resets, and audit references will be detached.
-        </p>
-        {err && <div className="form__error">{err}</div>}
-        <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onCancel} disabled={busy}>
-            Cancel
-          </button>
-          <button type="button" className="btn btn--danger" onClick={go} disabled={busy}>
-            {busy ? "Removing…" : "Remove user"}
-          </button>
-        </div>
-      </div>
-    </Modal>
   );
 }
 
