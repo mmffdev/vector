@@ -906,9 +906,9 @@ func (e adoptionError) Unwrap() error { return e.Cause }
 // HTTP handler — thin wrapper around Adopt
 // ──────────────────────────────────────────────────────────────────
 
-// AdoptHandler holds the orchestrator. Padmin gating is enforced by
-// the chi middleware (RequireRole(RolePAdmin)); this handler runs only
-// after auth + role.
+// AdoptHandler holds the orchestrator. Padmin-equivalent gating is
+// enforced by the chi middleware (RequirePermission(PortfolioList) —
+// PLA-0007); this handler runs only after auth + permission.
 type AdoptHandler struct {
 	Orchestrator *Orchestrator
 }

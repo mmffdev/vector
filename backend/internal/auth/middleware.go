@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
 type ctxKey string
@@ -72,11 +73,11 @@ func (s *Service) RequireFreshPassword(next http.Handler) http.Handler {
 	})
 }
 
-func RequireRole(roles ...models.Role) func(http.Handler) http.Handler {
-	allowed := map[models.Role]struct{}{}
-	for _, r := range roles {
-		allowed[r] = struct{}{}
-	}
+// RequirePermission gates a route on the actor having ALL of the given
+// permission codes (logical AND). Resolves the actor's effective code
+// set via the resolver's process-local cache. Codes are defined in
+// internal/permissions/catalogue.go (PLA-0007).
+func RequirePermission(res *permissions.Resolver, codes ...permissions.Code) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := UserFromCtx(r.Context())
@@ -84,11 +85,45 @@ func RequireRole(roles ...models.Role) func(http.Handler) http.Handler {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
-			if _, ok := allowed[u.Role]; !ok {
+			set, err := res.PermissionsFor(r.Context(), u.ID)
+			if err != nil {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
+			for _, code := range codes {
+				if _, ok := set[code]; !ok {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+			}
 			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyPermission gates a route on the actor having ANY of the
+// given permission codes (logical OR). Useful for routes that two
+// different roles can hit for different reasons.
+func RequireAnyPermission(res *permissions.Resolver, codes ...permissions.Code) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u := UserFromCtx(r.Context())
+			if u == nil {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			set, err := res.PermissionsFor(r.Context(), u.ID)
+			if err != nil {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			for _, code := range codes {
+				if _, ok := set[code]; ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			http.Error(w, "forbidden", http.StatusForbidden)
 		})
 	}
 }

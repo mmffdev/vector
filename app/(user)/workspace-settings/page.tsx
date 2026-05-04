@@ -11,31 +11,60 @@
  * primary button per region (the "+ New user" toolbar action).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import { MdOutlineArrowForwardIos } from "react-icons/md";
 import { useTabState } from "@/app/hooks/useTabState";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import PageShell from "@/app/components/PageShell";
-import { useAuth, type Role } from "@/app/contexts/AuthContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
-import { DiagramCanvas } from "@/app/components/diagram-canvas";
-import type {
-  DiagramEdge,
-  DiagramNode,
-} from "@/app/components/diagram-canvas";
+
+// Topology canvas is the same React Flow page mounted at /topology —
+// we render it inline inside the tab so the gadmin sees the live
+// editable canvas the moment they land on the tab. Dynamic+ssr:false
+// because the page pulls in @xyflow/react (DOM-only) and
+// useSearchParams (client-only).
+const TopologyOverlayPage = dynamic(() => import("@/app/(overlay)/topology/page"), {
+  ssr: false,
+  loading: () => <div className="topology-tab-host__loading">Loading topology…</div>,
+});
+
+// AdminUser.role here is the bare role code string returned by
+// /api/admin/users — that DTO has not been migrated to the structured
+// role row yet (TD-PERM-004). Once it is, this alias is removed and
+// the filter switches to comparing role.code on a structured payload.
+type AdminUserRole = string;
 
 interface AdminUser {
   id: string;
   subscription_id: string;
   email: string;
-  role: Role;
+  role: AdminUserRole;
   is_active: boolean;
+  first_name: string | null;
+  last_name: string | null;
+  department: string | null;
   last_login: string | null;
   force_password_change: boolean;
   created_at: string;
 }
 
-const TABS = ["organization", "users", "permissions", "diagram-canvas"] as const;
+// RoleSummary is the subset of /api/roles/ row fields the workspace
+// users tab consumes — id and code drive the picker payload, label
+// renders option text, is_external drives the "external" chip and
+// the is-external filter. (PLA-0007 / 00303.)
+interface RoleSummary {
+  id: string;
+  code: string;
+  label: string;
+  is_external: boolean;
+  is_system: boolean;
+  rank: number;
+}
+
+const TABS = ["organization", "users", "permissions", "topology"] as const;
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
@@ -43,10 +72,10 @@ export default function WorkspaceSettingsPage() {
   const [tab, setTab] = useTabState(TABS, "organization");
 
   useEffect(() => {
-    if (user && user.role !== "gadmin") router.replace("/dashboard");
+    if (user && user.role.code !== "gadmin") router.replace("/dashboard");
   }, [user, router]);
 
-  if (!user || user.role !== "gadmin") return null;
+  if (!user || user.role.code !== "gadmin") return null;
 
   // Story 00104 — Organization tab added as the default landing
   // tab so the workspace identity (display name, region, support
@@ -64,14 +93,14 @@ export default function WorkspaceSettingsPage() {
         <TabButton active={tab === "permissions"} onClick={() => setTab("permissions")}>
           Permissions
         </TabButton>
-        <TabButton active={tab === "diagram-canvas"} onClick={() => setTab("diagram-canvas")}>
-          Diagram canvas
+        <TabButton active={tab === "topology"} onClick={() => setTab("topology")}>
+          Topology
         </TabButton>
       </div>
       {tab === "organization" && <OrganizationTab />}
       {tab === "users" && <UsersTab />}
       {tab === "permissions" && <PermissionsTab />}
-      {tab === "diagram-canvas" && <DiagramCanvasTab />}
+      {tab === "topology" && <TopologyTab />}
     </PageShell>
   );
 }
@@ -575,18 +604,42 @@ function TabButton({
   );
 }
 
+type PageSize = "all" | 10 | 25 | 50 | 100;
+
 function UsersTab() {
   const [users, setUsers] = useState<AdminUser[] | null>(null);
+  // visibleRoles is every role the actor can see (system + own-tenant)
+  // from /api/roles/ — used to (a) populate the role filter, (b) look
+  // up is_external for the chip on each user row, and (c) seed the
+  // edit-panel role picker (the actor can always assign whatever role
+  // a user already has if they can see it; but the edit picker also
+  // augments with /api/roles/creatable for safety).
+  const [visibleRoles, setVisibleRoles] = useState<RoleSummary[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [resetUrl, setResetUrl] = useState<{ email: string; url: string } | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
+
+  // Filters + pagination state
+  const [search, setSearch]         = useState("");
+  const [deptFilter, setDeptFilter] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<"" | AdminUserRole>("");
+  const [externalOnly, setExternalOnly] = useState(false);
+  const [pageSize, setPageSize]     = useState<PageSize>(25);
+  const [page, setPage]             = useState(1);
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement | null>>(new Map());
 
   const load = useCallback(async () => {
     setErr(null);
     try {
-      const data = await api<AdminUser[]>("/api/admin/users");
+      const [data, roles] = await Promise.all([
+        api<AdminUser[]>("/api/admin/users"),
+        api<RoleSummary[]>("/api/roles/"),
+      ]);
       setUsers(data);
+      setVisibleRoles(roles);
     } catch (e) {
       setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Failed to load");
     }
@@ -596,28 +649,160 @@ function UsersTab() {
     load();
   }, [load]);
 
-  async function updateUser(id: string, patch: { role?: Role; is_active?: boolean }) {
-    setPendingId(id);
-    try {
-      await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
-      await load();
-    } catch (e) {
-      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Update failed");
-    } finally {
-      setPendingId(null);
+  // code → role summary, for chip + filter lookups.
+  const roleByCode = useMemo(() => {
+    const m = new Map<string, RoleSummary>();
+    for (const r of visibleRoles ?? []) m.set(r.code, r);
+    return m;
+  }, [visibleRoles]);
+
+  // Distinct departments for the filter dropdown.
+  const departments = useMemo(() => {
+    if (!users) return [];
+    const set = new Set<string>();
+    for (const u of users) {
+      const d = (u.department ?? "").trim();
+      if (d) set.add(d);
     }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [users]);
+
+  // Filter + sort.
+  const filtered = useMemo(() => {
+    if (!users) return null;
+    const q = search.trim().toLowerCase();
+    return [...users]
+      .filter((u) => {
+        if (deptFilter && (u.department ?? "") !== deptFilter) return false;
+        if (roleFilter && u.role !== roleFilter) return false;
+        if (externalOnly && !roleByCode.get(u.role)?.is_external) return false;
+        if (!q) return true;
+        const hay = [
+          u.email, u.first_name ?? "", u.last_name ?? "", u.department ?? "", u.role,
+        ].join(" ").toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a, b) => {
+        const an = (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        if (an !== 0) return an;
+        return a.email.localeCompare(b.email);
+      });
+  }, [users, search, deptFilter, roleFilter, externalOnly, roleByCode]);
+
+  // Reset to page 1 whenever filters change.
+  useEffect(() => { setPage(1); }, [search, deptFilter, roleFilter, externalOnly, pageSize]);
+
+  // Page slice.
+  const total      = filtered?.length ?? 0;
+  const sizeNumber = pageSize === "all" ? Math.max(total, 1) : pageSize;
+  const pageCount  = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / sizeNumber));
+  const safePage   = Math.min(page, pageCount);
+  const pageRows   = useMemo(() => {
+    if (!filtered) return null;
+    if (pageSize === "all") return filtered;
+    const start = (safePage - 1) * sizeNumber;
+    return filtered.slice(start, start + sizeNumber);
+  }, [filtered, pageSize, sizeNumber, safePage]);
+
+  function toggleExpand(id: string) {
+    setExpandedId((cur) => {
+      const next = cur === id ? null : id;
+      if (next) {
+        // Anchor: scroll the opened row to the top of the viewport on next paint.
+        requestAnimationFrame(() => {
+          const el = rowRefs.current.get(next);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      return next;
+    });
   }
 
-  const sorted = useMemo(
-    () => (users ? [...users].sort((a, b) => a.email.localeCompare(b.email)) : null),
-    [users]
-  );
+  async function patchUser(id: string, patch: Partial<{
+    role: AdminUserRole; is_active: boolean;
+    first_name: string; last_name: string; department: string;
+  }>) {
+    await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await load();
+  }
+
+  async function issueReset(id: string) {
+    const resp = await api<{ email: string; reset_url?: string }>(
+      `/api/admin/users/${id}/password-reset`,
+      { method: "POST" },
+    );
+    setResetUrl({ email: resp.email, url: resp.reset_url ?? "" });
+  }
+
+  async function deleteUser(id: string) {
+    await api(`/api/admin/users/${id}`, { method: "DELETE" });
+    setExpandedId(null);
+    setConfirmDelete(null);
+    await load();
+  }
 
   return (
     <div>
-      <div className="toolbar">
+      <div className="toolbar toolbar--users">
+        <div className="toolbar__filters">
+          <input
+            type="search"
+            className="form__input form__input--sm"
+            placeholder="Search name, email, department…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search users"
+          />
+          <select
+            className="form__select form__select--sm"
+            value={deptFilter}
+            onChange={(e) => setDeptFilter(e.target.value)}
+            aria-label="Filter by department"
+          >
+            <option value="">All departments</option>
+            {departments.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <select
+            className="form__select form__select--sm"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            aria-label="Filter by role"
+          >
+            <option value="">All roles</option>
+            {(visibleRoles ?? []).map((r) => (
+              <option key={r.id} value={r.code}>
+                {r.label}{r.is_external ? " (external)" : ""}
+              </option>
+            ))}
+          </select>
+          <label className="form__label form__label--inline" title="Show only users on roles flagged is_external">
+            <input
+              type="checkbox"
+              checked={externalOnly}
+              onChange={(e) => setExternalOnly(e.target.checked)}
+            />
+            <span>External only</span>
+          </label>
+          <select
+            className="form__select form__select--sm"
+            value={String(pageSize)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPageSize(v === "all" ? "all" : (Number(v) as PageSize));
+            }}
+            aria-label="Page size"
+          >
+            <option value="all">All</option>
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
         <div className="toolbar__meta">
-          {sorted ? `${sorted.length} user${sorted.length === 1 ? "" : "s"}` : "Loading…"}
+          {filtered ? `${total} user${total === 1 ? "" : "s"}` : "Loading…"}
         </div>
         <button onClick={() => setShowCreate(true)} className="btn btn--primary">
           + New user
@@ -626,62 +811,68 @@ function UsersTab() {
 
       {err && <div className="form__error">{err}</div>}
 
-      {sorted && (
+      {pageRows && (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table users-table">
             <thead className="table__head">
               <tr className="table__row">
+                <th className="table__cell users-table__th--toggle" aria-label="Expand" />
+                <th className="table__cell">Last name</th>
+                <th className="table__cell">First name</th>
                 <th className="table__cell">Email</th>
-                <th className="table__cell">Role</th>
-                <th className="table__cell">Status</th>
-                <th className="table__cell">Last login</th>
-                <th className="table__cell">Created</th>
+                <th className="table__cell">Department</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((u) => (
-                <tr key={u.id} className="table__row">
-                  <td className="table__cell">
-                    <div className="table__cell-meta">
-                      <span>{u.email}</span>
-                      {u.force_password_change && (
-                        <span className="pill pill--warning" title="Must change password on next login">
-                          pending pw
-                        </span>
-                      )}
-                    </div>
+              {pageRows.map((u) => {
+                const isOpen = expandedId === u.id;
+                return (
+                  <FragmentRow
+                    key={u.id}
+                    u={u}
+                    isOpen={isOpen}
+                    isExternal={!!roleByCode.get(u.role)?.is_external}
+                    onToggle={() => toggleExpand(u.id)}
+                    rowRef={(el) => { rowRefs.current.set(u.id, el); }}
+                    onSave={patchUser}
+                    onIssueReset={issueReset}
+                    onAskDelete={() => setConfirmDelete(u)}
+                  />
+                );
+              })}
+              {pageRows.length === 0 && (
+                <tr className="table__row">
+                  <td className="table__cell table__cell--muted" colSpan={5}>
+                    No users match the current filters.
                   </td>
-                  <td className="table__cell">
-                    <select
-                      value={u.role}
-                      disabled={pendingId === u.id}
-                      onChange={(e) => updateUser(u.id, { role: e.target.value as Role })}
-                      className="form__select form__select--sm"
-                    >
-                      <option value="user">user</option>
-                      <option value="padmin">padmin</option>
-                      <option value="gadmin">gadmin</option>
-                    </select>
-                  </td>
-                  <td className="table__cell">
-                    <label className="form__switch" title="Toggle account active state">
-                      <input
-                        type="checkbox"
-                        checked={u.is_active}
-                        disabled={pendingId === u.id}
-                        onChange={(e) => updateUser(u.id, { is_active: e.target.checked })}
-                      />
-                      <span className={`pill ${u.is_active ? "pill--success" : "pill--neutral"}`}>
-                        {u.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </label>
-                  </td>
-                  <td className="table__cell table__cell--muted t-mono">{fmtDate(u.last_login)}</td>
-                  <td className="table__cell table__cell--muted t-mono">{fmtDate(u.created_at)}</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pageRows && pageSize !== "all" && pageCount > 1 && (
+        <div className="users-table__pagination">
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Prev
+          </button>
+          <span className="users-table__pagination-meta">
+            Page {safePage} of {pageCount}
+          </span>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            disabled={safePage >= pageCount}
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          >
+            Next
+          </button>
         </div>
       )}
 
@@ -697,7 +888,338 @@ function UsersTab() {
       )}
 
       {resetUrl && <ResetLinkModal email={resetUrl.email} url={resetUrl.url} onClose={() => setResetUrl(null)} />}
+
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          user={confirmDelete}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => deleteUser(confirmDelete.id)}
+        />
+      )}
     </div>
+  );
+}
+
+function FragmentRow({
+  u,
+  isOpen,
+  isExternal,
+  onToggle,
+  rowRef,
+  onSave,
+  onIssueReset,
+  onAskDelete,
+}: {
+  u: AdminUser;
+  isOpen: boolean;
+  isExternal: boolean;
+  onToggle: () => void;
+  rowRef: (el: HTMLTableRowElement | null) => void;
+  onSave: (id: string, patch: Partial<{ role: AdminUserRole; is_active: boolean; first_name: string; last_name: string; department: string }>) => Promise<void>;
+  onIssueReset: (id: string) => Promise<void>;
+  onAskDelete: () => void;
+}) {
+  return (
+    <>
+      <tr ref={rowRef} className={`table__row users-table__row${isOpen ? " users-table__row--open" : ""}`}>
+        <td className="table__cell users-table__toggle-cell">
+          <button
+            type="button"
+            className="btn btn--icon btn--row-expander"
+            aria-label={isOpen ? "Collapse" : "Expand"}
+            aria-expanded={isOpen}
+            onClick={onToggle}
+          >
+            <MdOutlineArrowForwardIos
+              size={12}
+              className={"users-table__expander-icon" + (isOpen ? " users-table__expander-icon--open" : "")}
+            />
+          </button>
+        </td>
+        <td className="table__cell" onClick={onToggle}>
+          {u.last_name ?? <span className="table__cell--muted">—</span>}
+        </td>
+        <td className="table__cell" onClick={onToggle}>
+          {u.first_name ?? <span className="table__cell--muted">—</span>}
+        </td>
+        <td className="table__cell" onClick={onToggle}>
+          <div className="table__cell-meta">
+            <span>{u.email}</span>
+            {isExternal && (
+              <span className="pill pill--neutral" title="Role is flagged external (e.g. partner / contractor)">
+                external
+              </span>
+            )}
+            {u.force_password_change && (
+              <span className="pill pill--warning" title="Must change password on next login">
+                pending pw
+              </span>
+            )}
+            {!u.is_active && (
+              <span className="pill pill--neutral" title="Account inactive">inactive</span>
+            )}
+          </div>
+        </td>
+        <td className="table__cell" onClick={onToggle}>
+          {u.department ?? <span className="table__cell--muted">—</span>}
+        </td>
+      </tr>
+      {isOpen && (
+        <tr className="table__row users-table__panel-row">
+          <td className="table__cell users-table__panel-cell" colSpan={5}>
+            <UserEditPanel
+              u={u}
+              onSave={onSave}
+              onIssueReset={onIssueReset}
+              onAskDelete={onAskDelete}
+            />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function UserEditPanel({
+  u,
+  onSave,
+  onIssueReset,
+  onAskDelete,
+}: {
+  u: AdminUser;
+  onSave: (id: string, patch: Partial<{ role: AdminUserRole; is_active: boolean; first_name: string; last_name: string; department: string }>) => Promise<void>;
+  onIssueReset: (id: string) => Promise<void>;
+  onAskDelete: () => void;
+}) {
+  const [firstName, setFirstName] = useState(u.first_name ?? "");
+  const [lastName,  setLastName]  = useState(u.last_name ?? "");
+  const [department, setDepartment] = useState(u.department ?? "");
+  const [role, setRole] = useState<AdminUserRole>(u.role);
+  const [isActive, setIsActive] = useState(u.is_active);
+  // Creatable role list for the role <select>. Augmented with the
+  // user's CURRENT role even if not creatable so the selected option
+  // never silently disappears (e.g. when editing a user whose role
+  // the actor lacks the matching users.create.<role> code for, but
+  // who they can still see + leave on that role).
+  const [creatable, setCreatable] = useState<RoleSummary[] | null>(null);
+
+  const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [err, setErr]   = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<RoleSummary[]>("/api/roles/creatable")
+      .then((rows) => { if (!cancelled) setCreatable(rows); })
+      .catch(() => { if (!cancelled) setCreatable([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Re-sync local form state if the underlying row reloads.
+  useEffect(() => {
+    setFirstName(u.first_name ?? "");
+    setLastName(u.last_name ?? "");
+    setDepartment(u.department ?? "");
+    setRole(u.role);
+    setIsActive(u.is_active);
+  }, [u.id, u.first_name, u.last_name, u.department, u.role, u.is_active]);
+
+  // Role options = creatable roles + current role (if not present).
+  const roleOptions = useMemo<RoleSummary[]>(() => {
+    const list = [...(creatable ?? [])];
+    if (!list.some((r) => r.code === u.role)) {
+      list.unshift({ id: `current-${u.role}`, code: u.role, label: u.role, is_external: false, is_system: true, rank: 0 });
+    }
+    return list;
+  }, [creatable, u.role]);
+
+  const dirty =
+    firstName !== (u.first_name ?? "") ||
+    lastName  !== (u.last_name  ?? "") ||
+    department !== (u.department ?? "") ||
+    role !== u.role ||
+    isActive !== u.is_active;
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setInfo(null);
+    setBusy(true);
+    try {
+      await onSave(u.id, {
+        first_name: firstName,
+        last_name:  lastName,
+        department: department,
+        role,
+        is_active: isActive,
+      });
+      setInfo("Changes saved.");
+    } catch (e) {
+      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendReset() {
+    setErr(null);
+    setInfo(null);
+    setResetBusy(true);
+    try {
+      await onIssueReset(u.id);
+      setInfo(`Password reset link sent to ${u.email}.`);
+    } catch (e) {
+      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Reset failed");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
+  return (
+    <div className="users-edit-panel">
+      <form className="form" onSubmit={onSubmit}>
+        <div className="form__grid">
+          <label className="form__label">
+            First name
+            <input
+              type="text"
+              className="form__input"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+          </label>
+          <label className="form__label">
+            Last name
+            <input
+              type="text"
+              className="form__input"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </label>
+          <label className="form__label">
+            Department
+            <input
+              type="text"
+              className="form__input"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            />
+          </label>
+          <label className="form__label">
+            Email
+            <input type="email" className="form__input" value={u.email} disabled />
+            <span className="form__hint">Email cannot be changed from this panel.</span>
+          </label>
+          <label className="form__label">
+            Role
+            <select
+              className="form__select"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              disabled={creatable === null}
+            >
+              {roleOptions.map((r) => (
+                <option key={r.id} value={r.code}>
+                  {r.label}{r.is_external ? " (external)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="form__label">
+            Account state
+            <span className="users-edit-panel__state">
+              <ToggleBtn
+                value={isActive}
+                onChange={setIsActive}
+                labels={["Inactive", "Active"]}
+                size="sm"
+              />
+              <span className={`pill ${isActive ? "pill--success" : "pill--neutral"}`}>
+                {isActive ? "Active" : "Inactive"}
+              </span>
+            </span>
+          </label>
+        </div>
+
+        {err && <div className="form__error">{err}</div>}
+        {info && <div className="form__info">{info}</div>}
+
+        <div className="users-edit-panel__actions">
+          <div className="users-edit-panel__actions-left">
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={sendReset}
+              disabled={resetBusy || busy}
+              title="Generate a password reset link and email it to the user's registered address."
+            >
+              {resetBusy ? "Sending…" : "Send password reset"}
+            </button>
+            <button
+              type="button"
+              className="btn btn--danger"
+              onClick={onAskDelete}
+              disabled={busy || resetBusy}
+            >
+              Remove user
+            </button>
+          </div>
+          <div className="users-edit-panel__actions-right">
+            <button
+              type="submit"
+              className="btn btn--primary"
+              disabled={!dirty || busy}
+            >
+              {busy ? "Saving…" : "Confirm changes"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({
+  user,
+  onCancel,
+  onConfirm,
+}: {
+  user: AdminUser;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function go() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await onConfirm();
+    } catch (e) {
+      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Delete failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal onClose={onCancel} title="Remove user">
+      <div className="u-stack">
+        <p className="auth-card__subtitle">
+          Permanently remove <strong>{user.email}</strong>? This cannot be undone — their sessions, password resets, and audit references will be detached.
+        </p>
+        {err && <div className="form__error">{err}</div>}
+        <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={onCancel} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="btn btn--danger" onClick={go} disabled={busy}>
+            {busy ? "Removing…" : "Remove user"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -709,9 +1231,31 @@ function CreateUserModal({
   onCreated: (email: string, resetUrl: string) => void;
 }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("user");
+  const [role, setRole] = useState<AdminUserRole>("");
+  // /api/roles/creatable returns the subset of roles the actor may
+  // assign to a NEW user, gated by the per-target users.create.<role>
+  // creator-matrix codes. The new-user form must only offer roles
+  // from this list (PLA-0007 / 00303). null = still loading; [] =
+  // actor has no users.create.* code, in which case the create
+  // button never opened the modal in the first place.
+  const [creatable, setCreatable] = useState<RoleSummary[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<RoleSummary[]>("/api/roles/creatable")
+      .then((rows) => {
+        if (cancelled) return;
+        setCreatable(rows);
+        // Default to the lowest-rank role (most restrictive) the
+        // actor can assign. Falls back to first row if rank ties.
+        const def = [...rows].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))[0];
+        if (def) setRole(def.code);
+      })
+      .catch(() => { if (!cancelled) setCreatable([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -731,6 +1275,8 @@ function CreateUserModal({
     }
   }
 
+  const noRoles = creatable !== null && creatable.length === 0;
+
   return (
     <Modal onClose={onClose} title="New user">
       <form onSubmit={onSubmit} className="form">
@@ -749,12 +1295,17 @@ function CreateUserModal({
           Role
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
+            onChange={(e) => setRole(e.target.value)}
             className="form__select"
+            disabled={creatable === null || noRoles}
           >
-            <option value="user">user</option>
-            <option value="padmin">padmin</option>
-            <option value="gadmin">gadmin</option>
+            {creatable === null && <option value="">Loading…</option>}
+            {noRoles && <option value="">No assignable roles</option>}
+            {(creatable ?? []).map((r) => (
+              <option key={r.id} value={r.code}>
+                {r.label}{r.is_external ? " (external)" : ""}
+              </option>
+            ))}
           </select>
         </label>
         {err && <div className="form__error">{err}</div>}
@@ -762,7 +1313,7 @@ function CreateUserModal({
           <button type="button" onClick={onClose} className="btn btn--secondary" disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="btn btn--primary" disabled={busy}>
+          <button type="submit" className="btn btn--primary" disabled={busy || creatable === null || noRoles || !role}>
             {busy ? "Creating…" : "Create"}
           </button>
         </div>
@@ -783,11 +1334,11 @@ function ResetLinkModal({ email, url, onClose }: { email: string; url: string; o
     }
   }
   return (
-    <Modal onClose={onClose} title="User created">
+    <Modal onClose={onClose} title="Password reset link">
       <div className="u-stack">
         <p className="auth-card__subtitle">
-          <strong>{email}</strong> was created with a temporary password and must set their own via the link below.
-          Copy it and send it to them — it expires in 1 hour.
+          A reset link was generated and emailed to <strong>{email}</strong>. The link expires in 1 hour.
+          You can also copy it below and send it to them directly.
         </p>
         <code className="code-block">{url || "(no link — EMAIL_MODE is not console)"}</code>
         <div className="modal__actions">
@@ -823,9 +1374,9 @@ const CAPABILITIES: Array<{ key: string; label: string }> = [
   { key: "manage_billing", label: "Manage billing" },
 ];
 
-const ROLES: Role[] = ["user", "padmin", "gadmin"];
+const ROLES: AdminUserRole[] = ["user", "padmin", "gadmin"];
 
-const DEFAULT_GRID: Record<Role, Record<string, boolean>> = {
+const DEFAULT_GRID: Record<AdminUserRole, Record<string, boolean>> = {
   user: { read: true, comment: true, create: true, edit_own: true, edit_any: false, publish: false, manage_users: false, manage_billing: false },
   padmin: { read: true, comment: true, create: true, edit_own: true, edit_any: true, publish: true, manage_users: false, manage_billing: false },
   gadmin: { read: true, comment: true, create: true, edit_own: true, edit_any: true, publish: true, manage_users: true, manage_billing: true },
@@ -877,64 +1428,16 @@ function PermissionsTab() {
   );
 }
 
-// PLA-0006 — embeds the DiagramCanvas stress/demo fixture (same
-// 3,000-node Lloyds-class tree used by the perf gate at
-// /dev/diagram-canvas-stress) so gadmins can preview the primitive
-// without leaving Workspace Settings. The window.__DIAGRAM_PERF__
-// harness is intentionally NOT mounted here — that telemetry is
-// owned by the dedicated stress route.
-const DC_TARGET_NODES = 3000;
-const DC_NODE_W = 100;
-const DC_NODE_H = 40;
-const DC_COL_GAP = 30;
-const DC_ROW_GAP = 30;
-const DC_COLS_PER_ROW = 60;
-const DC_FAN = 4;
-
-function buildDiagramFixture(): { nodes: DiagramNode[]; edges: DiagramEdge[] } {
-  const nodes: DiagramNode[] = [];
-  const edges: DiagramEdge[] = [];
-  for (let i = 0; i < DC_TARGET_NODES; i++) {
-    const col = i % DC_COLS_PER_ROW;
-    const row = Math.floor(i / DC_COLS_PER_ROW);
-    nodes.push({
-      id: `n${i}`,
-      x: col * (DC_NODE_W + DC_COL_GAP),
-      y: row * (DC_NODE_H + DC_ROW_GAP),
-      width: DC_NODE_W,
-      height: DC_NODE_H,
-    });
-    if (i > 0) {
-      const parent = Math.floor((i - 1) / DC_FAN);
-      edges.push({ id: `e${i}`, source: `n${parent}`, target: `n${i}` });
-    }
-  }
-  return { nodes, edges };
-}
-
-function DiagramCanvasTab() {
-  const { nodes, edges } = useMemo(() => buildDiagramFixture(), []);
+// PLA-0006 — Topology tab embeds the same React Flow canvas mounted
+// at /topology. The host element is `position: relative` so the
+// overlay's `position: absolute; inset: 0` shell fills it instead of
+// the viewport. The overlay's "Finish" button is styled out of this
+// embedded view (it would just router.back to the previous tab,
+// which is confusing) — gadmins switch tabs to leave.
+function TopologyTab() {
   return (
-    <div className="diagram-canvas-stress">
-      <header className="diagram-canvas-stress__header">
-        <span className="diagram-canvas-stress__metric">
-          Nodes: {nodes.length.toLocaleString()}
-        </span>
-        <span className="diagram-canvas-stress__metric">
-          Edges: {edges.length.toLocaleString()}
-        </span>
-      </header>
-      <div className="diagram-canvas-stress__canvas">
-        <DiagramCanvas
-          name="workspace_settings_diagram_canvas"
-          nodes={nodes}
-          edges={edges}
-          gridSize={10}
-          showGrid
-          miniMap
-          controls
-        />
-      </div>
+    <div className="topology-tab-host">
+      <TopologyOverlayPage />
     </div>
   );
 }
@@ -970,9 +1473,3 @@ function Modal({
   );
 }
 
-function fmtDate(s: string | null): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}

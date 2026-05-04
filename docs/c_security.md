@@ -100,3 +100,5 @@ Full librarian contract: [c_librarian.md](c_librarian.md).
 - [c_c_schema_auth.md](c_c_schema_auth.md) — `users`, `sessions`, `password_resets`, `user_workspace_permissions`.
 - [c_c_schema_history.md](c_c_schema_history.md) — append-only triggers.
 - [c_deployment.md](c_deployment.md) — secrets locations, env files.
+- [c_c_roles_permissions.md](c_c_roles_permissions.md) — data-driven RBAC (PLA-0007); roles/permissions/role_permissions tables and the `useHasPermission` frontend contract.
+- [c_c_lint_rules.md](c_c_lint_rules.md) — `lint:role-literals` and `lint:writer-boundary` (writer-boundary enforcement for the RBAC tables).

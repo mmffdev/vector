@@ -87,16 +87,29 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 }
 
 // mkUser inserts a user with the given role into the tenant.
+// role_id is NOT NULL post-migration 088, so we seed it from the
+// system-role UUID matching the legacy enum.
 func mkUser(t *testing.T, pool *pgxpool.Pool, subscriptionID uuid.UUID, role models.Role) uuid.UUID {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
+	var roleID uuid.UUID
+	switch role {
+	case models.RoleGAdmin:
+		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad30")
+	case models.RolePAdmin:
+		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad25")
+	case models.RoleUser:
+		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
+	default:
+		t.Fatalf("mkUser: unsupported role %q", role)
+	}
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO users (subscription_id, email, password_hash, role)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
+		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 		subscriptionID, "u-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
-		string(role),
+		string(role), roleID,
 	).Scan(&id); err != nil {
 		t.Fatalf("insert user (%s): %v", role, err)
 	}

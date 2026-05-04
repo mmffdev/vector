@@ -73,13 +73,29 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 	}
 	exp := time.Now().Add(24 * time.Hour) // longer window for initial setup
 
+	// role_id is NOT NULL after migration 088. We translate the legacy
+	// role enum to the corresponding system-role UUID via subquery so a
+	// future schema change (e.g. dropping the enum column) needs to
+	// touch only one place. PLA-0007 G4 retires the enum entirely.
 	u := &models.User{}
 	err = pgx.BeginTxFunc(ctx, s.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		roleStr := string(in.Role)
+		// The legacy `role` enum column only knows ('user','padmin','gadmin');
+		// codes outside that set (team_lead, external, future custom roles)
+		// are pinned to 'user' in the enum and carried by role_id. The
+		// Z-migration that drops users.role retires this branch — same
+		// pattern as migration 095. PLA-0007 G4 follow-up.
+		legacyRole := roleStr
+		if legacyRole != string(models.RoleUser) && legacyRole != string(models.RolePAdmin) && legacyRole != string(models.RoleGAdmin) {
+			legacyRole = string(models.RoleUser)
+		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO users (subscription_id, email, password_hash, role, force_password_change)
-			VALUES ($1, $2, $3, $4, TRUE)
+			INSERT INTO users (subscription_id, email, password_hash, role, role_id, force_password_change)
+			VALUES ($1, $2, $3, $4,
+				(SELECT id FROM roles WHERE is_system = TRUE AND code = $5),
+				TRUE)
 			RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
-			in.SubscriptionID, email, hash, string(in.Role),
+			in.SubscriptionID, email, hash, legacyRole, roleStr,
 		).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return err
 		}
@@ -108,8 +124,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 
 func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.User, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, subscription_id, email, role, is_active, last_login, auth_method,
-		       force_password_change, password_changed_at, created_at, updated_at
+		SELECT id, subscription_id, email, role, is_active, first_name, last_name, department,
+		       last_login, auth_method, force_password_change, password_changed_at,
+		       created_at, updated_at
 		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC`, subscriptionID)
 	if err != nil {
 		return nil, err
@@ -118,8 +135,10 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.
 	out := []models.User{}
 	for rows.Next() {
 		u := models.User{}
-		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.LastLogin,
-			&u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive,
+			&u.FirstName, &u.LastName, &u.Department,
+			&u.LastLogin, &u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt,
+			&u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -128,8 +147,11 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.
 }
 
 type UpdateInput struct {
-	Role     *models.Role
-	IsActive *bool
+	Role       *models.Role
+	IsActive   *bool
+	FirstName  *string
+	LastName   *string
+	Department *string
 }
 
 // Update mutates a user's role and/or is_active flag.
@@ -168,13 +190,41 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	args := []any{}
 	i := 1
 	if in.Role != nil {
+		// Mirror Create: legacy enum column is pinned to 'user' for codes
+		// outside ('user','padmin','gadmin'), and role_id is updated via a
+		// subquery against the roles table so the structured side stays
+		// authoritative. Both columns must move together until the Z
+		// migration drops users.role.
+		roleStr := string(*in.Role)
+		legacyRole := roleStr
+		if legacyRole != string(models.RoleUser) && legacyRole != string(models.RolePAdmin) && legacyRole != string(models.RoleGAdmin) {
+			legacyRole = string(models.RoleUser)
+		}
 		sets = append(sets, "role = $"+itoa(i))
-		args = append(args, string(*in.Role))
+		args = append(args, legacyRole)
+		i++
+		sets = append(sets, "role_id = (SELECT id FROM roles WHERE is_system = TRUE AND code = $"+itoa(i)+")")
+		args = append(args, roleStr)
 		i++
 	}
 	if in.IsActive != nil {
 		sets = append(sets, "is_active = $"+itoa(i))
 		args = append(args, *in.IsActive)
+		i++
+	}
+	if in.FirstName != nil {
+		sets = append(sets, "first_name = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.FirstName)))
+		i++
+	}
+	if in.LastName != nil {
+		sets = append(sets, "last_name = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.LastName)))
+		i++
+	}
+	if in.Department != nil {
+		sets = append(sets, "department = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.Department)))
 		i++
 	}
 	if len(sets) == 0 {
@@ -198,6 +248,89 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		IPAddress: nilIfEmpty(ip),
 	})
 	return nil
+}
+
+// Delete hard-removes a user row. Tenant + role-ceiling rules apply
+// the same way as Update — actor cannot delete themselves, cannot
+// delete across tenants, and cannot delete a target whose role
+// outranks them.
+func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorRole models.Role, actorTenant, actor uuid.UUID, ip string) error {
+	if id == actor {
+		return errors.New("cannot delete your own account")
+	}
+	var (
+		targetTenant uuid.UUID
+		targetRole   models.Role
+		targetEmail  string
+	)
+	err := s.Pool.QueryRow(ctx,
+		`SELECT subscription_id, role, email FROM users WHERE id = $1`, id,
+	).Scan(&targetTenant, &targetRole, &targetEmail)
+	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if targetRole.Rank() > actorRole.Rank() {
+		return ErrRoleCeiling
+	}
+	if _, err := s.Pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id); err != nil {
+		return err
+	}
+	s.Audit.Log(ctx, audit.Entry{
+		UserID: &actor, SubscriptionID: &actorTenant,
+		Action: "user.deleted", Resource: strPtr("user"), ResourceID: strPtr(id.String()),
+		IPAddress: nilIfEmpty(ip),
+		Metadata:  map[string]any{"email": targetEmail, "role": targetRole},
+	})
+	return nil
+}
+
+// IssueResetLink generates a one-hour password-reset token for the
+// target user and emails them the link. Returns the link string for
+// the gadmin UI (only meaningful in dev/console mailer mode; prod
+// should rely on the email send and ignore the returned URL).
+func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole models.Role, actorTenant, actor uuid.UUID, ip string) (string, error) {
+	var (
+		targetTenant uuid.UUID
+		targetRole   models.Role
+		targetEmail  string
+	)
+	err := s.Pool.QueryRow(ctx,
+		`SELECT subscription_id, role, email FROM users WHERE id = $1`, id,
+	).Scan(&targetTenant, &targetRole, &targetEmail)
+	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	if targetRole.Rank() > actorRole.Rank() {
+		return "", ErrRoleCeiling
+	}
+
+	raw, tokHash, err := auth.GenerateRefreshToken()
+	if err != nil {
+		return "", err
+	}
+	exp := time.Now().Add(1 * time.Hour)
+	_, err = s.Pool.Exec(ctx, `
+		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+		VALUES ($1, $2, $3, $4)`, id, tokHash, exp, nilIfEmpty(ip))
+	if err != nil {
+		return "", err
+	}
+	link := os.Getenv("FRONTEND_ORIGIN") + "/login/reset/confirm?token=" + raw
+	_ = s.Mailer.SendPasswordReset(ctx, targetEmail, link)
+
+	s.Audit.Log(ctx, audit.Entry{
+		UserID: &actor, SubscriptionID: &actorTenant,
+		Action: "user.password_reset_issued", Resource: strPtr("user"), ResourceID: strPtr(id.String()),
+		IPAddress: nilIfEmpty(ip),
+		Metadata:  map[string]any{"email": targetEmail},
+	})
+	return link, nil
 }
 
 // FindByID returns the user iff they belong to actorTenant. Cross-tenant

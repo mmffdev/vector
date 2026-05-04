@@ -6,7 +6,7 @@ export default function AppFooter() {
   const { user } = useAuth();
 
   return (
-    <footer className={`app-footer app-footer--role-${user?.role ?? "user"}`}>
+    <footer className={`app-footer app-footer--role-${user?.role.code ?? "user"}`}>
       <div className="app-footer-left">
         <span>&copy; 2026 MMFFDev. All rights reserved.</span>
       </div>

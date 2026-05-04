@@ -1,0 +1,4 @@
+{
+  "description": "Per-file exemption list for lint:writer-boundary (PLA-0007 / Story 00305). Each entry is a repo-relative path that legitimately writes to a guarded table outside the sole-writer service directory. Treat as hard architectural invariant — adding an entry requires a justification and a follow-up plan to refactor the write into the appropriate service. Currently empty.",
+  "exempt_paths": []
+}

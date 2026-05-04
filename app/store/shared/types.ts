@@ -1,4 +1,7 @@
-import type { Role } from "@/app/contexts/AuthContext";
+// allowedRoles is a list of role codes (e.g. "user", "padmin", "gadmin",
+// or any tenant-defined code post-PLA-0007). Authoring tools that emit
+// manifests don't need to know the structured role row; only the codes.
+export type AllowedRoleCode = string;
 
 export interface UiAppManifest {
   id: string;
@@ -11,7 +14,7 @@ export interface UiAppManifest {
   defaultSize: { w: number; h: number };
   minSize?: { w: number; h: number };
   maxSize?: { w: number; h: number };
-  allowedRoles: Role[];
+  allowedRoles: AllowedRoleCode[];
   requiredScopes?: string[];
   configurable?: boolean;
   // PLA-0005 — Samantha SDK help-manifest contract.

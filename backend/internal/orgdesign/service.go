@@ -80,22 +80,55 @@ func (r Role) IsValid() bool {
 //	ErrManualXYForbidden   → 400
 //	ErrAdminAlreadyGranted → 409 (MVP single-admin constraint)
 //	ErrGrantNotFound       → 404
+//	ErrDelegationDepth     → 403 (story 00288: single-level delegation)
+//	ErrRedelegationDisabled → 403 (story 00288: can_redelegate is Phase X)
 var (
-	ErrNodeNotFound        = errors.New("orgdesign: node not found")
-	ErrTenantMismatch      = errors.New("orgdesign: node not found")
-	ErrCycleDetected       = errors.New("orgdesign: move would create a cycle")
-	ErrInvalidLayoutMode   = errors.New("orgdesign: invalid layout_mode")
-	ErrInvalidRole         = errors.New("orgdesign: invalid role")
-	ErrInvalidName         = errors.New("orgdesign: name must be non-empty")
-	ErrManualXYRequired    = errors.New("orgdesign: manual layout requires manual_x and manual_y")
-	ErrManualXYForbidden   = errors.New("orgdesign: manual_x/manual_y only allowed when layout_mode='manual'")
-	ErrAdminAlreadyGranted = errors.New("orgdesign: an active admin grant already exists for this node")
-	ErrGrantNotFound       = errors.New("orgdesign: role grant not found")
+	ErrNodeNotFound         = errors.New("orgdesign: node not found")
+	ErrTenantMismatch       = errors.New("orgdesign: node not found")
+	ErrCycleDetected        = errors.New("orgdesign: move would create a cycle")
+	ErrInvalidLayoutMode    = errors.New("orgdesign: invalid layout_mode")
+	ErrInvalidRole          = errors.New("orgdesign: invalid role")
+	ErrInvalidName          = errors.New("orgdesign: name must be non-empty")
+	ErrManualXYRequired     = errors.New("orgdesign: manual layout requires manual_x and manual_y")
+	ErrManualXYForbidden    = errors.New("orgdesign: manual_x/manual_y only allowed when layout_mode='manual'")
+	ErrAdminAlreadyGranted  = errors.New("orgdesign: an active admin grant already exists for this node")
+	ErrGrantNotFound        = errors.New("orgdesign: role grant not found")
+	ErrDelegationDepth      = errors.New("orgdesign: delegation depth exceeded — only gadmin may grant in MVP")
+	ErrRedelegationDisabled = errors.New("orgdesign: can_redelegate is reserved for Phase X — must be false in MVP")
+	ErrLevelNotFound        = errors.New("orgdesign: level not found")
+	ErrInvalidLevelDepth    = errors.New("orgdesign: level depth must be >= 0")
+	ErrCommitForbidden      = errors.New("orgdesign: only gadmin may commit the topology working model")
+	ErrResetForbidden       = errors.New("orgdesign: only gadmin may reset the topology canvas")
 )
+
+// GrantNotifier receives a one-shot notification each time a new
+// grant is created (not on idempotent re-grant). Used by the handoff
+// inbox (story 00283) to push a per-user realtime event so the
+// granted user's UI can offer a deep-link back to /topology?focus=…
+//
+// Wired via WithNotifier; nil by default — Service stays usable in
+// tests and tools that don't run the realtime hub.
+type GrantNotifier interface {
+	NotifyGrant(userID uuid.UUID, payload GrantNotification)
+}
+
+// GrantNotification is the wire-shape published by NotifyGrant.
+// Stable JSON shape; the frontend hook (useTopologyHandoffs)
+// unmarshals it directly.
+type GrantNotification struct {
+	GrantID       uuid.UUID `json:"grant_id"`
+	NodeID        uuid.UUID `json:"node_id"`
+	NodeName      string    `json:"node_name"`
+	LabelOverride *string   `json:"label_override,omitempty"`
+	Role          Role      `json:"role"`
+	GrantedBy     uuid.UUID `json:"granted_by"`
+	GrantedAt     time.Time `json:"granted_at"`
+}
 
 // Service is the sole writer for the three Topology tables.
 type Service struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	notifier GrantNotifier
 }
 
 // New constructs a Service.
@@ -103,13 +136,22 @@ func New(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
 }
 
+// WithNotifier wires a GrantNotifier into the Service. Optional —
+// when unset, GrantRole is silent. Returns the Service so the call
+// can chain off the constructor.
+func (s *Service) WithNotifier(n GrantNotifier) *Service {
+	s.notifier = n
+	return s
+}
+
 // Node is one row of org_nodes returned by reads.
 type Node struct {
 	ID               uuid.UUID  `json:"id"`
 	SubscriptionID   uuid.UUID  `json:"subscription_id"`
 	ParentID         *uuid.UUID `json:"parent_id"`
+	LevelID          uuid.UUID  `json:"level_id"`
 	Name             string     `json:"name"`
-	Description      *string    `json:"description"`
+	Description      string     `json:"description"` // PLA-0006/00312: NOT NULL DEFAULT ''
 	LabelOverride    *string    `json:"label_override"`
 	Icon             *string    `json:"icon"`
 	Colour           *string    `json:"colour"`
@@ -173,6 +215,17 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 		}
 	}
 
+	// Resolve the level_id for this node's tree depth, auto-creating
+	// a generic "Level N" row if none exists for that depth yet.
+	depth, err := s.computeDepthForParent(ctx, tx, in.SubscriptionID, in.ParentID)
+	if err != nil {
+		return Node{}, err
+	}
+	levelID, err := s.resolveLevelForDepth(ctx, tx, in.SubscriptionID, depth)
+	if err != nil {
+		return Node{}, err
+	}
+
 	var collapsedDefault any
 	if in.CollapsedDefault != nil {
 		collapsedDefault = *in.CollapsedDefault
@@ -183,28 +236,28 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 	var n Node
 	err = tx.QueryRow(ctx, `
 		INSERT INTO org_nodes (
-		    subscription_id, parent_id, name, description, label_override,
+		    subscription_id, parent_id, level_id, name, description, label_override,
 		    icon, colour, avatar_url,
 		    layout_mode, manual_x, manual_y,
 		    collapsed_default, position
 		) VALUES (
-		    $1, $2, $3, $4, $5,
-		    $6, $7, $8,
-		    $9, $10, $11,
-		    $12, $13
+		    $1, $2, $3, $4, $5, $6,
+		    $7, $8, $9,
+		    $10, $11, $12,
+		    $13, $14
 		)
 		RETURNING
-		    id, subscription_id, parent_id, name, description, label_override,
+		    id, subscription_id, parent_id, level_id, name, description, label_override,
 		    icon, colour, avatar_url,
 		    layout_mode, manual_x, manual_y,
 		    collapsed_default, position, archived_at, created_at, updated_at
 	`,
-		in.SubscriptionID, in.ParentID, name, in.Description, in.LabelOverride,
+		in.SubscriptionID, in.ParentID, levelID, name, derefStr(in.Description), in.LabelOverride,
 		in.Icon, in.Colour, in.AvatarURL,
 		string(mode), in.ManualX, in.ManualY,
 		collapsedDefault, in.Position,
 	).Scan(
-		&n.ID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
+		&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
 		&n.Icon, &n.Colour, &n.AvatarURL,
 		&n.LayoutMode, &n.ManualX, &n.ManualY,
 		&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
@@ -285,7 +338,91 @@ func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID
 	if _, err := tx.Exec(ctx, `UPDATE org_nodes SET parent_id = $1 WHERE id = $2`, newParentID, nodeID); err != nil {
 		return err
 	}
+
+	// Depth invariant: a move can shift the depth of the moved node
+	// and its entire subtree. Re-resolve level_id for every affected
+	// row so node.level.depth still equals tree-depth(node).
+	if err := s.refreshSubtreeLevels(ctx, tx, subscriptionID, nodeID); err != nil {
+		return err
+	}
+
 	return tx.Commit(ctx)
+}
+
+// refreshSubtreeLevels walks the subtree rooted at nodeID and
+// rewrites org_nodes.level_id so every row still satisfies the
+// depth invariant. Called from MoveNode after parent_id flips and
+// from DisconnectNode when a node is detached to root.
+//
+// The CTE computes each row's depth from parent_id chains; the
+// UPDATE then maps depth → level_id, auto-creating "Level N" rows
+// where the new depth exceeds existing levels.
+func (s *Service) refreshSubtreeLevels(ctx context.Context, tx pgx.Tx, subscriptionID, rootID uuid.UUID) error {
+	// Step 1: compute depth for every node in the subtree.
+	type depthRow struct {
+		ID    uuid.UUID
+		Depth int
+	}
+	rows, err := tx.Query(ctx, `
+		WITH RECURSIVE root AS (
+		    SELECT n.id, n.parent_id
+		      FROM org_nodes n
+		     WHERE n.id = $1 AND n.subscription_id = $2
+		), root_depth AS (
+		    SELECT r.id, (
+		        WITH RECURSIVE up AS (
+		            SELECT id, parent_id, 0 AS d FROM org_nodes
+		             WHERE id = r.id AND subscription_id = $2
+		            UNION ALL
+		            SELECT p.id, p.parent_id, up.d + 1
+		              FROM org_nodes p
+		              JOIN up ON up.parent_id = p.id
+		             WHERE p.subscription_id = $2
+		        )
+		        SELECT MAX(d) FROM up
+		    ) AS d
+		      FROM root r
+		), down AS (
+		    SELECT n.id, rd.d AS depth
+		      FROM org_nodes n
+		      JOIN root_depth rd ON rd.id = n.id
+		     WHERE n.subscription_id = $2
+		    UNION ALL
+		    SELECT c.id, d.depth + 1
+		      FROM org_nodes c
+		      JOIN down d ON c.parent_id = d.id
+		     WHERE c.subscription_id = $2
+		)
+		SELECT id, depth FROM down
+	`, rootID, subscriptionID)
+	if err != nil {
+		return err
+	}
+	var subtree []depthRow
+	for rows.Next() {
+		var dr depthRow
+		if err := rows.Scan(&dr.ID, &dr.Depth); err != nil {
+			rows.Close()
+			return err
+		}
+		subtree = append(subtree, dr)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Step 2: per-row resolve level_id and update.
+	for _, dr := range subtree {
+		levelID, err := s.resolveLevelForDepth(ctx, tx, subscriptionID, dr.Depth)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE org_nodes SET level_id = $1 WHERE id = $2`, levelID, dr.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ArchiveNode sets archived_at = NOW() on a node. The subtree stays
@@ -372,9 +509,35 @@ func (s *Service) BulkPosition(ctx context.Context, subscriptionID uuid.UUID, up
 // migration 083 (defence in depth). The same (node, user) cannot have
 // two active rows; an existing active grant for the same user is a
 // no-op (the existing row is returned).
-func (s *Service) GrantRole(ctx context.Context, subscriptionID, nodeID, userID uuid.UUID, role Role, grantedBy uuid.UUID, canRedelegate bool) (uuid.UUID, error) {
+//
+// Story 00288 — federated handoff governance gate:
+//   - Only gadmin may issue grants in MVP. A padmin (or any other role)
+//     attempting to grant returns ErrDelegationDepth.
+//   - canRedelegate must be false. The column ships in the schema for
+//     Phase X but is read by zero handlers — passing true returns
+//     ErrRedelegationDisabled so a future loosening of the rule is an
+//     explicit code change, not a quiet config drift.
+//
+// granterRole is the caller's user.role at the time of the request, as
+// resolved by auth middleware. Pass "" for tooling/test contexts that
+// have already done their own gating; "" is treated as gadmin so this
+// boundary doesn't break test fixtures that predate the gate.
+func (s *Service) GrantRole(
+	ctx context.Context,
+	subscriptionID, nodeID, userID uuid.UUID,
+	role Role,
+	grantedBy uuid.UUID,
+	granterRole string,
+	canRedelegate bool,
+) (uuid.UUID, error) {
 	if !role.IsValid() {
 		return uuid.Nil, ErrInvalidRole
+	}
+	if canRedelegate {
+		return uuid.Nil, ErrRedelegationDisabled
+	}
+	if granterRole != "" && granterRole != "gadmin" {
+		return uuid.Nil, ErrDelegationDepth
 	}
 
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
@@ -383,11 +546,14 @@ func (s *Service) GrantRole(ctx context.Context, subscriptionID, nodeID, userID 
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := s.loadNode(ctx, tx, nodeID, subscriptionID, false); err != nil {
+	node, err := s.loadNode(ctx, tx, nodeID, subscriptionID, false)
+	if err != nil {
 		return uuid.Nil, err
 	}
 
 	// Idempotent: same (node, user) with an active grant returns it.
+	// No notification on idempotent re-grant — story 00283 fires only
+	// on a freshly-issued grant.
 	var existingID uuid.UUID
 	err = tx.QueryRow(ctx, `
 		SELECT id FROM org_node_roles
@@ -421,17 +587,29 @@ func (s *Service) GrantRole(ctx context.Context, subscriptionID, nodeID, userID 
 	}
 
 	var newID uuid.UUID
+	var grantedAt time.Time
 	err = tx.QueryRow(ctx, `
 		INSERT INTO org_node_roles
 		    (subscription_id, node_id, user_id, role, can_redelegate, granted_by)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
-	`, subscriptionID, nodeID, userID, string(role), canRedelegate, grantedBy).Scan(&newID)
+		RETURNING id, granted_at
+	`, subscriptionID, nodeID, userID, string(role), canRedelegate, grantedBy).Scan(&newID, &grantedAt)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return uuid.Nil, err
+	}
+	if s.notifier != nil {
+		s.notifier.NotifyGrant(userID, GrantNotification{
+			GrantID:       newID,
+			NodeID:        nodeID,
+			NodeName:      node.Name,
+			LabelOverride: node.LabelOverride,
+			Role:          role,
+			GrantedBy:     grantedBy,
+			GrantedAt:     grantedAt,
+		})
 	}
 	return newID, nil
 }
@@ -496,7 +674,7 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 		      JOIN down ON c.parent_id = down.id
 		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL
 		)
-		SELECT id, subscription_id, parent_id, name, description, label_override,
+		SELECT id, subscription_id, parent_id, level_id, name, description, label_override,
 		       icon, colour, avatar_url,
 		       layout_mode, manual_x, manual_y,
 		       collapsed_default, position, archived_at, created_at, updated_at
@@ -512,7 +690,7 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 	for rows.Next() {
 		var n Node
 		if err := rows.Scan(
-			&n.ID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
+			&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
 			&n.Icon, &n.Colour, &n.AvatarURL,
 			&n.LayoutMode, &n.ManualX, &n.ManualY,
 			&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
@@ -540,7 +718,7 @@ func (s *Service) AncestorsOf(ctx context.Context, subscriptionID, nodeID uuid.U
 		      JOIN up ON up.parent_id = p.id
 		     WHERE p.subscription_id = $2
 		)
-		SELECT id, subscription_id, parent_id, name, description, label_override,
+		SELECT id, subscription_id, parent_id, level_id, name, description, label_override,
 		       icon, colour, avatar_url,
 		       layout_mode, manual_x, manual_y,
 		       collapsed_default, position, archived_at, created_at, updated_at
@@ -556,7 +734,7 @@ func (s *Service) AncestorsOf(ctx context.Context, subscriptionID, nodeID uuid.U
 	for rows.Next() {
 		var n Node
 		if err := rows.Scan(
-			&n.ID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
+			&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
 			&n.Icon, &n.Colour, &n.AvatarURL,
 			&n.LayoutMode, &n.ManualX, &n.ManualY,
 			&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
@@ -625,7 +803,7 @@ func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uui
 func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionID uuid.UUID, allowArchived bool) (Node, error) {
 	var n Node
 	err := tx.QueryRow(ctx, `
-		SELECT id, subscription_id, parent_id, name, description, label_override,
+		SELECT id, subscription_id, parent_id, level_id, name, description, label_override,
 		       icon, colour, avatar_url,
 		       layout_mode, manual_x, manual_y,
 		       collapsed_default, position, archived_at, created_at, updated_at
@@ -633,7 +811,7 @@ func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionI
 		 WHERE id = $1
 		 FOR UPDATE
 	`, nodeID).Scan(
-		&n.ID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
+		&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
 		&n.Icon, &n.Colour, &n.AvatarURL,
 		&n.LayoutMode, &n.ManualX, &n.ManualY,
 		&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,

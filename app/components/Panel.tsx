@@ -119,6 +119,22 @@ export default function Panel({ name, title, className, children }: PanelProps) 
     }
   };
 
+  const hasTitle = title !== undefined && title !== "" && title !== null;
+
+  const helpBtn = helpable ? (
+    <button
+      ref={triggerRef}
+      type="button"
+      className={hasTitle ? "panel__help-btn" : "panel__help-btn panel__help-btn--floating"}
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-label={`Help for ${address}`}
+      onClick={() => setOpen((v) => !v)}
+    >
+      <TbHelpHexagon aria-hidden="true" />
+    </button>
+  ) : null;
+
   return (
     <Provider>
       <section
@@ -126,26 +142,17 @@ export default function Panel({ name, title, className, children }: PanelProps) 
         data-addressable-id={addressable_id ?? undefined}
         data-address={address}
       >
-        <header className="panel__header">
-          {title !== undefined ? (
+        {hasTitle ? (
+          <header className="panel__header">
             <h2 id={labelId} className="panel__title">{title}</h2>
-          ) : (
-            <span id={labelId} className="panel__title panel__title--empty" aria-hidden="true" />
-          )}
-          {helpable && (
-            <button
-              ref={triggerRef}
-              type="button"
-              className="panel__help-btn"
-              aria-expanded={open}
-              aria-haspopup="dialog"
-              aria-label={`Help for ${address}`}
-              onClick={() => setOpen((v) => !v)}
-            >
-              <TbHelpHexagon aria-hidden="true" />
-            </button>
-          )}
-        </header>
+            {helpBtn}
+          </header>
+        ) : (
+          <>
+            <span id={labelId} className="sr-only">{name}</span>
+            {helpBtn}
+          </>
+        )}
 
         <div className="panel__body">{children}</div>
 

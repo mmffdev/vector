@@ -60,11 +60,11 @@ export default function LibraryReleasesPage() {
 
   // Role gate: only gadmin sees this page. Others bounce to dashboard.
   useEffect(() => {
-    if (user && user.role !== "gadmin") router.replace("/dashboard");
+    if (user && user.role.code !== "gadmin") router.replace("/dashboard");
   }, [user, router]);
 
   useEffect(() => {
-    if (!user || user.role !== "gadmin") return;
+    if (!user || user.role.code !== "gadmin") return;
     void loadReleases();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -109,7 +109,7 @@ export default function LibraryReleasesPage() {
     }
   }
 
-  if (!user || user.role !== "gadmin") return null;
+  if (!user || user.role.code !== "gadmin") return null;
 
   return (
     <StrictRoute>

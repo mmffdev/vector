@@ -27,8 +27,8 @@ import (
 )
 
 // AdoptionStateHandler reads subscription_portfolio_model_state from
-// the mmff_vector pool. Padmin gating happens at the router layer
-// (RequireRole(models.RolePAdmin)).
+// the mmff_vector pool. Padmin-equivalent gating happens at the router
+// layer (RequirePermission(PortfolioList) — PLA-0007).
 type AdoptionStateHandler struct {
 	VectorPool *pgxpool.Pool
 }

@@ -35,7 +35,7 @@ export function LibraryReleasesProvider({ children }: { children: React.ReactNod
   const { user } = useAuth();
   const [state, setState] = useState<LibraryReleasesState>({ count: null, hasBlocking: false });
 
-  const isGAdmin = user?.role === "gadmin";
+  const isGAdmin = user?.role.code === "gadmin";
 
   useEffect(() => {
     if (!isGAdmin) return;

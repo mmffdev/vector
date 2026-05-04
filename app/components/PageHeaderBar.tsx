@@ -2,18 +2,12 @@
 
 import { usePageHeaderState } from "@/app/contexts/PageHeaderContext";
 import { useTheme } from "@/app/hooks/useTheme";
-import { useAuth, type Role } from "@/app/contexts/AuthContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
 import EnvBadge from "@/app/components/EnvBadge";
 import ProfileBar from "@/app/components/ProfileBar";
 import { toTitleCase } from "@/app/lib/titleCase";
-
-const roleLabels: Record<Role, string> = {
-  user: "USER",
-  padmin: "PADMIN",
-  gadmin: "GADMIN",
-};
 
 export default function PageHeaderBar() {
   const header = usePageHeaderState();
@@ -34,11 +28,9 @@ export default function PageHeaderBar() {
       </div>
 
       <div className="page-header__actions">
-        {header?.actions}
-
         {user && (
           <span className="role-badge" title="Your role (read-only)">
-            {roleLabels[user.role]}
+            {user.role.label.toUpperCase()}
           </span>
         )}
 

@@ -37,6 +37,9 @@ type User struct {
 	PasswordHash        string     `json:"-"`
 	Role                Role       `json:"role"`
 	IsActive            bool       `json:"is_active"`
+	FirstName           *string    `json:"first_name,omitempty"`
+	LastName            *string    `json:"last_name,omitempty"`
+	Department          *string    `json:"department,omitempty"`
 	LastLogin           *time.Time `json:"last_login,omitempty"`
 	AuthMethod          string     `json:"auth_method"`
 	LdapDN              *string    `json:"-"`
@@ -176,4 +179,44 @@ type ItemTypeState struct {
 	ArchivedAt    *time.Time   `json:"archived_at,omitempty"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
+// ============================================================
+// PLA-0007 — data-driven RBAC (migration 088)
+// ============================================================
+
+// RoleRow is a row in the roles table. SubscriptionID is NULL for
+// system roles (visible to every tenant) and non-NULL for tenant
+// custom roles. IsSystem is the authoritative immutability flag.
+type RoleRow struct {
+	ID             uuid.UUID  `json:"id"`
+	SubscriptionID *uuid.UUID `json:"subscription_id,omitempty"`
+	Code           string     `json:"code"`
+	Label          string     `json:"label"`
+	Description    string     `json:"description"`
+	Rank           int        `json:"rank"`
+	IsSystem       bool       `json:"is_system"`
+	IsExternal     bool       `json:"is_external"`
+	ArchivedAt     *time.Time `json:"archived_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	CreatedBy      *uuid.UUID `json:"created_by,omitempty"`
+}
+
+// RolePermissionRow is a junction row in role_permissions.
+type RolePermissionRow struct {
+	RoleID       uuid.UUID  `json:"role_id"`
+	PermissionID uuid.UUID  `json:"permission_id"`
+	GrantedBy    *uuid.UUID `json:"granted_by,omitempty"`
+	GrantedAt    time.Time  `json:"granted_at"`
+}
+
+// PermissionRow is a row in the permissions catalogue.
+type PermissionRow struct {
+	ID          uuid.UUID `json:"id"`
+	Code        string    `json:"code"`
+	Label       string    `json:"label"`
+	Category    string    `json:"category"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
 }

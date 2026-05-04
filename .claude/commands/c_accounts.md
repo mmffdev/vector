@@ -2,6 +2,19 @@
 
 Use this before guessing any credentials. Do not substitute Planka creds for app creds or vice versa.
 
+## Provisioned dev accounts
+
+These rows are seeded by SQL migrations. The first three are protected human accounts (CLAUDE.md HARD RULE — never modify their credential fields). The fourth is a fixture account for PLA-0007 / Team Lead testing — it is safe to read and use, but tests should not assume the password is fixed forever.
+
+| Email | Role | Password | Source | Notes |
+|---|---|---|---|---|
+| `gadmin@mmffdev.com` | gadmin | `password` | migration 001, reset 2026-05-02 | HARD RULE — DO NOT MODIFY |
+| `padmin@mmffdev.com` | padmin | `password` | migration 001, reset 2026-05-02 | HARD RULE — DO NOT MODIFY |
+| `user@mmffdev.com` | user | `password` | migration 001, reset 2026-05-02 | HARD RULE — DO NOT MODIFY |
+| `team_lead@mmffdev.com` | team_lead | `password123!` | migration 095 (PLA-0007 / 00309) | Fixture; `force_password_change=false` |
+
+Test-tier accounts (`claude@`, `claude_1_test@`, `claude_2_test@`, `claude_3_test@`) are inserted ad-hoc in test setups, not via migrations — see MEMORY.md `test_accounts_*` entries for those.
+
 ## App users (live DB)
 
 Requires tunnel on `:5434`. Query:

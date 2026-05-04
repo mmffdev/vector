@@ -12,6 +12,7 @@ import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { MdOutlineCreateNewFolder, MdOutlineFolder, MdChecklist, MdOutlineBugReport, MdOutlineArrowForwardIos } from "react-icons/md";
+import InlineEditField from "@/app/components/InlineEditField";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,12 +24,21 @@ interface WorkItem {
   status: string;
   priority: string | null;
   story_points: number | null;
+  rollup_points: number | null;
   sprint_id: string | null;
   parent_id: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
   children_count: number;
+}
+
+// effectivePoints picks the value the UI shows. The backend sets
+// rollup_points whenever an item has at least one non-archived child;
+// when set, it shadows the manual story_points (which is preserved in
+// the DB so the original number returns if all children are archived).
+function effectivePoints(item: WorkItem): number | null {
+  return item.rollup_points ?? item.story_points;
 }
 
 interface Sprint {
@@ -74,6 +84,15 @@ const TYPE_PREFIX: Record<string, string> = {
   defect: "DE",
   task: "TA",
 };
+
+const STATUS_OPTIONS_TREE = ["open", "in_progress", "done", "cancelled"];
+const PRIORITY_OPTIONS_TREE = ["critical", "high", "medium", "low"];
+
+// Tasks (and any other bottom-layer item type) cannot have manual points;
+// every other type can. Mirrors the backend gate; duplicated in the panel.
+function canHaveManualPointsRow(itemType: string): boolean {
+  return itemType !== "task";
+}
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
@@ -158,6 +177,65 @@ function WorkItemsFilterBar({
   );
 }
 
+// ─── Inline Select ────────────────────────────────────────────────────────────
+
+// Click-to-open native select. Trigger renders the parent-supplied pill (or
+// any node); when clicked it swaps to a focused <select> that commits on
+// change. Used inline in tree rows and the detail panel for status/priority.
+// Stops pointer + click propagation so a click doesn't also trigger row
+// selection or drag-source pickup.
+function InlineSelect({
+  value,
+  options,
+  onCommit,
+  ariaLabel,
+  trigger,
+  placeholder = "—",
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onCommit: (next: string) => void;
+  ariaLabel: string;
+  trigger: React.ReactNode;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <select
+        autoFocus
+        className="form__select form__select--sm"
+        value={value}
+        aria-label={ariaLabel}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          const next = e.target.value;
+          setEditing(false);
+          if (next !== value) onCommit(next);
+        }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <span
+      className="work-items-tree__inline-trigger"
+      title="Click to edit"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+    >
+      {trigger}
+    </span>
+  );
+}
+
 // ─── Tree Row ─────────────────────────────────────────────────────────────────
 
 // continuations[i] = true means ancestor at level i+1 still has siblings below
@@ -169,6 +247,7 @@ function WorkItemRow({
   hasChildren,
   onToggle,
   onSelect,
+  onPatch,
   selected,
   animIndex,
   isFirst,
@@ -184,6 +263,7 @@ function WorkItemRow({
   hasChildren: boolean;
   onToggle: () => void;
   onSelect: () => void;
+  onPatch: (id: string, body: Record<string, unknown>) => void;
   selected: boolean;
   animIndex?: number;
   isFirst?: boolean;
@@ -324,23 +404,81 @@ function WorkItemRow({
           </span>
         </div>
       </td>
-      <td className="table__cell">
-        {item.title}
+      <td className="table__cell" onClick={(e) => e.stopPropagation()}>
+        <InlineEditField
+          value={item.title}
+          onCommit={(next) => onPatch(item.id, { title: next })}
+          ariaLabel="Work item title"
+          inputClassName="form__input form__input--sm"
+          displayClassName="work-items-tree__title-text"
+          clickToEdit
+          stopPointerOnInput
+          maxLength={200}
+        />
       </td>
       <td className="table__cell">
-        <span className={"pill pill--sm " + (STATUS_PILL[item.status] ?? "pill--neutral")}>
-          {item.status.replace("_", " ")}
-        </span>
+        <InlineSelect
+          value={item.status}
+          options={STATUS_OPTIONS_TREE.map((s) => ({ value: s, label: s.replace("_", " ") }))}
+          onCommit={(next) => onPatch(item.id, { status: next })}
+          ariaLabel="Work item status"
+          trigger={
+            <span className={"pill pill--sm " + (STATUS_PILL[item.status] ?? "pill--neutral")}>
+              {item.status.replace("_", " ")}
+            </span>
+          }
+        />
       </td>
       <td className="table__cell">
-        {item.priority && (
-          <span className={"pill pill--sm " + (PRIORITY_PILL[item.priority] ?? "pill--neutral")}>
-            {item.priority}
+        <InlineSelect
+          value={item.priority ?? ""}
+          options={PRIORITY_OPTIONS_TREE.map((p) => ({ value: p, label: p }))}
+          onCommit={(next) => onPatch(item.id, { priority: next === "" ? null : next })}
+          ariaLabel="Work item priority"
+          placeholder="None"
+          trigger={
+            item.priority ? (
+              <span className={"pill pill--sm " + (PRIORITY_PILL[item.priority] ?? "pill--neutral")}>
+                {item.priority}
+              </span>
+            ) : (
+              <span className="work-items-tree__placeholder">—</span>
+            )
+          }
+        />
+      </td>
+      <td className="table__cell table__cell--numeric" onClick={(e) => e.stopPropagation()}>
+        {!canHaveManualPointsRow(item.item_type) ? (
+          <span className="work-items-tree__placeholder">—</span>
+        ) : item.rollup_points != null ? (
+          // Rollup wins — read-only on the row. Edit the manual value via the
+          // detail panel; tooltip explains that the manual value is shadowed.
+          <span
+            className="work-items-tree__rollup"
+            title={`Rolled up from children. Manual: ${item.story_points ?? "—"}`}
+          >
+            {item.rollup_points}
           </span>
+        ) : (
+          <InlineEditField
+            value={item.story_points != null ? String(item.story_points) : ""}
+            onCommit={(next) => {
+              const trimmed = next.trim();
+              if (trimmed === "") return onPatch(item.id, { story_points: null });
+              const parsed = parseInt(trimmed, 10);
+              if (Number.isNaN(parsed) || parsed < 0) return false;
+              return onPatch(item.id, { story_points: parsed });
+            }}
+            ariaLabel="Story points"
+            inputClassName="form__input form__input--sm form__input--numeric"
+            displayClassName="work-items-tree__pts-text"
+            clickToEdit
+            stopPointerOnInput
+            allowEmpty
+            emptyDisplay="—"
+            maxLength={6}
+          />
         )}
-      </td>
-      <td className="table__cell table__cell--numeric">
-        {item.story_points ?? "—"}
       </td>
     </tr>
   );
@@ -371,7 +509,7 @@ function sortItems(items: WorkItem[], key: SortKey, dir: SortDir): WorkItem[] {
         cmp = (PRIORITY_ORDER[a.priority ?? ""] ?? 99) - (PRIORITY_ORDER[b.priority ?? ""] ?? 99);
         break;
       case "pts":
-        cmp = (a.story_points ?? -1) - (b.story_points ?? -1);
+        cmp = (effectivePoints(a) ?? -1) - (effectivePoints(b) ?? -1);
         break;
     }
     return dir === "asc" ? cmp : -cmp;
@@ -427,16 +565,30 @@ function SortTh({
 
 const DEFAULT_COL_WIDTHS = { drag: 32, toggle: 40, tag: 120, title: 0, status: 120, priority: 100, pts: 60 };
 
+// Imperative handle exposed by WorkItemsTree so the parent page can apply
+// a server-confirmed work-item update (from the detail panel) to whichever
+// list the row lives in (roots or a child array) AND recompute rollup
+// points up the visible ancestor chain. Mirrors the backend's recursive-CTE
+// rollup so the table reflects edits before the next refetch.
+type WorkItemsTreeHandle = {
+  applyItemUpdate: (updated: WorkItem) => void;
+  patch: (id: string, body: Record<string, unknown>) => void;
+};
+
 function WorkItemsTree({
   items,
   setItems,
   selectedId,
   onSelect,
+  onItemSync,
+  treeRef,
 }: {
   items: WorkItem[];
   setItems: (next: WorkItem[]) => void;
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
+  onItemSync?: (item: WorkItem) => void;
+  treeRef?: React.MutableRefObject<WorkItemsTreeHandle | null>;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
@@ -657,6 +809,99 @@ function WorkItemsTree({
     setExpanded((prev) => new Set(prev).add(id));
   }, [expanded, childMap]);
 
+  // Apply a server-confirmed update to the local tree and recompute
+  // ancestor rollups so the table reflects a points edit immediately.
+  // The backend rollup is SUM(story_points) over non-archived descendants;
+  // we mirror that here using the rows we already have loaded. Ancestors
+  // that aren't yet expanded simply aren't in childMap — their rollup will
+  // refresh on next fetch, which is fine since they're not visible.
+  const applyItemUpdate = useCallback((updated: WorkItem) => {
+    // Build a unified map of every loaded row keyed by id, plus a parent
+    // index so we can walk from the edited row up to its visible roots.
+    const allRows = new Map<string, WorkItem>();
+    for (const r of items) allRows.set(r.id, r);
+    for (const kids of Object.values(childMap)) {
+      for (const r of kids) allRows.set(r.id, r);
+    }
+    // Replace the edited row with the server's version.
+    allRows.set(updated.id, updated);
+
+    // Recompute rollup_points for ancestor chain. Walk parent_id links;
+    // at each ancestor sum story_points of every descendant we know about.
+    // If the ancestor has no children loaded yet, leave its rollup alone.
+    const childrenByParent = new Map<string, WorkItem[]>();
+    for (const r of allRows.values()) {
+      if (r.parent_id) {
+        const arr = childrenByParent.get(r.parent_id) ?? [];
+        arr.push(r);
+        childrenByParent.set(r.parent_id, arr);
+      }
+    }
+    const sumDescendants = (parentId: string): number | null => {
+      const kids = childrenByParent.get(parentId);
+      if (!kids || kids.length === 0) return null;
+      let total = 0;
+      for (const k of kids) {
+        const sub = sumDescendants(k.id);
+        total += sub ?? k.story_points ?? 0;
+      }
+      return total;
+    };
+    let cursorId: string | null = updated.parent_id ?? null;
+    while (cursorId) {
+      const ancestor = allRows.get(cursorId);
+      if (!ancestor) break;
+      const newRollup = sumDescendants(cursorId);
+      if (newRollup !== ancestor.rollup_points) {
+        allRows.set(cursorId, { ...ancestor, rollup_points: newRollup });
+      }
+      cursorId = ancestor.parent_id ?? null;
+    }
+
+    // Push back into the two stores. Roots get the freshened versions
+    // from allRows; childMap arrays get rebuilt the same way so any
+    // ancestor whose rollup changed reflects it.
+    setItems(items.map((r) => allRows.get(r.id) ?? r));
+    setChildMap((prev) => {
+      const next: Record<string, WorkItem[]> = {};
+      for (const [pid, kids] of Object.entries(prev)) {
+        next[pid] = kids.map((r) => allRows.get(r.id) ?? r);
+      }
+      return next;
+    });
+
+    // Forward the (possibly rollup-updated) edited row back so the panel
+    // and `selectedItem` stay in sync with what the table now shows.
+    onItemSync?.(allRows.get(updated.id) ?? updated);
+  }, [items, childMap, setItems, onItemSync]);
+
+  // PATCH a single field (or set of fields) on a row, then push the
+  // server-confirmed result through the local-tree update pipeline so the
+  // edited cell + ancestor rollups refresh in the same render. Used by
+  // every inline cell editor in the row.
+  const patchAndApply = useCallback(
+    (id: string, body: Record<string, unknown>) => {
+      api<WorkItem>(`/api/work-items/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      })
+        .then((updated) => applyItemUpdate(updated))
+        .catch(() => { /* swallow — UI stays on stale value, refetch on push */ });
+    },
+    [applyItemUpdate]
+  );
+
+  // Expose apply-update + patch to the parent page via the ref it passed in.
+  useEffect(() => {
+    if (!treeRef) return;
+    treeRef.current = { applyItemUpdate, patch: patchAndApply };
+    return () => {
+      if (treeRef.current?.applyItemUpdate === applyItemUpdate) {
+        treeRef.current = null;
+      }
+    };
+  }, [treeRef, applyItemUpdate, patchAndApply]);
+
   // Compose row props: hook owns the drag listeners + class names, but its
   // built-in onDrop only fires the network call. We need to apply the
   // optimistic mutation locally first so the row visibly snaps before the
@@ -703,6 +948,7 @@ function WorkItemsTree({
             hasChildren={mightHaveChildren}
             onToggle={() => toggle(item)}
             onSelect={() => onSelect(item)}
+            onPatch={patchAndApply}
             selected={selectedId === item.id}
             animIndex={depth > 0 ? rowIndex : undefined}
             isFirst={idx === 0}
@@ -797,6 +1043,7 @@ export default function WorkItemsPage() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  const treeRef = useRef<WorkItemsTreeHandle | null>(null);
 
   const patchFilter = useCallback((patch: Partial<FilterState>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -884,15 +1131,19 @@ export default function WorkItemsPage() {
                 setItems={setItems}
                 selectedId={selectedItem?.id ?? null}
                 onSelect={setSelectedItem}
+                onItemSync={(synced) => setSelectedItem(synced)}
+                treeRef={treeRef}
               />
             </div>
             {selectedItem && (
               <WorkItemDetailPanel
                 item={selectedItem}
                 onClose={() => setSelectedItem(null)}
-                onUpdated={(updated) => {
-                  setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
-                  setSelectedItem(updated);
+                onPatch={(id, body) => {
+                  // Route every panel inline-edit through the tree's
+                  // patchAndApply so the row, ancestor rollups, and the
+                  // panel selection refresh in one render.
+                  treeRef.current?.patch(id, body);
                 }}
               />
             )}

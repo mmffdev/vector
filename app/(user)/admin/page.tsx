@@ -15,8 +15,8 @@ export default function AdminRedirect() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role === "gadmin") router.replace("/workspace-settings");
-    else if (user.role === "padmin") router.replace("/portfolio-settings");
+    if (user.role.code === "gadmin") router.replace("/workspace-settings");
+    else if (user.role.code === "padmin") router.replace("/portfolio-settings");
     else router.replace("/dashboard");
   }, [user, router]);
 

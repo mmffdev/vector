@@ -30,7 +30,8 @@ import (
 )
 
 // LayersBatchHandler holds the vector pool for subscription_layers writes.
-// Padmin gating is enforced at the router layer (RequireRole(RolePAdmin)).
+// Padmin-equivalent gating is enforced at the router layer
+// (RequirePermission(PortfolioList) — PLA-0007).
 type LayersBatchHandler struct {
 	VectorPool *pgxpool.Pool
 }

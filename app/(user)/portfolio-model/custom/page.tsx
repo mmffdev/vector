@@ -10,10 +10,10 @@ export default function PortfolioModelCustomPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role !== "padmin") router.replace("/dashboard");
+    if (user && user.role.code !== "padmin") router.replace("/dashboard");
   }, [user, router]);
 
-  if (!user || user.role !== "padmin") return null;
+  if (!user || user.role.code !== "padmin") return null;
 
   return (
     <PageShell

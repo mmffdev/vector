@@ -86,9 +86,9 @@ Surface:
 
 ## `lint:addressables` rule
 
-`npm run lint:addressables` (parallel to `lint:panes`) — structural rule:
+`npm run lint:addressables` — structural rule:
 
-> Any `<div>`/`<section>` whose first child is a heading element (`<h1>`–`<h6>`) AND that uses border + padding tokens MUST be `<Panel>` (or one of the audited exemption components: `<InfoPanel>`, `<SectionHeading>`, `<PaneHeader>`).
+> Any `<div>`/`<section>` whose first child is a heading element (`<h1>`–`<h6>`) AND that uses border + padding tokens MUST be `<Panel>` (or one of the audited exemption components: `<InfoPanel>`, `<SectionHeading>`).
 
 Implementation: [`dev/scripts/lint_addressables.py`](../dev/scripts/lint_addressables.py). Fails on offending file with line number.
 
@@ -112,10 +112,12 @@ Custom apps written via the Samantha SDK pick up addresses automatically by comp
 
 This plan **supersedes** PLA-0004 (reusable per-panel Help popover with paneId registry):
 
-- `<PaneHeader>` is renamed to `<Panel>` and is no longer a separate component.
+- `<PaneHeader>` is replaced by `<Panel>`; the component file (`app/components/PaneHeader.tsx`) was deleted in story 00291.
 - `pane_help` table is dropped (migration 076); rows migrated forward to `page_help` keyed by registry UUIDs.
 - `dev/registries/paneIds.json` is deleted; the substrate is now the source of truth.
 - `/dev/pane-help` editor renames to `/dev/page-help` with the same UX but a substrate-keyed backend.
-- `/api/pane-help` endpoints return `410 Gone`.
+- `/api/pane-help` endpoints removed entirely in story 00291 (previously 410-Gone redirect; now no route).
+- `dev/scripts/lint_panes.py` + the `lint:panes` npm script + the pre-commit hook entry are deleted (story 00291).
+- The orphaned `.pane-header*` CSS block in `app/globals.css` is deleted (story 00291).
 
 PLA-0004's 5 nav-prefs panels are the proof of concept that the substrate carries forward — they are not rewritten, they are migrated.

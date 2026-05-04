@@ -19,6 +19,35 @@ type Service struct {
 // New creates a Service backed by the given pool.
 func New(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
+// rollupPointsExpr is a correlated subquery producing the sum of
+// story_points across the descendant subtree of work item `wi`. NULL when
+// the row has no non-archived children, so the wire field stays absent and
+// the UI falls back to the manually-entered value.
+//
+// The recursive CTE walks parent_id from the row's children downward,
+// excluding archived rows at every step. The outer COALESCE collapses an
+// all-NULL sum (all descendants have NULL points) to 0 only when at least
+// one descendant exists; the EXISTS guard ensures childless items return
+// NULL so the frontend keeps showing the manual value.
+const rollupPointsExpr = `(
+	CASE WHEN EXISTS (
+		SELECT 1 FROM o_artefacts_execution_work_items c
+		WHERE c.parent_id = wi.id AND c.archived_at IS NULL
+	) THEN (
+		WITH RECURSIVE descendants AS (
+			SELECT id, story_points
+			FROM o_artefacts_execution_work_items
+			WHERE parent_id = wi.id AND archived_at IS NULL
+			UNION ALL
+			SELECT child.id, child.story_points
+			FROM o_artefacts_execution_work_items child
+			JOIN descendants d ON child.parent_id = d.id
+			WHERE child.archived_at IS NULL
+		)
+		SELECT COALESCE(SUM(story_points), 0) FROM descendants
+	) ELSE NULL END
+)`
+
 // ─── Work Items ───────────────────────────────────────────────────────────────
 
 // ListWorkItems returns a flat page of work items for the subscription,
@@ -71,12 +100,13 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 		       status, priority, story_points, sprint_id, parent_id, root_feature_id,
 		       owner_id, created_by, created_at, updated_at, archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
-		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count
+		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
+		       %s AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		WHERE %s
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC
 		LIMIT $%d OFFSET $%d`,
-		strings.Join(conds, " AND "), n, n+1,
+		rollupPointsExpr, strings.Join(conds, " AND "), n, n+1,
 	)
 
 	rows, err := s.pool.Query(ctx, q, args...)
@@ -94,7 +124,8 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uui
 		       wi.status, wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
-		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count
+		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
+		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		WHERE wi.id = $1 AND wi.subscription_id = $2 AND wi.archived_at IS NULL`,
 		id, subscriptionID,
@@ -109,7 +140,10 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uui
 // CreateWorkItem inserts a new work item row. key_num is allocated via sequence.
 func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in CreateWorkItemInput) (*WorkItem, error) {
 	if !validItemTypes[in.ItemType] {
-		return nil, fmt.Errorf("%w: item_type must be epic or story", ErrInvalidInput)
+		return nil, fmt.Errorf("%w: item_type must be epic, story, task, or defect", ErrInvalidInput)
+	}
+	if in.StoryPoints != nil && !canHaveManualPoints(in.ItemType) {
+		return nil, fmt.Errorf("%w: story_points cannot be set on %s items", ErrInvalidInput, in.ItemType)
 	}
 	if strings.TrimSpace(in.Title) == "" {
 		return nil, fmt.Errorf("%w: title is required", ErrInvalidInput)
@@ -239,20 +273,26 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// If SprintID is part of the patch, read the current sprint to
-	// detect a real transition. We need it under FOR UPDATE so the
-	// MAX/MIN we compute below can't race another mover.
+	// We need the row's item_type to gate story_points writes (tasks
+	// can't carry their own points), and the current sprint_id to
+	// detect a real sprint transition. Lock the row for both — the
+	// MAX/MIN computed below for sprint moves must not race another
+	// mover. Skip the read entirely when neither field is in the patch
+	// to avoid an extra round-trip on hot paths (status/priority
+	// toggles).
 	var currentSprintID *string
+	var currentItemType string
 	sprintChanging := false
-	if in.SprintID != nil {
+	needsRowRead := in.SprintID != nil || in.StoryPoints != nil
+	if needsRowRead {
 		var cur *string
 		err := tx.QueryRow(ctx, `
-			SELECT sprint_id::text
+			SELECT sprint_id::text, item_type
 			FROM o_artefacts_execution_work_items
 			WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
 			FOR UPDATE`,
 			id, subscriptionID,
-		).Scan(&cur)
+		).Scan(&cur, &currentItemType)
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
 		}
@@ -260,13 +300,18 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 			return nil, err
 		}
 		currentSprintID = cur
-		// Treat "" in the patch as "move to backlog (no sprint)".
-		newVal := *in.SprintID
-		oldVal := ""
-		if cur != nil {
-			oldVal = *cur
+		if in.SprintID != nil {
+			// Treat "" in the patch as "move to backlog (no sprint)".
+			newVal := *in.SprintID
+			oldVal := ""
+			if cur != nil {
+				oldVal = *cur
+			}
+			sprintChanging = newVal != oldVal
 		}
-		sprintChanging = newVal != oldVal
+		if in.StoryPoints != nil && !canHaveManualPoints(currentItemType) {
+			return nil, fmt.Errorf("%w: story_points cannot be set on %s items", ErrInvalidInput, currentItemType)
+		}
 	}
 
 	sets := []string{"updated_at = now()"}
@@ -383,7 +428,8 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID string, paren
 		       wi.status, wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
-		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count
+		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
+		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		WHERE wi.subscription_id = $1 AND wi.parent_id = $2 AND wi.archived_at IS NULL
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC`,
@@ -900,7 +946,7 @@ func scanWorkItem(row scannable) (*WorkItem, error) {
 		&wi.ID, &wi.SubscriptionID, &wi.KeyNum, &wi.ItemType, &wi.Title, &wi.Description,
 		&wi.Status, &wi.Priority, &wi.StoryPoints, &wi.SprintID, &wi.ParentID, &wi.RootFeatureID,
 		&wi.OwnerID, &wi.CreatedBy, &wi.CreatedAt, &wi.UpdatedAt, &wi.ArchivedAt,
-		&wi.ChildrenCount,
+		&wi.ChildrenCount, &wi.RollupPoints,
 	)
 	if err != nil {
 		return nil, err

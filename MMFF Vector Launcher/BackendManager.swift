@@ -20,23 +20,28 @@ actor BackendManager {
 
     func setEnv(_ e: BackendEnv) { self.env = e }
 
-    func start() async {
+    func start(allowAdopt: Bool = true) async {
         if case .up      = state { return }
         if case .starting = state { return }
         state = .starting
 
-        // Adopt running backend if /healthz answers
+        // Adopt running backend if /healthz answers — but only on cold start.
+        // restart() passes allowAdopt:false so it never re-adopts the very PID
+        // it was supposed to replace (which would silently keep the stale
+        // binary running and make Restart Backend a no-op).
         let healthURL = URL(string: "http://127.0.0.1:\(port)/healthz")!
-        let probe = await HealthProbe.httpHealthz(url: healthURL, expectCommitMatch: false, timeout: 1.0)
-        if probe.ok {
-            let pid = ProcessSupervisor.listeningPIDs(on: port).first ?? -1
-            state = .up(pid: pid, owned: false)
-            await JSONLLogger.shared.log(LogEntry(
-                level: .info, tag: .backend, action: "adopt",
-                result: "ok", extra: ["pid": "\(pid)", "env": env.rawValue]
-            ))
-            startWatcher()
-            return
+        if allowAdopt {
+            let probe = await HealthProbe.httpHealthz(url: healthURL, expectCommitMatch: false, timeout: 1.0)
+            if probe.ok {
+                let pid = ProcessSupervisor.listeningPIDs(on: port).first ?? -1
+                state = .up(pid: pid, owned: false)
+                await JSONLLogger.shared.log(LogEntry(
+                    level: .info, tag: .backend, action: "adopt",
+                    result: "ok", extra: ["pid": "\(pid)", "env": env.rawValue]
+                ))
+                startWatcher()
+                return
+            }
         }
 
         // Fix B: compile-then-run so the 180s grace covers server boot only, not
@@ -103,13 +108,27 @@ actor BackendManager {
             state = .down
             pgid = -1
         default:
+            // Even when state is .down, sweep the port — an adopted process
+            // we never owned may still be listening. Without this, restart()
+            // can re-adopt the very PID it was supposed to replace.
+            await ProcessSupervisor.sweepPort(port, logTag: .backend)
             state = .down
+        }
+        // Wait for the kernel to release :5100 before returning. Up to 5s in
+        // 100ms increments. If we don't wait, start()'s spawn races the
+        // listener and may bind-fail (or worse, re-adopt the dying process).
+        for _ in 0..<50 {
+            if ProcessSupervisor.listeningPIDs(on: port).isEmpty { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
         }
     }
 
     func restart() async {
         await stop()
-        await start()
+        // allowAdopt:false guarantees a fresh compile-and-spawn; without
+        // this, a slow-dying old process could answer /healthz during the
+        // start probe and get re-adopted, defeating the restart.
+        await start(allowAdopt: false)
     }
 
     private func startWatcher() {

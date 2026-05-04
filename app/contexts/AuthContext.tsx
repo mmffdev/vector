@@ -1,11 +1,22 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 
-export type Role = "user" | "padmin" | "gadmin";
+// PLA-0007: role is now a structured row from the `roles` table, not an
+// enum. Consumers should branch on permission codes (useHasPermission)
+// rather than role.code directly. role.code is exposed for UI labelling
+// and for the small handful of legacy call sites still being migrated.
+export interface Role {
+  id: string;
+  code: string;
+  label: string;
+  rank: number;
+  is_system: boolean;
+  is_external: boolean;
+}
 
 export interface AuthUser {
   id: string;
@@ -16,6 +27,7 @@ export interface AuthUser {
   force_password_change: boolean;
   auth_method: "local" | "ldap";
   last_login?: string | null;
+  permissions: string[];
 }
 
 interface LoginResp {
@@ -26,6 +38,8 @@ interface LoginResp {
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
+  permissions: Set<string>;
+  hasPermission: (code: string) => boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -101,8 +115,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }, [router, user]);
 
+  const permissions = useMemo(
+    () => new Set(user?.permissions ?? []),
+    [user]
+  );
+  const hasPermission = useCallback(
+    (code: string) => permissions.has(code),
+    [permissions]
+  );
+
   return (
-    <Ctx.Provider value={{ user, loading, login, logout, refresh, setUser }}>
+    <Ctx.Provider value={{ user, loading, permissions, hasPermission, login, logout, refresh, setUser }}>
       {children}
     </Ctx.Provider>
   );
@@ -112,6 +135,14 @@ export function useAuth() {
   const v = useContext(Ctx);
   if (!v) throw new Error("useAuth must be used inside <AuthProvider>");
   return v;
+}
+
+// useHasPermission is the canonical way to gate UI on capability. Pass
+// the permission code (e.g. "roles.list", "users.create.gadmin") and the
+// hook returns true iff the current user's role grants that code.
+export function useHasPermission(code: string): boolean {
+  const { hasPermission } = useAuth();
+  return hasPermission(code);
 }
 
 export { ApiError };

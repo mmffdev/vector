@@ -1,27 +1,21 @@
 "use client";
 
 import { useTheme } from "@/app/hooks/useTheme";
-import { useAuth, type Role } from "@/app/contexts/AuthContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
 import LibraryReleaseBadge from "@/app/components/LibraryReleaseBadge";
-
-const roleLabels: Record<Role, string> = {
-  user: "USER",
-  padmin: "PADMIN",
-  gadmin: "GADMIN",
-};
 
 export default function AppHeader() {
   const { theme, toggle, mounted } = useTheme();
   const { user } = useAuth();
 
   return (
-    <header className={`app-header-wrapper app-header-wrapper--role-${user?.role ?? "user"}`}>
+    <header className={`app-header-wrapper app-header-wrapper--role-${user?.role.code ?? "user"}`}>
       <div className="app-header-wrapper__center">
         {user && (
           <span className="role-badge" title="Your role (read-only)">
-            {roleLabels[user.role]}
+            {user.role.label.toUpperCase()}
           </span>
         )}
       </div>

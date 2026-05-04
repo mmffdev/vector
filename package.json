@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start -p 5101",
     "lint": "next lint",
-    "lint:panes": "python3 dev/scripts/lint_panes.py",
     "lint:addressables": "python3 dev/scripts/lint_addressables.py",
+    "lint:role-literals": "python3 dev/scripts/lint_role_literals.py",
+    "lint:writer-boundary": "python3 dev/scripts/lint_writer_boundary.py",
     "audit:dashboard": "python3 dev/scripts/audit_dashboard.py",
     "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'"
   },
@@ -18,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@heroicons/react": "^2.2.0",
     "@types/d3-selection": "^3.0.11",
+    "@xyflow/react": "^12.10.2",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
     "dagre": "^0.8.5",

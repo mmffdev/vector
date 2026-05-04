@@ -4,8 +4,8 @@
 //	GET  /api/library/releases              → list outstanding for caller's subscription
 //	POST /api/library/releases/{id}/ack     → record ack + write audit row
 //
-// Both endpoints are gated by RequireRole(models.RoleGAdmin) at the
-// router. Acks are stored in mmff_vector (subscription state) and
+// Both endpoints are gated by RequirePermission(MenuAdminView) at the
+// router (PLA-0007). Acks are stored in mmff_vector (subscription state) and
 // reference release_id as an app-enforced FK into mmff_library.
 package libraryreleases
 

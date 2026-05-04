@@ -13,18 +13,18 @@ R029 evaluated React Flow, GoJS, Cytoscape.js. None hit all three constraints (3
 - **d3-zoom** (BSD) — pan/zoom transforms.
 - **No third-party graph library.**
 
-## API (Phase 1)
+## API (Phase 1, frozen at v1)
 
 ```tsx
 <DiagramCanvas
-  addressableId="samantha._viewport.app._kind.topology.canvas"
+  name="topology_canvas"        // registers as samantha._viewport.<slot>._kind.diagram_canvas.<name>
   nodes={...}
   edges={...}
   renderNode={(node, ctx) => /* user-supplied draw fn */}
   edgeStyle="orthogonal"
   layoutMode="auto-horizontal"
-  gridSize={10}              // dotted-grid spacing in px
-  showGrid                   // dotted background visible (default true)
+  gridSize={10}                  // dotted-grid spacing in px
+  showGrid                       // dotted background visible (default true)
   onNodeDragStop={(nodeId, x, y) => /* debounced position commit (snapped) */}
   onNodeSelect={...}
   onDropTarget={(sourceId, targetId) => /* return false to reject */}
@@ -33,7 +33,11 @@ R029 evaluated React Flow, GoJS, Cytoscape.js. None hit all three constraints (3
 />
 ```
 
+The component takes a `name` (not a fully-qualified `addressableId`) and self-registers via `useRegisterAddressable` against the surrounding `<ViewportSlot>`. The fully-qualified address is resolved automatically — consumers never assemble it by hand.
+
 Pluggable. Consumer supplies the node renderer (so a Topology Office draws block-diagram cards; a process-flow app draws activity boxes; a dependency map draws boxes-with-ports). Edge style is selectable.
+
+The complete v1 prop surface is locked by a compile-time contract test at [`app/lib/samantha.contract.ts`](../app/lib/samantha.contract.ts). Removing or narrowing a frozen field fails the Next build, forcing either a v2 bump or a documented migration.
 
 ## Snap-to-grid
 
@@ -49,12 +53,16 @@ Built into the primitive:
 
 | Metric | Target |
 |---|---|
-| Initial load (2,500-node Lloyds-class fixture) | <1.5s |
+| Initial load (3,000-node Lloyds-class fixture) | <1.5s |
 | Drag FPS | 30 sustained |
 | Rendered-set cap (collapse + virtualisation) | <500 |
 | Subtree layout (dagre worker) | <1s |
 
-Test: [`dev/tests/diagram-canvas-stress.spec.ts`](../dev/tests/diagram-canvas-stress.spec.ts). Gates the primitive independently of any consuming page.
+Test: [`dev/tests/diagram-canvas-stress.spec.ts`](../dev/tests/diagram-canvas-stress.spec.ts). Gates the primitive independently of any consuming page; matches the topology-stress page-level fixture in [`c_c_topology.md`](c_c_topology.md).
+
+### Web Worker policy
+
+Layout runs in a Web Worker so dagre never blocks the main thread under stress. The CSP allows `worker-src 'self' blob:` for this. If the worker fails to spawn (older browser, restrictive CSP override) the primitive falls back to running dagre inline on the main thread — correct behaviour, slower under load. The fallback path is exercised by stress tests so regressions surface in CI.
 
 ## Phase 1 scope
 
@@ -76,9 +84,13 @@ Test: [`dev/tests/diagram-canvas-stress.spec.ts`](../dev/tests/diagram-canvas-st
 
 ## Samantha API exposure
 
-Registered as `samantha.diagram.canvas` (versioned v1). Custom-app and custom-page authors mount it from their app manifest, supply a `renderNode` callback, and bind to their own data source. Reference example app ships with PLA-0006 ("My team's process flow" or equivalent).
+Registered as `samantha.diagram.canvas`, frozen at **v1.0.0** (story 00285). Custom-app and custom-page authors mount it from their app manifest, supply a `renderNode` callback, and bind to their own data source. Reference example app: [`ui_app_team_flow`](../app/store/ui_apps/ui_app_team_flow/) — "My Team's Process Flow", a 5-node intake → triage → build → review → ship pipeline that exercises every frozen prop.
 
-The reference app is a **contract test**: if it breaks in CI, the primitive's prop or event surface changed and we either revert or bump the version.
+The reference app is a **contract test**: if it breaks in CI, the primitive's prop or event surface changed and we either revert or bump the version. The compile-time contract at [`app/lib/samantha.contract.ts`](../app/lib/samantha.contract.ts) is the second line of defence — it catches narrowing changes the reference app might miss.
+
+### Addressables registration
+
+The component calls `useRegisterAddressable({ kind: "diagram_canvas", name })` on mount, so every canvas is reachable through the same Samantha addressing scheme as panels and tables. See [`c_c_addressables.md`](c_c_addressables.md) for the substrate.
 
 ## Stopgap
 
@@ -86,5 +98,6 @@ If Phase 1 slips beyond 6 weeks, fall back to **Cytoscape.js** (MIT, canvas-rend
 
 ## What this doc does NOT cover
 
-- Org Design specifics (schema, clamp predicate, federated handoff) — see [`c_c_org_design.md`](c_c_org_design.md).
-- The Samantha SDK reference — separate doc once SDK lands.
+- Topology specifics (schema, clamp predicate, federated handoff, governance gate, audit) — see [`c_c_topology.md`](c_c_topology.md).
+- The PLA-0005 addressables substrate — see [`c_c_addressables.md`](c_c_addressables.md).
+- The Samantha SDK reference — separate doc once SDK lands; v1 contract is at [`app/lib/samantha.contract.ts`](../app/lib/samantha.contract.ts).

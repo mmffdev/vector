@@ -476,10 +476,10 @@ export default function WorkItemsSettingsPage() {
   const [tab, setTab] = useTabState(TABS, "fields", "tab");
 
   useEffect(() => {
-    if (user && user.role !== "padmin") router.replace("/work-items");
+    if (user && user.role.code !== "padmin") router.replace("/work-items");
   }, [user, router]);
 
-  if (!user || user.role !== "padmin") return null;
+  if (!user || user.role.code !== "padmin") return null;
 
   return (
     <StrictRoute>

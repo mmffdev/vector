@@ -18,7 +18,7 @@ export default function BlockingReleaseGate({ children }: { children: React.Reac
   const { user } = useAuth();
   const { hasBlocking } = useLibraryReleases();
 
-  if (user?.role !== "gadmin" || !hasBlocking) {
+  if (user?.role.code !== "gadmin" || !hasBlocking) {
     return <>{children}</>;
   }
 

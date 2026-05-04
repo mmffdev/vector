@@ -1,102 +1,103 @@
 {
   "id": "PLA-0006",
-  "title": "Topology — federated canvas-based organisational modelling (MVP)",
+  "title": "Topology \u2014 federated canvas-based organisational modelling (MVP)",
   "date_created": "2026-05-02",
-  "date_started": null,
-  "date_last_updated": "2026-05-02",
-  "date_finished": null,
+  "date_started": "2026-05-03",
+  "date_last_updated": "2026-05-03",
+  "date_finished": "2026-05-03",
   "phase": "PH-0006",
-  "scope": "<p>Build Vector's <strong>Topology</strong> surface — a first-class canvas-based product page, named per tenant (e.g. 'MMFFDev: Topology'), where gadmin (and a single delegated padmin per node) draws the organisation as a free-form tree of block diagrams. The default noun for a node is <strong>Office</strong>, overrideable per node. The canvas is the source of truth for the org model; nothing else is. The org tree powers Workspace scoping (Path C clarified per R028 §8 — container is itself a tree), per-node clamp policy, rollups, audit boundaries, and cross-team move semantics across the rest of Vector.</p><p><strong>This plan supersedes the original Path C primitive in R028.</strong> Where R028 said \"Workspace as a clamp predicate at view time\", PLA-0006 makes the container an editable tree (C.2): an <code>org_nodes</code> table with self-referential <code>parent_id</code>, drawn on a <strong>Vector-built diagram primitive</strong> (Canvas2D + dagre + d3-zoom) with collapse-by-default for enterprise scale (target: 3,000-node Lloyds-class trees rendering in &lt;1.5s and sustaining 30 FPS during drag, with rendered set capped at ~500 via collapse + virtualisation per R029 findings).</p><p><strong>Build vs buy: build.</strong> R029's library evaluation showed React Flow has known performance cliffs at our target scale, GoJS is commercial-only with a licence that forbids derivative works (year-one cost £15k–£40k for a SaaS team — same as the engineering effort to build it), and Cytoscape.js doesn't host arbitrary HTML in nodes. We need ~5% of what a general-purpose graph library provides — most of GoJS is bloat for our use case. Owning the substrate means we ship the exact behaviour we want, the licence is ours, and the primitive becomes <strong>part of the Samantha API surface</strong> (<code>samantha.diagram.canvas</code>) so anyone building a custom app or custom page can render their own diagrams. Estimated build: 3–5 weeks for one senior engineer using <code>dagre</code> (MIT) for layout and <code>d3-zoom</code> (BSD) for pan/zoom transforms over a Canvas2D renderer.</p><p><strong>Federated authoring via delegated handoff (single-level in MVP).</strong> Gadmin draws the top-level skeleton and assigns one padmin per top-level Office. Each padmin lands on the canvas clamped to their subtree and continues modelling from there. Padmin re-delegation to leads is deferred to <strong>Phase X</strong> — schema ships with <code>can_redelegate</code> so we don't migrate later, but the UI doesn't expose it. The whole top-level contributes to the model; the gadmin is not a bottleneck. None of Rally / Jira / Azure DevOps / GitLab does this — it's a product differentiator.</p><p><strong>Permission model.</strong> Subscription roles (gadmin / padmin / user) remain for cross-cutting concerns (billing, login). Inside Topology, roles are <strong>node-scoped</strong> via a new <code>org_node_roles</code> table. A user can hold different roles on different nodes (admin on one Office, viewer on another). The clamp predicate and the role predicate share the same recursive-CTE machinery. MVP enforces at most one active admin grant per node; multi-admin is deferred to Phase X.</p><p><strong>Archive = limbo, not delete.</strong> Archiving a node (and its entire subtree) greys it out on the canvas, preserves all role grants and FK relationships, and excludes the subtree from default queries unless the caller asks for archived. Cascade semantics for the deep-worm-hole case (a node with children getting archived, then individually un-archived) are deferred to Phase X.</p><p><strong>What this plan does NOT do (Phase X deferrals).</strong> No padmin re-delegation in UI. No multi-admin per node. No archive-cascade UX. No matrix orgs (a node has exactly one parent in MVP). No org-versioning / what-if branching. No EA-grade artefact features (capability maps, application portfolios, dependency views) — schema supports the upgrade path but UX stays focused on functional MVP. No third-party canvas library — the diagram primitive is Vector's.</p>",
-  "value": "<ul><li><strong>Lloyds-scale modelling becomes possible.</strong> 1,000–3,000 nodes drawable, navigable, and editable by the people who actually know each branch — not by one gadmin guessing.</li><li><strong>Eliminates the Rally \"Project\" naming and UX failure</strong> (20-minute trainings spent defending the noun) by naming the page neutrally and letting tenants name their own levels.</li><li><strong>Workspace scoping (Path C) gets a real home.</strong> Every other clamp / rollup / audit feature in Vector reads from this one tree — no parallel partition scheme to maintain.</li><li><strong>Cross-team moves become honest.</strong> Drag a Team between divisions on the canvas; system shows a preview diff (work items reparented, dashboards shifted, access changes) before commit.</li><li><strong>Federated authoring is a unique market position.</strong> No work-management or EA tool ships delegated org-modelling. This is the \"oh — finally\" moment for transformation-era enterprises.</li><li><strong>Diagram primitive becomes a Samantha API capability.</strong> Once we own the canvas, custom-app and custom-page authors can render their own diagrams (process flows, dependency maps, customer journeys, capability overlays) using the same primitive Org Design uses. The investment pays back across every future visualisation feature.</li><li><strong>No third-party licence drag.</strong> No annual GoJS bill, no React Flow scale-cliff to manage around, no vendor lock-in. The primitive is ours; the bloat we don't need (UML, Sankey, swim-lanes, BPMN templates) we don't carry.</li><li><strong>Schema supports upgrade to EA-grade artefact</strong> later (capability/application/data overlays) without migration; UX investment is incremental.</li></ul>",
+  "scope": "<p>Build Vector's <strong>Topology</strong> surface \u2014 a first-class canvas-based product page, named per tenant (e.g. 'MMFFDev: Topology'), where gadmin (and a single delegated padmin per node) draws the organisation as a free-form tree of block diagrams. The default noun for a node is <strong>Office</strong>, overrideable per node. The canvas is the source of truth for the org model; nothing else is. The org tree powers Workspace scoping (Path C clarified per R028 \u00a78 \u2014 container is itself a tree), per-node clamp policy, rollups, audit boundaries, and cross-team move semantics across the rest of Vector.</p><p><strong>This plan supersedes the original Path C primitive in R028.</strong> Where R028 said \"Workspace as a clamp predicate at view time\", PLA-0006 makes the container an editable tree (C.2): an <code>org_nodes</code> table with self-referential <code>parent_id</code>, drawn on a <strong>Vector-built diagram primitive</strong> (Canvas2D + dagre + d3-zoom) with collapse-by-default for enterprise scale (target: 3,000-node Lloyds-class trees rendering in &lt;1.5s and sustaining 30 FPS during drag, with rendered set capped at ~500 via collapse + virtualisation per R029 findings).</p><p><strong>Build vs buy: build.</strong> R029's library evaluation showed React Flow has known performance cliffs at our target scale, GoJS is commercial-only with a licence that forbids derivative works (year-one cost \u00a315k\u2013\u00a340k for a SaaS team \u2014 same as the engineering effort to build it), and Cytoscape.js doesn't host arbitrary HTML in nodes. We need ~5% of what a general-purpose graph library provides \u2014 most of GoJS is bloat for our use case. Owning the substrate means we ship the exact behaviour we want, the licence is ours, and the primitive becomes <strong>part of the Samantha API surface</strong> (<code>samantha.diagram.canvas</code>) so anyone building a custom app or custom page can render their own diagrams. Estimated build: 3\u20135 weeks for one senior engineer using <code>dagre</code> (MIT) for layout and <code>d3-zoom</code> (BSD) for pan/zoom transforms over a Canvas2D renderer.</p><p><strong>Federated authoring via delegated handoff (single-level in MVP).</strong> Gadmin draws the top-level skeleton and assigns one padmin per top-level Office. Each padmin lands on the canvas clamped to their subtree and continues modelling from there. Padmin re-delegation to leads is deferred to <strong>Phase X</strong> \u2014 schema ships with <code>can_redelegate</code> so we don't migrate later, but the UI doesn't expose it. The whole top-level contributes to the model; the gadmin is not a bottleneck. None of Rally / Jira / Azure DevOps / GitLab does this \u2014 it's a product differentiator.</p><p><strong>Permission model.</strong> Subscription roles (gadmin / padmin / user) remain for cross-cutting concerns (billing, login). Inside Topology, roles are <strong>node-scoped</strong> via a new <code>org_node_roles</code> table. A user can hold different roles on different nodes (admin on one Office, viewer on another). The clamp predicate and the role predicate share the same recursive-CTE machinery. MVP enforces at most one active admin grant per node; multi-admin is deferred to Phase X.</p><p><strong>Archive = limbo, not delete.</strong> Archiving a node (and its entire subtree) greys it out on the canvas, preserves all role grants and FK relationships, and excludes the subtree from default queries unless the caller asks for archived. Cascade semantics for the deep-worm-hole case (a node with children getting archived, then individually un-archived) are deferred to Phase X.</p><p><strong>What this plan does NOT do (Phase X deferrals).</strong> No padmin re-delegation in UI. No multi-admin per node. No archive-cascade UX. No matrix orgs (a node has exactly one parent in MVP). No org-versioning / what-if branching. No EA-grade artefact features (capability maps, application portfolios, dependency views) \u2014 schema supports the upgrade path but UX stays focused on functional MVP. No third-party canvas library \u2014 the diagram primitive is Vector's.</p>",
+  "value": "<ul><li><strong>Lloyds-scale modelling becomes possible.</strong> 1,000\u20133,000 nodes drawable, navigable, and editable by the people who actually know each branch \u2014 not by one gadmin guessing.</li><li><strong>Eliminates the Rally \"Project\" naming and UX failure</strong> (20-minute trainings spent defending the noun) by naming the page neutrally and letting tenants name their own levels.</li><li><strong>Workspace scoping (Path C) gets a real home.</strong> Every other clamp / rollup / audit feature in Vector reads from this one tree \u2014 no parallel partition scheme to maintain.</li><li><strong>Cross-team moves become honest.</strong> Drag a Team between divisions on the canvas; system shows a preview diff (work items reparented, dashboards shifted, access changes) before commit.</li><li><strong>Federated authoring is a unique market position.</strong> No work-management or EA tool ships delegated org-modelling. This is the \"oh \u2014 finally\" moment for transformation-era enterprises.</li><li><strong>Diagram primitive becomes a Samantha API capability.</strong> Once we own the canvas, custom-app and custom-page authors can render their own diagrams (process flows, dependency maps, customer journeys, capability overlays) using the same primitive Org Design uses. The investment pays back across every future visualisation feature.</li><li><strong>No third-party licence drag.</strong> No annual GoJS bill, no React Flow scale-cliff to manage around, no vendor lock-in. The primitive is ours; the bloat we don't need (UML, Sankey, swim-lanes, BPMN templates) we don't carry.</li><li><strong>Schema supports upgrade to EA-grade artefact</strong> later (capability/application/data overlays) without migration; UX investment is incremental.</li></ul>",
   "implementation_plan": [
-    "MVP cut (locked 2026-05-02): page name is '<tenant>: Topology' (heading + browser title); default node noun is 'Office'; delegation is single-level (gadmin → padmin only) — `can_redelegate` ships in schema but UI doesn't expose it; at most one active admin grant per node — schema unique constraint enforces it; archive = limbo (greyed-out subtree, role grants + FKs preserved, default queries hide unless asked for archived). Padmin re-delegation, multi-admin, archive-cascade, matrix orgs, org-versioning, EA overlays = Phase X.",
-    "Migration A: org_nodes table — UUID PK, parent_id self-FK (nullable, root has NULL), subscription_id FK, name, description, label_override (gadmin-named level e.g. 'Department' / 'Squad'), icon, colour, avatar_url, layout_mode enum ('auto-horizontal' | 'auto-vertical' | 'auto-radial' | 'manual'), manual_x / manual_y (nullable, only when layout_mode='manual'), collapsed_default bool, position int (sort among siblings), soft_archive, audit columns. Unique (subscription_id, parent_id, name). Recursive-CTE-friendly index on (subscription_id, parent_id).",
-    "Migration B: org_node_roles table — UUID PK, node_id FK, user_id FK, role enum ('admin' | 'editor' | 'viewer'), can_redelegate bool default false (schema-ready for Phase X; UI does not expose in MVP), granted_by FK users, granted_at, revoked_at nullable. Unique (node_id, user_id) where revoked_at IS NULL. Additional MVP constraint: unique (node_id, role='admin') where revoked_at IS NULL — enforces single-admin-per-node; relax in Phase X.",
-    "Migration C: org_node_view_state per-user — node_id FK, user_id FK, collapsed bool, last_viewed_at. Unique (node_id, user_id). Keeps canvas expand/collapse state per-user without polluting shared layout.",
+    "MVP cut (locked 2026-05-02): page name is '<tenant>: Topology' (heading + browser title); default node noun is 'Office'; delegation is single-level (gadmin \u2192 padmin only) \u2014 `can_redelegate` ships in schema but UI doesn't expose it; at most one active admin grant per node \u2014 schema unique constraint enforces it; archive = limbo (greyed-out subtree, role grants + FKs preserved, default queries hide unless asked for archived). Padmin re-delegation, multi-admin, archive-cascade, matrix orgs, org-versioning, EA overlays = Phase X.",
+    "Migration A: org_nodes table \u2014 UUID PK, parent_id self-FK (nullable, root has NULL), subscription_id FK, name, description, label_override (gadmin-named level e.g. 'Department' / 'Squad'), icon, colour, avatar_url, layout_mode enum ('auto-horizontal' | 'auto-vertical' | 'auto-radial' | 'manual'), manual_x / manual_y (nullable, only when layout_mode='manual'), collapsed_default bool, position int (sort among siblings), soft_archive, audit columns. Unique (subscription_id, parent_id, name). Recursive-CTE-friendly index on (subscription_id, parent_id).",
+    "Migration B: org_node_roles table \u2014 UUID PK, node_id FK, user_id FK, role enum ('admin' | 'editor' | 'viewer'), can_redelegate bool default false (schema-ready for Phase X; UI does not expose in MVP), granted_by FK users, granted_at, revoked_at nullable. Unique (node_id, user_id) where revoked_at IS NULL. Additional MVP constraint: unique (node_id, role='admin') where revoked_at IS NULL \u2014 enforces single-admin-per-node; relax in Phase X.",
+    "Migration C: org_node_view_state per-user \u2014 node_id FK, user_id FK, collapsed bool, last_viewed_at. Unique (node_id, user_id). Keeps canvas expand/collapse state per-user without polluting shared layout.",
     "Migration D: add org_node_id FK column to portfolio_items (nullable for now, NOT NULL after backfill of root-node fallback per subscription). Same on user_stories.org_node_id. Indexes on (org_node_id) for clamp predicate.",
-    "Backend: orgdesign.Service Go module — sole writer for org_nodes, org_node_roles, org_node_view_state. Methods: CreateNode, RenameNode, MoveNode (parent change with cycle check), ArchiveNode, GrantRole, RevokeRole, SetViewState, BulkPosition (debounced canvas writes), Subtree (recursive-CTE walk), AncestorsOf, ClampPredicate(user_id) → subtree of user's lowest admin/editor/viewer node.",
-    "Backend: REST surface — POST /api/topology/nodes (create), PATCH /api/topology/nodes/:id (rename/move/colour/icon), DELETE /api/topology/nodes/:id (soft-archive), POST /api/topology/nodes/bulk-position (canvas drag commit), GET /api/topology/tree?root=:id&depth=N (lazy-expand fetch), POST /api/topology/nodes/:id/roles (grant), DELETE /api/topology/nodes/:id/roles/:userId (revoke), GET /api/topology/preview-move?node=:id&newParent=:pid (work-items / dashboards / access diff before commit).",
-    "Backend: clamp predicate hook — every list-style read endpoint that touches portfolio_items or user_stories accepts an implicit clamp via ClampPredicate(currentUser); flagged as a cross-cutting middleware so feature teams don't re-implement it.",
-    "Frontend primitive: Vector Diagram Canvas — new package app/components/diagram-canvas/ exposing a generic <DiagramCanvas> React component. Renderer is Canvas2D (single <canvas> element) with off-screen layer for static elements + on-screen layer for hover/drag affordances. Layout is dagre (MIT) running in a Web Worker. Pan/zoom is d3-zoom (BSD). Provides: node hit-test, edge routing (orthogonal + bezier), drag-and-drop with cycle prevention hooks, minimap, fitView, viewport state, debounced position commits. Pluggable node renderer (consumer supplies a render function for any node shape). Pluggable edge style. No third-party graph library.",
-    "Frontend primitive: stress harness — synthetic 3,000-node tree fixture lives in dev/tests/diagram-canvas-stress.spec.ts; gates the primitive itself (independent of Topology page); load <1.5s, 30 FPS drag, <500 rendered set after collapse-by-default.",
-    "Frontend: /topology page — full-bleed <DiagramCanvas>, MiniMap top-right, Controls (zoom/fit/lock) bottom-right, dotted background, breadcrumbs along top, search bar top-left (server-side fuzzy → fitView({ nodeId: matchId })). Loads root + 2 levels by default; lazy-fetches subtrees on expand. OrgNode renderer = block diagram with name, icon, colour bar, member-count badge, child-count badge.",
-    "Frontend: collapse-by-default + lazy expand — every node renders with children hidden until clicked; fetches subtree on expand; rendered-set cap enforced by data-layer filtering inside <DiagramCanvas>.",
-    "Frontend: drag-and-drop interaction — drop on existing node = make child; drop between siblings = reorder. onNodeDragStop fires debounced bulk-position write. Cycle-prevention enforced both client-side (<DiagramCanvas> rejects drop targets that would loop) and server-side (orgdesign.Service rejects). Detach-to-root via canvas drop is gadmin-only and deferred to Phase X — MVP allows reparent only between existing nodes.",
-    "Frontend: side panel on selection — name, description, label_override (default 'Office'), icon, colour, layout_mode, members list, single admin grant (one active admin per node in MVP), clamp_policy (inherit / open / restrict-subtree / restrict-node), archive button (places node and subtree into limbo — greyed). MVP UI does NOT expose can_redelegate or multi-admin (Phase X).",
-    "Frontend: cross-team move preview modal — fires on drag-commit when target subtree differs from source subtree; shows diff (N work items reparented, M dashboards shift, K users lose access); confirm or cancel before write.",
-    "Frontend: handoff inbox — when a user is granted admin/editor on a node, they get a notification (existing notifications system) with a deep-link to /topology?focus=:nodeId; landing on it zooms the canvas to their node and presents an empty-state CTA \"Define this <label_override>'s structure\".",
-    "Frontend: empty state — first gadmin lands on a single root block labelled with the subscription's display name (e.g. 'MMFFDev'); CTA 'Add your first Office'. No fixed taxonomy, no wizard. Browser title and page heading both show '<tenant-name>: Topology'.",
-    "Samantha API exposure: <DiagramCanvas> is registered as a Samantha-callable primitive (samantha.diagram.canvas) — custom-app and custom-page authors can mount it from their app manifest, supply a node-renderer callback, and bind to their own data source. Documented in the Samantha SDK reference; example app shipped (\"My team's process flow\") to prove the contract.",
-    "Frontend: list view fallback — /topology?view=list reads same data, supports same operations (rename / move / grant role / archive); accessible to screen readers; canvas remains primary surface.",
-    "Frontend: address-substrate adoption — every panel on /topology wraps in <Panel> per PLA-0005; canvas itself registers as samantha._viewport.app._kind.topology.canvas. <DiagramCanvas> primitive accepts an addressableId prop so any embed (Topology, custom apps) gets a unique address.",
-    "Docs — docs/c_c_org_design.md leaf doc covering schema, clamp predicate machinery, role model, handoff flow, naming open-questions; docs/c_c_diagram_canvas.md covering the primitive's API, performance contract, Samantha SDK exposure; CLAUDE.md pointers; c_scope.md Underway row; R028 §8 cross-link; R029 cross-link as the build-vs-buy evidence base.",
-    "Frontend primitive: snap-to-grid — <DiagramCanvas> renders a dotted background grid (default spacing 10px; configurable via gridSize prop). All node positions during drag and on commit snap to the nearest grid intersection. Auto-layout (dagre) results are rounded to the grid before render. Grid is visually subtle (low-opacity dots) and toggleable per-page via a `showGrid` prop (default true on /topology). Gates manual layout_mode behaviour — manual_x / manual_y values are persisted as multiples of gridSize."
+    "Backend: orgdesign.Service Go module \u2014 sole writer for org_nodes, org_node_roles, org_node_view_state. Methods: CreateNode, RenameNode, MoveNode (parent change with cycle check), ArchiveNode, GrantRole, RevokeRole, SetViewState, BulkPosition (debounced canvas writes), Subtree (recursive-CTE walk), AncestorsOf, ClampPredicate(user_id) \u2192 subtree of user's lowest admin/editor/viewer node.",
+    "Backend: REST surface \u2014 POST /api/topology/nodes (create), PATCH /api/topology/nodes/:id (rename/move/colour/icon), DELETE /api/topology/nodes/:id (soft-archive), POST /api/topology/nodes/bulk-position (canvas drag commit), GET /api/topology/tree?root=:id&depth=N (lazy-expand fetch), POST /api/topology/nodes/:id/roles (grant), DELETE /api/topology/nodes/:id/roles/:userId (revoke), GET /api/topology/preview-move?node=:id&newParent=:pid (work-items / dashboards / access diff before commit).",
+    "Backend: clamp predicate hook \u2014 every list-style read endpoint that touches portfolio_items or user_stories accepts an implicit clamp via ClampPredicate(currentUser); flagged as a cross-cutting middleware so feature teams don't re-implement it.",
+    "Frontend primitive: Vector Diagram Canvas \u2014 new package app/components/diagram-canvas/ exposing a generic <DiagramCanvas> React component. Renderer is Canvas2D (single <canvas> element) with off-screen layer for static elements + on-screen layer for hover/drag affordances. Layout is dagre (MIT) running in a Web Worker. Pan/zoom is d3-zoom (BSD). Provides: node hit-test, edge routing (orthogonal + bezier), drag-and-drop with cycle prevention hooks, minimap, fitView, viewport state, debounced position commits. Pluggable node renderer (consumer supplies a render function for any node shape). Pluggable edge style. No third-party graph library.",
+    "Frontend primitive: stress harness \u2014 synthetic 3,000-node tree fixture lives in dev/tests/diagram-canvas-stress.spec.ts; gates the primitive itself (independent of Topology page); load <1.5s, 30 FPS drag, <500 rendered set after collapse-by-default.",
+    "Frontend: /topology page \u2014 full-bleed <DiagramCanvas>, MiniMap top-right, Controls (zoom/fit/lock) bottom-right, dotted background, breadcrumbs along top, search bar top-left (server-side fuzzy \u2192 fitView({ nodeId: matchId })). Loads root + 2 levels by default; lazy-fetches subtrees on expand. OrgNode renderer = block diagram with name, icon, colour bar, member-count badge, child-count badge.",
+    "Frontend: collapse-by-default + lazy expand \u2014 every node renders with children hidden until clicked; fetches subtree on expand; rendered-set cap enforced by data-layer filtering inside <DiagramCanvas>.",
+    "Frontend: drag-and-drop interaction \u2014 drop on existing node = make child; drop between siblings = reorder. onNodeDragStop fires debounced bulk-position write. Cycle-prevention enforced both client-side (<DiagramCanvas> rejects drop targets that would loop) and server-side (orgdesign.Service rejects). Detach-to-root via canvas drop is gadmin-only and deferred to Phase X \u2014 MVP allows reparent only between existing nodes.",
+    "Frontend: side panel on selection \u2014 name, description, label_override (default 'Office'), icon, colour, layout_mode, members list, single admin grant (one active admin per node in MVP), clamp_policy (inherit / open / restrict-subtree / restrict-node), archive button (places node and subtree into limbo \u2014 greyed). MVP UI does NOT expose can_redelegate or multi-admin (Phase X).",
+    "Frontend: cross-team move preview modal \u2014 fires on drag-commit when target subtree differs from source subtree; shows diff (N work items reparented, M dashboards shift, K users lose access); confirm or cancel before write.",
+    "Frontend: handoff inbox \u2014 when a user is granted admin/editor on a node, they get a notification (existing notifications system) with a deep-link to /topology?focus=:nodeId; landing on it zooms the canvas to their node and presents an empty-state CTA \"Define this <label_override>'s structure\".",
+    "Frontend: empty state \u2014 first gadmin lands on a single root block labelled with the subscription's display name (e.g. 'MMFFDev'); CTA 'Add your first Office'. No fixed taxonomy, no wizard. Browser title and page heading both show '<tenant-name>: Topology'.",
+    "Samantha API exposure: <DiagramCanvas> is registered as a Samantha-callable primitive (samantha.diagram.canvas) \u2014 custom-app and custom-page authors can mount it from their app manifest, supply a node-renderer callback, and bind to their own data source. Documented in the Samantha SDK reference; example app shipped (\"My team's process flow\") to prove the contract.",
+    "Frontend: list view fallback \u2014 /topology?view=list reads same data, supports same operations (rename / move / grant role / archive); accessible to screen readers; canvas remains primary surface.",
+    "Frontend: address-substrate adoption \u2014 every panel on /topology wraps in <Panel> per PLA-0005; canvas itself registers as samantha._viewport.app._kind.topology.canvas. <DiagramCanvas> primitive accepts an addressableId prop so any embed (Topology, custom apps) gets a unique address.",
+    "Docs \u2014 docs/c_c_org_design.md leaf doc covering schema, clamp predicate machinery, role model, handoff flow, naming open-questions; docs/c_c_diagram_canvas.md covering the primitive's API, performance contract, Samantha SDK exposure; CLAUDE.md pointers; c_scope.md Underway row; R028 \u00a78 cross-link; R029 cross-link as the build-vs-buy evidence base.",
+    "Frontend primitive: snap-to-grid \u2014 <DiagramCanvas> renders a dotted background grid (default spacing 10px; configurable via gridSize prop). All node positions during drag and on commit snap to the nearest grid intersection. Auto-layout (dagre) results are rounded to the grid before render. Grid is visually subtle (low-opacity dots) and toggleable per-page via a `showGrid` prop (default true on /topology). Gates manual layout_mode behaviour \u2014 manual_x / manual_y values are persisted as multiples of gridSize."
   ],
   "areas_impacted": [
     "SQL: four migrations (org_nodes, org_node_roles, org_node_view_state, FK columns on portfolio_items + user_stories with backfill).",
     "API: new orgdesign.Service Go module (sole writer); ~10 new REST endpoints; cross-cutting clamp predicate middleware on every list endpoint touching portfolio_items / user_stories.",
-    "UI: new app/components/diagram-canvas/ primitive (Canvas2D + dagre worker + d3-zoom — no third-party graph library); new /topology page consuming it; new OrgNode renderer; side panel; preview-move modal; empty state; list-view fallback; handoff notification integration.",
-    "API (Samantha SDK): new samantha.diagram.canvas surface — custom-app and custom-page authors can mount <DiagramCanvas>; documented; reference example app shipped.",
+    "UI: new app/components/diagram-canvas/ primitive (Canvas2D + dagre worker + d3-zoom \u2014 no third-party graph library); new /topology page consuming it; new OrgNode renderer; side panel; preview-move modal; empty state; list-view fallback; handoff notification integration.",
+    "API (Samantha SDK): new samantha.diagram.canvas surface \u2014 custom-app and custom-page authors can mount <DiagramCanvas>; documented; reference example app shipped.",
     "DEV: stress fixture (3,000-node Lloyds tree) gates both the primitive and the Topology page; acceptance test gate; lint:addressables coverage on new page.",
-    "GOV: handoff flow lands as a first-class governance feature — node-scoped admin grants are auditable and revocable.",
-    "SEC: trust-no-one boundary at orgdesign.Service — direct INSERTs to org_nodes / org_node_roles outside the service forbidden; clamp predicate is server-enforced (UI clamp is convenience only); cycle-check server-side; preview-move requires re-confirmation server-side at commit.",
+    "GOV: handoff flow lands as a first-class governance feature \u2014 node-scoped admin grants are auditable and revocable.",
+    "SEC: trust-no-one boundary at orgdesign.Service \u2014 direct INSERTs to org_nodes / org_node_roles outside the service forbidden; clamp predicate is server-enforced (UI clamp is convenience only); cycle-check server-side; preview-move requires re-confirmation server-side at commit.",
     "AUD: every node mutation logged (created / renamed / moved / archived / role-granted / role-revoked) with actor + timestamp; queryable via existing audit reports.",
     "DOC: two new leaf docs (org_design + diagram_canvas) + index pointers + scope row + R028/R029 cross-references."
   ],
   "feature_list": [
-    "org_nodes table — self-referential tree, gadmin-named levels, layout metadata, soft-archive.",
-    "org_node_roles table — node-scoped role grants with re-delegation flag.",
-    "org_node_view_state table — per-user collapse/expand state.",
+    "org_nodes table \u2014 self-referential tree, gadmin-named levels, layout metadata, soft-archive.",
+    "org_node_roles table \u2014 node-scoped role grants with re-delegation flag.",
+    "org_node_view_state table \u2014 per-user collapse/expand state.",
     "FK columns on portfolio_items + user_stories pointing to org_nodes.",
-    "orgdesign.Service Go module — sole writer; recursive-CTE subtree walks; cycle check; clamp predicate.",
-    "REST surface — node CRUD, bulk position, lazy-expand subtree fetch, role grants, preview-move, search.",
-    "Cross-cutting clamp predicate middleware — every relevant list endpoint reads it.",
-    "<DiagramCanvas> primitive — Canvas2D + dagre worker + d3-zoom; pluggable node renderer; stress-tested at 3,000 nodes; no third-party graph library.",
-    "Samantha API exposure — samantha.diagram.canvas surface for custom-app / custom-page authors; reference example app.",
-    "/topology canvas page — consumes <DiagramCanvas>; MiniMap, Controls, breadcrumbs, search, side panel, preview-move modal.",
-    "Collapse-by-default + lazy expand — keeps rendered-set under ~500 even at 3,000-node scale.",
+    "orgdesign.Service Go module \u2014 sole writer; recursive-CTE subtree walks; cycle check; clamp predicate.",
+    "REST surface \u2014 node CRUD, bulk position, lazy-expand subtree fetch, role grants, preview-move, search.",
+    "Cross-cutting clamp predicate middleware \u2014 every relevant list endpoint reads it.",
+    "<DiagramCanvas> primitive \u2014 Canvas2D + dagre worker + d3-zoom; pluggable node renderer; stress-tested at 3,000 nodes; no third-party graph library.",
+    "Samantha API exposure \u2014 samantha.diagram.canvas surface for custom-app / custom-page authors; reference example app.",
+    "/topology canvas page \u2014 consumes <DiagramCanvas>; MiniMap, Controls, breadcrumbs, search, side panel, preview-move modal.",
+    "Collapse-by-default + lazy expand \u2014 keeps rendered-set under ~500 even at 3,000-node scale.",
     "Drag-and-drop reparent with cycle prevention and cross-team move preview.",
-    "Handoff inbox — notification + deep-link when granted node-scoped admin/editor.",
-    "Stress acceptance — 3,000-node Lloyds fixture, <1.5s load, 30 FPS drag, <1s subtree layout (gates the primitive).",
-    "List view fallback at /topology?view=list — accessibility + power-user surface.",
+    "Handoff inbox \u2014 notification + deep-link when granted node-scoped admin/editor.",
+    "Stress acceptance \u2014 3,000-node Lloyds fixture, <1.5s load, 30 FPS drag, <1s subtree layout (gates the primitive).",
+    "List view fallback at /topology?view=list \u2014 accessibility + power-user surface.",
     "<Panel> + addressables substrate adoption (PLA-0005 carry-forward).",
-    "Snap-to-grid in <DiagramCanvas> — 10px dotted grid, drag/drop and auto-layout snap to grid intersections."
+    "Snap-to-grid in <DiagramCanvas> \u2014 10px dotted grid, drag/drop and auto-layout snap to grid intersections."
   ],
   "features_extended": [
-    "<strong>R028 §8 extends:</strong> Path C is now C.2 — Workspace container is itself a tree, not a flat tag; this plan delivers that schema and surface.",
+    "<strong>R028 \u00a78 extends:</strong> Path C is now C.2 \u2014 Workspace container is itself a tree, not a flat tag; this plan delivers that schema and surface.",
     "<strong>PLA-0005 extends:</strong> Org Design page adopts the addressables substrate from day one; every panel is &lt;Panel&gt;-wrapped; canvas registers an address.",
     "<strong>Subscription role model extends:</strong> Existing gadmin / padmin / user roles remain at subscription level; org_node_roles introduces node-scoped admin/editor/viewer that overlays them within Org Design and clamp scope.",
-    "<strong>Samantha API extends:</strong> New samantha.diagram.canvas primitive becomes a reusable visualisation capability across the Samantha SDK — custom apps and custom pages can render their own diagrams without taking a third-party dependency."
+    "<strong>Samantha API extends:</strong> New samantha.diagram.canvas primitive becomes a reusable visualisation capability across the Samantha SDK \u2014 custom apps and custom pages can render their own diagrams without taking a third-party dependency.",
+    "<strong>Canvas management UX (added 2026-05-03):</strong> stories 00310\u201300322 add the daily-driver authoring surface \u2014 animated edit flyout, write-through field persistence, +/- spawn buttons on every node side, span-wide level dividers, left-edge level-label boxes, mini parent/child tree-icon view, disconnect-not-delete semantics, disconnected-nodes tray, gadmin commit flag with banner-on-dirty re-commit. Schema gains <code>org_levels</code> (first-class level entities seeded with Organisation/Department/Division), <code>org_nodes.description</code>, <code>org_nodes.level_id</code>, <code>subscriptions.topology_committed_at/_by</code>."
   ],
   "features_removed": [
-    "Implicit assumption that 'Workspace' is a flat tag (R028 v1) — superseded; Workspace is now a tree node.",
-    "Single-author assumption (only gadmin can model the org) — superseded by federated handoff via org_node_roles.",
-    "Third-party canvas library dependency (React Flow / GoJS / Cytoscape.js) — superseded by Vector-built <DiagramCanvas> primitive over Canvas2D + dagre + d3-zoom; the primitive becomes a Samantha API surface."
+    "Implicit assumption that 'Workspace' is a flat tag (R028 v1) \u2014 superseded; Workspace is now a tree node.",
+    "Single-author assumption (only gadmin can model the org) \u2014 superseded by federated handoff via org_node_roles.",
+    "Third-party canvas library dependency (React Flow / GoJS / Cytoscape.js) \u2014 superseded by Vector-built <DiagramCanvas> primitive over Canvas2D + dagre + d3-zoom; the primitive becomes a Samantha API surface."
   ],
   "work_item_backlog": [
     {
       "order": 1,
       "story_id": "00267",
-      "title": "Migration: org_nodes table — self-referential tree, layout metadata, soft-archive",
+      "title": "Migration: org_nodes table \u2014 self-referential tree, layout metadata, soft-archive",
       "card_id": "1765964863554717614",
       "card_url": "https://planka.mmffdev.com/cards/1765964863554717614",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 2,
       "story_id": "00268",
-      "title": "Migration: org_node_roles table — node-scoped grants, single-admin MVP constraint",
+      "title": "Migration: org_node_roles table \u2014 node-scoped grants, single-admin MVP constraint",
       "card_id": "1765964880726198205",
       "card_url": "https://planka.mmffdev.com/cards/1765964880726198205",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 3,
       "story_id": "00269",
-      "title": "Migration: org_node_view_state table — per-user collapse/expand state",
+      "title": "Migration: org_node_view_state table \u2014 per-user collapse/expand state",
       "card_id": "1765964896849102796",
       "card_url": "https://planka.mmffdev.com/cards/1765964896849102796",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 4,
@@ -104,23 +105,23 @@
       "title": "Migration: portfolio_items + user_stories org_node_id FK with two-phase backfill",
       "card_id": "1765964913198499803",
       "card_url": "https://planka.mmffdev.com/cards/1765964913198499803",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 5,
       "story_id": "00271",
-      "title": "orgdesign.Service Go module — sole writer with cycle-checked MoveNode",
+      "title": "orgdesign.Service Go module \u2014 sole writer with cycle-checked MoveNode",
       "card_id": "1765964929094911978",
       "card_url": "https://planka.mmffdev.com/cards/1765964929094911978",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 6,
       "story_id": "00272",
-      "title": "REST surface: /api/topology — node CRUD, bulk-position, subtree fetch, role grants, preview-move",
+      "title": "REST surface: /api/topology \u2014 node CRUD, bulk-position, subtree fetch, role grants, preview-move",
       "card_id": "1765964945427531769",
       "card_url": "https://planka.mmffdev.com/cards/1765964945427531769",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 7,
@@ -128,15 +129,15 @@
       "title": "Clamp predicate cross-cutting middleware on portfolio_items / user_stories list endpoints",
       "card_id": "1765964964536779784",
       "card_url": "https://planka.mmffdev.com/cards/1765964964536779784",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 8,
       "story_id": "00274",
-      "title": "Build <DiagramCanvas> primitive — Canvas2D renderer, hit-test, drag-drop, MiniMap, fitView",
+      "title": "Build <DiagramCanvas> primitive \u2014 Canvas2D renderer, hit-test, drag-drop, MiniMap, fitView",
       "card_id": "1765964980751959063",
       "card_url": "https://planka.mmffdev.com/cards/1765964980751959063",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 9,
@@ -144,71 +145,71 @@
       "title": "<DiagramCanvas> dagre layout in Web Worker plus d3-zoom pan/zoom",
       "card_id": "1765964996874863654",
       "card_url": "https://planka.mmffdev.com/cards/1765964996874863654",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 10,
       "story_id": "00276",
-      "title": "<DiagramCanvas> snap-to-grid — 10px dotted background and grid-rounded commits",
+      "title": "<DiagramCanvas> snap-to-grid \u2014 10px dotted background and grid-rounded commits",
       "card_id": "1765965013039711285",
       "card_url": "https://planka.mmffdev.com/cards/1765965013039711285",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 11,
       "story_id": "00277",
-      "title": "<DiagramCanvas> stress harness — 3,000-node Lloyds fixture gates the primitive in CI",
+      "title": "<DiagramCanvas> stress harness \u2014 3,000-node Lloyds fixture gates the primitive in CI",
       "card_id": "1765965029632377924",
       "card_url": "https://planka.mmffdev.com/cards/1765965029632377924",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 12,
       "story_id": "00278",
-      "title": "/topology page shell — full-bleed canvas, MiniMap, breadcrumbs, search, OrgNode renderer",
+      "title": "/topology page shell \u2014 full-bleed canvas, MiniMap, breadcrumbs, search, OrgNode renderer",
       "card_id": "1765965047676273747",
       "card_url": "https://planka.mmffdev.com/cards/1765965047676273747",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 13,
       "story_id": "00279",
-      "title": "/topology empty state — single root block, 'Add your first Office' CTA",
+      "title": "/topology empty state \u2014 single root block, 'Add your first Office' CTA",
       "card_id": "1765965064881308770",
       "card_url": "https://planka.mmffdev.com/cards/1765965064881308770",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 14,
       "story_id": "00280",
-      "title": "/topology side panel — name, label_override, layout, single-admin grant, archive",
+      "title": "/topology side panel \u2014 name, label_override, layout, single-admin grant, archive",
       "card_id": "1765965081121653873",
       "card_url": "https://planka.mmffdev.com/cards/1765965081121653873",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 15,
       "story_id": "00281",
-      "title": "/topology cross-team move preview modal — diff before commit",
+      "title": "/topology cross-team move preview modal \u2014 diff before commit",
       "card_id": "1765965097387164800",
       "card_url": "https://planka.mmffdev.com/cards/1765965097387164800",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 16,
       "story_id": "00282",
-      "title": "/topology?view=list fallback — accessible parity with the canvas",
+      "title": "/topology?view=list fallback \u2014 accessible parity with the canvas",
       "card_id": "1765965114189546639",
       "card_url": "https://planka.mmffdev.com/cards/1765965114189546639",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 17,
       "story_id": "00283",
-      "title": "Handoff inbox — notification + deep-link to /topology?focus=:nodeId",
+      "title": "Handoff inbox \u2014 notification + deep-link to /topology?focus=:nodeId",
       "card_id": "1765965135152678046",
       "card_url": "https://planka.mmffdev.com/cards/1765965135152678046",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 18,
@@ -216,23 +217,23 @@
       "title": "Drag-and-drop reparent + cycle prevention (client + server)",
       "card_id": "1765965157365712045",
       "card_url": "https://planka.mmffdev.com/cards/1765965157365712045",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 19,
       "story_id": "00285",
-      "title": "Samantha API exposure — samantha.diagram.canvas v1 with reference example app",
+      "title": "Samantha API exposure \u2014 samantha.diagram.canvas v1 with reference example app",
       "card_id": "1765965177565480124",
       "card_url": "https://planka.mmffdev.com/cards/1765965177565480124",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 20,
       "story_id": "00286",
-      "title": "Addressables adoption on /topology — every panel wrapped, canvas registers an address",
+      "title": "Addressables adoption on /topology \u2014 every panel wrapped, canvas registers an address",
       "card_id": "1765965198360839371",
       "card_url": "https://planka.mmffdev.com/cards/1765965198360839371",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 21,
@@ -240,41 +241,145 @@
       "title": "Audit: every Topology mutation logged with actor + timestamp",
       "card_id": "1765965220087334106",
       "card_url": "https://planka.mmffdev.com/cards/1765965220087334106",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 22,
       "story_id": "00288",
-      "title": "Federated handoff governance — single-level delegation gate, multi-admin rejected",
+      "title": "Federated handoff governance \u2014 single-level delegation gate, multi-admin rejected",
       "card_id": "1765965241570559209",
       "card_url": "https://planka.mmffdev.com/cards/1765965241570559209",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 23,
       "story_id": "00289",
-      "title": "Docs: docs/c_c_topology.md leaf — schema, clamp, handoff, MVP decisions, Phase X",
+      "title": "Docs: docs/c_c_topology.md leaf \u2014 schema, clamp, handoff, MVP decisions, Phase X",
       "card_id": "1765965262936343800",
       "card_url": "https://planka.mmffdev.com/cards/1765965262936343800",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 24,
       "story_id": "00290",
-      "title": "Docs: docs/c_c_diagram_canvas.md leaf — primitive API, snap-to-grid, performance contract, Samantha exposure",
+      "title": "Docs: docs/c_c_diagram_canvas.md leaf \u2014 primitive API, snap-to-grid, performance contract, Samantha exposure",
       "card_id": "1765965284755113223",
       "card_url": "https://planka.mmffdev.com/cards/1765965284755113223",
-      "status": "todo"
+      "status": "done"
+    },
+    {
+      "order": 25,
+      "story_id": "00310",
+      "title": "Reset topology canvas to a clean workspace (gadmin only)",
+      "card_id": "1767085172613711764",
+      "card_url": "https://planka.mmffdev.com/cards/1767085172613711764",
+      "status": "done"
+    },
+    {
+      "order": 26,
+      "story_id": "00311",
+      "title": "Animated edit flyout slides from canvas right edge; selected node animates to viewport centre",
+      "card_id": "1767085188711450531",
+      "card_url": "https://planka.mmffdev.com/cards/1767085188711450531",
+      "status": "done"
+    },
+    {
+      "order": 27,
+      "story_id": "00312",
+      "title": "Edit form in flyout: name, description, label_override (write-through to backend)",
+      "card_id": "1767085204758857650",
+      "card_url": "https://planka.mmffdev.com/cards/1767085204758857650",
+      "status": "done"
+    },
+    {
+      "order": 28,
+      "story_id": "00313",
+      "title": "org_levels first-class entities \u2014 table, FK on org_nodes, sole-writer service, depth invariant",
+      "card_id": "1767085221116643265",
+      "card_url": "https://planka.mmffdev.com/cards/1767085221116643265",
+      "status": "done"
+    },
+    {
+      "order": 29,
+      "story_id": "00314",
+      "title": "Three default org_levels seeded on first land \u2014 Organisation, Department, Division",
+      "card_id": "1767085237306656720",
+      "card_url": "https://planka.mmffdev.com/cards/1767085237306656720",
+      "status": "done"
+    },
+    {
+      "order": 30,
+      "story_id": "00315",
+      "title": "Node +/- spawn buttons on all four sides (top suppressed on root)",
+      "card_id": "1767085253236623327",
+      "card_url": "https://planka.mmffdev.com/cards/1767085253236623327",
+      "status": "done"
+    },
+    {
+      "order": 31,
+      "story_id": "00316",
+      "title": "Standard node geometry \u2014 fixed W\u00d7H, fixed sibling/parent padding, snap-to-10 alignment",
+      "card_id": "1767085268772325358",
+      "card_url": "https://planka.mmffdev.com/cards/1767085268772325358",
+      "status": "done"
+    },
+    {
+      "order": 32,
+      "story_id": "00317",
+      "title": "Dashed-dotted level-row dividers spanning canvas width, data-bound to org_levels",
+      "card_id": "1767085285398546429",
+      "card_url": "https://planka.mmffdev.com/cards/1767085285398546429",
+      "status": "done"
+    },
+    {
+      "order": 33,
+      "story_id": "00318",
+      "title": "Left-edge level-label boxes \u2014 fixed sizing, click-to-rename writes through to org_levels",
+      "card_id": "1767085302335144972",
+      "card_url": "https://planka.mmffdev.com/cards/1767085302335144972",
+      "status": "done"
+    },
+    {
+      "order": 34,
+      "story_id": "00319",
+      "title": "Mini parent/child tree-icon view inside flyout (elbow + sideways-T glyphs)",
+      "card_id": "1767085318491603995",
+      "card_url": "https://planka.mmffdev.com/cards/1767085318491603995",
+      "status": "done"
+    },
+    {
+      "order": 35,
+      "story_id": "00320",
+      "title": "Disconnect-not-delete semantics on - button (parent_id \u2192 null, audited, restorable)",
+      "card_id": "1767085334857778217",
+      "card_url": "https://planka.mmffdev.com/cards/1767085334857778217",
+      "status": "done"
+    },
+    {
+      "order": 36,
+      "story_id": "00321",
+      "title": "Disconnected nodes tray \u2014 list orphans, click-to-focus, reconnect picker",
+      "card_id": "1767085351693714488",
+      "card_url": "https://planka.mmffdev.com/cards/1767085351693714488",
+      "status": "done"
+    },
+    {
+      "order": 37,
+      "story_id": "00322",
+      "title": "Commit working model \u2014 gadmin-only flag flip; banner on post-commit edits; re-commit",
+      "card_id": "1767085367783064647",
+      "card_url": "https://planka.mmffdev.com/cards/1767085367783064647",
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
     {
       "order": 1,
-      "criterion": "Schema in place: org_nodes (self-referential tree), org_node_roles (node-scoped grants with re-delegate flag), org_node_view_state (per-user collapse), and org_node_id FK columns on portfolio_items + user_stories — all migrated and backfilled, no orphaned work items.",
+      "criterion": "Schema in place: org_nodes (self-referential tree), org_node_roles (node-scoped grants with re-delegate flag), org_node_view_state (per-user collapse), and org_node_id FK columns on portfolio_items + user_stories \u2014 all migrated and backfilled, no orphaned work items.",
       "proven_by": "Migration runs cleanly on dev/staging/prod; backfill query reports zero null org_node_id rows; goose status reports up-to-date.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00267",
         "00268",
@@ -290,11 +395,11 @@
     },
     {
       "order": 2,
-      "criterion": "orgdesign.Service is the sole writer for org_nodes, org_node_roles, org_node_view_state — direct INSERTs from outside the service are blocked at the lint/CI level (per the trust-no-one pattern from PLA-0005).",
+      "criterion": "orgdesign.Service is the sole writer for org_nodes, org_node_roles, org_node_view_state \u2014 direct INSERTs from outside the service are blocked at the lint/CI level (per the trust-no-one pattern from PLA-0005).",
       "proven_by": "lint:writer-boundary passes; grep for 'INSERT INTO org_nodes' outside backend/orgdesign returns zero matches.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00271",
         "00272"
@@ -310,7 +415,7 @@
       "proven_by": "Stress fixture test in dev/tests/diagram-canvas-stress.spec.ts passes in CI; performance metrics logged in test output; primitive runs without org-design code mounted.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00274",
         "00275",
@@ -328,7 +433,7 @@
       "proven_by": "Reference app loads in /apps/<example-id>; custom node renderer fires; pan/zoom/drag all work; address devtool can hover the embedded canvas and copy a valid address.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00285"
       ],
@@ -339,10 +444,10 @@
     {
       "order": 5,
       "criterion": "Federated handoff works end-to-end: gadmin creates a node and grants admin role to user X; user X receives a notification with deep-link; user X lands on /topology clamped to their subtree; user X can edit within the subtree but not outside it; if can_redelegate=true, user X can grant admin to user Y on a descendant node.",
-      "proven_by": "End-to-end test in dev/tests/topology-handoff.spec.ts; manual gadmin → padmin → lead chain verified on staging.",
+      "proven_by": "End-to-end test in dev/tests/topology-handoff.spec.ts; manual gadmin \u2192 padmin \u2192 lead chain verified on staging.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00283",
         "00288"
@@ -354,11 +459,11 @@
     },
     {
       "order": 6,
-      "criterion": "Clamp predicate is enforced server-side on every list endpoint that touches portfolio_items or user_stories — UI clamp is convenience only.",
+      "criterion": "Clamp predicate is enforced server-side on every list endpoint that touches portfolio_items or user_stories \u2014 UI clamp is convenience only.",
       "proven_by": "Penetration test: a viewer with clamp anchor on Engineering attempts to read Compliance items via direct API call; server returns 403 / empty; logged as denied.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00273"
       ],
@@ -372,7 +477,7 @@
       "proven_by": "Integration test with seeded fixture: move a Team from Engineering to Back Office; preview shows expected counts; commit applies; cancel leaves state untouched.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00281"
       ],
@@ -386,7 +491,7 @@
       "proven_by": "Test: attempt to drop Engineering onto its own descendant; client UI rejects with toast; direct API call returns 422 cycle-error.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00284"
       ],
@@ -400,7 +505,7 @@
       "proven_by": "Axe accessibility audit passes on /topology?view=list; functional test suite covers all canvas operations through the list surface.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00282"
       ],
@@ -414,7 +519,7 @@
       "proven_by": "Address devtool can hover the canvas and copy a valid address; lint:addressables on /topology returns zero violations.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00286"
       ],
@@ -424,11 +529,11 @@
     },
     {
       "order": 11,
-      "criterion": "MVP naming + scope decisions are honoured: page is named '<tenant>: Topology' (e.g. 'MMFFDev: Topology'); default node noun is 'Office' (overrideable per node); delegation is single-level (gadmin → padmin only — re-delegation deferred to Phase X); at most one active admin grant per node (multi-admin deferred to Phase X); archive places the node and its subtree in greyed-out limbo with role grants and FKs preserved (cascade semantics deferred to Phase X).",
+      "criterion": "MVP naming + scope decisions are honoured: page is named '<tenant>: Topology' (e.g. 'MMFFDev: Topology'); default node noun is 'Office' (overrideable per node); delegation is single-level (gadmin \u2192 padmin only \u2014 re-delegation deferred to Phase X); at most one active admin grant per node (multi-admin deferred to Phase X); archive places the node and its subtree in greyed-out limbo with role grants and FKs preserved (cascade semantics deferred to Phase X).",
       "proven_by": "UI copy uses 'Topology' and 'Office'; e2e test verifies single-level delegation gate; e2e test verifies multi-admin is rejected; archive test verifies subtree is greyed but kept; docs/c_c_org_design.md decisions table matches.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00278",
         "00279",
@@ -446,25 +551,441 @@
       "proven_by": "Unit test verifies position rounding to gridSize on drop; visual test confirms dotted grid renders and aligns to manual_x/manual_y values; toggle test verifies showGrid=false hides the grid; default page load on /topology shows grid on.",
       "story_id": null,
       "card_url": null,
-      "done": false,
+      "done": true,
       "story_ids": [
         "00276"
       ],
       "card_urls": [
         "https://planka.mmffdev.com/cards/1765965013039711285"
       ]
+    },
+    {
+      "order": 13,
+      "criterion": "A \"Reset canvas\" gadmin-only button on /topology opens a confirm dialog requiring the tenant name to be typed before the action commits.",
+      "proven_by": "As Proven by UI",
+      "story_id": "00310",
+      "card_url": "https://planka.mmffdev.com/cards/1767085172613711764",
+      "done": true
+    },
+    {
+      "order": 14,
+      "criterion": "POST /api/orgdesign/reset soft-archives every non-root org_node for the subscription and re-seeds the root row idempotently; non-gadmin callers receive 403.",
+      "proven_by": "As Proven by API",
+      "story_id": "00310",
+      "card_url": "https://planka.mmffdev.com/cards/1767085172613711764",
+      "done": true
+    },
+    {
+      "order": 15,
+      "criterion": "Every reset emits a topology.canvas.reset audit entry naming the actor, IP, and the count of nodes archived.",
+      "proven_by": "As Proven by audit",
+      "story_id": "00310",
+      "card_url": "https://planka.mmffdev.com/cards/1767085172613711764",
+      "done": true
+    },
+    {
+      "order": 16,
+      "criterion": "After reset, refreshing /topology lands on the empty-state CTA \u2014 no canvas-rendered nodes other than root.",
+      "proven_by": "As Proven by reload",
+      "story_id": "00310",
+      "card_url": "https://planka.mmffdev.com/cards/1767085172613711764",
+      "done": true
+    },
+    {
+      "order": 17,
+      "criterion": "Clicking a node animates the canvas viewport so the node sits in the visible-area centre (account for flyout width) over ~300ms easing-out, never instant-jumping.",
+      "proven_by": "As Proven by interaction",
+      "story_id": "00311",
+      "card_url": "https://planka.mmffdev.com/cards/1767085188711450531",
+      "done": true
+    },
+    {
+      "order": 18,
+      "criterion": "The flyout mounts as a right-side overlay panel that slides in from x=100% to its docked width with the same ~300ms easing; ESC and click-outside slide it back out and cancel the centring.",
+      "proven_by": "As Proven by DOM",
+      "story_id": "00311",
+      "card_url": "https://planka.mmffdev.com/cards/1767085188711450531",
+      "done": true
+    },
+    {
+      "order": 19,
+      "criterion": "The flyout registers as `<Panel name=\"topology_edit_flyout\">` so Samantha resolves it via samantha._viewport.app._kind.panel.topology_edit_flyout.",
+      "proven_by": "As Proven by addressability",
+      "story_id": "00311",
+      "card_url": "https://planka.mmffdev.com/cards/1767085188711450531",
+      "done": true
+    },
+    {
+      "order": 20,
+      "criterion": "Focus traps inside the flyout while open; pressing ESC returns focus to the previously-selected node.",
+      "proven_by": "As Proven by accessibility",
+      "story_id": "00311",
+      "card_url": "https://planka.mmffdev.com/cards/1767085188711450531",
+      "done": true
+    },
+    {
+      "order": 21,
+      "criterion": "New migration adds org_nodes.description text NOT NULL DEFAULT '' and the orgdesign service exposes PatchDescription.",
+      "proven_by": "As Proven by schema",
+      "story_id": "00312",
+      "card_url": "https://planka.mmffdev.com/cards/1767085204758857650",
+      "done": true
+    },
+    {
+      "order": 22,
+      "criterion": "Editing name, description, or label_override fires a single PATCH per field within 250ms of last keystroke; reload renders the saved values without further input.",
+      "proven_by": "As Proven by network",
+      "story_id": "00312",
+      "card_url": "https://planka.mmffdev.com/cards/1767085204758857650",
+      "done": true
+    },
+    {
+      "order": 23,
+      "criterion": "Each field edit emits a topology.node.renamed / topology.node.described / topology.node.relabelled audit row.",
+      "proven_by": "As Proven by audit",
+      "story_id": "00312",
+      "card_url": "https://planka.mmffdev.com/cards/1767085204758857650",
+      "done": true
+    },
+    {
+      "order": 24,
+      "criterion": "Killing the tab mid-edit and reopening /topology shows the most-recent saved state \u2014 no client buffer is consulted.",
+      "proven_by": "As Proven by resilience",
+      "story_id": "00312",
+      "card_url": "https://planka.mmffdev.com/cards/1767085204758857650",
+      "done": true
+    },
+    {
+      "order": 25,
+      "criterion": "New migration creates org_levels (id uuid PK, subscription_id uuid FK, depth int, name text, position int, audit cols, UNIQUE (subscription_id, depth)) and adds org_nodes.level_id uuid NOT NULL FK with backfill from existing tree depth.",
+      "proven_by": "As Proven by migration",
+      "story_id": "00313",
+      "card_url": "https://planka.mmffdev.com/cards/1767085221116643265",
+      "done": true
+    },
+    {
+      "order": 26,
+      "criterion": "orgdesign.Service gains CreateLevel, RenameLevel, ListLevels, and an internal resolveLevelForDepth helper that auto-creates a level row when a node spawns at a depth with no existing level; sole-writer boundary test extended to cover org_levels.",
+      "proven_by": "As Proven by service",
+      "story_id": "00313",
+      "card_url": "https://planka.mmffdev.com/cards/1767085221116643265",
+      "done": true
+    },
+    {
+      "order": 27,
+      "criterion": "Service-layer check rejects any CreateNode / MoveNode whose resolved tree depth differs from the requested level_id's depth (sentinel ErrLevelDepthMismatch \u2192 400).",
+      "proven_by": "As Proven by invariant",
+      "story_id": "00313",
+      "card_url": "https://planka.mmffdev.com/cards/1767085221116643265",
+      "done": true
+    },
+    {
+      "order": 28,
+      "criterion": "Unit test covers (a) auto-create on first occupant of a new depth, (b) idempotent re-create returns existing row, (c) cross-tenant level isolation.",
+      "proven_by": "As Proven by tests",
+      "story_id": "00313",
+      "card_url": "https://planka.mmffdev.com/cards/1767085221116643265",
+      "done": true
+    },
+    {
+      "order": 29,
+      "criterion": "Seed migration inserts three org_levels rows (depths 0/1/2, names \"Organisation\"/\"Department\"/\"Division\") for every existing subscription idempotently and for every new subscription via the provision-on-first-gadmin trigger.",
+      "proven_by": "As Proven by migration",
+      "story_id": "00314",
+      "card_url": "https://planka.mmffdev.com/cards/1767085237306656720",
+      "done": true
+    },
+    {
+      "order": 30,
+      "criterion": "GET /api/orgdesign/levels returns three rows for any tenant on first load with the correct names and depths.",
+      "proven_by": "As Proven by API",
+      "story_id": "00314",
+      "card_url": "https://planka.mmffdev.com/cards/1767085237306656720",
+      "done": true
+    },
+    {
+      "order": 31,
+      "criterion": "Spawning a node at depth-3 (no level row yet) creates an org_levels row for depth-3 named \"Level 4\" and the node's level_id resolves to it.",
+      "proven_by": "As Proven by autocreate",
+      "story_id": "00314",
+      "card_url": "https://planka.mmffdev.com/cards/1767085237306656720",
+      "done": true
+    },
+    {
+      "order": 32,
+      "criterion": "PATCH /api/orgdesign/levels/:id with {name: \"Region\"} updates the row; canvas re-renders the row band label without page reload.",
+      "proven_by": "As Proven by rename",
+      "story_id": "00314",
+      "card_url": "https://planka.mmffdev.com/cards/1767085237306656720",
+      "done": true
+    },
+    {
+      "order": 33,
+      "criterion": "DiagramCanvas renderNode draws +/- glyphs on all four sides of every non-root node and only below for root; hit zones are 16x16px and live above the node body.",
+      "proven_by": "As Proven by render",
+      "story_id": "00315",
+      "card_url": "https://planka.mmffdev.com/cards/1767085253236623327",
+      "done": true
+    },
+    {
+      "order": 34,
+      "criterion": "Clicking + on any side fires CreateNode (or MoveNode for parent-up) via topologyApi; the new node appears at the standard sibling padding and snap-grid position; level_id resolves to the appropriate org_levels row (auto-creating one if needed).",
+      "proven_by": "As Proven by spawn",
+      "story_id": "00315",
+      "card_url": "https://planka.mmffdev.com/cards/1767085253236623327",
+      "done": true
+    },
+    {
+      "order": 35,
+      "criterion": "Clicking - fires the disconnect path (parent_id \u2192 null) via PatchNode; the node remains in org_nodes and is reachable via the disconnected-nodes tray (story 00321).",
+      "proven_by": "As Proven by disconnect",
+      "story_id": "00315",
+      "card_url": "https://planka.mmffdev.com/cards/1767085253236623327",
+      "done": true
+    },
+    {
+      "order": 36,
+      "criterion": "Every spawn / disconnect via these buttons emits a topology.node.created or topology.node.disconnected audit row naming the actor, the affected node, and the directional intent.",
+      "proven_by": "As Proven by audit",
+      "story_id": "00315",
+      "card_url": "https://planka.mmffdev.com/cards/1767085253236623327",
+      "done": true
+    },
+    {
+      "order": 37,
+      "criterion": "A new app/components/diagram-canvas/geometry.ts exports NODE_W=140, NODE_H=56, COL_GAP=40, ROW_GAP=80, GRID=10 as the single source of truth; both buildDiagramFixture and the spawn handler import from it.",
+      "proven_by": "As Proven by config",
+      "story_id": "00316",
+      "card_url": "https://planka.mmffdev.com/cards/1767085268772325358",
+      "done": true
+    },
+    {
+      "order": 38,
+      "criterion": "A + on any side places the new node at exactly the prevailing padding and at a Y matching existing siblings in the same row band; coordinates are multiples of GRID.",
+      "proven_by": "As Proven by spawn",
+      "story_id": "00316",
+      "card_url": "https://planka.mmffdev.com/cards/1767085268772325358",
+      "done": true
+    },
+    {
+      "order": 39,
+      "criterion": "Every node rendered on the canvas has the exact same width and height; no element renders with a custom size (visual regression test asserts equality across a 5-node fixture).",
+      "proven_by": "As Proven by render",
+      "story_id": "00316",
+      "card_url": "https://planka.mmffdev.com/cards/1767085268772325358",
+      "done": true
+    },
+    {
+      "order": 40,
+      "criterion": "onNodeDragStop snaps to GRID and re-clamps Y to the level row band; cross-band drags trigger the move-preview modal not a free-form Y change.",
+      "proven_by": "As Proven by drag",
+      "story_id": "00316",
+      "card_url": "https://planka.mmffdev.com/cards/1767085268772325358",
+      "done": true
+    },
+    {
+      "order": 41,
+      "criterion": "The canvas renders one dashed-dotted line per gap between org_levels depths; the line spans the full visible canvas width and pans/zooms with the world transform.",
+      "proven_by": "As Proven by render",
+      "story_id": "00317",
+      "card_url": "https://planka.mmffdev.com/cards/1767085285398546429",
+      "done": true
+    },
+    {
+      "order": 42,
+      "criterion": "Adding a new org_levels row (auto-create on deeper spawn) immediately renders an additional divider; deleting/archiving a level row removes its divider.",
+      "proven_by": "As Proven by data binding",
+      "story_id": "00317",
+      "card_url": "https://planka.mmffdev.com/cards/1767085285398546429",
+      "done": true
+    },
+    {
+      "order": 43,
+      "criterion": "The divider stroke matches the connector stroke (same dash pattern, same colour, same width) \u2014 driven by a single token in geometry.ts / theme.",
+      "proven_by": "As Proven by style",
+      "story_id": "00317",
+      "card_url": "https://planka.mmffdev.com/cards/1767085285398546429",
+      "done": true
+    },
+    {
+      "order": 44,
+      "criterion": "At any zoom level [0.25x..2.0x], dividers render without artefacts and remain horizontal.",
+      "proven_by": "As Proven by zoom",
+      "story_id": "00317",
+      "card_url": "https://planka.mmffdev.com/cards/1767085285398546429",
+      "done": true
+    },
+    {
+      "order": 45,
+      "criterion": "A column of <Panel name=\"topology_level_label_<depth>\"> boxes pins to the canvas left edge with identical W=120, H=80 (constants in geometry.ts); never staggered; one box per org_levels row.",
+      "proven_by": "As Proven by layout",
+      "story_id": "00318",
+      "card_url": "https://planka.mmffdev.com/cards/1767085302335144972",
+      "done": true
+    },
+    {
+      "order": 46,
+      "criterion": "Clicking the box reveals an inline input bound to org_levels.name; blur or Enter writes through via PATCH /api/orgdesign/levels/:id; ESC reverts to the persisted value.",
+      "proven_by": "As Proven by editing",
+      "story_id": "00318",
+      "card_url": "https://planka.mmffdev.com/cards/1767085302335144972",
+      "done": true
+    },
+    {
+      "order": 47,
+      "criterion": "Non-gadmin actors see the box read-only; PATCH on the endpoint returns 403 for non-gadmin.",
+      "proven_by": "As Proven by gating",
+      "story_id": "00318",
+      "card_url": "https://planka.mmffdev.com/cards/1767085302335144972",
+      "done": true
+    },
+    {
+      "order": 48,
+      "criterion": "Every level rename emits a topology.level.renamed audit row with old_name and new_name fields.",
+      "proven_by": "As Proven by audit",
+      "story_id": "00318",
+      "card_url": "https://planka.mmffdev.com/cards/1767085302335144972",
+      "done": true
+    },
+    {
+      "order": 49,
+      "criterion": "The flyout's right column shows up to 3 generations centred on the selected node (parent + selected + children); rendering uses ASCII-style elbow and T glyphs in a fixed-width font.",
+      "proven_by": "As Proven by render",
+      "story_id": "00319",
+      "card_url": "https://planka.mmffdev.com/cards/1767085318491603995",
+      "done": true
+    },
+    {
+      "order": 50,
+      "criterion": "Clicking any name in the tree-icon view fires onNodeSelect, animates the flyout (story 00311) onto the new node, and scrolls the tree-icon view to keep the new selection centred.",
+      "proven_by": "As Proven by interaction",
+      "story_id": "00319",
+      "card_url": "https://planka.mmffdev.com/cards/1767085318491603995",
+      "done": true
+    },
+    {
+      "order": 51,
+      "criterion": "The tree-icon view re-renders when org_nodes for the selected branch change (parent rename, child added via +, child disconnected via -).",
+      "proven_by": "As Proven by data binding",
+      "story_id": "00319",
+      "card_url": "https://planka.mmffdev.com/cards/1767085318491603995",
+      "done": true
+    },
+    {
+      "order": 52,
+      "criterion": "The view registers as <Panel name=\"topology_tree_icon\"> so Samantha can target it via the addressables substrate.",
+      "proven_by": "As Proven by addressability",
+      "story_id": "00319",
+      "card_url": "https://planka.mmffdev.com/cards/1767085318491603995",
+      "done": true
+    },
+    {
+      "order": 53,
+      "criterion": "orgdesign.Service.DisconnectNode(ctx, sub, nodeID, actor) sets parent_id=NULL on the target node, leaves all descendants in place (their parent_id chain still resolves to the now-orphaned subtree root), and emits a single audit row.",
+      "proven_by": "As Proven by service",
+      "story_id": "00320",
+      "card_url": "https://planka.mmffdev.com/cards/1767085334857778217",
+      "done": true
+    },
+    {
+      "order": 54,
+      "criterion": "No DELETE statement runs; SELECT count(*) FROM org_nodes is unchanged before and after a disconnect.",
+      "proven_by": "As Proven by no-delete",
+      "story_id": "00320",
+      "card_url": "https://planka.mmffdev.com/cards/1767085334857778217",
+      "done": true
+    },
+    {
+      "order": 55,
+      "criterion": "A subsequent topologyApi.move(disconnectedNodeID, newParentID) reattaches the entire subtree under the new parent; depth/level_id auto-resolves.",
+      "proven_by": "As Proven by reversibility",
+      "story_id": "00320",
+      "card_url": "https://planka.mmffdev.com/cards/1767085334857778217",
+      "done": true
+    },
+    {
+      "order": 56,
+      "criterion": "The canvas removes the disconnected subtree from the main render and adds it to the disconnected tray; clicking - on the root row is rejected with a sentinel error (root cannot disconnect from itself).",
+      "proven_by": "As Proven by canvas",
+      "story_id": "00320",
+      "card_url": "https://planka.mmffdev.com/cards/1767085334857778217",
+      "done": true
+    },
+    {
+      "order": 57,
+      "criterion": "New GET /api/orgdesign/disconnected returns an array of {id, name, descendant_count, disconnected_at, disconnected_by}; respects clamp predicate.",
+      "proven_by": "As Proven by API",
+      "story_id": "00321",
+      "card_url": "https://planka.mmffdev.com/cards/1767085351693714488",
+      "done": true
+    },
+    {
+      "order": 58,
+      "criterion": "A new <Panel name=\"topology_disconnected_tray\"> renders the list at the bottom of /topology; collapsible; row count badge in the title.",
+      "proven_by": "As Proven by panel",
+      "story_id": "00321",
+      "card_url": "https://planka.mmffdev.com/cards/1767085351693714488",
+      "done": true
+    },
+    {
+      "order": 59,
+      "criterion": "Clicking \"Reconnect\u2026\" on a row opens the existing PreviewMoveModal with the orphan as the source and a parent picker; commit reattaches the subtree and removes the row from the tray.",
+      "proven_by": "As Proven by reconnect",
+      "story_id": "00321",
+      "card_url": "https://planka.mmffdev.com/cards/1767085351693714488",
+      "done": true
+    },
+    {
+      "order": 60,
+      "criterion": "Tray and every reconnect button register as addressables under samantha._viewport.app._kind.panel.topology_disconnected_tray.",
+      "proven_by": "As Proven by addressability",
+      "story_id": "00321",
+      "card_url": "https://planka.mmffdev.com/cards/1767085351693714488",
+      "done": true
+    },
+    {
+      "order": 61,
+      "criterion": "New migration adds subscriptions.topology_committed_at timestamptz NULL and subscriptions.topology_committed_by uuid NULL FK users.",
+      "proven_by": "As Proven by migration",
+      "story_id": "00322",
+      "card_url": "https://planka.mmffdev.com/cards/1767085367783064647",
+      "done": true
+    },
+    {
+      "order": 62,
+      "criterion": "orgdesign.Service.Commit(ctx, sub, actor) sets the two columns; service rejects non-gadmin (sentinel ErrCommitForbidden \u2192 403). Re-commit re-stamps both fields.",
+      "proven_by": "As Proven by service",
+      "story_id": "00322",
+      "card_url": "https://planka.mmffdev.com/cards/1767085367783064647",
+      "done": true
+    },
+    {
+      "order": 63,
+      "criterion": "When any topology mutation lands with topology_committed_at NOT NULL and the mutation post-dates committed_at, /topology renders a dirty-since-commit banner with a \"Re-commit\" button (gadmin only).",
+      "proven_by": "As Proven by banner",
+      "story_id": "00322",
+      "card_url": "https://planka.mmffdev.com/cards/1767085367783064647",
+      "done": true
+    },
+    {
+      "order": 64,
+      "criterion": "topology.committed and topology.recommitted audit rows include actor, IP, descendant_count, and the previous committed_at.",
+      "proven_by": "As Proven by audit",
+      "story_id": "00322",
+      "card_url": "https://planka.mmffdev.com/cards/1767085367783064647",
+      "done": true
     }
   ],
   "risks": [
     {
       "impact": 4,
-      "risk": "Build-our-own-canvas effort is under-scoped — Vector engineers spend longer than the 3–5 week estimate on the <DiagramCanvas> primitive because Canvas2D rendering, hit-testing, and dagre integration each surface unforeseen edge cases (text metrics, retina scaling, dagre worker message bottlenecks, drag inertia, focus management, keyboard navigation).",
-      "mitigation": "Build the primitive against the 3,000-node stress harness from day one — performance is a CI gate, not a final polish step. Cap Phase 1 features to: rectangles, parent-child orthogonal edges, drag-drop with cycle hooks, minimap, fitView, debounced position commits, pluggable node renderer. Defer to Phase 2: bezier edges, multi-select, keyboard shortcuts beyond fit/zoom, edge labels, custom edge styles. Reuse battle-tested libraries for the hard maths: <strong>dagre</strong> (MIT) for layout, <strong>d3-zoom</strong> (BSD) for pan/zoom transforms — we only own the renderer, hit-test, and interaction layer. If Phase 1 slips beyond 6 weeks, fall back to <strong>Cytoscape.js</strong> (MIT, canvas-rendered, scales to 10k+ nodes) as a stopgap behind the same <DiagramCanvas> facade so the Samantha API contract is unchanged."
+      "risk": "Build-our-own-canvas effort is under-scoped \u2014 Vector engineers spend longer than the 3\u20135 week estimate on the <DiagramCanvas> primitive because Canvas2D rendering, hit-testing, and dagre integration each surface unforeseen edge cases (text metrics, retina scaling, dagre worker message bottlenecks, drag inertia, focus management, keyboard navigation).",
+      "mitigation": "Build the primitive against the 3,000-node stress harness from day one \u2014 performance is a CI gate, not a final polish step. Cap Phase 1 features to: rectangles, parent-child orthogonal edges, drag-drop with cycle hooks, minimap, fitView, debounced position commits, pluggable node renderer. Defer to Phase 2: bezier edges, multi-select, keyboard shortcuts beyond fit/zoom, edge labels, custom edge styles. Reuse battle-tested libraries for the hard maths: <strong>dagre</strong> (MIT) for layout, <strong>d3-zoom</strong> (BSD) for pan/zoom transforms \u2014 we only own the renderer, hit-test, and interaction layer. If Phase 1 slips beyond 6 weeks, fall back to <strong>Cytoscape.js</strong> (MIT, canvas-rendered, scales to 10k+ nodes) as a stopgap behind the same <DiagramCanvas> facade so the Samantha API contract is unchanged."
     },
     {
       "impact": 4,
-      "risk": "Naming controversy (Rally 'Project' failure) repeats in Vector — Barclays-style 20-minute training arguments about what to call the page or the nodes.",
-      "mitigation": "Page name is 'Org Design' (descriptive, hard to misread). Node noun is gadmin-configurable per tenant via label_override — no imposed taxonomy. We don't pick a wrong word; we let users pick their own."
+      "risk": "Naming controversy (Rally 'Project' failure) repeats in Vector \u2014 Barclays-style 20-minute training arguments about what to call the page or the nodes.",
+      "mitigation": "Page name is 'Org Design' (descriptive, hard to misread). Node noun is gadmin-configurable per tenant via label_override \u2014 no imposed taxonomy. We don't pick a wrong word; we let users pick their own."
     },
     {
       "impact": 4,
@@ -478,7 +999,7 @@
     },
     {
       "impact": 3,
-      "risk": "Clamp predicate on every list endpoint is invasive — feature teams may forget to apply it, or apply it inconsistently, opening data-leak paths.",
+      "risk": "Clamp predicate on every list endpoint is invasive \u2014 feature teams may forget to apply it, or apply it inconsistently, opening data-leak paths.",
       "mitigation": "Implement as middleware, not as a per-endpoint call. Add a lint rule that flags any list endpoint touching portfolio_items / user_stories without the middleware. Penetration test in acceptance criteria #6."
     },
     {
@@ -488,59 +1009,59 @@
     },
     {
       "impact": 3,
-      "risk": "Samantha API exposure of <DiagramCanvas> creates a stable contract obligation — changes to the primitive's prop shape or event surface break custom apps.",
-      "mitigation": "Version the Samantha primitive surface (samantha.diagram.canvas v1) from day one; semver internal API; document deprecation policy in the SDK reference. Ship the reference example app as a contract test — if the example app breaks in CI, the contract changed and we either revert or bump the version."
+      "risk": "Samantha API exposure of <DiagramCanvas> creates a stable contract obligation \u2014 changes to the primitive's prop shape or event surface break custom apps.",
+      "mitigation": "Version the Samantha primitive surface (samantha.diagram.canvas v1) from day one; semver internal API; document deprecation policy in the SDK reference. Ship the reference example app as a contract test \u2014 if the example app breaks in CI, the contract changed and we either revert or bump the version."
     },
     {
       "impact": 3,
-      "risk": "MVP scope creep — once stakeholders see the canvas, requests for re-delegation, multi-admin, archive-cascade, and matrix orgs land mid-implementation, blowing the 'functional MVP' framing.",
+      "risk": "MVP scope creep \u2014 once stakeholders see the canvas, requests for re-delegation, multi-admin, archive-cascade, and matrix orgs land mid-implementation, blowing the 'functional MVP' framing.",
       "mitigation": "Phase X deferrals are written into the plan, the leaf doc, and acceptance criterion #11. Story titles for MVP work include the suffix '(MVP)' so triage sees the cut. Phase X work gets its own future plan (PLA-NNNN); requests get parked there, not folded into PLA-0006."
     }
   ],
   "references": [
     {
       "kind": "internal",
-      "label": "R028 — Aggregator paper §8 (Path C clarified, C.2)",
+      "label": "R028 \u2014 Aggregator paper \u00a78 (Path C clarified, C.2)",
       "href": "/dev/research/R028"
     },
     {
       "kind": "internal",
-      "label": "R029 — Canvas library evaluation (build-vs-buy evidence base)",
+      "label": "R029 \u2014 Canvas library evaluation (build-vs-buy evidence base)",
       "href": "/dev/research/R029"
     },
     {
       "kind": "internal",
-      "label": "R022 — Rally hierarchy",
+      "label": "R022 \u2014 Rally hierarchy",
       "href": "/dev/research/R022"
     },
     {
       "kind": "internal",
-      "label": "R023 — Rally Projects / scoping containers",
+      "label": "R023 \u2014 Rally Projects / scoping containers",
       "href": "/dev/research/R023"
     },
     {
       "kind": "internal",
-      "label": "PLA-0005 — Universal addressable element registry (substrate this plan adopts)",
+      "label": "PLA-0005 \u2014 Universal addressable element registry (substrate this plan adopts)",
       "href": "/dev/plans/PLA-0005"
     },
     {
       "kind": "internal",
-      "label": "Schema docs — portfolio_items + user_stories",
+      "label": "Schema docs \u2014 portfolio_items + user_stories",
       "href": "/docs/c_schema"
     },
     {
       "kind": "external",
-      "label": "dagre layout (MIT) — used inside <DiagramCanvas>",
+      "label": "dagre layout (MIT) \u2014 used inside <DiagramCanvas>",
       "href": "https://github.com/dagrejs/dagre"
     },
     {
       "kind": "external",
-      "label": "d3-zoom (BSD) — pan/zoom transforms inside <DiagramCanvas>",
+      "label": "d3-zoom (BSD) \u2014 pan/zoom transforms inside <DiagramCanvas>",
       "href": "https://github.com/d3/d3-zoom"
     },
     {
       "kind": "external",
-      "label": "Cytoscape.js (MIT) — documented stopgap if <DiagramCanvas> Phase 1 slips beyond 6 weeks",
+      "label": "Cytoscape.js (MIT) \u2014 documented stopgap if <DiagramCanvas> Phase 1 slips beyond 6 weeks",
       "href": "https://js.cytoscape.org"
     }
   ]

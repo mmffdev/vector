@@ -108,7 +108,7 @@ export default function UserAvatarMenu() {
         <div className="avatar-menu__panel" role="menu" aria-label="Account menu">
           <div className="avatar-menu__header">
             <div className="avatar-menu__email">{user.email}</div>
-            <div className="avatar-menu__role">{user.role}</div>
+            <div className="avatar-menu__role">{user.role.label}</div>
           </div>
           {groupedAdminPages.map(({ tag, items }) => (
             <div key={tag.enum} className="avatar-menu__group">

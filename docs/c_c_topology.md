@@ -34,16 +34,42 @@ Single-author org-design doesn't scale to Lloyds-class trees (1,000–3,000 node
 
 1. Gadmin draws the top-level skeleton — root Office plus first-level Offices.
 2. For each top-level Office, gadmin grants `admin` role to a padmin.
-3. Padmin receives a notification, deep-link lands them on `/topology?focus=:nodeId` clamped to their subtree, with empty-state CTA: "Define this *<label_override>*'s structure".
+3. Padmin receives a notification (story 00283) — inbox row plus toast — with a deep-link to `/topology?focus=:nodeId`. Landing on that URL clamps the canvas to their subtree and shows the empty-state CTA "Define this *<label_override>*'s structure".
 4. Padmin builds the subtree to whatever depth they need.
 
-**Phase X:** padmin re-delegation to leads (a `can_redelegate=true` flag on the grant). Schema is ready; UI doesn't expose it.
+### Governance gate (story 00288)
 
-Every grant/revoke is audited. Gadmin retains override at any node.
+The Service refuses any grant whose `granterRole` is not `gadmin` and any grant whose `can_redelegate=true`. Two sentinel errors carry the gate:
+
+- `ErrDelegationDepth` — only gadmin may issue grants in MVP. Handler maps to **403**.
+- `ErrRedelegationDisabled` — `can_redelegate` is reserved for Phase X and must be `false`. Handler maps to **403**.
+
+Empty `granterRole` is treated as gadmin so service-layer test fixtures and tooling that pre-authorise outside the HTTP path keep working. The handler always passes the live caller's role, so production traffic is gated.
+
+### Audit (story 00287)
+
+Every Service mutation is logged via `audit.Logger` at the handler layer (best-effort, never blocks the response). Actions emitted:
+
+- `topology.node.created`, `topology.node.renamed`, `topology.node.moved`, `topology.node.archived`, `topology.node.bulk_position`
+- `topology.role.granted`, `topology.role.revoked`
+
+`org_node_view_state` is **not** audited — it's a per-user UI preference, not a topology change. Audit wiring lives in `handler.go` (`logAudit` helper + `clientIP` extraction); the Service signature is left clean so the sole-writer boundary doesn't need to know about actors or IPs.
+
+Gadmin retains override at any node.
 
 ## Diagram primitive
 
-The canvas is `app/components/diagram-canvas/` — Vector-built, **not** React Flow / GoJS / Cytoscape. See [`c_c_diagram_canvas.md`](c_c_diagram_canvas.md) for API and performance contract. Includes 10px snap-to-grid by default. Primitive is also exposed via Samantha API (`samantha.diagram.canvas`) so custom-app authors can mount it.
+The canvas is `app/components/diagram-canvas/` — Vector-built, **not** React Flow / GoJS / Cytoscape. See [`c_c_diagram_canvas.md`](c_c_diagram_canvas.md) for API and performance contract. Includes 10px snap-to-grid by default. Primitive is also exposed via Samantha API (`samantha.diagram.canvas`, frozen at v1 — story 00285) so custom-app authors can mount it. The frozen v1 surface is enforced at compile time by [`app/lib/samantha.contract.ts`](../app/lib/samantha.contract.ts).
+
+## Addressables (story 00286)
+
+`/topology` is fully wired into the PLA-0005 substrate:
+
+- The user route group's layout supplies `<ViewportSlot kind="app">` so every Panel under `/topology` registers under `samantha._viewport.app.…`.
+- Each named region — `topology_focus_cta`, `topology_error`, `topology_empty`, `topology_canvas`, `topology_side_panel` — is a `<Panel name="…">`.
+- `<DiagramCanvas name="topology_canvas">` registers itself as a `diagram_canvas`-kind addressable via `useRegisterAddressable`, so Samantha can resolve and pilot the canvas the same way it resolves panels and tables.
+
+`npm run lint:addressables` is the CI gate.
 
 ## Performance contract
 
@@ -67,6 +93,31 @@ Locked 2026-05-02 to unblock storification. Decisions reflected in story titles,
 | Archive semantics | **Full access preserved; archived nodes go to limbo.** Archiving a node greys it (and its entire subtree) out on the canvas, leaves all role grants and FK relationships intact, and excludes the subtree from default queries (clamp predicate filters `soft_archive=true` unless the caller asks for archived). Children-of-archived-node deep-worm-hole semantics (cascade vs reparent vs orphan) are deferred to **Phase X**. MVP behaviour: archived = greyed-out, kept in place, kept reachable, kept revertable. |
 | Snap-to-grid | **10px dotted grid, on by default.** Drag commits and auto-layout outputs both snap to grid intersections. `manual_x` / `manual_y` always persisted as multiples of `gridSize`. |
 
+## Canvas-management UX (PLA-0006 stories 00310–00322)
+
+Built on top of the MVP foundation. Every UI surface below mounts inside `app/(user)/topology/page.tsx` unless noted; backend writes go through `orgdesign.Service` (sole writer).
+
+- **Slide-in edit flyout (`<Panel name="topology_edit_flyout">`)** — right-side overlay over the canvas pane only; transforms `translateX(100%) → 0` over 300ms cubic-bezier; selecting a node animates the d3-zoom viewport so the node centres in the visible canvas to the LEFT of the flyout (`offsetX = -FLYOUT_WIDTH/2`); ESC closes and restores prior focus; Tab cycles inside.
+- **Write-through field edits** — name, description, label_override each have their own 250ms-debounced trailing-edge PATCH carrying exactly one field. Backend emits field-specific audit actions: `topology.node.renamed | described | relabelled`. Migration `093_org_nodes_description_not_null.sql` makes `description TEXT NOT NULL DEFAULT ''` so client + server agree '' means "no description".
+- **Mini parent/children tree (`MiniTreeView`)** — header of the flyout; shows parent (one hop up), self, and direct children as clickable rows; sourced from the in-memory `tree` (no extra fetch); each click swaps `selectedId` and the centring effect re-animates.
+- **Disconnect-not-delete** — `service.DisconnectNode` sets `parent_id = NULL` (no DELETE, no archive); idempotent on already-detached roots; the subtree stays live and reachable via the disconnected tray.
+- **Disconnected nodes tray (`<Panel name="topology_disconnected_tray">`)** — left-side slide-in mirroring the flyout pattern; toolbar toggle is shown only when at least one orphan exists. Each row offers a re-attach `<select>` populated from every live node EXCEPT self and descendants (cycle filter). Re-attach calls `topologyApi.move(rootId, parentId)`.
+- **Reset canvas (gadmin-only)** — toolbar button → confirm modal requires typing `RESET`; `POST /api/topology/reset` mass-archives every live node (role grants + view-state preserved). Backend re-checks `actorRole == "gadmin"` independently of the UI gate.
+- **Commit working model (gadmin-only)** — `subscriptions.topology_committed_at|by` checkpoint; `GetCommitStatus` returns `{committed_at, committed_by, last_node_update, dirty_since_commit}`; UI banner shown when dirty (any node `updated_at > committed_at`). Migration `092_subscriptions_topology_committed.sql`.
+
+### Endpoints (added on top of the MVP `/api/topology` surface)
+
+- `PATCH /api/topology/nodes/:id` — sparse field patch; one field per call to drive field-specific audit action.
+- `POST /api/topology/nodes/:id/disconnect` — parent_id → NULL.
+- `GET /api/topology/disconnected` — orphan list excluding canonical root.
+- `GET /api/topology/levels`, `POST /api/topology/levels`, `PATCH /api/topology/levels/:id` — first-class `org_levels`.
+- `GET /api/topology/commit`, `POST /api/topology/commit` — commit status and stamp.
+- `POST /api/topology/reset` — gadmin-only mass-archive.
+
+### Sentinel errors (sole-writer boundary)
+
+`ErrInvalidName` (empty patch / blank name), `ErrCommitForbidden`, `ErrResetForbidden` (non-gadmin), `ErrCycleDetected` (existing). Handlers map to 400 / 403 respectively.
+
 ## Phase X (deferred)
 
 These ship after MVP — schema is ready, UI is not:
@@ -82,4 +133,5 @@ These ship after MVP — schema is ready, UI is not:
 ## What this doc does NOT cover
 
 - The diagram primitive itself — see [`c_c_diagram_canvas.md`](c_c_diagram_canvas.md).
-- The Samantha API surface — see SDK reference once written.
+- The Samantha API surface — see [`app/lib/samantha.contract.ts`](../app/lib/samantha.contract.ts) for the v1 frozen contract and the wider SDK reference once written.
+- The PLA-0005 addressables substrate it adopts — see [`c_c_addressables.md`](c_c_addressables.md).

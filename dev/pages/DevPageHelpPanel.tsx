@@ -223,10 +223,10 @@ export default function DevPageHelpPanel() {
   }, [rows, search]);
 
   if (!user) return null;
-  if (user.role !== "gadmin") {
+  if (user.role.code !== "gadmin") {
     return (
       <div className="dev-research-empty">
-        Page Help editor is gadmin-only. Your role: <code>{user.role}</code>.
+        Page Help editor is gadmin-only. Your role: <code>{user.role.code}</code>.
       </div>
     );
   }

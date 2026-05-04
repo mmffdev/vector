@@ -11,11 +11,38 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
-type Handler struct{ Svc *Service }
+type Handler struct {
+	Svc          *Service
+	PermResolver *permissions.Resolver
+}
 
-func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
+func NewHandler(s *Service, res *permissions.Resolver) *Handler {
+	return &Handler{Svc: s, PermResolver: res}
+}
+
+// targetRoleCreateCode maps a requested target Role to the specific
+// users.create.<target> permission code the actor must hold. The route
+// is gated by RequireAnyPermission across all five codes; this map
+// turns that OR-gate into the AND-gate the creator matrix actually
+// requires (PLA-0007 AC #4). Returns "" for unknown roles.
+func targetRoleCreateCode(role models.Role) permissions.Code {
+	switch role {
+	case models.RoleGAdmin:
+		return permissions.UsersCreateGadmin
+	case models.RolePAdmin:
+		return permissions.UsersCreatePadmin
+	case models.RoleUser:
+		return permissions.UsersCreateUser
+	case "team_lead":
+		return permissions.UsersCreateTeamLead
+	case "external":
+		return permissions.UsersCreateExternal
+	}
+	return ""
+}
 
 type createReq struct {
 	Email string      `json:"email"`
@@ -36,6 +63,25 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Role == "" {
 		req.Role = models.RoleUser
+	}
+	// Creator-matrix discriminator (PLA-0007 AC #4).
+	// The route-level gate is RequireAnyPermission across the five
+	// users.create.<target> codes, which only proves the actor can
+	// create *some* role. Here we assert the actor holds the specific
+	// code for the requested target.
+	want := targetRoleCreateCode(req.Role)
+	if want == "" {
+		http.Error(w, "unknown_target_role", http.StatusBadRequest)
+		return
+	}
+	set, err := h.PermResolver.PermissionsFor(r.Context(), actor.ID)
+	if err != nil {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if _, ok := set[want]; !ok {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
 	}
 	// Tenant always comes from the verified session, never the payload.
 	// See c_security.md#input-comes-from-the-session-not-the-payload.
@@ -66,8 +112,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type patchReq struct {
-	Role     *models.Role `json:"role,omitempty"`
-	IsActive *bool        `json:"is_active,omitempty"`
+	Role       *models.Role `json:"role,omitempty"`
+	IsActive   *bool        `json:"is_active,omitempty"`
+	FirstName  *string      `json:"first_name,omitempty"`
+	LastName   *string      `json:"last_name,omitempty"`
+	Department *string      `json:"department,omitempty"`
 }
 
 func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +131,13 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.Update(r.Context(), id, UpdateInput{Role: req.Role, IsActive: req.IsActive}, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Update(r.Context(), id, UpdateInput{
+		Role:       req.Role,
+		IsActive:   req.IsActive,
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		Department: req.Department,
+	}, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -95,6 +150,59 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	actor := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	if err := h.Svc.Delete(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, ErrRoleCeiling) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type resetResp struct {
+	Email    string `json:"email"`
+	ResetURL string `json:"reset_url,omitempty"`
+}
+
+func (h *Handler) IssueReset(w http.ResponseWriter, r *http.Request) {
+	actor := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+	link, err := h.Svc.IssueResetLink(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, ErrRoleCeiling) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Look up the email from the same row for the response payload.
+	var email string
+	_ = h.Svc.Pool.QueryRow(r.Context(), `SELECT email FROM users WHERE id = $1`, id).Scan(&email)
+	writeJSON(w, http.StatusOK, resetResp{Email: email, ResetURL: link})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

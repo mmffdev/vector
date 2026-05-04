@@ -12,7 +12,7 @@ interface Target {
 
 export default function AddressDevtool() {
   const { user } = useAuth();
-  const enabled = !isProd || user?.role === "gadmin";
+  const enabled = !isProd || user?.role.code === "gadmin";
   if (!enabled) return null;
   return <Devtool />;
 }

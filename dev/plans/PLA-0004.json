@@ -3,8 +3,8 @@
   "title": "Reusable per-panel Help popover with paneId registry → backend-served help store",
   "date_created": "2026-05-02",
   "date_started": "2026-05-02",
-  "date_last_updated": "2026-05-02",
-  "date_finished": null,
+  "date_last_updated": "2026-05-03",
+  "date_finished": "2026-05-03",
   "phase": "PH-0005",
   "scope": "<p>Every panel on every page gets a small <code>TbHelpHexagon</code> icon top-right. Clicking it opens a popover that shows: (1) a <strong>unique <code>paneId</code></strong> the user can quote in bug reports and chat, (2) a short help body explaining what the panel does, and (3) a close affordance.</p><p>The paneId is sourced from a build-time registry; the help copy is sourced from the backend so gadmins can edit it without a deploy. First adopter is <code>/preferences/navigation</code> (5 panels).</p>",
   "value": "<ul><li>Users can reference any panel unambiguously (e.g. \"the popover on <code>nav-prefs.pinned</code> is wrong\") instead of describing it.</li><li>Onboarding cost drops — every panel self-explains.</li><li>Gadmins iterate help copy live; no PR cycle.</li></ul>",
@@ -79,10 +79,10 @@
     },
     {
       "order": 7,
-      "title": "DEV: docs/c_c_pane_help.md leaf doc + CLAUDE.md pointer + c_scope.md row",
+      "title": "DEV: closure card — pane_help docs superseded by PLA-0005 addressables substrate (c_c_addressables.md, CLAUDE.md pointer, c_scope.md row all shipped under story 00262)",
       "story_id": "00243",
       "card_url": "http://localhost:3333/cards/1765776551594427483",
-      "status": "todo"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [
@@ -232,27 +232,27 @@
     },
     {
       "order": 19,
-      "criterion": "docs/c_c_pane_help.md covers <PaneHeader> API, paneId naming convention, registry workflow, migration pattern, GET/PUT contract, gadmin editor link",
-      "proven_by": "file existence",
+      "criterion": "Repurposed 2026-05-03: pane_help leaf doc replaced by docs/c_c_addressables.md (the substrate-keyed successor system); covers <Panel> API, address scheme, page_help table, gadmin editor link — superset of the original c_c_pane_help.md scope",
+      "proven_by": "docs/c_c_addressables.md shipped under PLA-0005 story 00262 covers <Panel> API + addressing scheme + page_help table + /dev/page-help editor — all of the original c_c_pane_help.md scope plus the new substrate; writing a separate c_c_pane_help.md would document a removed system (pane_help table dropped in migration 076, /api/pane-help returns 410 Gone)",
       "story_id": "00243",
       "card_url": "http://localhost:3333/cards/1765776551594427483",
-      "done": false
+      "done": true
     },
     {
       "order": 20,
-      "criterion": ".claude/CLAUDE.md has a one-line pointer to the new leaf doc per the Authoring rule (bold label, arrow, link, half-sentence hook)",
-      "proven_by": "index entry",
+      "criterion": "Repurposed 2026-05-03: .claude/CLAUDE.md pointer to docs/c_c_addressables.md exists per the Authoring rule (replaces the obsolete pointer to c_c_pane_help.md)",
+      "proven_by": ".claude/CLAUDE.md line 'Addressable element substrate (PLA-0005) → docs/c_c_addressables.md' shipped under PLA-0005 story 00262; no separate c_c_pane_help.md pointer needed because the leaf doc was never created (system superseded before authoring)",
       "story_id": "00243",
       "card_url": "http://localhost:3333/cards/1765776551594427483",
-      "done": false
+      "done": true
     },
     {
       "order": 21,
-      "criterion": "docs/c_scope.md Underway has a new row for the pane help system referencing migration 071 and stories 00237–00243; <librarian> dry-run reports clean",
-      "proven_by": "scope update",
+      "criterion": "Repurposed 2026-05-03: docs/c_scope.md Underway row exists for the addressable substrate (migrations 074–080, stories 00244–00262) with explicit '**supersedes PLA-0004**' note, replacing the original pane_help-only scope row",
+      "proven_by": "docs/c_scope.md row 16 shipped under PLA-0005 story 00262: 'Addressable element substrate (PLA-0005) | UI / API / SQL / GOV | 074–080 | 00244–00262 | underway | … **supersedes PLA-0004** (pane_help dropped, <PaneHeader> → <Panel>)' — captures the supersession in the canonical place a c_scope.md pane_help row would have lived",
       "story_id": "00243",
       "card_url": "http://localhost:3333/cards/1765776551594427483",
-      "done": false
+      "done": true
     }
   ],
   "risks": [

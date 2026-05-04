@@ -7,13 +7,6 @@
 set -e
 ROOT="$(git rev-parse --show-toplevel)"
 
-if ! python3 "$ROOT/dev/scripts/lint_panes.py" --report; then
-  echo "" >&2
-  echo "Commit blocked by lint:panes — register the paneId(s) above in" >&2
-  echo "dev/registries/paneIds.json or remove the unregistered usage." >&2
-  exit 1
-fi
-
 if ! python3 "$ROOT/dev/scripts/lint_addressables.py" --report; then
   echo "" >&2
   echo "Commit blocked by lint:addressables — wrap the raw panel shape(s)" >&2

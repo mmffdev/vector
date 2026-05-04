@@ -32,7 +32,10 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
+	"github.com/mmffdev/vector-backend/internal/orgdesign"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/roles"
+	"github.com/mmffdev/vector-backend/internal/wsperms"
 	"github.com/mmffdev/vector-backend/internal/artefacts"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolioitems"
@@ -88,6 +91,20 @@ func main() {
 	}
 	defer pool.Close()
 
+	// PLA-0007: refuse to start if the DB permission catalogue and the Go
+	// permissions package have drifted. Drift is silently dangerous —
+	// a code referenced by RequirePermission but missing in the DB denies
+	// every actor; an orphan DB row is dead config. Fail loud at boot.
+	if err := permissions.VerifyParity(ctx, pool); err != nil {
+		log.Fatalf("permissions: %v", err)
+	}
+
+	// PLA-0007: process-local resolver caching effective permission set
+	// per user. 60s TTL keeps cross-process drift bounded; explicit
+	// Invalidate hooks fire from roles/users mutations within this process.
+	// Consumed by auth.RequirePermission middleware on every route below.
+	permResolver := permissions.NewResolver(pool, 60*time.Second)
+
 	// Library DB pools (mmff_library). Phase 3 only consumes RO; the
 	// publish + ack pools are wired the moment a handler needs them.
 	// Required env vars are documented in librarydb/db.go.
@@ -101,13 +118,18 @@ func main() {
 	mailer := email.NewFromEnv()
 
 	authSvc := auth.NewService(pool, auditLog, mailer)
-	authH := auth.NewHandler(authSvc)
+	authH := auth.NewHandler(authSvc, permResolver, pool)
 
 	usersSvc := users.New(pool, auditLog, mailer)
-	usersH := users.NewHandler(usersSvc)
+	usersH := users.NewHandler(usersSvc, permResolver)
 
-	permsSvc := permissions.New(pool, auditLog)
-	permsH := permissions.NewHandler(permsSvc)
+	permsSvc := wsperms.New(pool, auditLog)
+	permsH := wsperms.NewHandler(permsSvc)
+
+	// Roles HTTP surface (PLA-0007 G3). Service is sole writer for
+	// roles + role_permissions; the handler is a thin translation layer.
+	rolesSvc := roles.New(pool, auditLog)
+	rolesH := roles.NewHandler(rolesSvc, permResolver, pool)
 
 	// Page registry: cached DB-backed catalogue. 60s TTL trades a tiny
 	// window of staleness after an admin change for near-zero read cost.
@@ -162,6 +184,25 @@ func main() {
 	portfolioItemsSvc := portfolioitems.New(pool)
 	portfolioItemsH := portfolioitems.NewHandler(portfolioItemsSvc)
 
+	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
+	// bridge runs LISTEN rank_changed on a dedicated connection and
+	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
+	// in db/schema/069) to subscribed clients.
+	//
+	// Constructed early so other services can inject it as a notifier
+	// (e.g. orgdesign GrantNotifier for story 00283 handoff inbox).
+	rtHub := realtime.NewHub()
+	realtime.StartRankListener(context.Background(), pool, rtHub)
+
+	// Topology / federated org canvas (PLA-0006). orgdesign is the SOLE
+	// writer for org_nodes, org_node_roles, and org_node_view_state —
+	// see backend/internal/orgdesign/boundary_test.go for the CI gate.
+	//
+	// WithNotifier wires the realtime hub so a fresh role grant
+	// publishes a per-user "topology-handoff" event (story 00283).
+	orgDesignSvc := orgdesign.New(pool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
+	orgDesignH := orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
+
 	artefactsSvc := artefacts.New(pool)
 	artefactsH := artefacts.NewHandler(artefactsSvc)
 
@@ -181,13 +222,6 @@ func main() {
 	})
 	rankSvc := ranking.New(pool)
 	rankH := ranking.NewHandler(rankSvc)
-
-	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
-	// bridge runs LISTEN rank_changed on a dedicated connection and
-	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
-	// in db/schema/069) to subscribed clients.
-	rtHub := realtime.NewHub()
-	realtime.StartRankListener(context.Background(), pool, rtHub)
 
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
@@ -397,19 +431,6 @@ func main() {
 		r.Delete("/{id}", customPagesH.Delete)
 	})
 
-	// ---- /api/pane-help — REMOVED in PLA-0005 / 00254 ----
-	// The pane_help table was migrated into page_help and dropped in
-	// migration 076. Every endpoint returns 410 Gone with a pointer to
-	// the replacement so any stale caller fails loudly.
-	paneHelpGone := func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusGone)
-		_, _ = w.Write([]byte(`{"error":"pane_help removed; use /api/page-help/{addressable_id} (substrate-keyed) and /api/page-help/admin (gadmin)"}`))
-	}
-	r.Get("/api/pane-help", paneHelpGone)
-	r.Get("/api/pane-help/admin", paneHelpGone)
-	r.Put("/api/pane-help/*", paneHelpGone)
-
 	// ---- /api/addressables and /api/page-help/{addressable_id} (PLA-0005) ----
 	// build-reconcile: CI service-account token (X-CI-Token).
 	// register:        dev unrestricted; prod requires X-Custom-App-Token.
@@ -422,7 +443,9 @@ func main() {
 	r.Route("/api/page-help/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequireRole(models.RoleGAdmin))
+		// PLA-0007: gadmin-equivalent gate via menu.admin.view (closest existing
+		// code). Tech-debt: own code addressables.page_help.admin — see PLA-0007 G3.
+		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Get("/", addressablesH.PageHelpAdminList)
 		r.Put("/{addressable_id}", addressablesH.PageHelpAdminPut)
@@ -431,7 +454,9 @@ func main() {
 	r.Route("/api/addressables/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequireRole(models.RoleGAdmin))
+		// PLA-0007: gadmin-equivalent gate via menu.admin.view. Tech-debt:
+		// own code addressables.admin — see PLA-0007 G3.
+		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Patch("/{id}/helpable", addressablesH.AdminUpdateHelpable)
 	})
@@ -451,13 +476,13 @@ func main() {
 		// picker. Registered BEFORE /{id} so chi resolves the static
 		// path first (defensive — chi's trie prefers static segments
 		// anyway).
-		r.With(auth.RequireRole(models.RolePAdmin)).
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
 			Get("/", portfolioModelsH.List)
 
 		// Padmin-only: live adoption state for the caller's subscription.
 		// Registered BEFORE /{id} so chi resolves the static path first
 		// (defensive — chi's trie prefers static segments anyway).
-		r.With(auth.RequireRole(models.RolePAdmin)).
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
 			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
 
 		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
@@ -468,13 +493,15 @@ func main() {
 		// backend/internal/portfoliomodels/adopt.go for the orchestrator.
 		// Registered AFTER /{id} in source order is fine — chi's trie
 		// distinguishes by HTTP method anyway.
-		r.With(auth.RequireRole(models.RolePAdmin)).
+		// PLA-0007: gated via portfolio.list (closest existing code).
+		// Tech-debt: own code portfolio.adopt — see PLA-0007 G3.
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
 			Post("/{id}/adopt", portfolioAdoptH.Adopt)
 
 		// Padmin-only: SSE variant — emits one `event: step` per saga
 		// step plus a final `event: done` or `event: fail`. See
 		// backend/internal/portfoliomodels/adopt_stream.go.
-		r.With(auth.RequireRole(models.RolePAdmin)).
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
 			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
 	})
 
@@ -486,7 +513,9 @@ func main() {
 	r.Route("/api/library/releases", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequireRole(models.RoleGAdmin))
+		// PLA-0007: gadmin-equivalent gate via menu.admin.view (closest existing
+		// code). Tech-debt: own code library.releases.ack — see PLA-0007 G3.
+		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
 		r.Get("/", libReleasesH.List)
@@ -499,7 +528,9 @@ func main() {
 	r.Route("/api/subscription", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequireRole(models.RolePAdmin))
+		// PLA-0007: padmin-equivalent gate via portfolio.list (closest existing
+		// code). Tech-debt: own code subscription.layers.update — see PLA-0007 G3.
+		r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
 		// Subscription layer reads + writes (stories 00062–00065).
@@ -523,6 +554,13 @@ func main() {
 	r.Route("/api/user-stories", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		// PLA-0006 / 00273: every list query under here must clamp to
+		// the user's visible org_nodes subtree. Middleware seeds the
+		// computed clamp into context; consuming queries call
+		// orgdesign.ApplyClamp to splice it in. Mounted on the route
+		// group rather than per-handler so a new endpoint added later
+		// inherits the gate by default.
+		r.Use(orgDesignSvc.ClampMiddleware)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
 		r.Post("/", userStoriesH.Create)
@@ -545,7 +583,7 @@ func main() {
 
 	// ---- /api/artefacts/{type} ----
 	// Core CRUD: all authenticated roles.
-	// Schema management: padmin only (RequireRole enforced per sub-route).
+	// Schema management: padmin-equivalent (RequirePermission per sub-route).
 	// Field values: all authenticated roles.
 	r.Route("/api/artefacts/{type}", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
@@ -562,7 +600,10 @@ func main() {
 		r.Post("/{id}/fields/bulk", artefactsH.BulkWriteFieldValues)
 
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(models.RolePAdmin))
+			// PLA-0007: padmin-equivalent gate via portfolio.list (closest
+			// existing code). Tech-debt: own code artefacts.schema.write — see
+			// PLA-0007 G3.
+			r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 			r.Get("/schema", artefactsH.ListSchema)
 			r.Post("/schema", artefactsH.CreateSchema)
 			r.Patch("/schema/{schema_id}", artefactsH.PatchSchema)
@@ -651,10 +692,49 @@ func main() {
 		r.Delete("/{id}/fields/{field_library_id}", workItemsH.RemoveTemplateField)
 	})
 
+	// ---- /api/topology (PLA-0006) ----
+	// Federated organisational canvas. All authenticated roles can read
+	// the tree (clamp predicate trims what each user sees at consuming
+	// endpoints — this surface returns the structural shape). Mutations
+	// require padmin OR an admin grant on the affected node; node-grant
+	// authorisation is checked inside orgdesign.Service via the
+	// subscription scope. The single-admin / federated handoff governance
+	// gate (story 00288) layers on top of GrantRole.
+	r.Route("/api/topology", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		// Reads
+		r.Get("/tree", orgDesignH.Tree)
+		r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
+		r.Get("/preview-move", orgDesignH.PreviewMove)
+		r.Get("/disconnected", orgDesignH.Disconnected)
+		r.Get("/levels", orgDesignH.ListLevels)
+		r.Get("/commit", orgDesignH.CommitStatus)
+
+		// Writes
+		r.Post("/nodes", orgDesignH.Create)
+		r.Patch("/nodes/{id}", orgDesignH.Patch)
+		r.Delete("/nodes/{id}", orgDesignH.Archive)
+		r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
+		r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
+		r.Put("/nodes/{id}/view-state", orgDesignH.ViewState)
+		r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)
+		r.Delete("/roles/{grant_id}", orgDesignH.RevokeRole)
+		r.Post("/levels", orgDesignH.CreateLevel)
+		r.Patch("/levels/{id}", orgDesignH.RenameLevel)
+		r.Post("/commit", orgDesignH.Commit)
+		r.Post("/reset", orgDesignH.Reset)
+	})
+
 	// ---- /api/portfolio-items ----
 	r.Route("/api/portfolio-items", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		// PLA-0006 / 00273: clamp predicate middleware. See the
+		// /api/user-stories block above for the rationale.
+		r.Use(orgDesignSvc.ClampMiddleware)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 
 		r.Post("/", portfolioItemsH.Create)
@@ -668,32 +748,75 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 
-		// Users — gadmin only
-		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(models.RoleGAdmin))
-			r.Post("/users", usersH.Create)
-			r.Patch("/users/{id}", usersH.Patch)
-		})
+		// Users — per-route permission codes (PLA-0007).
+		// POST creates the actor's chosen target role; the handler is
+		// responsible for self-elevation guard against the actor's grid,
+		// so the gate at the route level is the union of creator-matrix
+		// codes (any one is enough to enter the route — handler discriminates).
+		r.With(auth.RequireAnyPermission(permResolver,
+			permissions.UsersCreateGadmin,
+			permissions.UsersCreatePadmin,
+			permissions.UsersCreateTeamLead,
+			permissions.UsersCreateUser,
+			permissions.UsersCreateExternal,
+		)).Post("/users", usersH.Create)
+		r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
+			Patch("/users/{id}", usersH.Patch)
+		r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
+			Delete("/users/{id}", usersH.Delete)
+		r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
+			Post("/users/{id}/password-reset", usersH.IssueReset)
 
-		// List users — gadmin or padmin
-		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(models.RoleGAdmin, models.RolePAdmin))
-			r.Get("/users", usersH.List)
-		})
+		// List users — direct mapping to users.list.
+		r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
+			Get("/users", usersH.List)
 
-		// Permissions — gadmin or padmin (finer project-level gating later when projects table lands)
+		// Per-user permissions (legacy table) — gadmin/padmin equivalent.
+		// Tech-debt: this surface is the OLD per-user grants table; on
+		// PLA-0007 G4/G5 it gets folded into the role grid. Gate via
+		// roles.list (closest existing code). See PLA-0007 G3.
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(models.RoleGAdmin, models.RolePAdmin))
+			r.Use(auth.RequirePermission(permResolver, permissions.RolesList))
 			r.Post("/permissions", permsH.Grant)
 			r.Delete("/permissions/{id}", permsH.Revoke)
 			r.Get("/permissions", permsH.List)
 		})
 
-		// Dev tools — gadmin or padmin (reset is scoped to caller's subscription)
+		// Dev tools — gadmin or padmin (reset is scoped to caller's subscription).
+		// PLA-0007: gated via portfolio.list (closest existing code).
+		// Tech-debt: own code dev.adoption_reset — see PLA-0007 G3.
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(models.RoleGAdmin, models.RolePAdmin))
+			r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 			r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
 		})
+	})
+
+	// ---- /api/roles (PLA-0007 G3) ----
+	r.Route("/api/roles", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+
+		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+			Get("/", rolesH.List)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+			Get("/creatable", rolesH.Creatable)
+		// /admin/roles UI consumes this to render the assignment grid.
+		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+			Get("/permissions/catalogue", rolesH.ListPermissionsCatalogue)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
+			Get("/{id}", rolesH.Get)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesCreate)).
+			Post("/", rolesH.Create)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesUpdate)).
+			Patch("/{id}", rolesH.Update)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesArchive)).
+			Delete("/{id}", rolesH.Archive)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
+			Get("/{id}/permissions", rolesH.ListPermissions)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions)).
+			Post("/{id}/permissions", rolesH.AssignPermissions)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
+			Delete("/{id}/permissions", rolesH.RevokePermissions)
 	})
 
 	port := os.Getenv("SERVER_PORT")

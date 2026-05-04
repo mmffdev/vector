@@ -122,7 +122,7 @@ export default function PortfolioModelPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) return; // AuthProvider will redirect to /login
-    if (user.role !== "padmin") {
+    if (user.role.code !== "padmin") {
       router.replace("/dashboard");
     }
   }, [authLoading, user, router]);
@@ -152,7 +152,7 @@ export default function PortfolioModelPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role !== "padmin") return;
+    if (!user || user.role.code !== "padmin") return;
     void fetchAdoptionState();
   }, [authLoading, user, fetchAdoptionState]);
 
@@ -216,7 +216,7 @@ export default function PortfolioModelPage() {
 
   // Render guard for the role gate. The redirect runs in an effect, so
   // suppress all output until we know we're on a padmin.
-  if (authLoading || !user || user.role !== "padmin") return null;
+  if (authLoading || !user || user.role.code !== "padmin") return null;
 
   return (
     <StrictRoute>

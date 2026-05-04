@@ -1,22 +1,33 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/security"
 )
 
 type Handler struct {
-	Svc *Service
+	Svc      *Service
+	Resolver *permissions.Resolver
+	Pool     *pgxpool.Pool
 }
 
-func NewHandler(svc *Service) *Handler { return &Handler{Svc: svc} }
+func NewHandler(svc *Service, resolver *permissions.Resolver, pool *pgxpool.Pool) *Handler {
+	return &Handler{Svc: svc, Resolver: resolver, Pool: pool}
+}
 
 type loginReq struct {
 	Email    string `json:"email"`
@@ -25,7 +36,78 @@ type loginReq struct {
 
 type loginResp struct {
 	AccessToken string      `json:"access_token"`
-	User        interface{} `json:"user"`
+	User        userPayload `json:"user"`
+}
+
+// rolePayload is the wire shape for users.role on auth responses (login,
+// refresh, /api/auth/me). Frontend RBAC reads code/rank/is_external etc.
+// directly so it never has to translate the legacy enum into capability.
+type rolePayload struct {
+	ID         uuid.UUID `json:"id"`
+	Code       string    `json:"code"`
+	Label      string    `json:"label"`
+	Rank       int       `json:"rank"`
+	IsSystem   bool      `json:"is_system"`
+	IsExternal bool      `json:"is_external"`
+}
+
+// userPayload mirrors AuthContext.AuthUser on the frontend. Adding the
+// role row + permission codes here in one shot avoids a second round
+// trip on app boot — every consumer that previously branched on
+// user.role can now branch on a permission code instead.
+type userPayload struct {
+	ID                  uuid.UUID   `json:"id"`
+	SubscriptionID      uuid.UUID   `json:"subscription_id"`
+	Email               string      `json:"email"`
+	Role                rolePayload `json:"role"`
+	IsActive            bool        `json:"is_active"`
+	ForcePasswordChange bool        `json:"force_password_change"`
+	AuthMethod          string      `json:"auth_method"`
+	LastLogin           *time.Time  `json:"last_login,omitempty"`
+	Permissions         []string    `json:"permissions"`
+}
+
+// buildUserPayload assembles userPayload from the underlying *models.User.
+// It loads the role row from `roles` and the effective permission codes
+// from the resolver (cached). Returns a payload with empty role/permissions
+// rather than failing the request if the role lookup hiccups — auth must
+// not break because the catalogue is briefly unavailable.
+func (h *Handler) buildUserPayload(ctx context.Context, u *models.User) userPayload {
+	out := userPayload{
+		ID:                  u.ID,
+		SubscriptionID:      u.SubscriptionID,
+		Email:               u.Email,
+		IsActive:            u.IsActive,
+		ForcePasswordChange: u.ForcePasswordChange,
+		AuthMethod:          u.AuthMethod,
+		LastLogin:           u.LastLogin,
+		Permissions:         []string{},
+	}
+
+	var roleID uuid.UUID
+	if err := h.Pool.QueryRow(ctx,
+		`SELECT role_id FROM users WHERE id = $1`, u.ID,
+	).Scan(&roleID); err != nil {
+		return out
+	}
+	var rp rolePayload
+	if err := h.Pool.QueryRow(ctx, `
+		SELECT id, code, label, rank, is_system, is_external
+		  FROM roles WHERE id = $1`, roleID,
+	).Scan(&rp.ID, &rp.Code, &rp.Label, &rp.Rank, &rp.IsSystem, &rp.IsExternal); err != nil {
+		return out
+	}
+	out.Role = rp
+
+	if codes, err := h.Resolver.PermissionsFor(ctx, u.ID); err == nil {
+		list := make([]string, 0, len(codes))
+		for c := range codes {
+			list = append(list, string(c))
+		}
+		sort.Strings(list)
+		out.Permissions = list
+	}
+	return out
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +136,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
 	issueCSRF(w)
-	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: res.User})
+	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +153,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
 	issueCSRF(w)
-	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: res.User})
+	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +167,11 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
-	writeJSON(w, 200, u)
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	writeJSON(w, 200, h.buildUserPayload(r.Context(), u))
 }
 
 type changePwdReq struct {

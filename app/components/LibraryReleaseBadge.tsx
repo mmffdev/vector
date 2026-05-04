@@ -17,7 +17,7 @@ export default function LibraryReleaseBadge() {
   const { user } = useAuth();
   const { count } = useLibraryReleases();
 
-  const isGAdmin = user?.role === "gadmin";
+  const isGAdmin = user?.role.code === "gadmin";
 
   if (!isGAdmin) {
     return (

@@ -1,0 +1,19 @@
+{
+  "description": "Per-file exemption list for lint:role-literals (PLA-0007 / Story 00305). Each entry is a repo-relative path with at least one role-string compare (e.g. `user.role === 'gadmin'`) recorded BEFORE the AuthContext + useHasPermission migration. Files listed here warn-but-do-not-fail. Each later PLA-0007 migration story removes its file(s) from this list as it converts the gates to useHasPermission(...) calls — that's the regression-prevention mechanism. The end state is an EMPTY exempt_paths array; once empty, treat it as a hard architectural invariant.",
+  "exempt_paths": [
+    "app/contexts/LibraryReleasesContext.tsx",
+    "app/components/LibraryReleaseBadge.tsx",
+    "app/components/BlockingReleaseGate.tsx",
+    "app/components/AddressDevtool.tsx",
+    "app/(user)/portfolio-items/page.tsx",
+    "app/(user)/topology/page.tsx",
+    "app/(user)/library-releases/page.tsx",
+    "app/(user)/workspace-settings/page.tsx",
+    "app/(user)/admin/page.tsx",
+    "app/(user)/portfolio-model/page.tsx",
+    "app/(user)/portfolio-model/custom/page.tsx",
+    "app/(user)/portfolio-settings/page.tsx",
+    "app/(user)/work-items/settings/page.tsx",
+    "dev/pages/DevPageHelpPanel.tsx"
+  ]
+}

@@ -270,7 +270,8 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 // ─────────────────────────────────────────────────────────────────────
 
 // PageHelpAdminList returns every live page_help row joined to its
-// addressable. Gadmin-only — gate with auth.RequireRole at the router.
+// addressable. Gadmin-equivalent — gate with auth.RequirePermission
+// (MenuAdminView) at the router (PLA-0007).
 func (h *Handler) PageHelpAdminList(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Svc.AdminListHelp(r.Context())
 	if err != nil {
@@ -349,7 +350,8 @@ type helpableReq struct {
 }
 
 // AdminUpdateHelpable flips the per-row helpable bit on an addressable.
-// Gadmin-only — gate with auth.RequireRole at the router.
+// Gadmin-equivalent — gate with auth.RequirePermission(MenuAdminView)
+// at the router (PLA-0007).
 func (h *Handler) AdminUpdateHelpable(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {

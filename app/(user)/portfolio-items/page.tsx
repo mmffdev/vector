@@ -10,10 +10,10 @@ export default function PortfolioItemsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role === "gadmin") router.replace("/dashboard");
+    if (user && user.role.code === "gadmin") router.replace("/dashboard");
   }, [user, router]);
 
-  if (!user || user.role === "gadmin") return null;
+  if (!user || user.role.code === "gadmin") return null;
 
   return (
     <PageShell

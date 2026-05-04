@@ -340,6 +340,167 @@ func TestListChildren_OrderByCanonical(t *testing.T) {
 	}
 }
 
+// TestRollupPoints_SumsDescendants seeds an epic → story → story tree
+// where the two leaf stories have 3 points each, and asserts the epic's
+// RollupPoints comes back as 6. Also confirms the rollup overrides the
+// epic's own manually-entered story_points value (per product rule:
+// rollup wins once any descendant exists).
+func TestRollupPoints_SumsDescendants(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	ctx := context.Background()
+
+	subID, userID := pickAnyUser(t, pool)
+	svc := workitems.New(pool)
+
+	// Insert epic with manual story_points=99 and two leaf-story children
+	// with 3 points each. The epic's RollupPoints must equal 6, not 99.
+	epicKey := nextKey(t, ctx, pool, subID)
+	pos := 1
+	manual := 99
+	var epicID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO o_artefacts_execution_work_items
+		  (subscription_id, key_num, item_type, title, status,
+		   owner_id, created_by, backlog_position, story_points)
+		VALUES ($1, $2, 'epic', 'rollup-epic', 'open',
+		        $3, $3, $4, $5)
+		RETURNING id`,
+		subID, epicKey, userID, pos, manual,
+	).Scan(&epicID)
+	if err != nil {
+		t.Fatalf("seed epic: %v", err)
+	}
+
+	childIDs := make([]uuid.UUID, 0, 2)
+	for i, label := range []string{"rollup-story-A", "rollup-story-B"} {
+		key := nextKey(t, ctx, pool, subID)
+		p := i + 1
+		pts := 3
+		var id uuid.UUID
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO o_artefacts_execution_work_items
+			  (subscription_id, key_num, item_type, title, status,
+			   owner_id, created_by, backlog_position, parent_id, story_points)
+			VALUES ($1, $2, 'story', $3, 'open',
+			        $4, $4, $5, $6, $7)
+			RETURNING id`,
+			subID, key, label, userID, p, epicID, pts,
+		).Scan(&id); err != nil {
+			t.Fatalf("seed child %s: %v", label, err)
+		}
+		childIDs = append(childIDs, id)
+	}
+	t.Cleanup(func() {
+		all := append([]uuid.UUID{epicID}, childIDs...)
+		_, _ = pool.Exec(context.Background(),
+			`UPDATE o_artefacts_execution_work_items SET archived_at = now() WHERE id = ANY($1)`, all)
+	})
+
+	wi, err := svc.GetWorkItem(ctx, subID.String(), epicID)
+	if err != nil {
+		t.Fatalf("GetWorkItem epic: %v", err)
+	}
+	if wi.RollupPoints == nil {
+		t.Fatalf("expected RollupPoints to be set on epic with children, got nil")
+	}
+	if *wi.RollupPoints != 6 {
+		t.Errorf("epic RollupPoints = %d, want 6", *wi.RollupPoints)
+	}
+	// Manual value is preserved in DB but shadowed by rollup on the wire — confirm both.
+	if wi.StoryPoints == nil || *wi.StoryPoints != 99 {
+		t.Errorf("epic StoryPoints = %v, want 99 (manual value preserved)", wi.StoryPoints)
+	}
+
+	// Leaf stories with no children should have RollupPoints == nil so
+	// the UI falls back to the manually-entered story_points.
+	leaf, err := svc.GetWorkItem(ctx, subID.String(), childIDs[0])
+	if err != nil {
+		t.Fatalf("GetWorkItem leaf: %v", err)
+	}
+	if leaf.RollupPoints != nil {
+		t.Errorf("leaf RollupPoints = %v, want nil (no children)", *leaf.RollupPoints)
+	}
+}
+
+// TestPatchWorkItem_RejectsPointsOnTask confirms the service refuses a
+// story_points patch when the row is a task. Stories, epics, and defects
+// must continue to accept the same patch.
+func TestPatchWorkItem_RejectsPointsOnTask(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	ctx := context.Background()
+
+	subID, userID := pickAnyUser(t, pool)
+	svc := workitems.New(pool)
+
+	// Seed one row of each type. Tasks need a parent (FK chain via
+	// migration 063 XOR), so create a parent story first.
+	pos := 1
+	parentKey := nextKey(t, ctx, pool, subID)
+	var parentID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO o_artefacts_execution_work_items
+		  (subscription_id, key_num, item_type, title, status,
+		   owner_id, created_by, backlog_position)
+		VALUES ($1, $2, 'story', 'task-parent', 'open',
+		        $3, $3, $4)
+		RETURNING id`,
+		subID, parentKey, userID, pos,
+	).Scan(&parentID); err != nil {
+		t.Fatalf("seed parent: %v", err)
+	}
+
+	type tc struct {
+		itemType   string
+		parent     *uuid.UUID
+		shouldFail bool
+	}
+	cases := []tc{
+		{"task", &parentID, true},
+		{"story", nil, false},
+		{"defect", &parentID, false},
+		{"epic", nil, false},
+	}
+
+	ids := []uuid.UUID{parentID}
+	defer func() {
+		_, _ = pool.Exec(context.Background(),
+			`UPDATE o_artefacts_execution_work_items SET archived_at = now() WHERE id = ANY($1)`, ids)
+	}()
+
+	for _, c := range cases {
+		key := nextKey(t, ctx, pool, subID)
+		var id uuid.UUID
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO o_artefacts_execution_work_items
+			  (subscription_id, key_num, item_type, title, status,
+			   owner_id, created_by, backlog_position, parent_id)
+			VALUES ($1, $2, $3, $4, 'open',
+			        $5, $5, $6, $7)
+			RETURNING id`,
+			subID, key, c.itemType, "points-gate-"+c.itemType, userID, key, c.parent,
+		).Scan(&id); err != nil {
+			t.Fatalf("seed %s: %v", c.itemType, err)
+		}
+		ids = append(ids, id)
+
+		pts := 5
+		_, err := svc.PatchWorkItem(ctx, subID.String(), id, workitems.PatchWorkItemInput{
+			StoryPoints: &pts,
+		})
+		if c.shouldFail {
+			if err == nil {
+				t.Errorf("%s: expected ErrInvalidInput, got nil", c.itemType)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("%s: expected success, got %v", c.itemType, err)
+			}
+		}
+	}
+}
+
 // Compile-time guard: pgx import is used by helpers above. If pgx is
 // removed by a future refactor, we want this file to fail to compile
 // rather than silently lose its DB-connectivity preamble.

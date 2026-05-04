@@ -24,10 +24,10 @@ export default function PortfolioSettingsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role === "user") router.replace("/dashboard");
+    if (user && user.role.code === "user") router.replace("/dashboard");
   }, [user, router]);
 
-  if (!user || user.role === "user") return null;
+  if (!user || user.role.code === "user") return null;
 
   return (
     <StrictRoute>

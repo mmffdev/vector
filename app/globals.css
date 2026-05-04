@@ -1714,6 +1714,15 @@ table.tbl tbody tr:hover td {
   margin-bottom: 4px;
 }
 
+.form__label--inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .form__input,
 .form__select,
 .form__textarea {
@@ -8283,6 +8292,14 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+.work-items-panel__hint {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .work-items-panel__edit-actions {
   display: flex;
   gap: var(--space-2);
@@ -8329,6 +8346,55 @@ table.tbl tbody tr:hover td {
   margin: 0;
   font-size: 11px;
   color: var(--ink-subtle);
+}
+
+/* Inline-edit triggers in tree rows + detail panel.
+   Click target is the cell content (title text, pill, points number).
+   Cursor + subtle hover hint signal "click to edit" without occupying
+   visual space — the cells must look like read-only data at rest. */
+.work-items-tree__title-text,
+.work-items-tree__pts-text,
+.work-items-tree__inline-trigger,
+.work-items-panel__inline-trigger,
+.work-items-panel__title-text {
+  cursor: text;
+  display: inline-block;
+  min-width: 1ch;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background-color 120ms ease;
+}
+.work-items-tree__inline-trigger,
+.work-items-panel__inline-trigger {
+  cursor: pointer;
+}
+.work-items-tree__title-text:hover,
+.work-items-tree__pts-text:hover,
+.work-items-tree__inline-trigger:hover,
+.work-items-panel__inline-trigger:hover,
+.work-items-panel__title-text:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+}
+
+/* Read-only "—" placeholder when a cell is empty and not editable. */
+.work-items-tree__placeholder {
+  color: var(--ink-subtle);
+}
+
+/* Rollup display: parent rows show the summed value as plain text;
+   tooltip surfaces the underlying manual story_points. Non-clickable. */
+.work-items-tree__rollup {
+  cursor: help;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+
+/* Numeric input variant — right-aligned, narrow, used in inline points
+   editors so the cell layout doesn't jump on edit. */
+.form__input--numeric {
+  text-align: right;
+  width: 5ch;
+  min-width: 5ch;
 }
 
 /* Column borders */
@@ -8557,163 +8623,10 @@ table.tbl tbody tr:hover td {
   box-shadow: inset 0 -2px 0 0 var(--accent);
 }
 
-/* =====================================================================
-   Pane Header — reusable per-panel header with paneId help popover
-   Component: app/components/PaneHeader.tsx (story 00237)
-   ===================================================================== */
-
-.pane-header {
-  position: relative;
-  display: block;
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border);
-}
-
-.pane-header__main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.pane-header__title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.pane-header__title {
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--ink);
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.pane-header__help-btn {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--ink-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 120ms ease, background-color 120ms ease;
-}
-
-.pane-header__help-btn:hover,
-.pane-header__help-btn:focus-visible {
-  color: var(--accent);
-  background: var(--accent-soft);
-  outline: none;
-}
-
-.pane-header__help-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.pane-header__popover {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  right: 0;
-  z-index: 40;
-  min-width: 260px;
-  max-width: 360px;
-  padding: var(--space-3);
-  background: var(--surface);
-  border: 1px solid var(--border-strong, var(--border));
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.pane-header__popover-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.pane-header__pane-id {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.pane-header__pane-id:hover,
-.pane-header__pane-id:focus-visible {
-  color: var(--accent);
-  outline: none;
-}
-
-.pane-header__copy-state {
-  font-family: var(--font-sans);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-muted);
-}
-
-.pane-header__close {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--ink-muted);
-  cursor: pointer;
-  font-size: var(--text-md);
-  line-height: 1;
-}
-
-.pane-header__close:hover,
-.pane-header__close:focus-visible {
-  color: var(--ink);
-  outline: none;
-}
-
-.pane-header__popover-body {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--ink);
-  line-height: 1.5;
-}
-
-.pane-header__popover-body p {
-  margin: 0 0 var(--space-2) 0;
-}
-
-.pane-header__popover-body p:last-child {
-  margin-bottom: 0;
-}
-
-.pane-header__popover-empty {
-  color: var(--ink-muted);
-  font-style: italic;
-}
-
 /* ───────────────────────────────────────────────────────────────────
  * Panel primitive — PLA-0005 AC13.
- * Border + padding from the catalog; help button + popover mirror
- * .pane-header but live on the panel itself.
+ * Border + padding from the catalog; help button + popover live on
+ * the panel itself.
  * ─────────────────────────────────────────────────────────────────── */
 
 .panel {
@@ -8776,6 +8689,30 @@ table.tbl tbody tr:hover td {
 .panel__help-btn svg {
   width: 18px;
   height: 18px;
+}
+
+/* When the panel has no title (e.g. a chrome-less canvas wrapper), the
+   help affordance floats in the top-right corner so it doesn't reserve
+   header layout space. The popover already anchors top-right of the
+   panel via its own absolute positioning, so this stays aligned. */
+.panel__help-btn--floating {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 10;
+  background: var(--surface);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .panel__body {
@@ -9152,101 +9089,991 @@ table.tbl tbody tr:hover td {
 }
 
 /* ============================================================
-   PLA-0006 / 00274 — DiagramCanvas primitive
+   Workspace Settings → Users tab — accordion-style table
+   - First column is a chevron rotator (matches Work items table).
+   - Clicking a row toggles an expander row that holds the edit
+     form. Open row gets --surface-sunken so the focus is obvious.
+   - Toolbar above the table grows a filter cluster (search, dept,
+     role, page size) on the left of the existing meta + action.
    ============================================================ */
-
-.diagram-canvas {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 320px;
-  background: var(--surface);
-  border: 1px solid var(--line-1);
-  overflow: hidden;
-  touch-action: none;
-  cursor: grab;
-  user-select: none;
+.toolbar--users {
+  flex-wrap: nowrap;
 }
 
-.diagram-canvas:active {
-  cursor: grabbing;
+.toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.diagram-canvas__layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+/* Inputs/selects inside the toolbar must not expand to 100% — they
+   stack vertically inside the flex row when they do. Override the
+   global form__input/__select width and let each control size from
+   its content (or, for the search field, take any spare width). */
+.toolbar__filters .form__input,
+.toolbar__filters .form__select {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.toolbar__filters .form__input[type="search"] {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.form__input--sm {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.form__info {
+  color: var(--success, var(--ink));
+  font-family: var(--font-sans);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+
+.users-table__th--toggle {
+  width: 36px;
+  padding: 0 4px;
+}
+
+.users-table__toggle-cell {
+  width: 36px;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.users-table__expander-icon {
   display: block;
-  pointer-events: none;
+  flex-shrink: 0;
+  transition: transform 180ms ease;
 }
 
-.diagram-canvas__layer--static {
-  z-index: 1;
+.users-table__expander-icon--open {
+  transform: rotate(90deg);
 }
 
-.diagram-canvas__layer--overlay {
-  z-index: 2;
+.users-table__row {
+  cursor: pointer;
 }
 
-.diagram-canvas__minimap {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: 3;
-  background: var(--surface);
-  border: 1px solid var(--line-1);
+.users-table__row--open > .table__cell {
+  background: var(--surface-sunken);
+}
+
+.users-table__panel-row > .users-table__panel-cell {
   padding: 0;
-  pointer-events: none;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border);
 }
 
-.diagram-canvas__minimap canvas {
-  display: block;
+.users-edit-panel {
+  padding: var(--space-4);
 }
 
-.diagram-canvas__controls {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  z-index: 3;
+.users-edit-panel__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+
+.users-edit-panel__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.users-edit-panel__actions-left,
+.users-edit-panel__actions-right {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.users-table__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.users-table__pagination-meta {
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── /admin/roles (PLA-0007 G3) ───────────────────────────── */
+
+.admin-roles {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: var(--space-3);
+}
+
+.admin-roles > .panel:nth-child(1) { grid-column: 1; grid-row: 1 / 3; }
+.admin-roles > .panel:nth-child(2) { grid-column: 2; grid-row: 1; }
+.admin-roles > .panel:nth-child(3) { grid-column: 2; grid-row: 2; }
+
+@media (max-width: 900px) {
+  .admin-roles {
+    grid-template-columns: 1fr;
+  }
+  .admin-roles > .panel:nth-child(1),
+  .admin-roles > .panel:nth-child(2),
+  .admin-roles > .panel:nth-child(3) {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+.admin-roles__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.diagram-canvas__control-btn {
+.admin-roles__list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-roles__list-item:hover {
+  background: var(--surface-hover);
+}
+
+.admin-roles__list-item.is-selected {
+  background: var(--accent-bg, var(--surface-sunken));
+  border-color: var(--accent, var(--border-strong));
+}
+
+.admin-roles__list-label {
+  font-weight: 500;
+}
+
+.admin-roles__list-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-roles__list-rank {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.admin-roles__code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.admin-roles__detail-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.admin-roles__perms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.admin-roles__perms-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-roles__perms-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-roles__perms-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+}
+
+.admin-roles__perms-label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.admin-roles__perms-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-roles__perms-title {
+  font-weight: 500;
+}
+
+.admin-roles__perms-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.admin-roles__perms-desc {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PLA-0006 — /topology overlay redesign
+   Full-viewport canvas with orgchart-style nodes. Lives in the
+   (overlay) route group and renders above the app shell.
+   ────────────────────────────────────────────────────────────────── */
+
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--surface-sunken, #f6f5f1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Workspace Settings → Topology tab host. The embedded overlay
+   uses position:absolute; inset:0, so we anchor it inside this
+   sized box (instead of the viewport). 70vh keeps the canvas
+   meaningful without pushing the tab strip off screen. */
+.topology-tab-host {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  min-height: 480px;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e5e1da);
+  background: var(--surface-sunken, #f6f5f1);
+}
+
+.topology-tab-host__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted, #6b6557);
+  font-size: 14px;
+}
+
+/* When the topology overlay is embedded inside the workspace-settings
+   tab, hide its Finish button — it would router.back() to the prior
+   tab, which is confusing. The user leaves by switching tabs. */
+.topology-tab-host .topo-overlay__finish {
+  display: none;
+}
+
+.topo-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  background: var(--surface-sunken, #f6f5f1);
+  color: var(--ink, #1a1a1a);
+}
+
+.topo-overlay__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--border, #e5e1da);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  z-index: 2;
+}
+
+.topo-overlay__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-muted, #5c5c5c);
+}
+
+.topo-overlay__title strong {
+  color: var(--ink, #1a1a1a);
+  font-weight: 600;
+}
+
+.topo-overlay__brand {
+  font-weight: 600;
+  color: var(--ink, #1a1a1a);
+}
+
+.topo-overlay__sep {
+  color: var(--ink-faint, #b8b5af);
+}
+
+.topo-overlay__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topo-overlay__btn {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e5e1da);
+  background: var(--surface, #ffffff);
+  color: var(--ink, #1a1a1a);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.topo-overlay__btn:hover {
+  background: var(--surface-sunken, #f4f3ef);
+}
+
+.topo-overlay__btn--primary {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.topo-overlay__btn--primary:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.topo-overlay__btn--danger {
+  background: var(--danger, #B23B3B);
+  color: #ffffff;
+  border-color: var(--danger, #B23B3B);
+}
+
+.topo-overlay__btn--danger:hover {
+  background: #8d2f2f;
+  border-color: #8d2f2f;
+}
+
+.topo-overlay__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.topo-overlay__input {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e5e1da);
+  background: var(--surface, #ffffff);
+  color: var(--ink, #1a1a1a);
+  font-size: 14px;
+  outline: none;
+}
+
+.topo-overlay__input:focus {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+}
+
+.topo-overlay__main {
+  position: relative;
+  overflow: hidden;
+}
+
+.topo-overlay__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.topo-overlay__canvas .react-flow {
+  width: 100%;
+  height: 100%;
+  background: #f8fafc;
+}
+
+/* React Flow chrome — match the muted slate palette of the overlay */
+.topo-overlay__canvas .react-flow__controls {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.topo-overlay__canvas .react-flow__controls-button {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
   width: 32px;
   height: 32px;
-  font-size: 16px;
+}
+
+.topo-overlay__canvas .react-flow__controls-button:hover {
+  background: #f1f5f9;
+}
+
+.topo-overlay__canvas .react-flow__minimap {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+/* ── org-node-card ─────────────────────────────────────────────────
+   Custom React Flow node rendered as DOM. The .react-flow__node
+   wrapper around it gets no chrome — we paint our own card. */
+
+.topo-overlay__canvas .react-flow__node-orgNode {
+  border: none;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: inherit;
+}
+
+.topo-overlay__canvas .react-flow__node-orgNode.selected {
+  box-shadow: none;
+}
+
+.org-node-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  cursor: pointer;
+}
+
+.org-node-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.org-node-card.is-selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.org-node-card.is-archived {
+  background: #f3f4f6;
+  opacity: 0.7;
+}
+
+.org-node-card__handle {
+  opacity: 0;
+  pointer-events: none;
+  background: transparent;
+  border: none;
+  width: 1px;
+  height: 1px;
+}
+
+.org-node-card__drag {
+  display: grid;
+  grid-template-columns: 4px 4px;
+  grid-auto-rows: 4px;
+  gap: 4px;
+  align-content: center;
+  justify-content: center;
+  width: 28px;
+  background: transparent;
+  flex: 0 0 auto;
+}
+
+.org-node-card__drag span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 50%;
+}
+
+.org-node-card__main {
+  flex: 1 1 auto;
+  padding: 12px 12px 16px 4px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.org-node-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-node-card.is-archived .org-node-card__name {
+  color: #94a3b8;
+}
+
+.org-node-card__sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-node-card__pill {
+  align-self: flex-start;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1;
 }
 
-/* PLA-0006 / 00277 — stress fixture page wrapper */
-
-.diagram-canvas-stress {
+.org-node-card__kebab {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  height: 100%;
-  min-height: 600px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
 }
 
-.diagram-canvas-stress__header {
+.org-node-card__kebab span {
+  display: block;
+  width: 3px;
+  height: 3px;
+  background: #94a3b8;
+  border-radius: 50%;
+}
+
+.org-node-card__kebab:hover {
+  background: #f1f5f9;
+}
+
+.org-node-card__chevron {
+  position: absolute;
+  bottom: 12px;
+  right: 8px;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.org-node-card__chevron:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.org-node-card__band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+}
+
+.topo-overlay__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #b91c1c;
+}
+
+.topo-overlay__err-text {
+  color: #b91c1c;
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+
+.topo-overlay__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topo-overlay__empty-card {
+  width: min(440px, 90vw);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e5e1da);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+}
+
+.topo-overlay__empty-card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.topo-overlay__empty-card p {
+  margin: 0 0 20px;
+  color: var(--ink-muted, #5c5c5c);
+  font-size: 14px;
+}
+
+.topo-overlay__empty-row {
+  display: flex;
+  gap: 8px;
+}
+
+.topo-overlay__empty-row input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e5e1da);
+  background: var(--surface, #ffffff);
+  color: var(--ink, #1a1a1a);
+  font-size: 14px;
+}
+
+.topo-overlay__empty-row input:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: -1px;
+}
+
+/* ── Context menu ────────────────────────────────────────────────── */
+
+.topo-ctx-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 196px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e5e1da);
+  border-radius: 8px;
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.14),
+    0 2px 6px rgba(15, 23, 42, 0.06);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.topo-ctx-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ink, #1a1a1a);
+  font-size: 13px;
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.topo-ctx-menu button:hover {
+  background: var(--surface-sunken, #f4f3ef);
+}
+
+.topo-ctx-menu hr {
+  border: 0;
+  border-top: 1px solid var(--border, #e5e1da);
+  margin: 4px 0;
+}
+
+.topo-ctx-menu__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  color: var(--ink-muted, #5c5c5c);
+}
+
+.topo-ctx-menu__danger {
+  color: #b91c1c !important;
+}
+
+.topo-ctx-menu__danger .topo-ctx-menu__icon {
+  color: #b91c1c;
+}
+
+/* ── Edit flyout ─────────────────────────────────────────────────── */
+
+.topo-flyout {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(380px, 92vw);
+  background: var(--surface, #ffffff);
+  border-left: 1px solid var(--border, #e5e1da);
+  box-shadow: -8px 0 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  animation: topo-flyout-in 200ms ease-out;
+}
+
+@keyframes topo-flyout-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.topo-flyout__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e5e1da);
+}
+
+.topo-flyout__head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.topo-flyout__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted, #5c5c5c);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.topo-flyout__close:hover {
+  background: var(--surface-sunken, #f4f3ef);
+  color: var(--ink, #1a1a1a);
+}
+
+.topo-flyout__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  padding: 8px 12px;
-  background: var(--surface);
-  border: 1px solid var(--line-1);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-2);
 }
 
-.diagram-canvas-stress__metric {
-  white-space: nowrap;
+.topo-flyout__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
 }
 
-.diagram-canvas-stress__canvas {
-  flex: 1 1 auto;
-  min-height: 600px;
+.topo-flyout__field > span {
+  color: var(--ink-muted, #5c5c5c);
+  font-weight: 500;
+}
+
+.topo-flyout__field input,
+.topo-flyout__field textarea {
+  border: 1px solid var(--border, #e5e1da);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface, #ffffff);
+  color: var(--ink, #1a1a1a);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.topo-flyout__field input:focus,
+.topo-flyout__field textarea:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: -1px;
+}
+
+.topo-flyout__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.topo-flyout__swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 100ms ease;
+}
+
+.topo-flyout__swatch:hover {
+  transform: scale(1.1);
+}
+
+.topo-flyout__swatch.is-active {
+  border-color: var(--ink, #1a1a1a);
+  box-shadow: 0 0 0 2px var(--surface, #ffffff) inset;
+}
+
+.topo-flyout__swatch--clear {
+  background: var(--surface, #ffffff);
+  border: 2px dashed var(--border-strong, #d4cfc5);
+  color: var(--ink-muted, #5c5c5c);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* ── Move-preview modal ──────────────────────────────────────────── */
+
+.topo-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.topo-modal {
+  width: min(460px, 92vw);
+  background: var(--surface, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+
+.topo-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e5e1da);
+}
+
+.topo-modal__head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.topo-modal__head button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 18px;
+  color: var(--ink-muted, #5c5c5c);
+  cursor: pointer;
+}
+
+.topo-modal__head button:hover {
+  background: var(--surface-sunken, #f4f3ef);
+  color: var(--ink, #1a1a1a);
+}
+
+.topo-modal__body {
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.topo-modal__body p {
+  margin: 0 0 8px;
+}
+
+.topo-modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border, #e5e1da);
 }

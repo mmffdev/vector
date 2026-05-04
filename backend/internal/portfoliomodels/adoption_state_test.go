@@ -23,8 +23,8 @@ import (
 //
 // Mirrors the skip-on-unreachable discipline used by the Phase 3
 // handler tests above — when the cluster is down the test skips
-// instead of failing. Padmin gating is enforced at the router level
-// (RequireRole) and asserted in auth/middleware tests; this test
+// instead of failing. Padmin-equivalent gating is enforced at the router
+// level (RequirePermission) and asserted in auth/middleware tests; this test
 // exercises the handler body directly with a faked-in user.
 
 func newAdoptionStateRouter(h *AdoptionStateHandler, u *models.User) http.Handler {

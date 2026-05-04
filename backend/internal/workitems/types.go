@@ -19,6 +19,12 @@ var (
 )
 
 // WorkItem is the wire representation of o_artefacts_execution_work_items.
+//
+// Points model: StoryPoints is the manually-entered value; RollupPoints is
+// the sum of leaf points across the descendant subtree (only populated for
+// items with at least one non-archived child). When RollupPoints is set, it
+// is the value the UI shows — the manual value is preserved in the DB but
+// shadowed. Tasks may not have manual points (see canHaveManualPoints).
 type WorkItem struct {
 	ID             string     `json:"id"`
 	SubscriptionID string     `json:"subscription_id"`
@@ -29,6 +35,7 @@ type WorkItem struct {
 	Status         string     `json:"status"`
 	Priority       *string    `json:"priority,omitempty"`
 	StoryPoints    *int       `json:"story_points,omitempty"`
+	RollupPoints   *int       `json:"rollup_points,omitempty"`
 	SprintID       *string    `json:"sprint_id,omitempty"`
 	ParentID       *string    `json:"parent_id,omitempty"`
 	RootFeatureID  *string    `json:"root_feature_id,omitempty"`
@@ -38,6 +45,15 @@ type WorkItem struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 	ArchivedAt     *time.Time `json:"archived_at,omitempty"`
 	ChildrenCount  int        `json:"children_count"`
+}
+
+// canHaveManualPoints reports whether an item of the given type may have
+// story_points set manually. Tasks are bottom-layer execution units and
+// never carry their own points; every other type (epic, story, defect)
+// can. For parent items the manual value is preserved but visually
+// shadowed by the rollup.
+func canHaveManualPoints(itemType string) bool {
+	return itemType != "task"
 }
 
 // CreateWorkItemInput holds fields required to create a work item.
@@ -215,9 +231,10 @@ var validFieldTypes = map[string]bool{
 	"radio": true, "user": true, "url": true,
 }
 
-// validItemTypes is the set of allowed item_type discriminators.
+// validItemTypes is the set of allowed item_type discriminators. Mirrors
+// the CHECK in migration 066 (epic | story | task | defect).
 var validItemTypes = map[string]bool{
-	"epic": true, "story": true,
+	"epic": true, "story": true, "task": true, "defect": true,
 }
 
 // validStatuses is the set of allowed work item statuses.
