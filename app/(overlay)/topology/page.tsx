@@ -43,6 +43,7 @@ import { useTopologyHandoffs } from "@/app/hooks/useTopologyHandoffs";
 import Panel from "@/app/components/Panel";
 import ToggleBtnN from "@/app/components/ToggleBtnN";
 import TopologyTreeFlyout from "@/app/components/TopologyTreeFlyout";
+import InlineEditField from "@/app/components/InlineEditField";
 import { TbDots, TbChevronDown, TbChevronUp, TbAlertTriangle } from "react-icons/tb";
 import { BsArrowsFullscreen, BsFullscreenExit } from "react-icons/bs";
 import ArchiveMapFlyout from "@/app/components/ArchiveMapFlyout";
@@ -65,6 +66,11 @@ type RankDir = "TB" | "LR";
 // "step" = orthogonal right-angles, "straight" = direct diagonals.
 // `smoothstep` is rounded right-angles, NOT parabolic — don't use it here.
 type EdgeKind = "default" | "step" | "straight";
+// Authoring mode: "sandbox" = scratchpad for laying out / experimenting
+// before committing; "live" = the canonical persisted topology that
+// drives the rest of the app. Defaults to "sandbox" so users have a
+// safe place to plan before hitting live.
+type CanvasMode = "sandbox" | "live";
 
 // Two-letter monogram: first letter of the first two whitespace-split tokens,
 // uppercased. Strips bracketed segments and non-letter chars first so
@@ -109,6 +115,7 @@ type OrgNodeData = {
   onToggleCollapse: (id: string) => void;
   onOpenMenu: (id: string, screenX: number, screenY: number) => void;
   onOpenArchiveMap: (id: string, name: string) => void;
+  onRename: (id: string, name: string) => Promise<boolean> | boolean;
 };
 
 // ──────────────────────────────────────────────────────────────────────
@@ -126,6 +133,7 @@ function OrgNodeCard({ id, data, selected }: NodeProps<Node<OrgNodeData>>) {
     onToggleCollapse,
     onOpenMenu,
     onOpenArchiveMap,
+    onRename,
   } = data;
   const targetPos = rankdir === "LR" ? Position.Left : Position.Top;
   const sourcePos = rankdir === "LR" ? Position.Right : Position.Bottom;
@@ -175,9 +183,33 @@ function OrgNodeCard({ id, data, selected }: NodeProps<Node<OrgNodeData>>) {
           {initials}
         </div>
         <div className="org-node-card__heading">
-          <h3 className="org-node-card__name" title={org.name}>
-            {org.name}
-          </h3>
+          {selected ? (
+            <span
+              className="org-node-card__name-wrap nodrag"
+              onDoubleClick={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <InlineEditField
+                value={org.name}
+                ariaLabel={`Rename ${org.name}`}
+                clickToEdit
+                stopPointerOnInput
+                displayClassName="org-node-card__name"
+                inputClassName="org-node-card__name-input"
+                containerClassName="org-node-card__name-edit"
+                maxLength={120}
+                onCommit={(next) => {
+                  // Fire-and-forget — InlineEditField only consumes sync
+                  // return values; the parent reload reconciles errors.
+                  void onRename(id, next);
+                }}
+              />
+            </span>
+          ) : (
+            <h3 className="org-node-card__name" title={org.name}>
+              {org.name}
+            </h3>
+          )}
           <p className="org-node-card__sub">{sub}</p>
         </div>
         <div className="org-node-card__actions">
@@ -324,6 +356,7 @@ function layoutWithDagre(
         onToggleCollapse: () => {},
         onOpenMenu: () => {},
         onOpenArchiveMap: () => {},
+        onRename: () => false,
       },
     });
   }
@@ -514,10 +547,25 @@ function TopologyOverlayInner() {
     setArchiveMap({ nodeId: id, nodeName: name });
   }, []);
 
+  // Canvas-card inline rename. Mirrors the flyout row's onRename so the
+  // single-source-of-truth is still topologyApi.patchFields + reload().
+  const onRenameCanvas = useCallback(async (id: string, name: string) => {
+    try {
+      await topologyApi.patchFields(id, { name });
+      await reload();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [reload]);
+
   // View-mode toolbar state. Defaults match the previous hard-coded values
   // so existing users see no change until they click a toggle.
   const [rankdir, setRankdir] = useState<RankDir>("TB");
   const [edgeKind, setEdgeKind] = useState<EdgeKind>("default");
+  // Authoring mode. UI-only for now; copy/paste between sandbox and live
+  // wires up in the next step.
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>("sandbox");
 
   // Compute layout — reflows whenever tree, collapsed, rankdir, edge
   // style, or the selected node changes (the selected card is rendered
@@ -533,32 +581,23 @@ function TopologyOverlayInner() {
     () =>
       layout.nodes.map((n) => ({
         ...n,
-        data: { ...n.data, onToggleCollapse, onOpenMenu, onOpenArchiveMap },
+        data: { ...n.data, onToggleCollapse, onOpenMenu, onOpenArchiveMap, onRename: onRenameCanvas },
       })),
-    [layout.nodes, onToggleCollapse, onOpenMenu, onOpenArchiveMap],
+    [layout.nodes, onToggleCollapse, onOpenMenu, onOpenArchiveMap, onRenameCanvas],
   );
 
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<OrgNodeData>>(layoutNodes);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>(layout.edges);
 
-  // Re-sync with layout when tree/collapsed change.
+  // Re-sync with layout when tree/collapsed/selection change. `layoutNodes`
+  // already bakes in the per-node `selected` flag (see layoutWithDagre), so
+  // a single wholesale write is enough — we don't need a second effect to
+  // toggle `selected`, which used to race the position write and could
+  // leave nodes anchored to a stale (pre-resize) layout.
   useEffect(() => {
     setRfNodes(layoutNodes);
     setRfEdges(layout.edges);
   }, [layoutNodes, layout.edges, setRfNodes, setRfEdges]);
-
-  // Mirror our `selectedId` onto each React Flow node's `selected` flag so
-  // the OrgNodeCard's .is-selected ring paints. Without this the only way
-  // a node ever becomes "selected" is via React Flow's own click pipeline,
-  // which the tree-row handler bypasses entirely.
-  useEffect(() => {
-    setRfNodes((prev) =>
-      prev.map((n) => {
-        const want = n.id === selectedId;
-        return n.selected === want ? n : { ...n, selected: want };
-      }),
-    );
-  }, [selectedId, setRfNodes]);
 
   // Fit view once after first non-empty layout.
   const didFitRef = useRef(false);
@@ -903,6 +942,17 @@ function TopologyOverlayInner() {
         </div>
         <div className="topo-overlay__actions">
           <ToggleBtnN
+            ariaLabel="Authoring mode"
+            size="sm"
+            value={canvasMode}
+            onChange={setCanvasMode}
+            className="topo-overlay__mode-toggle"
+            options={[
+              { value: "sandbox", label: "Sandbox", title: "Practice / plan changes without affecting the live topology" },
+              { value: "live", label: "Live", title: "Edit the live topology that drives the rest of the app" },
+            ]}
+          />
+          <ToggleBtnN
             ariaLabel="Layout direction"
             size="sm"
             value={rankdir}
@@ -993,6 +1043,12 @@ function TopologyOverlayInner() {
               fitViewOptions={{ padding: 0.2 }}
               nodesConnectable={false}
               edgesFocusable={false}
+              // React Flow's default double-click handler zooms the
+              // canvas centred on the click point. That reads as the
+              // clicked node "jumping up" by some pixels. We use
+              // double-click on the card name for inline rename, so
+              // disable RF's behaviour outright.
+              zoomOnDoubleClick={false}
             >
               <Background gap={20} size={1} color="#e5e7eb" />
               <MiniMap

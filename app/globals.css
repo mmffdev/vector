@@ -2936,6 +2936,24 @@ table.tbl tbody tr:hover td {
   margin: 0;
 }
 
+/* When the title sits inside InlineEditField, the wrapper takes the
+   flex-grow so the input fills the toolbar row, and the input mimics
+   the .eyebrow look (11px, uppercase, --ink-subtle). */
+.chart-widget__toolbar-title-edit {
+  flex: 1;
+  min-width: 0;
+}
+.chart-widget__toolbar-title-input {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  height: 28px;
+}
+
 .chart-widget__ref {
   display: flex;
   align-items: center;
@@ -9474,6 +9492,27 @@ table.tbl tbody tr:hover td {
   margin-top: 0;
 }
 
+/* Authoring-mode toggle — Sandbox flashes safe-green (#00ff00) and Live
+   flashes warning-red (#ff0000) so the user can see at a glance which
+   surface they're editing. */
+.topo-overlay__mode-toggle[data-value="sandbox"] {
+  --accent: #00ff00;
+  --accent-ink: #000000;
+}
+.topo-overlay__mode-toggle[data-value="live"] {
+  --accent: #ff0000;
+  --accent-ink: #ffffff;
+}
+/* "Sandbox" is wider than "Live", so size both cells to fit the longer
+   label. The blob is sized in cell-fraction space (50% per cell for 2
+   cells), so making each cell ≥ Sandbox-width pushes the blob's edge
+   past the end of the word. */
+.topo-overlay__mode-toggle .toggle-btn__cell {
+  min-width: 88px;
+}
+
+
+
 /* .topo-overlay__btn family — fully canonical now; every JSX node composes
    from .btn .btn--primary|--ghost|--danger .btn--sm. No bespoke CSS needed. */
 
@@ -9656,10 +9695,38 @@ table.tbl tbody tr:hover td {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+  /* Guarantee a 6-character-wide click target even for short names
+     like "PMO" so click-to-edit on the selected card is reliable. */
+  display: inline-block;
+  min-width: 6ch;
 }
 
 .org-node-card.is-archived .org-node-card__name {
   color: var(--ink-muted, #94a3b8);
+}
+
+/* Inline-edit wiring on the canvas card name (selected card only). */
+.org-node-card__name-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.org-node-card__name-edit {
+  /* Fixed authoring width so the card geometry doesn't jump when the
+     user enters edit mode on a short name. */
+  width: 220px;
+  height: 28px;
+}
+
+.org-node-card__name-input {
+  height: 28px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 6px;
+  color: var(--ink, #0f172a);
 }
 
 .org-node-card__sub {
@@ -10476,6 +10543,10 @@ table.tbl tbody tr:hover td {
   white-space: nowrap;
   font-size: 13px;
   color: var(--ink, #1a1a1a);
+  /* Guarantee a 6-character-wide click/hit target even for short names
+     like "PMO" so double-click-to-edit is reliable. */
+  display: inline-block;
+  min-width: 6ch;
 }
 
 /* Wrapper around <InlineEditField> in a tree row. Inline-flex keeps the

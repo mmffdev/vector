@@ -29,12 +29,15 @@ export default function ToggleBtnN<T extends string>({
   options,
   size = "default",
   ariaLabel,
+  className,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: ReadonlyArray<ToggleBtnOption<T>>;
   size?: "default" | "sm";
   ariaLabel?: string;
+  /** Extra class on the outer pill — e.g. for an accent-coloured variant. */
+  className?: string;
 }) {
   const blobRef = useRef<HTMLDivElement>(null);
   const prevIdx = useRef<number | null>(null);
@@ -77,9 +80,10 @@ export default function ToggleBtnN<T extends string>({
 
   return (
     <div
-      className={`toggle-btn${size === "sm" ? " toggle-btn--sm" : ""}`}
+      className={`toggle-btn${size === "sm" ? " toggle-btn--sm" : ""}${className ? ` ${className}` : ""}`}
       role="group"
       aria-label={ariaLabel}
+      data-value={value}
     >
       <div className="toggle-btn__blob" ref={blobRef} />
       {options.map((o) => (

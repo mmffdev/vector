@@ -85,7 +85,17 @@ export function useTopologyHandoffs(
     return () => {
       cancelled = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
+      // Closing while readyState === CONNECTING logs a noisy
+      // "closed before connection established" warning (especially
+      // under React 19 StrictMode double-invoke + HMR). Defer the
+      // close until the handshake finishes.
+      const sock = ws;
+      if (!sock) return;
+      if (sock.readyState === WebSocket.CONNECTING) {
+        sock.addEventListener("open", () => sock.close(), { once: true });
+      } else if (sock.readyState === WebSocket.OPEN) {
+        sock.close();
+      }
     };
   }, [userID]);
 }

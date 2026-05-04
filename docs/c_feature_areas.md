@@ -232,10 +232,13 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | UI | `FE-UI-0004` | 4/? | `1765771299981887168` | Active | `<PaneHeader>` wrapper component (TbHelpHexagon trigger + click popover + paneId display) |
 | UI | `FE-UI-0005` | 5/? | `1765771302414583490` | Active | Adopt `<PaneHeader>` on `/preferences/navigation` (5 panels) |
 | UI | `FE-UI-0006` | 6/? | `1765963197887547298` | Active | `<DiagramCanvas>` primitive + /topology page surfaces + addressables adoption (PLA-0006) |
+| UI | `FE-UI-0013` | 13/? | `1767390548647216431` | Active | Workspace switcher dropdown in /topology page header (PLA-0006) |
+| UI | `FE-UI-0014` | 14/? | `1767390550794700081` | Active | Manage Workspaces panel — list, create, rename, archive, restore archived (PLA-0006) |
 | UX | `FE-UX-0001` | 1/? | `1765963206578145192` | Active | /topology empty state + cross-team move preview modal + handoff inbox (PLA-0006) |
 | SEC | `FE-SEC0001` | 1/? | `1760810747115341214` | Active | Security baseline |
 | SEC | `FE-SEC0005` | 5/? | `1762205064870495730` | Active | Remote client access — MMFFDev admin login and dev panel access (PH-0020) |
 | SEC | `FE-SEC-0006` | 6/? | `1765963194758596512` | Active | Clamp predicate cross-cutting middleware on portfolio_items / user_stories (PLA-0006) |
+| SEC | `FE-SEC-0010` | 10/? | `1767390552992515379` | Active | Seed workspace permission codes (workspace.create / .rename / .archive / .restore / .view_archived) into RBAC catalogue (PLA-0006) |
 | GOV | `FE-GOV-0001` | 1/? | `1765771317497300684` | Active | Gadmin `/dev/pane-help` editor page (list, edit, preview, save) |
 | GOV | `FE-GOV-0002` | 2/? | `1765963211997185964` | Active | Federated handoff governance — single-level delegation gate (PLA-0006) |
 | AUD | `FE-AUD0001` | 1/? | `1762012948181550696` | Active | Layer change audit logging |
@@ -260,6 +263,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API-0016` | 16/? | `1765161694587258032` | Active | WebSocket hub + LISTEN/NOTIFY bridge + heartbeat/drain + work-item write publish hook |
 | API | `FE-API-0017` | 17/? | `1765771314569676490` | Active | `GET /api/pane-help` (bulk, 60s cache) + `PUT /api/pane-help/:paneId` (gadmin-gated, sanitised) |
 | API | `FE-API-0018` | 18/? | `1765963191738697630` | Active | `orgdesign.Service` Go module + `/api/topology` REST surface (PLA-0006) |
+| API | `FE-API-0023` | 23/? | `1767390546491344173` | Active | `workspaces.Service` Go module + `/api/workspaces` REST surface + clamp predicate workspace scoping (PLA-0006) |
 | SQL | `FE-SQL-0001` | 1/? | `1762271910986516028` | Active | Execution item migrations (user_stories, defects, item_labels, item_tags) |
 | SQL | `FE-SQL-0002` | 2/? | `1763620456000128038` | Active | user_stories table migration |
 | SQL | `FE-SQL-0003` | 3/? | `1763620456629273639` | Active | defects table migration |
@@ -272,6 +276,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | SQL | `FE-SQL-0010` | 10/? | `1765161688908170412` | Active | Work item position columns (backlog_position, sprint_position) + NOTIFY trigger (migration 066) |
 | SQL | `FE-SQL-0011` | 11/? | `1765771311155513032` | Active | `pane_help` table migration 071 + 5 seed rows for nav-prefs panes |
 | SQL | `FE-SQL-0012` | 12/? | `1765963189826095005` | Active | Topology MVP — org_nodes, org_node_roles, org_node_view_state, org_node_id FK on portfolio_items + user_stories (PLA-0006) |
+| SQL | `FE-SQL-0018` | 18/? | `1767390544293528875` | Active | Workspaces tier — workspaces + workspace_roles tables, NOT NULL workspace_id FK + Default backfill on org_nodes (PLA-0006) |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | `FE-ALG-0001` | 1/? | `1765963200714508196` | Active | `<DiagramCanvas>` dagre layout in Web Worker + d3-zoom transforms (PLA-0006) |
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
@@ -282,6 +287,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | DEV | `FE-DEV-0006` | 6/? | `1765771306030073540` | Active | `paneIds.json` registry + `npm run lint:panes` enforcement |
 | DEV | `FE-DEV-0007` | 7/? | `1765771308680873670` | Active | `docs/c_c_pane_help.md` leaf doc + CLAUDE.md pointer + `c_scope.md` row |
 | DEV | `FE-DEV-0008` | 8/? | `1765963203155593126` | Active | `<DiagramCanvas>` 3,000-node stress harness + `docs/c_c_topology.md` + `docs/c_c_diagram_canvas.md` leaf docs (PLA-0006) |
+| DEV | `FE-DEV-0021` | 21/? | `1767390555332937013` | Active | Workspaces tier docs (`c_c_topology.md` + `c_schema.md`) + auto-create Default workspace on tenant signup (PLA-0006) |
 | POR-API | `FE-POR-API-0001` | 1/? | `1763600697053415384` | Active | Portfolio item metadata + custom fields API |
 | POR-ITM | `FE-POR-ITM-0001` | 1/? | `1763600697623840729` | Active | Portfolio item rollup count materialisation |
 | RNK | `FE-RNK-0001` | 1/? | `1765168379871626688` | Active | Generic ranking — registry, position-columns convention, NOTIFY trigger, drag hooks (cross-cutting; applies to work items, defects, portfolio levels, library items, any future orderable resource) |
