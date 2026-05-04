@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0010`
+**Last issued:** `PLA-0011`
 
 ## Format
 
@@ -31,6 +31,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0008` | Page Help Library — rich-content help docs (HTML body + YouTube embeds + image lists) per addressable, auto-seeded on Panel mount, full-page /help/<id> route, gadmin editor | 2026-05-04 | active |
 | `PLA-0009` | Self-healing dev pipeline & degraded-state observability — air file-watcher, bootstatus tolerant boot, /api/status/pipeline, EnvBadge degraded dot + 3s prod hold, launcher observer mode | 2026-05-04 | complete |
 | `PLA-0010` | Codebase Audit Remediation — Dead Code & Security Gaps (R035) | 2026-05-04 | active |
+| `PLA-0011` | Phase Baseline Audit Remediation (R036) — Clean Baseline Before Next Phase | 2026-05-05 | active |
 
 ## Deletion log
 

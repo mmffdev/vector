@@ -18,6 +18,10 @@
 //
 // Each database gets a schema_migrations table on first run that records which
 // files have been applied. Files already in that table are skipped.
+//
+// Subdirectories (e.g. `db/schema/down/`) are NOT scanned — the runner reads
+// the top level of each schema dir only. Rollback / DOWN scripts MUST live in
+// `db/schema/down/` so they cannot be auto-applied as forward migrations.
 package main
 
 import (
@@ -197,6 +201,11 @@ func appliedMigrations(ctx context.Context, pool *pgxpool.Pool) (map[string]bool
 	return out, rows.Err()
 }
 
+// sqlFiles returns the top-level *.sql files in dir, sorted lexicographically.
+// Subdirectories are intentionally skipped so `db/schema/down/` (rollback
+// scripts) and any future side-folder cannot be picked up as forward
+// migrations. Dropping a `_DOWN.sql` next to forward files used to silently
+// schedule the rollback for execution; that lesson is encoded here.
 func sqlFiles(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

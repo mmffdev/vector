@@ -63,9 +63,11 @@ import (
 type fakeWorkspaceLookup struct {
 	firstLive       map[uuid.UUID]uuid.UUID         // subscriptionID → workspaceID (or zero = ErrNoWorkspace)
 	bySlug          map[string]uuid.UUID            // (subID|slug) → workspaceID
+	byID            map[string]uuid.UUID            // (subID|workspaceID) → workspaceID (for ResolveRef UUID branch)
 	role            map[string]bool                 // (workspaceID|userID) → has-role
 	firstLiveErr    error                           // forced error for FirstLiveWorkspace
 	resolveSlugErr  error                           // forced error for ResolveSlug
+	resolveRefErr   error                           // forced error for ResolveRef
 	hasActiveRoleErr error                          // forced error for HasActiveRole
 }
 
@@ -90,6 +92,21 @@ func (f *fakeWorkspaceLookup) ResolveSlug(_ context.Context, sub uuid.UUID, slug
 		return uuid.Nil, orgdesign.ErrWorkspaceNotFound
 	}
 	return id, nil
+}
+
+func (f *fakeWorkspaceLookup) ResolveRef(ctx context.Context, sub uuid.UUID, ref string) (uuid.UUID, error) {
+	if f.resolveRefErr != nil {
+		return uuid.Nil, f.resolveRefErr
+	}
+	if id, err := uuid.Parse(ref); err == nil {
+		key := sub.String() + "|" + id.String()
+		got, ok := f.byID[key]
+		if !ok {
+			return uuid.Nil, orgdesign.ErrWorkspaceNotFound
+		}
+		return got, nil
+	}
+	return f.ResolveSlug(ctx, sub, ref)
 }
 
 func (f *fakeWorkspaceLookup) HasActiveRole(_ context.Context, ws, u uuid.UUID) (bool, error) {

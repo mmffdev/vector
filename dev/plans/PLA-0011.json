@@ -1,0 +1,136 @@
+{
+  "id": "PLA-0011",
+  "title": "Phase Baseline Audit Remediation (R036) — Clean Baseline Before Next Phase",
+  "date_created": "2026-05-05",
+  "date_started": null,
+  "date_last_updated": "2026-05-05",
+  "date_finished": null,
+  "scope": "<p>One-time remediation of the four-stream baseline audit (R036) conducted at the close of PLA-0006. Brings the codebase to a measurable clean baseline before the next phase begins: <code>go vet</code> clean, <code>npx tsc --noEmit</code> clean, all four custom lints clean, zero inline <code>style={{...}}</code> hard-rule violations, accurate <code>schema_migrations</code> bookkeeping, all forward migrations correctly wrapped in BEGIN/COMMIT, no dead exported Go functions, no unwired env-vars, no untracked migration files, and a re-migrated test DB tier so backend tests can run green again.</p><p>Out of scope: package major-version upgrades (Next.js 15→16, React 18→19, TypeScript 5→6) and the 233-index <code>idx_scan = 0</code> drop. Both are captured as tech-debt entries with one-sprint observation windows; neither belongs in this clean-up wave.</p>",
+  "value": "<p>The next phase needs a stable signal floor. Today we cannot trust <code>go vet</code> (it fails on a stale test), the test pool DB is missing recent RBAC migrations (tests fail with <em>column does not exist</em>), the CSS hard rule is silently violated 119 times, and 3 hidden <code>fetch()</code> calls bypass the silent-refresh path. Each of these will compound during the next phase if not closed now.</p><p>Closing this plan delivers seven measurable signals: (1) <code>go vet ./...</code> exits 0, (2) <code>npx tsc --noEmit</code> exits 0, (3) all four lints exit 0, (4) zero inline <code>style={{...}}</code> matches via grep, (5) <code>schema_migrations</code> matches the filesystem on both DBs, (6) every forward migration ends with an explicit <code>COMMIT;</code>, and (7) <code>cd backend &amp;&amp; go test ./...</code> runs zero <em>column does not exist</em> errors against the migrated test DB. After landing, every later phase starts from these seven signals as the baseline.</p>",
+  "implementation_plan": [
+    "Wave 1 (build unblock, 1 story): fix the portfoliomodels/list_test.go DTO drift so go vet ./... exits 0. Single story, contained edit, must land first because every other backend story depends on a clean vet baseline.",
+    "Wave 2 (cleanup & hygiene, 8 stories, all LOW risk): mechanical sweep — delete the residual schema_migrations DOWN row, append missing COMMITs to 4 migrations, document the 027 numbering gap, create symmetric library/down/ folder, delete 5 unused exported Go functions, audit OLLAMA_URL/OLLAMA_MODEL env-vars, npm update marked patch bump, commit untracked migration + DOWN README. Each story is independently mergeable; none touch live request paths.",
+    "Wave 3 (drift closures, 5 stories, mostly MED risk): the contract-touching work — migrate 3 direct fetch() calls onto api(); sweep inline-style violations to zero; reset test DB tier to migration tip; add make test-db-reset target with doc; capture 233-index audit as tech-debt entry with observation window. These need careful testing because they touch live UI / tests / runtime paths.",
+    "Closure: re-run go vet, tsc, and all 4 lints across the working tree; confirm the seven baseline signals; mark PLA-0011 complete in the plan registry."
+  ],
+  "areas_impacted": [
+    "DEV: portfoliomodels test fix, dead-export deletes, OLLAMA env audit, library/down/ folder, untracked-file commit, test DB reset, make test-db-reset target",
+    "SQL: schema_migrations DOWN-row cleanup, COMMIT append on 4 migrations, 233-index tech-debt entry",
+    "UI: marked patch bump, inline-style sweep across app/ and dev/",
+    "API: 3 direct fetch() → api() helper migrations (DomRegistryContext, Panel, Header)",
+    "Docs: c_c_postgresql_migrations.md (027 gap + DOWN row note), c_postgresql.md (test DB tier doc), c_tech_debt.md (233-index S3 entry)"
+  ],
+  "feature_list": [
+    "go vet ./... exits 0 from a clean checkout",
+    "schema_migrations matches filesystem on mmff_vector and mmff_library",
+    "All 101 vector + 11 library forward migrations end with explicit COMMIT;",
+    "Numbering gap at db/schema/027 documented with git-log reference",
+    "db/library_schema/down/ exists with README symmetric to db/schema/down/",
+    "Five unused exported Go functions (ValidateName, ValidateKind, 2× Parse*, IsPAdmin, ParseEntityKey) deleted",
+    "OLLAMA_URL/OLLAMA_MODEL either wired in .env.dev with documented defaults or removed from main.go",
+    "marked dependency at latest 18.x patch",
+    "db/schema/101_workspace_roles_backfill.sql + db/schema/down/README.md committed",
+    "Three direct fetch() calls migrated onto api() helper (DomRegistryContext, Panel, Header)",
+    "Zero inline style={{...}} violations across app/ and dev/",
+    "Test DB at port 5434 migrated to current tip; backend test suite runs zero column-does-not-exist errors",
+    "make test-db-reset target idempotently rebuilds the test DB",
+    "233 unused indexes captured as Severity-3 tech-debt entry with observation window end date"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "Five unused exported Go functions in addressables, artefacts, nav packages",
+    "Residual 097_page_help_rich_content_DOWN.sql row in schema_migrations",
+    "Direct fetch() pattern outside api()/SSE in app/contexts and app/components",
+    "Inline style={{...}} hard-rule violations across app/ and dev/"
+  ],
+  "work_item_backlog": [
+    { "order": 1,  "title": "Backend: fix portfoliomodels list_test.go DTO drift",                     "story_id": "00383", "card_url": "http://localhost:3333/cards/1767838724273473138", "status": "todo" },
+    { "order": 2,  "title": "DB: delete residual 097_DOWN row from schema_migrations",                "story_id": "00384", "card_url": "http://localhost:3333/cards/1767838740799030913", "status": "todo" },
+    { "order": 3,  "title": "Migrations: append missing COMMIT to 4 forward migrations",              "story_id": "00385", "card_url": "http://localhost:3333/cards/1767838757542692496", "status": "todo" },
+    { "order": 4,  "title": "Migrations: document the 027 numbering gap in c_c_postgresql_migrations.md", "story_id": "00386", "card_url": "http://localhost:3333/cards/1767838773573322399", "status": "todo" },
+    { "order": 5,  "title": "Migrations: create symmetric db/library_schema/down/ with README",       "story_id": "00387", "card_url": "http://localhost:3333/cards/1767838789352294062", "status": "todo" },
+    { "order": 6,  "title": "Backend: delete 5 unused exported Go functions",                          "story_id": "00388", "card_url": "http://localhost:3333/cards/1767838807245194941", "status": "todo" },
+    { "order": 7,  "title": "Backend: audit OLLAMA_URL/OLLAMA_MODEL — wire to .env.dev or remove",     "story_id": "00389", "card_url": "http://localhost:3333/cards/1767838822814451404", "status": "todo" },
+    { "order": 8,  "title": "Frontend: npm update marked patch bump",                                  "story_id": "00390", "card_url": "http://localhost:3333/cards/1767838838845081307", "status": "todo" },
+    { "order": 9,  "title": "Repo: commit untracked migration + DOWN README",                          "story_id": "00391", "card_url": "http://localhost:3333/cards/1767838854607275754", "status": "todo" },
+    { "order": 10, "title": "Frontend: migrate 3 direct fetch() calls onto api() helper",              "story_id": "00392", "card_url": "http://localhost:3333/cards/1767838871325771513", "status": "todo" },
+    { "order": 11, "title": "Frontend: sweep inline style={{...}} violations to zero",                 "story_id": "00393", "card_url": "http://localhost:3333/cards/1767838887440287496", "status": "todo" },
+    { "order": 12, "title": "Backend: reset test DB tier to migration tip",                            "story_id": "00394", "card_url": "http://localhost:3333/cards/1767838904888592151", "status": "todo" },
+    { "order": 13, "title": "Backend: make test-db-reset target + doc",                                "story_id": "00395", "card_url": "http://localhost:3333/cards/1767838919199557413", "status": "todo" },
+    { "order": 14, "title": "DB: capture 233-index audit as tech-debt entry with observation window",  "story_id": "00396", "card_url": "http://localhost:3333/cards/1767838935171467060", "status": "todo" }
+  ],
+  "acceptance_criteria": [
+    { "order": 1,  "criterion": "portfoliomodels test source compiles against current DTO",  "proven_by": "backend/internal/portfoliomodels/list_test.go references found.Layers (no LayerCount/LayerSummary mentions)", "story_id": "00383", "card_url": "http://localhost:3333/cards/1767838724273473138", "done": false },
+    { "order": 2,  "criterion": "go vet exits clean across backend",                          "proven_by": "cd backend && go vet ./... exits 0 from a clean checkout",                                                  "story_id": "00383", "card_url": "http://localhost:3333/cards/1767838724273473138", "done": false },
+    { "order": 3,  "criterion": "portfoliomodels test passes against dev test DB",            "proven_by": "cd backend && go test ./internal/portfoliomodels/... passes against the dev test DB",                       "story_id": "00383", "card_url": "http://localhost:3333/cards/1767838724273473138", "done": false },
+
+    { "order": 4,  "criterion": "schema_migrations holds zero DOWN rows",                     "proven_by": "SELECT COUNT(*) FROM schema_migrations WHERE filename LIKE '%DOWN%' returns 0 on dev",                       "story_id": "00384", "card_url": "http://localhost:3333/cards/1767838740799030913", "done": false },
+    { "order": 5,  "criterion": "Migration doc records the cleanup",                          "proven_by": "docs/c_c_postgresql_migrations.md records the cleanup with date and rationale",                              "story_id": "00384", "card_url": "http://localhost:3333/cards/1767838740799030913", "done": false },
+    { "order": 6,  "criterion": "Runner reports up-to-date for vector",                       "proven_by": "go run ./backend/cmd/migrate -env backend/.env.dev -db vector -dry-run reports 'up to date'",              "story_id": "00384", "card_url": "http://localhost:3333/cards/1767838740799030913", "done": false },
+
+    { "order": 7,  "criterion": "Each affected migration ends with explicit COMMIT",          "proven_by": "All 4 listed files end with a non-comment COMMIT; line",                                                    "story_id": "00385", "card_url": "http://localhost:3333/cards/1767838757542692496", "done": false },
+    { "order": 8,  "criterion": "Repo-wide scan finds no missing-COMMIT migrations",          "proven_by": "grep -L 'COMMIT' db/schema/*.sql db/library_schema/*.sql returns no files",                                "story_id": "00385", "card_url": "http://localhost:3333/cards/1767838757542692496", "done": false },
+    { "order": 9,  "criterion": "Runner reports up-to-date for both DBs after edits",         "proven_by": "go run ./backend/cmd/migrate -env backend/.env.dev -dry-run reports 'up to date' for vector and library", "story_id": "00385", "card_url": "http://localhost:3333/cards/1767838757542692496", "done": false },
+
+    { "order": 10, "criterion": "Numbering gap section exists in migration doc",              "proven_by": "docs/c_c_postgresql_migrations.md includes a 'Numbering gaps' section referencing 027",                       "story_id": "00386", "card_url": "http://localhost:3333/cards/1767838773573322399", "done": false },
+    { "order": 11, "criterion": "Note links to the relevant git commit",                      "proven_by": "the note links to the git commit that removed the original 027 file",                                       "story_id": "00386", "card_url": "http://localhost:3333/cards/1767838773573322399", "done": false },
+    { "order": 12, "criterion": "Doc remains internally referenced",                          "proven_by": "any doc-link checker (manual grep -r 'c_c_postgresql_migrations') shows the doc still resolves",            "story_id": "00386", "card_url": "http://localhost:3333/cards/1767838773573322399", "done": false },
+
+    { "order": 13, "criterion": "Library down/ directory exists in repo",                      "proven_by": "db/library_schema/down/ exists and is committed",                                                          "story_id": "00387", "card_url": "http://localhost:3333/cards/1767838789352294062", "done": false },
+    { "order": 14, "criterion": "Library down/ has a README mirroring the convention",         "proven_by": "db/library_schema/down/README.md mirrors the db/schema/down/README.md convention",                          "story_id": "00387", "card_url": "http://localhost:3333/cards/1767838789352294062", "done": false },
+    { "order": 15, "criterion": "Library runner dry-run still up-to-date",                     "proven_by": "go run ./backend/cmd/migrate -env backend/.env.dev -db library -dry-run still reports 'up to date'",         "story_id": "00387", "card_url": "http://localhost:3333/cards/1767838789352294062", "done": false },
+
+    { "order": 16, "criterion": "All five unused functions have zero call sites",             "proven_by": "grep -rn 'ValidateName|ValidateKind|IsPAdmin|ParseEntityKey' backend/ returns only the function-definition lines (no call sites)", "story_id": "00388", "card_url": "http://localhost:3333/cards/1767838807245194941", "done": false },
+    { "order": 17, "criterion": "go vet remains clean after deletes",                          "proven_by": "cd backend && go vet ./... exits 0",                                                                       "story_id": "00388", "card_url": "http://localhost:3333/cards/1767838807245194941", "done": false },
+    { "order": 18, "criterion": "go build remains clean after deletes",                        "proven_by": "cd backend && go build ./... exits 0",                                                                     "story_id": "00388", "card_url": "http://localhost:3333/cards/1767838807245194941", "done": false },
+
+    { "order": 19, "criterion": "OLLAMA env-vars decision is recorded in code/config",        "proven_by": "Either backend/.env.dev carries both vars with explicit values, OR backend/cmd/server/main.go no longer references them", "story_id": "00389", "card_url": "http://localhost:3333/cards/1767838822814451404", "done": false },
+    { "order": 20, "criterion": "Backend boots cleanly under the chosen state",               "proven_by": "go run ./backend/cmd/server -env backend/.env.dev boots without warnings about missing Ollama config",      "story_id": "00389", "card_url": "http://localhost:3333/cards/1767838822814451404", "done": false },
+    { "order": 21, "criterion": "Example env file reflects the chosen state",                 "proven_by": "backend/.env.dev.example (if present) reflects the chosen state",                                          "story_id": "00389", "card_url": "http://localhost:3333/cards/1767838822814451404", "done": false },
+
+    { "order": 22, "criterion": "marked resolved to latest 18.x patch",                       "proven_by": "package.json shows marked resolved to the latest 18.x patch in package-lock.json",                          "story_id": "00390", "card_url": "http://localhost:3333/cards/1767838838845081307", "done": false },
+    { "order": 23, "criterion": "Production build remains clean",                             "proven_by": "npm run build exits 0 with no new warnings",                                                                "story_id": "00390", "card_url": "http://localhost:3333/cards/1767838838845081307", "done": false },
+    { "order": 24, "criterion": "Type-check remains clean",                                   "proven_by": "npx tsc --noEmit exits 0",                                                                                  "story_id": "00390", "card_url": "http://localhost:3333/cards/1767838838845081307", "done": false },
+
+    { "order": 25, "criterion": "db/ directory shows no untracked files",                     "proven_by": "git status --short db/ shows no untracked files",                                                          "story_id": "00391", "card_url": "http://localhost:3333/cards/1767838854607275754", "done": false },
+    { "order": 26, "criterion": "Commit message references PLA-0006 + down/ relocation",     "proven_by": "the commit message references the PLA-0006 backfill and the down/ relocation",                              "story_id": "00391", "card_url": "http://localhost:3333/cards/1767838854607275754", "done": false },
+    { "order": 27, "criterion": "Runner reports up-to-date after commit",                     "proven_by": "go run ./backend/cmd/migrate -env backend/.env.dev -db vector -dry-run reports 'up to date'",              "story_id": "00391", "card_url": "http://localhost:3333/cards/1767838854607275754", "done": false },
+
+    { "order": 28, "criterion": "No raw fetch() left outside the SSE exception",               "proven_by": "grep -rn '\\bfetch(' app/ | grep -v 'AdoptionOverlay' returns zero results",                                "story_id": "00392", "card_url": "http://localhost:3333/cards/1767838871325771513", "done": false },
+    { "order": 29, "criterion": "Each migrated site uses api()",                               "proven_by": "all 3 listed sites import and use api() from app/lib/api.ts",                                              "story_id": "00392", "card_url": "http://localhost:3333/cards/1767838871325771513", "done": false },
+    { "order": 30, "criterion": "Stale-token retry path proven on the snapshot fetch",        "proven_by": "force a stale-token scenario and confirm the addressables snapshot still loads after the silent refresh",   "story_id": "00392", "card_url": "http://localhost:3333/cards/1767838871325771513", "done": false },
+
+    { "order": 31, "criterion": "No inline style={{...}} matches anywhere in app/ or dev/",   "proven_by": "grep -rn 'style={{' app/ dev/ returns zero matches",                                                       "story_id": "00393", "card_url": "http://localhost:3333/cards/1767838887440287496", "done": false },
+    { "order": 32, "criterion": "CSS catalog absorbs the static cases",                       "proven_by": "docs/css-guide.md and globals.css contain the new utility/variant classes added during the sweep",          "story_id": "00393", "card_url": "http://localhost:3333/cards/1767838887440287496", "done": false },
+    { "order": 33, "criterion": "Manual smoke shows no visual regression",                    "proven_by": "manual smoke of /topology, /work-items, /theme shows no visual regression",                                "story_id": "00393", "card_url": "http://localhost:3333/cards/1767838887440287496", "done": false },
+
+    { "order": 34, "criterion": "Test DB sits at the migration tip",                          "proven_by": "SELECT MAX(filename) FROM schema_migrations on the test DB matches the highest file in db/schema/",         "story_id": "00394", "card_url": "http://localhost:3333/cards/1767838904888592151", "done": false },
+    { "order": 35, "criterion": "Tests run without 'column does not exist' failures",         "proven_by": "cd backend && go test ./... shows zero 'column does not exist' errors",                                    "story_id": "00394", "card_url": "http://localhost:3333/cards/1767838904888592151", "done": false },
+    { "order": 36, "criterion": "Test DB tier documented",                                    "proven_by": "docs/c_postgresql.md (or new leaf) explains where the test DB lives and how to reset it",                  "story_id": "00394", "card_url": "http://localhost:3333/cards/1767838904888592151", "done": false },
+
+    { "order": 37, "criterion": "make test-db-reset target works end-to-end",                 "proven_by": "make test-db-reset (or the documented script) drops the test DB, re-creates it, and runs all migrations idempotently", "story_id": "00395", "card_url": "http://localhost:3333/cards/1767838919199557413", "done": false },
+    { "order": 38, "criterion": "Target is idempotent",                                       "proven_by": "running it twice in a row leaves the DB in the same state both times",                                     "story_id": "00395", "card_url": "http://localhost:3333/cards/1767838919199557413", "done": false },
+    { "order": 39, "criterion": "Target is documented",                                       "proven_by": "docs/c_postgresql.md (or a new test-DB leaf) describes when and how to run it",                            "story_id": "00395", "card_url": "http://localhost:3333/cards/1767838919199557413", "done": false },
+
+    { "order": 40, "criterion": "Tech-debt entry exists for 233 unused indexes",              "proven_by": "docs/c_tech_debt.md has a Severity-3 entry naming the 233 indexes, the observation-window end date, and the trigger condition for action", "story_id": "00396", "card_url": "http://localhost:3333/cards/1767838935171467060", "done": false },
+    { "order": 41, "criterion": "Entry links to the full index list",                         "proven_by": "the entry links to (or embeds) the full list of indexes by name",                                           "story_id": "00396", "card_url": "http://localhost:3333/cards/1767838935171467060", "done": false },
+    { "order": 42, "criterion": "Observation window end-date is recorded",                    "proven_by": "the observation-window end date is set ~1 sprint out and recorded in the entry",                            "story_id": "00396", "card_url": "http://localhost:3333/cards/1767838935171467060", "done": false }
+  ],
+  "risks": [
+    { "impact": 2, "risk": "Inline-style sweep (00393) introduces visual regressions when migrating dynamic values into CSS custom properties.", "mitigation": "Manual smoke of /topology, /work-items, /theme included in the AC. Land 00393 in its own PR so any regression has a single revert target." },
+    { "impact": 2, "risk": "Test DB reset (00394) destroys the local test pool, causing incidental test flakiness for whoever runs tests during the cutover window.", "mitigation": "Land alongside 00395 (the make test-db-reset target) so the recovery path is documented and one command. Announce in the dev channel before cutover." },
+    { "impact": 2, "risk": "fetch()→api() migration (00392) changes auth-error semantics on three call sites; a previously-silent 401 may now trigger a refresh + retry that exposes a different failure mode.", "mitigation": "AC requires a stale-token reproduction proving the addressables snapshot still loads. Roll into staging first if available." },
+    { "impact": 1, "risk": "OLLAMA env-var deletion (00389) removes a hidden integration point that may be re-needed when the LLM feature lights up.", "mitigation": "If the env-vars are removed rather than wired, capture the decision and the original line numbers in the same commit message so future re-introduction is traceable." },
+    { "impact": 1, "risk": "Migration COMMIT appends (00385) re-touch already-applied migration files; if anyone runs them again they should be no-ops, but a careless re-apply could surface unexpected side effects.", "mitigation": "All four files have already been applied on dev; the runner records them by filename and refuses to re-run. AC explicitly checks 'up to date' on dry-run." }
+  ],
+  "references": [
+    { "kind": "internal", "label": "R036 — Phase Baseline Audit research paper",            "href": "dev/research/R036.json" },
+    { "kind": "internal", "label": "Story Index (PLA-0011 batch entry)",                   "href": "docs/c_story_index.md" },
+    { "kind": "internal", "label": "Plan Index (registry row)",                            "href": "docs/c_plan_index.md" },
+    { "kind": "internal", "label": "Feature-area registry (4 new labels)",                 "href": "docs/c_feature_areas.md" },
+    { "kind": "internal", "label": "Postgres migrations operating manual",                 "href": "docs/c_c_postgresql_migrations.md" },
+    { "kind": "internal", "label": "CSS catalog (hard rule reference)",                    "href": "docs/css-guide.md" },
+    { "kind": "internal", "label": "Tech-debt register (233-index entry destination)",     "href": "docs/c_tech_debt.md" },
+    { "kind": "internal", "label": "PLA-0011 card manifest (story-id ↔ card-id mapping)",   "href": "dev/research/_pla0011_cards.json" }
+  ]
+}

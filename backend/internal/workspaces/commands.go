@@ -86,6 +86,21 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 		}
 		return Workspace{}, err
 	}
+
+	// Seed creator-as-admin so the workspace clamp middleware
+	// (orgdesign/middleware.go) lets the creator read their own
+	// workspace immediately. Without this row the creator is locked
+	// out of /topology by the no_workspace_role 403 path. Same
+	// transaction as the workspace insert: a failed grant rolls the
+	// workspace back. Migration 101 closes the matching gap for
+	// pre-this-change rows.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO workspace_roles (subscription_id, workspace_id, user_id, role, granted_by)
+		VALUES ($1, $2, $3, 'admin', $3)
+	`, in.SubscriptionID, w.ID, in.ActorID); err != nil {
+		return Workspace{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return Workspace{}, err
 	}
@@ -171,6 +186,18 @@ func (s *Service) CreateDefault(
 		if isUniqueViolation(err) {
 			return Workspace{}, ErrSlugTaken
 		}
+		return Workspace{}, err
+	}
+
+	// Seed firstUser-as-admin on the same tx so the new tenant's
+	// gadmin can immediately read /topology after signup. Without
+	// this row the tenant is observable but unreadable — clamp 403s
+	// every topology call. Caller owns commit, so a roll-back of the
+	// signup also rolls back the role grant.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO workspace_roles (subscription_id, workspace_id, user_id, role, granted_by)
+		VALUES ($1, $2, $3, 'admin', $3)
+	`, subscriptionID, w.ID, firstUserID); err != nil {
 		return Workspace{}, err
 	}
 

@@ -417,18 +417,20 @@ function TopologyOverlayInner() {
   // PLA-0006/00379 — workspace switcher.
   //
   // The selected workspace is canonicalised in the URL as `?ws=<slug>`.
-  // We seed `wsSlug` from the query string at mount-time so a deep-link
-  // (`/topology?ws=ops`) selects that workspace WITHOUT a flicker on the
-  // tenant default first — the very first /api/topology/tree request
-  // already carries the slug. When the slug is absent, we let the
+  // We seed `wsRef` from the query string at mount-time so a deep-link
+  // (`/topology?ws=<uuid>` or `/topology?ws=ops`) selects that workspace
+  // WITHOUT a flicker on the tenant default first — the very first
+  // /api/topology/tree request already carries the ref. The backend
+  // accepts either a UUID (canonical, rename-stable) or a slug; new
+  // links emitted by this page use UUID. When absent, we let the
   // backend's WorkspaceClampMiddleware fall back to the actor's first
   // live workspace, then display whichever workspace the workspaces
   // list returns first (Default by created_at ASC).
   //
   // Source-of-truth ordering for the picker is the workspaces fetch;
-  // the tree fetch is downstream of `wsSlug` so changing the picker
+  // the tree fetch is downstream of `wsRef` so changing the picker
   // re-runs the tree query through the existing `reload()` callback.
-  const [wsSlug, setWsSlug] = useState<string | null>(() => search.get("ws"));
+  const [wsRef, setWsRef] = useState<string | null>(() => search.get("ws"));
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
 
   const [tree, setTree] = useState<OrgNode[] | null>(null);
@@ -471,13 +473,13 @@ function TopologyOverlayInner() {
 
   const reload = useCallback(async () => {
     try {
-      const res = await topologyApi.tree(undefined, wsSlug ?? undefined);
+      const res = await topologyApi.tree(undefined, wsRef ?? undefined);
       setTree(res);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load topology");
     }
-  }, [wsSlug]);
+  }, [wsRef]);
 
   useTopologyHandoffs(user?.id ?? null, () => {
     void reload();
@@ -488,11 +490,12 @@ function TopologyOverlayInner() {
   }, [reload]);
 
   // PLA-0006/00379 — fetch the live workspaces list. Drives the
-  // picker dropdown; the tree fetch is independent. If `?ws=<slug>`
-  // is absent on first load we adopt the first workspace's slug after
-  // the list resolves so the URL matches what the backend's clamp
-  // middleware already chose; we only do this when the slug is null
-  // so we never clobber a deep-link.
+  // picker dropdown; the tree fetch is independent. If `?ws=<ref>`
+  // is absent on first load we adopt the first workspace's UUID
+  // after the list resolves so the URL matches what the backend's
+  // clamp middleware already chose; UUID is canonical so a later
+  // rename does not invalidate the deep-link. We only do this when
+  // the ref is null so we never clobber a deep-link.
   //
   // We also subscribe to the `workspaces:changed` window event
   // (00381) so mutations from other panels (Manage Workspaces,
@@ -502,21 +505,21 @@ function TopologyOverlayInner() {
     try {
       const res = await workspacesApi.list();
       setWorkspaces(res);
-      if (wsSlug == null && res.length > 0) {
+      if (wsRef == null && res.length > 0) {
         const first = res[0]!;
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
-          url.searchParams.set("ws", first.slug);
+          url.searchParams.set("ws", first.id);
           window.history.replaceState(null, "", url.toString());
         }
-        setWsSlug(first.slug);
+        setWsRef(first.id);
       }
     } catch {
       // Silently leave `workspaces` null — the dropdown hides itself
       // when the list isn't available; tree fetch failure is surfaced
       // via loadError on its own path.
     }
-  }, [wsSlug]);
+  }, [wsRef]);
 
   useEffect(() => {
     void reloadWorkspaces();
@@ -528,9 +531,9 @@ function TopologyOverlayInner() {
     return () => {
       window.removeEventListener(WORKSPACES_CHANGED_EVENT, onChanged);
     };
-    // reloadWorkspaces depends on wsSlug, but we only care about the
+    // reloadWorkspaces depends on wsRef, but we only care about the
     // first-mount fetch + a stable subscription — re-running this
-    // effect on every slug change would double-fire fetches and tear
+    // effect on every ref change would double-fire fetches and tear
     // the listener down/up unnecessarily.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -543,14 +546,16 @@ function TopologyOverlayInner() {
 
   // Selecting a workspace from the dropdown — update the URL via
   // router.replace (no full reload, no history entry) and let the
-  // wsSlug-bound `reload` re-run the tree fetch with the new slug.
+  // wsRef-bound `reload` re-run the tree fetch with the new ref.
+  // The dropdown emits the workspace UUID so the URL stays
+  // rename-stable.
   const onWorkspaceChange = useCallback(
-    (nextSlug: string) => {
-      if (nextSlug === wsSlug) return;
-      setWsSlug(nextSlug);
+    (nextRef: string) => {
+      if (nextRef === wsRef) return;
+      setWsRef(nextRef);
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
-        url.searchParams.set("ws", nextSlug);
+        url.searchParams.set("ws", nextRef);
         // Use router.replace so the back button still returns to the
         // pre-/topology page rather than each workspace toggle.
         router.replace(url.pathname + url.search);
@@ -564,7 +569,7 @@ function TopologyOverlayInner() {
       // the new workspace's tree from scratch.
       didFitRef.current = false;
     },
-    [wsSlug, router],
+    [wsRef, router],
   );
 
   const root = useMemo(() => tree?.find((n) => n.parent_id === null) ?? null, [tree]);
@@ -1054,11 +1059,11 @@ function TopologyOverlayInner() {
             <select
               className="form__select form__select--sm topo-overlay__ws-select"
               aria-label="Switch workspace"
-              value={wsSlug ?? ""}
+              value={wsRef ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >
               {workspaces.map((w) => (
-                <option key={w.id} value={w.slug}>
+                <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
               ))}

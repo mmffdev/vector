@@ -237,6 +237,13 @@ type WorkspaceLookup interface {
 	// Returns ErrWorkspaceNotFound when missing.
 	ResolveSlug(ctx context.Context, subscriptionID uuid.UUID, slug string) (uuid.UUID, error)
 
+	// ResolveRef accepts either a UUID or a slug as `ref` and resolves
+	// it to a live workspace_id inside the tenant. UUIDs are the
+	// canonical identifier (stable across renames and reslugs); slugs
+	// are accepted for human-friendly URLs. Returns ErrWorkspaceNotFound
+	// when missing.
+	ResolveRef(ctx context.Context, subscriptionID uuid.UUID, ref string) (uuid.UUID, error)
+
 	// HasActiveRole reports whether userID holds any active grant on
 	// workspaceID. Used to enforce AC#3: in-tenant requests for a
 	// workspace the actor has no role on return 403, not an empty list.
@@ -296,6 +303,29 @@ func (l PoolWorkspaceLookup) ResolveSlug(ctx context.Context, subscriptionID uui
 	return id, err
 }
 
+// ResolveRef implements WorkspaceLookup. A well-formed UUID resolves
+// by id (canonical, survives slug changes); anything else falls back
+// to ResolveSlug. Both branches end with the same tenant + live
+// gating so a UUID from another tenant returns ErrWorkspaceNotFound,
+// not a cross-tenant leak.
+func (l PoolWorkspaceLookup) ResolveRef(ctx context.Context, subscriptionID uuid.UUID, ref string) (uuid.UUID, error) {
+	if id, err := uuid.Parse(ref); err == nil {
+		var got uuid.UUID
+		qerr := l.Pool.QueryRow(ctx, `
+			SELECT id FROM workspaces
+			 WHERE id              = $1
+			   AND subscription_id = $2
+			   AND archived_at IS NULL
+			 LIMIT 1
+		`, id, subscriptionID).Scan(&got)
+		if errors.Is(qerr, pgx.ErrNoRows) {
+			return uuid.Nil, ErrWorkspaceNotFound
+		}
+		return got, qerr
+	}
+	return l.ResolveSlug(ctx, subscriptionID, ref)
+}
+
 // HasActiveRole implements WorkspaceLookup.
 func (l PoolWorkspaceLookup) HasActiveRole(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error) {
 	var ok bool
@@ -334,8 +364,8 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 			}
 
 			var workspaceID uuid.UUID
-			slug := r.URL.Query().Get("ws")
-			if slug == "" {
+			ref := r.URL.Query().Get("ws")
+			if ref == "" {
 				id, err := lookup.FirstLiveWorkspace(r.Context(), u.SubscriptionID)
 				if errors.Is(err, ErrNoWorkspace) {
 					writeWorkspaceClampError(w, http.StatusForbidden, "no_workspace")
@@ -347,7 +377,11 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 				}
 				workspaceID = id
 			} else {
-				id, err := lookup.ResolveSlug(r.Context(), u.SubscriptionID, slug)
+				// `?ws=<ref>` accepts either a UUID (canonical) or a
+				// slug (human-friendly URL). Slug existed first; UUID
+				// support was added so the frontend's switcher can
+				// pass the stable id regardless of slug churn.
+				id, err := lookup.ResolveRef(r.Context(), u.SubscriptionID, ref)
 				if errors.Is(err, ErrWorkspaceNotFound) {
 					writeWorkspaceClampError(w, http.StatusNotFound, "workspace_not_found")
 					return

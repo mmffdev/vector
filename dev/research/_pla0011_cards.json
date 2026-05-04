@@ -1,0 +1,324 @@
+[
+  {
+    "id": "00383",
+    "card_id": "1767838724273473138",
+    "title": "Backend: fix portfoliomodels list_test.go DTO drift",
+    "wave": 1,
+    "area": "FE-DEV-0022",
+    "est": "EST-F2",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "test source",
+        "`backend/internal/portfoliomodels/list_test.go` references `found.Layers` (no `LayerCount`/`LayerSummary` mentions)"
+      ],
+      [
+        "vet exit code",
+        "`cd backend && go vet ./...` exits 0 from a clean checkout"
+      ],
+      [
+        "test pass",
+        "`cd backend && go test ./internal/portfoliomodels/...` passes against the dev test DB"
+      ]
+    ]
+  },
+  {
+    "id": "00384",
+    "card_id": "1767838740799030913",
+    "title": "DB: delete residual 097_DOWN row from schema_migrations",
+    "wave": 2,
+    "area": "FE-SQL-0019",
+    "est": "EST-F1",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "dev count",
+        "`SELECT COUNT(*) FROM schema_migrations WHERE filename LIKE '%DOWN%'` returns 0 on dev"
+      ],
+      [
+        "doc updated",
+        "`docs/c_c_postgresql_migrations.md` records the cleanup with date and rationale"
+      ],
+      [
+        "dry-run",
+        "`go run ./backend/cmd/migrate -env backend/.env.dev -db vector -dry-run` reports `up to date`"
+      ]
+    ]
+  },
+  {
+    "id": "00385",
+    "card_id": "1767838757542692496",
+    "title": "Migrations: append missing COMMIT to 4 forward migrations",
+    "wave": 2,
+    "area": "FE-SQL-0019",
+    "est": "EST-F2",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "file shape",
+        "All 4 files end with a non-comment `COMMIT;` line"
+      ],
+      [
+        "scan",
+        "`grep -L 'COMMIT' db/schema/*.sql db/library_schema/*.sql` returns no files"
+      ],
+      [
+        "dry-run",
+        "`go run ./backend/cmd/migrate -env backend/.env.dev -dry-run` reports `up to date` for both DBs"
+      ]
+    ]
+  },
+  {
+    "id": "00386",
+    "card_id": "1767838773573322399",
+    "title": "Migrations: document the 027 numbering gap in c_c_postgresql_migrations.md",
+    "wave": 2,
+    "area": "FE-DEV-0022",
+    "est": "EST-F1",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "doc note",
+        "`docs/c_c_postgresql_migrations.md` includes a 'Numbering gaps' section referencing 027"
+      ],
+      [
+        "git ref",
+        "the note links to the git commit that removed the original 027 file"
+      ],
+      [
+        "link check",
+        "any doc-link checker (manual `grep -r 'c_c_postgresql_migrations'`) shows the doc still resolves"
+      ]
+    ]
+  },
+  {
+    "id": "00387",
+    "card_id": "1767838789352294062",
+    "title": "Migrations: create symmetric db/library_schema/down/ with README",
+    "wave": 2,
+    "area": "FE-DEV-0022",
+    "est": "EST-F1",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "dir exists",
+        "`db/library_schema/down/` exists and is committed"
+      ],
+      [
+        "readme",
+        "`db/library_schema/down/README.md` mirrors the `db/schema/down/README.md` convention"
+      ],
+      [
+        "runner safe",
+        "`go run ./backend/cmd/migrate -env backend/.env.dev -db library -dry-run` still reports `up to date`"
+      ]
+    ]
+  },
+  {
+    "id": "00388",
+    "card_id": "1767838807245194941",
+    "title": "Backend: delete 5 unused exported Go functions",
+    "wave": 2,
+    "area": "FE-DEV-0022",
+    "est": "EST-F2",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "grep clean",
+        "`grep -rn 'ValidateName\\|ValidateKind\\|IsPAdmin\\|ParseEntityKey' backend/` returns only the function-definition lines (no call sites)"
+      ],
+      [
+        "vet clean",
+        "`cd backend && go vet ./...` exits 0"
+      ],
+      [
+        "build clean",
+        "`cd backend && go build ./...` exits 0"
+      ]
+    ]
+  },
+  {
+    "id": "00389",
+    "card_id": "1767838822814451404",
+    "title": "Backend: audit OLLAMA_URL/OLLAMA_MODEL \u2014 wire to .env.dev or remove",
+    "wave": 2,
+    "area": "FE-DEV-0022",
+    "est": "EST-F2",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "decision documented",
+        "Either `backend/.env.dev` carries both vars with explicit values, OR `backend/cmd/server/main.go` no longer references them"
+      ],
+      [
+        "active env passes",
+        "`go run ./backend/cmd/server -env backend/.env.dev` boots without warnings about missing Ollama config"
+      ],
+      [
+        "docs",
+        "`backend/.env.dev.example` (if present) reflects the chosen state"
+      ]
+    ]
+  },
+  {
+    "id": "00390",
+    "card_id": "1767838838845081307",
+    "title": "Frontend: npm update marked patch bump",
+    "wave": 2,
+    "area": "FE-UI-0015",
+    "est": "EST-F1",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "package.json",
+        "`package.json` shows `marked` resolved to the latest 18.x patch in `package-lock.json`"
+      ],
+      [
+        "build clean",
+        "`npm run build` exits 0 with no new warnings"
+      ],
+      [
+        "type-check",
+        "`npx tsc --noEmit` exits 0"
+      ]
+    ]
+  },
+  {
+    "id": "00391",
+    "card_id": "1767838854607275754",
+    "title": "Repo: commit untracked migration + DOWN README",
+    "wave": 2,
+    "area": "FE-DEV-0022",
+    "est": "EST-F1",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "status clean",
+        "`git status --short db/` shows no untracked files"
+      ],
+      [
+        "history note",
+        "the commit message references the PLA-0006 backfill and the down/ relocation"
+      ],
+      [
+        "dry-run",
+        "`go run ./backend/cmd/migrate -env backend/.env.dev -db vector -dry-run` reports `up to date`"
+      ]
+    ]
+  },
+  {
+    "id": "00392",
+    "card_id": "1767838871325771513",
+    "title": "Frontend: migrate 3 direct fetch() calls onto api() helper",
+    "wave": 3,
+    "area": "FE-API-0024",
+    "est": "EST-F3",
+    "risk": "RISK-MED",
+    "ac": [
+      [
+        "grep clean",
+        "`grep -rn '\\bfetch(' app/ | grep -v 'AdoptionOverlay'` returns zero results"
+      ],
+      [
+        "helper used",
+        "all 3 listed sites import and use `api()` from `app/lib/api.ts`"
+      ],
+      [
+        "stale-token test",
+        "force a stale-token scenario and confirm the addressables snapshot still loads after the silent refresh"
+      ]
+    ]
+  },
+  {
+    "id": "00393",
+    "card_id": "1767838887440287496",
+    "title": "Frontend: sweep inline style={{...}} violations to zero",
+    "wave": 3,
+    "area": "FE-UI-0015",
+    "est": "EST-F8",
+    "risk": "RISK-MED",
+    "ac": [
+      [
+        "grep zero",
+        "`grep -rn 'style={{' app/ dev/` returns zero matches"
+      ],
+      [
+        "css catalog",
+        "`docs/css-guide.md` and `globals.css` contain the new utility/variant classes added during the sweep"
+      ],
+      [
+        "visual diff",
+        "manual smoke of `/topology`, `/work-items`, `/theme` shows no visual regression"
+      ]
+    ]
+  },
+  {
+    "id": "00394",
+    "card_id": "1767838904888592151",
+    "title": "Backend: reset test DB tier to migration tip",
+    "wave": 3,
+    "area": "FE-DEV-0022",
+    "est": "EST-F3",
+    "risk": "RISK-MED",
+    "ac": [
+      [
+        "test DB tip",
+        "`SELECT MAX(filename) FROM schema_migrations` on the test DB matches the highest file in `db/schema/`"
+      ],
+      [
+        "tests green",
+        "`cd backend && go test ./...` shows zero `column does not exist` errors"
+      ],
+      [
+        "docs",
+        "`docs/c_postgresql.md` (or new leaf) explains where the test DB lives and how to reset it"
+      ]
+    ]
+  },
+  {
+    "id": "00395",
+    "card_id": "1767838919199557413",
+    "title": "Backend: make test-db-reset target + doc",
+    "wave": 3,
+    "area": "FE-DEV-0022",
+    "est": "EST-F3",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "target works",
+        "`make test-db-reset` (or the documented script) drops the test DB, re-creates it, and runs all migrations idempotently"
+      ],
+      [
+        "idempotent",
+        "running it twice in a row leaves the DB in the same state both times"
+      ],
+      [
+        "doc",
+        "`docs/c_postgresql.md` (or a new test-DB leaf) describes when and how to run it"
+      ]
+    ]
+  },
+  {
+    "id": "00396",
+    "card_id": "1767838935171467060",
+    "title": "DB: capture 233-index audit as tech-debt entry with observation window",
+    "wave": 3,
+    "area": "FE-SQL-0019",
+    "est": "EST-F1",
+    "risk": "RISK-LOW",
+    "ac": [
+      [
+        "debt entry",
+        "`docs/c_tech_debt.md` has a Severity-3 entry naming the 233 indexes, the observation-window end date, and the trigger condition for action"
+      ],
+      [
+        "index list",
+        "the entry links to (or embeds) the full list of indexes by name"
+      ],
+      [
+        "calendar reminder",
+        "the observation-window end date is set ~1 sprint out and recorded in the entry"
+      ]
+    ]
+  }
+]

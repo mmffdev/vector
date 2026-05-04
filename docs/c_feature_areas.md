@@ -234,6 +234,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | UI | `FE-UI-0006` | 6/? | `1765963197887547298` | Active | `<DiagramCanvas>` primitive + /topology page surfaces + addressables adoption (PLA-0006) |
 | UI | `FE-UI-0013` | 13/? | `1767390548647216431` | Active | Workspace switcher dropdown in /topology page header (PLA-0006) |
 | UI | `FE-UI-0014` | 14/? | `1767390550794700081` | Active | Manage Workspaces panel — list, create, rename, archive, restore archived (PLA-0006) |
+| UI | `FE-UI-0015` | 15/? | `1767837646362510958` | Active | Inline-style sweep to zero + marked patch bump (PLA-0011 R036) |
 | UX | `FE-UX-0001` | 1/? | `1765963206578145192` | Active | /topology empty state + cross-team move preview modal + handoff inbox (PLA-0006) |
 | SEC | `FE-SEC0001` | 1/? | `1760810747115341214` | Active | Security baseline |
 | SEC | `FE-SEC0005` | 5/? | `1762205064870495730` | Active | Remote client access — MMFFDev admin login and dev panel access (PH-0020) |
@@ -264,6 +265,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | API | `FE-API-0017` | 17/? | `1765771314569676490` | Active | `GET /api/pane-help` (bulk, 60s cache) + `PUT /api/pane-help/:paneId` (gadmin-gated, sanitised) |
 | API | `FE-API-0018` | 18/? | `1765963191738697630` | Active | `orgdesign.Service` Go module + `/api/topology` REST surface (PLA-0006) |
 | API | `FE-API-0023` | 23/? | `1767390546491344173` | Active | `workspaces.Service` Go module + `/api/workspaces` REST surface + clamp predicate workspace scoping (PLA-0006) |
+| API | `FE-API-0024` | 24/? | `1767837648669378160` | Active | Frontend `fetch()` → `api()` helper migration (3 sites; PLA-0011 R036) |
 | SQL | `FE-SQL-0001` | 1/? | `1762271910986516028` | Active | Execution item migrations (user_stories, defects, item_labels, item_tags) |
 | SQL | `FE-SQL-0002` | 2/? | `1763620456000128038` | Active | user_stories table migration |
 | SQL | `FE-SQL-0003` | 3/? | `1763620456629273639` | Active | defects table migration |
@@ -277,6 +279,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | SQL | `FE-SQL-0011` | 11/? | `1765771311155513032` | Active | `pane_help` table migration 071 + 5 seed rows for nav-prefs panes |
 | SQL | `FE-SQL-0012` | 12/? | `1765963189826095005` | Active | Topology MVP — org_nodes, org_node_roles, org_node_view_state, org_node_id FK on portfolio_items + user_stories (PLA-0006) |
 | SQL | `FE-SQL-0018` | 18/? | `1767390544293528875` | Active | Workspaces tier — workspaces + workspace_roles tables, NOT NULL workspace_id FK + Default backfill on org_nodes (PLA-0006) |
+| SQL | `FE-SQL-0019` | 19/? | `1767837644131141228` | Active | schema_migrations DOWN-row cleanup + COMMIT appends + 233-index tech-debt entry (PLA-0011 R036) |
 | DCR | — | 0/? | — | Ready | Docker / runtime / infra |
 | ALG | `FE-ALG-0001` | 1/? | `1765963200714508196` | Active | `<DiagramCanvas>` dagre layout in Web Worker + d3-zoom transforms (PLA-0006) |
 | DEV | `FE-DEV0001` | 1/? | `1760909905369237242` | Active | Master debug toggle |
@@ -288,6 +291,7 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | DEV | `FE-DEV-0007` | 7/? | `1765771308680873670` | Active | `docs/c_c_pane_help.md` leaf doc + CLAUDE.md pointer + `c_scope.md` row |
 | DEV | `FE-DEV-0008` | 8/? | `1765963203155593126` | Active | `<DiagramCanvas>` 3,000-node stress harness + `docs/c_c_topology.md` + `docs/c_c_diagram_canvas.md` leaf docs (PLA-0006) |
 | DEV | `FE-DEV-0021` | 21/? | `1767390555332937013` | Active | Workspaces tier docs (`c_c_topology.md` + `c_schema.md`) + auto-create Default workspace on tenant signup (PLA-0006) |
+| DEV | `FE-DEV-0022` | 22/? | `1767837641824274026` | Active | PLA-0011 R036 baseline-audit remediation — portfoliomodels test fix, migrations doc/COMMIT/027-gap/library-down, 5 unused Go fns delete, OLLAMA env audit, untracked migration commit, test-DB reset target |
 | POR-API | `FE-POR-API-0001` | 1/? | `1763600697053415384` | Active | Portfolio item metadata + custom fields API |
 | POR-ITM | `FE-POR-ITM-0001` | 1/? | `1763600697623840729` | Active | Portfolio item rollup count materialisation |
 | RNK | `FE-RNK-0001` | 1/? | `1765168379871626688` | Active | Generic ranking — registry, position-columns convention, NOTIFY trigger, drag hooks (cross-cutting; applies to work items, defects, portfolio levels, library items, any future orderable resource) |

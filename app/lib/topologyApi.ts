@@ -102,15 +102,17 @@ export interface PreviewMoveResult {
 
 export const topologyApi = {
   // GET /api/topology/tree — when rootId is undefined the backend
-  // resolves the tenant root. When wsSlug is supplied it is forwarded
-  // as `?ws=<slug>` so the workspace clamp middleware narrows the
-  // tree to that workspace (story 00378). Absent → backend falls back
-  // to the actor's first live workspace, which is what the Default
-  // workspace seed guarantees exists.
-  tree(rootId?: string, wsSlug?: string) {
+  // resolves the tenant root. When wsRef is supplied it is forwarded
+  // as `?ws=<ref>` so the workspace clamp middleware narrows the
+  // tree to that workspace (story 00378). The backend accepts either
+  // a UUID (canonical) or a slug; UUID is preferred so renames don't
+  // invalidate deep-links. Absent → backend falls back to the actor's
+  // first live workspace, which is what the Default workspace seed
+  // guarantees exists.
+  tree(rootId?: string, wsRef?: string) {
     const params = new URLSearchParams();
     if (rootId) params.set("root", rootId);
-    if (wsSlug) params.set("ws", wsSlug);
+    if (wsRef) params.set("ws", wsRef);
     const q = params.toString();
     return api<OrgNode[]>(`/api/topology/tree${q ? `?${q}` : ""}`);
   },
