@@ -23,6 +23,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/addressables"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/bootstatus"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/defects"
@@ -90,13 +91,20 @@ func main() {
 		log.Fatalf("db: %v", err)
 	}
 	defer pool.Close()
+	bootstatus.Set("db", true, "")
 
-	// PLA-0007: refuse to start if the DB permission catalogue and the Go
-	// permissions package have drifted. Drift is silently dangerous —
-	// a code referenced by RequirePermission but missing in the DB denies
-	// every actor; an orphan DB row is dead config. Fail loud at boot.
+	// PLA-0007: parity check between the Go catalogue and the DB. Drift
+	// (or a missing `permissions` table when migrations are behind on the
+	// active env) is loud-but-not-fatal: the resolver already denies on
+	// any DB error, so RBAC-gated routes fail-safe (403). We log loudly
+	// so the operator sees it, but the server still boots — otherwise
+	// switching env to one that lacks migration 088 makes the backend
+	// unstartable, which is the worst possible failure mode for a launcher.
 	if err := permissions.VerifyParity(ctx, pool); err != nil {
-		log.Fatalf("permissions: %v", err)
+		log.Printf("⚠ permissions parity FAILED — RBAC-gated routes will deny by default until fixed: %v", err)
+		bootstatus.Set("permissions_parity", false, err.Error())
+	} else {
+		bootstatus.Set("permissions_parity", true, "")
 	}
 
 	// PLA-0007: process-local resolver caching effective permission set
@@ -108,10 +116,16 @@ func main() {
 	// Library DB pools (mmff_library). Phase 3 only consumes RO; the
 	// publish + ack pools are wired the moment a handler needs them.
 	// Required env vars are documented in librarydb/db.go.
+	//
+	// Still fatal on failure: ~10 handler ctors take libPools.RO directly,
+	// so a nil pool would propagate as nil-deref panics deep in handlers.
+	// If this ever becomes a real availability problem we'll add a no-op
+	// pool fallback in librarydb itself; for now, fail loud.
 	libPools, err := librarydb.New(ctx)
 	if err != nil {
 		log.Fatalf("librarydb: %v", err)
 	}
+	bootstatus.Set("library_db", true, "")
 	defer libPools.Close()
 
 	auditLog := audit.New(pool)
@@ -133,10 +147,15 @@ func main() {
 
 	// Page registry: cached DB-backed catalogue. 60s TTL trades a tiny
 	// window of staleness after an admin change for near-zero read cost.
-	// Prime at startup so a broken DB fails fast here, not on first request.
+	// Prime at startup; on failure record degraded state and continue.
+	// nav.CachedRegistry.Get refreshes on demand, so the first nav request
+	// after the DB recovers will populate the cache without a restart.
 	navRegistry := nav.NewCachedRegistry(pool, 60*time.Second)
 	if _, err := navRegistry.Load(ctx); err != nil {
-		log.Fatalf("nav registry: initial load: %v", err)
+		log.Printf("⚠ nav registry initial load failed — nav routes will retry on first request: %v", err)
+		bootstatus.Set("nav_registry", false, err.Error())
+	} else {
+		bootstatus.Set("nav_registry", true, "")
 	}
 	navSvc := nav.New(pool, navRegistry)
 	navBookmarks := nav.NewBookmarks(pool, navRegistry)
@@ -269,6 +288,30 @@ func main() {
 			return "unknown", "?"
 		}
 	}
+
+	// /api/status/pipeline — single source of truth for the EnvBadge and
+	// any external monitor. Aggregates env, build identity, db target, and
+	// every component the boot sequence reported on. Public by design: no
+	// secrets are leaked (host:port for the active tunnel is already in
+	// /api/env), and a degraded backend MUST be observable from the UI
+	// even when auth is broken (which is exactly when you most need to
+	// see what's wrong). Components reflect bootstatus.All() in real time.
+	r.Get("/api/status/pipeline", func(w http.ResponseWriter, r *http.Request) {
+		env, letter := envFromDBPort()
+		comps := bootstatus.All()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"env":        env,
+			"letter":     letter,
+			"db_host":    os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT"),
+			"commit":     Commit,
+			"build_time": BuildTime,
+			"started_at": processStartedAt.Format(time.RFC3339),
+			"healthy":    bootstatus.Healthy(),
+			"components": comps,
+		})
+	})
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		env, _ := envFromDBPort()
@@ -718,6 +761,7 @@ func main() {
 		r.Patch("/nodes/{id}", orgDesignH.Patch)
 		r.Delete("/nodes/{id}", orgDesignH.Archive)
 		r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
+		r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
 		r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
 		r.Put("/nodes/{id}/view-state", orgDesignH.ViewState)
 		r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)

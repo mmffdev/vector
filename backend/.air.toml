@@ -1,0 +1,43 @@
+# air — live-reload supervisor for the Go backend.
+#
+# Watches cmd/ + internal/, recompiles to /tmp/vector-backend on .go change,
+# restarts the binary in-place. Replaces the launcher's spawn-and-pray loop:
+# the operator no longer clicks "Restart Backend" after every code edit.
+#
+# Logs go to /tmp/air-vector-backend.log; the launcher tails this for the UI.
+# BACKEND_ENV is inherited from the parent shell, so .env.<env> still drives
+# DB host/port — air does not change env semantics, only restart cadence.
+
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "/tmp/air-vector-backend"
+
+[build]
+  # `go build` is cached after the first compile; subsequent rebuilds are <2s.
+  cmd = "go build -o /tmp/vector-backend ./cmd/server"
+  bin = "/tmp/vector-backend"
+  full_bin = "/tmp/vector-backend"
+  include_ext = ["go"]
+  exclude_dir = ["testdata", "tmp", "vendor"]
+  exclude_regex = ["_test\\.go$"]
+  # Coalesce save-storms (a Save-All in the editor fires 10 events in 30ms).
+  delay = 500
+  # If a build fails, keep the last good binary running; surface the error
+  # in the air log instead of a dead backend.
+  stop_on_error = false
+  send_interrupt = true
+  # Give the old process 3s to drain before SIGKILL — matches launcher's
+  # ProcessSupervisor TERM→KILL window.
+  kill_delay = "3s"
+  log = "build-errors.log"
+
+[log]
+  time = true
+
+[color]
+  build = "yellow"
+  runner = "green"
+  app = "white"
+
+[misc]
+  clean_on_exit = true

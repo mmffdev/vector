@@ -2695,6 +2695,44 @@ table.tbl tbody tr:hover td {
      .env-badge class above; nothing extra needed here. */
 }
 
+/* Degraded indicator — small red dot anchored top-right of the trigger
+   badge. Visible only when /api/status/pipeline reports any subsystem
+   not OK; tooltip on the parent button lists the failures. */
+.env-badge__degraded-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger, #d43d3d);
+  box-shadow: 0 0 0 1.5px var(--surface, #fff);
+  pointer-events: none;
+}
+.env-badge--button {
+  position: relative;
+}
+
+/* Hold-to-confirm for production — fills the badge from bottom to top
+   over 3s while the user holds the mouse down. Releasing cancels. The
+   --prod-hold percentage is set inline by the React component. */
+.env-badge--prod-confirming {
+  overflow: hidden;
+}
+.env-badge__hold-fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--prod-hold, 0%);
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  transition: height 50ms linear;
+  z-index: 0;
+}
+.env-badge--prod-confirming > :not(.env-badge__hold-fill) {
+  position: relative;
+  z-index: 1;
+}
+
 .app-header-wrapper__avatar:hover {
   background: var(--surface-sunken);
   border-color: var(--ink-muted);

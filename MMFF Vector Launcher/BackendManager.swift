@@ -1,8 +1,14 @@
 // BackendManager.swift — Demeter's Go backend supervisor.
 //
-// Spawn: /bin/bash -lc 'BACKEND_ENV=<env> go run ./cmd/server' inside backend/.
-// Probe: /healthz JSON status:"ok"; readiness budget 30s.
-// Stop: PGID kill (SIGTERM → 3s → SIGKILL) + lsof sweep on :5100.
+// Spawn: `make dev` inside backend/. `make dev` invokes `air -c .air.toml`
+// which compiles + runs the server AND watches the source tree — when a
+// .go file changes, air rebuilds and restarts the server in <2s with no
+// launcher round-trip. The launcher's job shrinks to: spawn once, observe
+// /healthz, surface state. Code changes do NOT require a launcher click.
+// Probe: /healthz JSON status:"ok"; readiness budget 60s (covers air's
+// first cold compile ~5–15s; warm rebuilds are sub-second).
+// Stop: PGID kill (SIGTERM → 3s → SIGKILL) + lsof sweep on :5100. The
+// PGID kill takes down both `air` and its child Go binary in one go.
 import Foundation
 #if canImport(Darwin)
 import Darwin
@@ -44,10 +50,13 @@ actor BackendManager {
             }
         }
 
-        // Fix B: compile-then-run so the 180s grace covers server boot only, not
-        // Go compilation. `go build` is idempotent (cached) on subsequent starts.
+        // Spawn `make dev` (which runs air). The launcher only spawns; air
+        // owns rebuild-on-edit forever after. PATH augmented with /Users/rick/go/bin
+        // so `make install-air` (target dependency in Makefile) finds the binary
+        // on a clean machine, and so make itself can find air on first run.
         let backendDir = shellEscape(Paths.repoRoot.appendingPathComponent("backend").path)
-        let cmd = "cd \(backendDir) && go build -o /tmp/vector-backend ./cmd/server && /tmp/vector-backend"
+        let goBin = shellEscape(NSHomeDirectory() + "/go/bin")
+        let cmd = "cd \(backendDir) && export PATH=\(goBin):/opt/homebrew/bin:/usr/local/bin:$PATH && make dev"
         let envVars = ["BACKEND_ENV": env.rawValue]
 
         for attempt in 0..<policy.maxAttempts {
@@ -56,8 +65,10 @@ actor BackendManager {
                     bashLogin: cmd, cwd: Paths.repoRoot, env: envVars, logTag: .backend)
                 self.pgid = r.pgid
 
-                // Fix B: 180s grace — covers cold compile (~90s) + server startup
-                let deadline = Date().addingTimeInterval(180)
+                // 60s grace — covers air's first compile (~5–15s) + server boot.
+                // Subsequent warm rebuilds happen in-process inside air and never
+                // hit this budget, because the launcher spawns once and stays out.
+                let deadline = Date().addingTimeInterval(60)
                 while Date() < deadline {
                     let p = await HealthProbe.httpHealthz(url: healthURL, expectCommitMatch: false, timeout: 1.5)
                     if p.ok {
@@ -131,6 +142,11 @@ actor BackendManager {
         await start(allowAdopt: false)
     }
 
+    // Observer mode: air owns rebuild-on-edit and is the primary supervisor.
+    // The launcher just watches /healthz and only intervenes if air itself
+    // appears dead — i.e. the backend stays unreachable for 6 consecutive
+    // probes (~30s). A normal compile-and-restart cycle inside air takes
+    // <2s and never trips this; only a crash air can't recover from does.
     private func startWatcher() {
         watcherTask?.cancel()
         watcherTask = Task { [port] in
@@ -141,7 +157,7 @@ actor BackendManager {
                 let r = await HealthProbe.httpHealthz(url: url, expectCommitMatch: false, timeout: 2.0)
                 if r.ok { consecutive = 0; continue }
                 consecutive += 1
-                if consecutive >= 3 {
+                if consecutive >= 6 {
                     await self.handleCrash()
                     return
                 }
