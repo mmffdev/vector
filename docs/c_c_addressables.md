@@ -108,6 +108,10 @@ Custom apps written via the Samantha SDK pick up addresses automatically by comp
 
 **Collision rule:** if a custom-app addressable's `(parent_id, kind, name)` collides with an existing `source='build'` row, the register endpoint returns 409 with the existing canonical address; the custom-app must rename. Build always wins.
 
+## Help body sanitiser (PLA-0008 / 00330)
+
+Every `body_html` value passes through [`SanitiseHelpBodyHTML`](../backend/internal/addressables/sanitise.go) before it reaches `page_help`. Allowlist: `p, br, hr, blockquote, strong, b, em, i, u, code, pre, ul, ol, li, h2, h3, h4, a`. Only `<a>` accepts attributes (`href`, `title`, `rel`, `target=_blank`); `href` schemes are restricted to `http://`, `https://`, `mailto:`. Everything else — `<script>`, `<style>`, `<iframe>`, on-handlers, inline `style`, `javascript:` / `data:` URLs — is dropped at write time. Frontend `dangerouslySetInnerHTML` therefore renders pre-sanitised content; renderer-side URL re-checks (YouTube + image schemes) remain as defence-in-depth in case a row predates this sanitiser. Video URLs are validated by [`ValidateYouTubeURL`](../backend/internal/addressables/sanitise.go) (canonical 11-char ID extracted from `youtu.be/<id>`, `?v=<id>`, `/embed/<id>`, `/shorts/<id>` on `youtube.com`, `www.youtube.com`, `m.youtube.com`).
+
 ## PLA-0004 closure note
 
 This plan **supersedes** PLA-0004 (reusable per-panel Help popover with paneId registry):

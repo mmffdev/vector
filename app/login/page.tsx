@@ -12,7 +12,11 @@ function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
   const search = useSearchParams();
-  const explicitRedirect = search.get("redirect");
+  // Allowlist: same-origin path only — single leading slash, never "//" or "/\"
+  // (which some browsers resolve as protocol-relative cross-origin URLs).
+  const rawRedirect = search.get("redirect");
+  const explicitRedirect =
+    rawRedirect && /^\/(?![\\/])/.test(rawRedirect) ? rawRedirect : null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -1463,7 +1463,7 @@ function Modal({
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__header">
           <h2 className="modal__title">{title}</h2>
-          <button onClick={onClose} className="modal__close" aria-label="Close">
+          <button onClick={onClose} className="btn btn--icon btn--ghost modal__close" aria-label="Close">
             ×
           </button>
         </div>

@@ -96,7 +96,7 @@ export default function UserAvatarMenu() {
     <div className="avatar-menu" ref={rootRef}>
       <button
         type="button"
-        className="app-header-wrapper__avatar"
+        className="btn btn--icon btn--ghost app-header-wrapper__avatar"
         title={user.email}
         aria-haspopup="menu"
         aria-expanded={open}

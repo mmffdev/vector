@@ -12,7 +12,11 @@
 import { useEffect, useId, useRef, useState, ReactNode } from "react";
 import { TbHelpHexagon } from "react-icons/tb";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
-import { useSamanthaSdk, resolveSdkHelp } from "@/app/contexts/SamanthaSdkContext";
+import {
+  useSamanthaSdk,
+  resolveSdkHelp,
+  helpValueAsFragment,
+} from "@/app/contexts/SamanthaSdkContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
@@ -90,13 +94,15 @@ export default function Header({
           setBodyHtml(fromBackend);
           return;
         }
-        const fromSdk = resolveSdkHelp(sdk.helpDefaults, "header", name);
-        setBodyHtml(fromSdk ?? "");
+        const sdkRaw = resolveSdkHelp(sdk.helpDefaults, "header", name);
+        const sdkBody = sdkRaw ? helpValueAsFragment(sdkRaw).body_html ?? "" : "";
+        setBodyHtml(sdkBody);
       })
       .catch(() => {
         if (cancelled) return;
-        const fromSdk = resolveSdkHelp(sdk.helpDefaults, "header", name);
-        setBodyHtml(fromSdk ?? "");
+        const sdkRaw = resolveSdkHelp(sdk.helpDefaults, "header", name);
+        const sdkBody = sdkRaw ? helpValueAsFragment(sdkRaw).body_html ?? "" : "";
+        setBodyHtml(sdkBody);
       })
       .finally(() => {
         if (!cancelled) setBodyLoading(false);
@@ -136,7 +142,7 @@ export default function Header({
             <button
               ref={triggerRef}
               type="button"
-              className="addr-header__help-btn"
+              className="btn btn--icon btn--ghost btn--sm addr-header__help-btn"
               aria-expanded={open}
               aria-haspopup="dialog"
               aria-label={`Help for ${address}`}
@@ -170,7 +176,7 @@ export default function Header({
               </button>
               <button
                 type="button"
-                className="addr-header__close"
+                className="btn btn--icon btn--ghost btn--sm addr-header__close"
                 aria-label="Close help"
                 onClick={() => {
                   setOpen(false);

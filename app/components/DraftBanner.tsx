@@ -39,14 +39,14 @@ export default function DraftBanner({ savedAt, onRestore, onDiscard }: DraftBann
       <div className="draft-banner__actions">
         <button
           type="button"
-          className="draft-banner__btn draft-banner__btn--primary"
+          className="btn btn--primary btn--sm draft-banner__btn draft-banner__btn--primary"
           onClick={onRestore}
         >
           Restore
         </button>
         <button
           type="button"
-          className="draft-banner__btn"
+          className="btn btn--ghost btn--sm draft-banner__btn"
           onClick={onDiscard}
         >
           Discard

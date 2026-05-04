@@ -120,7 +120,7 @@ function CoreItemBadge({ label }: { label: string }) {
     <span className="nav-prefs__core-badge">
       <button
         type="button"
-        className="nav-prefs__btn nav-prefs__btn--core"
+        className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--core"
         aria-label={`${label} is a core menu item`}
         aria-expanded={open}
         title="Core menu item — cannot be renamed"
@@ -159,7 +159,7 @@ function DeleteConfirm({
       <span className="nav-prefs__confirm-text">Delete?</span>
       <button
         type="button"
-        className="nav-prefs__btn nav-prefs__btn--confirm"
+        className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--confirm"
         onClick={(e) => { e.stopPropagation(); onConfirm(); }}
         onPointerDown={(e) => e.stopPropagation()}
         aria-label={`Confirm delete ${label}`}
@@ -171,7 +171,7 @@ function DeleteConfirm({
       </button>
       <button
         type="button"
-        className="nav-prefs__btn"
+        className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
         onClick={(e) => { e.stopPropagation(); onCancel(); }}
         onPointerDown={(e) => e.stopPropagation()}
         aria-label="Cancel delete"
@@ -255,7 +255,7 @@ function PinnedRow({
         {isCustom && !renaming && onRenameCustom && (
           <button
             type="button"
-            className="nav-prefs__btn"
+            className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
             onClick={() => setRenaming(true)}
             aria-label={`Rename ${entry.label}`}
             title="Rename"
@@ -264,7 +264,7 @@ function PinnedRow({
         {isCustom && onDeleteCustom && (
           <button
             type="button"
-            className="nav-prefs__btn nav-prefs__btn--danger"
+            className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--danger"
             onClick={() => setConfirmingDelete(true)}
             aria-label={`Delete ${entry.label}`}
             title="Delete page"
@@ -277,7 +277,7 @@ function PinnedRow({
         {onPickIcon && (
           <button
             type="button"
-            className="nav-prefs__btn"
+            className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
             onClick={onPickIcon}
             aria-label={`Change icon for ${entry.label}`}
             title="Change icon"
@@ -287,7 +287,7 @@ function PinnedRow({
         )}
         <button
           type="button"
-          className={`nav-prefs__btn ${isStart ? "nav-prefs__btn--active" : ""}`}
+          className={`btn btn--icon btn--sm btn--ghost nav-prefs__btn ${isStart ? "nav-prefs__btn--active" : ""}`}
           onClick={onToggleStart}
           aria-label={isStart ? `Unset ${entry.label} as start page` : `Set ${entry.label} as start page`}
           aria-pressed={isStart}
@@ -300,7 +300,7 @@ function PinnedRow({
         </button>
         <button
           type="button"
-          className="nav-prefs__btn nav-prefs__btn--danger"
+          className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--danger"
           onClick={onUnpin}
           aria-label={`Unpin ${entry.label}`}
           title="Unpin"
@@ -339,7 +339,7 @@ function IconPicker({
           <button
             key={ic}
             type="button"
-            className={`nav-prefs__picker-btn ${ic === currentIcon ? "nav-prefs__picker-btn--active" : ""}`}
+            className={`btn btn--icon btn--sm btn--ghost nav-prefs__picker-btn ${ic === currentIcon ? "nav-prefs__picker-btn--active" : ""}`}
             aria-label={`Use ${ic} icon`}
             aria-pressed={ic === currentIcon}
             title={ic}
@@ -353,14 +353,14 @@ function IconPicker({
         {hasOverride && onClear && (
           <button
             type="button"
-            className="nav-prefs__btn"
+            className="btn btn--ghost btn--sm nav-prefs__btn"
             onClick={() => { onClear(); onClose(); }}
             title="Use the default icon for this page"
           >Reset</button>
         )}
         <button
           type="button"
-          className="nav-prefs__btn"
+          className="btn btn--ghost btn--sm nav-prefs__btn"
           onClick={onClose}
           aria-label="Close icon picker"
         >Close</button>
@@ -547,14 +547,14 @@ function BucketBlock({
           <div className="nav-prefs__group-actions">
             <button
               type="button"
-              className="nav-prefs__btn"
+              className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
               onClick={() => setEditing(true)}
               aria-label={`Rename ${heading} group`}
               title="Rename group"
             >✎</button>
             <button
               type="button"
-              className="nav-prefs__btn nav-prefs__btn--danger"
+              className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--danger"
               onClick={onRemoveGroup}
               aria-label={`Remove ${heading} group`}
               title="Remove group (items move to their tag groups)"
@@ -776,7 +776,7 @@ function PoolItem({
         {onPickIcon && (
           <button
             type="button"
-            className="nav-prefs__icon nav-prefs__icon--pool-btn"
+            className="btn btn--icon btn--xs btn--ghost nav-prefs__icon nav-prefs__icon--pool-btn"
             aria-label={`Change icon for ${entry.label}`}
             title="Change icon"
             onClick={(e) => { e.stopPropagation(); onPickIcon(); }}
@@ -788,7 +788,7 @@ function PoolItem({
         {onRenameCustom && !renaming && (
           <button
             type="button"
-            className="nav-prefs__btn"
+            className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
             aria-label={`Rename ${entry.label}`}
             title="Rename"
             onClick={(e) => { e.stopPropagation(); setRenaming(true); }}
@@ -798,7 +798,7 @@ function PoolItem({
         {onDeleteCustom && (
           <button
             type="button"
-            className="nav-prefs__btn nav-prefs__btn--danger"
+            className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--danger"
             aria-label={`Delete ${entry.label}`}
             title="Delete page"
             onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true); }}
@@ -811,7 +811,7 @@ function PoolItem({
         )}
         <button
           type="button"
-          className="nav-prefs__btn"
+          className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
           onClick={(e) => { e.stopPropagation(); onPin(entry.key); }}
           disabled={atCap}
           aria-label={`Pin ${entry.label}`}

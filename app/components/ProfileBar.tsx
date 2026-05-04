@@ -275,7 +275,7 @@ export default function ProfileBar() {
                 <>
                   <button
                     type="button"
-                    className="profile-bar__icon-btn profile-bar__icon-btn--confirm"
+                    className="btn btn--icon btn--micro btn--ghost profile-bar__icon-btn profile-bar__icon-btn--confirm"
                     onClick={(e) => { e.stopPropagation(); void remove(p); }}
                     title="Confirm delete"
                     aria-label={`Confirm delete ${p.label}`}
@@ -287,7 +287,7 @@ export default function ProfileBar() {
                   </button>
                   <button
                     type="button"
-                    className="profile-bar__icon-btn"
+                    className="btn btn--icon btn--micro btn--ghost profile-bar__icon-btn"
                     onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(null); }}
                     title="Cancel"
                     aria-label="Cancel delete"
@@ -300,7 +300,7 @@ export default function ProfileBar() {
                 <>
                   <button
                     type="button"
-                    className="profile-bar__icon-btn"
+                    className="btn btn--icon btn--micro btn--ghost profile-bar__icon-btn"
                     onClick={(e) => { e.stopPropagation(); startRename(p); }}
                     title="Rename profile"
                     aria-label={`Rename ${p.label}`}
@@ -311,7 +311,7 @@ export default function ProfileBar() {
                   {!p.is_default && (
                     <button
                       type="button"
-                      className="profile-bar__icon-btn profile-bar__icon-btn--danger"
+                      className="btn btn--icon btn--micro btn--ghost profile-bar__icon-btn profile-bar__icon-btn--danger"
                       onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(p.id); }}
                       title="Delete profile"
                       aria-label={`Delete ${p.label}`}
@@ -350,7 +350,7 @@ export default function ProfileBar() {
         !dragActive && (
           <button
             type="button"
-            className="profile-bar__add"
+            className="btn btn--icon btn--micro btn--ghost profile-bar__add"
             onClick={startCreate}
             disabled={atCap || busy}
             title={atCap ? `Profile limit reached (${MAX_PROFILES})` : "New profile"}

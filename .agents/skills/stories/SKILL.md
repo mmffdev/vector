@@ -1,0 +1,480 @@
+---
+name: stories
+description: 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
+allowed-tools: Bash, Read, Write, Edit
+---
+
+# /stories
+
+Turn a plan or work description into shippable user stories with 7-gate acceptance system, create them in Planka Backlog, then wait for user approval.
+
+## Workflow
+
+1. **You invoke `/stories`** with a plan or work description.
+2. **Skill drafts a plan**, reaches 95% confidence on it (asks for web access if it needs more research), searches existing research papers, and scans existing `PLA-NNNN` plans for overlap (Step −1).
+3. **Skill decomposes into stories** and runs them through the 7-gate system (Steps 0–7).
+4. **Skill writes the plan** to `dev/plans/PLA-NNNN.json` (Step 6.5) and adds the `PLA-NNNN` label to every card.
+5. **Cards are created in Planka Backlog** with all required labels attached and verified.
+6. **User reviews in Planka and the Plans tab** and decides which to work on.
+7. **User says "go"** — you move approved cards from Backlog → To Do and begin implementation.
+
+The `/stories` skill ends after Step 7 (plan saved, cards in Backlog, ready for review). It does **not** move cards to To Do or start work — that happens after user approval.
+
+## Hard Rules (No Exceptions)
+
+Every card created by `/stories` MUST end the run carrying ALL EIGHT of:
+
+1. **Story ID + Title** — `NNNNN — Title` (5-digit zero-padded ID, em dash, title)
+2. **AIGEN label** — creation source (id `1761454228267599083`, color lagoon-blue)
+3. **Phase label** — `PH-NNNN` (e.g., `PH-0005`)
+4. **Feature area label** — `FE-AAA-0001` or `FE-AAA-BBB-0001` (domain + optional sub-domain + 4-digit counter; e.g., `FE-DEV-0001`, `FE-POR-API-0001`, `FE-PAY-0001`)
+5. **Estimation label** — `EST-F#` (Fibonacci F0–F13 only; F21+ triggers automatic split)
+6. **Risk label** — `RISK-LOW` / `RISK-MED` / `RISK-HIGH`
+7. **Plan label** — `PLA-NNNN` (4-digit zero-padded; the plan this card belongs to — see Step −1 and Step 6.5)
+8. **Description** — User story format with 3+ "As Proven by" acceptance criteria
+
+A card missing any of (1)–(8) at end of run is a **defect**. The run **fails** regardless of which steps "succeeded". You MUST:
+
+- **Run Step −1 BEFORE Step 0.** Step −1 produces the `PLA-NNNN` plan ID that every card depends on (label 7) and decides whether this work merges into an existing plan or creates a new one.
+- **Run Step 0 BEFORE any card creation.** Step 0 produces the IDs and labels (1–4) that every card depends on.
+- **Run Step 3c (label verification) for every batch.** Not optional. Step 3c is the ONLY thing that catches silent-success label failures.
+- **If Step 3c finds missing labels, retry via MCP** until verified. Do NOT report success while cards are under-labelled.
+- **If confidence < 85% on ANY gate, STOP.** Do not create the card; ask the user to revise.
+- **If a story scores F21+, split automatically.** Show proposed breakdown; do NOT report intermediate steps.
+- **Run Step 6.5 BEFORE Step 7.** Persist the plan JSON to `dev/plans/PLA-NNNN.json` and update `docs/c_plan_index.md`. The plan must reference every card created.
+
+---
+
+## Step −1 — Draft Plan + 95% Confidence + Overlap Scan (BLOCKING)
+
+This step gates everything that follows. The plan is the document the Plans tab will render. Its `PLA-NNNN` becomes a mandatory label on every card.
+
+### −1.a — Draft the plan in memory
+
+Without writing anything to disk yet, draft an outline for ALL ten plan sections (title, scope, value, implementation_plan, areas_impacted, feature_list incl. extended/removed, work_item_backlog, acceptance_criteria, risks, references). Keep it short — bullet-level is fine.
+
+### −1.b — Self-assess confidence to 95%
+
+For each of the ten sections, score your own confidence 0–100%. Aggregate is the **lowest** section score (the plan is only as confident as its weakest piece).
+
+- **If any section < 95%:** identify what is missing. Two recovery paths:
+  - **Search internal first.** List `dev/research/` (filenames are `RNNN.json`); if any title or summary plausibly matches your topic, read those files via the Read tool and pull the relevant facts into the plan. Re-score.
+  - **Ask for web access.** If internal research did not raise confidence to 95%, output exactly:
+    ```
+    ⚠ Plan confidence < 95% on: <section names>
+    I need to search the web to fill these gaps. Should I run /research on <topic>, or proceed with what I have?
+    ```
+    Then STOP and wait for the user.
+- **If aggregate ≥ 95%:** proceed to −1.c.
+
+### −1.c — Scan existing plans for overlap
+
+Run:
+```bash
+ls dev/plans/ 2>/dev/null
+```
+
+Read each `PLA-NNNN.json` file's `id`, `title`, and `scope` (only those three fields — do not load full plans yet). Compare against the new plan's title and scope:
+
+- **Title overlap:** keyword match on ≥ 2 substantive words (ignore stopwords like "the", "and", "system").
+- **Scope overlap:** at least one feature/concept in the new plan's scope appears in the existing plan's scope.
+
+If a candidate match is found, read that plan's `feature_list` and `acceptance_criteria` for a deeper check.
+
+### −1.d — Confirm match with user OR allocate fresh PLA
+
+**If a match is found**, output:
+```
+Possible overlap with existing plan:
+  • <PLA-NNNN> — <title> (created <date>, <ac_done>/<ac_total> AC complete)
+  • Overlap: <one-sentence summary of where they overlap>
+  • Impact of new work on this plan: <what sections will be extended; which acceptance criteria become superseded>
+
+Merge new stories into <PLA-NNNN>, or allocate a fresh PLA-NNNN for a new plan? [merge/new]
+```
+Wait for the user. If `merge`: reuse the existing `PLA-NNNN`, and at Step 6.5 you will update the existing plan JSON (append new work_item_backlog rows, append new acceptance_criteria rows, update `date_last_updated`). If `new`: allocate a fresh ID per −1.e.
+
+**If no match is found**, allocate fresh per −1.e without asking.
+
+### −1.e — Allocate `PLA-NNNN`
+
+1. Read `docs/c_plan_index.md` for **Last issued**.
+2. Scan `dev/plans/` for the highest existing `PLA-NNNN.json`.
+3. `PLAN_ID = "PLA-" + str(max(file, scan) + 1).zfill(4)`.
+4. Determine the Planka label. If a `PLA-NNNN` label with this name does not exist on the board, create it via `mcp__planka__create_label` (color: `wisteria-purple`). Record `PLA_LABEL_ID`.
+
+**Self-check:** Can you state exact values for `PLAN_ID` and `PLA_LABEL_ID` before proceeding to Step 0? If any is "I'll figure it out later", stop and complete it now.
+
+---
+
+## Step 0 — Allocate IDs and Labels (BLOCKING)
+
+This step gates everything. Do not skip any sub-step.
+
+1. **Read `docs/c_story_index.md`.** Note the **Last issued** ID.
+2. **Scan the board's card titles** for the highest existing `NNNNN —` prefix. If higher than the file, use the scan value (another agent may have incremented).
+3. **Compute starting ID** = `max(file, scan) + 1`. Allocate one ID per story. Write them explicitly (e.g., `STORY_IDS = [00050, 00051, 00052]`).
+4. **Determine phase label** (e.g., `PH-0005`). Read `docs/c_story_index.md` for active phase. If the label doesn't exist on the board, create it via `mcp__planka__create_label` (color: `midnight-blue`). Record `PH_LABEL_ID`.
+5. **Determine feature area label.** Read `docs/c_feature_areas.md`. Label format is `FE-AAA-0001` (single domain) or `FE-AAA-BBB-0001` (domain + sub-domain). If a matching label exists, reuse its ID. If not, propose the new label name to the user; on approval, create via `mcp__planka__create_label` (color: `tank-green`). Record `FE_LABEL_ID`.
+6. **Confirm `PLA_LABEL_ID`** is set from Step −1.e. If not, return to Step −1 — the plan label is mandatory and must exist before any card is created.
+
+**Self-check:** Can you state exact values for `STORY_IDS`, `PH_LABEL_ID`, `FE_LABEL_ID`, and `PLA_LABEL_ID` before proceeding? If any is "I'll figure it out later", stop and complete it now.
+
+---
+
+## Step 1 — Parse Stories
+
+From the user's input, extract discrete, shippable user-facing units. One card = one thing a user can observe as done.
+
+**Split stories if any apply:**
+- The AC needs "and" / "then" to describe done — usually two observable units.
+- It mixes layers that can ship independently (e.g., API endpoint + UI on top).
+- It bundles a self-contained component inside a flow.
+- The title is vague ("refactor", "improve", "fix", "support", "enable", "handle") — force concrete sub-units.
+- You can't write a single one-line AC without hand-waving.
+
+**Don't over-split:** If two adjacent items can't be observed as done independently, merge them.
+
+Present a numbered list for user approval:
+
+```
+1. <Story title>
+   AC: <one-line acceptance criterion>
+
+2. <Story title>
+   AC: <one-line acceptance criterion>
+```
+
+Ask: "Approve all, or specify which numbers to create (e.g., 1,3,5)?"
+
+---
+
+## Step 2 — Dedup Check
+
+For each approved story title, run dedup per `docs/c_backlog.md` (section "Dedup check"):
+
+- `DUPLICATE` → skip with notice: `Skipped "<title>" — already exists as card <id>`
+- `SIMILAR` → warn and ask user to confirm before proceeding
+- `OK` → proceed to Step 2b
+
+---
+
+## Step 2b — Parallel-Safe Classification (Optional)
+
+Decide whether to apply the `MULTI AGENT` label (id `1760728388919624826`, color `berry-red`). A story qualifies when **all** are true:
+
+- Touches only its own files (no shared modules, no cross-cutting refactor).
+- No schema changes / no pending migrations on the same tables.
+- No shared service state (no handler registration, no DI wiring, no global config).
+- Is not blocked by another card in the same batch.
+
+**Disqualifiers:** any migration, any shared endpoint, anything depending on a sibling in the same batch.
+
+When in doubt, leave unlabelled — false-positive parallel labels cause merge conflicts.
+
+Present classification to the user before card creation so they can override.
+
+---
+
+## Step 3 — Confidence Gate (85%+ rule)
+
+Before creating ANY card, assess 85%+ confidence on these seven criteria. If ANY criterion < 85%, **STOP and ask the user to revise**.
+
+### Confidence Checklist
+
+- [ ] **Title clarity** (85%+): Title is specific, not vague. No red-flag words ("refactor", "improve", "fix", "support", "enable", "handle").
+- [ ] **Persona role** (85%+): "As a <role>" names a real persona (e.g., "dev gadmin", "portfolio owner", "backend engineer"). NOT "system", "backend", "user".
+- [ ] **Concrete action** (85%+): "I wish <action>" is a concrete task (e.g., "reset a portfolio model", "see a dashboard graph"). NOT "support", "enable", "handle".
+- [ ] **Observable benefit** (85%+): "so that <benefit>" names an observable outcome (e.g., "so that I can start over"). NOT "so that the code is better", "so that it's cleaner".
+- [ ] **Context paragraph** (85%+): Description includes a 1-paragraph context explaining why this story matters (not just what). Min 50 chars.
+- [ ] **Acceptance criteria count** (85%+): Minimum 3 "As Proven by" criteria present.
+- [ ] **AC verifiability** (85%+): Each criterion starts with an observable verb: "API returns", "database shows", "page renders", "user sees", "endpoint accepts". NO "and" in any single criterion.
+- [ ] **Feature area assigned** (85%+): One of: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV.
+- [ ] **Estimation assigned** (85%+): F0–F13 (Fibonacci). If calculated as F21+, proceed to Step 4 (automatic split).
+- [ ] **Risk assigned** (85%+): RISK-LOW, RISK-MED, or RISK-HIGH. Brief justification required if RISK-HIGH.
+
+**If ANY criterion < 85%:**
+- Output: `⚠ Story N: [REPLAN REQUIRED] — <specific reason>`
+- Do NOT create the card.
+- Ask the user to clarify, revise, or split the story.
+- Revised story (or split stories) are re-submitted to Step 3.
+
+**If ALL criteria >= 85%:**
+- Proceed to Step 4 (split check).
+
+---
+
+## Step 4 — Split Logic (F21+ Auto-Split)
+
+If any story is estimated F21 or higher:
+
+1. **STOP** — refuse to create the card.
+2. **Analyze** the story to find natural split points.
+3. **Propose** a breakdown into smaller stories (each F13 or lower).
+4. **Show the proposed list** with EST + RISK + AC for each.
+5. **Do NOT report the split process** — just present the final list for approval.
+
+**Example (no intermediate reporting):**
+
+User submits: "Implement entire portfolio model adoption system"
+Estimated: F21 (exceeds limit)
+
+Output:
+```
+Story exceeds F13 complexity limit. Proposed breakdown:
+
+1. Backend: archive old portfolio layers before adopting new model
+   EST: F3, RISK: MED, Area: SQL
+   AC: <acceptance criteria>
+
+2. Backend: unadopt portfolio model from dev setup
+   EST: F5, RISK: MED, Area: API
+   AC: <acceptance criteria>
+
+3. Frontend: portfolio adoption wizard (7-step flow)
+   EST: F8, RISK: HIGH, Area: UI
+   AC: <acceptance criteria>
+
+4. Dev doc: portfolio model adoption action paths
+   EST: F2, RISK: LOW, Area: DEV
+   AC: <acceptance criteria>
+
+Approve all 4, or revise? [y/n]
+```
+
+If user approves: treat the list as a new Step 1 input and re-run Steps 1–4 on each story.
+
+---
+
+## Step 5 — Create Cards
+
+For each story passing Steps 0–4:
+
+**Hard rule:** Use `./.Codex/bin/planka` helper — NEVER use curl directly. Do NOT use `mcp__planka__create_card` with `labels[]` parameter (silently broken). Reliable path:
+
+1. Create card via `mcp__planka__create_card` (no labels).
+2. Attach each label via `mcp__planka__assign_label_to_card` (one call per label).
+3. Run Step 5c (verify all labels attached).
+
+Card title format: `NNNNN — <Title>` (5-digit zero-padded ID from Step 0, em dash, then title).
+
+Description format:
+```
+## As a <role>, I wish <action>, so that <benefit>
+
+<one-paragraph context explaining the why>
+
+## Acceptance Criteria
+
+- **As Proven by X:** <specific, verifiable outcome>
+- **As Proven by Y:** <specific, verifiable outcome>
+- **As Proven by Z:** <specific, verifiable outcome>
+
+---
+_Agent: stories | <DATE> | <BRANCH>_
+```
+
+Required labels to attach (6 mandatory + 1 optional):
+1. `AIGEN` (id `1761454228267599083`)
+2. `PH-NNNN` (id from Step 0: `PH_LABEL_ID`)
+3. `FE-AAA-0001` or `FE-AAA-BBB-0001` (id from Step 0: `FE_LABEL_ID`)
+4. `EST-F#` (e.g., id `1761454230876456173` for `EST-F0`)
+5. `RISK-LOW/MED/HIGH` (e.g., id `1761454246445712635` for `RISK-LOW`)
+6. `PLA-NNNN` (id from Step −1.e: `PLA_LABEL_ID`) — the plan this card belongs to
+7. `MULTI AGENT` (id `1760728388919624826`) — only if Step 2b qualified
+
+---
+
+## Step 5c — Verify Labels (Mandatory; Gates to Step 6)
+
+After all cards in this batch are created, verify each card has its full label set. This catches silent-success failures.
+
+**You MUST run this exact script:**
+
+```bash
+TOKEN=$(python3 -c "
+import json,urllib.request,pathlib
+env=pathlib.Path('/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local').read_text()
+creds={l.split('=')[0]:'='.join(l.split('=')[1:]).strip() for l in env.splitlines() if '=' in l}
+req=urllib.request.Request('http://localhost:3333/api/access-tokens',
+  data=json.dumps({'emailOrUsername':creds['PLANKA_AGENT_USER'],'password':creds['PLANKA_AGENT_PASS']}).encode(),
+  headers={'Content-Type':'application/json'},method='POST')
+print(json.loads(urllib.request.urlopen(req).read())['item'])
+")
+
+# Comma-separated card IDs from this batch:
+CARD_IDS="<id1>,<id2>,<id3>"
+# Comma-separated required label NAMES (add MULTI AGENT only for parallel-safe cards):
+REQUIRED="AIGEN,PH-0005,FE-DEV0001,EST-F3,RISK-MED,PLA-0001"
+
+curl -s "http://localhost:3333/api/boards/1760699595475649556" \
+  -H "Authorization: Bearer $TOKEN" \
+  | CARD_IDS="$CARD_IDS" REQUIRED="$REQUIRED" python3 -c "
+import sys, json, os
+d = json.load(sys.stdin); inc = d.get('included', {})
+labels = {l['id']: l['name'] for l in inc.get('labels', [])}
+byCard = {}
+for cl in inc.get('cardLabels', []):
+    byCard.setdefault(cl['cardId'], []).append(labels.get(cl['labelId'], cl['labelId']))
+required = set(s.strip() for s in os.environ['REQUIRED'].split(',') if s.strip())
+fail = 0
+for cid in os.environ['CARD_IDS'].split(','):
+    cid = cid.strip()
+    if not cid: continue
+    have = set(byCard.get(cid, []))
+    missing = required - have
+    if missing:
+        fail += 1
+        print(f'DEFECT  {cid}  missing: {sorted(missing)}  have: {sorted(have)}')
+    else:
+        print(f'OK      {cid}  {sorted(have)}')
+sys.exit(1 if fail else 0)
+"
+```
+
+If exit 0: all labels are attached; proceed to Step 6.
+
+If exit 1: one or more cards are under-labelled. **Do NOT proceed to Step 6.** Retry missing labels via `mcp__planka__assign_label_to_card`, then re-run this script. Repeat until exit 0.
+
+---
+
+## Step 6 — Update Story Index
+
+After all cards are created, update `docs/c_story_index.md`:
+
+1. Set **Last issued** to the highest allocated ID from this batch (e.g., `00052` if you created 3 cards from 00050–00052).
+2. Do NOT touch the deletion log.
+
+This MUST happen before reporting; other agents read this file to allocate their next IDs.
+
+---
+
+## Step 6.5 — Write Plan JSON (BLOCKING)
+
+The plan drafted in Step −1 is now committed to disk. The Plans tab renders this file directly.
+
+### 6.5.a — Build the plan document
+
+Construct a `PlanDoc` (schema in [`app/api/dev/plans/route.ts`](../../../app/api/dev/plans/route.ts)) with these fields populated:
+
+- `id` — `PLA_ID` from Step −1.e (or the merged plan's existing id).
+- `title` — drafted in Step −1.a.
+- `date_created` — today's date `YYYY-MM-DD` (preserve existing if merging).
+- `date_started` — `null` (set by sync when first card moves to Doing).
+- `date_last_updated` — today's date for both new and merge cases.
+- `date_finished` — `null`.
+- `scope`, `value` — HTML strings (paragraphs, lists allowed; no `<script>`/`<style>`).
+- `implementation_plan` — array of step strings.
+- `areas_impacted` — array of "AAA: short description" strings.
+- `feature_list`, `features_extended`, `features_removed` — arrays of strings (HTML allowed in `features_extended`).
+- `work_item_backlog` — one entry per card created in this batch:
+  ```json
+  {
+    "order": 1,
+    "title": "<story title without NNNNN prefix>",
+    "story_id": "00050",
+    "card_url": "http://localhost:3333/cards/<card_id>",
+    "status": "todo"
+  }
+  ```
+- `acceptance_criteria` — flatten per-story AC into rows; each row links back to its source card via `story_id` + `card_url`:
+  ```json
+  {
+    "order": 1,
+    "criterion": "<the AC verb-led sentence>",
+    "proven_by": "<the proof clause>",
+    "story_id": "00050",
+    "card_url": "http://localhost:3333/cards/<card_id>",
+    "done": false
+  }
+  ```
+- `risks` — `[{ impact: 1-3, risk, mitigation }]`. Impact 3 = high.
+- `references` — `[{ kind: "internal" | "external", label, href }]`. Internal hrefs are repo-relative paths.
+
+### 6.5.b — Write or merge the file
+
+```bash
+mkdir -p dev/plans
+```
+
+**New plan:** Write the full document to `dev/plans/<PLA_ID>.json` (pretty-printed, 2-space indent).
+
+**Merge into existing plan** (Step −1.d returned `merge`): Read the existing JSON, then:
+
+- Append new cards to `work_item_backlog`, continuing the `order` sequence from the highest existing order.
+- Append new acceptance criteria to `acceptance_criteria`, continuing the `order` sequence.
+- Optionally extend `features_extended` with new bullets (use `<strong>` to mark extensions).
+- Update `date_last_updated` to today.
+- Do NOT clear `date_started` / `date_finished` if already set.
+- Write the merged document back to the same path.
+
+### 6.5.c — Update `docs/c_plan_index.md`
+
+For a **new plan**:
+
+1. Set `**Last issued:** \`<PLA_ID>\``.
+2. Add a new row to the Plan registry table:
+   ```
+   | `<PLA_ID>` | <title> | <YYYY-MM-DD> | active |
+   ```
+
+For a **merge** into an existing plan: do nothing here — the row already exists.
+
+### 6.5.d — Self-check
+
+Before continuing to Step 7, verify:
+
+- [ ] `dev/plans/<PLA_ID>.json` exists and parses as JSON.
+- [ ] Every card created in Step 5 appears in `work_item_backlog` with a valid `card_url`.
+- [ ] Every card carries the `PLA_LABEL_ID` (re-confirmed by Step 5c's `REQUIRED` list).
+- [ ] `docs/c_plan_index.md` "Last issued" matches the highest plan ID on disk.
+
+If any check fails: fix it now. Do not proceed to Step 7 with a half-written plan.
+
+---
+
+## Step 7 — Report
+
+Print a summary. Each created card line MUST list its actual labels (from Step 5c verification). Lead with the plan written/merged in Step 6.5:
+
+```
+Plan: PLA-0001 — <plan title> (dev/plans/PLA-0001.json)
+  • new | merged into existing
+  • work items: N | acceptance criteria: M
+
+Created N cards in Planka Backlog (IDs 00050–00052, phase PH-0005, feature FE-DEV0001, plan PLA-0001):
+  ✓ 00050 — <title> (card: <card_id>) [PH-0005, FE-DEV0001, AIGEN, EST-F3, RISK-MED, PLA-0001]
+  ✓ 00051 — <title> (card: <card_id>) [PH-0005, FE-DEV0001, AIGEN, EST-F5, RISK-MED, PLA-0001, MULTI AGENT]
+  ✓ 00052 — <title> (card: <card_id>) [PH-0005, FE-DEV0001, AIGEN, EST-F2, RISK-LOW, PLA-0001]
+  ✗ <title> — skipped (duplicate of 00018)
+
+View: Dev Setup → Plans tab → PLA-0001
+```
+
+If any card ended Step 5c missing labels (and MCP retry also failed), surface with `⚠ 00050 — <title> — MISSING [EST-F3]` so the human can intervene. **Do NOT report success while any card is under-labelled.**
+
+---
+
+## Key IDs (Do Not Re-Fetch)
+
+| Thing | ID |
+|---|---|
+| Backlog list | `1760700028730475544` |
+| Board | `1760699595475649556` |
+| Label: AIGEN | `1761454228267599083` |
+| Label: EST-F0 | `1761454230876456173` |
+| Label: EST-F1 | `1761454233325929711` |
+| Label: EST-F2 | `1761454235641185521` |
+| Label: EST-F3 | `1761454237830612211` |
+| Label: EST-F5 | `1761454239961318645` |
+| Label: EST-F8 | `1761454242100413687` |
+| Label: EST-F13 | `1761454244239508729` |
+| Label: RISK-LOW | `1761454246445712635` |
+| Label: RISK-MED | `1761454248593196285` |
+| Label: RISK-HIGH | `1761454250866509055` |
+| Label: MULTI AGENT | `1760728388919624826` |
+| Label: FE-UI0002 | `1762058691722348184` |
+| Label: FE-DEV0004 | `1762105753893602703` |
+| Label colour: PH-NNNN | `midnight-blue` (created on demand) |
+| Label colour: FE-AAA-NNNN | `tank-green` (created on demand) |
+| Label colour: PLA-NNNN | `wisteria-purple` (created on demand) |

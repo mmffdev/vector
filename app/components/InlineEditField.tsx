@@ -152,7 +152,7 @@ export default function InlineEditField({
         {/* onMouseDown fires before input blur, so the click is registered. */}
         <button
           type="button"
-          className="inline-edit__btn inline-edit__btn--cancel"
+          className="btn btn--icon btn--ghost btn--xs inline-edit__btn inline-edit__btn--cancel"
           aria-label="Cancel change"
           title="Cancel (Esc)"
           onMouseDown={(e) => { e.preventDefault(); cancel(); }}
@@ -165,7 +165,7 @@ export default function InlineEditField({
         </button>
         <button
           type="button"
-          className="inline-edit__btn inline-edit__btn--accept"
+          className="btn btn--icon btn--ghost btn--xs inline-edit__btn inline-edit__btn--accept"
           aria-label="Accept change"
           title={multiline ? "Accept (⌘/Ctrl+Enter)" : "Accept (Enter)"}
           onMouseDown={(e) => { e.preventDefault(); commit(); }}
@@ -197,7 +197,7 @@ export default function InlineEditField({
       {showEditTrigger && (
         <button
           type="button"
-          className="nav-prefs__btn"
+          className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
           aria-label={ariaLabel}
           title="Rename"
           onClick={(e) => { e.stopPropagation(); setEditing(true); }}

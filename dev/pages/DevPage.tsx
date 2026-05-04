@@ -4,6 +4,7 @@ import { useState } from "react";
 import "@dev/styles/dev.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { useDevTab } from "@/app/contexts/DevTabContext";
+import { usePageHeader } from "@/app/contexts/PageHeaderContext";
 import { api } from "@/app/lib/api";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -15,8 +16,24 @@ import DevPlansPanel from "./DevPlansPanel";
 import DevPageHelpPanel from "./DevPageHelpPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
+const TAB_LABELS: Record<string, string> = {
+  plans: "Plans",
+  setup: "Setup",
+  shortcuts: "Shortcuts",
+  reports: "Reports",
+  research: "Research",
+  icons: "Icons",
+  "page-help": "Page Help",
+};
+
 export default function DevPage() {
   const { activeTab: tab, setActiveTab: setTab } = useDevTab();
+  // Drives the global PageHeaderBar ("Vector + <tab>") and PageTitleRow.
+  // Replaces the old inline <header className="dev-page-header">.
+  usePageHeader({
+    title: `Dev Setup · ${TAB_LABELS[tab] ?? "Setup"}`,
+    subtitle: "Standalone diagnostic tool for monitoring and managing the local and remote development environment",
+  });
   const [copied, setCopied] = useState(false);
   const { enabled: masterDebug, setEnabled: setMasterDebug } = useMasterDebug();
   const [resetLoading, setResetLoading] = useState(false);
@@ -57,11 +74,6 @@ export default function DevPage() {
   return (
     <StrictRoute>
     <div className="dev-root">
-      <header className="dev-page-header">
-        <h1 className="dev-page-header__title">Dev Setup</h1>
-        <p className="dev-page-header__subtitle">Standalone diagnostic tool for monitoring and managing the local and remote development environment</p>
-      </header>
-
       <nav className="dev-tabs">
         <button
           className={`dev-tab${tab === "plans" ? " dev-tab--active" : ""}`}

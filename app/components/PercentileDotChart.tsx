@@ -257,7 +257,7 @@ export default function PercentileDotChart({
     <div className="pctdot-chart-host">
       <button
         type="button"
-        className="pctdot-chart__reroll"
+        className="btn btn--icon btn--ghost btn--sm pctdot-chart__reroll"
         onClick={() => setActiveRows(randomRows(rows, axisMin, axisMax))}
         aria-label="Generate new random data"
         title="Generate new random data (preview only)"

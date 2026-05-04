@@ -1,0 +1,247 @@
+{
+  "id": "PLA-0008",
+  "title": "Page Help Library — rich-content help documents per addressable",
+  "date_created": "2026-05-04",
+  "date_started": null,
+  "date_last_updated": "2026-05-04",
+  "date_finished": null,
+  "scope": "<p>The current pane-help system (PLA-0004) stores a single <code>body_html</code> per addressable. The hexagon icon on every <code>&lt;Panel&gt;</code> renders that body in a small popover. That model breaks down the moment a help entry needs more than a paragraph: multi-step user guides, embedded video walkthroughs, screenshots, deep-dive reference. This plan extends the substrate into a real <strong>page help library</strong>:</p><ul><li>A doc carries a <strong>title</strong>, a <strong>rich body</strong> (sanitised HTML), an ordered list of <strong>YouTube embed URLs</strong>, and an ordered list of <strong>external image URLs</strong>.</li><li>Every addressable that registers via <code>useRegisterAddressable</code> gets a help-doc <strong>auto-seeded</strong> on first mount — no panel ever ships unhelpable.</li><li>The hexagon popover stays as the at-a-glance preview; a new <strong>/help/&lt;addressable_id&gt;</strong> route renders the doc full-width for deep reading.</li><li>Gadmins edit docs in <code>DevPageHelpPanel</code> via a rich content editor with live preview that mirrors the popover render.</li><li>A shared <strong>HTML sanitiser + YouTube whitelist</strong> sits between every write and the database; XSS payloads and non-YouTube iframes never reach storage.</li><li>The <code>&lt;makeapp&gt;</code> / <code>&lt;makedevapp&gt;</code> skills now POST a stub doc on scaffold with an AI-suggested placeholder body so the new app's help is pre-populated.</li></ul>",
+  "value": "<p>Three audiences, three wins:</p><ul><li><strong>Users:</strong> every panel becomes self-explanatory; the hexagon stops being a 'who-knows-what's-here' button and becomes a real help affordance with video walk-throughs.</li><li><strong>Gadmins:</strong> can author rich help in-product without filing a deploy ticket; live preview matches what users see; sanitiser keeps them from accidentally shipping XSS.</li><li><strong>Devs:</strong> stops the 'what does this panel do again?' loop. Auto-seed + skill update means the help doc is part of the scaffold contract, not an afterthought.</li></ul><p>The substrate also positions us for the eventual i18n migration (R033) — a single rich-content table per addressable is far easier to translate than English-strings-scattered-across-React.</p>",
+  "implementation_plan": [
+    "Migration 093: extend page_help with title, video_embeds JSONB, image_urls JSONB, updated_by, updated_at (story 00323).",
+    "Build htmlsan util with SanitiseHTML + ValidateYouTubeURL, exhaustive XSS test corpus (story 00330).",
+    "Backend page_help service: GET full doc + gadmin-gated PUT, both routed through htmlsan (story 00324).",
+    "Auto-seed wiring: addressables.Service.Register triggers placeholder upsert in page_help; idempotent (story 00325).",
+    "Frontend: refactor Panel popover to render full doc (title + sanitised body + whitelisted YouTube iframes + image gallery + 'Open full page' link) (story 00326).",
+    "Frontend: new /help/[addressable_id] route — full-width doc renderer; auth-required; 404 on unknown id (story 00327).",
+    "Frontend: gadmin editor in DevPageHelpPanel — body textarea + repeating YouTube/image inputs + live preview matching popover (story 00328).",
+    "Skill update: <makeapp>/<makedevapp> POST a stub doc with AI-inferred placeholder body on scaffold (story 00329).",
+    "Integration suite: register → seed → gadmin PUT → popover render → /help route render; negative paths for 403, sanitiser, whitelist (story 00331)."
+  ],
+  "areas_impacted": [
+    "SQL: db/schema/093_page_help_rich_content.sql (extend page_help columns).",
+    "API: backend/internal/pagehelp/{service,handler}.go (full-doc CRUD, gadmin gate).",
+    "SEC: backend/internal/htmlsan/sanitiser.go (shared sanitiser + YouTube whitelist).",
+    "API: backend/internal/addressables/service.go (auto-seed hook on Register).",
+    "UI: app/components/Panel.tsx (popover refactor to render rich doc).",
+    "UI: app/help/[addressable_id]/page.tsx (new full-page route).",
+    "GOV: dev/pages/DevPageHelpPanel.tsx (rich content editor + live preview).",
+    "DEV: .claude/skills/make-app/SKILL.md, .claude/skills/make-dev-app/SKILL.md (scaffold-time POST step).",
+    "DEV: tests/e2e/page-help-library.spec.ts (lifecycle integration suite)."
+  ],
+  "feature_list": [
+    "Rich help doc model: title + sanitised HTML body + YouTube embeds + image URLs + audit fields.",
+    "Auto-seed on first addressable register — every panel ships with a discoverable, editable help row.",
+    "Hexagon popover renders the full rich doc inline, with safe YouTube iframes and image gallery.",
+    "Full-page /help/<addressable_id> route for deep-reading help (bookmarkable, SEO meta from title).",
+    "Gadmin in-product editor with live preview that exactly matches the popover render.",
+    "Server-side HTML sanitiser + YouTube URL whitelist on every write path.",
+    "Skill-driven placeholder seeding so new panels never ship help-less."
+  ],
+  "features_extended": [
+    "<strong>PLA-0004 pane_help</strong>: extended from single body_html to full rich-content doc.",
+    "<strong>PLA-0005 addressables.Service.Register</strong>: extended to trigger auto-seed of help-doc placeholder.",
+    "<strong>&lt;makeapp&gt;/&lt;makedevapp&gt; skills</strong>: extended to POST a stub help doc on scaffold."
+  ],
+  "features_removed": [],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Migration: extend page_help with rich-content columns",
+      "story_id": "00323",
+      "card_url": "http://localhost:3333/cards/1767188620155815229",
+      "status": "todo"
+    },
+    {
+      "order": 2,
+      "title": "Backend: page_help full-doc CRUD service (GET + gadmin PUT)",
+      "story_id": "00324",
+      "card_url": "http://localhost:3333/cards/1767188715744003392",
+      "status": "todo"
+    },
+    {
+      "order": 3,
+      "title": "Backend: auto-seed help-doc stub on first addressable register",
+      "story_id": "00325",
+      "card_url": "http://localhost:3333/cards/1767188774606865731",
+      "status": "todo"
+    },
+    {
+      "order": 4,
+      "title": "Frontend: refactor Panel hexagon popover to render rich help content",
+      "story_id": "00326",
+      "card_url": "http://localhost:3333/cards/1767188880202663238",
+      "status": "todo"
+    },
+    {
+      "order": 5,
+      "title": "Frontend: /help/{addressable_id} full-page help renderer route",
+      "story_id": "00327",
+      "card_url": "http://localhost:3333/cards/1767188969113519433",
+      "status": "todo"
+    },
+    {
+      "order": 6,
+      "title": "Gadmin editor in DevPageHelpPanel — rich content + live preview",
+      "story_id": "00328",
+      "card_url": "http://localhost:3333/cards/1767189046422930764",
+      "status": "todo"
+    },
+    {
+      "order": 7,
+      "title": "Skill update: <makeapp> + <makedevapp> POST stub help doc on scaffold",
+      "story_id": "00329",
+      "card_url": "http://localhost:3333/cards/1767189119554815311",
+      "status": "todo"
+    },
+    {
+      "order": 8,
+      "title": "Backend: HTML sanitisation + YouTube URL whitelist library",
+      "story_id": "00330",
+      "card_url": "http://localhost:3333/cards/1767189297519134034",
+      "status": "todo"
+    },
+    {
+      "order": 9,
+      "title": "Tests: integration suite covering register → seed → edit → render lifecycle",
+      "story_id": "00331",
+      "card_url": "http://localhost:3333/cards/1767189371078837589",
+      "status": "todo"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "Migration 093 applies cleanly and adds title, video_embeds JSONB, image_urls JSONB, updated_by, updated_at to page_help.",
+      "proven_by": "psql migration apply succeeds; \\d page_help shows the new columns with correct types and defaults.",
+      "story_id": "00323",
+      "card_url": "http://localhost:3333/cards/1767188620155815229",
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "Existing seeded page_help rows survive the migration with body_html unchanged.",
+      "proven_by": "SELECT count(*) and SELECT body_html before/after match for the 5 PLA-0004 seed rows.",
+      "story_id": "00323",
+      "card_url": "http://localhost:3333/cards/1767188620155815229",
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "GET /api/page-help/{addressable_id} returns the full rich doc.",
+      "proven_by": "Response body matches schema {title, body_html, video_embeds[], image_urls[], updated_by, updated_at}; 404 on unknown id.",
+      "story_id": "00324",
+      "card_url": "http://localhost:3333/cards/1767188715744003392",
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "PUT /api/page-help/{addressable_id} requires gadmin and runs all input through htmlsan.",
+      "proven_by": "Non-gadmin caller receives 403; gadmin write persists sanitised HTML; YouTube URL failing the whitelist returns 400.",
+      "story_id": "00324",
+      "card_url": "http://localhost:3333/cards/1767188715744003392",
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "Auto-seed fires on first addressable register and is idempotent.",
+      "proven_by": "Register POST for unseen addressable_id creates page_help row with placeholder body; second register leaves the row (and any edits) unchanged.",
+      "story_id": "00325",
+      "card_url": "http://localhost:3333/cards/1767188774606865731",
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "Panel popover renders sanitised body + whitelisted YouTube iframes + image gallery + Open-full-page link.",
+      "proven_by": "Visual test: dangerous tags stripped; YouTube embeds appear only for whitelist matches; non-whitelist URLs silently dropped; link navigates to /help/{id}.",
+      "story_id": "00326",
+      "card_url": "http://localhost:3333/cards/1767188880202663238",
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "/help/{addressable_id} renders the full doc full-width with auth required.",
+      "proven_by": "Page renders title as h1, sanitised body, full-size videos, image gallery; unknown id returns 404; anonymous request redirects to /login.",
+      "story_id": "00327",
+      "card_url": "http://localhost:3333/cards/1767188969113519433",
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "Gadmin editor renders pre-populated, validates YouTube URLs on blur, and live preview matches popover render exactly.",
+      "proven_by": "Edit button opens editor with current values; bad YouTube URL shows inline error and blocks save; preview output identical to popover render in story 00326.",
+      "story_id": "00328",
+      "card_url": "http://localhost:3333/cards/1767189046422930764",
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "<makeapp> and <makedevapp> seed a stub help doc with AI-inferred placeholder on scaffold.",
+      "proven_by": "Running each skill creates a page_help row tied to the new app's addressable_id; placeholder body mentions the app name and a one-paragraph inferred purpose.",
+      "story_id": "00329",
+      "card_url": "http://localhost:3333/cards/1767189119554815311",
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "htmlsan.SanitiseHTML strips a 20+ payload OWASP XSS corpus.",
+      "proven_by": "Unit tests pass for every payload; outputs free of script/style/event-handler attributes.",
+      "story_id": "00330",
+      "card_url": "http://localhost:3333/cards/1767189297519134034",
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "htmlsan.ValidateYouTubeURL accepts only the documented whitelist.",
+      "proven_by": "Unit tests: youtube.com/embed/{id}, youtube.com/watch?v={id}, youtu.be/{id} all canonicalise; youtube.evil.com, vimeo.com, javascript:, data: all return ErrInvalidYouTubeURL.",
+      "story_id": "00330",
+      "card_url": "http://localhost:3333/cards/1767189297519134034",
+      "done": false
+    },
+    {
+      "order": 12,
+      "criterion": "End-to-end suite covers the full register → seed → edit → render lifecycle and the negative paths.",
+      "proven_by": "npm run test:e2e -- page-help-library passes green; suite includes 403-on-non-gadmin, sanitiser-strips-script, and YouTube-whitelist-rejects-vimeo cases.",
+      "story_id": "00331",
+      "card_url": "http://localhost:3333/cards/1767189371078837589",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "XSS via untrusted HTML in body_html. The popover ships on every page in the product — a single stored XSS would have site-wide blast radius.",
+      "mitigation": "Story 00330 builds a shared sanitiser used by every write path (PUT handler + auto-seed). Test corpus includes the OWASP XSS cheat-sheet payloads. Sanitiser runs server-side, not just render-side."
+    },
+    {
+      "impact": 2,
+      "risk": "YouTube URL spoofing — an attacker enters a youtube-look-alike URL (youtube.evil.com, youtube.com.evil/, etc.) that the whitelist accidentally accepts.",
+      "mitigation": "ValidateYouTubeURL parses the URL, checks the host is exactly one of the three documented forms (youtube.com, www.youtube.com, youtu.be), and returns the canonical /embed/ form. Anything else returns ErrInvalidYouTubeURL. Test cases cover the look-alike attack."
+    },
+    {
+      "impact": 2,
+      "risk": "Auto-seed write storm — every panel mount POSTs a register call; if the seed path is not idempotent, a busy app could insert thousands of duplicate rows or hammer the DB.",
+      "mitigation": "Story 00325 implements seed via INSERT ... ON CONFLICT (addressable_id) DO NOTHING. Service test asserts that a re-register leaves the existing row (and any gadmin edits) untouched."
+    },
+    {
+      "impact": 1,
+      "risk": "Live preview drifts from popover render — gadmin authors something that looks fine in the editor but renders broken to users.",
+      "mitigation": "The editor's preview pane imports the same render component the popover uses; story 00328 AC explicitly tests the preview/popover equality."
+    },
+    {
+      "impact": 2,
+      "risk": "Existing seeded pane_help rows from PLA-0004 break under the new schema.",
+      "mitigation": "Migration 093 is additive only — no column drops, no NOT NULL on new columns; defaults provided. Story 00323 AC verifies before/after row count and body_html parity."
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "PLA-0004 — original pane_help substrate", "href": "dev/plans/PLA-0004.json" },
+    { "kind": "internal", "label": "PLA-0005 — addressables substrate (Register hook for auto-seed)", "href": "dev/plans/PLA-0005.json" },
+    { "kind": "internal", "label": "Addressable element substrate doc", "href": "docs/c_c_addressables.md" },
+    { "kind": "internal", "label": "Panel component (hexagon popover host)", "href": "app/components/Panel.tsx" },
+    { "kind": "internal", "label": "DevPageHelpPanel (gadmin editor surface)", "href": "dev/pages/DevPageHelpPanel.tsx" },
+    { "kind": "internal", "label": "Stories skill (7-gate workflow used to author this plan)", "href": ".claude/skills/stories/SKILL.md" },
+    { "kind": "external", "label": "OWASP XSS Filter Evasion Cheat Sheet", "href": "https://owasp.org/www-community/xss-filter-evasion-cheatsheet" },
+    { "kind": "external", "label": "YouTube embed URL formats", "href": "https://developers.google.com/youtube/player_parameters" }
+  ]
+}

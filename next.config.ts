@@ -4,6 +4,10 @@ const isProd = process.env.NODE_ENV === "production";
 
 // CSP: allow self + inline styles (Next.js injects some), connect-src to API backend.
 const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+// Browsers treat http(s):// and ws(s):// as distinct schemes for connect-src.
+// Derive the websocket origin alongside the http origin so EventSource/fetch
+// AND WebSocket targets are both allowed.
+const apiBaseWs = apiBase.replace(/^http/i, "ws");
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'" + (isProd ? "" : " 'unsafe-eval'"),
@@ -14,7 +18,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data:",
   "font-src 'self' data: https://fonts.gstatic.com",
-  `connect-src 'self' ${apiBase}`,
+  `connect-src 'self' ${apiBase} ${apiBaseWs}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

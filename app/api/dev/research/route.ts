@@ -32,6 +32,9 @@ export async function GET(request: Request) {
   }
 
   if (id) {
+    if (!/^R\d+$/.test(id)) {
+      return NextResponse.json({ error: "bad id" }, { status: 400 });
+    }
     const filePath = path.join(RESEARCH_DIR, `${id}.json`);
     if (!fs.existsSync(filePath)) {
       return NextResponse.json({ error: "not found" }, { status: 404 });

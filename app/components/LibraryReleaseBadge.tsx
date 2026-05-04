@@ -21,7 +21,7 @@ export default function LibraryReleaseBadge() {
 
   if (!isGAdmin) {
     return (
-      <button className="app-header-wrapper__icon-btn" title="Notifications">
+      <button className="btn btn--icon btn--ghost app-header-wrapper__icon-btn" title="Notifications">
         <BellIcon />
       </button>
     );
@@ -30,7 +30,7 @@ export default function LibraryReleaseBadge() {
   return (
     <Link
       href="/library-releases"
-      className="app-header-wrapper__icon-btn"
+      className="btn btn--icon btn--ghost app-header-wrapper__icon-btn"
       title={count && count > 0 ? `${count} library release${count === 1 ? "" : "s"} to acknowledge` : "Library releases"}
     >
       <BellIcon />

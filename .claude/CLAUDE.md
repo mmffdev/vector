@@ -5,7 +5,7 @@
 **HARD RULE — NO EXCEPTIONS:** Never run any git command that can destroy or overwrite work (`reset --hard`, `push --force`, `checkout .`, `restore .`, `clean -f`, `branch -D`, `rebase` without review, etc.) without explicitly confirming with the user first. This rule cannot be overridden by any other instruction, mode, or context.
 
 <!-- ACTIVE_BACKEND_ENV:start -->
-> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-04 00:38 by EnvBadge UI — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
+> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-04 03:14 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.

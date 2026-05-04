@@ -1,0 +1,514 @@
+{
+  "id": "PLA-0010",
+  "title": "Codebase Audit Remediation \u2014 Dead Code & Security Gaps (R035)",
+  "date_created": "2026-05-04",
+  "date_started": null,
+  "date_last_updated": "2026-05-04",
+  "date_finished": null,
+  "scope": "<p>Remediate every finding raised in research paper <strong>R035 \u2014 Codebase Audit: Dead Code &amp; Security Gaps</strong> in priority order S5 \u2192 S2. This plan executes the audit's recommendations as 27 shippable stories spanning four feature areas: <code>FE-SEC-0009</code> (security), <code>FE-DEV-0020</code> (dead-code/dev cleanup), <code>FE-AUD-0004</code> (audit-log gaps), and <code>FE-SQL-0017</code> (migration reorg).</p><p>Sequencing follows the R035 Story Risk Review: <strong>Wave 1 LOW-risk</strong> (10 stories: gitignore, deletes, package prune, docs) \u2192 <strong>Wave 2 MED-risk</strong> (12 stories: endpoint contracts, audit writes, migrations, rate limits) \u2192 <strong>Wave 3 HIGH-risk</strong> (5 stories behind feature flags where possible: middleware, auth, session, WS gating).</p>",
+  "value": "<ul><li>Closes the 8 highest-severity (S5) gaps surfaced by the R035 deep-scan, including unauthenticated /ws upgrades and the spoofable clientIP override.</li><li>Removes confirmed-dead code paths so future grep results, bundle size, and audit findings stop carrying noise.</li><li>Adds the missing audit_log writes that compliance reviewers need to reconstruct privilege changes.</li><li>Establishes a sequencing pattern (LOW \u2192 MED \u2192 HIGH) that lowers the chance any single fix breaks production.</li></ul>",
+  "implementation_plan": [
+    "Wave 1 (LOW risk, 10 stories): execute mechanical cleanup \u2014 .gitignore, dead-file deletes, package prune, doc moves, screenshots, docs/screenshots. Surface any false positives from build/CI before moving on.",
+    "Wave 2 (MED risk, 12 stories): land endpoint-level contract changes (rate limits, /healthz redact, FRONTEND_ORIGIN required, cookie unify), audit-log wiring, dead-tsx removal, migration reorg. Each behind its own PR with focused tests.",
+    "Wave 3 (HIGH risk, 5 stories): middleware/auth/session changes (00346 WS gate, 00348 clientIP whitelist, 00354 InsecureSkipVerify removal, 00367 session revoke, 00368 rate-limit composition). Land each behind a feature flag where supported; require integration-test sign-off before deploy.",
+    "After each wave: re-run npm run lint:* + go vet ./... + full test suite; update technical-debt register if any S2/S3 item is deferred.",
+    "Close the plan once all 27 cards reach Completed and a follow-up audit confirms the R035 findings no longer reproduce."
+  ],
+  "areas_impacted": [
+    "SEC: auth middleware, /ws handshake, cookie attributes, CORS config, /healthz body, sanitiser",
+    "DEV: .gitignore, package.json, repo layout, screenshots, dead-file removals, branch hygiene",
+    "AUD: audit_log writes for feature-flag toggles and role/permission edits",
+    "SQL: migration filename reorg + schema_migrations backfill"
+  ],
+  "feature_list": [
+    "Authenticated /ws handshake (?access_token gate)",
+    "Server-side auth on env-switch endpoints",
+    "Whitelisted clientIP override for X-Forwarded-For",
+    "Per-route rate limits on /api/auth/login + /api/auth/reset",
+    "Composed per-user rate limit on top of per-IP",
+    "Cookie attribute parity across login + refresh",
+    "Redacted /healthz output for unauthenticated probes",
+    "FRONTEND_ORIGIN required at boot (no wildcard fallback)",
+    "DOMPurify-sanitised user-rendered HTML",
+    "Session revocation on role change",
+    "audit_log rows for feature-flag toggles + role/permission edits",
+    "Outbound WS proxy with verified TLS",
+    "Renumbered migration sequence",
+    "Repo cleanup: 8 dead .tsx, 6 unused packages, scaffold/duplicate/fixture/webhook drafts, dead exports/types",
+    ".gitignore covering 7 build/secret artefact directories",
+    "Sec Audit/ relocated under docs/security-audits/",
+    "/dev tab screenshots in docs/",
+    "GitHub branch retention + backup-cap policy"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "InsecureSkipVerify on outbound WS proxy dialer",
+    "Wildcard CORS fallback when FRONTEND_ORIGIN is unset",
+    "build_sha + env fields from public /healthz body",
+    "Half-finished webhook draft handler",
+    "Dead admin-scaffold/, settings/_dead/, _fixtures/ directories"
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Gate /ws on ?access_token query param",
+      "story_id": "00346",
+      "card_url": "http://localhost:3333/cards/1767334074206128019",
+      "status": "todo"
+    },
+    {
+      "order": 2,
+      "title": "Require server-side auth on env-switch endpoints",
+      "story_id": "00347",
+      "card_url": "http://localhost:3333/cards/1767334090949789602",
+      "status": "todo"
+    },
+    {
+      "order": 3,
+      "title": "Whitelist clientIP override to dev-tunnel CIDR only",
+      "story_id": "00348",
+      "card_url": "http://localhost:3333/cards/1767334105822791601",
+      "status": "todo"
+    },
+    {
+      "order": 4,
+      "title": "Add 7 untracked dirs to .gitignore",
+      "story_id": "00349",
+      "card_url": "http://localhost:3333/cards/1767334120402192320",
+      "status": "todo"
+    },
+    {
+      "order": 5,
+      "title": "Move Sec Audit/ out of repo root",
+      "story_id": "00350",
+      "card_url": "http://localhost:3333/cards/1767334135610738639",
+      "status": "todo"
+    },
+    {
+      "order": 6,
+      "title": "Delete 8 confirmed-dead .tsx files",
+      "story_id": "00351",
+      "card_url": "http://localhost:3333/cards/1767334150559238110",
+      "status": "todo"
+    },
+    {
+      "order": 7,
+      "title": "Uninstall 6 unused icon packages",
+      "story_id": "00352",
+      "card_url": "http://localhost:3333/cards/1767334165566457837",
+      "status": "todo"
+    },
+    {
+      "order": 8,
+      "title": "Prune stale git worktrees",
+      "story_id": "00353",
+      "card_url": "http://localhost:3333/cards/1767334180741449724",
+      "status": "todo"
+    },
+    {
+      "order": 9,
+      "title": "Remove InsecureSkipVerify on outbound WS proxy",
+      "story_id": "00354",
+      "card_url": "http://localhost:3333/cards/1767334195773834251",
+      "status": "todo"
+    },
+    {
+      "order": 10,
+      "title": "Add per-route rate limit to /api/auth/login",
+      "story_id": "00355",
+      "card_url": "http://localhost:3333/cards/1767334212559438874",
+      "status": "todo"
+    },
+    {
+      "order": 11,
+      "title": "Add per-route rate limit to /api/auth/reset",
+      "story_id": "00356",
+      "card_url": "http://localhost:3333/cards/1767334227885425705",
+      "status": "todo"
+    },
+    {
+      "order": 12,
+      "title": "Unify cookie attributes across login and refresh paths",
+      "story_id": "00357",
+      "card_url": "http://localhost:3333/cards/1767334243681174584",
+      "status": "todo"
+    },
+    {
+      "order": 13,
+      "title": "Redact build SHA and env from /healthz output",
+      "story_id": "00358",
+      "card_url": "http://localhost:3333/cards/1767334258822612039",
+      "status": "todo"
+    },
+    {
+      "order": 14,
+      "title": "Make FRONTEND_ORIGIN required (no wildcard fallback)",
+      "story_id": "00359",
+      "card_url": "http://localhost:3333/cards/1767334273854997590",
+      "status": "todo"
+    },
+    {
+      "order": 15,
+      "title": "Delete dead admin scaffold pages",
+      "story_id": "00360",
+      "card_url": "http://localhost:3333/cards/1767334288795108453",
+      "status": "todo"
+    },
+    {
+      "order": 16,
+      "title": "Delete dead settings duplicate components",
+      "story_id": "00361",
+      "card_url": "http://localhost:3333/cards/1767334303928157300",
+      "status": "todo"
+    },
+    {
+      "order": 17,
+      "title": "Delete dead test-fixture HTML pages",
+      "story_id": "00362",
+      "card_url": "http://localhost:3333/cards/1767334318826325123",
+      "status": "todo"
+    },
+    {
+      "order": 18,
+      "title": "Wire feature_flag toggles into audit_log",
+      "story_id": "00363",
+      "card_url": "http://localhost:3333/cards/1767334333816767634",
+      "status": "todo"
+    },
+    {
+      "order": 19,
+      "title": "Remove half-finished webhook handler",
+      "story_id": "00364",
+      "card_url": "http://localhost:3333/cards/1767334349042091169",
+      "status": "todo"
+    },
+    {
+      "order": 20,
+      "title": "Emit audit events for role and permission edits",
+      "story_id": "00365",
+      "card_url": "http://localhost:3333/cards/1767334363394999472",
+      "status": "todo"
+    },
+    {
+      "order": 21,
+      "title": "Run user-rendered HTML through DOMPurify",
+      "story_id": "00366",
+      "card_url": "http://localhost:3333/cards/1767334378804872383",
+      "status": "todo"
+    },
+    {
+      "order": 22,
+      "title": "Revoke active sessions when role changes",
+      "story_id": "00367",
+      "card_url": "http://localhost:3333/cards/1767334393770149070",
+      "status": "todo"
+    },
+    {
+      "order": 23,
+      "title": "Compose per-user rate limit on top of per-IP",
+      "story_id": "00368",
+      "card_url": "http://localhost:3333/cards/1767334409515566301",
+      "status": "todo"
+    },
+    {
+      "order": 24,
+      "title": "Cleanup bundle: dead exports + unused types",
+      "story_id": "00369",
+      "card_url": "http://localhost:3333/cards/1767334429966992620",
+      "status": "todo"
+    },
+    {
+      "order": 25,
+      "title": "Reorganise migrations into ordered numbered series",
+      "story_id": "00370",
+      "card_url": "http://localhost:3333/cards/1767334450007377147",
+      "status": "todo"
+    },
+    {
+      "order": 26,
+      "title": "Capture docs/screenshots for /dev tabs",
+      "story_id": "00371",
+      "card_url": "http://localhost:3333/cards/1767334470005818634",
+      "status": "todo"
+    },
+    {
+      "order": 27,
+      "title": "Prune stale GitHub branches and add backup retention policy",
+      "story_id": "00372",
+      "card_url": "http://localhost:3333/cards/1767334491094779161",
+      "status": "todo"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "S5 SEC \u2014 Gate /ws on ?access_token query param",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00346",
+      "card_url": "http://localhost:3333/cards/1767334074206128019",
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "S5 SEC \u2014 Require server-side auth on env-switch endpoints",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00347",
+      "card_url": "http://localhost:3333/cards/1767334090949789602",
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "S5 SEC \u2014 Whitelist clientIP override to dev-tunnel CIDR only",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00348",
+      "card_url": "http://localhost:3333/cards/1767334105822791601",
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "S5 DEV \u2014 Add 7 untracked dirs to .gitignore",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00349",
+      "card_url": "http://localhost:3333/cards/1767334120402192320",
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "S5 DEV \u2014 Move Sec Audit/ out of repo root",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00350",
+      "card_url": "http://localhost:3333/cards/1767334135610738639",
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "S5 DEV \u2014 Delete 8 confirmed-dead .tsx files",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00351",
+      "card_url": "http://localhost:3333/cards/1767334150559238110",
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "S5 DEV \u2014 Uninstall 6 unused icon packages",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00352",
+      "card_url": "http://localhost:3333/cards/1767334165566457837",
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "S5 DEV \u2014 Prune stale git worktrees",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00353",
+      "card_url": "http://localhost:3333/cards/1767334180741449724",
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "S4 SEC \u2014 Remove InsecureSkipVerify on outbound WS proxy",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00354",
+      "card_url": "http://localhost:3333/cards/1767334195773834251",
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "S4 SEC \u2014 Add per-route rate limit to /api/auth/login",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00355",
+      "card_url": "http://localhost:3333/cards/1767334212559438874",
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "S4 SEC \u2014 Add per-route rate limit to /api/auth/reset",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00356",
+      "card_url": "http://localhost:3333/cards/1767334227885425705",
+      "done": false
+    },
+    {
+      "order": 12,
+      "criterion": "S4 SEC \u2014 Unify cookie attributes across login and refresh paths",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00357",
+      "card_url": "http://localhost:3333/cards/1767334243681174584",
+      "done": false
+    },
+    {
+      "order": 13,
+      "criterion": "S4 SEC \u2014 Redact build SHA and env from /healthz output",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00358",
+      "card_url": "http://localhost:3333/cards/1767334258822612039",
+      "done": false
+    },
+    {
+      "order": 14,
+      "criterion": "S4 SEC \u2014 Make FRONTEND_ORIGIN required (no wildcard fallback)",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00359",
+      "card_url": "http://localhost:3333/cards/1767334273854997590",
+      "done": false
+    },
+    {
+      "order": 15,
+      "criterion": "S4 DEV \u2014 Delete dead admin scaffold pages",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00360",
+      "card_url": "http://localhost:3333/cards/1767334288795108453",
+      "done": false
+    },
+    {
+      "order": 16,
+      "criterion": "S4 DEV \u2014 Delete dead settings duplicate components",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00361",
+      "card_url": "http://localhost:3333/cards/1767334303928157300",
+      "done": false
+    },
+    {
+      "order": 17,
+      "criterion": "S4 DEV \u2014 Delete dead test-fixture HTML pages",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00362",
+      "card_url": "http://localhost:3333/cards/1767334318826325123",
+      "done": false
+    },
+    {
+      "order": 18,
+      "criterion": "S4 AUD \u2014 Wire feature_flag toggles into audit_log",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00363",
+      "card_url": "http://localhost:3333/cards/1767334333816767634",
+      "done": false
+    },
+    {
+      "order": 19,
+      "criterion": "S4 DEV \u2014 Remove half-finished webhook handler",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00364",
+      "card_url": "http://localhost:3333/cards/1767334349042091169",
+      "done": false
+    },
+    {
+      "order": 20,
+      "criterion": "S3 AUD \u2014 Emit audit events for role and permission edits",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00365",
+      "card_url": "http://localhost:3333/cards/1767334363394999472",
+      "done": false
+    },
+    {
+      "order": 21,
+      "criterion": "S3 SEC \u2014 Run user-rendered HTML through DOMPurify",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00366",
+      "card_url": "http://localhost:3333/cards/1767334378804872383",
+      "done": false
+    },
+    {
+      "order": 22,
+      "criterion": "S3 SEC \u2014 Revoke active sessions when role changes",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00367",
+      "card_url": "http://localhost:3333/cards/1767334393770149070",
+      "done": false
+    },
+    {
+      "order": 23,
+      "criterion": "S3 SEC \u2014 Compose per-user rate limit on top of per-IP",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00368",
+      "card_url": "http://localhost:3333/cards/1767334409515566301",
+      "done": false
+    },
+    {
+      "order": 24,
+      "criterion": "S3 DEV \u2014 Cleanup bundle: dead exports + unused types",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00369",
+      "card_url": "http://localhost:3333/cards/1767334429966992620",
+      "done": false
+    },
+    {
+      "order": 25,
+      "criterion": "S2 SQL \u2014 Reorganise migrations into ordered numbered series",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00370",
+      "card_url": "http://localhost:3333/cards/1767334450007377147",
+      "done": false
+    },
+    {
+      "order": 26,
+      "criterion": "S2 DEV \u2014 Capture docs/screenshots for /dev tabs",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00371",
+      "card_url": "http://localhost:3333/cards/1767334470005818634",
+      "done": false
+    },
+    {
+      "order": 27,
+      "criterion": "S2 DEV \u2014 Prune stale GitHub branches and add backup retention policy",
+      "proven_by": "Card AC list satisfied (3 'As Proven by' clauses) and merged to main",
+      "story_id": "00372",
+      "card_url": "http://localhost:3333/cards/1767334491094779161",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "HIGH-risk middleware/auth changes (00346, 00348, 00354, 00367, 00368) regress on every authenticated request",
+      "mitigation": "Feature-flag the change where possible; require dedicated integration tests; land in Wave 3 only after Waves 1+2 stabilise CI signal."
+    },
+    {
+      "impact": 2,
+      "risk": "Migration renumber (00370) collides with already-applied schema_migrations entries in long-lived environments",
+      "mitigation": "Backfill schema_migrations with the new numbers in the same migration; verify on a fresh DB and a staging clone before running on dev."
+    },
+    {
+      "impact": 2,
+      "risk": "Dead-file deletions (00351, 00360\u201300362, 00364, 00369) miss a dynamic loader reference",
+      "mitigation": "Run npm run lint:* and full build after each deletion batch; revert any deletion the type-checker or runtime flags."
+    },
+    {
+      "impact": 2,
+      "risk": "Branch prune (00372) removes a branch holding uncommitted work",
+      "mitigation": "Per HARD RULE, no destructive git op without explicit operator confirmation; only delete branches with merged status and >30 days idle."
+    },
+    {
+      "impact": 1,
+      "risk": "Rate-limit thresholds (00355, 00356, 00368) lock out legitimate users",
+      "mitigation": "Start at conservative limits with metrics; tighten only after 1 week of production telemetry; expose a dashboard so ops can spot 429 spikes."
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "R035 \u2014 Codebase Audit research paper",
+      "href": "dev/research/R035.json"
+    },
+    {
+      "kind": "internal",
+      "label": "Story acceptance gates",
+      "href": "docs/c_story_acceptance.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Feature areas registry",
+      "href": "docs/c_feature_areas.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Technical-debt register",
+      "href": "docs/c_tech_debt.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Security posture",
+      "href": "docs/c_security.md"
+    }
+  ]
+}

@@ -37,6 +37,7 @@ package addressables
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -403,30 +404,57 @@ func (s *Service) RegisterFromRuntime(ctx context.Context, pageRoute, parentAddr
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// page_help reads (used by the snapshot bundle)
+// page_help reads (used by the snapshot bundle and the /help/<id> route)
 // ─────────────────────────────────────────────────────────────────────
 
-// HelpFor returns the live page_help body for an addressable + locale,
-// falling back to '' if no row exists. Returns the body and a boolean
-// indicating whether the row was found.
-func (s *Service) HelpFor(ctx context.Context, addressableID uuid.UUID, locale string) (string, bool, error) {
+// HelpDoc is the wire shape for one page_help row in its rich-content
+// form. Title is optional (nil when no heading is set). VideoEmbeds and
+// ImageURLs are JSON arrays whose element schemas live in the frontend
+// types — the backend only round-trips them as raw JSON so the editor
+// and renderer stay in lockstep without a server-side validator on
+// every shape change. Sanitiser logic for body_html / video URLs lives
+// in story 00330.
+type HelpDoc struct {
+	AddressableID uuid.UUID       `json:"addressable_id"`
+	Locale        string          `json:"locale"`
+	Title         *string         `json:"title,omitempty"`
+	BodyHTML      string          `json:"body_html"`
+	VideoEmbeds   json.RawMessage `json:"video_embeds"`
+	ImageURLs     json.RawMessage `json:"image_urls"`
+}
+
+// HelpFor returns the live page_help row for an addressable + locale.
+// When no live row exists, returns an empty HelpDoc with found=false
+// (callers treat absence of copy as "no help").
+func (s *Service) HelpFor(ctx context.Context, addressableID uuid.UUID, locale string) (HelpDoc, bool, error) {
 	if locale == "" {
 		locale = "en"
 	}
-	var body string
+	doc := HelpDoc{AddressableID: addressableID, Locale: locale}
 	err := s.pool.QueryRow(ctx, `
-		SELECT body_html FROM page_help
+		SELECT title, body_html, video_embeds, image_urls
+		  FROM page_help
 		 WHERE addressable_id = $1 AND locale = $2 AND soft_archived = FALSE
 		 LIMIT 1
-	`, addressableID, locale).Scan(&body)
+	`, addressableID, locale).Scan(&doc.Title, &doc.BodyHTML, &doc.VideoEmbeds, &doc.ImageURLs)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
+		return HelpDoc{AddressableID: addressableID, Locale: locale, VideoEmbeds: emptyJSONArray, ImageURLs: emptyJSONArray}, false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return HelpDoc{}, false, err
 	}
-	return body, true, nil
+	if len(doc.VideoEmbeds) == 0 {
+		doc.VideoEmbeds = emptyJSONArray
+	}
+	if len(doc.ImageURLs) == 0 {
+		doc.ImageURLs = emptyJSONArray
+	}
+	return doc, true, nil
 }
+
+// emptyJSONArray is the canonical encoding the API returns when a
+// row's JSONB column is NULL or unset. Keeps the wire shape stable.
+var emptyJSONArray = json.RawMessage(`[]`)
 
 // ─────────────────────────────────────────────────────────────────────
 // page_help admin (gadmin editor surface — story 00253)
@@ -440,19 +468,22 @@ func (s *Service) HelpFor(ctx context.Context, addressableID uuid.UUID, locale s
 // not been touched by an editor (i.e. updated_by_user_id IS NULL); used
 // by the UI to render the "library default" badge.
 type HelpAdminRow struct {
-	HelpID           uuid.UUID `json:"help_id"`
-	AddressableID    uuid.UUID `json:"addressable_id"`
-	Address          string    `json:"address"`
-	PageRoute        string    `json:"page_route"`
-	Kind             string    `json:"kind"`
-	Name             string    `json:"name"`
-	Locale           string    `json:"locale"`
-	BodyHTML         string    `json:"body_html"`
-	SeededFrom       *string   `json:"seeded_from"`
-	IsLibraryDefault bool      `json:"is_library_default"`
-	UpdatedAt        string    `json:"updated_at"`
-	UpdatedByEmail   *string   `json:"updated_by_email"`
-	Helpable         bool      `json:"helpable"`
+	HelpID           uuid.UUID       `json:"help_id"`
+	AddressableID    uuid.UUID       `json:"addressable_id"`
+	Address          string          `json:"address"`
+	PageRoute        string          `json:"page_route"`
+	Kind             string          `json:"kind"`
+	Name             string          `json:"name"`
+	Locale           string          `json:"locale"`
+	Title            *string         `json:"title,omitempty"`
+	BodyHTML         string          `json:"body_html"`
+	VideoEmbeds      json.RawMessage `json:"video_embeds"`
+	ImageURLs        json.RawMessage `json:"image_urls"`
+	SeededFrom       *string         `json:"seeded_from"`
+	IsLibraryDefault bool            `json:"is_library_default"`
+	UpdatedAt        string          `json:"updated_at"`
+	UpdatedByEmail   *string         `json:"updated_by_email"`
+	Helpable         bool            `json:"helpable"`
 }
 
 // AdminListHelp returns every live page_help row joined to its
@@ -462,7 +493,7 @@ func (s *Service) AdminListHelp(ctx context.Context) ([]HelpAdminRow, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT
 			h.id, h.addressable_id, a.address, a.page_route, a.kind, a.name,
-			h.locale, h.body_html, h.seeded_from,
+			h.locale, h.title, h.body_html, h.video_embeds, h.image_urls, h.seeded_from,
 			(h.seeded_from = 'library' AND h.updated_by_user_id IS NULL) AS is_library_default,
 			h.updated_at, u.email, a.helpable
 		  FROM page_help h
@@ -483,37 +514,75 @@ func (s *Service) AdminListHelp(ctx context.Context) ([]HelpAdminRow, error) {
 		var updated time.Time
 		if err := rows.Scan(
 			&r.HelpID, &r.AddressableID, &r.Address, &r.PageRoute, &r.Kind, &r.Name,
-			&r.Locale, &r.BodyHTML, &r.SeededFrom, &r.IsLibraryDefault,
+			&r.Locale, &r.Title, &r.BodyHTML, &r.VideoEmbeds, &r.ImageURLs, &r.SeededFrom, &r.IsLibraryDefault,
 			&updated, &r.UpdatedByEmail, &r.Helpable,
 		); err != nil {
 			return nil, err
 		}
 		r.UpdatedAt = updated.UTC().Format(time.RFC3339)
+		if len(r.VideoEmbeds) == 0 {
+			r.VideoEmbeds = emptyJSONArray
+		}
+		if len(r.ImageURLs) == 0 {
+			r.ImageURLs = emptyJSONArray
+		}
 		out = append(out, r)
 	}
 	return out, rows.Err()
 }
 
-// UpdateHelp writes a new body for the (addressable, locale) live row.
-// Bumps updated_at + updated_by, flips seeded_from to 'manual' (the
-// schema's name for editor-authored content; the plan calls this state
-// "gadmin"), and clears library_ref so future library churn does not
-// retro-apply. Returns ErrParentNotFound when no live row exists.
-func (s *Service) UpdateHelp(ctx context.Context, addressableID uuid.UUID, locale, bodyHTML string, editorID uuid.UUID) error {
+// HelpUpdate is the input shape for UpdateHelp. Title is optional
+// (nil leaves the column at its current value? no — see below).
+//
+// Field semantics on write:
+//   - Title:       always overwritten (nil becomes NULL, "" becomes empty).
+//                  The editor sends the full intended state every save.
+//   - BodyHTML:    always overwritten.
+//   - VideoEmbeds: always overwritten. Pass `[]` to clear.
+//   - ImageURLs:   always overwritten. Pass `[]` to clear.
+//
+// We deliberately do NOT do partial PATCH semantics: the editor saves
+// the whole document, and ambiguity between "absent" and "cleared"
+// would fight that model.
+type HelpUpdate struct {
+	Title       *string
+	BodyHTML    string
+	VideoEmbeds json.RawMessage
+	ImageURLs   json.RawMessage
+}
+
+// UpdateHelp writes a new body + rich content for the (addressable,
+// locale) live row. Bumps updated_at + updated_by, flips seeded_from
+// to 'manual' (the schema's name for editor-authored content; the plan
+// calls this state "gadmin"), and clears library_ref so future library
+// churn does not retro-apply. Returns ErrParentNotFound when no live
+// row exists.
+func (s *Service) UpdateHelp(ctx context.Context, addressableID uuid.UUID, locale string, doc HelpUpdate, editorID uuid.UUID) error {
 	if locale == "" {
 		locale = "en"
 	}
+	videos := doc.VideoEmbeds
+	if len(videos) == 0 {
+		videos = emptyJSONArray
+	}
+	images := doc.ImageURLs
+	if len(images) == 0 {
+		images = emptyJSONArray
+	}
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE page_help
-		   SET body_html = $1,
+		   SET title = $1,
+		       body_html = $2,
+		       video_embeds = $3,
+		       image_urls = $4,
 		       updated_at = NOW(),
-		       updated_by_user_id = $2,
+		       updated_by_user_id = $5,
 		       seeded_from = 'manual',
 		       library_ref = NULL
-		 WHERE addressable_id = $3
-		   AND locale = $4
+		 WHERE addressable_id = $6
+		   AND locale = $7
 		   AND soft_archived = FALSE
-	`, bodyHTML, editorID, addressableID, locale)
+	`, doc.Title, doc.BodyHTML, videos, images, editorID, addressableID, locale)
 	if err != nil {
 		return err
 	}
@@ -768,27 +837,35 @@ func (s *Service) lookupID(ctx context.Context, tx pgx.Tx, pageRoute, address st
 // migration, exact matches are accepted but not yet authored.)
 func (s *Service) seedLibraryDefault(ctx context.Context, tx pgx.Tx, addressableID uuid.UUID, kind, name string) error {
 	var libID uuid.UUID
+	var title *string
 	var body string
+	var videos, images json.RawMessage
 	// Prefer exact name match, then wildcard.
 	err := tx.QueryRow(ctx, `
-		SELECT id, body_html
+		SELECT id, title, body_html, video_embeds, image_urls
 		  FROM library_help_defaults
 		 WHERE kind = $1 AND locale = 'en' AND name_pattern IN ($2, '*')
 		 ORDER BY (name_pattern = $2) DESC
 		 LIMIT 1
-	`, kind, name).Scan(&libID, &body)
+	`, kind, name).Scan(&libID, &title, &body, &videos, &images)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil // no default available; addressable left without help
 	}
 	if err != nil {
 		return err
 	}
+	if len(videos) == 0 {
+		videos = emptyJSONArray
+	}
+	if len(images) == 0 {
+		images = emptyJSONArray
+	}
 
 	_, err = tx.Exec(ctx, `
-		INSERT INTO page_help (addressable_id, locale, body_html, seeded_from, library_ref)
-		VALUES ($1, 'en', $2, 'library', $3)
+		INSERT INTO page_help (addressable_id, locale, title, body_html, video_embeds, image_urls, seeded_from, library_ref)
+		VALUES ($1, 'en', $2, $3, $4, $5, 'library', $6)
 		ON CONFLICT (addressable_id, locale) WHERE soft_archived = FALSE DO NOTHING
-	`, addressableID, body, libID)
+	`, addressableID, title, body, videos, images, libID)
 	return err
 }
 

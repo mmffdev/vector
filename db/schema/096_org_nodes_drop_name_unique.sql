@@ -1,0 +1,42 @@
+-- ============================================================
+-- MMFFDev - Vector: Drop name-uniqueness on org_nodes  (PLA-0006 / 00277)
+-- Migration 096
+--
+-- Background. Migration 082 created two partial unique indexes that
+-- prevented two live siblings from sharing a `name`:
+--
+--     org_nodes_sibling_unique  -- (subscription_id, parent_id, name) WHERE archived_at IS NULL AND parent_id IS NOT NULL
+--     org_nodes_root_unique     -- (subscription_id, name)             WHERE archived_at IS NULL AND parent_id IS NULL
+--
+-- The original intent was to give humans a clean URL handle and to
+-- prevent accidental duplicates. In practice it broke two real flows:
+--
+--   1. A federated org has many teams legitimately named "Dev",
+--      "Sales", "Support" sitting under different parents — and
+--      sometimes under the SAME parent (e.g. two "Dev" pods rolling
+--      up into Engineering). The constraint forced operators to
+--      invent suffixes like "Dev (London)" purely to satisfy the DB.
+--
+--   2. The "Duplicate node" action could not recursively copy a
+--      subtree (a whole division) because every child name would
+--      collide with its source sibling — the very point of the
+--      duplicate is "give me a fresh structural copy".
+--
+-- Identity for org_nodes is the UUID PK. Names are display labels and
+-- are intentionally ambiguous from this migration onward. All API
+-- writers (orgdesign.Service.CreateNode, RenameNode, MoveNode,
+-- DuplicateSubtree) reference nodes by ID and never by name. The
+-- frontend already treats name as a label, not a lookup key.
+--
+-- Reversibility. Re-creating these indexes later is a non-trivial
+-- operation if real duplicate rows accumulate (the index build will
+-- fail until duplicates are renamed). That is acceptable: this
+-- migration is a deliberate relaxation and we don't intend to put
+-- the constraint back.
+
+DROP INDEX IF EXISTS org_nodes_sibling_unique;
+DROP INDEX IF EXISTS org_nodes_root_unique;
+
+-- The subscription/parent lookup index from 082 (idx_org_nodes_subscription_parent)
+-- and the sibling-order index (idx_org_nodes_sibling_order) are kept —
+-- they support tree walks and are unrelated to uniqueness.

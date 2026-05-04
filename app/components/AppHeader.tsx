@@ -30,7 +30,7 @@ export default function AppHeader() {
         {mounted && (
           <button
             onClick={toggle}
-            className="app-header-wrapper__icon-btn"
+            className="btn btn--icon btn--ghost app-header-wrapper__icon-btn"
             title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
           >
             {theme === "light" ? "🌙" : "☀️"}

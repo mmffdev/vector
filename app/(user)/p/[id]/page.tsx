@@ -133,7 +133,7 @@ export default function CustomContainerPage() {
           ) : (
             <button
               type="button"
-              className="custom-page__rename"
+              className="btn btn--ghost btn--sm custom-page__rename"
               onClick={() => setEditing(true)}
             >
               Rename

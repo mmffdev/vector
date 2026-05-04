@@ -32,8 +32,23 @@ export interface OrgNode {
   collapsed_default: boolean;
   position: number;
   archived_at: string | null;
+  // Count of archived descendants reachable through live ancestors of this
+  // node. Populated by the tree endpoint; absent (undefined) on responses
+  // from endpoints that don't compute it (e.g. ancestors).
+  archived_descendant_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface ArchivedDescendant {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  archived_at: string;
+  // True iff `parent_id` is itself archived. The UI uses this to decide
+  // whether the row's default Restore action is reachable (restore-to-parent)
+  // or whether the user must pick a new parent.
+  parent_is_archived: boolean;
 }
 
 export interface OrgLevel {
@@ -127,6 +142,16 @@ export const topologyApi = {
     return api<void>(`/api/topology/nodes/${nodeId}`, { method: "DELETE" });
   },
 
+  // Recursively clone the live subtree rooted at nodeId. The new root
+  // lands immediately to the right of the source in sibling order;
+  // names are copied verbatim (sibling-name uniqueness was dropped in
+  // schema migration 096 — identity is the UUID, not the name).
+  duplicate(nodeId: string) {
+    return api<OrgNode>(`/api/topology/nodes/${nodeId}/duplicate`, {
+      method: "POST",
+    });
+  },
+
   bulkPosition(updates: Array<{
     node_id: string;
     position: number;
@@ -183,6 +208,28 @@ export const topologyApi = {
   disconnect(nodeId: string) {
     return api<void>(`/api/topology/nodes/${nodeId}/disconnect`, {
       method: "POST",
+    });
+  },
+
+  // Flat list of archived descendants reachable through live ancestors of
+  // `nodeId`. Returned in tree order; the UI re-builds parent links from
+  // `parent_id` to render the dotted-line tree.
+  archivedDescendants(nodeId: string) {
+    return api<ArchivedDescendant[]>(
+      `/api/topology/nodes/${nodeId}/archived-descendants`,
+    );
+  },
+
+  // Restore a node from limbo. Pass `newParentId` to land it under a
+  // different parent (required when the original parent is itself
+  // archived). Returns 409 with `parent_archived` or `parent_missing`
+  // when the requested parent is invalid.
+  restore(nodeId: string, newParentId?: string | null) {
+    const body: Record<string, unknown> = {};
+    if (newParentId !== undefined) body.new_parent_id = newParentId;
+    return api<void>(`/api/topology/nodes/${nodeId}/restore`, {
+      method: "POST",
+      body: JSON.stringify(body),
     });
   },
 

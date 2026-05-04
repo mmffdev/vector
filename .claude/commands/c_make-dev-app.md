@@ -33,6 +33,18 @@ const manifest: UiAppManifest = {
   allowedRoles: ["gadmin"],
   requiredScopes: [],
   configurable: false,
+  // PLA-0008 — Stub help doc rendered by the TbHelpHexagon popover and
+  // /help/<addressable_id> page when no page_help row exists. Edit before
+  // sharing the dev app with the wider team. Backend page_help always
+  // wins over this fallback once a gadmin saves an edit.
+  helpDefaults: {
+    "panel:*": {
+      title: "<Name>",
+      body_html: "<p><scope></p><p>Replace this stub with the real help body.</p>",
+      video_embeds: [],
+      image_urls: [],
+    },
+  },
 };
 
 export default manifest;

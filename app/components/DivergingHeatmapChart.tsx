@@ -300,7 +300,7 @@ export default function DivergingHeatmapChart({
       {randomize && (
         <button
           type="button"
-          className="diverging-heatmap-chart__reroll"
+          className="btn btn--icon btn--ghost btn--sm diverging-heatmap-chart__reroll"
           onClick={() => setActiveRows(randomHeatmap(DEFAULT_LABELS, columns.length))}
           aria-label="Generate new random data"
           title="Generate new random data (preview only)"

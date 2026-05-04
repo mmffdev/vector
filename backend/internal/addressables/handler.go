@@ -226,15 +226,19 @@ func (h *Handler) Snapshot(w http.ResponseWriter, r *http.Request) {
 // ─────────────────────────────────────────────────────────────────────
 
 type helpResp struct {
-	AddressableID string `json:"addressable_id"`
-	Locale        string `json:"locale"`
-	BodyHTML      string `json:"body_html"`
+	AddressableID string          `json:"addressable_id"`
+	Locale        string          `json:"locale"`
+	Title         *string         `json:"title,omitempty"`
+	BodyHTML      string          `json:"body_html"`
+	VideoEmbeds   json.RawMessage `json:"video_embeds"`
+	ImageURLs     json.RawMessage `json:"image_urls"`
 }
 
-// PageHelp returns the live page_help body for an addressable.
+// PageHelp returns the live page_help row for an addressable.
 // 404 when the addressable does not exist for any route. When the
 // addressable exists but has no page_help row, the response carries
-// an empty body_html — the caller treats absence of copy as "no help".
+// an empty body and empty arrays — the caller treats absence of copy
+// as "no help".
 func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "addressable_id")
 	id, err := uuid.Parse(raw)
@@ -257,12 +261,19 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _, err := h.Svc.HelpFor(r.Context(), id, locale)
+	doc, _, err := h.Svc.HelpFor(r.Context(), id, locale)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, helpResp{AddressableID: id.String(), Locale: locale, BodyHTML: body})
+	writeJSON(w, http.StatusOK, helpResp{
+		AddressableID: id.String(),
+		Locale:        locale,
+		Title:         doc.Title,
+		BodyHTML:      doc.BodyHTML,
+		VideoEmbeds:   doc.VideoEmbeds,
+		ImageURLs:     doc.ImageURLs,
+	})
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -282,12 +293,17 @@ func (h *Handler) PageHelpAdminList(w http.ResponseWriter, r *http.Request) {
 }
 
 type pageHelpPutReq struct {
-	Body   string `json:"body"`
-	Locale string `json:"locale"`
+	Locale      string          `json:"locale"`
+	Title       *string         `json:"title,omitempty"`
+	Body        string          `json:"body"`
+	VideoEmbeds json.RawMessage `json:"video_embeds,omitempty"`
+	ImageURLs   json.RawMessage `json:"image_urls,omitempty"`
 }
 
-// PageHelpAdminPut writes a new body for the (addressable, locale)
-// live row via the Service. Gadmin-only.
+// PageHelpAdminPut writes the full document (title + body + videos +
+// images) for the (addressable, locale) live row via the Service.
+// PUT semantics: every field is overwritten; absent video_embeds /
+// image_urls are treated as `[]`. Gadmin-only.
 func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
@@ -304,7 +320,17 @@ func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := h.Svc.UpdateHelp(r.Context(), id, req.Locale, req.Body, u.ID); err != nil {
+	if err := validateHelpRichContent(req.VideoEmbeds, req.ImageURLs); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	update := HelpUpdate{
+		Title:       req.Title,
+		BodyHTML:    SanitiseHelpBodyHTML(req.Body),
+		VideoEmbeds: req.VideoEmbeds,
+		ImageURLs:   req.ImageURLs,
+	}
+	if err := h.Svc.UpdateHelp(r.Context(), id, req.Locale, update, u.ID); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
 			http.Error(w, "no live page_help row for addressable+locale", http.StatusNotFound)
 			return
@@ -387,6 +413,46 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// validateHelpRichContent enforces shape + URL allowlists on the
+// rich-content arrays before they reach the Service. Returns nil for
+// nil/empty inputs (the Service treats them as `[]`).
+//
+// Allowlists:
+//   - video_embeds[*].url: must parse via ValidateYouTubeURL (sanitise.go).
+//   - image_urls[*].url:    must be http:// or https://.
+func validateHelpRichContent(videos, images json.RawMessage) error {
+	if len(videos) > 0 {
+		var rows []map[string]any
+		if err := json.Unmarshal(videos, &rows); err != nil {
+			return errors.New("video_embeds must be a JSON array of objects")
+		}
+		for _, row := range rows {
+			u, _ := row["url"].(string)
+			if _, err := ValidateYouTubeURL(u); err != nil {
+				return errors.New("video_embeds[].url must be a youtube.com or youtu.be video URL")
+			}
+		}
+	}
+	if len(images) > 0 {
+		var rows []map[string]any
+		if err := json.Unmarshal(images, &rows); err != nil {
+			return errors.New("image_urls must be a JSON array of objects")
+		}
+		for _, row := range rows {
+			u, _ := row["url"].(string)
+			if !isHTTPURL(u) {
+				return errors.New("image_urls[].url must be an http:// or https:// URL")
+			}
+		}
+	}
+	return nil
+}
+
+func isHTTPURL(u string) bool {
+	low := strings.ToLower(u)
+	return strings.HasPrefix(low, "http://") || strings.HasPrefix(low, "https://")
 }
 
 // writeServiceErr maps Service sentinel errors to HTTP statuses per the

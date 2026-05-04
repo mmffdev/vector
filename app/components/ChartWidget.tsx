@@ -50,7 +50,7 @@ export default function ChartWidget({
   const expandBtn = (
     <button
       type="button"
-      className="chart-widget__expand"
+      className="btn btn--icon btn--ghost btn--sm chart-widget__expand"
       onClick={() => setExpanded(true)}
       aria-label="Expand chart to full screen"
       title="Expand to full screen"
@@ -108,7 +108,7 @@ export default function ChartWidget({
               {title && <span className="eyebrow chart-widget__panel-title">{title}</span>}
               <button
                 type="button"
-                className="chart-widget__close"
+                className="btn btn--icon btn--ghost btn--sm chart-widget__close"
                 onClick={close}
                 aria-label="Close full screen"
                 title="Close (Esc)"

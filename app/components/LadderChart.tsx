@@ -283,7 +283,7 @@ export default function LadderChart({
     <div className="ladder-chart-host">
       <button
         type="button"
-        className="ladder-chart__reroll"
+        className="btn btn--icon btn--ghost btn--sm ladder-chart__reroll"
         onClick={() => {
           const r = randomLadder(DEFAULT_LABELS, columns.length);
           setActiveRows(r.rows);

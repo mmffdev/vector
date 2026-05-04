@@ -5,6 +5,8 @@ const PUBLIC_PATHS = [
   "/login/reset",
   "/login/reset/confirm",
   "/change-password",
+  // PLA-0008 / 00327 — help pages are shareable read-only references.
+  "/help",
 ];
 
 export function middleware(req: NextRequest) {

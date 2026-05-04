@@ -590,16 +590,16 @@ export default function PortfolioGraphChart({
             ))}
           </select>
         </label>
-        <button type="button" className="portfolio-graph__btn" onClick={handleExpandAll}>
+        <button type="button" className="btn btn--ghost btn--sm portfolio-graph__btn" onClick={handleExpandAll}>
           Expand all
         </button>
-        <button type="button" className="portfolio-graph__btn" onClick={handleCollapseAll}>
+        <button type="button" className="btn btn--ghost btn--sm portfolio-graph__btn" onClick={handleCollapseAll}>
           Collapse all
         </button>
         {randomize && (
           <button
             type="button"
-            className="portfolio-graph__btn portfolio-graph__btn--reroll"
+            className="btn btn--icon btn--ghost btn--sm portfolio-graph__btn portfolio-graph__btn--reroll"
             onClick={handleReroll}
             aria-label="Generate new random data"
             title="Generate new random data (preview only)"

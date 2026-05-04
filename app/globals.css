@@ -231,6 +231,16 @@ button {
   font-size: inherit;
   border: none;
   cursor: pointer;
+  /* Site-wide rule: every button is square. Per-component rules must not
+     reintroduce a non-zero radius. The only exception in this codebase is
+     `.toggle-btn__blob`, which is the lava-lamp pill shape — not a button. */
+  border-radius: 0;
+}
+
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  border-radius: 0;
 }
 
 ::selection {
@@ -494,30 +504,14 @@ button {
   opacity: 1;
 }
 
+/* profile-bar icon button: 18×18 sub-micro size (smaller than the
+   .btn--micro 20×20 baseline). Width/height override is the only
+   exception allowed by the css-guide's icon-size ladder rule. */
 .profile-bar__icon-btn {
   width: 18px;
   height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 3px;
-  color: var(--ink-2);
-  cursor: pointer;
   font-size: 11px;
   line-height: 1;
-  padding: 0;
-}
-
-.profile-bar__icon-btn:hover {
-  background: var(--nav-item-hover-bg);
-  color: var(--ink-1);
-}
-
-.profile-bar__icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .profile-bar__icon-btn--danger:hover {
@@ -541,7 +535,7 @@ button {
   justify-content: center;
   background: transparent;
   border: 1px dashed var(--line-2);
-  border-radius: 999px;
+  border-radius: 0;
   color: var(--ink-2);
   cursor: pointer;
   font-size: 14px;
@@ -1236,13 +1230,20 @@ button {
   font-size: 14px;
 }
 
-/* Icon-only button: square 36x36 with no horizontal padding */
+/* Icon-only button: square 36x36 with no horizontal padding.
+   Size ladder: --icon (36) → --sm (32) → --xs (28) → --tiny (24)
+   → --micro (20). Each variant is a same-shape, smaller swatch.
+   Bespoke selectors must compose from this ladder rather than
+   redeclaring width/height. */
 .btn--icon {
   width: 36px;
   height: 36px;
   padding: 0;
 }
 .btn--icon.btn--sm { width: 32px; height: 32px; }
+.btn--icon.btn--xs { width: 28px; height: 28px; }
+.btn--icon.btn--tiny { width: 24px; height: 24px; }
+.btn--icon.btn--micro { width: 20px; height: 20px; }
 
 .pin-button {
   display: inline-flex;
@@ -1596,7 +1597,7 @@ button {
    Both BEM (.table __head/__cell) and Vector kit (.tbl) names work.
    ============================================================ */
 .table-wrap {
-  background: var(--surface);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 0;
   overflow: hidden;
@@ -1651,7 +1652,7 @@ table.tbl tbody tr:last-child td {
 table.tbl tbody td {
   padding: 0 16px;
   height: var(--row-height);
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
   vertical-align: middle;
   border-bottom: 1px solid var(--border);
@@ -1862,27 +1863,11 @@ table.tbl tbody tr:hover td {
   margin: 0;
 }
 
+/* modal__close composes from .btn .btn--icon .btn--ghost — no need to
+   redeclare display/size/border/etc. Only retain font-size override
+   (the × glyph reads better at 20px than the .btn default). */
 .modal__close {
-  background: transparent;
-  color: var(--ink-muted);
   font-size: 20px;
-  line-height: 1;
-  padding: 0;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 0;
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.modal__close:hover {
-  color: var(--ink);
-  background: var(--surface-sunken);
-  border-color: var(--border);
 }
 
 .modal__body {
@@ -1956,37 +1941,7 @@ table.tbl tbody tr:hover td {
   gap: 4px;
 }
 
-.nav-manage__btn {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--line-1);
-  color: var(--ink-2);
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.nav-manage__btn:hover:not(:disabled) {
-  color: var(--ink-1);
-  border-color: var(--ink-3);
-}
-
-.nav-manage__btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.nav-manage__btn--active {
-  color: var(--hot-pink);
-  border-color: var(--hot-pink);
-}
-
-.nav-manage__btn--danger:hover:not(:disabled) {
-  color: var(--error);
-  border-color: var(--error);
-}
+/* .nav-manage__btn family removed — dead CSS, no JSX call site uses it. */
 
 .nav-manage__error {
   font-size: 13px;
@@ -2538,24 +2493,11 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
 }
 
+/* Header icon buttons compose from .btn .btn--icon .btn--ghost.
+   Only retain `position: relative` so the notification badge can
+   absolutely-position over them. */
 .app-header-wrapper__icon-btn {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--ink-muted);
-  cursor: pointer;
-  border-radius: 0;
-  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-}
-
-.app-header-wrapper__icon-btn:hover {
-  color: var(--ink);
-  background: var(--surface-sunken);
 }
 
 .app-header-wrapper__badge {
@@ -2577,21 +2519,13 @@ table.tbl tbody tr:hover td {
   font-variant-numeric: tabular-nums;
 }
 
+/* Avatar button composes from .btn .btn--icon .btn--ghost; the only
+   accent that genuinely differs is the heavier border so the avatar
+   stands apart from the surrounding icon buttons. */
 .app-header-wrapper__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 0;
-  background: var(--surface);
-  color: var(--ink);
-  font-family: var(--font-sans);
+  border-color: var(--border-strong);
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid var(--border-strong);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 /* Env badge — square box next to avatar showing D/S/P (which DB the
@@ -2734,7 +2668,6 @@ table.tbl tbody tr:hover td {
 }
 
 .app-header-wrapper__avatar:hover {
-  background: var(--surface-sunken);
   border-color: var(--ink-muted);
 }
 
@@ -3022,25 +2955,11 @@ table.tbl tbody tr:hover td {
   font-family: var(--font-mono, monospace);
 }
 
+/* Chart-widget expand button composes from .btn .btn--icon .btn--ghost
+   .btn--sm — only flex-shrink kept so the button never compresses
+   when the title row narrows. */
 .chart-widget__expand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--ink-subtle);
-  cursor: pointer;
-  transition: color 120ms, border-color 120ms, background 120ms;
-}
-
-.chart-widget__expand:hover {
-  color: var(--ink);
-  border-color: var(--border-strong);
-  background: var(--surface-sunken);
 }
 
 .chart-widget__overlay {
@@ -3080,25 +2999,9 @@ table.tbl tbody tr:hover td {
   flex: 1;
 }
 
+/* Chart-widget close composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .chart-widget__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--ink-subtle);
-  cursor: pointer;
   flex-shrink: 0;
-  transition: color 120ms, border-color 120ms, background 120ms;
-}
-
-.chart-widget__close:hover {
-  color: var(--ink);
-  border-color: var(--border-strong);
-  background: var(--surface-sunken);
 }
 
 .chart-widget__panel-chart {
@@ -3297,24 +3200,16 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm.
+   Bespoke selector retains only positioning (top-right of host) and
+   the accent hover that genuinely differs from the .btn--ghost
+   default (this control flips to the accent colour on hover so it
+   reads as a generator action, not a chrome control). */
 .raydale-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 
 .raydale-chart__reroll:hover {
@@ -4019,34 +3914,10 @@ table.tbl tbody tr:hover td {
   gap: var(--space-1);
 }
 
-.nav-prefs__btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  color: var(--ink-muted);
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: var(--text-base);
-  line-height: 1;
-  padding: 0;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.nav-prefs__btn:hover:not(:disabled) {
-  background: var(--surface-sunken);
-  color: var(--ink);
-  border-color: var(--border-strong);
-}
-
-.nav-prefs__btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
+/* nav-prefs row controls compose from .btn .btn--icon .btn--ghost
+   .btn--sm. Bespoke selector keeps the accent overrides that genuinely
+   differ from the .btn--ghost default (ink-locked active state and
+   danger hover). */
 .nav-prefs__btn--active {
   border-color: var(--ink);
 }
@@ -4086,6 +3957,7 @@ table.tbl tbody tr:hover td {
   color: var(--surface);
   border-color: var(--success);
 }
+
 
 .nav-prefs__core-badge {
   position: relative;
@@ -4236,17 +4108,17 @@ table.tbl tbody tr:hover td {
 .inline-edit:not(.inline-edit--multiline) .inline-edit__input {
   padding-right: 60px;
 }
+/* Inline-edit cancel/accept buttons are absolutely positioned inside
+   the input wrapper so they overlay the input edges. They compose
+   from .btn .btn--icon .btn--ghost .btn--xs but retain bespoke
+   accent colours (red/green) and explicit positioning since they
+   are not part of the .btn flex flow. The height: 100% override
+   stretches them to fill the input height (vertical visual seam). */
 .inline-edit__btn {
   position: absolute;
   top: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
   height: 100%;
-  border: 1px solid var(--ink);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  border-color: var(--ink);
   z-index: 2;
 }
 .inline-edit__btn--cancel {
@@ -4417,18 +4289,7 @@ table.tbl tbody tr:hover td {
    ============================================================ */
 .custom-page { display: flex; flex-direction: column; gap: var(--space-4); }
 .custom-page__heading-row { display: flex; justify-content: flex-end; }
-.custom-page__rename {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--ink);
-  padding: var(--space-1) var(--space-3);
-  border-radius: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.custom-page__rename:hover { background: var(--surface-sunken); border-color: var(--border-strong); }
+/* Custom-page rename button composes from .btn .btn--ghost .btn--sm. */
 .custom-page__title-input {
   background: var(--surface);
   border: 1px solid var(--ink);
@@ -4511,28 +4372,8 @@ table.tbl tbody tr:hover td {
 }
 .draft-banner__text { flex: 1; min-width: 0; }
 .draft-banner__actions { display: flex; gap: var(--space-1); flex: 0 0 auto; }
-.draft-banner__btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--ink);
-  padding: var(--space-1) var(--space-3);
-  border-radius: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  line-height: 1.2;
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.draft-banner__btn:hover { background: var(--surface-sunken); border-color: var(--border-strong); }
-.draft-banner__btn--primary {
-  border-color: var(--ink);
-  color: var(--surface);
-  background: var(--ink);
-}
-.draft-banner__btn--primary:hover {
-  background: var(--ink);
-  color: var(--surface);
-}
+/* Draft-banner buttons compose from .btn .btn--ghost / .btn--primary
+   .btn--sm — no bespoke overrides required. */
 
 /* ============================================================
    Theme page — panels (mirrors nav-prefs__pane styling)
@@ -5063,21 +4904,9 @@ table.tbl tbody tr:hover td {
   height: 32px;
 }
 
-.theme-lib__filter-clear {
-  height: 32px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--ink-muted);
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-.theme-lib__filter-clear:hover {
-  color: var(--ink);
-  border-color: var(--ink-muted);
-}
+/* theme-lib filter-clear composes from .btn .btn--ghost .btn--sm.
+   Inline modifier strips chrome to render as a text-link inside the
+   empty-state copy. */
 .theme-lib__filter-clear--inline {
   border: none;
   padding: 0;
@@ -5425,7 +5254,7 @@ table.tbl tbody tr:hover td {
 
 .tp-btn {
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 9px;
   font-weight: 600;
   white-space: nowrap;
@@ -6174,40 +6003,9 @@ table.tbl tbody tr:hover td {
   margin-top: var(--space-1);
 }
 
-/* Error buttons — secondary (Cancel) + primary (Try again).
- * Inherit the .btn family look without forcing JSX edits. */
-.adoption-overlay__error-button {
-  appearance: none;
-  font: inherit;
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  padding: 0 var(--space-4);
-  height: 40px;
-  border-radius: 0;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--ink);
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
-  box-shadow: none;
-}
-
-.adoption-overlay__error-button:hover {
-  background: var(--surface-sunken);
-}
-
-.adoption-overlay__error-button--primary {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--surface);
-}
-
-.adoption-overlay__error-button--primary:hover {
-  background: var(--ink);
-  border-color: var(--ink);
-  opacity: 0.9;
-}
+/* Error buttons compose from .btn .btn--ghost / .btn--primary .btn--sm
+   — JSX now provides the canonical classes, so no bespoke chrome
+   declarations remain. */
 
 /* ============================================================
    Wizard model card list (card 00019)
@@ -6897,24 +6695,12 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .ladder-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 
 .ladder-chart__reroll:hover {
@@ -7041,24 +6827,12 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .journey-dome-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 .journey-dome-chart__reroll:hover {
   background: var(--accent);
@@ -7165,24 +6939,12 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .sankeyflow-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 
 .sankeyflow-chart__reroll:hover {
@@ -7246,19 +7008,14 @@ table.tbl tbody tr:hover td {
   outline-offset: 1px;
 }
 
+/* Portfolio-graph toolbar buttons compose from .btn .btn--ghost
+   .btn--sm. Bespoke selector keeps the eyebrow typography (uppercase
+   + letter-spacing) and the accent hover that genuinely differs
+   from .btn--ghost. */
 .portfolio-graph__btn {
-  font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: var(--weight-medium);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 5px 12px;
-  border-radius: 0;
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .portfolio-graph__btn:hover {
@@ -7269,13 +7026,6 @@ table.tbl tbody tr:hover td {
 
 .portfolio-graph__btn--reroll {
   margin-left: auto;
-  width: 30px;
-  padding: 0;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
 }
 
 .portfolio-graph {
@@ -7439,24 +7189,12 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .pctdot-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 
 .pctdot-chart__reroll:hover {
@@ -7641,24 +7379,12 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .diverging-heatmap-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 
 .diverging-heatmap-chart__reroll:hover {
@@ -7749,24 +7475,12 @@ table.tbl tbody tr:hover td {
   width: 100%;
 }
 
+/* Reroll button composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .adjacency-matrix-chart__reroll {
   position: absolute;
   top: 0;
   right: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
   z-index: 1;
-  transition: background 120ms ease, color 120ms ease;
 }
 
 .adjacency-matrix-chart__reroll:hover {
@@ -8701,26 +8415,21 @@ table.tbl tbody tr:hover td {
   flex: 1 1 auto;
 }
 
+/* Panel help button composes from .btn .btn--icon .btn--ghost
+   .btn--sm but renders as a standalone icon — strip the ghost border
+   and any hover/focus background so only the hexagon glyph is visible. */
 .panel__help-btn {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
   background: transparent;
-  border: 0;
-  color: var(--ink-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 120ms ease, background-color 120ms ease;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .panel__help-btn:hover,
 .panel__help-btn:focus-visible {
-  color: var(--accent);
-  background: var(--accent-soft);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
   outline: none;
 }
 
@@ -8732,13 +8441,34 @@ table.tbl tbody tr:hover td {
 /* When the panel has no title (e.g. a chrome-less canvas wrapper), the
    help affordance floats in the top-right corner so it doesn't reserve
    header layout space. The popover already anchors top-right of the
-   panel via its own absolute positioning, so this stays aligned. */
+   panel via its own absolute positioning, so this stays aligned.
+
+   The button sits on top of arbitrary visual content (canvases, maps,
+   image-heavy panels) — none of those backgrounds are guaranteed to
+   contrast with the muted icon colour. So the floating variant ships a
+   chip-style chrome (opaque background + border + soft shadow) that
+   reads against any backdrop. The high z-index keeps it above third-
+   party widget layers (ReactFlow chrome stacks at 4–5 by default). */
+/* Floating variant lives over arbitrary visual content (canvas, map,
+   image). Position + z-index control where it sits; the icon itself
+   renders standalone with no chip chrome and no hover state. */
 .panel__help-btn--floating {
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
-  z-index: 10;
-  background: var(--surface);
+  z-index: 50;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.panel__help-btn--floating:hover,
+.panel__help-btn--floating:focus-visible {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink);
 }
 
 .sr-only {
@@ -8764,7 +8494,7 @@ table.tbl tbody tr:hover td {
   z-index: 40;
   min-width: 260px;
   max-width: 360px;
-  padding: var(--space-3);
+  padding: 10px;
   background: var(--surface);
   border: 1px solid var(--border-strong, var(--border));
   display: flex;
@@ -8808,18 +8538,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink-muted);
 }
 
-.panel__close {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--ink-muted);
-  cursor: pointer;
-  font-size: var(--text-md);
-  line-height: 1;
-}
-
+/* Panel close composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .panel__close:hover,
 .panel__close:focus-visible {
   color: var(--ink);
@@ -8844,6 +8563,219 @@ table.tbl tbody tr:hover td {
 .panel__popover-empty {
   color: var(--ink-muted);
   font-style: italic;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Help-doc renderer — PLA-0008 / 00326.
+ * Shared shape rendered inside the Panel popover (compact variant)
+ * AND on the standalone /help/<id> page (default variant). All sizing
+ * tokens come from the design system; the compact variant overrides
+ * a handful for popover density.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.help-doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-family: var(--font-sans);
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.help-doc--compact {
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.help-doc__title {
+  margin: 0;
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.help-doc--compact .help-doc__title {
+  font-size: var(--text-sm);
+  line-height: 1.3;
+}
+
+.help-doc__body {
+  /* Margin reset for inline-rendered HTML so paragraphs collapse cleanly
+     into the parent gap. */
+}
+
+.help-doc__body > :first-child { margin-top: 0; }
+.help-doc__body > :last-child  { margin-bottom: 0; }
+
+.help-doc__body p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.help-doc__body p:last-child {
+  margin-bottom: 0;
+}
+
+.help-doc__body a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* List markers sit INSIDE the content box so the popover's padding is
+   honoured on the left edge — without this, browser-default
+   `list-style-position: outside` paints the bullet glyph in the
+   padding area and it visually clips against the popover border. */
+.help-doc__body ul,
+.help-doc__body ol {
+  margin: 0 0 var(--space-2) 0;
+  padding-inline-start: 1.25em;
+  list-style-position: outside;
+}
+
+.help-doc__body ul:last-child,
+.help-doc__body ol:last-child {
+  margin-bottom: 0;
+}
+
+.help-doc__body li {
+  margin: 0 0 var(--space-1) 0;
+}
+
+.help-doc__body li:last-child {
+  margin-bottom: 0;
+}
+
+.help-doc__videos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.help-doc__video {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.help-doc__video-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken, #000);
+  display: block;
+}
+
+.help-doc__video-caption {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.help-doc__gallery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-2);
+}
+
+.help-doc--compact .help-doc__gallery {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.help-doc__gallery-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.help-doc__gallery-image {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  display: block;
+  background: var(--surface-sunken);
+}
+
+.help-doc__gallery-caption {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.help-doc__overflow-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.help-doc__open-full {
+  margin: 0;
+}
+
+.help-doc__open-full-link {
+  color: var(--accent);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+}
+
+.help-doc__empty {
+  margin: 0;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * /help/<id> full-page route — PLA-0008 / 00327.
+ * Hosts the .help-doc renderer in its own column. No global app
+ * chrome (sidebar, header) — the help page is a shareable read-only
+ * URL meant to feel like a dedicated reference page.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.help-page {
+  min-height: 100vh;
+  background: var(--surface-app, var(--surface));
+  padding: var(--space-6) var(--space-4);
+}
+
+.help-page__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.help-page__status {
+  font-family: var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.help-page__heading {
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.help-page__id-line {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.help-page__id {
+  font-family: var(--font-mono);
+  background: var(--surface-sunken);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -8886,20 +8818,11 @@ table.tbl tbody tr:hover td {
   margin: var(--space-1) 0 0 0;
 }
 
+/* Address-header help button composes from .btn .btn--icon
+   .btn--ghost .btn--sm. Bespoke selector keeps flex-shrink protection
+   and the accent hover that genuinely differs from .btn--ghost. */
 .addr-header__help-btn {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--ink-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 120ms ease, background-color 120ms ease;
 }
 
 .addr-header__help-btn:hover,
@@ -8970,18 +8893,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink-muted);
 }
 
-.addr-header__close {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--ink-muted);
-  cursor: pointer;
-  font-size: var(--text-md);
-  line-height: 1;
-}
-
+/* Address-header close composes from .btn .btn--icon .btn--ghost .btn--sm. */
 .addr-header__close:hover,
 .addr-header__close:focus-visible {
   color: var(--ink);
@@ -9088,17 +9000,8 @@ table.tbl tbody tr:hover td {
   color: var(--ink-muted);
 }
 
-.address-devtool__share {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: 1;
-  color: var(--ink-muted);
-  background: transparent;
-  border: 0;
-  padding: 0 4px;
-  cursor: pointer;
-}
-
+/* .address-devtool__share — composes from .btn .btn--icon .btn--ghost .btn--xs;
+   only the accent colour-on-hover differs from the canonical ghost. */
 .address-devtool__share:hover,
 .address-devtool__share:focus-visible {
   color: var(--accent);
@@ -9444,12 +9347,82 @@ table.tbl tbody tr:hover td {
   display: none;
 }
 
+/* Embedded mode → expand button toggles is-expanded; the overlay's
+   absolute positioning anchors to the viewport instead of the tab host
+   so it covers the AppShell. The standalone /topology route is already
+   full-viewport, so this rule is a harmless override there. */
+.topo-overlay.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+/* <Panel> chrome stripped down to nothing — used when the panel is the
+   semantic addressable wrapper for an element that already has its own
+   visual chrome (e.g. the topology canvas). The floating help hexagon
+   still appears top-right of the panel because Panel renders it via
+   .panel__help-btn--floating which is position:absolute. */
+.panel--bare {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 0;
+}
+
+/* Inside the topology overlay, the canvas Panel renders as a FLOATING
+   bordered card that occupies the area to the right of the tree flyout.
+   `--topo-flyout-w` is set on `.topo-overlay__main` from React state
+   (tracks the flyout's effective open width, 0 when collapsed); we add
+   a 12px gap so the card visibly floats. As the flyout opens / resizes
+   / closes, the canvas panel slides with it. */
+.topo-overlay__panel {
+  position: absolute;
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  /* Layout: flyout outer width (which the flyout reports including its
+     10px right-edge resize handle when open) + 12px gap between flyout
+     and canvas panel. The flyout is docked flush left (left: 0) so its
+     right edge is exactly its reported width. */
+  left: calc(var(--topo-flyout-w, 44px) + 12px);
+  width: auto;
+  height: auto;
+  background: var(--surface, #ffffff);
+  /* Mirror of the tree flyout: docked flush against the right edge only.
+     Top, left and bottom keep the floating-card chrome so a full gap is
+     visible all the way around the panel except where it docks into the
+     viewport edge. */
+  border-top: 1px solid var(--border, #e5e1da);
+  border-left: 1px solid var(--border, #e5e1da);
+  border-bottom: 1px solid var(--border, #e5e1da);
+  border-radius: 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  transition: left 200ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The panel body holds the React Flow canvas. Without explicit flex
+   sizing the canvas div collapses to 0 height because its parent is
+   absolute-positioned. */
+.topo-overlay__panel > .panel__body {
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 0;
+  padding: 0;
+}
+
 .topo-overlay {
   position: absolute;
   inset: 0;
   display: grid;
   grid-template-rows: 56px 1fr;
-  background: var(--surface-sunken, #f6f5f1);
+  /* No sunken background — the two docked panels (tree + canvas) own
+     their own surfaces and butt up to the viewport edges, so the area
+     between them shouldn't paint a separate "outer container" colour. */
+  background: var(--surface, #ffffff);
   color: var(--ink, #1a1a1a);
 }
 
@@ -9492,51 +9465,17 @@ table.tbl tbody tr:hover td {
   gap: 8px;
 }
 
-.topo-overlay__btn {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border, #e5e1da);
-  background: var(--surface, #ffffff);
-  color: var(--ink, #1a1a1a);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+/* `.toggle-btn` ships with `align-self: flex-start` + `margin-top` for its
+   stacked-form callsites (e.g. the Organization tab). The topology toolbar
+   places it inline next to plain buttons, so strip those here so the
+   toggles' baselines line up with Reset / Collapse. */
+.topo-overlay__actions .toggle-btn {
+  align-self: center;
+  margin-top: 0;
 }
 
-.topo-overlay__btn:hover {
-  background: var(--surface-sunken, #f4f3ef);
-}
-
-.topo-overlay__btn--primary {
-  background: #0f172a;
-  color: #ffffff;
-  border-color: #0f172a;
-}
-
-.topo-overlay__btn--primary:hover {
-  background: #1f2937;
-  border-color: #1f2937;
-}
-
-.topo-overlay__btn--danger {
-  background: var(--danger, #B23B3B);
-  color: #ffffff;
-  border-color: var(--danger, #B23B3B);
-}
-
-.topo-overlay__btn--danger:hover {
-  background: #8d2f2f;
-  border-color: #8d2f2f;
-}
-
-.topo-overlay__btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+/* .topo-overlay__btn family — fully canonical now; every JSX node composes
+   from .btn .btn--primary|--ghost|--danger .btn--sm. No bespoke CSS needed. */
 
 .topo-overlay__input {
   display: block;
@@ -9569,7 +9508,7 @@ table.tbl tbody tr:hover td {
 .topo-overlay__canvas .react-flow {
   width: 100%;
   height: 100%;
-  background: #f8fafc;
+  background: transparent;
 }
 
 /* React Flow chrome — match the muted slate palette of the overlay */
@@ -9616,31 +9555,37 @@ table.tbl tbody tr:hover td {
   box-shadow: none;
 }
 
+/* Topology node card — header (avatar + heading + actions), divider,
+   footer (meta + collapse). Mirrors the design pinned by the user; the
+   data hooks (pinned column, team count) land in a follow-up so the
+   pin button is presently a local-state toggle and team count renders
+   only when present. */
 .org-node-card {
   position: relative;
   display: flex;
-  align-items: stretch;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  flex-direction: column;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-left: 5px solid var(--border, #e5e7eb); /* overridden inline with the node's label colour */
+  border-radius: 0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
   transition: border-color 120ms ease, box-shadow 120ms ease;
   cursor: pointer;
 }
 
 .org-node-card:hover {
-  border-color: #cbd5e1;
+  border-color: var(--border-strong, #cbd5e1);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .org-node-card.is-selected {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: var(--node-accent, var(--accent, #3b82f6));
+  box-shadow: 0 0 0 2px var(--node-accent, var(--accent, #3b82f6));
 }
 
 .org-node-card.is-archived {
-  background: #f3f4f6;
+  background: var(--surface-sunken, #f3f4f6);
   opacity: 0.7;
 }
 
@@ -9653,134 +9598,127 @@ table.tbl tbody tr:hover td {
   height: 1px;
 }
 
-.org-node-card__drag {
-  display: grid;
-  grid-template-columns: 4px 4px;
-  grid-auto-rows: 4px;
-  gap: 4px;
-  align-content: center;
-  justify-content: center;
-  width: 28px;
-  background: transparent;
-  flex: 0 0 auto;
-}
-
-.org-node-card__drag span {
-  display: block;
-  width: 4px;
-  height: 4px;
-  background: #cbd5e1;
-  border-radius: 50%;
-}
-
-.org-node-card__main {
+.org-node-card__header {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 15px 15px 15px;
   flex: 1 1 auto;
-  padding: 12px 12px 16px 4px;
+  min-width: 0;
+}
+
+.org-node-card__avatar {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink, #1a1a1a);
+  color: var(--surface, #ffffff);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 0;
+}
+
+.org-node-card.is-archived .org-node-card__avatar {
+  background: var(--ink-muted, #94a3b8);
+}
+
+.org-node-card__heading {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .org-node-card__name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .org-node-card.is-archived .org-node-card__name {
-  color: #94a3b8;
+  color: var(--ink-muted, #94a3b8);
 }
 
 .org-node-card__sub {
-  font-size: 11px;
-  font-weight: 500;
-  color: #64748b;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-muted, #94a3b8);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
-.org-node-card__pill {
-  align-self: flex-start;
-  margin-top: 2px;
-  display: inline-flex;
+.org-node-card__actions {
+  flex: 0 0 auto;
+  display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+/* .org-node-card__icon-btn — composes from .btn .btn--icon .btn--xs .btn--ghost.
+   Only the .is-active accent and the slightly-larger 18px svg differ from
+   the canonical icon-button defaults. */
+.org-node-card__icon-btn.is-active {
+  color: var(--accent, #3b82f6);
+}
+
+.org-node-card__icon-btn svg {
+  width: 18px;
   height: 18px;
-  padding: 0 8px;
-  background: #f1f5f9;
-  color: #475569;
-  border-radius: 9px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
 }
 
-.org-node-card__kebab {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  padding: 0;
+.org-node-card__divider {
+  height: 1px;
+  background: var(--border, #e5e7eb);
+  margin: 0 15px;
 }
 
-.org-node-card__kebab span {
-  display: block;
-  width: 3px;
-  height: 3px;
-  background: #94a3b8;
-  border-radius: 50%;
-}
-
-.org-node-card__kebab:hover {
-  background: #f1f5f9;
-}
-
-.org-node-card__chevron {
-  position: absolute;
-  bottom: 12px;
-  right: 8px;
+.org-node-card__footer {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: #64748b;
-  font-size: 10px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 15px;
+  /* Reserve chevron-row height whether or not the chevron renders, so
+     leaf cards and parent cards stay the same overall height. */
+  min-height: 46px;
+  flex: 0 0 auto;
 }
 
-.org-node-card__chevron:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+.org-node-card__meta {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-muted, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.org-node-card__band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 6px;
+.org-node-card__meta strong {
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+.org-node-card__meta-empty {
+  color: var(--ink-muted, #94a3b8);
 }
 
 .topo-overlay__error {
@@ -9881,7 +9819,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink, #1a1a1a);
   font-size: 13px;
   text-align: left;
-  border-radius: 5px;
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -9917,16 +9855,28 @@ table.tbl tbody tr:hover td {
 
 .topo-flyout {
   position: absolute;
-  top: 0;
+  /* Match the canvas panel's bounding box exactly (top: 12px / bottom:
+     12px) so the edit flyout sits inside the diagram viewport rather
+     than spanning the full height of the outer container. The flyout
+     overlays the canvas panel from its right edge. */
+  top: 12px;
   right: 0;
-  bottom: 0;
+  bottom: 12px;
   width: min(380px, 92vw);
   background: var(--surface, #ffffff);
+  border-top: 1px solid var(--border, #e5e1da);
   border-left: 1px solid var(--border, #e5e1da);
+  border-bottom: 1px solid var(--border, #e5e1da);
+  border-radius: 12px 0 0 12px;
   box-shadow: -8px 0 28px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
-  z-index: 5;
+  overflow: hidden;
+  /* Sits above the underlying topology panel's floating help hexagon
+     (.panel__help-btn--floating, z-index 50) so the flyout both visually
+     covers it AND captures pointer events — the user shouldn't be able
+     to see or click the help icon while the edit flyout is open. */
+  z-index: 60;
   animation: topo-flyout-in 200ms ease-out;
 }
 
@@ -9955,23 +9905,10 @@ table.tbl tbody tr:hover td {
   font-weight: 600;
 }
 
+/* .topo-flyout__close — composes from .btn .btn--icon .btn--ghost .btn--sm.
+   Only the larger glyph (18px ✕) differs from canonical icon-button defaults. */
 .topo-flyout__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-muted, #5c5c5c);
   font-size: 18px;
-  cursor: pointer;
-}
-
-.topo-flyout__close:hover {
-  background: var(--surface-sunken, #f4f3ef);
-  color: var(--ink, #1a1a1a);
 }
 
 .topo-flyout__body {
@@ -10082,20 +10019,10 @@ table.tbl tbody tr:hover td {
   font-weight: 600;
 }
 
+/* .topo-modal__head button — composes from .btn .btn--icon .btn--ghost .btn--sm.
+   Larger ✕ glyph (18px) is the only deviation from canonical icon-button. */
 .topo-modal__head button {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  background: transparent;
-  border-radius: 6px;
   font-size: 18px;
-  color: var(--ink-muted, #5c5c5c);
-  cursor: pointer;
-}
-
-.topo-modal__head button:hover {
-  background: var(--surface-sunken, #f4f3ef);
-  color: var(--ink, #1a1a1a);
 }
 
 .topo-modal__body {
@@ -10114,4 +10041,574 @@ table.tbl tbody tr:hover td {
   gap: 8px;
   padding: 12px 20px 16px;
   border-top: 1px solid var(--border, #e5e1da);
+}
+
+/* ── Topology tree flyout ────────────────────────────────────────────
+   Top-right rail inside .topo-overlay__main. Collapsed = 44px wide
+   icon-only rail; hover or pin opens to a 320px panel that lists every
+   org_node as an indented tree. The flyout lives inside __main so it
+   sits below the topology toolbar and never overlaps the AppShell. */
+
+.topo-tree {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  bottom: 12px;
+  width: 44px;
+  background: var(--surface, #ffffff);
+  /* Flush against the outer container's left edge only — no left border
+     / no left-side rounding. Top, right and bottom keep the floating-card
+     chrome so a full gap is visible all the way around the panel except
+     where it docks into the viewport edge. */
+  border-top: 1px solid var(--border, #e5e1da);
+  border-right: 1px solid var(--border, #e5e1da);
+  border-bottom: 1px solid var(--border, #e5e1da);
+  border-radius: 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Sit above the underlying canvas panel's floating help hexagon
+     (.panel__help-btn--floating, z-index 50) so the tree flyout fully
+     covers it — same rationale as .topo-flyout (the edit flyout). */
+  z-index: 60;
+  transition: width 200ms ease;
+}
+
+.topo-tree.is-open {
+  /* Open width is set inline by the auto-fit effect in the React component
+     — it tracks the widest visible node. The CSS provides only an absolute
+     minimum + max so the rail never grows beyond viewport. The component
+     sets the inline width on first layout, so the brief flash before the
+     effect runs falls back to `min-width: 0` (no fixed default floor). */
+  width: auto;
+  min-width: 0;
+  max-width: 90vw;
+  /* Open state needs visible overflow so the right-edge resize handle
+     (positioned at right: -10px) renders outside the aside instead of
+     being clipped. The body still scrolls inside its own container. */
+  overflow: visible;
+}
+
+/* Right-edge resize handle. 10px-wide vertical strip sitting JUST
+   outside the aside (right: -10px) so its chip never overlaps the body
+   scrollbar. The aside has overflow: hidden, so we also need to allow
+   visible overflow on the open state — see .topo-tree.is-open above. */
+.topo-tree__resize {
+  position: absolute;
+  top: 0;
+  right: -10px;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  z-index: 61;
+  touch-action: none;
+}
+
+.topo-tree__resize:hover,
+.topo-tree__resize:active {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.topo-tree__resize-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e5e1da);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: var(--text-muted, #6b7280);
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: -2px;
+  pointer-events: none;
+}
+
+.topo-tree__resize:hover .topo-tree__resize-grip,
+.topo-tree__resize:active .topo-tree__resize-grip {
+  color: var(--text, #0f172a);
+  border-color: var(--accent, #3b82f6);
+}
+
+/* Single chevron rail toolbar. When open, the toolbar sits INSIDE the
+   scrolling body (above the table) so it scrolls AWAY when the user
+   scrolls down — leaving the sticky admin row pinned at the top. The
+   chevron anchors LEFT (in line with the breadcrumb above the canvas)
+   and the Panel's floating help hexagon sits flush right on the same row.
+   When collapsed, a sibling --rail variant centres the chevron in the
+   44px rail. */
+.topo-tree__toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border, #e5e1da);
+  background: var(--surface, #ffffff);
+}
+
+.topo-tree__toolbar--rail {
+  justify-content: center;
+  padding: 8px;
+  border-bottom: 0;
+}
+
+.topo-tree__collapse-toggle {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: var(--ink-2, var(--ink, #1a1a1a));
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.25s ease;
+}
+
+.topo-tree__collapse-toggle:hover {
+  color: var(--accent, var(--ink, #1a1a1a));
+}
+
+/* Collapsed state rotates the chevron so it points "open" (right). */
+.topo-tree[data-collapsed="true"] .topo-tree__collapse-toggle {
+  transform: rotate(180deg);
+}
+
+/* Position the Panel's floating help hexagon in the in-body toolbar row
+   (top: 8px) so chevron + help visually sit on the same line at initial
+   open. The help button is rendered by <Panel> as a sibling of the body
+   (NOT inside the scrolling `.topo-tree__body`), so it stays anchored to
+   the panel when the body scrolls — accepted compromise: the help button
+   remains always visible at the top-right of the panel; the toolbar
+   (chevron) underneath scrolls away. z-index 3 keeps it above the
+   sticky admin row (z-index 2) so it stays clickable at all scroll
+   positions. */
+.topo-tree__panel .panel__help-btn--floating {
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  box-shadow: none;
+  z-index: 3;
+}
+
+/* Panel that wraps the body when open — provides the help hexagon
+   scoped to this tree. The min-height:0 chain on every flex parent is
+   what lets the inner body scroll instead of overflowing the rail. */
+.topo-tree__panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topo-tree__panel .panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Positioning anchor for the floating help hexagon. The hexagon stays
+     pinned to this container (it does NOT scroll with .topo-tree__body
+     content — accepted compromise documented above). */
+  position: relative;
+}
+
+.topo-tree__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Panel auto-sizes to widest row content (see useLayoutEffect in
+     TopologyTreeFlyout.tsx). Horizontal overflow should never occur in
+     normal use — hide it so we never show a horizontal scrollbar. */
+  overflow-x: hidden;
+  padding: 0;
+}
+
+/* ── Tree table — copies work-items-tree visual contract exactly ── */
+
+.topo-tree-table {
+  /* Size to natural content width AND fill the panel when content is
+     narrower. Auto-fit effect in the component briefly toggles the
+     `data-measuring` attribute (see below) to release the min-width
+     floor so it can read the table's true natural content width and
+     shrink the panel back when long names are collapsed away. */
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Measurement mode — auto-fit effect drops the min-width floor so the
+   table reports its real natural width instead of being forced to the
+   container width. Rendered for a single sync layout flush, so no
+   visible flicker. */
+.topo-tree-table[data-measuring="true"] {
+  min-width: 0;
+  width: max-content;
+}
+
+.topo-tree-table__row {
+  cursor: pointer;
+  height: var(--row-height, 48px);
+}
+
+.topo-tree-table__row .table__cell {
+  border-right: 1px solid var(--border, #e5e1da);
+}
+
+.topo-tree-table__row .table__cell:last-child {
+  border-right: none;
+}
+
+/* Bottom border on every row INCLUDING the last one — overrides the
+   global `.table__row:last-child` rule that removes it. The user wants
+   the tree to read as a closed list at every depth, so even the deepest
+   leaf gets a bottom border. */
+.topo-tree-table tbody .topo-tree-table__row .table__cell,
+.topo-tree-table tbody .topo-tree-table__row .topo-tree-table__grip-cell {
+  border-bottom: 1px solid var(--border, #e5e1da);
+}
+
+/* Drag-grip cell — matches the canonical drag-handle-cell width. The
+   5px left bar is the per-row node accent (see --node-accent on the
+   row); for nodes without a colour the var falls back to transparent
+   so the bar disappears entirely. */
+.topo-tree-table__grip-cell {
+  width: 22px;
+  text-align: center;
+  cursor: grab;
+  user-select: none;
+  border-right: 1px solid var(--border, #e5e1da);
+  border-left: 5px solid var(--node-accent, transparent);
+}
+
+.topo-tree-table__grip-cell:active {
+  cursor: grabbing;
+}
+
+/* Admin row — sits at the top of the table, holds the expand-all
+   toggle and "Topology Tree Structure" title. Columns line up with
+   body rows so the all-toggle aligns vertically with every row's
+   expander. NOT sticky — the user wants this row to scroll away with
+   the body content, leaving only the toolbar (chevron + help, rendered
+   above the scroll container) pinned. */
+.topo-tree-table__admin-row {
+  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--border, #e5e1da);
+}
+
+.topo-tree-table__admin-row .table__cell,
+.topo-tree-table__admin-row .topo-tree-table__grip-cell {
+  height: 36px;
+  padding: 0 8px;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+  font-size: 13px;
+  vertical-align: middle;
+  border-right: 1px solid var(--border, #e5e1da);
+  border-bottom: 1px solid var(--border, #e5e1da);
+  background: var(--surface, #ffffff);
+}
+
+.topo-tree-table__admin-row .table__cell:last-child {
+  border-right: none;
+}
+
+/* Admin grip cell carries no node accent — suppress the 5px coloured bar. */
+.topo-tree-table__admin-grip {
+  border-left: 5px solid transparent !important;
+  cursor: default;
+}
+
+/* Title cell aligns its text to the swatch column of body rows.
+   Body row math: tag-inner padding-left 8px + 1px root spine + tag
+   padding-left 6px = 15px from the cell edge to the swatch. */
+.topo-tree-table__admin-title {
+  text-align: left;
+  letter-spacing: 0.01em;
+  padding-left: 15px !important;
+}
+
+/* Expander column — fixed narrow width so chevrons line up vertically. */
+.topo-tree-table__toggle-cell {
+  width: 40px;
+  padding: 0;
+  text-align: center;
+}
+
+.topo-tree-table__toggle-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topo-tree-table__expander-icon {
+  display: block;
+  flex-shrink: 0;
+  transition: transform 180ms ease;
+}
+
+.topo-tree-table__expander-icon--open {
+  transform: rotate(90deg);
+}
+
+/* Tag cell — flex row, no padding so SVG anchors flush left. */
+.topo-tree-table__tag-cell {
+  padding: 0 !important;
+}
+
+.topo-tree-table__tag-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 100%;
+  min-height: var(--row-height, 48px);
+  padding-left: 8px;
+  position: relative;
+}
+
+.topo-tree-table__svg {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.topo-tree-table__svg--root-spine {
+  pointer-events: none;
+}
+
+/* Tag = swatch + name, sits right after the SVG with a small gap. */
+.topo-tree-table__tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  padding: 0 8px 0 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.topo-tree-table__swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid var(--border, #e5e1da);
+  background: var(--node-accent, transparent);
+}
+
+.topo-tree-table__name {
+  flex: 0 0 auto;
+  /* Render at natural width so the panel can auto-grow to accommodate
+     the widest row — no ellipsis truncation. */
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink, #1a1a1a);
+}
+
+.topo-tree__empty {
+  margin: 12px;
+  font-size: 13px;
+  color: var(--ink-muted, #5c5c5c);
+}
+
+/* ── tree-row actions cell (kebab + warning triangle) ───────────────── */
+.topo-tree-table__actions-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  padding-right: 6px !important;
+}
+.topo-tree-table__action-btn {
+  margin-left: 2px;
+}
+.topo-tree-table__action-btn--warn {
+  color: var(--warning, #d97706);
+}
+.topo-tree-table__action-btn--warn:hover {
+  color: var(--warning-strong, #b45309);
+}
+
+/* Mirror on the canvas card. */
+.org-node-card__icon-btn--warn {
+  color: var(--warning, #d97706);
+}
+.org-node-card__icon-btn--warn:hover {
+  color: var(--warning-strong, #b45309);
+}
+
+/* ── archive map flyout ──────────────────────────────────────────────── */
+.topo-archive-map {
+  position: absolute;
+  /* Match the canvas panel's bounding box (top: 12px / bottom: 12px) so
+     the archive-map flyout sits inside the diagram viewport rather than
+     spanning the full height of the outer container. */
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  border-top: 1px solid var(--border, #e5e7eb);
+  border-left: 1px solid var(--border, #e5e7eb);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
+  /* Sit above the underlying canvas panel's floating help hexagon
+     (.panel__help-btn--floating, z-index 50) so the flyout both visually
+     covers it AND captures pointer events — matches .topo-flyout. */
+  z-index: 60;
+  animation: topo-flyout-in 200ms ease-out;
+  overflow: hidden;
+}
+.topo-archive-map__resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 10px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.topo-archive-map__resize-grip {
+  color: var(--ink-muted, #94a3b8);
+  font-size: 14px;
+  user-select: none;
+}
+.topo-archive-map__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 12px 24px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.topo-archive-map__head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.topo-archive-map__sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-muted, #5c5c5c);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+.topo-archive-map__close {
+  flex: none;
+}
+.topo-archive-map__panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topo-archive-map__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 0;
+}
+.topo-archive-map__empty {
+  margin: 12px 16px;
+  font-size: 13px;
+  color: var(--ink-muted, #5c5c5c);
+}
+.topo-archive-map__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.topo-archive-map__row {
+  height: 48px;
+}
+.topo-archive-map__tag-cell {
+  padding-left: 16px !important;
+}
+.topo-archive-map__tag-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topo-archive-map__svg {
+  flex: none;
+}
+.topo-archive-map__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink, #1a1a1a);
+  font-style: italic;
+}
+.topo-archive-map__when {
+  flex: none;
+  font-size: 11px;
+  color: var(--ink-muted, #94a3b8);
+}
+.topo-archive-map__action-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  padding-right: 12px !important;
+}
+.topo-archive-map__row-err {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--danger, #b91c1c);
+}
+.topo-archive-map__row--live .topo-archive-map__name {
+  color: var(--ink-muted, #94a3b8);
+  font-style: italic;
+}
+.topo-archive-map__live-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  opacity: 0.65;
+}
+
+/* Canvas zoom controls — pinned to the bottom-center of the topology
+   canvas viewport. Sits OUTSIDE <ReactFlow>'s pannable surface so it
+   never moves with the graph; INSIDE .topo-overlay__canvas so it stays
+   centered against the visible viewport regardless of MiniMap or flyout. */
+.topo-overlay__zoom {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  z-index: 5; /* above react-flow background/edges, below MiniMap (10) */
+  pointer-events: auto;
+}
+.topo-overlay__zoom-btn {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e5e1da);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+.topo-overlay__zoom-btn:hover {
+  background: var(--surface-hover, #f7f3ee);
 }

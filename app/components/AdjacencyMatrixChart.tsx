@@ -475,7 +475,7 @@ export default function AdjacencyMatrixChart({
       {randomize && (
         <button
           type="button"
-          className="adjacency-matrix-chart__reroll"
+          className="btn btn--icon btn--ghost btn--sm adjacency-matrix-chart__reroll"
           onClick={() => {
             const r = randomAdjacency(labels.length);
             setActivePairs(r.pairs);

@@ -30,6 +30,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { useSamanthaSdk } from "@/app/contexts/SamanthaSdkContext";
+import { api } from "@/app/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
@@ -407,21 +408,25 @@ export function useRegisterAddressable(
     const sdkBody = sdk.customAppId
       ? { source: "custom_app" as const, custom_app_id: sdk.customAppId }
       : { source: "runtime" as const };
-    void fetch(`${API_BASE}/api/addressables/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        page_route: registry.pageRoute,
-        parent_address: isDirectChild ? "" : parent,
-        slot,
-        kind: args.kind,
-        name: args.name,
-        ...sdkBody,
-      }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { id: string; address: string; helpable?: boolean } | null) => {
+    // Use api() rather than raw fetch — it injects the X-CSRF-Token
+    // header and Bearer token that the backend's CSRF middleware and
+    // RequireAuth (when applied elsewhere) require. Raw fetch would
+    // pass the cookie but omit the double-submit header → 403.
+    void api<{ id: string; address: string; helpable?: boolean }>(
+      "/api/addressables/register",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          page_route: registry.pageRoute,
+          parent_address: isDirectChild ? "" : parent,
+          slot,
+          kind: args.kind,
+          name: args.name,
+          ...sdkBody,
+        }),
+      }
+    )
+      .then((data) => {
         if (cancelled || !data) return;
         registry.set(data.address, data.id, data.helpable);
         setResolvedID(data.id);

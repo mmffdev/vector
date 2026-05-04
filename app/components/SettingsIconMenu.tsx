@@ -65,7 +65,7 @@ export default function SettingsIconMenu() {
     <div className="avatar-menu" ref={rootRef}>
       <button
         type="button"
-        className="app-header-wrapper__icon-btn"
+        className="btn btn--icon btn--ghost app-header-wrapper__icon-btn"
         title="Settings"
         aria-haspopup="menu"
         aria-expanded={open}

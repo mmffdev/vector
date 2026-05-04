@@ -1,6 +1,8 @@
 "use client";
 
 // PLA-0005 — Samantha SDK runtime context for custom apps.
+// PLA-0008 — helpDefaults values may now be a HelpDocFragment carrying
+//            title + body + videos + images, not just an HTML string.
 //
 // Wrap a custom-app frame in <SamanthaSdkProvider customAppId={…}
 // helpDefaults={manifest.helpDefaults}> so the addressable substrate can:
@@ -16,10 +18,14 @@
 // and the substrate threads identity + help copy through automatically.
 
 import { createContext, useContext, ReactNode } from "react";
+import type { UiAppHelpDocFragment } from "@/app/store/shared/types";
+
+export type SdkHelpValue = string | UiAppHelpDocFragment;
+export type SdkHelpDefaults = Record<string, SdkHelpValue>;
 
 interface SamanthaSdkContextValue {
   customAppId: string | null;
-  helpDefaults: Record<string, string>;
+  helpDefaults: SdkHelpDefaults;
 }
 
 const SamanthaSdkContext = createContext<SamanthaSdkContextValue>({
@@ -33,7 +39,7 @@ export function useSamanthaSdk(): SamanthaSdkContextValue {
 
 interface SamanthaSdkProviderProps {
   customAppId: string;
-  helpDefaults?: Record<string, string>;
+  helpDefaults?: SdkHelpDefaults;
   children: ReactNode;
 }
 
@@ -51,17 +57,24 @@ export function SamanthaSdkProvider({
   );
 }
 
-// Resolve a help body from a manifest's helpDefaults map for a given
+// Resolve a help value from a manifest's helpDefaults map for a given
 // (kind, name). Match order: exact "<kind>:<name>", then wildcard
 // "<kind>:*". Returns null if neither matches.
 export function resolveSdkHelp(
-  helpDefaults: Record<string, string>,
+  helpDefaults: SdkHelpDefaults,
   kind: string,
   name: string,
-): string | null {
+): SdkHelpValue | null {
   const exact = helpDefaults[`${kind}:${name}`];
-  if (exact) return exact;
+  if (exact !== undefined && exact !== "") return exact;
   const wildcard = helpDefaults[`${kind}:*`];
-  if (wildcard) return wildcard;
+  if (wildcard !== undefined && wildcard !== "") return wildcard;
   return null;
+}
+
+// Normalise either string-form or fragment-form into a UiAppHelpDocFragment
+// so callers can read uniform fields regardless of authoring style.
+export function helpValueAsFragment(v: SdkHelpValue): UiAppHelpDocFragment {
+  if (typeof v === "string") return { body_html: v };
+  return v;
 }

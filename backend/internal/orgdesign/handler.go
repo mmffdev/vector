@@ -445,6 +445,39 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// POST /api/topology/nodes/{id}/duplicate — story 00277.
+//
+// Recursively clones the live subtree rooted at {id} into the same
+// subscription, preserving names verbatim (migration 096 dropped
+// sibling-uniqueness so duplicate names are legal). The new root is
+// inserted immediately to the right of the source in sibling order.
+// Returns the cloned root node so the caller can refocus the canvas
+// on it without re-fetching the tree first.
+func (h *Handler) Duplicate(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	n, err := h.Svc.DuplicateSubtree(r.Context(), u.SubscriptionID, id)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	h.logAudit(r.Context(), audit.Entry{
+		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
+		Action: "topology.node.duplicated",
+		Resource: strPtr("org_node"), ResourceID: strPtr(n.ID.String()),
+		IPAddress: ipPtr(clientIP(r)),
+		Metadata: map[string]any{
+			"source_id": id.String(),
+			"name":      n.Name,
+		},
+	})
+	writeJSON(w, http.StatusCreated, n)
+}
+
 // POST /api/topology/nodes/bulk-position
 func (h *Handler) BulkPosition(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
@@ -524,6 +557,71 @@ func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, nodes)
+}
+
+// GET /api/topology/nodes/{id}/archived-descendants
+//
+// Returns the closure of archived nodes reachable from the live anchor
+// {id} — direct archived children plus their transitively-archived
+// descendants. Each row carries `parent_id` so the frontend can rebuild
+// the tree, and `parent_is_archived` so the UI knows whether the row's
+// default Restore-to-parent action is reachable.
+func (h *Handler) ArchivedDescendants(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	descendants, err := h.Svc.ArchivedDescendants(r.Context(), u.SubscriptionID, id)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, descendants)
+}
+
+// POST /api/topology/nodes/{id}/restore
+//
+// Lifts a node out of limbo. Body is `{"new_parent_id": "<uuid>"}` to
+// reparent on restore (required when the node's original parent is also
+// archived); omit / null to keep the existing parent. Returns 409 with
+// `parent_archived` or `parent_missing` when the requested parent is
+// not a valid landing target.
+func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	var req struct {
+		NewParentID *uuid.UUID `json:"new_parent_id,omitempty"`
+	}
+	// Empty body is valid (means "restore in place"). Decode tolerates
+	// EOF so callers can send Content-Length:0.
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+	}
+	if err := h.Svc.RestoreNode(r.Context(), u.SubscriptionID, id, req.NewParentID); err != nil {
+		writeErr(w, err)
+		return
+	}
+	h.logAudit(r.Context(), audit.Entry{
+		UserID:     &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:     "topology.node.restored",
+		Resource:   strPtr("org_node"),
+		ResourceID: strPtr(id.String()),
+		IPAddress:  ipPtr(clientIP(r)),
+		Metadata: map[string]any{
+			"new_parent_id": req.NewParentID,
+		},
+	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // GET /api/topology/nodes/{id}/ancestors
@@ -728,6 +826,14 @@ func writeErr(w http.ResponseWriter, err error) {
 		http.Error(w, "only gadmin may commit the topology working model", http.StatusForbidden)
 	case errors.Is(err, ErrResetForbidden):
 		http.Error(w, "only gadmin may reset the topology canvas", http.StatusForbidden)
+	case errors.Is(err, ErrNotArchived):
+		// 409: client asked to restore a live node — semantic conflict,
+		// not a 400 (request was well-formed and authorised).
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "not_archived"})
+	case errors.Is(err, ErrParentArchived):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "parent_archived"})
+	case errors.Is(err, ErrParentMissing):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "parent_missing"})
 	default:
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}

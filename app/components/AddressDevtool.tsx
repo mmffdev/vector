@@ -176,7 +176,7 @@ function Devtool() {
           {copyState === "copied" && <span className="address-devtool__copy-state">copied</span>}
           <button
             type="button"
-            className="address-devtool__share"
+            className="btn btn--icon btn--ghost btn--xs address-devtool__share"
             onClick={copyShareLink}
             title="Copy share link"
             aria-label="Copy share link"

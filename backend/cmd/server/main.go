@@ -751,6 +751,7 @@ func main() {
 		// Reads
 		r.Get("/tree", orgDesignH.Tree)
 		r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
+		r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
 		r.Get("/preview-move", orgDesignH.PreviewMove)
 		r.Get("/disconnected", orgDesignH.Disconnected)
 		r.Get("/levels", orgDesignH.ListLevels)
@@ -762,6 +763,7 @@ func main() {
 		r.Delete("/nodes/{id}", orgDesignH.Archive)
 		r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
 		r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
+		r.Post("/nodes/{id}/restore", orgDesignH.Restore)
 		r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
 		r.Put("/nodes/{id}/view-state", orgDesignH.ViewState)
 		r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)

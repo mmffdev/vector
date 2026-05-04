@@ -1,0 +1,208 @@
+{
+  "id": "PLA-0009",
+  "title": "Self-healing dev pipeline & degraded-state observability",
+  "date_created": "2026-05-04",
+  "date_started": "2026-05-04",
+  "date_last_updated": "2026-05-04",
+  "date_finished": "2026-05-04",
+  "scope": "<p>The dev pipeline used to fail in three different ways and there was no single place to see why. A backend code edit required a launcher click. A subsystem panic at boot took down the whole server with <code>log.Fatalf</code>. The launcher's watcher was tuned so tight that any 15-second compile registered as a crash. The EnvBadge showed <em>which</em> env we were on but nothing about whether the system underneath was actually healthy. And switching to production was a single click — the same one-click as switching to dev.</p><ul><li><strong>air file-watcher</strong> owns rebuild-on-edit forever. <code>make dev</code> spawns <code>air -c .air.toml</code>; on any <code>.go</code> save, air recompiles and restarts the server in &lt;2s with no launcher round-trip.</li><li><strong>Tolerant boot</strong>: a <code>bootstatus</code> registry replaces <code>log.Fatalf</code> in subsystem init. A failing subsystem flips its component status to <code>degraded</code>; the server stays up.</li><li><strong>Single source of truth</strong>: <code>/api/status/pipeline</code> aggregates env, db_host, build commit, and per-component health into one JSON document.</li><li><strong>EnvBadge degraded-state</strong>: the badge polls <code>/api/status/pipeline</code>, renders a red dot when any component is unhealthy, and exposes the failing component list in its tooltip.</li><li><strong>Production hold-to-confirm</strong>: switching to production now requires a 3-second mousedown hold; a fill animates as the user holds; release before 3s aborts.</li><li><strong>Launcher observer mode</strong>: BackendManager's watcher widens its tolerance from 3 to 6 consecutive failed probes (~30s) so a normal air compile cycle never trips it; only a crash air can't recover from triggers a launcher restart.</li></ul>",
+  "value": "<p>The pipeline now self-heals at three distinct layers:</p><ul><li><strong>Code → running server</strong> happens automatically on every save. No clicks, no waiting on a human supervisor. The compile-and-restart loop lives where it belongs: inside the file-watcher, not the launcher.</li><li><strong>Subsystem failures stop being fatal.</strong> A broken migration or a flaky external dep used to kill the whole server at boot; now the server boots and the broken component shows as <code>degraded</code> in <code>/api/status/pipeline</code>, with the rest of the app fully functional.</li><li><strong>The user can see the state at a glance.</strong> The EnvBadge red dot answers \"is anything broken right now?\" without opening the launcher or the terminal.</li></ul><p>The 3-second prod hold closes a real footgun — clicking <em>production</em> by accident on the env switcher had previously caused gadmin@mmffdev.com to be locked out on the live tenant (production accounts are hard-locked by design and cannot be reset).</p><p>This work is the substrate every future feature sits on. The faster the inner loop and the louder the failure signal, the less time anyone spends debugging the pipeline itself instead of the product.</p>",
+  "implementation_plan": [
+    "Wire air into make dev so .go saves recompile and restart in <2s without a launcher round-trip (story 00338).",
+    "Refactor BackendManager.swift to spawn make dev (which runs air) instead of compiling Go directly; PATH augmented to find the air binary (story 00339).",
+    "Replace log.Fatalf in subsystem init with a bootstatus registry — server boots tolerantly and marks failing components degraded (story 00340).",
+    "Build /api/status/pipeline aggregating env, db_host, build commit, and per-component health into one document (story 00341).",
+    "Refactor EnvBadge to poll /api/status/pipeline (replacing /api/env) with idle vs switching cadence (story 00342).",
+    "Render a red dot + component list tooltip on EnvBadge whenever pipeline.healthy is false (story 00343).",
+    "Add a 3-second mousedown hold-to-confirm on EnvBadge before switching to production; release before 3s aborts (story 00344).",
+    "Widen BackendManager watcher threshold from 3 to 6 consecutive failed probes (~30s) so air's compile cycle never trips it (story 00345)."
+  ],
+  "areas_impacted": [
+    "DEV: backend/.air.toml + backend/Makefile (air integration, make dev target, install-air dep).",
+    "API: backend/internal/bootstatus/registry.go (component registry replacing log.Fatalf).",
+    "API: backend/cmd/server/main.go (subsystem init refactored to bootstatus calls).",
+    "API: backend/internal/api/status_pipeline.go (new /api/status/pipeline handler).",
+    "DEV: MMFF Vector Launcher/BackendManager.swift (spawn make dev, widen watcher tolerance, observer-mode comment).",
+    "UI: app/components/EnvBadge.tsx (rewritten — pipeline polling, degraded dot, prod hold-to-confirm).",
+    "UI: app/globals.css (env-badge degraded-dot + hold-fill styles).",
+    "DOC: .claude/CLAUDE.md (ACTIVE_BACKEND_ENV marker line maintained by <server> -d|-s|-p)."
+  ],
+  "feature_list": [
+    "Backend rebuilds and restarts automatically on every .go save via air, no launcher click required.",
+    "Launcher spawns the backend via make dev so air owns rebuild-on-edit forever after first spawn.",
+    "Backend boots tolerantly: subsystem panics flip a component to degraded instead of killing the server.",
+    "/api/status/pipeline endpoint returns env, db_host, build commit, and per-component health in one document.",
+    "EnvBadge polls /api/status/pipeline (10s idle / 1s switching) and is the single UI surface for pipeline state.",
+    "EnvBadge shows a red dot + component-list tooltip whenever any component is unhealthy.",
+    "Switching to production requires a 3-second mousedown hold with a visible fill animation.",
+    "Launcher watcher tolerates ~30s of unreachability so a normal air compile cycle never triggers a restart."
+  ],
+  "features_extended": [
+    "<strong>EnvBadge</strong>: extended from env-only display to full pipeline-health surface with degraded-state rendering and prod hold-to-confirm.",
+    "<strong>BackendManager (Launcher)</strong>: extended from compile-and-supervise to observer-mode (air owns rebuild; launcher only intervenes on unrecoverable crash).",
+    "<strong>backend/cmd/server/main.go</strong>: extended subsystem init from log.Fatalf to bootstatus.Mark calls (tolerant boot)."
+  ],
+  "features_removed": [
+    "Direct go build + go run inside BackendManager (replaced by make dev → air)."
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Backend rebuilds and restarts on .go save via air",
+      "story_id": "00338",
+      "card_url": "http://localhost:3333/cards/1767203189364360903",
+      "status": "completed"
+    },
+    {
+      "order": 2,
+      "title": "Launcher spawns backend via make dev (air integration)",
+      "story_id": "00339",
+      "card_url": "http://localhost:3333/cards/1767203209505408726",
+      "status": "completed"
+    },
+    {
+      "order": 3,
+      "title": "Backend boots tolerantly when subsystems fail (bootstatus registry)",
+      "story_id": "00340",
+      "card_url": "http://localhost:3333/cards/1767203228698543844",
+      "status": "completed"
+    },
+    {
+      "order": 4,
+      "title": "/api/status/pipeline aggregates env, build, components",
+      "story_id": "00341",
+      "card_url": "http://localhost:3333/cards/1767203247187035890",
+      "status": "completed"
+    },
+    {
+      "order": 5,
+      "title": "EnvBadge polls /api/status/pipeline",
+      "story_id": "00342",
+      "card_url": "http://localhost:3333/cards/1767203268385048321",
+      "status": "completed"
+    },
+    {
+      "order": 6,
+      "title": "EnvBadge red dot + component tooltip when degraded",
+      "story_id": "00343",
+      "card_url": "http://localhost:3333/cards/1767203288719034128",
+      "status": "completed"
+    },
+    {
+      "order": 7,
+      "title": "EnvBadge 3s mousedown hold for production switch",
+      "story_id": "00344",
+      "card_url": "http://localhost:3333/cards/1767203309094962975",
+      "status": "completed"
+    },
+    {
+      "order": 8,
+      "title": "Launcher widens watcher tolerance (observer mode)",
+      "story_id": "00345",
+      "card_url": "http://localhost:3333/cards/1767203329982596910",
+      "status": "completed"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "Saving any .go file under backend/ triggers an air rebuild and restart; the new binary serves /healthz within ~2s.",
+      "proven_by": "touch backend/cmd/server/main.go; observe air logs rebuild + restart; curl /healthz returns ok with the new build commit; no launcher action needed.",
+      "story_id": "00338",
+      "card_url": "http://localhost:3333/cards/1767203189364360903",
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "Launcher start path spawns make dev (which invokes air); PATH includes ~/go/bin so air resolves on a clean machine.",
+      "proven_by": "BackendManager.swift line 59 builds cmd as 'cd backend && export PATH=~/go/bin:... && make dev'; first launch on a fresh machine succeeds because make install-air runs as a Makefile dependency.",
+      "story_id": "00339",
+      "card_url": "http://localhost:3333/cards/1767203209505408726",
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "Subsystem init no longer calls log.Fatalf; a forced subsystem failure leaves the server up with that component marked degraded.",
+      "proven_by": "Inject a failure into one subsystem's init; server still answers /healthz; /api/status/pipeline shows healthy:false with that component in the degraded list.",
+      "story_id": "00340",
+      "card_url": "http://localhost:3333/cards/1767203228698543844",
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "GET /api/status/pipeline returns {env, db_host, build_commit, components[], healthy} with one entry per registered component.",
+      "proven_by": "Response schema validates; healthy field is the AND of every component status; missing components register as unhealthy.",
+      "story_id": "00341",
+      "card_url": "http://localhost:3333/cards/1767203247187035890",
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "EnvBadge polls /api/status/pipeline with idle and switching cadences (10s / 1s) and never calls /api/env.",
+      "proven_by": "Network tab shows pipeline polling at 10s default and 1s while a switch is in flight; grep for /api/env in EnvBadge.tsx returns no matches.",
+      "story_id": "00342",
+      "card_url": "http://localhost:3333/cards/1767203268385048321",
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "EnvBadge renders a red dot and a component-list tooltip whenever pipeline.healthy is false.",
+      "proven_by": "Inject a degraded component; badge shows .env-badge__degraded-dot; tooltip lists the failing component(s) with their status text; healthy state hides the dot.",
+      "story_id": "00343",
+      "card_url": "http://localhost:3333/cards/1767203288719034128",
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "Switching to production requires a 3-second mousedown hold with a visible fill animation; release before 3s aborts and keeps the current env.",
+      "proven_by": "Manual test: hold prod option for <3s and release — no switch; hold for full 3s — fill reaches 100% and switch fires; --prod-hold CSS variable animates from 0% to 100% in 50ms steps.",
+      "story_id": "00344",
+      "card_url": "http://localhost:3333/cards/1767203309094962975",
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "BackendManager watcher tolerates 6 consecutive failed probes (~30s) before declaring a crash; air's compile cycle never trips it.",
+      "proven_by": "BackendManager.swift line 160 reads 'consecutive >= 6'; touching a .go file (which causes a brief unreachable window during recompile) does NOT trigger handleCrash; killing the air process with -9 does, after ~30s.",
+      "story_id": "00345",
+      "card_url": "http://localhost:3333/cards/1767203329982596910",
+      "done": true
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "air binary missing on a clean dev machine — make dev fails, launcher reports start error, no clear path to fix.",
+      "mitigation": "Makefile target 'install-air' is a dependency of 'dev', so the first make dev installs air automatically. Launcher PATH includes ~/go/bin so the freshly-installed binary resolves without a shell restart."
+    },
+    {
+      "impact": 3,
+      "risk": "Tolerant boot hides a failing subsystem — server reports healthy at /healthz while a critical component is degraded, masking a real outage.",
+      "mitigation": "/healthz remains a basic liveness probe; /api/status/pipeline is the source of truth for component health. EnvBadge polls pipeline (not /healthz) and renders a red dot whenever any component is unhealthy, so the degraded state is always visible to the user."
+    },
+    {
+      "impact": 3,
+      "risk": "User accidentally clicks production on the env switcher — production accounts are hard-locked and cannot be reset, so a single misclick can lock out a real user.",
+      "mitigation": "Production switch now requires a 3-second mousedown hold with a visible fill animation. A single click or short hold aborts. This is the same UX pattern as 'hold to delete' — explicit, deliberate, abortable."
+    },
+    {
+      "impact": 2,
+      "risk": "Launcher watcher restarts air during a normal compile, creating a restart loop.",
+      "mitigation": "Watcher threshold widened from 3 to 6 consecutive failed probes (~30s); a typical air rebuild is <2s and a worst-case cold compile is ~15s, both well inside the new tolerance. Only a true unrecoverable crash trips handleCrash."
+    },
+    {
+      "impact": 1,
+      "risk": "PGID-based kill takes down both air and its child Go binary at stop time; if the launcher's tracking of pgid drifts, stop() leaves processes behind.",
+      "mitigation": "BackendManager.stop() always calls ProcessSupervisor.sweepPort(:5100) after the PGID kill (and even when state is .down) to catch any stragglers. Adopt path is restricted on restart() (allowAdopt:false) to avoid re-adopting the very PID being replaced."
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "BackendManager.swift — launcher backend supervisor", "href": "MMFF Vector Launcher/BackendManager.swift" },
+    { "kind": "internal", "label": "EnvBadge.tsx — pipeline-health UI surface", "href": "app/components/EnvBadge.tsx" },
+    { "kind": "internal", "label": "globals.css — env-badge degraded + hold-fill styles", "href": "app/globals.css" },
+    { "kind": "internal", "label": "<server> command — env switching & ACTIVE_BACKEND_ENV marker", "href": ".claude/commands/c_server.md" },
+    { "kind": "internal", "label": "<launcher> command — Vector Launcher overview", "href": ".claude/commands/c_launcher.md" },
+    { "kind": "internal", "label": "HARD RULE — backend locked to dev (memory)", "href": "/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/feedback_dev_only.md" },
+    { "kind": "external", "label": "air — live reload for Go apps", "href": "https://github.com/cosmtrek/air" }
+  ]
+}

@@ -291,7 +291,7 @@ export default function JourneyDomeChart({
     <div className="journey-dome-chart-host">
       <button
         type="button"
-        className="journey-dome-chart__reroll"
+        className="btn btn--icon btn--ghost btn--sm journey-dome-chart__reroll"
         onClick={() => {
           const r = randomDome(stages.length || DEFAULT_STAGES.length);
           setActiveStages(r.stages);

@@ -1116,7 +1116,7 @@ function ThemesTab() {
           {hasFilters && (
             <button
               type="button"
-              className="theme-lib__filter-clear"
+              className="btn btn--ghost btn--sm theme-lib__filter-clear"
               onClick={resetFilters}
               aria-label="Clear all filters"
             >
@@ -1137,7 +1137,7 @@ function ThemesTab() {
           {rows.length === 0 ? (
             <div className="theme-lib__empty">
               No themes match the current filters.{" "}
-              <button type="button" className="theme-lib__filter-clear theme-lib__filter-clear--inline" onClick={resetFilters}>Clear filters</button>
+              <button type="button" className="btn btn--ghost btn--sm theme-lib__filter-clear theme-lib__filter-clear--inline" onClick={resetFilters}>Clear filters</button>
             </div>
           ) : (
             <div className="theme-lib__grid">

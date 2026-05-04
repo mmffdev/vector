@@ -69,10 +69,24 @@ These are the canonical components. If you need something similar, extend with a
 | Primary CTA (one per region) | `.btn btn--primary` |
 | Cancel / secondary | `.btn btn--secondary` |
 | Quiet / icon-only | `.btn btn--ghost` |
+| Icon-only (square) | `.btn btn--icon` (add `.btn--ghost` for transparent) |
 | Row expander / tree toggle | `.btn btn--icon btn--row-expander` |
 | Destructive | `.btn btn--danger` |
-| Smaller | add `.btn--sm` |
+| Smaller | add `.btn--sm` (32 × 32 / 32px high) |
 | Larger | add `.btn--lg` |
+| Block (full width) | add `.btn--block` |
+
+**Icon-only size ladder** (compose with `.btn--icon`, never re-declare width/height): `.btn--sm` (32) → `.btn--xs` (28) → `.btn--tiny` (24) → `.btn--micro` (20). The default `.btn--icon` is 36×36.
+
+**HARD RULE — no duplicated declarations.** A bespoke selector (e.g. `.chart-widget__close`, `.topo-flyout__close`) MUST NOT redeclare any property already set on `.btn` / `.btn--icon` / `.btn--sm` / `.btn--ghost` etc. The bespoke selector is allowed to override **only**:
+
+- `position`, `top`, `right`, `bottom`, `left`, `z-index` (placement)
+- `margin` (positioning relative to siblings)
+- The icon's accent or hover colour, *only if it genuinely differs from the variant's default*
+
+If you find yourself writing `display`, `align-items`, `width`, `height`, `padding`, `border`, `background`, `color`, `border-radius`, `font-*`, `cursor`, `transition` on a bespoke button selector — STOP. The variant exists for that. Use it.
+
+**Why this matters:** changing the site-wide button shape (e.g. radius, height, hover behaviour) must be a single edit to `.btn` + variants. Every duplicated declaration is a place a future theme change has to be re-applied.
 
 **Custom interactive elements** (toggle tiles, segmented controls, day-pickers) that are structurally not navigation buttons still MUST compose from the token set below — never invent new token names or use `--brand` for interactive states.
 

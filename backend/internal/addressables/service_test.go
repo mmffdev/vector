@@ -2,6 +2,7 @@ package addressables_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -160,14 +161,14 @@ func TestRegisterFromBuild_InsertsTree_AndSeedsHelp(t *testing.T) {
 
 	// Every row must have a page_help row seeded from the library wildcard.
 	for _, a := range snap {
-		body, found, err := svc.HelpFor(ctx, a.ID, "en")
+		doc, found, err := svc.HelpFor(ctx, a.ID, "en")
 		if err != nil {
 			t.Fatalf("HelpFor: %v", err)
 		}
 		if !found {
 			t.Fatalf("expected page_help seeded for %s", a.Address)
 		}
-		if body == "" {
+		if doc.BodyHTML == "" {
 			t.Fatalf("expected non-empty body for %s", a.Address)
 		}
 	}
@@ -342,4 +343,186 @@ func TestRegisterFromRuntime_RuntimeReregisterIsIdempotent(t *testing.T) {
 	if len(snap) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(snap))
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Rich-content round trip — title + video_embeds + image_urls.
+// PLA-0008 / 00324.
+// ─────────────────────────────────────────────────────────────────────
+
+func TestUpdateHelp_RichContentRoundTrip(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("help_rich")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	// Seed an addressable + library-default page_help row.
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, []addressables.BuildNode{{Kind: "panel", Name: "rich_demo"}}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil || len(snap) != 1 {
+		t.Fatalf("snapshot: %v / len=%d", err, len(snap))
+	}
+	addrID := snap[0].ID
+
+	// Use a real editor user (the FK accepts NULL, but we want a non-nil
+	// id to prove updated_by_user_id is set).
+	var editorID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM users LIMIT 1`).Scan(&editorID); err != nil {
+		t.Skipf("no users in dev DB to attribute the edit: %v", err)
+	}
+
+	title := "Rich content panel"
+	videos := json.RawMessage(`[{"url":"https://www.youtube.com/watch?v=abc123","title":"Demo","position":1}]`)
+	images := json.RawMessage(`[{"url":"https://cdn.example.com/img1.png","alt":"Diagram","position":1}]`)
+
+	if err := svc.UpdateHelp(ctx, addrID, "en", addressables.HelpUpdate{
+		Title:       &title,
+		BodyHTML:    "<p>Body</p>",
+		VideoEmbeds: videos,
+		ImageURLs:   images,
+	}, editorID); err != nil {
+		t.Fatalf("UpdateHelp: %v", err)
+	}
+
+	doc, found, err := svc.HelpFor(ctx, addrID, "en")
+	if err != nil {
+		t.Fatalf("HelpFor: %v", err)
+	}
+	if !found {
+		t.Fatalf("expected page_help row")
+	}
+	if doc.Title == nil || *doc.Title != title {
+		t.Fatalf("title: got %v want %q", doc.Title, title)
+	}
+	if doc.BodyHTML != "<p>Body</p>" {
+		t.Fatalf("body: got %q", doc.BodyHTML)
+	}
+	if !sameJSON(t, doc.VideoEmbeds, videos) {
+		t.Fatalf("video_embeds: got %s want %s", doc.VideoEmbeds, videos)
+	}
+	if !sameJSON(t, doc.ImageURLs, images) {
+		t.Fatalf("image_urls: got %s want %s", doc.ImageURLs, images)
+	}
+
+	// Clearing arrays via empty `[]` round-trips as `[]`, not NULL.
+	if err := svc.UpdateHelp(ctx, addrID, "en", addressables.HelpUpdate{
+		Title:       nil,
+		BodyHTML:    "",
+		VideoEmbeds: json.RawMessage(`[]`),
+		ImageURLs:   json.RawMessage(`[]`),
+	}, editorID); err != nil {
+		t.Fatalf("UpdateHelp clear: %v", err)
+	}
+	doc, _, err = svc.HelpFor(ctx, addrID, "en")
+	if err != nil {
+		t.Fatalf("HelpFor: %v", err)
+	}
+	if doc.Title != nil {
+		t.Fatalf("expected nil title after clear, got %q", *doc.Title)
+	}
+	if string(doc.VideoEmbeds) != "[]" {
+		t.Fatalf("video_embeds after clear: got %s", doc.VideoEmbeds)
+	}
+	if string(doc.ImageURLs) != "[]" {
+		t.Fatalf("image_urls after clear: got %s", doc.ImageURLs)
+	}
+}
+
+func TestUpdateHelp_NotFoundReturnsSentinel(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+
+	err := svc.UpdateHelp(ctx, uuid.New(), "en", addressables.HelpUpdate{
+		BodyHTML:    "<p>nope</p>",
+		VideoEmbeds: json.RawMessage(`[]`),
+		ImageURLs:   json.RawMessage(`[]`),
+	}, uuid.New())
+	if !errors.Is(err, addressables.ErrParentNotFound) {
+		t.Fatalf("got %v want ErrParentNotFound", err)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Auto-seed idempotency (PLA-0008 / 00325).
+//
+// On first register a page_help row is created from the library
+// default. On re-register (build reconcile or runtime mount) the
+// existing row — including any gadmin edits — must be preserved.
+// ─────────────────────────────────────────────────────────────────────
+
+func TestSeedLibraryDefault_PreservesEditsAcrossReregister(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("seed_idem")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	tree := []addressables.BuildNode{{Kind: "panel", Name: "stable"}}
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("first register: %v", err)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil || len(snap) != 1 {
+		t.Fatalf("snapshot: %v / len=%d", err, len(snap))
+	}
+	addrID := snap[0].ID
+
+	// Library wildcard must have produced a body.
+	doc, found, err := svc.HelpFor(ctx, addrID, "en")
+	if err != nil || !found {
+		t.Fatalf("expected seeded row: found=%v err=%v", found, err)
+	}
+	if doc.BodyHTML == "" {
+		t.Fatalf("expected non-empty seeded body")
+	}
+
+	// Simulate a gadmin edit.
+	var editorID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM users LIMIT 1`).Scan(&editorID); err != nil {
+		t.Skipf("no users in dev DB: %v", err)
+	}
+	editedTitle := "Edited by gadmin"
+	editedBody := "<p>Manual edit must survive re-register</p>"
+	if err := svc.UpdateHelp(ctx, addrID, "en", addressables.HelpUpdate{
+		Title:    &editedTitle,
+		BodyHTML: editedBody,
+	}, editorID); err != nil {
+		t.Fatalf("UpdateHelp: %v", err)
+	}
+
+	// Re-register the same tree — must NOT clobber the edit.
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("second register: %v", err)
+	}
+	doc, _, err = svc.HelpFor(ctx, addrID, "en")
+	if err != nil {
+		t.Fatalf("HelpFor post-reregister: %v", err)
+	}
+	if doc.Title == nil || *doc.Title != editedTitle {
+		t.Fatalf("title clobbered: got %v", doc.Title)
+	}
+	if doc.BodyHTML != editedBody {
+		t.Fatalf("body clobbered: got %q want %q", doc.BodyHTML, editedBody)
+	}
+}
+
+// sameJSON reports whether two JSON payloads represent the same value
+// regardless of whitespace or key order. Postgres re-serialises JSONB
+// with spaces, so byte-equality on the raw payload is too strict.
+func sameJSON(t *testing.T, a, b json.RawMessage) bool {
+	t.Helper()
+	var av, bv any
+	if err := json.Unmarshal(a, &av); err != nil {
+		t.Fatalf("sameJSON: a not valid json: %v", err)
+	}
+	if err := json.Unmarshal(b, &bv); err != nil {
+		t.Fatalf("sameJSON: b not valid json: %v", err)
+	}
+	ab, _ := json.Marshal(av)
+	bb, _ := json.Marshal(bv)
+	return string(ab) == string(bb)
 }

@@ -1,0 +1,55 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/push-backup-gate.sh'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/backend-restart-reminder.sh'"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/backend-restart-reminder.sh'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/session-start-digest.sh'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/api-docs-reminder.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

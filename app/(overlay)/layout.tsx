@@ -17,7 +17,7 @@ import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
-import { DomRegistryProvider } from "@/app/contexts/DomRegistryContext";
+import { DomRegistryProvider, ViewportSlot } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function OverlayLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +43,9 @@ export default function OverlayLayout({ children }: { children: React.ReactNode 
         <NavPrefsProvider>
           <PageHeaderProvider>
             <DomRegistryProvider>
-              <div className="overlay-root">{children}</div>
+              <ViewportSlot kind="app">
+                <div className="overlay-root">{children}</div>
+              </ViewportSlot>
             </DomRegistryProvider>
           </PageHeaderProvider>
         </NavPrefsProvider>

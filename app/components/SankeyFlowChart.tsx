@@ -370,7 +370,7 @@ export default function SankeyFlowChart({
     <div className="sankeyflow-chart-host">
       <button
         type="button"
-        className="sankeyflow-chart__reroll"
+        className="btn btn--icon btn--ghost btn--sm sankeyflow-chart__reroll"
         onClick={() => {
           const r = randomSankey(sources.length, destinations.length);
           setActiveFlows(r.flows);

@@ -425,7 +425,7 @@ export default function AdoptionOverlay({
                 <div className="adoption-overlay__error-actions">
                   <button
                     type="button"
-                    className="adoption-overlay__error-button adoption-overlay__error-button--primary"
+                    className="btn btn--primary btn--sm adoption-overlay__error-button adoption-overlay__error-button--primary"
                     onClick={handleTryAgain}
                   >
                     Try again
@@ -433,7 +433,7 @@ export default function AdoptionOverlay({
                   {onCancel && (
                     <button
                       type="button"
-                      className="adoption-overlay__error-button"
+                      className="btn btn--ghost btn--sm adoption-overlay__error-button"
                       onClick={handleCancel}
                     >
                       Cancel

@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0007`
+**Last issued:** `PLA-0010`
 
 ## Format
 
@@ -22,12 +22,15 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | ID | Title | Created | Status |
 |---|---|---|---|
 | `PLA-0001` | Dev Plans Page + Stories Skill PLA Workflow | 2026-05-02 | active |
-| `PLA-0002` | Reusable per-panel Help popover with paneId registry → backend-served help store | 2026-05-02 | active |
-| `PLA-0003` | Adopt generic ranking + realtime drag-and-drop on the work-items table | 2026-05-02 | active |
+| `PLA-0002` | Reusable per-panel Help popover with paneId registry → backend-served help store | 2026-05-02 | obsolete (duplicate of PLA-0004; addressables substrate via PLA-0005 is the live path) |
+| `PLA-0003` | Adopt generic ranking + realtime drag-and-drop on the work-items table | 2026-05-02 | complete |
 | `PLA-0004` | Reusable per-panel Help popover with paneId registry → backend-served help store | 2026-05-02 | complete (superseded by PLA-0005) |
 | `PLA-0005` | Universal addressable element registry — DB-backed, Dashboard-first, full-site sweep | 2026-05-02 | complete |
-| `PLA-0006` | Topology — federated canvas-based organisational modelling (MVP) | 2026-05-02 | complete |
+| `PLA-0006` | Topology — federated canvas-based organisational modelling (MVP) | 2026-05-02 | active |
 | `PLA-0007` | Data-driven RBAC — roles + permissions + role_permissions; system-role immutability; cache invalidation; protected-account preservation | 2026-05-03 | active |
+| `PLA-0008` | Page Help Library — rich-content help docs (HTML body + YouTube embeds + image lists) per addressable, auto-seeded on Panel mount, full-page /help/<id> route, gadmin editor | 2026-05-04 | active |
+| `PLA-0009` | Self-healing dev pipeline & degraded-state observability — air file-watcher, bootstatus tolerant boot, /api/status/pipeline, EnvBadge degraded dot + 3s prod hold, launcher observer mode | 2026-05-04 | complete |
+| `PLA-0010` | Codebase Audit Remediation — Dead Code & Security Gaps (R035) | 2026-05-04 | active |
 
 ## Deletion log
 

@@ -250,7 +250,7 @@ export default function RaydaleChart({
     <div className="raydale-chart-host">
       <button
         type="button"
-        className="raydale-chart__reroll"
+        className="btn btn--icon btn--ghost btn--sm raydale-chart__reroll"
         onClick={() => setActiveSeries(randomSeries(series, N, max))}
         aria-label="Generate new random data"
         title="Generate new random data (preview only)"
