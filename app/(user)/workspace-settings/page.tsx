@@ -14,12 +14,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { MdOutlineArrowForwardIos } from "react-icons/md";
+import { MdOutlineArrowForwardIos, MdOutlineEdit } from "react-icons/md";
 import { useTabState } from "@/app/hooks/useTabState";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import PageShell from "@/app/components/PageShell";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
+import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
 
 // Topology canvas is the same React Flow page mounted at /topology —
 // we render it inline inside the tab so the gadmin sees the live
@@ -64,7 +65,7 @@ interface RoleSummary {
   rank: number;
 }
 
-const TABS = ["organization", "users", "permissions", "topology"] as const;
+const TABS = ["organization", "workspaces", "users", "permissions", "topology"] as const;
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
@@ -87,6 +88,9 @@ export default function WorkspaceSettingsPage() {
         <TabButton active={tab === "organization"} onClick={() => setTab("organization")}>
           Organization
         </TabButton>
+        <TabButton active={tab === "workspaces"} onClick={() => setTab("workspaces")}>
+          Workspaces
+        </TabButton>
         <TabButton active={tab === "users"} onClick={() => setTab("users")}>
           Users
         </TabButton>
@@ -98,6 +102,7 @@ export default function WorkspaceSettingsPage() {
         </TabButton>
       </div>
       {tab === "organization" && <OrganizationTab />}
+      {tab === "workspaces" && <WorkspacesTab />}
       {tab === "users" && <UsersTab />}
       {tab === "permissions" && <PermissionsTab />}
       {tab === "topology" && <TopologyTab />}
@@ -601,6 +606,490 @@ function TabButton({
     <button onClick={onClick} className={cls}>
       {children}
     </button>
+  );
+}
+
+// PLA-0006 / story 00380 — Manage Workspaces panel.
+// Lists live (non-archived) workspaces for the caller's tenant via
+// workspacesApi.list(), supports inline rename (workspacesApi.rename
+// — PATCH /api/workspaces/{id}), archive (workspacesApi.archive —
+// gated on useHasPermission('workspace.archive')), and a "+ New
+// workspace" form (workspacesApi.create) that surfaces the backend's
+// slug_taken 409 inline (an archived workspace may share the slug —
+// the gate is "live workspaces only"). After every mutation we call
+// emitWorkspacesChanged() so the topology workspace switcher (story
+// 00379) refetches without a page reload. Dates render in --ink-muted
+// via .table__cell--muted, mirroring the Users tab's tabular-nums style.
+//
+// PLA-0006 / story 00381 — Archived Workspaces section.
+// When the caller holds `workspace.view_archived` we mount a second
+// table below the live one, populated from
+// workspacesApi.listArchived() (GET /api/workspaces?archived=true).
+// Each row exposes a "Restore" button gated on `workspace.restore`;
+// on success we call emitWorkspacesChanged() so the topology
+// switcher (story 00379) refetches its dropdown without a page
+// reload, then refetch BOTH the live + archived lists locally so the
+// row jumps from the archived table back into the live table. When
+// the caller lacks `workspace.view_archived` the entire section
+// (heading + table + empty state) is hidden — there is nothing to
+// see and no API call is made.
+
+function WorkspacesTab() {
+  const canArchive       = useHasPermission("workspace.archive");
+  const canViewArchived  = useHasPermission("workspace.view_archived");
+  const canRestore       = useHasPermission("workspace.restore");
+
+  const [rows, setRows] = useState<Workspace[] | null>(null);
+  const [archivedRows, setArchivedRows] = useState<Workspace[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [archivedErr, setArchivedErr] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setErr(null);
+    try {
+      const data = await workspacesApi.list();
+      setRows(data);
+    } catch (e) {
+      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Failed to load");
+    }
+  }, []);
+
+  // 00381 — fetch the archived list only when the caller holds the
+  // view_archived permission. Skipping the call entirely when the
+  // permission is absent keeps a 403 from showing up in the network
+  // panel for ordinary users.
+  const loadArchived = useCallback(async () => {
+    if (!canViewArchived) return;
+    setArchivedErr(null);
+    try {
+      const data = await workspacesApi.listArchived();
+      setArchivedRows(data);
+    } catch (e) {
+      setArchivedErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Failed to load archived workspaces");
+    }
+  }, [canViewArchived]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadArchived(); }, [loadArchived]);
+
+  async function renameWorkspace(id: string, name: string) {
+    await workspacesApi.rename(id, name);
+    emitWorkspacesChanged();
+    setEditingId(null);
+    await load();
+  }
+
+  async function archiveWorkspace(id: string) {
+    await workspacesApi.archive(id);
+    emitWorkspacesChanged();
+    // Workspace just left the live list; refetch BOTH lists so the
+    // row appears under "Archived" without a manual reload.
+    await Promise.all([load(), loadArchived()]);
+  }
+
+  async function restoreWorkspace(id: string) {
+    await workspacesApi.restore(id);
+    emitWorkspacesChanged();
+    // Workspace just rejoined the live list; refetch BOTH lists so
+    // the topology switcher and the on-page tables stay in sync.
+    await Promise.all([load(), loadArchived()]);
+  }
+
+  return (
+    <div>
+      <div className="toolbar">
+        <div className="toolbar__meta">
+          {rows ? `${rows.length} workspace${rows.length === 1 ? "" : "s"}` : "Loading…"}
+        </div>
+        <button onClick={() => setShowCreate(true)} className="btn btn--primary">
+          + New workspace
+        </button>
+      </div>
+
+      {err && <div className="form__error">{err}</div>}
+
+      {rows && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead className="table__head">
+              <tr className="table__row">
+                <th className="table__cell">Name</th>
+                <th className="table__cell">Slug</th>
+                <th className="table__cell">Created</th>
+                <th className="table__cell" aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((w) => (
+                <WorkspaceRow
+                  key={w.id}
+                  w={w}
+                  isEditing={editingId === w.id}
+                  canArchive={canArchive}
+                  onStartEdit={() => setEditingId(w.id)}
+                  onCancelEdit={() => setEditingId(null)}
+                  onRename={(name) => renameWorkspace(w.id, name)}
+                  onArchive={() => archiveWorkspace(w.id)}
+                />
+              ))}
+              {rows.length === 0 && (
+                <tr className="table__row">
+                  <td className="table__cell table__cell--muted" colSpan={4}>
+                    No live workspaces. Use &quot;+ New workspace&quot; to create one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 00381 — Archived section. Entirely hidden (heading, error,
+          and table all suppressed) when the caller lacks
+          workspace.view_archived. AC1. */}
+      {canViewArchived && (
+        <ArchivedWorkspacesSection
+          rows={archivedRows}
+          err={archivedErr}
+          canRestore={canRestore}
+          onRestore={restoreWorkspace}
+        />
+      )}
+
+      {showCreate && (
+        <CreateWorkspaceModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ArchivedWorkspacesSection — story 00381. Renders the read-only
+// archived list with an optional Restore action. Caller decides
+// whether to mount this at all (via workspace.view_archived); the
+// component itself only gates the action button on workspace.restore.
+function ArchivedWorkspacesSection({
+  rows,
+  err,
+  canRestore,
+  onRestore,
+}: {
+  rows: Workspace[] | null;
+  err: string | null;
+  canRestore: boolean;
+  onRestore: (id: string) => Promise<void>;
+}) {
+  return (
+    <>
+      <h3 className="eyebrow">Archived workspaces</h3>
+      {err && <div className="form__error">{err}</div>}
+      {rows && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead className="table__head">
+              <tr className="table__row">
+                <th className="table__cell">Name</th>
+                <th className="table__cell">Slug</th>
+                <th className="table__cell">Archived</th>
+                <th className="table__cell" aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((w) => (
+                <ArchivedWorkspaceRow
+                  key={w.id}
+                  w={w}
+                  canRestore={canRestore}
+                  onRestore={() => onRestore(w.id)}
+                />
+              ))}
+              {rows.length === 0 && (
+                <tr className="table__row">
+                  <td className="table__cell table__cell--muted" colSpan={4}>
+                    No archived workspaces.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ArchivedWorkspaceRow — story 00381. Renders a single archived row.
+// Restore button confirms via window.confirm() before calling the
+// parent — symmetrical with WorkspaceRow's archive confirm so the
+// two destructive-ish actions feel the same.
+function ArchivedWorkspaceRow({
+  w,
+  canRestore,
+  onRestore,
+}: {
+  w: Workspace;
+  canRestore: boolean;
+  onRestore: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function restore() {
+    if (!confirm(`Restore workspace "${w.name}" to the live list?`)) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await onRestore();
+    } catch (e) {
+      setErr(e instanceof ApiError ? String(e.body ?? `Error ${e.status}`) : "Restore failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const archived = w.archived_at ? new Date(w.archived_at).toLocaleDateString() : "—";
+
+  return (
+    <tr className="table__row">
+      <td className="table__cell">{w.name}</td>
+      <td className="table__cell t-mono">{w.slug}</td>
+      <td className="table__cell table__cell--muted">{archived}</td>
+      <td className="table__cell">
+        {canRestore && (
+          <div className="table__cell-meta">
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={restore}
+              disabled={busy}
+            >
+              {busy ? "Restoring…" : "Restore"}
+            </button>
+            {err && <span className="form__error">{err}</span>}
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function WorkspaceRow({
+  w,
+  isEditing,
+  canArchive,
+  onStartEdit,
+  onCancelEdit,
+  onRename,
+  onArchive,
+}: {
+  w: Workspace;
+  isEditing: boolean;
+  canArchive: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onRename: (name: string) => Promise<void>;
+  onArchive: () => Promise<void>;
+}) {
+  const [name, setName] = useState(w.name);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+
+  // Re-sync local edit buffer when the row swaps in/out of edit mode
+  // or when the underlying name changes from a reload.
+  useEffect(() => {
+    if (!isEditing) {
+      setName(w.name);
+      setErr(null);
+    }
+  }, [isEditing, w.name]);
+
+  async function save() {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === w.name) {
+      onCancelEdit();
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    try {
+      await onRename(trimmed);
+    } catch (e) {
+      setErr(e instanceof ApiError ? String(e.body ?? `Error ${e.status}`) : "Rename failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function archive() {
+    if (!confirm(`Archive workspace "${w.name}"?`)) return;
+    setArchiveBusy(true);
+    try {
+      await onArchive();
+    } catch (e) {
+      setErr(e instanceof ApiError ? String(e.body ?? `Error ${e.status}`) : "Archive failed");
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
+
+  const created = new Date(w.created_at).toLocaleDateString();
+
+  return (
+    <tr className="table__row">
+      <td className="table__cell">
+        {isEditing ? (
+          <div className="table__cell-meta">
+            <input
+              type="text"
+              className="form__input form__input--sm"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); save(); }
+                if (e.key === "Escape") { e.preventDefault(); onCancelEdit(); }
+              }}
+            />
+            <button type="button" className="btn btn--primary btn--sm" onClick={save} disabled={busy}>
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <button type="button" className="btn btn--secondary btn--sm" onClick={onCancelEdit} disabled={busy}>
+              Cancel
+            </button>
+            {err && <span className="form__error">{err}</span>}
+          </div>
+        ) : (
+          <span>{w.name}</span>
+        )}
+      </td>
+      <td className="table__cell t-mono">{w.slug}</td>
+      <td className="table__cell table__cell--muted">{created}</td>
+      <td className="table__cell">
+        {!isEditing && (
+          <div className="table__cell-meta">
+            <button
+              type="button"
+              className="btn btn--icon btn--ghost btn--sm"
+              aria-label="Rename workspace"
+              title="Rename workspace"
+              onClick={onStartEdit}
+            >
+              <MdOutlineEdit size={14} />
+            </button>
+            {canArchive && (
+              <button
+                type="button"
+                className="btn btn--danger btn--sm"
+                onClick={archive}
+                disabled={archiveBusy}
+              >
+                {archiveBusy ? "Archiving…" : "Archive"}
+              </button>
+            )}
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function CreateWorkspaceModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setBusy(true);
+    try {
+      const desc = description.trim();
+      await workspacesApi.create({
+        name: name.trim(),
+        slug: slug.trim(),
+        ...(desc ? { description: desc } : {}),
+      });
+      emitWorkspacesChanged();
+      onCreated();
+    } catch (e) {
+      // Backend returns {error: "slug_taken"} on duplicate-slug 409 (only
+      // among LIVE workspaces — same slug from an archived row is
+      // allowed). Surface that inline so the user can pick a new slug
+      // without leaving the form.
+      if (e instanceof ApiError && e.status === 409) {
+        const body = e.body as { error?: string } | string | undefined;
+        const code = typeof body === "object" && body ? body.error : undefined;
+        setErr(code === "slug_taken"
+          ? "A live workspace already uses that slug. Pick a different slug."
+          : `Conflict: ${String(body ?? "")}`);
+      } else {
+        setErr(e instanceof ApiError ? String(e.body ?? `Error ${e.status}`) : "Create failed");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title="New workspace">
+      <form onSubmit={onSubmit} className="form">
+        <label className="form__label">
+          Name
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="form__input"
+            autoFocus
+          />
+        </label>
+        <label className="form__label">
+          Slug
+          <input
+            type="text"
+            required
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            className="form__input t-mono"
+            pattern="[a-z0-9][a-z0-9-]*"
+            title="Lowercase letters, numbers, and hyphens; must start with a letter or number."
+          />
+          <span className="form__hint">Lowercase letters, numbers, hyphens. Must be unique among live workspaces.</span>
+        </label>
+        <label className="form__label">
+          Description
+          <textarea
+            className="form__input form__textarea"
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        {err && <div className="form__error">{err}</div>}
+        <div className="modal__actions">
+          <button type="button" onClick={onClose} className="btn btn--secondary" disabled={busy}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn--primary" disabled={busy || !name.trim() || !slug.trim()}>
+            {busy ? "Creating…" : "Create"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

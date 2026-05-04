@@ -10,11 +10,12 @@ package workspaces
 // catalogue (migration 100). The handler maps the resulting sentinels
 // to HTTP statuses per the contract documented on errors.go:
 //
-//	GET    /api/workspaces            → ListBySubscription(false)        AC1
-//	POST   /api/workspaces            → Create                            AC2
-//	PATCH  /api/workspaces/{id}       → Rename                            00380 AC
-//	POST   /api/workspaces/{id}/archive  → Archive                        AC3
-//	POST   /api/workspaces/{id}/restore  → Restore                        00381 AC
+//	GET    /api/workspaces                → ListBySubscription(false)     AC1
+//	GET    /api/workspaces?archived=true  → ListBySubscription(true), filtered to archived rows  00381 AC
+//	POST   /api/workspaces                → Create                         AC2
+//	PATCH  /api/workspaces/{id}           → Rename                         00380 AC
+//	POST   /api/workspaces/{id}/archive   → Archive                        AC3
+//	POST   /api/workspaces/{id}/restore   → Restore                        00381 AC
 //
 // Reads are not audited; writes are (audit rows are emitted by the
 // service so they sit inside the same transaction as the mutation).
@@ -76,12 +77,32 @@ type patchReq struct {
 // workspaces for the caller's tenant ordered by created_at ASC.
 // Reads are not permission-gated at the service layer; the auth
 // middleware on the route is the only gate.
+//
+// GET /api/workspaces?archived=true — story 00381. Returns the
+// ARCHIVED-ONLY workspaces for the caller's tenant. The service's
+// ListBySubscription(true, …) gates on workspace.view_archived and
+// returns BOTH live + archived rows; this handler then filters out
+// the live rows so the frontend sees a clean archived-only payload.
+// Non-holders of workspace.view_archived → 403 (ErrPermissionDenied).
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, false, u.ID)
+	includeArchived := r.URL.Query().Get("archived") == "true"
+	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, includeArchived, u.ID)
 	if err != nil {
 		writeErr(w, err)
 		return
+	}
+	if includeArchived {
+		// Strip live rows so callers asking for the archived list
+		// only get archived workspaces. Service returns the union;
+		// frontend wants the slice.
+		filtered := rows[:0]
+		for _, x := range rows {
+			if x.ArchivedAt != nil {
+				filtered = append(filtered, x)
+			}
+		}
+		rows = filtered
 	}
 	writeJSON(w, http.StatusOK, rows)
 }
