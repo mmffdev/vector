@@ -11,6 +11,7 @@ package workspaces
 // to HTTP statuses per the contract documented on errors.go:
 //
 //	GET    /api/workspaces            → ListBySubscription(false)        AC1
+//	GET    /api/workspaces?archived=true → ListBySubscription(true)       00381 AC (archived list)
 //	POST   /api/workspaces            → Create                            AC2
 //	PATCH  /api/workspaces/{id}       → Rename                            00380 AC
 //	POST   /api/workspaces/{id}/archive  → Archive                        AC3
