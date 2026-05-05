@@ -13,6 +13,7 @@ import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
 import DevShortcutsPanel from "./DevShortcutsPanel";
 import DevReportsPanel from "./DevReportsPanel";
 import DevResearchPanel from "./DevResearchPanel";
+import DevOperationsPanel from "./DevOperationsPanel";
 import DevPlansPanel from "./DevPlansPanel";
 import DevRetrosPanel from "./DevRetrosPanel";
 import DevPageHelpPanel from "./DevPageHelpPanel";
@@ -26,6 +27,7 @@ const TAB_LABELS: Record<string, string> = {
   shortcuts: "Shortcuts",
   reports: "Reports",
   research: "Research",
+  operations: "Operations",
   icons: "Icons",
   "page-help": "Page Help",
   "ui-catalog": "UI Catalog",
@@ -117,6 +119,12 @@ export default function DevPage() {
           Research
         </button>
         <button
+          className={`dev-tab${tab === "operations" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("operations")}
+        >
+          Operations
+        </button>
+        <button
           className={`dev-tab${tab === "icons" ? " dev-tab--active" : ""}`}
           onClick={() => setTab("icons")}
         >
@@ -139,6 +147,7 @@ export default function DevPage() {
       {tab === "shortcuts" && <DevShortcutsPanel />}
       {tab === "reports" && <DevReportsPanel />}
       {tab === "research" && <DevResearchPanel />}
+      {tab === "operations" && <DevOperationsPanel />}
       {tab === "plans" && <DevPlansPanel />}
       {tab === "retros" && <DevRetrosPanel />}
       {tab === "page-help" && <DevPageHelpPanel />}

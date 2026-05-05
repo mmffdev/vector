@@ -555,12 +555,12 @@
 
 .dui-doc {
   width: 100%;
-  max-width: 800px;
   line-height: 1.7;
   color: var(--ink);
   font-size: var(--text-base);
 }
 
+/* Legacy modifier — kept as no-op so old call-sites don't break. */
 .dui-doc--wide {
   max-width: none;
 }

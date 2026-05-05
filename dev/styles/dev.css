@@ -145,7 +145,7 @@
 
 /* Section / prose */
 .dev-doc {
-  max-width: 800px;
+  /* Full width — accordion rows and panels stretch to the page edge. */
 }
 .dev-p {
   font-size: var(--text-base);

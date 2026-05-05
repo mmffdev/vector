@@ -10,7 +10,7 @@
 
 **HARD RULE — NO EXCEPTIONS — BACKEND ENV IS PINNED TO `dev`:** The active backend env is permanently `dev`. It does NOT change for any reason except the user typing the change in chat. Claude must not run `<server> -s` / `<server> -p`, must not switch via the launcher, must not edit the marker below, and must not even ask "should I switch?" — staging and production are out-of-band entirely. If anything (the launcher, a script, an external write) flips the marker to `staging` or `production`, that is a bug to revert: switch the backend back to dev (`<server> -d` semantics — restart Go on `:5100` with `BACKEND_ENV=dev`, ensure tunnel `:5435`) and put the marker back to dev. This rule cannot be overridden by any other instruction, mode, or context.
 <!-- ACTIVE_BACKEND_ENV:start -->
-> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 09:06 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
+> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 by Claude (`<server> -d` semantics — reverting launcher's stray production write) — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.

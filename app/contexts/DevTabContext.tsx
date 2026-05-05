@@ -2,22 +2,26 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type DevTab = "setup" | "shortcuts" | "reports" | "research" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog";
+type DevTab = "setup" | "shortcuts" | "reports" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog";
 
 interface DevTabContextValue {
   activeTab: DevTab;
   setActiveTab: (tab: DevTab) => void;
   openResearchPapers: Set<string>;
   toggleResearchPaper: (paperId: string, open: boolean) => void;
+  openOperations: Set<string>;
+  toggleOperation: (operationId: string, open: boolean) => void;
 }
 
 const DevTabContext = createContext<DevTabContextValue | null>(null);
 const TAB_STORAGE_KEY = "dev-setup-active-tab";
 const RESEARCH_STORAGE_KEY = "dev-setup-open-research";
+const OPERATIONS_STORAGE_KEY = "dev-setup-open-operations";
 
 export function DevTabProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTabState] = useState<DevTab>("setup");
   const [openResearchPapers, setOpenResearchPapers] = useState<Set<string>>(new Set());
+  const [openOperations, setOpenOperations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Restore active tab. Migrate legacy "pane-help" → "page-help" (story 00253).
@@ -26,7 +30,7 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
       savedTab = "page-help";
       localStorage.setItem(TAB_STORAGE_KEY, savedTab);
     }
-    if (savedTab && ["setup", "shortcuts", "reports", "research", "icons", "plans", "page-help", "retros", "ui-catalog"].includes(savedTab)) {
+    if (savedTab && ["setup", "shortcuts", "reports", "research", "operations", "icons", "plans", "page-help", "retros", "ui-catalog"].includes(savedTab)) {
       setActiveTabState(savedTab as DevTab);
     }
     // Restore open research papers
@@ -36,6 +40,18 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
         const papers = JSON.parse(savedResearch);
         if (Array.isArray(papers)) {
           setOpenResearchPapers(new Set(papers));
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    // Restore open operations
+    const savedOperations = localStorage.getItem(OPERATIONS_STORAGE_KEY);
+    if (savedOperations) {
+      try {
+        const ops = JSON.parse(savedOperations);
+        if (Array.isArray(ops)) {
+          setOpenOperations(new Set(ops));
         }
       } catch (e) {
         // Ignore parse errors
@@ -61,8 +77,21 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const toggleOperation = (operationId: string, open: boolean) => {
+    setOpenOperations(prev => {
+      const updated = new Set(prev);
+      if (open) {
+        updated.add(operationId);
+      } else {
+        updated.delete(operationId);
+      }
+      localStorage.setItem(OPERATIONS_STORAGE_KEY, JSON.stringify(Array.from(updated)));
+      return updated;
+    });
+  };
+
   return (
-    <DevTabContext.Provider value={{ activeTab, setActiveTab, openResearchPapers, toggleResearchPaper }}>
+    <DevTabContext.Provider value={{ activeTab, setActiveTab, openResearchPapers, toggleResearchPaper, openOperations, toggleOperation }}>
       {children}
     </DevTabContext.Provider>
   );
