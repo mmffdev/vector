@@ -1189,6 +1189,107 @@
   min-width: 0;
 }
 
+/* Editor composition primitives — extend dui-form__* to cover
+ * page-editor panels (DevPageHelpPanel and similar). Each rule uses
+ * dui-* tokens only (no hex/rgb literals) so editors inherit theme. */
+
+.dui-form__label--mt {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.dui-form__input {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.dui-form__textarea {
+  width: 100%;
+  min-height: 160px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.dui-form__group-box {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.dui-form__legend {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0 var(--space-2);
+}
+
+.dui-form__list-item {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+.dui-form__list-item-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dui-form__btn-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.dui-form__alert-mt {
+  margin-top: var(--space-2);
+}
+
+.dui-form__empty-line {
+  margin-top: 0;
+  color: var(--ink-muted);
+}
+
+.dui-form__preview-wrap {
+  margin-top: var(--space-3);
+}
+
+.dui-form__preview-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--space-1);
+}
+
+.dui-form__preview-frame {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
 
 /* ─── 22. Stack + section + preview ────────────────────────── */
 

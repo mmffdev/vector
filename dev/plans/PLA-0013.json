@@ -137,7 +137,7 @@
       "title": "Extend dui-form__* primitives for editor composition",
       "story_id": "00414",
       "card_url": "http://localhost:3333/cards/1767937104492365309",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 13,
@@ -254,7 +254,7 @@
       "proven_by": "grep finds each class as a top-level rule; the catalog primer in c_c_dev_ui_primitives.md documents purpose and DOM contract for each.",
       "story_id": "00414",
       "card_url": "http://localhost:3333/cards/1767937104492365309",
-      "done": false
+      "done": true
     },
     {
       "order": 14,
@@ -262,7 +262,7 @@
       "proven_by": "Reading the doc shows new section enumerating each primitive with class signature and example HTML/JSX.",
       "story_id": "00414",
       "card_url": "http://localhost:3333/cards/1767937104492365309",
-      "done": false
+      "done": true
     },
     {
       "order": 15,
@@ -270,7 +270,7 @@
       "proven_by": "Running `npm run lint:dev-css` exits 0 against current tree; new dui-form__* classes are recognised.",
       "story_id": "00414",
       "card_url": "http://localhost:3333/cards/1767937104492365309",
-      "done": false
+      "done": true
     },
     {
       "order": 16,
