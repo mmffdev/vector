@@ -60,14 +60,14 @@
       "title": "Establish dev-ui primitive catalog + UI Catalog preview tab",
       "story_id": "00402",
       "card_url": "http://localhost:3333/cards/1767917072186082451",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 2,
       "title": "Author docs/c_c_dev_ui_primitives.md + HARD RULE in CLAUDE.md + pointer in css-guide.md",
       "story_id": "00403",
       "card_url": "http://localhost:3333/cards/1767917088107660450",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 3,
@@ -154,7 +154,7 @@
       "proven_by": "grep finds zero <table> markup inside dev/pages/**/*.tsx that resolves to a class defined in app/globals.css; lint:dev-css passes.",
       "story_id": "00402",
       "card_url": "http://localhost:3333/cards/1767917072186082451",
-      "done": false
+      "done": true
     },
     {
       "order": 2,
@@ -162,7 +162,7 @@
       "proven_by": "grep across dev/pages/*.tsx finds zero occurrences of dev-research-*, dev-reports-*, dev-plans-*, ui-retro__*, dev-help-editor*, dev-shortcuts-th--*, dev-library__*, r-toc* after migration.",
       "story_id": "00402",
       "card_url": "http://localhost:3333/cards/1767917072186082451",
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -246,7 +246,7 @@
       "proven_by": "Reading both files shows the rule verbatim; it cannot be overridden by any other instruction, mode, or context.",
       "story_id": "00403",
       "card_url": "http://localhost:3333/cards/1767917088107660450",
-      "done": false
+      "done": true
     },
     {
       "order": 13,
