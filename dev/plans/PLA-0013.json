@@ -1,17 +1,17 @@
 {
   "id": "PLA-0013",
-  "title": "Dev-UI Primitives & Migration \u2014 Standardize Dev Setup CSS",
+  "title": "Dev-UI Primitives & Migration — Standardize Dev Setup CSS",
   "date_created": "2026-05-05",
-  "date_started": null,
+  "date_started": "2026-05-05",
   "date_last_updated": "2026-05-05",
-  "date_finished": null,
-  "scope": "<p>Establish a single generic dev-only stylesheet (<code>dev/styles/dev-ui.css</code>) that defines page-agnostic primitives \u2014 <code>dev-page</code>, <code>dev-panel</code>, <code>dev-table</code>, <code>dev-toolbar</code>, <code>dev-search</code>, <code>dev-pager</code>, <code>dev-toc</code>, <code>dev-accordion</code>, <code>dev-doc</code>, <code>dev-meta</code>, <code>dev-pill</code>, <code>dev-heat</code>, <code>dev-form</code>, <code>dev-empty</code>, <code>dev-loading</code> \u2014 used by every dev page (Research, Reports, Plans, Retros, Page Help, Shortcuts, Library). Migrate all existing page-prefixed classes (<code>dev-research-*</code>, <code>dev-reports-*</code>, <code>dev-plans-*</code>, <code>ui-retro__*</code>, <code>dev-help-editor*</code>, <code>dev-shortcuts-th--*</code>, <code>dev-library__*</code>, <code>r-toc*</code>) onto these primitives. Evict all dev-only CSS from <code>app/globals.css</code> (the Vector application stylesheet must contain zero dev classes). Rewire every skill/command (<code>/research</code>, <code>&lt;addpaper&gt;</code>, <code>&lt;r&gt;</code>/<code>&lt;retro&gt;</code>, <code>&lt;memory&gt;</code>, <code>&lt;shortcuts&gt;</code>, <code>&lt;makedevapp&gt;</code>) so their generated dev surfaces reference the catalog primitives only \u2014 never invent new classes. Add a CI lint rule (<code>npm run lint:dev-css</code>) that fails if any <code>dev-*</code> or <code>ui-retro__*</code> selector reappears in <code>app/globals.css</code>.</p>",
-  "value": "<p>One table primitive, one panel primitive, one TOC primitive, one accordion primitive \u2014 for every dev page now and for every dev page added by future shortcuts. Eliminates per-page CSS drift, prevents skills from inventing classes, and confines the Vector application stylesheet to user-facing app surfaces. Every future dev page is built from the same parts; reviewers stop relearning each panel; visual changes to the dev surface are a one-file edit.</p>",
+  "date_finished": "2026-05-05",
+  "scope": "<p>Establish a single generic dev-only stylesheet (<code>dev/styles/dev-ui.css</code>) that defines page-agnostic primitives — <code>dev-page</code>, <code>dev-panel</code>, <code>dev-table</code>, <code>dev-toolbar</code>, <code>dev-search</code>, <code>dev-pager</code>, <code>dev-toc</code>, <code>dev-accordion</code>, <code>dev-doc</code>, <code>dev-meta</code>, <code>dev-pill</code>, <code>dev-heat</code>, <code>dev-form</code>, <code>dev-empty</code>, <code>dev-loading</code> — used by every dev page (Research, Reports, Plans, Retros, Page Help, Shortcuts, Library). Migrate all existing page-prefixed classes (<code>dev-research-*</code>, <code>dev-reports-*</code>, <code>dev-plans-*</code>, <code>ui-retro__*</code>, <code>dev-help-editor*</code>, <code>dev-shortcuts-th--*</code>, <code>dev-library__*</code>, <code>r-toc*</code>) onto these primitives. Evict all dev-only CSS from <code>app/globals.css</code> (the Vector application stylesheet must contain zero dev classes). Rewire every skill/command (<code>/research</code>, <code>&lt;addpaper&gt;</code>, <code>&lt;r&gt;</code>/<code>&lt;retro&gt;</code>, <code>&lt;memory&gt;</code>, <code>&lt;shortcuts&gt;</code>, <code>&lt;makedevapp&gt;</code>) so their generated dev surfaces reference the catalog primitives only — never invent new classes. Add a CI lint rule (<code>npm run lint:dev-css</code>) that fails if any <code>dev-*</code> or <code>ui-retro__*</code> selector reappears in <code>app/globals.css</code>.</p>",
+  "value": "<p>One table primitive, one panel primitive, one TOC primitive, one accordion primitive — for every dev page now and for every dev page added by future shortcuts. Eliminates per-page CSS drift, prevents skills from inventing classes, and confines the Vector application stylesheet to user-facing app surfaces. Every future dev page is built from the same parts; reviewers stop relearning each panel; visual changes to the dev surface are a one-file edit.</p>",
   "implementation_plan": [
-    "Survey current state: catalog every page-prefixed class in dev/pages/*.tsx and confirm the bleed locations in app/globals.css (lines 11263\u201311569 for ui-retro__*, lines 4579\u20134582 for dev-shortcuts-th--*).",
+    "Survey current state: catalog every page-prefixed class in dev/pages/*.tsx and confirm the bleed locations in app/globals.css (lines 11263–11569 for ui-retro__*, lines 4579–4582 for dev-shortcuts-th--*).",
     "Define dev/styles/dev-ui.css with the 14 primitive families. Same declarations as the existing page-prefixed rules so visual diff is zero.",
-    "Add 'UI Catalog' tab to /dev that previews one example of every primitive \u2014 review surface for visual regressions.",
-    "Migrate panels in this order: Research (proof of concept) \u2192 Reports \u2192 Plans \u2192 Retros (largest, requires global eviction) \u2192 Page Help \u2192 Shortcuts \u2192 Library.",
+    "Add 'UI Catalog' tab to /dev that previews one example of every primitive — review surface for visual regressions.",
+    "Migrate panels in this order: Research (proof of concept) → Reports → Plans → Retros (largest, requires global eviction) → Page Help → Shortcuts → Library.",
     "After Retros migrates, delete the ui-retro__* block from app/globals.css. After Shortcuts migrates, delete dev-shortcuts-th--* from app/globals.css.",
     "Add lint:dev-css script (dev/scripts/check-no-dev-classes-in-globals.py) and CI gate. Doc in docs/c_c_lint_rules.md.",
     "Update skill/command specs (retro, research, addpaper, memory, shortcuts, makedevapp) to reference the dev-ui catalog by name and forbid class invention.",
@@ -20,28 +20,28 @@
   "areas_impacted": [
     "DEV: dev/styles/dev-ui.css (new), dev/styles/dev.css (becomes shim), all dev/pages/*.tsx panels",
     "DEV: dev/scripts/check-no-dev-classes-in-globals.py (new lint script)",
-    "UI: app/globals.css \u2014 REMOVE ui-retro__* (lines 11263\u201311569) and dev-shortcuts-th--* (lines 4579\u20134582)",
+    "UI: app/globals.css — REMOVE ui-retro__* (lines 11263–11569) and dev-shortcuts-th--* (lines 4579–4582)",
     "DOC: docs/c_c_dev_ui_primitives.md (new), docs/css-guide.md, docs/c_c_lint_rules.md, .claude/CLAUDE.md",
     "SKILL: .claude/skills/retro/SKILL.md, .claude/skills/research/SKILL.md, .claude/commands/c_research.md, .claude/commands/c_research-paper-format.md, .claude/commands/c_addpaper.md, .claude/commands/c_addpaper-stories.md, .claude/commands/c_write-research-paper.md, .claude/commands/c_memory.md, .claude/commands/c_shortcuts.md, .claude/commands/c_make-dev-app.md, .claude/skills/stories/SKILL.md"
   ],
   "feature_list": [
-    "dev/styles/dev-ui.css \u2014 single source of truth for dev-setup CSS",
-    "dev-page / dev-page__header / dev-page__title / dev-page__subtitle / dev-page__body \u2014 page shell",
+    "dev/styles/dev-ui.css — single source of truth for dev-setup CSS",
+    "dev-page / dev-page__header / dev-page__title / dev-page__subtitle / dev-page__body — page shell",
     "dev-panel / dev-panel__header / dev-panel__body / dev-panel__footer + variants --ledger / --list",
     "dev-toolbar / dev-toolbar__info / dev-toolbar__group / dev-toolbar__spacer",
     "dev-search / dev-search--full",
     "dev-pager / dev-pager__info / dev-pager__btn / dev-pager__sizes",
     "dev-table / dev-table__head / dev-table__row / dev-table__cell + variants --num/--badge/--detail + dev-table-wrap + table modifiers --ledger/--hits/--whys/--wins",
     "dev-accordion family (dev-namespace alias of existing accordion shape)",
-    "dev-toc-layout / dev-toc / dev-toc__label / dev-toc__list / dev-toc-body \u2014 replaces r-toc*",
+    "dev-toc-layout / dev-toc / dev-toc__label / dev-toc__list / dev-toc-body — replaces r-toc*",
     "dev-doc / dev-doc__h2 / dev-doc__p / dev-doc__list / dev-doc__cmd / dev-doc__section",
     "dev-meta / dev-meta__id / dev-meta__title / dev-meta__date / dev-meta__category / dev-meta__pills / dev-meta__pill",
     "dev-pill / dev-pill--open / --in-progress / --resolved / --up / --down / --degraded / --checking / --success / --warning / --danger",
-    "dev-heat / dev-heat--h1..h5 / dev-heat--w1..w5 \u2014 generic severity heatmap",
+    "dev-heat / dev-heat--h1..h5 / dev-heat--w1..w5 — generic severity heatmap",
     "dev-form / dev-form__field / __label / __textarea / __group / __row / __btn-row / __alert / __list-item / __preview-frame",
     "dev-empty / dev-loading",
-    "lint:dev-css CI gate \u2014 forbids dev-* and ui-retro__* in app/globals.css",
-    "/dev \u2192 'UI Catalog' tab \u2014 visual preview of every primitive"
+    "lint:dev-css CI gate — forbids dev-* and ui-retro__* in app/globals.css",
+    "/dev → 'UI Catalog' tab — visual preview of every primitive"
   ],
   "features_extended": [],
   "features_removed": [
@@ -60,91 +60,91 @@
       "title": "Establish dev-ui primitive catalog + UI Catalog preview tab",
       "story_id": "00402",
       "card_url": "http://localhost:3333/cards/1767917072186082451",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 2,
       "title": "Author docs/c_c_dev_ui_primitives.md + HARD RULE in CLAUDE.md + pointer in css-guide.md",
       "story_id": "00403",
       "card_url": "http://localhost:3333/cards/1767917088107660450",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 3,
       "title": "Add lint:dev-css CI gate forbidding dev-* / ui-retro__* in app/globals.css",
       "story_id": "00404",
       "card_url": "http://localhost:3333/cards/1767917105220420785",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 4,
       "title": "Update skill + command specs to reference dev-ui catalog and forbid class invention",
       "story_id": "00405",
       "card_url": "http://localhost:3333/cards/1767917120647070912",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 5,
       "title": "Migrate Dev Research panel to dev-ui primitives",
       "story_id": "00406",
       "card_url": "http://localhost:3333/cards/1767917136023389391",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 6,
       "title": "Migrate Dev Reports panel to dev-ui primitives",
       "story_id": "00407",
       "card_url": "http://localhost:3333/cards/1767917151601034462",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 7,
       "title": "Migrate Dev Plans panel to dev-ui primitives",
       "story_id": "00408",
       "card_url": "http://localhost:3333/cards/1767917167329674477",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 8,
       "title": "Migrate Dev Retros panel to dev-ui primitives + evict ui-retro__* from app/globals.css",
       "story_id": "00409",
       "card_url": "http://localhost:3333/cards/1767917182664049916",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 9,
       "title": "Migrate Dev Page Help editor to dev-form* primitives",
       "story_id": "00410",
       "card_url": "http://localhost:3333/cards/1767917198384301323",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 10,
       "title": "Migrate Dev Shortcuts panel + evict dev-shortcuts-th--* from app/globals.css + regenerate dev/shortcuts.html",
       "story_id": "00411",
       "card_url": "http://localhost:3333/cards/1767917214356210970",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 11,
       "title": "Migrate Library page to dev-ui primitives",
       "story_id": "00412",
       "card_url": "http://localhost:3333/cards/1767917229808026921",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 12,
       "title": "Extend dui-form__* primitives for editor composition",
       "story_id": "00414",
       "card_url": "http://localhost:3333/cards/1767937104492365309",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 13,
       "title": "Migrate DevPageHelpPanel to dui-form__* + evict dev-help-editor__*",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
-      "status": "done"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [
@@ -185,11 +185,11 @@
     {
       "order": 5,
       "criterion": "Dev Research panel renders identically before and after migration.",
-      "proven_by": "Browser smoke at http://localhost:5101/dev \u2192 Research: visual diff zero, console clean, scroll-spy TOC works on accordion sections.",
+      "proven_by": "Browser smoke at http://localhost:5101/dev → Research: visual diff zero, console clean, scroll-spy TOC works on accordion sections.",
       "story_id": "00406",
       "card_url": "http://localhost:3333/cards/1767917136023389391",
       "done": true,
-      "done_note": "Panel rewritten to compose only from .dui-* catalog. Mapping: dev-research-panel\u2192dui-page; dev-research-header\u2192dui-page__header + dui-page__title/subtitle; dev-research-toolbar\u2192dui-toolbar (+__spacer); dev-research-search\u2192dui-search; dev-research-pagesizes/-pagesize/--active\u2192dui-pager__sizes/__size/.is-active; meta header\u2192dui-meta + __id/__title/__sub/__summary; body\u2192dui-doc; loading\u2192dui-loading + __spinner; empty + error\u2192dui-empty; pagination\u2192dui-pager + __btn + __info. TOC scroll-spy selector now matches both .dui-toc__list a (new HTML) and .r-toc__list a (legacy research papers) so existing R### content keeps highlighting. tsc --noEmit clean. Visual smoke pending in user's browser session (interactive auth wall blocks headless SSR check)."
+      "done_note": "Panel rewritten to compose only from .dui-* catalog. Mapping: dev-research-panel→dui-page; dev-research-header→dui-page__header + dui-page__title/subtitle; dev-research-toolbar→dui-toolbar (+__spacer); dev-research-search→dui-search; dev-research-pagesizes/-pagesize/--active→dui-pager__sizes/__size/.is-active; meta header→dui-meta + __id/__title/__sub/__summary; body→dui-doc; loading→dui-loading + __spinner; empty + error→dui-empty; pagination→dui-pager + __btn + __info. TOC scroll-spy selector now matches both .dui-toc__list a (new HTML) and .r-toc__list a (legacy research papers) so existing R### content keeps highlighting. tsc --noEmit clean. Visual smoke pending in user's browser session (interactive auth wall blocks headless SSR check)."
     },
     {
       "order": 6,
@@ -198,7 +198,7 @@
       "story_id": "00407",
       "card_url": "http://localhost:3333/cards/1767917151601034462",
       "done": true,
-      "done_note": "Panel rewritten to compose only from .dui-* catalog. Mapping: dev-reports-panel\u2192dui-page; dev-reports-header\u2192dui-page__header; dev-reports-empty + dev-alert\u2192dui-empty; report header (scope/meta/pills)\u2192dui-meta + __id/__title/__sub/__summary; SummaryPill + status badges\u2192dui-pill + --pass/--warn/--fail/--fixed; <table className=\"table\"> + table__row/__cell + dev-report-col--*/dev-report-row*\u2192dui-table + dui-table__cell--shrink/--mono/--name/--muted; refresh button\u2192dui-pager__btn. tsc --noEmit clean. Visual smoke pending in user's browser session."
+      "done_note": "Panel rewritten to compose only from .dui-* catalog. Mapping: dev-reports-panel→dui-page; dev-reports-header→dui-page__header; dev-reports-empty + dev-alert→dui-empty; report header (scope/meta/pills)→dui-meta + __id/__title/__sub/__summary; SummaryPill + status badges→dui-pill + --pass/--warn/--fail/--fixed; <table className=\"table\"> + table__row/__cell + dev-report-col--*/dev-report-row*→dui-table + dui-table__cell--shrink/--mono/--name/--muted; refresh button→dui-pager__btn. tsc --noEmit clean. Visual smoke pending in user's browser session."
     },
     {
       "order": 7,
@@ -206,15 +206,15 @@
       "proven_by": "Browser smoke: PLA-0013 plan opens, sections + dates strip + progress pill render, references list intact.",
       "story_id": "00408",
       "card_url": "http://localhost:3333/cards/1767917167329674477",
-      "done": false
+      "done": true
     },
     {
       "order": 8,
       "criterion": "Dev Retros panel renders identically before and after migration AND ui-retro__* is gone from app/globals.css.",
-      "proven_by": "Browser smoke: Retros \u2192 Ledger + Retrospectives sub-tabs both render; heatmap cells colour correctly via dev-heat--h1..h5; grep on app/globals.css for 'ui-retro' returns zero matches.",
+      "proven_by": "Browser smoke: Retros → Ledger + Retrospectives sub-tabs both render; heatmap cells colour correctly via dev-heat--h1..h5; grep on app/globals.css for 'ui-retro' returns zero matches.",
       "story_id": "00409",
       "card_url": "http://localhost:3333/cards/1767917182664049916",
-      "done": false
+      "done": true
     },
     {
       "order": 9,
@@ -222,7 +222,7 @@
       "proven_by": "Browser smoke: editor opens, list items + textareas + preview frame all functional.",
       "story_id": "00410",
       "card_url": "http://localhost:3333/cards/1767917198384301323",
-      "done": false
+      "done": true
     },
     {
       "order": 10,
@@ -230,7 +230,7 @@
       "proven_by": "Browser smoke: shortcuts table renders with correct column widths; grep on app/globals.css for 'dev-shortcuts' returns zero matches; dev/shortcuts.html regenerated under -u uses only catalog classes.",
       "story_id": "00411",
       "card_url": "http://localhost:3333/cards/1767917214356210970",
-      "done": false
+      "done": true
     },
     {
       "order": 11,
@@ -238,7 +238,7 @@
       "proven_by": "Browser smoke: library list paginates, search works, mtime/size columns visible.",
       "story_id": "00412",
       "card_url": "http://localhost:3333/cards/1767917229808026921",
-      "done": false
+      "done": true
     },
     {
       "order": 12,
@@ -275,7 +275,7 @@
     {
       "order": 16,
       "criterion": "DevPageHelpPanel.tsx uses only .dui-* classes; no dev-help-editor__* references remain.",
-      "proven_by": "grep -rn 'dev-help-editor__' returns zero matches; component renders identically to before in /dev \u2192 Page Help tab.",
+      "proven_by": "grep -rn 'dev-help-editor__' returns zero matches; component renders identically to before in /dev → Page Help tab.",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
       "done": true
@@ -290,7 +290,7 @@
     },
     {
       "order": 18,
-      "criterion": "lint:dev-css count drops from 15 \u2192 0 violations after this card ships.",
+      "criterion": "lint:dev-css count drops from 15 → 0 violations after this card ships.",
       "proven_by": "Running `npm run lint:dev-css` exits 0 with zero remaining dev-* selectors in app/globals.css.",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
@@ -311,7 +311,7 @@
     {
       "impact": 1,
       "risk": "New skills authored before primitive catalog ships could introduce more drift.",
-      "mitigation": "Land Stories 00402 (catalog), 00403 (HARD RULE doc), 00404 (lint), 00405 (skill rewires) FIRST \u2014 before any panel migration \u2014 so the rule is in force before the surface area expands."
+      "mitigation": "Land Stories 00402 (catalog), 00403 (HARD RULE doc), 00404 (lint), 00405 (skill rewires) FIRST — before any panel migration — so the rule is in force before the surface area expands."
     },
     {
       "impact": 2,
@@ -322,17 +322,17 @@
   "references": [
     {
       "kind": "internal",
-      "label": "Vector CSS guide (HARD RULE \u2014 catalog first, no inline styles)",
+      "label": "Vector CSS guide (HARD RULE — catalog first, no inline styles)",
       "href": "docs/css-guide.md"
     },
     {
       "kind": "internal",
-      "label": "Project lint rules \u2014 addressables / role-literals / writer-boundary",
+      "label": "Project lint rules — addressables / role-literals / writer-boundary",
       "href": "docs/c_c_lint_rules.md"
     },
     {
       "kind": "internal",
-      "label": "Code standards \u2014 naming convention",
+      "label": "Code standards — naming convention",
       "href": ".claude/commands/c_code-standards.md"
     },
     {
@@ -342,7 +342,7 @@
     },
     {
       "kind": "internal",
-      "label": "app/globals.css \u2014 current bleed locations to evict",
+      "label": "app/globals.css — current bleed locations to evict",
       "href": "app/globals.css"
     }
   ]
