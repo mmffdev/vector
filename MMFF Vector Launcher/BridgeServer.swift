@@ -1,13 +1,19 @@
 // BridgeServer.swift — Fenrir's localhost HTTP bridge.
 //
 // NWListener on 127.0.0.1:7787, loopback-only, bearer-token auth, host-header
-// check, idempotency-key cache. Endpoints:
-//   GET  /v1/state
-//   GET  /v1/health
-//   POST /v1/services/{tunnel|backend|frontend}/{start|stop|restart}
-//   POST /v1/env/switch         { "env": "dev|staging|production" }
-//   GET  /v1/logs?limit=&service=
-//   POST /v1/auth/rotate
+// check, idempotency-key cache. Endpoints map directly onto ServiceRegistry:
+//   GET  /v1/state                           — snapshots for all services
+//   GET  /v1/health                          — boolean up-flags per service
+//   POST /v1/services/{id}/{enable|disable|restart}
+//        where {id} ∈ ServiceID.allCases.rawValue
+//                    (tunnel.dev, tunnel.staging, tunnel.prod,
+//                     backend, frontend, docs)
+//   GET  /v1/logs?limit=                     — JSONL tail
+//   POST /v1/auth/rotate                     — rotate bearer token
+//
+// There is intentionally NO env-switch endpoint: the backend is hard-pinned
+// to dev (see CLAUDE.md "BACKEND ENV IS PINNED TO `dev`"). Tunnels for
+// staging/prod are first-class services that the user toggles by id.
 import Foundation
 import Network
 
@@ -17,16 +23,14 @@ enum BridgeError: Error {
 
 actor BridgeServer {
     private let port: UInt16
-    private let orchestrator: Orchestrator
     private var listener: NWListener?
     private var token: String
 
     private struct IdempotencyEntry { let timestamp: Date; let body: Data }
     private var idempotency: [String: IdempotencyEntry] = [:]
 
-    init(port: UInt16, orchestrator: Orchestrator) {
+    init(port: UInt16) {
         self.port = port
-        self.orchestrator = orchestrator
         self.token = Self.loadOrCreateToken()
     }
 
@@ -99,9 +103,7 @@ actor BridgeServer {
             return
         }
 
-        // Bearer auth (skip for /v1/auth/rotate from loopback only — we still
-        // require token since loopback alone is not sufficient for shared dev
-        // boxes; keep uniform behaviour).
+        // Bearer auth — loopback is not enough on shared dev boxes.
         let auth = req.headers["authorization"] ?? ""
         let presented = auth.hasPrefix("Bearer ") ? String(auth.dropFirst(7)) : ""
         if !constantTimeEquals(presented, token) {
@@ -112,7 +114,6 @@ actor BridgeServer {
         // Idempotency-key replay protection (60s LRU)
         if req.method == "POST" {
             let now = Date()
-            // Sweep stale entries
             for (k, v) in idempotency where now.timeIntervalSince(v.timestamp) > 60 {
                 idempotency.removeValue(forKey: k)
             }
@@ -130,24 +131,10 @@ actor BridgeServer {
     }
 
     private func dispatch(_ req: HTTPRequest) async -> Data {
+        // /v1/state and /v1/health are simple GETs.
         switch (req.method, req.path) {
-        case ("GET", "/v1/state"):       return await jsonState()
-        case ("GET", "/v1/health"):      return await jsonHealth()
-        case ("POST", "/v1/services/tunnel/start"):    await orchestrator.tunnel.start();  return ok()
-        case ("POST", "/v1/services/tunnel/stop"):     await orchestrator.tunnel.stop();   return ok()
-        case ("POST", "/v1/services/tunnel/restart"):  await orchestrator.tunnel.restart();return ok()
-        case ("POST", "/v1/services/backend/start"):   await orchestrator.backend.start(); return ok()
-        case ("POST", "/v1/services/backend/stop"):    await orchestrator.backend.stop();  return ok()
-        case ("POST", "/v1/services/backend/restart"): await orchestrator.backend.restart();return ok()
-        case ("POST", "/v1/services/frontend/start"):  await orchestrator.frontend.start();return ok()
-        case ("POST", "/v1/services/frontend/stop"):   await orchestrator.frontend.stop(); return ok()
-        case ("POST", "/v1/services/frontend/restart"):await orchestrator.frontend.restart();return ok()
-        case ("POST", "/v1/env/switch"):
-            if let env = parseEnvSwitch(req.body) {
-                await orchestrator.env.switchTo(env)
-                return ok(extra: ["env": env.rawValue])
-            }
-            return err("bad-env")
+        case ("GET", "/v1/state"):  return await jsonState()
+        case ("GET", "/v1/health"): return await jsonHealth()
         case ("POST", "/v1/auth/rotate"):
             self.token = Self.generateToken()
             try? Self.persistToken(self.token)
@@ -155,8 +142,34 @@ actor BridgeServer {
         case ("GET", let p) where p.hasPrefix("/v1/logs"):
             return tailLogs(limit: 100)
         default:
-            return err("not-found")
+            break
         }
+
+        // /v1/services/{id}/{enable|disable|restart} — keyed by ServiceID.
+        if req.method == "POST", let (id, verb) = parseServiceRoute(req.path) {
+            switch verb {
+            case "enable":  await ServiceRegistry.shared.enable(id);  return ok(extra: ["id": id.rawValue])
+            case "disable": await ServiceRegistry.shared.disable(id); return ok(extra: ["id": id.rawValue])
+            case "restart": await ServiceRegistry.shared.restart(id); return ok(extra: ["id": id.rawValue])
+            default:        return err("bad-verb")
+            }
+        }
+
+        return err("not-found")
+    }
+
+    /// Parse `/v1/services/{id}/{verb}` into (ServiceID, verb). The id segment
+    /// may contain dots (e.g. `tunnel.dev`), so we anchor on the prefix and
+    /// then split off the trailing verb.
+    private func parseServiceRoute(_ path: String) -> (ServiceID, String)? {
+        let prefix = "/v1/services/"
+        guard path.hasPrefix(prefix) else { return nil }
+        let rest = String(path.dropFirst(prefix.count))
+        guard let slash = rest.lastIndex(of: "/") else { return nil }
+        let idStr = String(rest[..<slash])
+        let verb = String(rest[rest.index(after: slash)...])
+        guard let id = ServiceID(rawValue: idStr) else { return nil }
+        return (id, verb)
     }
 
     // MARK: helpers
@@ -172,29 +185,32 @@ actor BridgeServer {
     }
 
     private func jsonState() async -> Data {
-        async let t = orchestrator.tunnel.state.label
-        async let b = orchestrator.backend.state.label
-        async let f = orchestrator.frontend.state.label
-        async let env = orchestrator.tunnel.env.rawValue
-        let payload: [String: Any] = await [
-            "env": env,
-            "tunnel": t,
-            "backend": b,
-            "frontend": f
-        ]
+        let snaps = await ServiceRegistry.shared.snapshots()
+        var services: [[String: Any]] = []
+        for s in snaps {
+            var entry: [String: Any] = [
+                "id": s.id,
+                "state": s.state,
+                "port": Int(s.port),
+                "enabled": s.enabled
+            ]
+            if let pid = s.pid { entry["pid"] = Int(pid) }
+            if let owned = s.owned { entry["owned"] = owned }
+            services.append(entry)
+        }
+        let payload: [String: Any] = ["services": services]
         return (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
     }
+
     private func jsonHealth() async -> Data {
-        async let tu = orchestrator.tunnel.state.isUp
-        async let be = orchestrator.backend.state.isUp
-        async let fe = orchestrator.frontend.state.isUp
-        let payload: [String: Any] = await [
-            "tunnel": tu,
-            "backend": be,
-            "frontend": fe
-        ]
-        return (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
+        let snaps = await ServiceRegistry.shared.snapshots()
+        var out: [String: Any] = [:]
+        for s in snaps {
+            out[s.id] = s.state.hasPrefix("up")
+        }
+        return (try? JSONSerialization.data(withJSONObject: out)) ?? Data()
     }
+
     private func tailLogs(limit: Int) -> Data {
         guard let h = try? FileHandle(forReadingFrom: Paths.logFile) else { return "[]".data(using: .utf8)! }
         defer { try? h.close() }
@@ -204,11 +220,6 @@ actor BridgeServer {
             .suffix(limit)
             .joined(separator: ",")
         return "[\(lines)]".data(using: .utf8) ?? Data()
-    }
-    private func parseEnvSwitch(_ body: Data) -> BackendEnv? {
-        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: String],
-              let raw = json["env"] else { return nil }
-        return BackendEnv(rawValue: raw)
     }
 
     private func send(_ conn: NWConnection, status: Int, json: [String: String]) {
@@ -268,7 +279,6 @@ struct HTTPRequest: Sendable {
     let body: Data
 
     static func parse(_ buf: Data) -> HTTPRequest? {
-        // Find header/body delimiter
         let sep: [UInt8] = [0x0D, 0x0A, 0x0D, 0x0A]
         guard let r = buf.firstRange(of: sep) else { return nil }
         let head = buf.subdata(in: buf.startIndex..<r.lowerBound)
@@ -286,7 +296,6 @@ struct HTTPRequest: Sendable {
                 headers[k] = v
             }
         }
-        // Honour Content-Length for body completeness
         if let cl = headers["content-length"], let n = Int(cl), body.count < n {
             return nil
         }
