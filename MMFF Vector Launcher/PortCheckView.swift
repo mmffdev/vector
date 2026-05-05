@@ -241,6 +241,7 @@ struct PortCheckView: View {
             ("DB tunnel (dev)",   5435),
             ("Go backend",        5100),
             ("Next.js frontend",  5101),
+            ("Docs (Docusaurus)", 3000),
             ("Bridge (local)",    7787),
         ]
         var result: [PortRow] = []

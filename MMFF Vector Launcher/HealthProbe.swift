@@ -100,6 +100,24 @@ enum HealthProbe {
         }
     }
 
+    /// Plain HTTP-200 probe — used by services where any 200 response means
+    /// the dev server is up (e.g. Docusaurus, where the / handler returns HTML
+    /// once compiled but landing-pages may serve non-text/html in some themes).
+    static func httpOk(url: URL, timeout: TimeInterval) async -> ProbeResult {
+        var req = URLRequest(url: url)
+        req.timeoutInterval = timeout
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else {
+                return ProbeResult(ok: false, failure: .badShape, detail: "non-http")
+            }
+            if http.statusCode == 200 { return .success }
+            return ProbeResult(ok: false, failure: .badShape, detail: "status=\(http.statusCode)")
+        } catch {
+            return ProbeResult(ok: false, failure: .timeout, detail: "\(error)")
+        }
+    }
+
     /// HTML readiness probe — 200 + Content-Type: text/html.
     static func htmlReady(url: URL, timeout: TimeInterval) async -> ProbeResult {
         var req = URLRequest(url: url)

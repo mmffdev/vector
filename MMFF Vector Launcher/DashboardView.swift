@@ -19,6 +19,7 @@ struct DashboardView: View {
                     EnvSection(env: .production)
                     EnvSection(env: .staging)
                     EnvSection(env: .dev)
+                    GlobalServicesSection()
                 }
                 .padding(12)
             }
@@ -258,6 +259,7 @@ struct ServiceCard: View {
         case .tunnel: return "Tunnel"
         case .backend: return "Backend"
         case .frontend: return "Frontend"
+        case .docs: return "Docs"
         }
     }
     private var port: UInt16 {
@@ -265,6 +267,7 @@ struct ServiceCard: View {
         case .tunnel: return env.tunnelPort
         case .backend: return state.backendPort
         case .frontend: return state.frontendPort
+        case .docs: return 3000
         }
     }
     private var isActiveEnv: Bool { env == state.currentEnv }
@@ -274,10 +277,11 @@ struct ServiceCard: View {
         case .tunnel: return state.tunnelPid
         case .backend: return state.backendPid
         case .frontend: return state.frontendPid
+        case .docs: return state.docsPid
         }
     }
     private var value: String {
-        if !isActiveEnv && (kind == .backend || kind == .frontend) { return "not active" }
+        if !isActiveEnv && (kind == .backend || kind == .frontend || kind == .docs) { return "not active" }
         if !isActiveEnv && kind == .tunnel {
             switch env {
             case .dev:        return state.dbStateDev ? "up" : "down"
@@ -289,6 +293,7 @@ struct ServiceCard: View {
         case .tunnel: return state.tunnelLabel
         case .backend: return state.backendLabel
         case .frontend: return state.frontendLabel
+        case .docs: return state.docsLabel
         }
     }
     private var titleSuffix: String {
@@ -420,3 +425,73 @@ struct StatePill: View {
 }
 
 // LogTailView is defined in LogViewerView.swift
+
+// MARK: - global services section (env-agnostic; currently just Docs)
+
+struct GlobalServicesSection: View {
+    @EnvironmentObject var state: AppState
+    private let cardHeight: CGFloat = 170
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            DiagonalStripeAccent(color: Theme.fgMuted)
+                .frame(maxHeight: .infinity)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Global")
+                        .font(.title3.bold())
+                        .foregroundStyle(Theme.fg)
+                    Spacer()
+                }
+                HStack(alignment: .top, spacing: 10) {
+                    DocsCard()
+                        .frame(height: cardHeight)
+                    Spacer()
+                }
+            }
+            .padding(14)
+        }
+        .background(Theme.bgPanel)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct DocsCard: View {
+    @EnvironmentObject var state: AppState
+    private let port: UInt16 = 3000
+
+    private var pid: Int32? { state.docsPid }
+    private var titleSuffix: String {
+        let pidPart = pid.map { "PID \($0)" } ?? "PID —"
+        return "(\(pidPart) :\(port))"
+    }
+    // Docs uses the active env's lock for parity with FrontendManager.
+    private var locked: Bool { state.isLocked(state.currentEnv, .docs) }
+
+    var body: some View {
+        CardChrome {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Docs").font(.subheadline.bold())
+                Text(titleSuffix)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(Theme.fgMuted)
+                Spacer()
+                StatePill(value: state.docsLabel)
+            }
+            VerticalActionButtons(
+                onStart:   { state.startService(state.currentEnv, .docs) },
+                onStop:    { state.stopService(state.currentEnv, .docs) },
+                onRestart: { state.restartService(state.currentEnv, .docs) },
+                disabled: locked
+            )
+            Spacer(minLength: 0)
+            LockRow(locked: Binding(
+                get: { state.isLocked(state.currentEnv, .docs) },
+                set: { state.setLock(state.currentEnv, .docs, $0) }
+            ))
+        }
+    }
+}

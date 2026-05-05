@@ -16,9 +16,11 @@ final class AppState: ObservableObject {
     @Published var tunnelLabel: String = "down"
     @Published var backendLabel: String = "down"
     @Published var frontendLabel: String = "down"
+    @Published var docsLabel: String = "down"
     @Published var tunnelPid: Int32? = nil
     @Published var backendPid: Int32? = nil
     @Published var frontendPid: Int32? = nil
+    @Published var docsPid: Int32? = nil
     @Published var logTail: [LogEntry] = []
     @Published var bridgePort: UInt16 = 7787
     @Published var bridgeRunning: Bool = false
@@ -176,6 +178,7 @@ final class AppState: ObservableObject {
             case .tunnel: await orchestrator.tunnel.start()
             case .backend: await orchestrator.backend.start()
             case .frontend: await orchestrator.frontend.start()
+            case .docs: await orchestrator.docs.start()
             }
         }
     }
@@ -191,6 +194,7 @@ final class AppState: ObservableObject {
             case .tunnel: await orchestrator.tunnel.stop()
             case .backend: await orchestrator.backend.stop()
             case .frontend: await orchestrator.frontend.stop()
+            case .docs: await orchestrator.docs.stop()
             }
         }
     }
@@ -205,6 +209,7 @@ final class AppState: ObservableObject {
             case .tunnel: await orchestrator.tunnel.restart()
             case .backend: await orchestrator.backend.restart()
             case .frontend: await orchestrator.frontend.restart()
+            case .docs: await orchestrator.docs.restart()
             }
         }
     }
@@ -283,13 +288,16 @@ final class AppState: ObservableObject {
                 let tunnelState = await self.orchestrator.tunnel.state
                 let backendState = await self.orchestrator.backend.state
                 let frontendState = await self.orchestrator.frontend.state
+                let docsState = await self.orchestrator.docs.state
                 await MainActor.run {
                     self.tunnelLabel = tunnelState.label
                     self.backendLabel = backendState.label
                     self.frontendLabel = frontendState.label
+                    self.docsLabel = docsState.label
                     self.tunnelPid = Self.pid(from: tunnelState)
                     self.backendPid = Self.pid(from: backendState)
                     self.frontendPid = Self.pid(from: frontendState)
+                    self.docsPid = Self.pid(from: docsState)
                 }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }

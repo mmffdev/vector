@@ -35,7 +35,16 @@ enum BackendEnv: String, CaseIterable, Codable, Sendable {
 }
 
 enum ServiceKind: String, Codable, Sendable, CaseIterable {
-    case tunnel, backend, frontend
+    case tunnel, backend, frontend, docs
+
+    var displayName: String {
+        switch self {
+        case .tunnel: return "Tunnel"
+        case .backend: return "Backend"
+        case .frontend: return "Frontend"
+        case .docs: return "Docs"
+        }
+    }
 }
 
 enum ServiceState: Equatable, Sendable {

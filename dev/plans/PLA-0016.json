@@ -1,0 +1,177 @@
+{
+  "id": "PLA-0016",
+  "title": "Docs site as a fourth Launcher component — supervised api-reference Docusaurus on :3000",
+  "date_created": "2026-05-05",
+  "date_started": "2026-05-05",
+  "date_last_updated": "2026-05-05",
+  "date_finished": "2026-05-05",
+  "scope": "<p>Add the <code>api-reference</code> Docusaurus site as a fourth supervised component in the MMFF Vector Launcher, alongside the existing tunnel / backend / frontend trio. The launcher's per-component start/stop/restart UI, JSONL logging, port-conflict detection, and adopt-existing-process behaviour all extend to the docs site so it follows the same lifecycle as the rest of the dev stack.</p><ul><li>New Swift component <code>DocsManager</code> mirroring <code>FrontendManager</code> (NodeJS process supervision via <code>npm start</code> in <code>api-reference/</code>, stdout→JSONL pipe, restart policy, exit detection).</li><li>Extend <code>ServiceKind</code> enum with <code>.docs</code>; thread through <code>AppState</code>, <code>Orchestrator</code>, <code>DashboardView</code>, <code>PortCheckView</code>, <code>HealthProbe</code>.</li><li>Auto-start with the rest of the stack (matches existing model). Adopt an already-running <code>docusaurus start</code> on :3000 if present.</li><li>Default mode is the dev server (<code>npm start</code>) for hot-reload while authoring; a future phase can add a static-build mode toggle when content stabilises.</li><li>Health probe: HTTP GET <code>http://localhost:3000/</code> with 200 OK → healthy.</li><li>Logs at <code>/tmp/mmff-docs.log</code> following the existing component-log convention.</li><li>Update <code>.claude/commands/c_launcher.md</code> from \"three components\" to four; add docs log path and port to the table.</li></ul>",
+  "value": "<p>Today the api-reference Docusaurus site is a manual <code>npm start</code> in a terminal that dies the moment the CLI closes. That makes it second-class compared to the tunnel/backend/frontend, which the Launcher already supervises with restart policies and structured logs.</p><ul><li><strong>For the developer:</strong> docs are part of the dev stack — one click in the Launcher brings them up alongside everything else, and they survive terminal close, reboot, and crashes the same way the backend does.</li><li><strong>For the codebase:</strong> establishes the pattern for adding a fourth supervised component cleanly, so future supervised processes (background workers, doc-generators, etc.) follow the same shape rather than each inventing its own lifecycle.</li><li><strong>For the docs themselves:</strong> always-on <code>localhost:3000</code> means cross-references in chat (\"see /components/badge\") are click-through-able without first asking the developer to remember to <code>npm start</code>.</li></ul>",
+  "implementation_plan": [
+    "Story 00428 — Extend ServiceKind enum with .docs, add per-kind metadata (port 3000, label \"Docs\", working dir api-reference/), thread through Models.swift / AppState.swift / ServiceSnapshot. No behaviour yet — wiring only, so subsequent stories can land independently.",
+    "Story 00429 — Implement DocsManager.swift modelled on FrontendManager: spawn `npm start` in api-reference/, pipe stdout/stderr to /tmp/mmff-docs.log via JSONLLogger, exit-code handling, restart policy from RetryPolicy, port-3000 conflict detection. Adopt an already-running docusaurus start if PID is on :3000.",
+    "Story 00430 — Wire DocsManager into Orchestrator: start-all includes docs in parallel with tunnel (no dependency), stop-all includes docs, restart-all sequences correctly. Update DashboardView to render a fourth row with start/stop/restart buttons + state badge.",
+    "Story 00431 — Health probe + port-check entry: HealthProbe.swift gains a docs probe (HTTP GET localhost:3000/ → 200 healthy, !=200 or refused → unhealthy); PortCheckView lists port 3000 alongside the existing ports. Status reflected in the dashboard component row.",
+    "Story 00432 — Documentation + verification: update .claude/commands/c_launcher.md from \"three components\" to \"four\", add /tmp/mmff-docs.log to the log table, add :3000 to the PortCheckView entry. Manual smoke test: cold launcher start → all four components green; close terminal → docs still served at localhost:3000."
+  ],
+  "areas_impacted": [
+    "DEV: MMFF Vector Launcher/ Swift sources (Models, AppState, Orchestrator, DashboardView, PortCheckView, HealthProbe, new DocsManager.swift)",
+    "DEV: .claude/commands/c_launcher.md (three → four components, log table)",
+    "DEV: project.yml (no manual edit needed — xcodegen picks up new Swift files automatically)"
+  ],
+  "feature_list": [
+    "Fourth supervised component in the Launcher: Docs (api-reference Docusaurus)",
+    "Auto-start with start-all, auto-stop with stop-all, per-component restart",
+    "Adopt-existing-process for `docusaurus start` on :3000",
+    "Structured JSONL log at /tmp/mmff-docs.log",
+    "Health probe via HTTP 200 on localhost:3000/",
+    "Port :3000 in PortCheckView",
+    "c_launcher.md updated to reflect four components"
+  ],
+  "features_extended": [
+    "<strong>Launcher Orchestrator:</strong> the start-all / stop-all / restart-all sequences now include docs as a fourth parallel branch (no dependency on tunnel/backend/frontend).",
+    "<strong>DashboardView:</strong> renders a fourth component row with the same control surface as the existing three.",
+    "<strong>PortCheckView:</strong> gains :3000."
+  ],
+  "features_removed": [],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "ServiceKind.docs wiring (Models / AppState / ServiceSnapshot)",
+      "story_id": "00428",
+      "card_url": "http://localhost:3333/cards/1768110791988348794",
+      "status": "completed"
+    },
+    {
+      "order": 2,
+      "title": "DocsManager.swift — process supervision + adopt + log piping",
+      "story_id": "00429",
+      "card_url": "http://localhost:3333/cards/1768110811944847241",
+      "status": "completed"
+    },
+    {
+      "order": 3,
+      "title": "Orchestrator + DashboardView fourth-component integration",
+      "story_id": "00430",
+      "card_url": "http://localhost:3333/cards/1768110832027174808",
+      "status": "completed"
+    },
+    {
+      "order": 4,
+      "title": "Health probe + PortCheckView :3000 entry",
+      "story_id": "00431",
+      "card_url": "http://localhost:3333/cards/1768110851555854246",
+      "status": "completed"
+    },
+    {
+      "order": 5,
+      "title": "c_launcher.md update + manual smoke test",
+      "story_id": "00432",
+      "card_url": "http://localhost:3333/cards/1768110869859796916",
+      "status": "completed"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "ServiceKind enum includes a .docs case in Models.swift",
+      "proven_by": "grep finds `case docs` in `enum ServiceKind`",
+      "story_id": "00428",
+      "card_url": "http://localhost:3333/cards/1768110791988348794",
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "AppState exposes an observable slot for the docs component identical in shape to frontend's slot",
+      "proven_by": "DashboardView can bind to docs state without compile errors",
+      "story_id": "00428",
+      "card_url": "http://localhost:3333/cards/1768110791988348794",
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "DocsManager.swift exists and spawns `npm start` in api-reference/",
+      "proven_by": "starting the launcher with no docusaurus running results in a `node` child PID with cwd ending in /api-reference",
+      "story_id": "00429",
+      "card_url": "http://localhost:3333/cards/1768110811944847241",
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "Stdout + stderr from the docs process are written as JSONL to /tmp/mmff-docs.log",
+      "proven_by": "tail -f /tmp/mmff-docs.log shows valid JSON lines while the docs site is starting",
+      "story_id": "00429",
+      "card_url": "http://localhost:3333/cards/1768110811944847241",
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "If a docusaurus start is already running on :3000 when the launcher boots, the launcher adopts it",
+      "proven_by": "DashboardView shows state `up (adopted)` with the existing PID",
+      "story_id": "00429",
+      "card_url": "http://localhost:3333/cards/1768110811944847241",
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "Orchestrator start-all brings the docs component up in parallel with the tunnel",
+      "proven_by": "in launcher.jsonl, the docs `starting` event timestamp is within 100 ms of the tunnel `starting` event",
+      "story_id": "00430",
+      "card_url": "http://localhost:3333/cards/1768110832027174808",
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "DashboardView renders a fourth row labelled \"Docs\" with the same start/stop/restart control surface",
+      "proven_by": "screenshot of the launcher dashboard shows four component rows",
+      "story_id": "00430",
+      "card_url": "http://localhost:3333/cards/1768110832027174808",
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "HealthProbe issues GET http://localhost:3000/ and treats 200 as healthy",
+      "proven_by": "stopping the docs process flips the docs row to red within one probe interval",
+      "story_id": "00431",
+      "card_url": "http://localhost:3333/cards/1768110851555854246",
+      "done": true
+    },
+    {
+      "order": 9,
+      "criterion": "PortCheckView lists :3000 alongside the existing tunnel/backend/frontend ports",
+      "proven_by": "the PortCheckView lists all four ports including :3000",
+      "story_id": "00431",
+      "card_url": "http://localhost:3333/cards/1768110851555854246",
+      "done": true
+    },
+    {
+      "order": 10,
+      "criterion": "c_launcher.md updated: \"three components\" → \"four\"; /tmp/mmff-docs.log added to the log table",
+      "proven_by": "git diff shows both edits and a manual read confirms accuracy",
+      "story_id": "00432",
+      "card_url": "http://localhost:3333/cards/1768110869859796916",
+      "done": true
+    },
+    {
+      "order": 11,
+      "criterion": "Closing the spawning terminal does not kill the docs process — localhost:3000 still serves the site",
+      "proven_by": "open Launcher → quit terminal → curl -sI localhost:3000 returns 200 OK",
+      "story_id": "00432",
+      "card_url": "http://localhost:3333/cards/1768110869859796916",
+      "done": true
+    }
+  ],
+  "risks": [
+    "Port 3000 is a popular default — collision with another local Docusaurus / React app is plausible. Mitigation: existing PortCheckView pattern surfaces the conflict; user can stop the rival process or we add a docs-port override later.",
+    "Docusaurus dev server is memory-hungry over long uptimes (react-refresh leaks). Mitigation: out of scope for v1; future phase adds a static-build mode (`npm run build && npm run serve`) toggle.",
+    "xcodegen must be re-run to pick up the new Swift file before the launcher rebuilds. Mitigation: noted in c_launcher.md; build script already calls xcodegen as the first step."
+  ],
+  "out_of_scope": [
+    "Static build mode (`npm run build && npm run serve`) — deferred until docs content stabilises.",
+    "File-watcher that auto-rebuilds on .mdx change — only relevant once we move to static mode.",
+    "Custom port for the docs site — :3000 is the Docusaurus default; a port override can be added later if a real conflict surfaces.",
+    "Production deployment of the docs site — c_launcher.md is dev-stack only; production hosting is unaffected by this plan."
+  ],
+  "status": "completed",
+  "phase_id": "PH-0001"
+}
