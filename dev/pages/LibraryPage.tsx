@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import "@dev/styles/dev.css";
 
 const PAGE_SIZE = 15;
 
@@ -59,50 +58,64 @@ export default function LibraryPage() {
 
   if (selected) {
     return (
-      <div className="dev-root">
-        <header
-          className="dev-page-header"
-          style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}
-        >
-          <button className="dev-btn" onClick={() => { setSelected(null); setHtml(null); }}>
-            ← Library
-          </button>
-          <h1 className="dev-page-header__title dev-library__doc-title" style={{ margin: 0 }}>
-            {selected.name}
-          </h1>
+      <div className="dui-page">
+        <header className="dui-page__header">
+          <div className="dui-toolbar">
+            <button
+              className="dui-pager__btn"
+              onClick={() => { setSelected(null); setHtml(null); }}
+              aria-label="Back to library"
+            >
+              ←
+            </button>
+            <h1 className="dui-page__title">{selected.name}</h1>
+          </div>
         </header>
         {loading
-          ? <p className="dev-p">Loading…</p>
-          : <div className="dev-library__md-body" dangerouslySetInnerHTML={{ __html: html ?? "" }} />
+          ? (
+            <div className="dui-loading">
+              <span className="dui-loading__spinner" aria-hidden="true" />
+              Loading…
+            </div>
+          )
+          : <div className="dui-doc" dangerouslySetInnerHTML={{ __html: html ?? "" }} />
         }
       </div>
     );
   }
 
   return (
-    <div className="dev-root">
-      <header className="dev-page-header">
-        <h1 className="dev-page-header__title">Library</h1>
-        <p className="dev-page-header__subtitle">
-          {files.length} documents — docs/ and dev/planning/
-        </p>
+    <div className="dui-page">
+      <header className="dui-page__header">
+        <div>
+          <h1 className="dui-page__title">Library</h1>
+          <p className="dui-page__subtitle">
+            {files.length} documents — docs/ and dev/planning/
+          </p>
+        </div>
       </header>
 
-      <div className="dev-library">
-        <div className="dev-library__toolbar">
-          <input
-            className="dev-library__search"
-            type="search"
-            placeholder="Search by name or directory…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <span className="dev-library__count">
-            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-          </span>
-        </div>
+      <div className="dui-toolbar">
+        <input
+          className="dui-search"
+          type="search"
+          placeholder="Search by name or directory…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <span className="dui-page__count">
+          {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+        </span>
+      </div>
 
-        <table className="dev-library__table">
+      {filtered.length === 0 ? (
+        <div className="dui-empty">
+          {files.length === 0
+            ? "Loading library…"
+            : <>No documents match &ldquo;<em>{search}</em>&rdquo;.</>}
+        </div>
+      ) : (
+        <table className="dui-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -113,29 +126,47 @@ export default function LibraryPage() {
           </thead>
           <tbody>
             {pageSlice.map((f) => (
-              <tr key={f.path} onClick={() => setSelected({ path: f.path, name: f.name })}
-                  className="dev-library__row">
-                <td className="dev-library__name">{f.name}</td>
-                <td className="dev-library__dir">{f.dir}</td>
-                <td className="dev-library__size">{fmtSize(f.size)}</td>
-                <td className="dev-library__mtime">{fmtDate(f.mtime)}</td>
+              <tr
+                key={f.path}
+                className="is-clickable"
+                onClick={() => setSelected({ path: f.path, name: f.name })}
+              >
+                <td className="dui-table__cell--name">{f.name}</td>
+                <td className="dui-table__cell--muted">{f.dir}</td>
+                <td className="dui-table__cell--shrink dui-table__cell--mono">{fmtSize(f.size)}</td>
+                <td className="dui-table__cell--shrink dui-table__cell--muted">{fmtDate(f.mtime)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
 
-        {totalPages > 1 && (
-          <div className="dev-library__pagination">
-            <button className="dev-btn" disabled={page === 0}
-                    onClick={() => setPage((p) => p - 1)}>← Prev</button>
-            <span className="dev-library__page-info">
-              Page {page + 1} of {totalPages}
+      {totalPages > 1 && (
+        <div className="dui-toolbar">
+          <div className="dui-toolbar__spacer" />
+          <div className="dui-pager">
+            <button
+              className="dui-pager__btn"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+              aria-label="Previous page"
+            >
+              ←
+            </button>
+            <span className="dui-pager__info">
+              {page + 1} / {totalPages}
             </span>
-            <button className="dev-btn" disabled={page >= totalPages - 1}
-                    onClick={() => setPage((p) => p + 1)}>Next →</button>
+            <button
+              className="dui-pager__btn"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+              aria-label="Next page"
+            >
+              →
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
