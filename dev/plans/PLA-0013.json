@@ -179,8 +179,8 @@
       "proven_by": "npm run lint:dev-css exits 0; the lint script greps app/globals.css for selector prefixes 'dev-' and 'ui-retro__' and fails on hit.",
       "story_id": "00404",
       "card_url": "http://localhost:3333/cards/1767917105220420785",
-      "done": false,
-      "done_note": "Lint script + npm wire + doc landed in Story 00404. AC stays open until 00409/00410/00411 evict the 20 baseline violations and the lint exits 0."
+      "done": true,
+      "done_note": "Confirmed 2026-05-05: grep -nE '^\\s*\\.dev-|^\\s*\\.ui-retro__' app/globals.css returns 0 matches; npm run lint:dev-css exits 0 with 'OK — app/globals.css clean of dev-*/dui-* selectors'."
     },
     {
       "order": 5,
