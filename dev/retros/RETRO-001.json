@@ -1,0 +1,149 @@
+{
+  "id": "RETRO-001",
+  "title": "Smoke retro — verifies panel rendering across all heatmap cells and reversal states",
+  "date": "2026-05-05",
+  "triggered_by": "user",
+  "scope": "segment",
+  "session_jsonl": "/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/smoke.jsonl",
+  "linked_plan": null,
+  "linked_cards": [],
+  "signals": {
+    "wallclock_minutes": 42,
+    "tool_call_count": 137,
+    "error_count": 6,
+    "files_read": 23,
+    "files_re_read": 4,
+    "files_written": 8,
+    "tool_repeats_max": 5,
+    "loop_signals": null
+  },
+  "honest_assessment": "<p>This retro is a synthetic fixture written by the skill scaffolding. Three findings exercise the full Table-1 ramp (sev-5 reversed cleanly, sev-3 capped because the chain broke, sev-1 trivial). Three wins exercise the Table-2 ramp.</p><p>Real retros should describe what actually happened in plain prose, including what surprised the agent and where confidence was wrong.</p>",
+  "table_1_root_causes": [
+    {
+      "order": 1,
+      "ref": "F-001",
+      "category": "stale-binary",
+      "issue": "Backend kept serving old code after Go source edit",
+      "whys": [
+        { "depth": 1, "statement": "Backend served handler from before edit" },
+        { "depth": 2, "statement": "/tmp/vector-backend binary on disk was new but the running process was old" },
+        { "depth": 3, "statement": "Launcher supervisor caught SIGTERM and refused to respawn" },
+        { "depth": 4, "statement": "Supervisor treats SIGTERM as graceful and waits for in-flight requests, but a long-poll held it open" },
+        { "depth": 5, "statement": "Long-poll timeout default is 5 min and supervisor has no force-kill escalation" }
+      ],
+      "reversal": [
+        { "from": 5, "to": 4, "verb": "produces", "chain": "5-min long-poll default produces a graceful-shutdown stall" },
+        { "from": 4, "to": 3, "verb": "blocks", "chain": "graceful-shutdown stall blocks supervisor respawn on SIGTERM" },
+        { "from": 3, "to": 2, "verb": "forces", "chain": "blocked respawn forces the old binary to keep serving" },
+        { "from": 2, "to": 1, "verb": "produces", "chain": "old binary serving produces stale handler responses" }
+      ],
+      "chain_broken_at": null,
+      "resolution_steps": [
+        "Add SIGKILL escalation in launcher supervisor after 10s SIGTERM grace.",
+        "Document the SIGKILL trap in `docs/c_launcher.md` with the symptom signature.",
+        "Add a smoke test that asserts respawn on edit-and-rebuild within 12s."
+      ],
+      "severity": 5,
+      "confidence": 0.92,
+      "fingerprint": "stale-binary:launcher/supervisor.go:sigterm-respawn-stall",
+      "ledger_entry_id": "LEDG-001",
+      "planka_card_id": null,
+      "tech_debt_ref": null
+    },
+    {
+      "order": 2,
+      "ref": "F-002",
+      "category": "doc-drift",
+      "issue": "docs/c_launcher.md described an older spawn flow",
+      "whys": [
+        { "depth": 1, "statement": "Reader followed steps that no longer matched the code" },
+        { "depth": 2, "statement": "The doc was written before the supervisor refactor" },
+        { "depth": 3, "statement": "No doc-sync gate was triggered when the supervisor changed" },
+        { "depth": 4, "statement": "The author marked the change as 'internal refactor, no doc impact' which correlates with most internal refactors" }
+      ],
+      "reversal": [
+        { "from": 4, "to": 3, "verb": "correlates with", "chain": "self-classification correlates with skipping doc review" },
+        { "from": 3, "to": 2, "verb": "produces", "chain": "skipped doc review produces stale documentation" },
+        { "from": 2, "to": 1, "verb": "produces", "chain": "stale doc produces wrong reader steps" }
+      ],
+      "chain_broken_at": 4,
+      "resolution_steps": [
+        "Tighten doc-sync trigger to fire on any change in `cmd/launcher/**` or `internal/launcher/**`.",
+        "Replace the 'no doc impact' self-classification with a positive checkbox listing impacted docs."
+      ],
+      "severity": 3,
+      "confidence": 0.78,
+      "fingerprint": "doc-drift:docs/c_launcher.md:supervisor-section",
+      "ledger_entry_id": null,
+      "planka_card_id": null,
+      "tech_debt_ref": null
+    },
+    {
+      "order": 3,
+      "ref": "F-003",
+      "category": "css-bespoke",
+      "issue": "Heatmap cells originally written with inline style props",
+      "whys": [
+        { "depth": 1, "statement": "Cells used style={{ background: ... }} on first draft" },
+        { "depth": 2, "statement": "Author reached for the fastest expression of the idea" }
+      ],
+      "reversal": [
+        { "from": 2, "to": 1, "verb": "forces", "chain": "fastest-path coding forces inline-style adoption" }
+      ],
+      "chain_broken_at": null,
+      "resolution_steps": [
+        "Lift to catalog classes ui-retro__cell--h1..h5 / --w1..w5 in globals.css."
+      ],
+      "severity": 1,
+      "confidence": 0.95,
+      "fingerprint": "css-bespoke:dev/pages/DevRetrosPanel.tsx:inline-heatmap",
+      "ledger_entry_id": null,
+      "planka_card_id": null,
+      "tech_debt_ref": null
+    }
+  ],
+  "table_2_what_went_well": [
+    {
+      "order": 1,
+      "ref": "W-001",
+      "category": "scaffold",
+      "win": "Mirroring /research's accordion + JSON-on-disk pattern saved an entire UI design pass.",
+      "why_it_worked": "Reusing a proven shape kept scope tight and avoided an Opus-tier architecture decision.",
+      "score": 5
+    },
+    {
+      "order": 2,
+      "ref": "W-002",
+      "category": "tooling",
+      "win": "Loop-detector hook caught a spec gap (no user-msg reset) before it shipped.",
+      "why_it_worked": "Writing the injector hook second made the missing handshake obvious.",
+      "score": 4
+    },
+    {
+      "order": 3,
+      "ref": "W-003",
+      "category": "discipline",
+      "win": "Held to the no-inline-style rule even under time pressure.",
+      "why_it_worked": "The CSS HARD RULE is loud enough that it interrupts shortcuts.",
+      "score": 3
+    },
+    {
+      "order": 4,
+      "ref": "W-004",
+      "category": "process",
+      "win": "Used the existing Backlog board format rather than inventing a new column scheme.",
+      "why_it_worked": "Reused conventions reduced reviewer surprise.",
+      "score": 2
+    },
+    {
+      "order": 5,
+      "ref": "W-005",
+      "category": "ergonomics",
+      "win": "Sub-tab default = Ledger so recurring patterns surface first.",
+      "why_it_worked": "Matches the actual user need: 'what keeps biting me?' over 'what happened in retro N?'.",
+      "score": 1
+    }
+  ],
+  "loop_signals": null,
+  "claudemd_proposals_path": null
+}

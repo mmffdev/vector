@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "LEDG-001",
+      "fingerprint": "stale-binary:launcher/supervisor.go:sigterm-respawn-stall",
+      "area_of_concern": "Launcher serves old backend binary after Go source rebuild",
+      "hit_count": 3,
+      "first_seen": "2026-04-22",
+      "last_seen": "2026-05-05",
+      "severity_trend": "5→4→5",
+      "status": "open",
+      "resolved_by": null,
+      "hits": [
+        {
+          "retro_id": "RETRO-001",
+          "severity": 5,
+          "prompt_excerpt": "why is /api/health returning the old version string after I rebuilt the launcher",
+          "chain_of_events": "edit cmd/launcher/main.go → build OK → curl returns OLD version → repeat 4× → realise SIGTERM stall",
+          "hit_at": "2026-05-05T14:12:00Z"
+        },
+        {
+          "retro_id": "RETRO-000-prior",
+          "severity": 4,
+          "prompt_excerpt": "the launcher won't restart cleanly",
+          "chain_of_events": "SIGTERM sent → launcher hung → manual SIGKILL needed → restart succeeded",
+          "hit_at": "2026-04-29T09:33:00Z"
+        },
+        {
+          "retro_id": "RETRO-000-prior",
+          "severity": 5,
+          "prompt_excerpt": "backend on staging shows old behaviour after deploy",
+          "chain_of_events": "deploy script ran → process kept serving → diagnosed as stale binary",
+          "hit_at": "2026-04-22T18:05:00Z"
+        }
+      ]
+    },
+    {
+      "id": "LEDG-002",
+      "fingerprint": "doc-drift:docs/c_launcher.md:supervisor-section",
+      "area_of_concern": "Launcher doc lags behind supervisor refactors",
+      "hit_count": 1,
+      "first_seen": "2026-05-05",
+      "last_seen": "2026-05-05",
+      "severity_trend": "3",
+      "status": "in-progress",
+      "resolved_by": null,
+      "hits": [
+        {
+          "retro_id": "RETRO-001",
+          "severity": 3,
+          "prompt_excerpt": "follow the steps in c_launcher.md and tell me what happens",
+          "chain_of_events": "doc steps → command not found → realised refactor moved binary path",
+          "hit_at": "2026-05-05T14:12:00Z"
+        }
+      ]
+    }
+  ]
+}
