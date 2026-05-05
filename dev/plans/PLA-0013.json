@@ -144,7 +144,7 @@
       "title": "Migrate DevPageHelpPanel to dui-form__* + evict dev-help-editor__*",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
@@ -278,7 +278,7 @@
       "proven_by": "grep -rn 'dev-help-editor__' returns zero matches; component renders identically to before in /dev \u2192 Page Help tab.",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
-      "done": false
+      "done": true
     },
     {
       "order": 17,
@@ -286,7 +286,7 @@
       "proven_by": "grep -rn 'dev-help-editor__' app/globals.css returns zero matches; the previously bespoke block is fully removed.",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
-      "done": false
+      "done": true
     },
     {
       "order": 18,
@@ -294,7 +294,7 @@
       "proven_by": "Running `npm run lint:dev-css` exits 0 with zero remaining dev-* selectors in app/globals.css.",
       "story_id": "00415",
       "card_url": "http://localhost:3333/cards/1767937227444192769",
-      "done": false
+      "done": true
     }
   ],
   "risks": [
