@@ -11,7 +11,9 @@
     "lint:role-literals": "python3 dev/scripts/lint_role_literals.py",
     "lint:writer-boundary": "python3 dev/scripts/lint_writer_boundary.py",
     "audit:dashboard": "python3 dev/scripts/audit_dashboard.py",
-    "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'"
+    "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -36,6 +38,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/d3-zoom": "^3.0.8",
     "@types/dagre": "^0.7.54",
     "@types/node": "^20",
@@ -43,8 +47,11 @@
     "@types/react-dom": "^18",
     "@types/selenium-webdriver": "^4.1.28",
     "@types/three": "^0.184.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^25.0.1",
     "marked": "^18.0.2",
     "selenium-webdriver": "^4.27.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

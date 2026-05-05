@@ -26,6 +26,8 @@
 -- invariant before the trigger fires for the first time.
 -- ============================================================
 
+BEGIN;
+
 -- 1. Trigger function (resource-agnostic).
 CREATE OR REPLACE FUNCTION notify_rank_changed() RETURNS trigger
 LANGUAGE plpgsql AS $$
@@ -106,3 +108,5 @@ SET
     sprint_position  = CASE WHEN ranked.sprint_id IS NOT NULL THEN ranked.pos ELSE NULL END
 FROM ranked
 WHERE w.id = ranked.id;
+
+COMMIT;

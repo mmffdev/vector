@@ -14,6 +14,8 @@
 -- the library DB and that's it.
 -- ============================================================
 
+BEGIN;
+
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mmff_library_admin') THEN
@@ -43,3 +45,5 @@ COMMENT ON ROLE mmff_library_admin   IS 'mmff_library: ALL on every table (relea
 COMMENT ON ROLE mmff_library_ro      IS 'mmff_library: SELECT on every table (request-path read pool).';
 COMMENT ON ROLE mmff_library_publish IS 'mmff_library: INSERT/UPDATE on bundle + shares; no DELETE; no releases/acks.';
 COMMENT ON ROLE mmff_library_ack     IS 'mmff_library: INSERT acks + SELECT releases (Phase 3).';
+
+COMMIT;

@@ -14,6 +14,8 @@
 --
 -- Drop order: child tables first (FK constraints respected).
 
+BEGIN;
+
 -- 1. item_state_history → references item_type_states
 DROP TABLE IF EXISTS item_state_history;
 
@@ -119,3 +121,5 @@ BEGIN
     ON CONFLICT (subscription_id, tag) DO NOTHING;
 END;
 $$ LANGUAGE plpgsql;
+
+COMMIT;

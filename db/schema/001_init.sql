@@ -5,6 +5,8 @@
 -- psql -h localhost -p 5434 -U mmff_dev -d mmff_vector -f db/schema/001_init.sql
 -- ============================================================
 
+BEGIN;
+
 -- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -138,3 +140,5 @@ VALUES
         'user',
         TRUE
     );
+
+COMMIT;
