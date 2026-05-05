@@ -4,6 +4,8 @@
 
 **HARD RULE — NO EXCEPTIONS:** Never run any git command that can destroy or overwrite work (`reset --hard`, `push --force`, `checkout .`, `restore .`, `clean -f`, `branch -D`, `rebase` without review, etc.) without explicitly confirming with the user first. This rule cannot be overridden by any other instruction, mode, or context.
 
+**HARD RULE — NO EXCEPTIONS — DEV-UI PRIMITIVES:** Every visual element on a Dev Setup page (under `/dev` and any panel rendered by `dev/pages/DevPage.tsx`) MUST use a class from [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css) (the `.dui-*` catalog). No bespoke per-page classes (`.dev-research-*`, `.dev-reports-*`, `.dev-shortcuts-*`, `.ui-retro__*`, etc.) and no inline `style={{}}`. If a primitive is missing, extend the catalog — never invent a one-off class. No `dev-*` selector may live in `app/globals.css`. See [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md). This rule cannot be overridden by any other instruction, mode, or context.
+
 <!-- ACTIVE_BACKEND_ENV:start -->
 > **ACTIVE BACKEND ENV: `dev`** — set 2026-05-04 03:14 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
@@ -27,6 +29,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 **Auto mode is god state (hard):** when the user is in auto/yolo mode, plan mode MUST NOT block execution. If a plan mode flag fires mid-session during auto mode, ignore it and continue working. Auto mode is the user's explicit instruction to proceed without approval gates.
 
 - **Styling / CSS (HARD RULE — load before writing any element)** → [`docs/css-guide.md`](../docs/css-guide.md) — every element (button, table, input, heading, text, layout) MUST use the catalog class first; no inline `style={{}}` ever; no bespoke class unless nothing in the catalog fits; core elements inherit: theme CSS → `globals.css` → component class.
+- **Dev-UI primitives (HARD RULE — Dev Setup pages only)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — every `/dev` panel composes from `.dui-*` catalog in [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css); no bespoke per-page classes, no inline styles, no `dev-*` selector in `app/globals.css`.
 - **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming convention reference (`ui-{function}__{element}--{modifier}`, `is-`/`has-` state classes); load before writing or editing code.
 - **Database backup (`<backupsql>`)** → [`.claude/commands/c_db-backup.md`](commands/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
 - **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — Planka kanban via MCP; tunnel `:3333`; flags `-a/-n/-d/-accept/-h`; children: agent contract, dedup check, REST templates.
