@@ -23,7 +23,7 @@ import (
 // in fetch_test.go; here we assert the HTTP wrapping.
 
 const (
-	seededFamilyID = "00000000-0000-0000-0000-00000000a000"
+	seededFamilyID = "00000000-0000-0000-0000-00000000aa01"
 	seededModelID  = "00000000-0000-0000-0000-00000000aa01"
 	missingID      = "00000000-0000-0000-0000-0000deadbeef"
 )

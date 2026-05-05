@@ -28,6 +28,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/defects"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
+	"github.com/mmffdev/vector-backend/internal/flows"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
@@ -45,6 +46,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
 	"github.com/mmffdev/vector-backend/internal/userstories"
+	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/workitems"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -178,6 +180,11 @@ func main() {
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 
+	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
+	// Sole writer for user_tab_order; mounted at /api/user/tab-order below.
+	userTabOrderSvc := usertaborder.New(pool)
+	userTabOrderH := usertaborder.NewHandler(userTabOrderSvc)
+
 	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
 	portfolioAdoptionStateH := portfoliomodels.NewAdoptionStateHandler(pool)
 	portfolioAdoptH := portfoliomodels.NewAdoptHandler(libPools.RO, pool)
@@ -238,6 +245,9 @@ func main() {
 
 	workItemsSvc := workitems.New(pool)
 	workItemsH := workitems.NewHandler(workItemsSvc)
+
+	flowsSvc := flows.New(pool)
+	flowsH := flows.NewHandler(flowsSvc)
 
 	// Generic rank service. Resource registration happens here so the
 	// PermissionChecker can delegate to the owning package's authz —
@@ -472,6 +482,20 @@ func main() {
 		r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
 	})
 
+	// ---- /api/user/tab-order ----
+	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
+	// pageId is a stable string catalog key (e.g. "workspace-settings", "theme",
+	// "work-items"); not an FK. See db/schema/115_user_tab_order.sql header.
+	r.Route("/api/user/tab-order", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+
+		r.Get("/{pageId}", userTabOrderH.Get)
+		r.Put("/{pageId}", userTabOrderH.Put)
+		r.Delete("/{pageId}", userTabOrderH.Delete)
+	})
+
 	// ---- /api/custom-pages ----
 	r.Route("/api/custom-pages", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
@@ -698,6 +722,7 @@ func main() {
 
 		r.Get("/", workItemsH.List)
 		r.Post("/", workItemsH.Create)
+		r.Get("/summary", workItemsH.Summary)
 		r.Get("/{id}", workItemsH.Get)
 		r.Patch("/{id}", workItemsH.Patch)
 		r.Delete("/{id}", workItemsH.Archive)
@@ -744,6 +769,19 @@ func main() {
 		r.Get("/{id}", workItemsH.GetTemplate)
 		r.Post("/{id}/fields", workItemsH.AddTemplateField)
 		r.Delete("/{id}/fields/{field_library_id}", workItemsH.RemoveTemplateField)
+	})
+
+	// ---- /api/flows (migration 112) ----
+	// Per-tenant flow editor surface. gadmin and padmin both have
+	// flows.manage; the page is one shared screen for both roles.
+	// Read-only for now — write paths arrive in the next iteration.
+	r.Route("/api/flows", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
+		r.Use(httprate.LimitByIP(60, time.Minute))
+
+		r.Get("/", flowsH.List)
 	})
 
 	// ---- /api/topology (PLA-0006) ----

@@ -117,6 +117,61 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	return scanWorkItems(rows)
 }
 
+// WorkItemsSummary is the count payload backing the Page Summary Header
+// strip on /work-items. Counts span the full subscription tree (including
+// every descendant level) so the strip reflects "what exists" rather than
+// "what's currently expanded in the tree".
+//
+// Blocked is heuristic: open items that have not been updated in 14 days.
+// The schema does not (yet) carry an explicit blocked flag.
+type WorkItemsSummary struct {
+	Total   int `json:"total"`
+	Epics   int `json:"epics"`
+	Tasks   int `json:"tasks"`
+	Defects int `json:"defects"`
+	Stories int `json:"stories"`
+	Blocked int `json:"blocked"`
+}
+
+// SummariseWorkItems returns full-subscription counts by item_type plus a
+// blocked count. Subscription scope is always enforced; archived rows are
+// always excluded. Optional filters (sprintID) further narrow the set so
+// the strip can reflect a filtered view when the user is in a sprint.
+//
+// item_type filter is intentionally NOT honoured: a user filtering the
+// table to "tasks only" still wants to see the whole-tree shape.
+func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID string, sprintID *string) (WorkItemsSummary, error) {
+	args := []any{subscriptionID}
+	conds := []string{"subscription_id = $1", "archived_at IS NULL"}
+	n := 2
+	if sprintID != nil && *sprintID != "" {
+		conds = append(conds, fmt.Sprintf("sprint_id = $%d", n))
+		args = append(args, *sprintID)
+		n++
+	}
+	q := fmt.Sprintf(`
+		SELECT
+			COUNT(*)                                               AS total,
+			COUNT(*) FILTER (WHERE item_type = 'epic')             AS epics,
+			COUNT(*) FILTER (WHERE item_type = 'story')            AS stories,
+			COUNT(*) FILTER (WHERE item_type = 'task')             AS tasks,
+			COUNT(*) FILTER (WHERE item_type = 'defect')           AS defects,
+			COUNT(*) FILTER (
+				WHERE status = 'open' AND updated_at < NOW() - INTERVAL '14 days'
+			) AS blocked
+		FROM o_artefacts_execution_work_items
+		WHERE %s`,
+		strings.Join(conds, " AND "),
+	)
+	var out WorkItemsSummary
+	if err := s.pool.QueryRow(ctx, q, args...).Scan(
+		&out.Total, &out.Epics, &out.Stories, &out.Tasks, &out.Defects, &out.Blocked,
+	); err != nil {
+		return WorkItemsSummary{}, err
+	}
+	return out, nil
+}
+
 // GetWorkItem returns a single work item by ID, enforcing subscription isolation.
 func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uuid.UUID) (*WorkItem, error) {
 	row := s.pool.QueryRow(ctx, `

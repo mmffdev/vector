@@ -25,3 +25,26 @@ func TestAllCodesNonEmpty(t *testing.T) {
 		}
 	}
 }
+
+// TestExtendedCatalogue104Present asserts the five permission codes added
+// by db/schema/104_extend_permission_catalogue.sql (PLA-0007 / 00413) are
+// present in the Go catalogue. If any of these go missing, VerifyParity
+// would fail at server boot — but we'd rather catch it in unit tests.
+func TestExtendedCatalogue104Present(t *testing.T) {
+	required := []Code{
+		LibraryReleasesView,
+		PortfolioModelEdit,
+		PortfolioSettingsView,
+		PortfolioItemsView,
+		WorkItemsSettingsEdit,
+	}
+	have := make(map[Code]bool, len(All))
+	for _, c := range All {
+		have[c] = true
+	}
+	for _, c := range required {
+		if !have[c] {
+			t.Errorf("migration-104 code %q missing from All", c)
+		}
+	}
+}

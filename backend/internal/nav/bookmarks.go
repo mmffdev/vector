@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -75,24 +74,6 @@ func tagEnumForBookmark(kind EntityKind) string {
 	default:
 		return "bookmarks"
 	}
-}
-
-// ParseEntityKey returns (kind, id, true) when key matches the entity
-// pattern. False on any malformed input — never panics.
-func ParseEntityKey(key string) (EntityKind, uuid.UUID, bool) {
-	parts := strings.SplitN(key, ":", 3)
-	if len(parts) != 3 || parts[0] != "entity" {
-		return "", uuid.Nil, false
-	}
-	kind := EntityKind(parts[1])
-	if !kind.Valid() {
-		return "", uuid.Nil, false
-	}
-	id, err := uuid.Parse(parts[2])
-	if err != nil {
-		return "", uuid.Nil, false
-	}
-	return kind, id, true
 }
 
 // loadEntity fetches the bare minimum needed to mint a page: name,
