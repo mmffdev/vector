@@ -22,6 +22,15 @@ const PLAN_TOC: Array<{ id: string; label: string }> = [
   { id: "references", label: "10.0.1 References" },
 ];
 
+function statusPillVariant(status: string): string {
+  switch (status) {
+    case "completed": return "dui-pill--pass";
+    case "doing":     return "dui-pill--warn";
+    case "blocked":   return "dui-pill--fail";
+    default:          return "dui-pill--neutral";
+  }
+}
+
 function PlanBody({ plan }: { plan: PlanDoc }) {
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,7 +39,7 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
     if (!el) return;
 
     const headings = Array.from(el.querySelectorAll<HTMLElement>("h3[id]"));
-    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>(".r-toc__list a"));
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>(".dui-toc__list a"));
     const linkById = new Map(links.map(a => [a.getAttribute("href")?.slice(1) ?? "", a]));
     let clickLockUntil = 0;
 
@@ -89,118 +98,121 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
   }, []);
 
   return (
-    <div className="dev-plan-body" ref={bodyRef}>
-      <div className="dev-plan-dates">
-        <div><span className="dev-plan-dates__label">Date Created</span><span>{fmtDate(plan.date_created)}</span></div>
-        <div><span className="dev-plan-dates__label">Date Started</span><span>{fmtDate(plan.date_started)}</span></div>
-        <div><span className="dev-plan-dates__label">Last Updated</span><span>{fmtDate(plan.date_last_updated)}</span></div>
-        <div><span className="dev-plan-dates__label">Date Finished</span><span>{fmtDate(plan.date_finished)}</span></div>
-      </div>
+    <div className="dui-doc" ref={bodyRef}>
+      <p>
+        <strong>Date Created</strong> {fmtDate(plan.date_created)}
+        {" · "}
+        <strong>Date Started</strong> {fmtDate(plan.date_started)}
+        {" · "}
+        <strong>Last Updated</strong> {fmtDate(plan.date_last_updated)}
+        {" · "}
+        <strong>Date Finished</strong> {fmtDate(plan.date_finished)}
+      </p>
 
-      <div className="r-toc-layout">
-        <aside className="r-toc">
-          <div className="r-toc__label">Contents</div>
-          <ol className="r-toc__list">
+      <div className="dui-toc-layout">
+        <aside className="dui-toc">
+          <div className="dui-toc__label">Contents</div>
+          <ol className="dui-toc__list">
             {PLAN_TOC.map(t => (
               <li key={t.id}><a href={`#${t.id}`}>{t.label}</a></li>
             ))}
           </ol>
         </aside>
-        <div className="r-toc-body">
+        <div className="dui-toc__body">
 
-      <section className="dev-plan-section">
-        <h3 id="scope" className="dev-plan-h">1.0.1 Scope</h3>
-        <div className="dev-plan-rich" dangerouslySetInnerHTML={{ __html: plan.scope }} />
+      <section>
+        <h3 id="scope">1.0.1 Scope</h3>
+        <div dangerouslySetInnerHTML={{ __html: plan.scope }} />
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="value" className="dev-plan-h">2.0.1 Value</h3>
-        <div className="dev-plan-rich" dangerouslySetInnerHTML={{ __html: plan.value }} />
+      <section>
+        <h3 id="value">2.0.1 Value</h3>
+        <div dangerouslySetInnerHTML={{ __html: plan.value }} />
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="implementation-plan" className="dev-plan-h">3.0.1 Implementation Plan</h3>
-        <ol className="dev-plan-ol">
+      <section>
+        <h3 id="implementation-plan">3.0.1 Implementation Plan</h3>
+        <ol>
           {plan.implementation_plan.map((step, i) => <li key={i}>{step}</li>)}
         </ol>
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="areas-impacted" className="dev-plan-h">5.0.1 Areas Impacted</h3>
-        <ul className="dev-plan-ul">
+      <section>
+        <h3 id="areas-impacted">5.0.1 Areas Impacted</h3>
+        <ul>
           {plan.areas_impacted.map((a, i) => <li key={i}>{a}</li>)}
         </ul>
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="feature-list" className="dev-plan-h">6.0.1 Feature List</h3>
-        {plan.feature_list.length === 0 ? <p className="dev-p">—</p> : (
-          <ul className="dev-plan-ul">{plan.feature_list.map((f, i) => <li key={i}>{f}</li>)}</ul>
+      <section>
+        <h3 id="feature-list">6.0.1 Feature List</h3>
+        {plan.feature_list.length === 0 ? <p>—</p> : (
+          <ul>{plan.feature_list.map((f, i) => <li key={i}>{f}</li>)}</ul>
         )}
 
-        <h4 className="dev-plan-h dev-plan-h--sub">6.1.1 Features: Extended</h4>
-        {plan.features_extended.length === 0 ? <p className="dev-p">—</p> : (
-          <ul className="dev-plan-ul">{plan.features_extended.map((f, i) => <li key={i} dangerouslySetInnerHTML={{ __html: f }} />)}</ul>
+        <h3>6.1.1 Features: Extended</h3>
+        {plan.features_extended.length === 0 ? <p>—</p> : (
+          <ul>{plan.features_extended.map((f, i) => <li key={i} dangerouslySetInnerHTML={{ __html: f }} />)}</ul>
         )}
 
-        <h4 className="dev-plan-h dev-plan-h--sub">6.2.1 Features: Removed</h4>
-        {plan.features_removed.length === 0 ? <p className="dev-p">—</p> : (
-          <ul className="dev-plan-ul">{plan.features_removed.map((f, i) => <li key={i}>{f}</li>)}</ul>
+        <h3>6.2.1 Features: Removed</h3>
+        {plan.features_removed.length === 0 ? <p>—</p> : (
+          <ul>{plan.features_removed.map((f, i) => <li key={i}>{f}</li>)}</ul>
         )}
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="work-item-backlog" className="dev-plan-h">7.0.1 Work Item Backlog</h3>
-        <table className="table">
+      <section>
+        <h3 id="work-item-backlog">7.0.1 Work Item Backlog</h3>
+        <table>
           <thead>
-            <tr className="table__head">
-              <th className="table__cell">#</th>
-              <th className="table__cell">Title</th>
-              <th className="table__cell">Story</th>
-              <th className="table__cell">Status</th>
-              <th className="table__cell">Notes</th>
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Story</th>
+              <th>Status</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
             {plan.work_item_backlog.map(item => (
-              <tr key={item.order} className="table__row">
-                <td className="table__cell">{item.order}</td>
-                <td className="table__cell">{item.title}</td>
-                <td className="table__cell">
+              <tr key={item.order}>
+                <td>{item.order}</td>
+                <td>{item.title}</td>
+                <td>
                   {item.story_id
                     ? (item.card_url
                         ? <a href={item.card_url} target="_blank" rel="noreferrer">{item.story_id}</a>
                         : item.story_id)
                     : "—"}
                 </td>
-                <td className="table__cell"><span className={`badge badge-${item.status === "completed" ? "pass" : item.status === "doing" ? "medium" : item.status === "blocked" ? "high" : "fixed"}`}>{item.status}</span></td>
-                <td className="table__cell">{item.notes ?? ""}</td>
+                <td><span className={`dui-pill ${statusPillVariant(item.status)}`}>{item.status}</span></td>
+                <td>{item.notes ?? ""}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="acceptance-criteria" className="dev-plan-h">8.0.1 Acceptance Criteria</h3>
-        <table className="table">
+      <section>
+        <h3 id="acceptance-criteria">8.0.1 Acceptance Criteria</h3>
+        <table>
           <thead>
-            <tr className="table__head">
-              <th className="table__cell">#</th>
-              <th className="table__cell">Done</th>
-              <th className="table__cell">Criterion</th>
-              <th className="table__cell">As Proven by</th>
-              <th className="table__cell">Story</th>
+            <tr>
+              <th>#</th>
+              <th>Done</th>
+              <th>Criterion</th>
+              <th>As Proven by</th>
+              <th>Story</th>
             </tr>
           </thead>
           <tbody>
             {plan.acceptance_criteria.map(ac => (
-              <tr key={ac.order} className="table__row">
-                <td className="table__cell">{ac.order}</td>
-                <td className="table__cell">{ac.done ? "[X]" : "[ ]"}</td>
-                <td className="table__cell">{ac.criterion}</td>
-                <td className="table__cell">{ac.proven_by}</td>
-                <td className="table__cell">
+              <tr key={ac.order}>
+                <td>{ac.order}</td>
+                <td>{ac.done ? "[X]" : "[ ]"}</td>
+                <td>{ac.criterion}</td>
+                <td>{ac.proven_by}</td>
+                <td>
                   {ac.story_id
                     ? (ac.card_url
                         ? <a href={ac.card_url} target="_blank" rel="noreferrer">{ac.story_id}</a>
@@ -213,34 +225,34 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
         </table>
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="risks" className="dev-plan-h">9.0.1 Risks</h3>
-        <table className="table">
+      <section>
+        <h3 id="risks">9.0.1 Risks</h3>
+        <table>
           <thead>
-            <tr className="table__head">
-              <th className="table__cell">Impact</th>
-              <th className="table__cell">Risk</th>
-              <th className="table__cell">Mitigation</th>
+            <tr>
+              <th>Impact</th>
+              <th>Risk</th>
+              <th>Mitigation</th>
             </tr>
           </thead>
           <tbody>
             {[...plan.risks].sort((a, b) => b.impact - a.impact).map((r, i) => (
-              <tr key={i} className="table__row">
-                <td className="table__cell">{r.impact}</td>
-                <td className="table__cell">{r.risk}</td>
-                <td className="table__cell">{r.mitigation}</td>
+              <tr key={i}>
+                <td>{r.impact}</td>
+                <td>{r.risk}</td>
+                <td>{r.mitigation}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
 
-      <section className="dev-plan-section">
-        <h3 id="references" className="dev-plan-h">10.0.1 References</h3>
-        <ul className="dev-plan-ul">
+      <section>
+        <h3 id="references">10.0.1 References</h3>
+        <ul>
           {plan.references.map((r, i) => (
             <li key={i}>
-              <span className="dev-plan-ref-kind">{r.kind === "external" ? "↗" : "→"}</span>{" "}
+              <span>{r.kind === "external" ? "↗" : "→"}</span>{" "}
               <a href={r.href} target={r.kind === "external" ? "_blank" : undefined} rel="noreferrer">{r.label}</a>
             </li>
           ))}
@@ -279,27 +291,31 @@ function PlanItem({ meta }: { meta: PlanMeta }) {
   const wiDone = meta.work_item_completed;
 
   const header = (
-    <>
-      <span className="dev-plan-id">{meta.id}</span>
-      <span className="dev-plan-meta">
-        <span className="dev-plan-title">{meta.title}</span>
-        <span className="dev-plan-dates-strip">
-          <span>created {fmtDate(meta.date_created)}</span>
-          {meta.date_started && <span>started {fmtDate(meta.date_started)}</span>}
-          {meta.date_finished && <span>finished {fmtDate(meta.date_finished)}</span>}
-        </span>
+    <span className="dui-meta">
+      <span className="dui-meta__id">{meta.id}</span>
+      <span className="dui-meta__title">{meta.title}</span>
+      <span className="dui-meta__sub">
+        <span>created {fmtDate(meta.date_created)}</span>
+        {meta.date_started && <span>{" · "}started {fmtDate(meta.date_started)}</span>}
+        {meta.date_finished && <span>{" · "}finished {fmtDate(meta.date_finished)}</span>}
       </span>
-      <span className="dev-plan-progress">
-        <span className="dev-plan-progress__pill">AC {acDone}/{acTotal}</span>
-        <span className="dev-plan-progress__pill">WI {wiDone}/{wiTotal}</span>
+      <span className="dui-meta__sub">
+        <span className="dui-pill dui-pill--neutral">AC {acDone}/{acTotal}</span>
+        {" "}
+        <span className="dui-pill dui-pill--neutral">WI {wiDone}/{wiTotal}</span>
       </span>
-    </>
+    </span>
   );
 
   return (
     <DevAccordionItem header={header} onFirstOpen={loadPlan}>
-      {loading && <div className="dev-research-loading">Loading…</div>}
-      {error && <div className="dev-alert dev-alert--error">{error}</div>}
+      {loading && (
+        <div className="dui-loading">
+          <span className="dui-loading__spinner" aria-hidden="true" />
+          Loading…
+        </div>
+      )}
+      {error && <div className="dui-empty">{error}</div>}
       {plan && !loading && <PlanBody plan={plan} />}
     </DevAccordionItem>
   );
@@ -335,48 +351,54 @@ export default function DevPlansPanel() {
 
   return (
     <Panel name="dev_plans" title="Plans">
-    <div className="dev-plans-panel">
-      <div className="dev-research-header">
-        <div>
-          <p className="dev-p" style={{ marginBottom: 0 }}>
-            Plans uploaded by the <code>&lt;stories&gt;</code> skill. Each plan groups the stories created in one shot of the skill and tracks their progress on the Planka board.
-          </p>
+      <div className="dui-page">
+        <header className="dui-page__header">
+          <div>
+            <h1 className="dui-page__title">Plans</h1>
+            <p className="dui-page__subtitle">
+              Plans uploaded by the <code>&lt;stories&gt;</code> skill. Each plan groups the stories created in one shot of the skill and tracks their progress on the Planka board.
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="dui-pager__btn"
+            aria-label="Refresh plans list"
+          >
+            {loading ? "Loading…" : "Refresh"}
+          </button>
+        </header>
+
+        <div className="dui-toolbar">
+          <input
+            type="search"
+            className="dui-search"
+            placeholder="Search by PLA-NNNN or title…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
-        <button onClick={load} disabled={loading} className="dev-btn dev-btn--sm">
-          {loading ? "Loading…" : "Refresh"}
-        </button>
+
+        {error && <div className="dui-empty">{error}</div>}
+
+        {!loading && plans.length === 0 && !error && (
+          <div className="dui-empty">
+            No plans yet. Run <code>&lt;stories&gt;</code> in the Claude Code CLI to create one.
+          </div>
+        )}
+
+        {filtered.length > 0 && (
+          <DevAccordion>
+            {filtered.map(p => <PlanItem key={p.id} meta={p} />)}
+          </DevAccordion>
+        )}
+
+        {!loading && filtered.length === 0 && plans.length > 0 && (
+          <div className="dui-empty">
+            No plans match &ldquo;<em>{search}</em>&rdquo;.
+          </div>
+        )}
       </div>
-
-      <div className="dev-research-toolbar">
-        <input
-          type="search"
-          className="dev-research-search"
-          placeholder="Search by PLA-NNNN or title…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
-      {error && <div className="dev-alert dev-alert--error">{error}</div>}
-
-      {!loading && plans.length === 0 && !error && (
-        <div className="dev-research-empty">
-          No plans yet. Run <code>&lt;stories&gt;</code> in the Claude Code CLI to create one.
-        </div>
-      )}
-
-      {filtered.length > 0 && (
-        <DevAccordion>
-          {filtered.map(p => <PlanItem key={p.id} meta={p} />)}
-        </DevAccordion>
-      )}
-
-      {!loading && filtered.length === 0 && plans.length > 0 && (
-        <div className="dev-research-empty">
-          No plans match &ldquo;<em>{search}</em>&rdquo;.
-        </div>
-      )}
-    </div>
     </Panel>
   );
 }
