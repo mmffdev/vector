@@ -3,6 +3,7 @@ package workitems
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -44,6 +45,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.Svc.ListWorkItems(r.Context(), u.SubscriptionID.String(), f)
 	if err != nil {
+		log.Printf("ListWorkItems error: %v", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

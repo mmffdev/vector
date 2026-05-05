@@ -58,34 +58,34 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	}
 
 	args := []any{subscriptionID}
-	conds := []string{"subscription_id = $1", "archived_at IS NULL"}
+	conds := []string{"wi.subscription_id = $1", "wi.archived_at IS NULL"}
 	n := 2
 
 	if f.ParentID != nil {
-		conds = append(conds, fmt.Sprintf("parent_id = $%d", n))
+		conds = append(conds, fmt.Sprintf("wi.parent_id = $%d", n))
 		args = append(args, *f.ParentID)
 		n++
 	} else if f.ItemType == nil {
 		// If no parent filter and no type filter, default to top-level items
-		conds = append(conds, "parent_id IS NULL")
+		conds = append(conds, "wi.parent_id IS NULL")
 	}
 	if f.ItemType != nil {
-		conds = append(conds, fmt.Sprintf("item_type = $%d", n))
+		conds = append(conds, fmt.Sprintf("wi.item_type = $%d", n))
 		args = append(args, *f.ItemType)
 		n++
 	}
 	if f.Status != nil {
-		conds = append(conds, fmt.Sprintf("status = $%d", n))
+		conds = append(conds, fmt.Sprintf("wi.status = $%d", n))
 		args = append(args, *f.Status)
 		n++
 	}
 	if f.Priority != nil {
-		conds = append(conds, fmt.Sprintf("priority = $%d", n))
+		conds = append(conds, fmt.Sprintf("wi.priority = $%d", n))
 		args = append(args, *f.Priority)
 		n++
 	}
 	if f.SprintID != nil {
-		conds = append(conds, fmt.Sprintf("sprint_id = $%d", n))
+		conds = append(conds, fmt.Sprintf("wi.sprint_id = $%d", n))
 		args = append(args, *f.SprintID)
 		n++
 	}
@@ -97,14 +97,14 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	// covers any pre-backfill row; key_num is the stable tiebreaker.
 	q := fmt.Sprintf(`
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
-		       wi.status, wi.flow_state_id, fs.name, fs.canonical_code,
+		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
 		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       %s AS rollup_points
 		FROM o_artefacts_execution_work_items wi
-		JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE %s
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC
 		LIMIT $%d OFFSET $%d`,
@@ -178,14 +178,14 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID string,
 func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uuid.UUID) (*WorkItem, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
-		       wi.status, wi.flow_state_id, fs.name, fs.canonical_code,
+		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
 		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
-		JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE wi.id = $1 AND wi.subscription_id = $2 AND wi.archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -517,14 +517,14 @@ func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID string, id
 func (s *Service) ListChildren(ctx context.Context, subscriptionID string, parentID uuid.UUID) ([]WorkItem, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
-		       wi.status, wi.flow_state_id, fs.name, fs.canonical_code,
+		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
 		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
-		JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE wi.subscription_id = $1 AND wi.parent_id = $2 AND wi.archived_at IS NULL
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC`,
 		subscriptionID, parentID,
