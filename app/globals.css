@@ -91,10 +91,10 @@
 
   /* Grid-Tree type-badge tokens. Mapped from work_items.item_type
      (epic|story|task|defect) — no hex literals in component code. */
-  --gtree-type-epic:   #5C5C5C;
-  --gtree-type-story:  #8A8A8A;
-  --gtree-type-task:   #B8B5AF;
-  --gtree-type-defect: #b91c1c;
+  --tree_accordion-dense-type-epic:   #5C5C5C;
+  --tree_accordion-dense-type-story:  #8A8A8A;
+  --tree_accordion-dense-type-task:   #B8B5AF;
+  --tree_accordion-dense-type-defect: #b91c1c;
 }
 
 :root[data-sidebar-collapsed="true"] {
@@ -4515,9 +4515,6 @@ table.tbl tbody tr:hover td {
   left: var(--pos-x, 0);
   top: var(--pos-y, 0);
 }
-
-/* Dev icons tab — fills viewport minus chrome. */
-.dev-icons-host { height: calc(100vh - 160px); }
 
 /* Topology tree-flyout placeholder rows. */
 .topo-tree-flyout__placeholder { visibility: hidden; pointer-events: none; }
@@ -11201,13 +11198,13 @@ table.tbl tbody tr:hover td {
    ============================================================================ */
 
 /* Panel header — numbered badge + title + subtitle */
-.gtree-panel-head {
+.tree_accordion-dense__panel-head {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 4px 0 12px;
 }
-.gtree-panel-head__num {
+.tree_accordion-dense__panel-head-num {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
@@ -11222,20 +11219,20 @@ table.tbl tbody tr:hover td {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.gtree-panel-head__body {
+.tree_accordion-dense__panel-head-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
-.gtree-panel-head__title {
+.tree_accordion-dense__panel-head-title {
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
   color: var(--ink);
   margin: 0;
 }
-.gtree-panel-head__subtitle {
+.tree_accordion-dense__panel-head-subtitle {
   font-size: 13px;
   color: var(--ink-muted);
   line-height: 1.3;
@@ -11243,7 +11240,7 @@ table.tbl tbody tr:hover td {
 }
 
 /* Filter bar — search + filter chips + count */
-.gtree-filterbar {
+.tree_accordion-dense__filterbar {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11253,12 +11250,12 @@ table.tbl tbody tr:hover td {
   border-radius: 8px;
   margin-bottom: 12px;
 }
-.gtree-filterbar__search {
+.tree_accordion-dense__filterbar-search {
   flex: 0 1 320px;
   min-width: 0;
   position: relative;
 }
-.gtree-filterbar__search-input {
+.tree_accordion-dense__filterbar-search-input {
   width: 100%;
   height: 32px;
   padding: 0 10px 0 30px;
@@ -11269,7 +11266,7 @@ table.tbl tbody tr:hover td {
   font-size: 13px;
   color: var(--ink);
 }
-.gtree-filterbar__search-icon {
+.tree_accordion-dense__filterbar-search-icon {
   position: absolute;
   left: 9px;
   top: 50%;
@@ -11278,7 +11275,7 @@ table.tbl tbody tr:hover td {
   color: var(--ink-subtle);
   display: inline-flex;
 }
-.gtree-filterbar__chip {
+.tree_accordion-dense__filterbar-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -11293,17 +11290,17 @@ table.tbl tbody tr:hover td {
   cursor: pointer;
   transition: background-color 120ms ease;
 }
-.gtree-filterbar__chip:hover {
+.tree_accordion-dense__filterbar-chip:hover {
   background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
 }
-.gtree-filterbar__chip-icon {
+.tree_accordion-dense__filterbar-chip-icon {
   color: var(--ink-subtle);
   display: inline-flex;
 }
-.gtree-filterbar__spacer {
+.tree_accordion-dense__filterbar-spacer {
   flex: 1 1 auto;
 }
-.gtree-filterbar__count {
+.tree_accordion-dense__filterbar-count {
   font-size: 13px;
   color: var(--ink-muted);
   white-space: nowrap;
@@ -11311,7 +11308,7 @@ table.tbl tbody tr:hover td {
 
 /* Icon-only filter bar buttons — square, ghost by default, hover lifts to
    the same tone as a chip. Used for expand-all / collapse-all. */
-.gtree-filterbar__icon-btn {
+.tree_accordion-dense__filterbar-icon-btn {
   width: 24px;
   height: 24px;
   display: inline-flex;
@@ -11325,13 +11322,13 @@ table.tbl tbody tr:hover td {
   padding: 0;
   transition: background-color 120ms ease, color 120ms ease;
 }
-.gtree-filterbar__icon-btn:hover {
+.tree_accordion-dense__filterbar-icon-btn:hover {
   background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
   color: var(--ink);
 }
 
 /* Table root */
-.gtree {
+.tree_accordion-dense__table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -11344,18 +11341,18 @@ table.tbl tbody tr:hover td {
 /* Scroll container — body scrolls under a sticky header. Height is bounded
    so the inner table can overflow; using min(80vh, 720px) keeps the panel
    tall on big screens but still leaves room for chrome on laptops.
-   The .table-wrap.gtree__scroll selector beats the bare .table-wrap rule
+   The .table-wrap.tree_accordion-dense__scroll selector beats the bare .table-wrap rule
    on specificity (0,2,0 vs 0,1,0) so the base overflow:hidden is overridden. */
-.table-wrap.gtree__scroll {
+.table-wrap.tree_accordion-dense__scroll {
   max-height: min(80vh, 720px);
   overflow: auto;
 }
 
 /* Header row */
-.gtree__head {
+.tree_accordion-dense__head {
   background: color-mix(in srgb, var(--ink) 4%, var(--surface));
 }
-.gtree__th {
+.tree_accordion-dense__th {
   text-align: left;
   font-size: 11px;
   font-weight: 600;
@@ -11374,22 +11371,22 @@ table.tbl tbody tr:hover td {
   z-index: 2;
   background: color-mix(in srgb, var(--ink) 4%, var(--surface));
 }
-.gtree__th--mono {
+.tree_accordion-dense__th--mono {
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
 }
-.gtree__th--numeric { text-align: right; }
-.gtree__th--center { text-align: center; }
+.tree_accordion-dense__th--numeric { text-align: right; }
+.tree_accordion-dense__th--center { text-align: center; }
 
 /* Header ID cell groups the expand/collapse toggle with the "ID" label.
    Toggle sits left of the label, sized so it does not increase the th
    line-box. */
-.gtree__th-id {
+.tree_accordion-dense__th-id {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.gtree__th-toggle {
+.tree_accordion-dense__th-toggle {
   width: 16px;
   height: 16px;
   display: inline-flex;
@@ -11403,7 +11400,7 @@ table.tbl tbody tr:hover td {
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease;
 }
-.gtree__th-toggle:hover {
+.tree_accordion-dense__th-toggle:hover {
   background: color-mix(in srgb, var(--ink) 6%, transparent);
   color: var(--ink);
 }
@@ -11411,34 +11408,34 @@ table.tbl tbody tr:hover td {
 /* Body rows — 28px high. Zebra striping: even rows get a subtle tint;
    :nth-child(odd) stays on the table's surface colour. Hover and selected
    override the stripe so they remain visually dominant. */
-.gtree__row {
+.tree_accordion-dense__row {
   height: 28px;
   cursor: pointer;
   transition: background-color 100ms ease;
   background: var(--surface);
 }
-.gtree tbody .gtree__row:nth-child(even) {
+.tree_accordion-dense__table tbody .tree_accordion-dense__row:nth-child(even) {
   background: color-mix(in srgb, var(--ink) 3%, var(--surface));
 }
-.gtree__row:hover,
-.gtree tbody .gtree__row:nth-child(even):hover {
+.tree_accordion-dense__row:hover,
+.tree_accordion-dense__table tbody .tree_accordion-dense__row:nth-child(even):hover {
   background: color-mix(in srgb, var(--ink) 6%, var(--surface));
 }
-.gtree__row--selected,
-.gtree__row--selected:hover,
-.gtree tbody .gtree__row--selected:nth-child(even),
-.gtree tbody .gtree__row--selected:nth-child(even):hover {
+.tree_accordion-dense__row--selected,
+.tree_accordion-dense__row--selected:hover,
+.tree_accordion-dense__table tbody .tree_accordion-dense__row--selected:nth-child(even),
+.tree_accordion-dense__table tbody .tree_accordion-dense__row--selected:nth-child(even):hover {
   background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface));
 }
-.gtree__row--epic {
+.tree_accordion-dense__row--epic {
   font-weight: 600;
 }
-.gtree__row--child {
+.tree_accordion-dense__row--child {
   /* purely structural — no background change so stripes stay clean */
 }
 
 /* Cells */
-.gtree__cell {
+.tree_accordion-dense__cell {
   padding: 0 12px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
@@ -11446,40 +11443,40 @@ table.tbl tbody tr:hover td {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.gtree__cell--mono {
+.tree_accordion-dense__cell--mono {
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.02em;
   color: var(--ink-muted);
 }
-.gtree__cell--id {
+.tree_accordion-dense__cell--id {
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.02em;
   color: var(--ink-muted);
   padding-left: 8px;
 }
-.gtree__cell--summary {
+.tree_accordion-dense__cell--summary {
   padding-left: 0;
   padding-right: 8px;
 }
-.gtree__cell--numeric { text-align: right; }
-.gtree__cell--center { text-align: center; }
+.tree_accordion-dense__cell--numeric { text-align: right; }
+.tree_accordion-dense__cell--center { text-align: center; }
 
 /* Summary cell inner: tree indent → expander → type-badge → title */
-.gtree__summary {
+.tree_accordion-dense__summary {
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 28px;
 }
-.gtree__indent {
+.tree_accordion-dense__indent {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.gtree__expander {
+.tree_accordion-dense__expander {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
@@ -11493,24 +11490,24 @@ table.tbl tbody tr:hover td {
   padding: 0;
   border-radius: 3px;
 }
-.gtree__expander:hover {
+.tree_accordion-dense__expander:hover {
   background: color-mix(in srgb, var(--ink) 8%, transparent);
   color: var(--ink);
 }
-.gtree__expander--leaf {
+.tree_accordion-dense__expander--leaf {
   cursor: default;
   visibility: hidden;
 }
-.gtree__expander-icon {
+.tree_accordion-dense__expander-icon {
   display: block;
   transition: transform 160ms ease;
 }
-.gtree__expander--open .gtree__expander-icon {
+.tree_accordion-dense__expander--open .tree_accordion-dense__expander-icon {
   transform: rotate(90deg);
 }
 
 /* Type badge: two-letter coloured tag (EP/US/TA/DE) */
-.gtree__type-badge {
+.tree_accordion-dense__type-badge {
   flex-shrink: 0;
   min-width: 26px;
   height: 18px;
@@ -11526,96 +11523,96 @@ table.tbl tbody tr:hover td {
   background: var(--ink-muted);
   letter-spacing: 0.02em;
 }
-.gtree__type-badge--epic   { background: var(--gtree-type-epic); }
-.gtree__type-badge--story  { background: var(--gtree-type-story); }
-.gtree__type-badge--task   { background: var(--gtree-type-task); }
-.gtree__type-badge--defect { background: var(--gtree-type-defect); }
+.tree_accordion-dense__type-badge--epic   { background: var(--tree_accordion-dense-type-epic); }
+.tree_accordion-dense__type-badge--story  { background: var(--tree_accordion-dense-type-story); }
+.tree_accordion-dense__type-badge--task   { background: var(--tree_accordion-dense-type-task); }
+.tree_accordion-dense__type-badge--defect { background: var(--tree_accordion-dense-type-defect); }
 
-.gtree__title {
+.tree_accordion-dense__title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink);
 }
-.gtree__title--epic { font-weight: 600; }
+.tree_accordion-dense__title--epic { font-weight: 600; }
 
 /* Status: dot + text */
-.gtree__status {
+.tree_accordion-dense__status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
 }
-.gtree__status-dot {
+.tree_accordion-dense__status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--ink-subtle);
   flex-shrink: 0;
 }
-.gtree__status--info .gtree__status-dot,
-.gtree__status-dot--info     { background: #2563eb; }
-.gtree__status--success .gtree__status-dot,
-.gtree__status-dot--success  { background: #16a34a; }
-.gtree__status--danger .gtree__status-dot,
-.gtree__status-dot--danger   { background: #dc2626; }
-.gtree__status--warning .gtree__status-dot,
-.gtree__status-dot--warning  { background: #d97706; }
-.gtree__status--review .gtree__status-dot,
-.gtree__status-dot--review   { background: #111827; }
-.gtree__status--neutral .gtree__status-dot,
-.gtree__status-dot--neutral  { background: #6b7280; }
-.gtree__status-text {
+.tree_accordion-dense__status--info .tree_accordion-dense__status-dot,
+.tree_accordion-dense__status-dot--info     { background: #2563eb; }
+.tree_accordion-dense__status--success .tree_accordion-dense__status-dot,
+.tree_accordion-dense__status-dot--success  { background: #16a34a; }
+.tree_accordion-dense__status--danger .tree_accordion-dense__status-dot,
+.tree_accordion-dense__status-dot--danger   { background: #dc2626; }
+.tree_accordion-dense__status--warning .tree_accordion-dense__status-dot,
+.tree_accordion-dense__status-dot--warning  { background: #d97706; }
+.tree_accordion-dense__status--review .tree_accordion-dense__status-dot,
+.tree_accordion-dense__status-dot--review   { background: #111827; }
+.tree_accordion-dense__status--neutral .tree_accordion-dense__status-dot,
+.tree_accordion-dense__status-dot--neutral  { background: #6b7280; }
+.tree_accordion-dense__status-text {
   font-size: 13px;
   color: var(--ink);
 }
-.gtree__status--info    .gtree__status-text { color: #2563eb; }
-.gtree__status--success .gtree__status-text { color: #16a34a; }
-.gtree__status--danger  .gtree__status-text { color: #dc2626; }
-.gtree__status--warning .gtree__status-text { color: #d97706; }
-.gtree__status--review  .gtree__status-text { color: var(--ink); }
-.gtree__status--neutral .gtree__status-text { color: var(--ink-muted); }
+.tree_accordion-dense__status--info    .tree_accordion-dense__status-text { color: #2563eb; }
+.tree_accordion-dense__status--success .tree_accordion-dense__status-text { color: #16a34a; }
+.tree_accordion-dense__status--danger  .tree_accordion-dense__status-text { color: #dc2626; }
+.tree_accordion-dense__status--warning .tree_accordion-dense__status-text { color: #d97706; }
+.tree_accordion-dense__status--review  .tree_accordion-dense__status-text { color: var(--ink); }
+.tree_accordion-dense__status--neutral .tree_accordion-dense__status-text { color: var(--ink-muted); }
 
 /* Priority: P0/P1/P2 in colour */
-.gtree__pri {
+.tree_accordion-dense__pri {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.gtree__pri--p0 { color: #dc2626; }
-.gtree__pri--p1 { color: #d97706; }
-.gtree__pri--p2 { color: #6b7280; }
-.gtree__pri--p3 { color: var(--ink-subtle); }
+.tree_accordion-dense__pri--p0 { color: #dc2626; }
+.tree_accordion-dense__pri--p1 { color: #d97706; }
+.tree_accordion-dense__pri--p2 { color: #6b7280; }
+.tree_accordion-dense__pri--p3 { color: var(--ink-subtle); }
 
 /* ID cell: SVG tree lines + expander + monospace id text, flush-left flex row.
    Padding is removed on the cell itself so the SVG can sit hard against the
-   left edge — the .gtree__id-inner wrapper handles spacing instead. */
-.gtree__cell--id {
+   left edge — the .tree_accordion-dense__id-inner wrapper handles spacing instead. */
+.tree_accordion-dense__cell--id {
   padding-left: 0;
   padding-right: 8px;
 }
-.gtree__id-inner {
+.tree_accordion-dense__id-inner {
   display: flex;
   align-items: center;
   gap: 4px;
   height: 100%;
   min-height: 28px;
 }
-.gtree__svg {
+.tree_accordion-dense__svg {
   display: block;
   flex-shrink: 0;
   overflow: visible;
 }
-.gtree__id-text {
+.tree_accordion-dense__id-text {
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.02em;
   color: var(--ink-muted);
   white-space: nowrap;
 }
-.gtree__row--epic .gtree__id-text {
+.tree_accordion-dense__row--epic .tree_accordion-dense__id-text {
   color: var(--ink);
   font-weight: 600;
 }
@@ -11624,8 +11621,8 @@ table.tbl tbody tr:hover td {
    The display span lights up subtly to signal "click to edit" without
    stealing visual space at rest. Uses the same hover tone as the
    Example 1 tree's .work-items-tree__title-text. */
-.gtree__title-text,
-.gtree__pts-text {
+.tree_accordion-dense__title-text,
+.tree_accordion-dense__pts-text {
   cursor: text;
   display: inline-block;
   min-width: 1ch;
@@ -11633,8 +11630,8 @@ table.tbl tbody tr:hover td {
   padding: 0 2px;
   transition: background-color 120ms ease;
 }
-.gtree__title-text:hover,
-.gtree__pts-text:hover,
-.gtree .work-items-tree__inline-trigger:hover {
+.tree_accordion-dense__title-text:hover,
+.tree_accordion-dense__pts-text:hover,
+.tree_accordion-dense__table .work-items-tree__inline-trigger:hover {
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
 }

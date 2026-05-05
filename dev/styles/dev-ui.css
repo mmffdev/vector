@@ -1486,3 +1486,10 @@
   white-space: nowrap;
   margin-left: var(--space-2);
 }
+
+
+/* ─── Icons tab host — fills the dev viewport minus chrome ─── */
+
+.dui-icons-host {
+  height: calc(100vh - 160px);
+}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import "@dev/styles/dev.css";
+import "@dev/styles/dev-ui.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
@@ -13,17 +14,21 @@ import DevShortcutsPanel from "./DevShortcutsPanel";
 import DevReportsPanel from "./DevReportsPanel";
 import DevResearchPanel from "./DevResearchPanel";
 import DevPlansPanel from "./DevPlansPanel";
+import DevRetrosPanel from "./DevRetrosPanel";
 import DevPageHelpPanel from "./DevPageHelpPanel";
+import DevUiCatalogPanel from "./DevUiCatalogPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 const TAB_LABELS: Record<string, string> = {
   plans: "Plans",
+  retros: "Retros",
   setup: "Setup",
   shortcuts: "Shortcuts",
   reports: "Reports",
   research: "Research",
   icons: "Icons",
   "page-help": "Page Help",
+  "ui-catalog": "UI Catalog",
 };
 
 export default function DevPage() {
@@ -82,6 +87,12 @@ export default function DevPage() {
           Plans
         </button>
         <button
+          className={`dev-tab${tab === "retros" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("retros")}
+        >
+          Retros
+        </button>
+        <button
           className={`dev-tab${tab === "setup" ? " dev-tab--active" : ""}`}
           onClick={() => setTab("setup")}
         >
@@ -117,15 +128,23 @@ export default function DevPage() {
         >
           Page Help
         </button>
+        <button
+          className={`dev-tab${tab === "ui-catalog" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("ui-catalog")}
+        >
+          UI Catalog
+        </button>
       </nav>
 
       {tab === "shortcuts" && <DevShortcutsPanel />}
       {tab === "reports" && <DevReportsPanel />}
       {tab === "research" && <DevResearchPanel />}
       {tab === "plans" && <DevPlansPanel />}
+      {tab === "retros" && <DevRetrosPanel />}
       {tab === "page-help" && <DevPageHelpPanel />}
+      {tab === "ui-catalog" && <DevUiCatalogPanel />}
       {tab === "icons" && (
-        <div style={{ height: "calc(100vh - 160px)" }}>
+        <div className="dui-icons-host">
           <UiAppIconbrowser />
         </div>
       )}
