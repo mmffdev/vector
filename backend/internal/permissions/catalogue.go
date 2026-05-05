@@ -19,14 +19,19 @@ type Code string
 
 func (c Code) String() string { return string(c) }
 
-// Permission code constants — must match db/schema/088_roles_permissions.sql.
+// Permission code constants — must match db/schema/088_roles_permissions.sql
+// and any extension migrations (e.g. 100, 104).
 //
 // Categories follow the seed catalogue:
-//   - menu.*       — menu visibility (drives navigation gating)
-//   - users.*      — users CRUD + creator-matrix
-//   - roles.*      — roles CRUD
-//   - portfolio.*  — portfolio resource
-//   - workspace.*  — workspace tier surface (PLA-0006 / migration 100)
+//   - menu.*              — menu visibility (drives navigation gating)
+//   - users.*             — users CRUD + creator-matrix
+//   - roles.*             — roles CRUD
+//   - portfolio.*         — portfolio resource
+//   - workspace.*         — workspace tier surface (PLA-0006 / migration 100)
+//   - library.*           — library release channel (PLA-0007 / migration 104)
+//   - portfolio_items.*   — portfolio items reader gate (migration 104)
+//   - portfolio_settings.*— portfolio settings reader gate (migration 104)
+//   - work_items.*        — work_items configuration surface (migration 104)
 const (
 	// menu visibility
 	MenuAdminView Code = "menu.admin.view"
@@ -65,6 +70,17 @@ const (
 	WorkspaceArchive      Code = "workspace.archive"
 	WorkspaceRestore      Code = "workspace.restore"
 	WorkspaceViewArchived Code = "workspace.view_archived"
+
+	// library release channel (PLA-0007 / migration 104)
+	LibraryReleasesView Code = "library.releases.view"
+
+	// portfolio model + settings (migration 104)
+	PortfolioModelEdit     Code = "portfolio.model.edit"
+	PortfolioSettingsView  Code = "portfolio_settings.view"
+	PortfolioItemsView     Code = "portfolio_items.view"
+
+	// work_items configuration (migration 104)
+	WorkItemsSettingsEdit Code = "work_items.settings.edit"
 )
 
 // All is the canonical set of permission codes the Go side knows about.
@@ -101,6 +117,14 @@ var All = []Code{
 	WorkspaceArchive,
 	WorkspaceRestore,
 	WorkspaceViewArchived,
+
+	LibraryReleasesView,
+
+	PortfolioModelEdit,
+	PortfolioSettingsView,
+	PortfolioItemsView,
+
+	WorkItemsSettingsEdit,
 }
 
 // VerifyParity compares the DB permissions table against the Go All set.

@@ -510,6 +510,133 @@ func TestSeedLibraryDefault_PreservesEditsAcrossReregister(t *testing.T) {
 	}
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Placeholder fallback (PLA-0008 / 00325).
+//
+// When a build-time register fires for a (kind, name) that has no
+// matching row in library_help_defaults — neither exact nor wildcard —
+// seedLibraryDefault must still produce a page_help row so every
+// addressable carries a discoverable, gadmin-editable help doc.
+//
+// The placeholder row contract:
+//   • body_html = addressables.PlaceholderBodyHTML
+//   • title NULL, video_embeds [], image_urls []
+//   • seeded_from = 'placeholder'
+//   • updated_by_user_id NULL (no editor)
+//
+// Idempotent on re-register (no library row appears in between).
+// ─────────────────────────────────────────────────────────────────────
+
+func TestSeedPlaceholder_NoLibraryDefault_Fallback(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("seed_ph")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	// 'button' has no library_help_defaults row (075 seeds only panel,
+	// table, navigation wildcards). 102 adds panel:page_summary. Nothing
+	// matches kind='button', so the placeholder branch must fire.
+	tree := []addressables.BuildNode{{Kind: "button", Name: "save_x"}}
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil || len(snap) != 1 {
+		t.Fatalf("snapshot: err=%v len=%d", err, len(snap))
+	}
+	addrID := snap[0].ID
+
+	doc, found, err := svc.HelpFor(ctx, addrID, "en")
+	if err != nil || !found {
+		t.Fatalf("expected placeholder row: found=%v err=%v", found, err)
+	}
+	if doc.Title != nil {
+		t.Fatalf("expected nil title, got %q", *doc.Title)
+	}
+	if doc.BodyHTML != addressables.PlaceholderBodyHTML {
+		t.Fatalf("body: got %q want %q", doc.BodyHTML, addressables.PlaceholderBodyHTML)
+	}
+	if string(doc.VideoEmbeds) != "[]" {
+		t.Fatalf("video_embeds: got %s want []", doc.VideoEmbeds)
+	}
+	if string(doc.ImageURLs) != "[]" {
+		t.Fatalf("image_urls: got %s want []", doc.ImageURLs)
+	}
+
+	// seeded_from / updated_by_user_id are not on HelpDoc — query directly.
+	var seededFrom string
+	var updatedBy *uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		SELECT seeded_from, updated_by_user_id
+		  FROM page_help
+		 WHERE addressable_id = $1 AND locale = 'en' AND soft_archived = FALSE
+	`, addrID).Scan(&seededFrom, &updatedBy); err != nil {
+		t.Fatalf("query seeded_from: %v", err)
+	}
+	if seededFrom != "placeholder" {
+		t.Fatalf("seeded_from: got %q want %q", seededFrom, "placeholder")
+	}
+	if updatedBy != nil {
+		t.Fatalf("updated_by_user_id: got %v want nil", updatedBy)
+	}
+}
+
+func TestSeedPlaceholder_IsIdempotentOnReRegister(t *testing.T) {
+	pool := testPool(t)
+	svc := addressables.New(pool, false)
+	ctx := context.Background()
+	route := uniqueRoute("seed_ph_idem")
+	t.Cleanup(func() { cleanupRoute(t, pool, route) })
+
+	tree := []addressables.BuildNode{{Kind: "heading", Name: "section_a"}}
+
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("first register: %v", err)
+	}
+	snap, err := svc.Snapshot(ctx, route)
+	if err != nil || len(snap) != 1 {
+		t.Fatalf("snapshot: err=%v len=%d", err, len(snap))
+	}
+	addrID := snap[0].ID
+
+	// Capture the row's identity + timestamp after the first seed.
+	var helpID1 uuid.UUID
+	var updatedAt1 string
+	if err := pool.QueryRow(ctx, `
+		SELECT id, updated_at::text
+		  FROM page_help
+		 WHERE addressable_id = $1 AND locale = 'en' AND soft_archived = FALSE
+	`, addrID).Scan(&helpID1, &updatedAt1); err != nil {
+		t.Fatalf("first query: %v", err)
+	}
+
+	// Re-register the same tree. ON CONFLICT DO NOTHING means the row
+	// must remain byte-identical (same id, same updated_at).
+	if _, err := svc.RegisterFromBuild(ctx, route, addressables.SlotApp, tree); err != nil {
+		t.Fatalf("second register: %v", err)
+	}
+	var helpID2 uuid.UUID
+	var updatedAt2 string
+	var seededFrom string
+	if err := pool.QueryRow(ctx, `
+		SELECT id, updated_at::text, seeded_from
+		  FROM page_help
+		 WHERE addressable_id = $1 AND locale = 'en' AND soft_archived = FALSE
+	`, addrID).Scan(&helpID2, &updatedAt2, &seededFrom); err != nil {
+		t.Fatalf("second query: %v", err)
+	}
+	if helpID1 != helpID2 {
+		t.Fatalf("row replaced: id1=%s id2=%s", helpID1, helpID2)
+	}
+	if updatedAt1 != updatedAt2 {
+		t.Fatalf("row updated_at changed: %q vs %q", updatedAt1, updatedAt2)
+	}
+	if seededFrom != "placeholder" {
+		t.Fatalf("seeded_from: got %q want %q", seededFrom, "placeholder")
+	}
+}
+
 // sameJSON reports whether two JSON payloads represent the same value
 // regardless of whitespace or key order. Postgres re-serialises JSONB
 // with spaces, so byte-equality on the raw payload is too strict.

@@ -50,6 +50,27 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
+// GET /api/work-items/summary
+//
+// Returns full-subscription counts for the Page Summary Header strip.
+// Optional ?sprint_id=<uuid> narrows the count window. item_type filters
+// are NOT applied here so the strip always shows the whole-tree shape
+// regardless of any list filter the user has set.
+func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	q := r.URL.Query()
+	var sprintID *string
+	if v := q.Get("sprint_id"); v != "" {
+		sprintID = &v
+	}
+	out, err := h.Svc.SummariseWorkItems(r.Context(), u.SubscriptionID.String(), sprintID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 // GET /api/work-items/{id}
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())

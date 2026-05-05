@@ -10,7 +10,7 @@
  */
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 
 interface CountResponse {
@@ -32,13 +32,11 @@ const LibraryReleasesContext = createContext<LibraryReleasesState>({
 const POLL_MS = 5 * 60 * 1000;
 
 export function LibraryReleasesProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const canViewReleases = useHasPermission("library.releases.view");
   const [state, setState] = useState<LibraryReleasesState>({ count: null, hasBlocking: false });
 
-  const isGAdmin = user?.role.code === "gadmin";
-
   useEffect(() => {
-    if (!isGAdmin) return;
+    if (!canViewReleases) return;
     let cancelled = false;
 
     const fetchCount = async () => {
@@ -60,7 +58,7 @@ export function LibraryReleasesProvider({ children }: { children: React.ReactNod
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [isGAdmin]);
+  }, [canViewReleases]);
 
   return (
     <LibraryReleasesContext.Provider value={state}>

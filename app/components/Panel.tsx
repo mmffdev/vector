@@ -25,8 +25,7 @@ import {
   helpValueAsFragment,
 } from "@/app/contexts/SamanthaSdkContext";
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+import { api, ApiError } from "@/app/lib/api";
 
 interface PanelProps {
   // Snake-case identifier under this parent. Validated by the substrate
@@ -91,9 +90,15 @@ export default function Panel({ name, title, className, children }: PanelProps) 
     if (!addressable_id) return;
     let cancelled = false;
     setBodyLoading(true);
-    fetch(`${API_BASE}/api/page-help/${addressable_id}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: Partial<HelpDoc> | null) => {
+    api<Partial<HelpDoc> | null>(`/api/page-help/${addressable_id}`)
+      .catch((err) => {
+        // 404 is expected when no help doc exists yet; return null and let
+        // the SDK-defaults fallback below run. Re-throw anything else so the
+        // outer .catch can run the same fallback path.
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      })
+      .then((data) => {
         if (cancelled) return;
         const sdkRaw = resolveSdkHelp(sdk.helpDefaults, "panel", name);
         const sdkFrag = sdkRaw ? helpValueAsFragment(sdkRaw) : null;

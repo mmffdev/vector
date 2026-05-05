@@ -36,3 +36,19 @@ If any step fails, don't skip forward — the later ones depend on earlier.
 ## Schema
 
 Column-level detail for every table lives in [c_schema.md](c_schema.md) and its leaves. This file is about *talking to* the DB, not what's in it.
+
+## Test DB on `localhost:5434`
+
+The Go test packages (`internal/portfoliomodels`, `internal/librarydb`, etc.) connect to a separate test cluster on `localhost:5434` whose creds live in `backend/.env.local`. The active dev DB is on `localhost:5435` (`backend/.env.dev`). They are independent clusters — schema drifts between them must be reconciled deliberately.
+
+**Reset the test DB to a fresh, fully-migrated state:**
+
+```bash
+cd backend && make test-db-reset
+```
+
+That target (defined in `backend/Makefile`) drops + recreates `mmff_vector` and `mmff_library` on the test cluster, then replays every migration in `db/schema/` and `db/library_schema/` from `001..N`. It is idempotent — running it twice produces identical state. It refuses to run if `backend/.env.local` points at any port other than the test tunnel (`5435`/`5432`/`5433` are explicitly rejected so dev / local-pg / staging-restored clusters are never wiped).
+
+**Why this approach (replay, not dump-and-restore).** The migration runner is the source of truth for what shape the DB should have. A fresh replay guarantees the test cluster is exactly what `db/schema/` describes — no drift, no orphan objects from half-applied historical runs, no PG-version-specific dump artifacts to strip. The previous dump-from-dev recipe is retired; if you need to rehydrate test data on top of a clean schema, load fixtures *after* `make test-db-reset` rather than dumping a polluted cluster.
+
+**Library migration 001 (`001_init_library.sql`) uses `\gexec`** — a psql metacommand that the Go runner (`pgx.Exec`-based) can't parse. The make target works around this by pre-seeding `schema_migrations` in `mmff_library` with `001_init_library.sql` already marked applied; the runner then starts at `002`. If you ever need to bootstrap the test cluster from scratch by hand, run `001_init_library.sql` via `psql` first, then let the runner handle `002..N`.

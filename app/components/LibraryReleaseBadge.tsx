@@ -10,16 +10,14 @@
  */
 
 import Link from "next/link";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useHasPermission } from "@/app/contexts/AuthContext";
 import { useLibraryReleases } from "@/app/contexts/LibraryReleasesContext";
 
 export default function LibraryReleaseBadge() {
-  const { user } = useAuth();
+  const canViewReleases = useHasPermission("library.releases.view");
   const { count } = useLibraryReleases();
 
-  const isGAdmin = user?.role.code === "gadmin";
-
-  if (!isGAdmin) {
+  if (!canViewReleases) {
     return (
       <button className="btn btn--icon btn--ghost app-header-wrapper__icon-btn" title="Notifications">
         <BellIcon />

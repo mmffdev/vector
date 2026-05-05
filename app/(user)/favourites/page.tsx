@@ -34,9 +34,8 @@ export default function Favourites() {
             <li key={`${p.kind}:${p.name}`} className="backlog-row">
               <span className="backlog-row__id">&nbsp;</span>
               <a
-                className="backlog-row__title"
+                className="backlog-row__title u-ink u-no-decoration"
                 href={p.href}
-                style={{ color: "var(--ink)", textDecoration: "none" }}
               >
                 {p.name}
               </a>

@@ -3,17 +3,18 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
 export default function PortfolioItemsPage() {
   const { user } = useAuth();
+  const canView = useHasPermission("portfolio_items.view");
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role.code === "gadmin") router.replace("/dashboard");
-  }, [user, router]);
+    if (user && !canView) router.replace("/dashboard");
+  }, [user, canView, router]);
 
-  if (!user || user.role.code === "gadmin") return null;
+  if (!user || !canView) return null;
 
   return (
     <PageShell

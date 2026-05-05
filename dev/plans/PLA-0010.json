@@ -3,7 +3,7 @@
   "title": "Codebase Audit Remediation \u2014 Dead Code & Security Gaps (R035)",
   "date_created": "2026-05-04",
   "date_started": null,
-  "date_last_updated": "2026-05-04",
+  "date_last_updated": "2026-05-05",
   "date_finished": null,
   "scope": "<p>Remediate every finding raised in research paper <strong>R035 \u2014 Codebase Audit: Dead Code &amp; Security Gaps</strong> in priority order S5 \u2192 S2. This plan executes the audit's recommendations as 27 shippable stories spanning four feature areas: <code>FE-SEC-0009</code> (security), <code>FE-DEV-0020</code> (dead-code/dev cleanup), <code>FE-AUD-0004</code> (audit-log gaps), and <code>FE-SQL-0017</code> (migration reorg).</p><p>Sequencing follows the R035 Story Risk Review: <strong>Wave 1 LOW-risk</strong> (10 stories: gitignore, deletes, package prune, docs) \u2192 <strong>Wave 2 MED-risk</strong> (12 stories: endpoint contracts, audit writes, migrations, rate limits) \u2192 <strong>Wave 3 HIGH-risk</strong> (5 stories behind feature flags where possible: middleware, auth, session, WS gating).</p>",
   "value": "<ul><li>Closes the 8 highest-severity (S5) gaps surfaced by the R035 deep-scan, including unauthenticated /ws upgrades and the spoofable clientIP override.</li><li>Removes confirmed-dead code paths so future grep results, bundle size, and audit findings stop carrying noise.</li><li>Adds the missing audit_log writes that compliance reviewers need to reconstruct privilege changes.</li><li>Establishes a sequencing pattern (LOW \u2192 MED \u2192 HIGH) that lowers the chance any single fix breaks production.</li></ul>",
@@ -89,7 +89,7 @@
       "title": "Delete 8 confirmed-dead .tsx files",
       "story_id": "00351",
       "card_url": "http://localhost:3333/cards/1767334150559238110",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 7,

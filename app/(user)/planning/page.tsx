@@ -9,7 +9,19 @@
 // brand colour); status indicators use .pill variants. Empty
 // state uses .placeholder.
 
+import { useEffect, useRef } from "react";
 import PageShell from "@/app/components/PageShell";
+
+function TimelineBar({ start, end }: { start: number; end: number }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--range-start", `${start}%`);
+    el.style.setProperty("--range-w", `${end - start}%`);
+  }, [start, end]);
+  return <span ref={ref} className="planning-timeline__bar u-range-bar" />;
+}
 
 const COLUMNS: Array<{ key: string; label: string; cards: PlanCard[] }> = [
   {
@@ -82,7 +94,7 @@ export default function Planning() {
         ))}
       </div>
 
-      <h3 className="eyebrow" style={{ marginTop: "var(--space-8)" }}>
+      <h3 className="eyebrow u-mt-8">
         Initiative timeline
       </h3>
       <div className="card chart-card">
@@ -91,10 +103,7 @@ export default function Planning() {
             <li key={t.name} className="planning-timeline__row">
               <span className="planning-timeline__label">{t.name}</span>
               <div className="planning-timeline__track" aria-hidden="true">
-                <span
-                  className="planning-timeline__bar"
-                  style={{ left: `${t.start}%`, width: `${t.end - t.start}%` }}
-                />
+                <TimelineBar start={t.start} end={t.end} />
               </div>
             </li>
           ))}

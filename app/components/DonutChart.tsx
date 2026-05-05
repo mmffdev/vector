@@ -176,11 +176,10 @@ export default function DonutChart({
           key={`seg-${i}`}
           d={arcPath(CHART_CX, CHART_CY, RADIUS, s.a1, s.a2)}
           className={
-            s.highlight
+            (s.highlight
               ? "donut-chart__seg donut-chart__seg--accent"
-              : `donut-chart__seg donut-chart__seg--tone-${s.tone}`
+              : `donut-chart__seg donut-chart__seg--tone-${s.tone}`) + " donut-stroke-w"
           }
-          style={{ strokeWidth: STROKE }}
         />
       ))}
 

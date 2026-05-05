@@ -17,6 +17,64 @@ const STORAGE_KEY = "sidebar-collapsed";
 const isActivePath = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
+function FlyoutPanel({
+  top,
+  left,
+  ariaLabel,
+  children,
+}: {
+  top: number;
+  left: number;
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--pos-x", `${left}px`);
+    el.style.setProperty("--pos-y", `${top}px`);
+  }, [top, left]);
+  return (
+    <div
+      ref={ref}
+      className="sidebar-flyout app-sidebar__flyout-pos"
+      role="menu"
+      aria-label={ariaLabel}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DelayedChildLink({
+  href,
+  active,
+  delayMs,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  delayMs: number;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--anim-delay", `${delayMs}ms`);
+  }, [delayMs]);
+  return (
+    <Link
+      ref={ref}
+      href={href}
+      className={`sidebar-item sidebar-item--child app-sidebar__delay ${active ? "active" : ""}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
 // Render-only item. Inline accordion when sidebar is open; hover-flyout when collapsed.
 function SidebarItem({
   item,
@@ -82,12 +140,7 @@ function SidebarItem({
           <span className="sidebar-item__label">{item.label}</span>
         </Link>
         {flyoutOpen && flyoutPos && (
-          <div
-            className="sidebar-flyout"
-            role="menu"
-            aria-label={`${item.label} sub-pages`}
-            style={{ top: flyoutPos.top, left: flyoutPos.left }}
-          >
+          <FlyoutPanel top={flyoutPos.top} left={flyoutPos.left} ariaLabel={`${item.label} sub-pages`}>
             {childItems.map((child) => (
               <Link
                 key={child.key}
@@ -99,7 +152,7 @@ function SidebarItem({
                 <span className="sidebar-item__label">{child.label}</span>
               </Link>
             ))}
-          </div>
+          </FlyoutPanel>
         )}
       </div>
     );
@@ -126,11 +179,11 @@ function SidebarItem({
           {childItems.map((child, i) => {
             const isLast = i === childItems.length - 1;
             return (
-              <Link
+              <DelayedChildLink
                 key={child.key}
                 href={child.href}
-                className={`sidebar-item sidebar-item--child ${isActivePath(pathname, child.href) ? "active" : ""}`}
-                style={{ animationDelay: `${i * 30}ms` }}
+                active={isActivePath(pathname, child.href)}
+                delayMs={i * 30}
               >
                 <span className="sidebar-item__tree-icon" aria-hidden="true">
                   {isLast ? (
@@ -147,7 +200,7 @@ function SidebarItem({
                   <IconFor iconKey={childIconByKey[child.key] ?? child.icon} />
                 </span>
                 <span className="sidebar-item__label">{child.label}</span>
-              </Link>
+              </DelayedChildLink>
             );
           })}
         </div>

@@ -4288,6 +4288,289 @@ table.tbl tbody tr:hover td {
   gap: 12px;
 }
 
+/* PLA-0011/00393 — utilities absorbed during the inline-style sweep.
+   Each block below corresponds to a specific style={{...}} pattern that
+   was repeated across ≥2 sites. */
+.u-row { display: flex; align-items: center; }
+.u-row--end { justify-content: flex-end; }
+.u-row--top { align-items: flex-start; }
+.u-row--gap-2 { gap: var(--space-2); }
+.u-row--gap-3 { gap: var(--space-3); }
+.u-row--gap-4 { gap: var(--space-4); }
+.u-stack--gap-3 { display: flex; flex-direction: column; gap: var(--space-3); }
+.u-stack--gap-4 { display: flex; flex-direction: column; gap: var(--space-4); }
+.u-stack--gap-1 { display: flex; flex-direction: column; gap: 4px; }
+.u-flex-1 { flex: 1; }
+
+.u-mt-1 { margin-top: 4px; }
+.u-mt-2 { margin-top: 8px; }
+.u-mt-3 { margin-top: var(--space-3); }
+.u-mt-4 { margin-top: var(--space-4); }
+.u-mt-8 { margin-top: var(--space-8); }
+.u-mb-0 { margin-bottom: 0; }
+.u-mb-1 { margin-bottom: 4px; }
+.u-mb-3 { margin-bottom: var(--space-3); }
+.u-mb-4 { margin-bottom: var(--space-4); }
+.u-mb-8 { margin-bottom: var(--space-8); }
+.u-ml-2 { margin-left: 8px; }
+.u-ml-3 { margin-left: 12px; }
+.u-m-0 { margin: 0; }
+
+.u-w-full { width: 100%; }
+.u-h-32 { height: 32px; }
+.u-block { display: block; }
+.u-inline-flex { display: inline-flex; align-items: center; gap: 6px; }
+.u-hidden { display: none; }
+.u-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+
+.u-text-xs { font-size: 12px; }
+.u-text-sm { font-size: 13px; }
+.u-text-mono { font-family: var(--font-mono, monospace); }
+.u-fw-500 { font-weight: 500; }
+.u-fw-600 { font-weight: 600; }
+.u-ink-muted { color: var(--ink-muted); }
+.u-ink { color: var(--ink); }
+
+.u-vfill { height: calc(100vh - 160px); }
+.u-no-decoration { text-decoration: none; }
+.u-pad-3 { padding: var(--space-3); }
+.u-pad-3-4 { padding: var(--space-3) var(--space-4); }
+.u-bordered-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+.u-bordered-row {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.u-border-top { border-top: 1px solid var(--border); }
+
+/* Dynamic-position helper: position popovers/flyouts driven by JS state.
+   Component must set --pos-x / --pos-y on the element via ref.setProperty();
+   never with style={{}}. */
+.u-pos-xy {
+  left: var(--pos-x, 0);
+  top: var(--pos-y, 0);
+}
+.u-pos-xy--hidden { visibility: hidden; pointer-events: none; }
+
+/* Dynamic-color swatch: component sets --swatch-bg via ref.setProperty(). */
+.u-swatch-bg { background: var(--swatch-bg, transparent); }
+
+/* Dynamic-width col: component sets --col-w via ref.setProperty(). */
+.u-col-w { width: var(--col-w, auto); }
+
+/* Animation-delay offset: component sets --anim-delay via ref.setProperty(). */
+.u-anim-delay { animation-delay: var(--anim-delay, 0ms); }
+
+/* Stroke-width hook for SVG charts; component sets --stroke-w via ref. */
+.u-stroke-w { stroke-width: var(--stroke-w, 1); }
+
+/* Linear-gradient hook: component sets --gradient via ref. */
+.u-gradient-bg { background: linear-gradient(to right, var(--gradient, transparent)); }
+
+/* Range-slider-percent hook (planning page bars). */
+.u-range-bar { left: var(--range-start, 0); width: var(--range-w, 0); }
+
+/* Account-settings notification row. */
+.notif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.notif-row__label {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.notif-row__hint {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+/* PLA-0011 — work-items settings page. Replaces inline grids and labels. */
+.wi-settings { display: flex; flex-direction: column; gap: var(--space-4); }
+.wi-settings__row-end { display: flex; justify-content: flex-end; }
+.wi-settings__grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+.wi-settings__label { font-size: 12px; color: var(--ink-muted); }
+.wi-settings__field-input {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+}
+.wi-settings__field-textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+.wi-settings__loading { color: var(--ink-muted); font-size: 13px; }
+.wi-settings__field-name { font-family: var(--font-mono); font-size: 12px; }
+.wi-settings__field-meta-cell { color: var(--ink-muted); font-size: 12px; }
+.wi-settings__type-card { border: 1px solid var(--border); background: var(--surface); }
+.wi-settings__type-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-weight: 500;
+}
+.wi-settings__type-meta { font-weight: 500; }
+.wi-settings__type-hint { margin-left: 12px; font-size: 12px; color: var(--ink-muted); }
+.wi-settings__type-chevron { color: var(--ink-muted); }
+.wi-settings__type-body { border-top: 1px solid var(--border); padding: var(--space-3) var(--space-4); }
+.wi-settings__type-table { margin-bottom: var(--space-3); }
+.wi-settings__optional { color: var(--ink-muted); font-size: 12px; }
+.wi-settings__add-row { display: flex; align-items: center; gap: var(--space-3); }
+.wi-settings__add-label { font-size: 12px; color: var(--ink-muted); }
+.wi-settings__pill-spacer { margin-left: 8px; }
+.wi-settings__form-card {
+  /* Card wrapper used by the inline "new" type / field forms. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.wi-settings__type-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.wi-settings__filter-bar { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); }
+
+/* Dev page-help panel — absorbs ~23 inline-style sites. */
+.dev-help-editor__alert-mt { margin-top: 8px; }
+.dev-help-editor__inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.dev-help-editor__btn-row { margin-top: 12px; }
+.dev-help-editor__field-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.dev-help-editor__field-label--mt {
+  display: block;
+  font-weight: 600;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+.dev-help-editor__textarea {
+  width: 100%;
+  min-height: 160px;
+  font-family: var(--font-mono, monospace);
+}
+.dev-help-editor__group-box {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.dev-help-editor__group-legend { font-weight: 600; }
+.dev-help-editor__empty-line { margin-top: 0; }
+.dev-help-editor__list-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.dev-help-editor__list-item-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dev-help-editor__preview-wrap { margin-top: 12px; }
+.dev-help-editor__preview-label {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.dev-help-editor__preview-frame {
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+/* Topology page extras. */
+.topo-flyout-host {
+  /* Host element exposes the flyout-width custom property. */
+  display: contents;
+}
+.topo-tooltip {
+  position: absolute;
+  pointer-events: none;
+}
+.topo-color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--swatch-bg, transparent);
+}
+
+/* Theme page swatches. */
+.theme-swatch-block { background: var(--swatch-bg, transparent); }
+.theme-swatch-input--hidden { display: none; }
+.theme-gradient-bar { background: linear-gradient(to right, var(--gradient, transparent)); }
+
+/* Diverging heatmap & adjacency hover labels. */
+.chart-hover-label {
+  position: absolute;
+  pointer-events: none;
+  left: var(--pos-x, 0);
+  top: var(--pos-y, 0);
+}
+
+/* Concentric arc & donut: stroke width hook. */
+.arc-stroke-w { stroke-width: var(--stroke-w, 1); }
+.donut-stroke-w { stroke-width: 32; }
+.concentric-stroke-w { stroke-width: 22; }
+
+/* App sidebar flyout positioning. */
+.app-sidebar__flyout-pos {
+  position: absolute;
+  top: var(--pos-y, 0);
+  left: var(--pos-x, 0);
+}
+
+/* Animation-delay hook for staggered reveals. */
+.app-sidebar__delay { animation-delay: var(--anim-delay, 0ms); }
+
+/* Archive-map flyout dynamic width. */
+.archive-flyout-w { width: var(--flyout-w, 320px); }
+
+/* Graph-engine canvas dynamic dimensions. */
+.graph-canvas-dims {
+  width: var(--canvas-w, auto);
+  height: var(--canvas-h, auto);
+}
+
+/* Node positioning hook for graph-engine view. */
+.graph-node-pos {
+  position: absolute;
+  left: var(--node-x, 0);
+  top: var(--node-y, 0);
+  width: var(--node-w, auto);
+  height: var(--node-h, auto);
+}
+
+/* Topology context-menu position (overlay page). */
+.topo-ctx-menu-pos {
+  position: absolute;
+  left: var(--pos-x, 0);
+  top: var(--pos-y, 0);
+}
+
+/* Dev icons tab — fills viewport minus chrome. */
+.dev-icons-host { height: calc(100vh - 160px); }
+
+/* Topology tree-flyout placeholder rows. */
+.topo-tree-flyout__placeholder { visibility: hidden; pointer-events: none; }
+
 /* ============================================================
    Custom container page (/p/<id>) — Vector kit (story 00107)
    The page sits on --canvas. Rename action is a Vector ghost
@@ -10856,4 +11139,507 @@ table.tbl tbody tr:hover td {
 }
 .topo-overlay__zoom-btn:hover {
   background: var(--surface-hover, #f7f3ee);
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Page Summary Header — PLA-0012 (story 00398)
+ *
+ * Full-span stat strip rendered above a page's main content. Composed
+ * by <PageSummaryHeader> on top of <Panel name="page_summary">, so the
+ * outer chrome (1px border, surface bg, radius, padding) comes from
+ * .panel — this block only owns the inner grid, cell, glyph, search,
+ * and warning-tone rules.
+ *
+ * Typography reuses .tile__label (eyebrow) + .t-metric (large numeric)
+ * from the dashboard catalog so summary cells stay visually identical
+ * to dashboard tiles.
+ *
+ * Tone: a cell with tone="warning" AND value > 0 carries the
+ * .page-summary__cell--issue modifier, which paints --warning on the
+ * .t-metric inside. Resting cells stay neutral so the strip doesn't
+ * shout when there's nothing to act on.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.page-summary-panel .panel__body {
+  padding: 0;
+}
+
+.page-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+  align-items: center;
+  width: 100%;
+}
+
+.page-summary__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-right: 1px solid var(--border);
+}
+
+.page-summary__cell:last-of-type {
+  border-right: none;
+}
+
+.page-summary__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.page-summary__value {
+  /* inherits .t-metric typography; this rule scopes the colour token
+     so the warning modifier can override it cleanly */
+  color: var(--ink);
+}
+
+.page-summary__cell--issue .page-summary__value {
+  color: var(--warning);
+}
+
+.page-summary__glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--warning);
+  flex-shrink: 0;
+}
+
+.page-summary__search-slot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 var(--space-2);
+}
+
+.page-summary__search {
+  /* Inherits baseline from .form__input; this rule sets the trailing
+     slot's preferred width so it doesn't stretch the grid. */
+  width: 100%;
+  max-width: 280px;
+  min-width: 160px;
+}
+
+@media (max-width: 900px) {
+  .page-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .page-summary__cell {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--space-3);
+  }
+  .page-summary__search-slot {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+    padding: 0;
+  }
+  .page-summary__search {
+    max-width: none;
+  }
+}
+
+/* ============================================================================
+   Grid-Tree — generic dense-spreadsheet tree catalog
+   Class-based, reusable; mirrors the dense screenshot reference. Used by the
+   Work Items "Example 2" tab. No selectors here reference work-items-* — keep
+   it generic so any tree can adopt by composing these classes.
+   ============================================================================ */
+
+/* Panel header — numbered badge + title + subtitle */
+.gtree-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px 0 12px;
+}
+.gtree-panel-head__num {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: var(--ink, #111);
+  color: var(--surface, #fff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.gtree-panel-head__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gtree-panel-head__title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0;
+}
+.gtree-panel-head__subtitle {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Filter bar — search + filter chips + count */
+.gtree-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.gtree-filterbar__search {
+  flex: 0 1 320px;
+  min-width: 0;
+  position: relative;
+}
+.gtree-filterbar__search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft, var(--surface));
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+}
+.gtree-filterbar__search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--ink-subtle);
+  display: inline-flex;
+}
+.gtree-filterbar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.gtree-filterbar__chip:hover {
+  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
+}
+.gtree-filterbar__chip-icon {
+  color: var(--ink-subtle);
+  display: inline-flex;
+}
+.gtree-filterbar__spacer {
+  flex: 1 1 auto;
+}
+.gtree-filterbar__count {
+  font-size: 13px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+/* Icon-only filter bar buttons — square, ghost by default, hover lifts to
+   the same tone as a chip. Used for expand-all / collapse-all. */
+.gtree-filterbar__icon-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.gtree-filterbar__icon-btn:hover {
+  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
+  color: var(--ink);
+}
+
+/* Table root */
+.gtree {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+/* Header row */
+.gtree__head {
+  background: color-mix(in srgb, var(--ink) 4%, var(--surface));
+}
+.gtree__th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+.gtree__th--mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.gtree__th--numeric { text-align: right; }
+.gtree__th--center { text-align: center; }
+
+/* Body rows — 28px high. Zebra striping: even rows get a subtle tint;
+   :nth-child(odd) stays on the table's surface colour. Hover and selected
+   override the stripe so they remain visually dominant. */
+.gtree__row {
+  height: 28px;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+  background: var(--surface);
+}
+.gtree tbody .gtree__row:nth-child(even) {
+  background: color-mix(in srgb, var(--ink) 3%, var(--surface));
+}
+.gtree__row:hover,
+.gtree tbody .gtree__row:nth-child(even):hover {
+  background: color-mix(in srgb, var(--ink) 6%, var(--surface));
+}
+.gtree__row--selected,
+.gtree__row--selected:hover,
+.gtree tbody .gtree__row--selected:nth-child(even),
+.gtree tbody .gtree__row--selected:nth-child(even):hover {
+  background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface));
+}
+.gtree__row--epic {
+  font-weight: 600;
+}
+.gtree__row--child {
+  /* purely structural — no background change so stripes stay clean */
+}
+
+/* Cells */
+.gtree__cell {
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gtree__cell--mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.gtree__cell--id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+  padding-left: 8px;
+}
+.gtree__cell--summary {
+  padding-left: 0;
+  padding-right: 8px;
+}
+.gtree__cell--numeric { text-align: right; }
+.gtree__cell--center { text-align: center; }
+
+/* Summary cell inner: tree indent → expander → type-badge → title */
+.gtree__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.gtree__indent {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.gtree__expander {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 3px;
+}
+.gtree__expander:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+.gtree__expander--leaf {
+  cursor: default;
+  visibility: hidden;
+}
+.gtree__expander-icon {
+  display: block;
+  transition: transform 160ms ease;
+}
+.gtree__expander--open .gtree__expander-icon {
+  transform: rotate(90deg);
+}
+
+/* Type badge: two-letter coloured tag (EP/US/TA/DE) */
+.gtree__type-badge {
+  flex-shrink: 0;
+  min-width: 26px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--surface, #fff);
+  background: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+.gtree__type-badge--epic   { background: #4b5563; }
+.gtree__type-badge--story  { background: #6b7280; }
+.gtree__type-badge--task   { background: #9ca3af; }
+.gtree__type-badge--defect { background: #b91c1c; }
+
+.gtree__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.gtree__title--epic { font-weight: 600; }
+
+/* Status: dot + text */
+.gtree__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.gtree__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-subtle);
+  flex-shrink: 0;
+}
+.gtree__status--info .gtree__status-dot,
+.gtree__status-dot--info     { background: #2563eb; }
+.gtree__status--success .gtree__status-dot,
+.gtree__status-dot--success  { background: #16a34a; }
+.gtree__status--danger .gtree__status-dot,
+.gtree__status-dot--danger   { background: #dc2626; }
+.gtree__status--warning .gtree__status-dot,
+.gtree__status-dot--warning  { background: #d97706; }
+.gtree__status--review .gtree__status-dot,
+.gtree__status-dot--review   { background: #111827; }
+.gtree__status--neutral .gtree__status-dot,
+.gtree__status-dot--neutral  { background: #6b7280; }
+.gtree__status-text {
+  font-size: 13px;
+  color: var(--ink);
+}
+.gtree__status--info    .gtree__status-text { color: #2563eb; }
+.gtree__status--success .gtree__status-text { color: #16a34a; }
+.gtree__status--danger  .gtree__status-text { color: #dc2626; }
+.gtree__status--warning .gtree__status-text { color: #d97706; }
+.gtree__status--review  .gtree__status-text { color: var(--ink); }
+.gtree__status--neutral .gtree__status-text { color: var(--ink-muted); }
+
+/* Priority: P0/P1/P2 in colour */
+.gtree__pri {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.gtree__pri--p0 { color: #dc2626; }
+.gtree__pri--p1 { color: #d97706; }
+.gtree__pri--p2 { color: #6b7280; }
+.gtree__pri--p3 { color: var(--ink-subtle); }
+
+/* ID cell: SVG tree lines + expander + monospace id text, flush-left flex row.
+   Padding is removed on the cell itself so the SVG can sit hard against the
+   left edge — the .gtree__id-inner wrapper handles spacing instead. */
+.gtree__cell--id {
+  padding-left: 0;
+  padding-right: 8px;
+}
+.gtree__id-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  min-height: 28px;
+}
+.gtree__svg {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.gtree__id-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.gtree__row--epic .gtree__id-text {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Inline-edit hover affordances inside Grid-Tree cells.
+   The display span lights up subtly to signal "click to edit" without
+   stealing visual space at rest. Uses the same hover tone as the
+   Example 1 tree's .work-items-tree__title-text. */
+.gtree__title-text,
+.gtree__pts-text {
+  cursor: text;
+  display: inline-block;
+  min-width: 1ch;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background-color 120ms ease;
+}
+.gtree__title-text:hover,
+.gtree__pts-text:hover,
+.gtree .work-items-tree__inline-trigger:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
 }

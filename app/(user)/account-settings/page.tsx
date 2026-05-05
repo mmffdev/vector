@@ -36,11 +36,10 @@ export default function AccountSettingsPage() {
     >
       <h3 className="eyebrow">Profile</h3>
       <form
-        className="form"
+        className="form u-mb-8"
         onSubmit={(e) => {
           e.preventDefault();
         }}
-        style={{ marginBottom: "var(--space-8)" }}
       >
         <div className="form__row">
           <label className="form__label">
@@ -68,7 +67,7 @@ export default function AccountSettingsPage() {
             </span>
           </label>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div className="u-row u-row--end">
           <button type="submit" className="btn btn--primary">
             Save profile
           </button>
@@ -77,11 +76,10 @@ export default function AccountSettingsPage() {
 
       <h3 className="eyebrow">Password</h3>
       <form
-        className="form"
+        className="form u-mb-8"
         onSubmit={(e) => {
           e.preventDefault();
         }}
-        style={{ marginBottom: "var(--space-8)" }}
       >
         <div className="form__row">
           <label className="form__label">
@@ -104,7 +102,7 @@ export default function AccountSettingsPage() {
             <input type="password" className="form__input" autoComplete="new-password" />
           </label>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div className="u-row u-row--end">
           <button type="submit" className="btn btn--primary">
             Update password
           </button>
@@ -112,7 +110,7 @@ export default function AccountSettingsPage() {
       </form>
 
       <h3 className="eyebrow">Notifications</h3>
-      <div className="form" style={{ gap: "var(--space-3)" }}>
+      <div className="form u-row--gap-3">
         <NotifRow
           label="Direct mentions"
           hint="Email me when someone @mentions me in a comment."
@@ -148,23 +146,10 @@ function NotifRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "var(--space-4)",
-        padding: "var(--space-3) 0",
-        borderBottom: "1px solid var(--border)",
-      }}
-    >
+    <div className="notif-row">
       <div>
-        <div style={{ color: "var(--ink)", fontSize: "var(--text-sm)", fontWeight: 500 }}>
-          {label}
-        </div>
-        <div style={{ color: "var(--ink-muted)", fontSize: "var(--text-xs)" }}>
-          {hint}
-        </div>
+        <div className="notif-row__label">{label}</div>
+        <div className="notif-row__hint">{hint}</div>
       </div>
       <label className="form__switch">
         <input

@@ -236,52 +236,56 @@ export default function DevShortcutsPanel() {
   return (
     <Panel name="dev_shortcuts" title="Shortcuts">
     <div className="dev-sc">
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr className="table__head">
-              <th className="table__cell" style={{ width: "10%" }}>Shortcut</th>
-              <th className="table__cell" style={{ width: "50%" }}>What it does</th>
-              <th className="table__cell" style={{ width: "20%" }}>Flags</th>
-              <th className="table__cell" style={{ width: "20%" }}>Load path</th>
-            </tr>
-          </thead>
-          <tbody>
-            {DATA.map((cat) => (
-              <Fragment key={cat.name}>
-                <tr className="dev-sc-category">
-                  <td className="dev-sc-cell" colSpan={4}>{cat.name}</td>
+      <table className="dui-table">
+        <colgroup>
+          <col width="10%" />
+          <col width="50%" />
+          <col width="20%" />
+          <col width="20%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Shortcut</th>
+            <th>What it does</th>
+            <th>Flags</th>
+            <th>Load path</th>
+          </tr>
+        </thead>
+        <tbody>
+          {DATA.map((cat) => (
+            <Fragment key={cat.name}>
+              <tr className="dui-table__group">
+                <td colSpan={4}>{cat.name}</td>
+              </tr>
+              {cat.shortcuts.map((sc) => (
+                <tr key={sc.tag}>
+                  <td className="dev-sc-cell">
+                    <span className="dev-sc-tag">{sc.tag}</span>
+                  </td>
+                  <td className="dev-sc-cell dev-sc-desc">{sc.desc}</td>
+                  <td className="dev-sc-cell">
+                    {sc.flags.length === 0 ? (
+                      <span className="dev-sc-noflag">—</span>
+                    ) : (
+                      <div className="dev-sc-flags">
+                        {sc.flags.map((f) => (
+                          <div key={f.label} className="dev-sc-flag-row">
+                            <code className="dev-sc-flag">{f.label}</code>
+                            {f.note && <span className="dev-sc-flag-note">{f.note}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="dev-sc-cell">
+                    <LoadPath path={sc.loadPath} />
+                  </td>
                 </tr>
-                {cat.shortcuts.map((sc) => (
-                  <tr key={sc.tag} className="table__row">
-                    <td className="table__cell dev-sc-cell">
-                      <span className="dev-sc-tag">{sc.tag}</span>
-                    </td>
-                    <td className="table__cell dev-sc-cell dev-sc-desc">{sc.desc}</td>
-                    <td className="table__cell dev-sc-cell">
-                      {sc.flags.length === 0 ? (
-                        <span className="dev-sc-noflag">—</span>
-                      ) : (
-                        <div className="dev-sc-flags">
-                          {sc.flags.map((f) => (
-                            <div key={f.label} className="dev-sc-flag-row">
-                              <code className="dev-sc-flag">{f.label}</code>
-                              {f.note && <span className="dev-sc-flag-note">{f.note}</span>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="table__cell dev-sc-cell">
-                      <LoadPath path={sc.loadPath} />
-                    </td>
-                  </tr>
-                ))}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
       <p className="dev-sc-footer">
         Run <code>&lt;?&gt; -u</code> in Claude Code to rescan and regenerate from source.
       </p>

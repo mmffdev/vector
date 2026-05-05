@@ -228,8 +228,8 @@ function HelpRow({
             variant="full"
             showOpenFullLink={false}
           />
-          {error && <div className="dev-alert dev-alert--error" style={{ marginTop: 8 }}>{error}</div>}
-          <label className="dev-p" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+          {error && <div className="dev-alert dev-alert--error dev-help-editor__alert-mt">{error}</div>}
+          <label className="dui-form__switch">
             <input
               type="checkbox"
               checked={row.helpable}
@@ -239,7 +239,7 @@ function HelpRow({
             Help icon visible
             {togglingHelpable && <span className="dev-plan-meta">· saving…</span>}
           </label>
-          <div className="dev-btn-group" style={{ marginTop: 12 }}>
+          <div className="dev-btn-group dev-help-editor__btn-row">
             <button className="dev-btn dev-btn--primary dev-btn--sm" onClick={startEdit}>Edit</button>
             <a
               className="dev-btn dev-btn--sm"
@@ -271,39 +271,37 @@ function HelpRow({
       {editing && (
         <div className="dev-plan-body">
           <div className="dev-help-editor">
-            <label className="dev-p" style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
+            <label className="dev-p dev-help-editor__field-label">
               Title
             </label>
             <input
               type="text"
-              className="dev-research-search"
-              style={{ width: "100%" }}
+              className="dev-research-search u-w-full"
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
               disabled={saving}
               placeholder="Optional heading shown above the body"
             />
 
-            <label className="dev-p" style={{ display: "block", fontWeight: 600, marginTop: 12, marginBottom: 4 }}>
+            <label className="dev-p dev-help-editor__field-label--mt">
               Body HTML
             </label>
             <textarea
-              className="dev-research-search"
-              style={{ width: "100%", minHeight: 160, fontFamily: "var(--font-mono, monospace)" }}
+              className="dev-research-search dev-help-editor__textarea"
               value={draftBody}
               onChange={(e) => setDraftBody(e.target.value)}
               disabled={saving}
               placeholder="<p>Help body HTML…</p>"
             />
 
-            <fieldset className="dev-help-editor__group" style={{ marginTop: 12, padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)" }}>
-              <legend className="dev-p" style={{ fontWeight: 600 }}>YouTube videos</legend>
+            <fieldset className="dev-help-editor__group dev-help-editor__group-box">
+              <legend className="dev-p dev-help-editor__group-legend">YouTube videos</legend>
               {draftVideos.length === 0 && (
-                <p className="dev-plan-meta" style={{ marginTop: 0 }}>No videos. Use Add to attach one.</p>
+                <p className="dev-plan-meta dev-help-editor__empty-line">No videos. Use Add to attach one.</p>
               )}
               {draftVideos.map((v, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div key={idx} className="dev-help-editor__list-item">
+                  <div className="dev-help-editor__list-item-fields">
                     <input
                       type="url"
                       className="dev-research-search"
@@ -349,14 +347,14 @@ function HelpRow({
               </button>
             </fieldset>
 
-            <fieldset className="dev-help-editor__group" style={{ marginTop: 12, padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)" }}>
-              <legend className="dev-p" style={{ fontWeight: 600 }}>Images</legend>
+            <fieldset className="dev-help-editor__group dev-help-editor__group-box">
+              <legend className="dev-p dev-help-editor__group-legend">Images</legend>
               {draftImages.length === 0 && (
-                <p className="dev-plan-meta" style={{ marginTop: 0 }}>No images. Use Add to attach one.</p>
+                <p className="dev-plan-meta dev-help-editor__empty-line">No images. Use Add to attach one.</p>
               )}
               {draftImages.map((img, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div key={idx} className="dev-help-editor__list-item">
+                  <div className="dev-help-editor__list-item-fields">
                     <input
                       type="url"
                       className="dev-research-search"
@@ -414,16 +412,16 @@ function HelpRow({
               </button>
             </fieldset>
 
-            <div style={{ marginTop: 12 }}>
-              <p className="dev-p" style={{ marginBottom: 4, fontWeight: 600 }}>Live preview (full page)</p>
-              <div style={{ padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)" }}>
+            <div className="dev-help-editor__preview-wrap">
+              <p className="dev-p dev-help-editor__preview-label">Live preview (full page)</p>
+              <div className="dev-help-editor__preview-frame">
                 <HelpDocRenderer doc={previewDoc} variant="full" showOpenFullLink={false} />
               </div>
             </div>
           </div>
 
-          {error && <div className="dev-alert dev-alert--error" style={{ marginTop: 8 }}>{error}</div>}
-          <div className="dev-btn-group" style={{ marginTop: 12 }}>
+          {error && <div className="dev-alert dev-alert--error dev-help-editor__alert-mt">{error}</div>}
+          <div className="dev-btn-group dev-help-editor__btn-row">
             <button className="dev-btn dev-btn--primary dev-btn--sm" onClick={save} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </button>
@@ -474,7 +472,7 @@ export default function DevPageHelpPanel() {
   if (!user) return null;
   if (user.role.code !== "gadmin") {
     return (
-      <div className="dev-research-empty">
+      <div className="dui-empty">
         Page Help editor is gadmin-only. Your role: <code>{user.role.code}</code>.
       </div>
     );
@@ -482,34 +480,40 @@ export default function DevPageHelpPanel() {
 
   return (
     <Panel name="dev_page_help" title="Page Help">
-    <div className="dev-plans-panel">
-      <div className="dev-research-header">
+    <div className="dui-page">
+      <header className="dui-page__header">
         <div>
-          <p className="dev-p" style={{ marginBottom: 0 }}>
+          <h1 className="dui-page__title">Page Help</h1>
+          <p className="dui-page__subtitle">
             Edit the help body shown by the <code>TbHelpHexagon</code> popover on every registered addressable.
             Saved edits flip <code>seeded_from='manual'</code> (the schema's name for editor-authored content);
             future library churn will not retro-apply.
           </p>
         </div>
-        <button onClick={load} disabled={loading} className="dev-btn dev-btn--sm">
+        <button
+          onClick={load}
+          disabled={loading}
+          className="dui-pager__btn"
+          aria-label="Refresh page help list"
+        >
           {loading ? "Loading…" : "Refresh"}
         </button>
-      </div>
+      </header>
 
-      <div className="dev-research-toolbar">
+      <div className="dui-toolbar">
         <input
           type="search"
-          className="dev-research-search"
+          className="dui-search"
           placeholder="Search by address or page_route…"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
 
-      {error && <div className="dev-alert dev-alert--error">{error}</div>}
+      {error && <div className="dui-empty">{error}</div>}
 
       {!loading && rows.length === 0 && !error && (
-        <div className="dev-research-empty">
+        <div className="dui-empty">
           No page_help rows. Register addressables via build-reconcile first.
         </div>
       )}
@@ -531,7 +535,7 @@ export default function DevPageHelpPanel() {
       ))}
 
       {!loading && grouped.length === 0 && rows.length > 0 && (
-        <div className="dev-research-empty">
+        <div className="dui-empty">
           No rows match &ldquo;<em>{search}</em>&rdquo;.
         </div>
       )}
