@@ -4,6 +4,8 @@ Scans the `.claude/` directory for context health across memory, skills, command
 
 **Report store:** `<project-root>/dev/reports/<YYYYMMDD-HHmmss>-<scope>.json`
 
+**HARD RULE — dev-ui catalog only.** This scanner emits **JSON only**, not HTML — the rendering panel ([`dev/pages/DevReportsPanel.tsx`](../../dev/pages/DevReportsPanel.tsx)) is responsible for translating each `check` into a `.dui-table` row plus `.dui-pill--pass/--warn/--fail`. Do not invent custom labels, status strings, or HTML inside `detail`. Stick to the schema below — bespoke rendering belongs in the panel, not in the scanner output. See [`docs/c_c_dev_ui_primitives.md`](../../docs/c_c_dev_ui_primitives.md).
+
 ## Syntax
 
 ```

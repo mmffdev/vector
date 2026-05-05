@@ -56,11 +56,8 @@ func TestList_OK(t *testing.T) {
 	if found.Name != "Vector Standard" {
 		t.Errorf("model.name: want %q, got %q", "Vector Standard", found.Name)
 	}
-	if found.LayerCount != 5 {
-		t.Errorf("layer_count: want 5, got %d", found.LayerCount)
-	}
-	if found.LayerSummary == "" {
-		t.Errorf("layer_summary: want non-empty (comma-joined layer names), got empty string")
+	if len(found.Layers) != 5 {
+		t.Errorf("layers: want 5, got %d", len(found.Layers))
 	}
 	if found.Description == nil || *found.Description == "" {
 		t.Errorf("description: want non-empty pointer, got %v", found.Description)

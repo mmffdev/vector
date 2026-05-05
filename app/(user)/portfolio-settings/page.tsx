@@ -17,17 +17,18 @@ import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
 export default function PortfolioSettingsPage() {
   const { user } = useAuth();
+  const canViewSettings = useHasPermission("portfolio_settings.view");
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role.code === "user") router.replace("/dashboard");
-  }, [user, router]);
+    if (user && !canViewSettings) router.replace("/dashboard");
+  }, [user, canViewSettings, router]);
 
-  if (!user || user.role.code === "user") return null;
+  if (!user || !canViewSettings) return null;
 
   return (
     <StrictRoute>
@@ -58,7 +59,7 @@ export default function PortfolioSettingsPage() {
               defaultValue=""
             />
           </div>
-          <div className="form__row" style={{ marginTop: "var(--space-3)" }}>
+          <div className="form__row u-mt-3">
             <label className="form__label" htmlFor="ps-key">Key</label>
             <input
               id="ps-key"
@@ -78,7 +79,7 @@ export default function PortfolioSettingsPage() {
               <option value="">Select a user…</option>
             </select>
           </div>
-          <div className="form__row" style={{ marginTop: "var(--space-3)" }}>
+          <div className="form__row u-mt-3">
             <label className="form__label" htmlFor="ps-notes">Stakeholder notes</label>
             <textarea
               id="ps-notes"
@@ -91,7 +92,7 @@ export default function PortfolioSettingsPage() {
         </Panel>
 
         <Panel name="portfolio_settings_danger_zone" title="Danger zone">
-          <p className="form__hint" style={{ marginBottom: "var(--space-3)" }}>
+          <p className="form__hint u-mb-3">
             Archive removes the portfolio from active selection. Existing data
             is preserved and can be restored by a gadmin.
           </p>

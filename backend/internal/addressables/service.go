@@ -824,17 +824,29 @@ func (s *Service) lookupID(ctx context.Context, tx pgx.Tx, pageRoute, address st
 	return id, err
 }
 
+// PlaceholderBodyHTML is the fallback body inserted into page_help when
+// no library_help_defaults row matches the addressable's (kind, name).
+// PLA-0008/00325 contract: every addressable ships with a discoverable,
+// gadmin-editable help row from the moment it first registers — never
+// help-less.
+const PlaceholderBodyHTML = "Help text not yet authored."
+
 // seedLibraryDefault looks up the longest-matching library_help_defaults
 // row for (kind, name, locale='en') and inserts a page_help row with
-// seeded_from='library' on conflict do nothing. Library churn does NOT
-// auto-propagate — once page_help has a row, it is independent.
+// seeded_from='library'. When no library row matches, falls back to a
+// placeholder row (seeded_from='placeholder', body=PlaceholderBodyHTML,
+// title=NULL, video_embeds=[], image_urls=[], updated_by_user_id=NULL)
+// so every newly registered addressable always has a help row.
+//
+// Both paths use ON CONFLICT DO NOTHING — re-registering the same
+// addressable leaves the existing row (and any gadmin edits) untouched.
+// Library churn does NOT auto-propagate; once page_help has a row, it
+// is independent.
 //
 // Match precedence:
 //   1. exact name_pattern == name
 //   2. wildcard '*'
-//
-// (Future: glob/prefix patterns; '*' is the only pattern in the seed
-// migration, exact matches are accepted but not yet authored.)
+//   3. placeholder (no library row matches at all)
 func (s *Service) seedLibraryDefault(ctx context.Context, tx pgx.Tx, addressableID uuid.UUID, kind, name string) error {
 	var libID uuid.UUID
 	var title *string
@@ -849,7 +861,13 @@ func (s *Service) seedLibraryDefault(ctx context.Context, tx pgx.Tx, addressable
 		 LIMIT 1
 	`, kind, name).Scan(&libID, &title, &body, &videos, &images)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil // no default available; addressable left without help
+		// No library default — seed the placeholder row instead.
+		_, perr := tx.Exec(ctx, `
+			INSERT INTO page_help (addressable_id, locale, title, body_html, video_embeds, image_urls, seeded_from, library_ref, updated_by_user_id)
+			VALUES ($1, 'en', NULL, $2, '[]'::jsonb, '[]'::jsonb, 'placeholder', NULL, NULL)
+			ON CONFLICT (addressable_id, locale) WHERE soft_archived = FALSE DO NOTHING
+		`, addressableID, PlaceholderBodyHTML)
+		return perr
 	}
 	if err != nil {
 		return err
@@ -872,22 +890,6 @@ func (s *Service) seedLibraryDefault(ctx context.Context, tx pgx.Tx, addressable
 // ─────────────────────────────────────────────────────────────────────
 // Validation helpers exposed for the handler.
 // ─────────────────────────────────────────────────────────────────────
-
-// ValidateName returns ErrInvalidName when s violates the name rules.
-func ValidateName(s string) error {
-	if !isValidName(s) {
-		return ErrInvalidName
-	}
-	return nil
-}
-
-// ValidateKind returns ErrInvalidKind when s violates the kind rules.
-func ValidateKind(s string) error {
-	if !isValidKind(s) {
-		return ErrInvalidKind
-	}
-	return nil
-}
 
 // ParseSlot turns a raw string into a typed ViewportSlot or returns
 // ErrInvalidViewportSlot.

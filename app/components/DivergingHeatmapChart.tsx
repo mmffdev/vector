@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Chart ref: C-13
 // DivergingHeatmapChart — sparse diverging heatmap matrix. Each row is
@@ -310,24 +310,51 @@ export default function DivergingHeatmapChart({
       )}
       {svg}
       {hover && (
-        <div
-          className="diverging-heatmap-chart__tooltip"
-          role="tooltip"
-          style={{ left: hover.px, top: hover.py }}
-        >
-          <div className="diverging-heatmap-chart__tooltip-row">{hover.rowLabel}</div>
-          <div className="diverging-heatmap-chart__tooltip-col">{hover.colLabel}</div>
-          <div
-            className={
-              hover.value >= 0
-                ? "diverging-heatmap-chart__tooltip-value diverging-heatmap-chart__tooltip-value--warm"
-                : "diverging-heatmap-chart__tooltip-value diverging-heatmap-chart__tooltip-value--cool"
-            }
-          >
-            {hover.value > 0 ? `+${hover.value}` : hover.value}
-          </div>
-        </div>
+        <HoverTooltip
+          px={hover.px}
+          py={hover.py}
+          rowLabel={hover.rowLabel}
+          colLabel={hover.colLabel}
+          value={hover.value}
+        />
       )}
+    </div>
+  );
+}
+
+function HoverTooltip({
+  px,
+  py,
+  rowLabel,
+  colLabel,
+  value,
+}: {
+  px: number;
+  py: number;
+  rowLabel: string;
+  colLabel: string;
+  value: number;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--pos-x", `${px}px`);
+    el.style.setProperty("--pos-y", `${py}px`);
+  }, [px, py]);
+  return (
+    <div ref={ref} className="diverging-heatmap-chart__tooltip u-pos-xy" role="tooltip">
+      <div className="diverging-heatmap-chart__tooltip-row">{rowLabel}</div>
+      <div className="diverging-heatmap-chart__tooltip-col">{colLabel}</div>
+      <div
+        className={
+          value >= 0
+            ? "diverging-heatmap-chart__tooltip-value diverging-heatmap-chart__tooltip-value--warm"
+            : "diverging-heatmap-chart__tooltip-value diverging-heatmap-chart__tooltip-value--cool"
+        }
+      >
+        {value > 0 ? `+${value}` : value}
+      </div>
     </div>
   );
 }

@@ -31,7 +31,6 @@ const CHART_CX = 380;
 const CHART_CY = 240;
 const OUTER_R = 200;
 const RING_GAP = 38;
-const STROKE = 22;
 const LABEL_X = 30;
 
 // =============================================================
@@ -105,8 +104,7 @@ export default function ConcentricArcChartNonClosed({
           <path
             key={`arc-${i}`}
             d={arcPath(CHART_CX, CHART_CY, r, ratio)}
-            className={`concentric-arc-nc-chart__arc concentric-arc-nc-chart__arc--tone-${tone}`}
-            style={{ strokeWidth: STROKE }}
+            className={`concentric-arc-nc-chart__arc concentric-arc-nc-chart__arc--tone-${tone} concentric-stroke-w`}
           />
         );
       })}

@@ -3,17 +3,18 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
 export default function PortfolioModelCustomPage() {
   const { user } = useAuth();
+  const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role.code !== "padmin") router.replace("/dashboard");
-  }, [user, router]);
+    if (user && !canEditModel) router.replace("/dashboard");
+  }, [user, canEditModel, router]);
 
-  if (!user || user.role.code !== "padmin") return null;
+  if (!user || !canEditModel) return null;
 
   return (
     <PageShell

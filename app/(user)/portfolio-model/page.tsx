@@ -34,7 +34,7 @@ import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Header from "@/app/components/Header";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 import WizardModelCardList from "./WizardModelCardList";
 import AdoptionOverlay, {
@@ -114,18 +114,19 @@ type StateView =
 
 export default function PortfolioModelPage() {
   const { user, loading: authLoading } = useAuth();
+  const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
   const [view, setView] = useState<StateView>({ kind: "loading" });
 
-  // Step 1 — role gate. Run BEFORE any fetch so non-padmin roles never
-  // fire the adoption-state request.
+  // Step 1 — capability gate. Run BEFORE any fetch so unprivileged users
+  // never fire the adoption-state request.
   useEffect(() => {
     if (authLoading) return;
     if (!user) return; // AuthProvider will redirect to /login
-    if (user.role.code !== "padmin") {
+    if (!canEditModel) {
       router.replace("/dashboard");
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, canEditModel, router]);
 
   // Step 2 — fetch adoption state for padmins only.
   const fetchAdoptionState = useCallback(async () => {
@@ -152,9 +153,9 @@ export default function PortfolioModelPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role.code !== "padmin") return;
+    if (!user || !canEditModel) return;
     void fetchAdoptionState();
-  }, [authLoading, user, fetchAdoptionState]);
+  }, [authLoading, user, canEditModel, fetchAdoptionState]);
 
   // Step 3 — fetch the bundle preview when adopted. Kept as a separate
   // effect so re-rendering the preview after onDone doesn't re-fetch
@@ -214,9 +215,9 @@ export default function PortfolioModelPage() {
     setView({ kind: "wizard" });
   }, []);
 
-  // Render guard for the role gate. The redirect runs in an effect, so
-  // suppress all output until we know we're on a padmin.
-  if (authLoading || !user || user.role.code !== "padmin") return null;
+  // Render guard for the capability gate. The redirect runs in an
+  // effect, so suppress all output until permission is confirmed.
+  if (authLoading || !user || !canEditModel) return null;
 
   return (
     <StrictRoute>

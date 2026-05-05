@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Chart ref: C-14
 // AdjacencyMatrixChart — categorical relationship matrix.
@@ -489,23 +489,47 @@ export default function AdjacencyMatrixChart({
       )}
       {svg}
       {hover && (
-        <div
-          className="adjacency-matrix-chart__tooltip"
-          style={{ left: hover.px, top: hover.py }}
-        >
-          <div className="adjacency-matrix-chart__tooltip-row">
-            {hover.rowLabel}
-          </div>
-          <div className="adjacency-matrix-chart__tooltip-col">
-            × {hover.colLabel}
-          </div>
-          <div
-            className={`adjacency-matrix-chart__tooltip-value adjacency-matrix-chart__tooltip-value--level-${hover.level}`}
-          >
-            {LEVEL_NAME[hover.level]}
-          </div>
-        </div>
+        <HoverTooltip
+          px={hover.px}
+          py={hover.py}
+          rowLabel={hover.rowLabel}
+          colLabel={hover.colLabel}
+          level={hover.level}
+        />
       )}
+    </div>
+  );
+}
+
+function HoverTooltip({
+  px,
+  py,
+  rowLabel,
+  colLabel,
+  level,
+}: {
+  px: number;
+  py: number;
+  rowLabel: string;
+  colLabel: string;
+  level: AdjacencyLevel;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--pos-x", `${px}px`);
+    el.style.setProperty("--pos-y", `${py}px`);
+  }, [px, py]);
+  return (
+    <div ref={ref} className="adjacency-matrix-chart__tooltip u-pos-xy">
+      <div className="adjacency-matrix-chart__tooltip-row">{rowLabel}</div>
+      <div className="adjacency-matrix-chart__tooltip-col">× {colLabel}</div>
+      <div
+        className={`adjacency-matrix-chart__tooltip-value adjacency-matrix-chart__tooltip-value--level-${level}`}
+      >
+        {LEVEL_NAME[level]}
+      </div>
     </div>
   );
 }

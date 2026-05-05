@@ -69,14 +69,15 @@ const TABS = ["organization", "workspaces", "users", "permissions", "topology"] 
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
+  const canAdminWorkspace = useHasPermission("workspace.archive");
   const router = useRouter();
   const [tab, setTab] = useTabState(TABS, "organization");
 
   useEffect(() => {
-    if (user && user.role.code !== "gadmin") router.replace("/dashboard");
-  }, [user, router]);
+    if (user && !canAdminWorkspace) router.replace("/dashboard");
+  }, [user, canAdminWorkspace, router]);
 
-  if (!user || user.role.code !== "gadmin") return null;
+  if (!user || !canAdminWorkspace) return null;
 
   // Story 00104 — Organization tab added as the default landing
   // tab so the workspace identity (display name, region, support

@@ -444,6 +444,12 @@ function TopologyOverlayInner() {
   // correctly inset on the very first paint, before the flyout's
   // useLayoutEffect reports its measured width.
   const [treeFlyoutWidth, setTreeFlyoutWidth] = useState(44);
+  const mainRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    el.style.setProperty("--topo-flyout-w", `${treeFlyoutWidth}px`);
+  }, [treeFlyoutWidth]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<
     | { nodeId: string; screenX: number; screenY: number }
@@ -1133,10 +1139,7 @@ function TopologyOverlayInner() {
           (or nested under workspace_settings when embedded), exposes the
           help hexagon top-right via Panel chrome, and lets Samantha API
           target the canvas with one stable address in both modes. */}
-      <main
-        className="topo-overlay__main"
-        style={{ "--topo-flyout-w": `${treeFlyoutWidth}px` } as React.CSSProperties}
-      >
+      <main ref={mainRef} className="topo-overlay__main">
         <Panel name="topology" className="panel--bare topo-overlay__panel">
         {loadError && (
           <div className="topo-overlay__error">
@@ -1441,10 +1444,17 @@ function ContextMenu({
   onDelete: () => void;
 }) {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const ctxRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = ctxRef.current;
+    if (!el) return;
+    el.style.setProperty("--pos-x", `${x}px`);
+    el.style.setProperty("--pos-y", `${y}px`);
+  }, [x, y]);
   return (
     <div
-      className="topo-ctx-menu"
-      style={{ left: x, top: y }}
+      ref={ctxRef}
+      className="topo-ctx-menu topo-ctx-menu-pos"
       onMouseDown={stop}
       role="menu"
     >
@@ -1617,13 +1627,11 @@ function EditFlyout({
           <span>Colour</span>
           <div className="topo-flyout__swatches">
             {COLOUR_PALETTE.map((c) => (
-              <button
+              <ColourSwatch
                 key={c}
-                type="button"
-                className={`topo-flyout__swatch${draftColour === c ? " is-active" : ""}`}
-                style={{ background: c }}
+                colour={c}
+                active={draftColour === c}
                 onClick={() => onColourChange(c)}
-                aria-label={`Use colour ${c}`}
               />
             ))}
             <button
@@ -1841,5 +1849,31 @@ function ConfirmModal({
         </footer>
       </div>
     </div>
+  );
+}
+
+function ColourSwatch({
+  colour,
+  active,
+  onClick,
+}: {
+  colour: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const ref = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--swatch-bg", colour);
+  }, [colour]);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className={`topo-flyout__swatch topo-color-swatch${active ? " is-active" : ""}`}
+      onClick={onClick}
+      aria-label={`Use colour ${colour}`}
+    />
   );
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
 )
 
 // Handler exposes all artefact routes. Routes are mounted under
@@ -333,9 +332,3 @@ func (h *Handler) handleErr(w http.ResponseWriter, err error) {
 	}
 }
 
-// IsPAdmin returns true if the calling user is a padmin — used to gate
-// schema write routes when role middleware isn't applied at mount level.
-func IsPAdmin(r *http.Request) bool {
-	u := auth.UserFromCtx(r.Context())
-	return u != nil && u.Role == models.RolePAdmin
-}

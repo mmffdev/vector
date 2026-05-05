@@ -2,6 +2,8 @@
 
 Single source of truth for styling. **Load this file before writing any HTML or JSX element.**
 
+> **Dev Setup pages take a different catalog.** Anything rendered under `/dev` (panels in [`dev/pages/DevPage.tsx`](../dev/pages/DevPage.tsx)) MUST use the `.dui-*` primitives in [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css). See [`docs/c_c_dev_ui_primitives.md`](c_c_dev_ui_primitives.md) for the HARD RULE and the 14 primitive families. The rules below apply to user-facing app pages.
+
 ## Pre-flight (run this before every element you write)
 
 1. **Is there a catalog class for this element?** → use it. Tables use `.table` + `.table__row` + `.table__cell`. Buttons use `.btn` + variant. Inputs use `.form__input`. Headings and body text inherit from `globals.css` via the theme. Do not invent a bespoke class if one already exists.

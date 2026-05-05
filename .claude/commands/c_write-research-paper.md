@@ -47,7 +47,9 @@ TODAY=$(date "+%Y-%m-%d")
 
 **Read [`c_research-paper-format.md`](c_research-paper-format.md)** for the canonical JSON shape and content-HTML rules. All template rules live there — this file only handles the CREATE flow.
 
-> **TOC wrapper is mandatory.** Before writing, wrap the supplied `content` in the left-column TOC layout defined under "Left-column TOC wrapper" in the format spec — one `<li>` per `<h2>`, matching `id`/`href` slugs, no inline styles. Skip only if the paper has fewer than 2 `<h2>` sections.
+> **HARD RULE — dev-ui catalog only.** The Research tab is a Dev Setup page; the writer MUST emit only `.dui-*` classes (`.dui-doc`, `.dui-toc-layout`, `.dui-toc`, `.dui-table`, `.dui-pre`, `.dui-pill`). Never invent a class. Never inline `style=`. See [`docs/c_c_dev_ui_primitives.md`](../../docs/c_c_dev_ui_primitives.md).
+
+> **TOC wrapper is mandatory.** Before writing, wrap the supplied `content` in the `.dui-toc-layout` / `.dui-toc` pattern defined under "Left-column TOC wrapper" in the format spec — one `<li>` per `<h2>`, matching `id`/`href` slugs, no inline styles. Skip only if the paper has fewer than 2 `<h2>` sections.
 
 ### 4. Write the JSON file
 

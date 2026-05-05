@@ -37,6 +37,7 @@ interface LoginResp {
 
 interface AuthState {
   user: AuthUser | null;
+  role: Role | null;
   loading: boolean;
   permissions: Set<string>;
   hasPermission: (code: string) => boolean;
@@ -123,9 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (code: string) => permissions.has(code),
     [permissions]
   );
+  const role = user?.role ?? null;
 
   return (
-    <Ctx.Provider value={{ user, loading, permissions, hasPermission, login, logout, refresh, setUser }}>
+    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, logout, refresh, setUser }}>
       {children}
     </Ctx.Provider>
   );

@@ -32,8 +32,6 @@ import { usePathname } from "next/navigation";
 import { useSamanthaSdk } from "@/app/contexts/SamanthaSdkContext";
 import { api } from "@/app/lib/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
-
 // Six closed-vocabulary slots — must mirror backend's ViewportSlot.
 // TypeScript's literal union enforces this at compile time (AC12).
 export type ViewportSlotKind =
@@ -159,15 +157,12 @@ export function DomRegistryProvider({ children, seed }: DomRegistryProviderProps
     if (seed !== undefined) return; // tests hand us a static seed
     let cancelled = false;
     setReady(false);
-    fetch(`${API_BASE}/api/addressables/snapshot?route=${encodeURIComponent(pathname)}`, {
-      credentials: "include",
-    })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: AddressableRow[]) => {
+    api<AddressableRow[]>(`/api/addressables/snapshot?route=${encodeURIComponent(pathname)}`)
+      .then((rows) => {
         if (cancelled) return;
         const m = new Map<string, string>();
         const h = new Map<string, boolean>();
-        for (const row of rows) {
+        for (const row of rows ?? []) {
           m.set(row.address, row.id);
           if (typeof row.helpable === "boolean") h.set(row.address, row.helpable);
         }

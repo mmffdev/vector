@@ -7,7 +7,7 @@
 //
 // One stylesheet import keeps engine styles out of globals.css.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { Graph, InteractionConfig } from "../types";
 import { layoutByName } from "../layout";
 import Node from "./Node";
@@ -31,14 +31,22 @@ export default function GraphCanvas({ graph, ariaLabel }: GraphCanvasProps) {
     ...(graph.interactions ?? {}),
   };
 
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    el.style.setProperty("--canvas-w", `${laid.width}px`);
+    el.style.setProperty("--canvas-h", `${laid.height}px`);
+  }, [laid.width, laid.height]);
+
   if (laid.nodes.length === 0) {
     return <div className="ge-canvas ge-canvas--empty">No nodes to draw.</div>;
   }
 
   return (
     <div
-      className="ge-canvas"
-      style={{ width: laid.width, height: laid.height }}
+      ref={canvasRef}
+      className="ge-canvas graph-canvas-dims"
       role="img"
       aria-label={ariaLabel ?? "Graph"}
       data-drag={interactions.drag ? "on" : "off"}
