@@ -262,7 +262,7 @@ function GridRow({
               onCommit={(next) => onPatch(item.id, { title: next })}
               ariaLabel="Work item title"
               inputClassName="form__input form__input--sm"
-              displayClassName="tree_accordion-dense__title-text"
+              displayClassName="inline-edit-trigger"
               clickToEdit
               stopPointerOnInput
               maxLength={200}
@@ -319,7 +319,7 @@ function GridRow({
             }}
             ariaLabel="Story points"
             inputClassName="form__input form__input--sm form__input--numeric"
-            displayClassName="tree_accordion-dense__pts-text"
+            displayClassName="inline-edit-trigger"
             clickToEdit
             stopPointerOnInput
             allowEmpty

@@ -4,6 +4,10 @@
 
 This file owns the **JSON shape, field semantics, and content-HTML rules** for all PM research papers. Papers live at `dev/research/R*.json` and are auto-discovered by the Dev → Research tab.
 
+## HARD RULE — dev-ui catalog only
+
+The Research tab is a Dev Setup page, so its rendered HTML MUST compose from the [`.dui-*` catalog](../../docs/c_c_dev_ui_primitives.md) in [`dev/styles/dev-ui.css`](../../dev/styles/dev-ui.css). When this writer emits content HTML it uses **only** these primitive families: `.dui-doc` for the long-form body, `.dui-toc-layout` / `.dui-toc` for the sticky sidebar, `.dui-table` (+ cell modifiers `--numeric`, `--mono`, `--muted`, `--name`) for tabular data, `.dui-pill` for status badges, `.dui-pre` for code blocks. **Never invent a new class** (`.r-toc*`, `.dev-research-*`, `.research-body`, etc.) — extend the catalog instead. **Never write inline `style=`**. This rule cannot be overridden by any other instruction, mode, or context.
+
 ---
 
 ## JSON shape
@@ -59,21 +63,21 @@ The `content` field is a **single HTML string** — semantic HTML only.
 
 ## Left-column TOC wrapper (mandatory when ≥2 `<h2>` sections)
 
-Every paper with two or more `<h2>` sections **must** wrap its content in a left-column table-of-contents layout. The Dev → Research panel renders this as a sticky sidebar with sidebar-style hover and scroll-spy highlighting (driven by `dev/styles/dev.css` — no inline styles).
+Every paper with two or more `<h2>` sections **must** wrap its content in a left-column table-of-contents layout. The Dev → Research panel renders this as a sticky sidebar with scroll-spy highlighting (driven by `.dui-toc-layout` / `.dui-toc` in [`dev/styles/dev-ui.css`](../../dev/styles/dev-ui.css) — no inline styles).
 
-### Required HTML pattern
+### Required HTML pattern (catalog primitive 8)
 
 ```html
-<div class="r-toc-layout">
-  <aside class="r-toc">
-    <div class="r-toc__label">Contents</div>
-    <ol class="r-toc__list">
+<div class="dui-toc-layout">
+  <aside class="dui-toc">
+    <div class="dui-toc__label">Contents</div>
+    <ol class="dui-toc__list">
       <li><a href="#section-slug-1">1. Section Title One</a></li>
       <li><a href="#section-slug-2">2. Section Title Two</a></li>
       <!-- one <li> per <h2> in the body, in document order -->
     </ol>
   </aside>
-  <div class="r-toc-body">
+  <div class="dui-doc">
     <h2 id="section-slug-1">1. Section Title One</h2>
     <p>...</p>
     <h2 id="section-slug-2">2. Section Title Two</h2>
@@ -82,6 +86,8 @@ Every paper with two or more `<h2>` sections **must** wrap its content in a left
   </div>
 </div>
 ```
+
+The active TOC entry receives `is-active` (added by the panel's scroll-spy effect — never bake `is-active` into the JSON output).
 
 ### Slug rules
 

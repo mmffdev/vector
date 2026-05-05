@@ -1,23 +1,23 @@
 {
   "id": "PLA-0011",
-  "title": "Phase Baseline Audit Remediation (R036) \u2014 Clean Baseline Before Next Phase",
+  "title": "Phase Baseline Audit Remediation (R036) — Clean Baseline Before Next Phase",
   "date_created": "2026-05-05",
   "date_started": "2026-05-04",
   "date_last_updated": "2026-05-05",
   "date_finished": "2026-05-05",
-  "scope": "<p>One-time remediation of the four-stream baseline audit (R036) conducted at the close of PLA-0006. Brings the codebase to a measurable clean baseline before the next phase begins: <code>go vet</code> clean, <code>npx tsc --noEmit</code> clean, all four custom lints clean, zero inline <code>style={{...}}</code> hard-rule violations, accurate <code>schema_migrations</code> bookkeeping, all forward migrations correctly wrapped in BEGIN/COMMIT, no dead exported Go functions, no unwired env-vars, no untracked migration files, and a re-migrated test DB tier so backend tests can run green again.</p><p>Out of scope: package major-version upgrades (Next.js 15\u219216, React 18\u219219, TypeScript 5\u21926) and the 233-index <code>idx_scan = 0</code> drop. Both are captured as tech-debt entries with one-sprint observation windows; neither belongs in this clean-up wave.</p>",
+  "scope": "<p>One-time remediation of the four-stream baseline audit (R036) conducted at the close of PLA-0006. Brings the codebase to a measurable clean baseline before the next phase begins: <code>go vet</code> clean, <code>npx tsc --noEmit</code> clean, all four custom lints clean, zero inline <code>style={{...}}</code> hard-rule violations, accurate <code>schema_migrations</code> bookkeeping, all forward migrations correctly wrapped in BEGIN/COMMIT, no dead exported Go functions, no unwired env-vars, no untracked migration files, and a re-migrated test DB tier so backend tests can run green again.</p><p>Out of scope: package major-version upgrades (Next.js 15→16, React 18→19, TypeScript 5→6) and the 233-index <code>idx_scan = 0</code> drop. Both are captured as tech-debt entries with one-sprint observation windows; neither belongs in this clean-up wave.</p>",
   "value": "<p>The next phase needs a stable signal floor. Today we cannot trust <code>go vet</code> (it fails on a stale test), the test pool DB is missing recent RBAC migrations (tests fail with <em>column does not exist</em>), the CSS hard rule is silently violated 119 times, and 3 hidden <code>fetch()</code> calls bypass the silent-refresh path. Each of these will compound during the next phase if not closed now.</p><p>Closing this plan delivers seven measurable signals: (1) <code>go vet ./...</code> exits 0, (2) <code>npx tsc --noEmit</code> exits 0, (3) all four lints exit 0, (4) zero inline <code>style={{...}}</code> matches via grep, (5) <code>schema_migrations</code> matches the filesystem on both DBs, (6) every forward migration ends with an explicit <code>COMMIT;</code>, and (7) <code>cd backend &amp;&amp; go test ./...</code> runs zero <em>column does not exist</em> errors against the migrated test DB. After landing, every later phase starts from these seven signals as the baseline.</p>",
   "implementation_plan": [
     "Wave 1 (build unblock, 1 story): fix the portfoliomodels/list_test.go DTO drift so go vet ./... exits 0. Single story, contained edit, must land first because every other backend story depends on a clean vet baseline.",
-    "Wave 2 (cleanup & hygiene, 8 stories, all LOW risk): mechanical sweep \u2014 delete the residual schema_migrations DOWN row, append missing COMMITs to 4 migrations, document the 027 numbering gap, create symmetric library/down/ folder, delete 5 unused exported Go functions, audit OLLAMA_URL/OLLAMA_MODEL env-vars, npm update marked patch bump, commit untracked migration + DOWN README. Each story is independently mergeable; none touch live request paths.",
-    "Wave 3 (drift closures, 5 stories, mostly MED risk): the contract-touching work \u2014 migrate 3 direct fetch() calls onto api(); sweep inline-style violations to zero; reset test DB tier to migration tip; add make test-db-reset target with doc; capture 233-index audit as tech-debt entry with observation window. These need careful testing because they touch live UI / tests / runtime paths.",
+    "Wave 2 (cleanup & hygiene, 8 stories, all LOW risk): mechanical sweep — delete the residual schema_migrations DOWN row, append missing COMMITs to 4 migrations, document the 027 numbering gap, create symmetric library/down/ folder, delete 5 unused exported Go functions, audit OLLAMA_URL/OLLAMA_MODEL env-vars, npm update marked patch bump, commit untracked migration + DOWN README. Each story is independently mergeable; none touch live request paths.",
+    "Wave 3 (drift closures, 5 stories, mostly MED risk): the contract-touching work — migrate 3 direct fetch() calls onto api(); sweep inline-style violations to zero; reset test DB tier to migration tip; add make test-db-reset target with doc; capture 233-index audit as tech-debt entry with observation window. These need careful testing because they touch live UI / tests / runtime paths.",
     "Closure: re-run go vet, tsc, and all 4 lints across the working tree; confirm the seven baseline signals; mark PLA-0011 complete in the plan registry."
   ],
   "areas_impacted": [
     "DEV: portfoliomodels test fix, dead-export deletes, OLLAMA env audit, library/down/ folder, untracked-file commit, test DB reset, make test-db-reset target",
     "SQL: schema_migrations DOWN-row cleanup, COMMIT append on 4 migrations, 233-index tech-debt entry",
     "UI: marked patch bump, inline-style sweep across app/ and dev/",
-    "API: 3 direct fetch() \u2192 api() helper migrations (DomRegistryContext, Panel, Header)",
+    "API: 3 direct fetch() → api() helper migrations (DomRegistryContext, Panel, Header)",
     "Docs: c_c_postgresql_migrations.md (027 gap + DOWN row note), c_postgresql.md (test DB tier doc), c_tech_debt.md (233-index S3 entry)"
   ],
   "feature_list": [
@@ -26,7 +26,7 @@
     "All 101 vector + 11 library forward migrations end with explicit COMMIT;",
     "Numbering gap at db/schema/027 documented with git-log reference",
     "db/library_schema/down/ exists with README symmetric to db/schema/down/",
-    "Five unused exported Go functions (ValidateName, ValidateKind, 2\u00d7 Parse*, IsPAdmin, ParseEntityKey) deleted",
+    "Five unused exported Go functions (ValidateName, ValidateKind, 2× Parse*, IsPAdmin, ParseEntityKey) deleted",
     "OLLAMA_URL/OLLAMA_MODEL either wired in .env.dev with documented defaults or removed from main.go",
     "marked dependency at latest 18.x patch",
     "db/schema/101_workspace_roles_backfill.sql + db/schema/down/README.md committed",
@@ -49,77 +49,77 @@
       "title": "Backend: fix portfoliomodels list_test.go DTO drift",
       "story_id": "00383",
       "card_url": "http://localhost:3333/cards/1767838724273473138",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 2,
       "title": "DB: delete residual 097_DOWN row from schema_migrations",
       "story_id": "00384",
       "card_url": "http://localhost:3333/cards/1767838740799030913",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 3,
       "title": "Migrations: append missing COMMIT to 4 forward migrations",
       "story_id": "00385",
       "card_url": "http://localhost:3333/cards/1767838757542692496",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 4,
       "title": "Migrations: document the 027 numbering gap in c_c_postgresql_migrations.md",
       "story_id": "00386",
       "card_url": "http://localhost:3333/cards/1767838773573322399",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 5,
       "title": "Migrations: create symmetric db/library_schema/down/ with README",
       "story_id": "00387",
       "card_url": "http://localhost:3333/cards/1767838789352294062",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 6,
       "title": "Backend: delete 5 unused exported Go functions",
       "story_id": "00388",
       "card_url": "http://localhost:3333/cards/1767838807245194941",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 7,
-      "title": "Backend: audit OLLAMA_URL/OLLAMA_MODEL \u2014 wire to .env.dev or remove",
+      "title": "Backend: audit OLLAMA_URL/OLLAMA_MODEL — wire to .env.dev or remove",
       "story_id": "00389",
       "card_url": "http://localhost:3333/cards/1767838822814451404",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 8,
       "title": "Frontend: npm update marked patch bump",
       "story_id": "00390",
       "card_url": "http://localhost:3333/cards/1767838838845081307",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 9,
       "title": "Repo: commit untracked migration + DOWN README",
       "story_id": "00391",
       "card_url": "http://localhost:3333/cards/1767838854607275754",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 10,
       "title": "Frontend: migrate 3 direct fetch() calls onto api() helper",
       "story_id": "00392",
       "card_url": "http://localhost:3333/cards/1767838871325771513",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 11,
       "title": "Frontend: sweep inline style={{...}} violations to zero",
       "story_id": "00393",
       "card_url": "http://localhost:3333/cards/1767838887440287496",
-      "status": "done",
+      "status": "completed",
       "attribution_note": "Bulk of CSS additions to app/globals.css (781 lines: PLA-0011/00393 inline-style sweep utilities + Grid-Tree type-badge tokens) landed in commit d070d97 alongside PLA-0013/00415 dev-help-editor eviction. Attribution scope spillover documented on Planka card 1767937227444192769."
     },
     {
@@ -127,21 +127,21 @@
       "title": "Backend: reset test DB tier to migration tip",
       "story_id": "00394",
       "card_url": "http://localhost:3333/cards/1767838904888592151",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 13,
       "title": "Backend: make test-db-reset target + doc",
       "story_id": "00395",
       "card_url": "http://localhost:3333/cards/1767838919199557413",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 14,
       "title": "DB: capture 233-index audit as tech-debt entry with observation window",
       "story_id": "00396",
       "card_url": "http://localhost:3333/cards/1767838935171467060",
-      "status": "done"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [
@@ -380,7 +380,7 @@
     {
       "order": 30,
       "criterion": "Stale-token retry path inherited via api()",
-      "proven_by": "by routing through api(), each migrated site picks up the silent refresh-and-retry path defined in app/lib/api.ts (lines 68\u201377); manual stale-token reproduction left to release-rehearsal smoke",
+      "proven_by": "by routing through api(), each migrated site picks up the silent refresh-and-retry path defined in app/lib/api.ts (lines 68–77); manual stale-token reproduction left to release-rehearsal smoke",
       "story_id": "00392",
       "card_url": "http://localhost:3333/cards/1767838871325771513",
       "done": true
@@ -495,7 +495,7 @@
     },
     {
       "impact": 2,
-      "risk": "fetch()\u2192api() migration (00392) changes auth-error semantics on three call sites; a previously-silent 401 may now trigger a refresh + retry that exposes a different failure mode.",
+      "risk": "fetch()→api() migration (00392) changes auth-error semantics on three call sites; a previously-silent 401 may now trigger a refresh + retry that exposes a different failure mode.",
       "mitigation": "AC requires a stale-token reproduction proving the addressables snapshot still loads. Roll into staging first if available."
     },
     {
@@ -512,7 +512,7 @@
   "references": [
     {
       "kind": "internal",
-      "label": "R036 \u2014 Phase Baseline Audit research paper",
+      "label": "R036 — Phase Baseline Audit research paper",
       "href": "dev/research/R036.json"
     },
     {
@@ -547,7 +547,7 @@
     },
     {
       "kind": "internal",
-      "label": "PLA-0011 card manifest (story-id \u2194 card-id mapping)",
+      "label": "PLA-0011 card manifest (story-id ↔ card-id mapping)",
       "href": "dev/research/_pla0011_cards.json"
     }
   ]

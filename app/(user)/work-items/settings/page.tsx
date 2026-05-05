@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api } from "@/app/lib/api";
 import { useTabState } from "@/app/hooks/useTabState";
 
@@ -93,8 +93,8 @@ function CustomFieldLibrary() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <div className="wi-settings">
+      <div className="wi-settings__row-end">
         <button
           type="button"
           className="btn btn--primary"
@@ -105,44 +105,32 @@ function CustomFieldLibrary() {
       </div>
 
       {creating && (
-        <div
-          style={{
-            background: "var(--surface-sunken)",
-            border: "1px solid var(--border)",
-            padding: "var(--space-4)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-3)",
-          }}
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-3)" }}>
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+        <div className="wi-settings__form-card">
+          <div className="wi-settings__grid-3">
+            <label className="wi-settings__label">
               Field name (slug)
               <input
                 type="text"
-                className="backlog-filter__search"
-                style={{ display: "block", width: "100%", height: 32, marginTop: 4 }}
+                className="backlog-filter__search wi-settings__field-input"
                 placeholder="e.g. environment"
                 value={newField.field_name}
                 onChange={(e) => setNewField((f) => ({ ...f, field_name: e.target.value }))}
               />
             </label>
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+            <label className="wi-settings__label">
               Label
               <input
                 type="text"
-                className="backlog-filter__search"
-                style={{ display: "block", width: "100%", height: 32, marginTop: 4 }}
+                className="backlog-filter__search wi-settings__field-input"
                 placeholder="e.g. Environment"
                 value={newField.label}
                 onChange={(e) => setNewField((f) => ({ ...f, label: e.target.value }))}
               />
             </label>
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+            <label className="wi-settings__label">
               Type
               <select
-                className="btn btn--ghost btn--sm"
-                style={{ display: "block", width: "100%", marginTop: 4 }}
+                className="btn btn--ghost btn--sm wi-settings__field-input"
                 value={newField.type}
                 onChange={(e) => setNewField((f) => ({ ...f, type: e.target.value }))}
               >
@@ -151,19 +139,18 @@ function CustomFieldLibrary() {
             </label>
           </div>
           {(newField.type === "select" || newField.type === "multiselect" || newField.type === "radio") && (
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
-              Options JSON (array of strings, e.g. ["a","b"])
+            <label className="wi-settings__label">
+              Options JSON (array of strings, e.g. [&quot;a&quot;,&quot;b&quot;])
               <input
                 type="text"
-                className="backlog-filter__search"
-                style={{ display: "block", width: "100%", height: 32, marginTop: 4 }}
+                className="backlog-filter__search wi-settings__field-input"
                 placeholder='["option1","option2"]'
                 value={newField.options_json}
                 onChange={(e) => setNewField((f) => ({ ...f, options_json: e.target.value }))}
               />
             </label>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div className="wi-settings__row-end">
             <button type="button" className="btn btn--primary btn--sm" onClick={create} disabled={saving}>
               {saving ? "Saving…" : "Create field"}
             </button>
@@ -172,7 +159,7 @@ function CustomFieldLibrary() {
       )}
 
       {loading ? (
-        <p style={{ color: "var(--ink-muted)", fontSize: 13 }}>Loading…</p>
+        <p className="wi-settings__loading">Loading…</p>
       ) : fields.length === 0 ? (
         <div className="placeholder">
           <p className="placeholder__text">No custom fields yet. Create one above.</p>
@@ -193,13 +180,13 @@ function CustomFieldLibrary() {
               {fields.map((f) => (
                 <tr key={f.id} className="table__row">
                   <td className="table__cell">
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{f.field_name}</span>
+                    <span className="wi-settings__field-name">{f.field_name}</span>
                   </td>
                   <td className="table__cell">{f.label}</td>
                   <td className="table__cell">
                     <span className="pill pill--neutral pill--sm">{f.type}</span>
                   </td>
-                  <td className="table__cell" style={{ color: "var(--ink-muted)", fontSize: 12 }}>
+                  <td className="table__cell wi-settings__field-meta-cell">
                     {new Date(f.created_at).toLocaleDateString()}
                   </td>
                   <td className="table__cell">
@@ -280,52 +267,40 @@ function TemplateBuilder() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <div className="wi-settings">
+      <div className="wi-settings__row-end">
         <button type="button" className="btn btn--primary" onClick={() => setCreating((v) => !v)}>
           {creating ? "Cancel" : "New template"}
         </button>
       </div>
 
       {creating && (
-        <div
-          style={{
-            background: "var(--surface-sunken)",
-            border: "1px solid var(--border)",
-            padding: "var(--space-4)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-3)",
-          }}
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-3)" }}>
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+        <div className="wi-settings__form-card">
+          <div className="wi-settings__grid-3">
+            <label className="wi-settings__label">
               Name
               <input
                 type="text"
-                className="backlog-filter__search"
-                style={{ display: "block", width: "100%", height: 32, marginTop: 4 }}
+                className="backlog-filter__search wi-settings__field-input"
                 placeholder="e.g. Bug Report"
                 value={newTmpl.name}
                 onChange={(e) => setNewTmpl((t) => ({ ...t, name: e.target.value }))}
               />
             </label>
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+            <label className="wi-settings__label">
               Description
               <input
                 type="text"
-                className="backlog-filter__search"
-                style={{ display: "block", width: "100%", height: 32, marginTop: 4 }}
+                className="backlog-filter__search wi-settings__field-input"
                 placeholder="Optional"
                 value={newTmpl.description}
                 onChange={(e) => setNewTmpl((t) => ({ ...t, description: e.target.value }))}
               />
             </label>
-            <label style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+            <label className="wi-settings__label">
               Item type
               <select
-                className="btn btn--ghost btn--sm"
-                style={{ display: "block", width: "100%", marginTop: 4 }}
+                className="btn btn--ghost btn--sm wi-settings__field-input"
                 value={newTmpl.item_type}
                 onChange={(e) => setNewTmpl((t) => ({ ...t, item_type: e.target.value }))}
               >
@@ -335,7 +310,7 @@ function TemplateBuilder() {
               </select>
             </label>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div className="wi-settings__row-end">
             <button type="button" className="btn btn--primary btn--sm" onClick={createTemplate} disabled={saving}>
               {saving ? "Saving…" : "Create template"}
             </button>
@@ -344,55 +319,46 @@ function TemplateBuilder() {
       )}
 
       {loading ? (
-        <p style={{ color: "var(--ink-muted)", fontSize: 13 }}>Loading…</p>
+        <p className="wi-settings__loading">Loading…</p>
       ) : templates.length === 0 ? (
         <div className="placeholder">
           <p className="placeholder__text">No templates yet. Create one above.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <div className="wi-settings__type-list">
           {templates.map((t) => {
             const isOpen = expandedId === t.id;
             const usedFieldIds = new Set(t.fields.map((f) => f.field_library_id));
             const available = allFields.filter((f) => !usedFieldIds.has(f.id));
 
             return (
-              <div
-                key={t.id}
-                style={{ border: "1px solid var(--border)", background: "var(--surface)" }}
-              >
+              <div key={t.id} className="wi-settings__type-card">
                 <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "var(--space-3) var(--space-4)",
-                    cursor: "pointer",
-                  }}
+                  className="wi-settings__type-name"
                   onClick={() => setExpandedId(isOpen ? null : t.id)}
                 >
                   <div>
-                    <span style={{ fontWeight: 500 }}>{t.name}</span>
+                    <span className="wi-settings__type-meta">{t.name}</span>
                     {t.item_type && (
-                      <span className="pill pill--neutral pill--sm" style={{ marginLeft: 8 }}>
+                      <span className="pill pill--neutral pill--sm wi-settings__pill-spacer">
                         {t.item_type}
                       </span>
                     )}
-                    <span style={{ marginLeft: 12, fontSize: 12, color: "var(--ink-muted)" }}>
+                    <span className="wi-settings__type-hint">
                       {t.fields.length} field{t.fields.length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <span style={{ color: "var(--ink-muted)" }}>{isOpen ? "▾" : "▸"}</span>
+                  <span className="wi-settings__type-chevron">{isOpen ? "▾" : "▸"}</span>
                 </div>
 
                 {isOpen && (
-                  <div style={{ borderTop: "1px solid var(--border)", padding: "var(--space-3) var(--space-4)" }}>
+                  <div className="wi-settings__type-body">
                     {t.fields.length === 0 ? (
-                      <p style={{ fontSize: 12, color: "var(--ink-muted)", margin: "0 0 var(--space-3)" }}>
+                      <p className="wi-settings__type-hint">
                         No fields added yet.
                       </p>
                     ) : (
-                      <div className="table-wrap" style={{ marginBottom: "var(--space-3)" }}>
+                      <div className="table-wrap wi-settings__type-table">
                         <table className="table">
                           <thead className="table__head">
                             <tr>
@@ -415,7 +381,7 @@ function TemplateBuilder() {
                                   {f.required ? (
                                     <span className="pill pill--warning pill--sm">required</span>
                                   ) : (
-                                    <span style={{ color: "var(--ink-muted)", fontSize: 12 }}>optional</span>
+                                    <span className="wi-settings__optional">optional</span>
                                   )}
                                 </td>
                                 <td className="table__cell">
@@ -435,8 +401,8 @@ function TemplateBuilder() {
                     )}
 
                     {available.length > 0 && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                        <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>Add field:</span>
+                      <div className="wi-settings__add-row">
+                        <span className="wi-settings__add-label">Add field:</span>
                         <select
                           className="btn btn--ghost btn--sm"
                           defaultValue=""
@@ -472,14 +438,15 @@ const TABS = ["fields", "templates"] as const;
 
 export default function WorkItemsSettingsPage() {
   const { user } = useAuth();
+  const canEditSettings = useHasPermission("work_items.settings.edit");
   const router = useRouter();
   const [tab, setTab] = useTabState(TABS, "fields", "tab");
 
   useEffect(() => {
-    if (user && user.role.code !== "padmin") router.replace("/work-items");
-  }, [user, router]);
+    if (user && !canEditSettings) router.replace("/work-items");
+  }, [user, canEditSettings, router]);
 
-  if (!user || user.role.code !== "padmin") return null;
+  if (!user || !canEditSettings) return null;
 
   return (
     <StrictRoute>
@@ -492,7 +459,7 @@ export default function WorkItemsSettingsPage() {
         </a>
       }
     >
-      <div style={{ display: "flex", gap: "var(--space-3)", marginBottom: "var(--space-5)" }}>
+      <div className="wi-settings__filter-bar">
         {(["fields", "templates"] as const).map((t) => (
           <button
             key={t}

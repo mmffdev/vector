@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useHasPermission } from "@/app/contexts/AuthContext";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -11,8 +11,8 @@ interface Target {
 }
 
 export default function AddressDevtool() {
-  const { user } = useAuth();
-  const enabled = !isProd || user?.role.code === "gadmin";
+  const canViewDev = useHasPermission("menu.dev.view");
+  const enabled = !isProd || canViewDev;
   if (!enabled) return null;
   return <Devtool />;
 }

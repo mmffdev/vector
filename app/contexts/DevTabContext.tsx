@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type DevTab = "setup" | "shortcuts" | "reports" | "research" | "icons" | "plans" | "page-help";
+type DevTab = "setup" | "shortcuts" | "reports" | "research" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog";
 
 interface DevTabContextValue {
   activeTab: DevTab;
@@ -26,7 +26,7 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
       savedTab = "page-help";
       localStorage.setItem(TAB_STORAGE_KEY, savedTab);
     }
-    if (savedTab && ["setup", "shortcuts", "reports", "research", "icons", "plans", "page-help"].includes(savedTab)) {
+    if (savedTab && ["setup", "shortcuts", "reports", "research", "icons", "plans", "page-help", "retros", "ui-catalog"].includes(savedTab)) {
       setActiveTabState(savedTab as DevTab);
     }
     // Restore open research papers

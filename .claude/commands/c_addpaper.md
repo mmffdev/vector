@@ -59,6 +59,8 @@ Organise the search results into the **PM JSON content format** — semantic HTM
 - HTML-escape entities in attribute values
 - Pure HTML string — no JSX
 
+**HARD RULE — dev-ui catalog only.** The Research tab is a Dev Setup page; rendered HTML composes from the [`.dui-*` catalog](../../docs/c_c_dev_ui_primitives.md) — never invent classes (`.r-toc*`, `.dev-research-*`, `.research-body`, etc.) and never use inline `style=`. Tables use `.dui-table`, the body wrapper is `.dui-doc`, the sticky TOC is `.dui-toc-layout` / `.dui-toc`, code blocks use `.dui-pre`, status pills use `.dui-pill`. See [`c_research-paper-format.md`](c_research-paper-format.md) for the canonical HTML pattern.
+
 Recommended sections: **Overview**, **Key Findings**, **Detailed Analysis** (with sub-headings), **Sources** (numbered `<ol>`), **Gaps** (what couldn't be verified).
 
 ### 4. Infer Metadata

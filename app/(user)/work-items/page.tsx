@@ -15,6 +15,7 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { MdOutlineCreateNewFolder, MdOutlineFolder, MdChecklist, MdOutlineBugReport, MdOutlineArrowForwardIos } from "react-icons/md";
 import InlineEditField from "@/app/components/InlineEditField";
+import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { InlineSelect } from "./InlineSelect";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -347,7 +348,7 @@ function WorkItemRow({
           onCommit={(next) => onPatch(item.id, { title: next })}
           ariaLabel="Work item title"
           inputClassName="form__input form__input--sm"
-          displayClassName="work-items-tree__title-text"
+          displayClassName="inline-edit-trigger"
           clickToEdit
           stopPointerOnInput
           maxLength={200}
@@ -379,14 +380,14 @@ function WorkItemRow({
                 {item.priority}
               </span>
             ) : (
-              <span className="work-items-tree__placeholder">—</span>
+              <span className="inline-edit-trigger--empty">—</span>
             )
           }
         />
       </td>
       <td className="table__cell table__cell--numeric" onClick={(e) => e.stopPropagation()}>
         {!canHaveManualPointsRow(item.item_type) ? (
-          <span className="work-items-tree__placeholder">—</span>
+          <span className="inline-edit-trigger--empty">—</span>
         ) : item.rollup_points != null ? (
           // Rollup wins — read-only on the row. Edit the manual value via the
           // detail panel; tooltip explains that the manual value is shadowed.
@@ -408,7 +409,7 @@ function WorkItemRow({
             }}
             ariaLabel="Story points"
             inputClassName="form__input form__input--sm form__input--numeric"
-            displayClassName="work-items-tree__pts-text"
+            displayClassName="inline-edit-trigger"
             clickToEdit
             stopPointerOnInput
             allowEmpty
@@ -989,7 +990,7 @@ export default function WorkItemsPage() {
     blocked: number;
   } | null>(null);
   const treeRef = useRef<WorkItemsTreeHandle | null>(null);
-  const [activeTab, setActiveTab] = useState<"ex1" | "ex2">("ex1");
+  const [activeTab, setActiveTab] = useState<"ex1" | "ex2">("ex2");
 
   const patchFilter = useCallback((patch: Partial<FilterState>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -1101,26 +1102,17 @@ export default function WorkItemsPage() {
         }}
       />
 
-      <div className="tabs" role="tablist" aria-label="Work item views">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "ex1"}
-          className={`tabs__tab${activeTab === "ex1" ? " tabs__tab--active" : ""}`}
-          onClick={() => setActiveTab("ex1")}
-        >
-          Example 1
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "ex2"}
-          className={`tabs__tab${activeTab === "ex2" ? " tabs__tab--active" : ""}`}
-          onClick={() => setActiveTab("ex2")}
-        >
-          Example 2
-        </button>
-      </div>
+      <SecondaryNavigation<"ex1" | "ex2">
+        ariaLabel="Work item views"
+        pageId="work-items"
+        reorderable
+        active={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: "ex2", label: "Work items", sortKey: "Work items" },
+          { key: "ex1", label: "Example 1", sortKey: "Example 1" },
+        ]}
+      />
 
       {activeTab === "ex1" ? (
         <>

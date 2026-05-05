@@ -17,8 +17,7 @@ import {
   resolveSdkHelp,
   helpValueAsFragment,
 } from "@/app/contexts/SamanthaSdkContext";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+import { api, ApiError } from "@/app/lib/api";
 
 interface HeaderProps {
   // Snake-case identifier under this parent. Substrate validates against
@@ -85,9 +84,14 @@ export default function Header({
     if (!addressable_id) return;
     let cancelled = false;
     setBodyLoading(true);
-    fetch(`${API_BASE}/api/page-help/${addressable_id}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { body_html?: string } | null) => {
+    api<{ body_html?: string } | null>(`/api/page-help/${addressable_id}`)
+      .catch((err) => {
+        // 404 = no help doc; fall through to SDK defaults rather than treat
+        // as an error. Re-throw anything else.
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      })
+      .then((data) => {
         if (cancelled) return;
         const fromBackend = data?.body_html ?? "";
         if (fromBackend) {

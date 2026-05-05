@@ -48,7 +48,7 @@ export function InlineSelect({
   }
   return (
     <span
-      className="work-items-tree__inline-trigger"
+      className="inline-edit-trigger"
       title="Click to edit"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => { e.stopPropagation(); setEditing(true); }}

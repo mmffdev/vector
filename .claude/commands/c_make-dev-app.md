@@ -106,3 +106,4 @@ If/when a dev registry exists (`dev/store/registry.ts`), follow the same pattern
 - Dev apps never leak into `app/store/registry.ts`.
 - BEM-lite, no inline styles — see `docs/css-guide.md`.
 - Types are still imported from `@/app/store/shared/types` — do not duplicate.
+- **Dev apps are widgets, not Dev Setup panels.** They mount inside `<Widget>` on a dev grid and own their `.ui-app-<name>__*` namespace. The [dev-ui catalog](../../docs/c_c_dev_ui_primitives.md) (`.dui-*`) is for `/dev` Setup pages rendered by `dev/pages/DevPage.tsx` — do **not** mix the two surfaces.

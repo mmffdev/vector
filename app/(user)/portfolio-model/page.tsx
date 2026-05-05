@@ -32,16 +32,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
-import Header from "@/app/components/Header";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 import WizardModelCardList from "./WizardModelCardList";
 import AdoptionOverlay, {
   type AdoptionDoneEvent,
   type AdoptionFailEvent,
 } from "./AdoptionOverlay";
-import LayersTable, { type LayerDTO } from "./LayersTable";
+import { type LayerDTO } from "./LayersTable";
+import LayersPreviewTable from "./LayersPreviewTable";
 
 // Post-R010: portfolio_templates are flat — no family, no version. The
 // preview fetches the adopted template by its UUID (from
@@ -114,18 +114,19 @@ type StateView =
 
 export default function PortfolioModelPage() {
   const { user, loading: authLoading } = useAuth();
+  const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
   const [view, setView] = useState<StateView>({ kind: "loading" });
 
-  // Step 1 — role gate. Run BEFORE any fetch so non-padmin roles never
-  // fire the adoption-state request.
+  // Step 1 — capability gate. Run BEFORE any fetch so unprivileged users
+  // never fire the adoption-state request.
   useEffect(() => {
     if (authLoading) return;
     if (!user) return; // AuthProvider will redirect to /login
-    if (user.role.code !== "padmin") {
+    if (!canEditModel) {
       router.replace("/dashboard");
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, canEditModel, router]);
 
   // Step 2 — fetch adoption state for padmins only.
   const fetchAdoptionState = useCallback(async () => {
@@ -152,9 +153,9 @@ export default function PortfolioModelPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role.code !== "padmin") return;
+    if (!user || !canEditModel) return;
     void fetchAdoptionState();
-  }, [authLoading, user, fetchAdoptionState]);
+  }, [authLoading, user, canEditModel, fetchAdoptionState]);
 
   // Step 3 — fetch the bundle preview when adopted. Kept as a separate
   // effect so re-rendering the preview after onDone doesn't re-fetch
@@ -214,24 +215,24 @@ export default function PortfolioModelPage() {
     setView({ kind: "wizard" });
   }, []);
 
-  // Render guard for the role gate. The redirect runs in an effect, so
-  // suppress all output until we know we're on a padmin.
-  if (authLoading || !user || user.role.code !== "padmin") return null;
+  // Render guard for the capability gate. The redirect runs in an
+  // effect, so suppress all output until permission is confirmed.
+  if (authLoading || !user || !canEditModel) return null;
 
   return (
     <StrictRoute>
-    <PageShell
-      title="Portfolio Model"
-      subtitle="Adopt a model or preview your subscription's adopted bundle"
-    >
-      <PortfolioRouterBody
-        view={view}
-        subscriptionId={user.subscription_id}
-        onAdoptStarted={handleAdoptStarted}
-        onOverlayDone={handleOverlayDone}
-        onOverlayFail={handleOverlayFail}
-      />
-    </PageShell>
+      <PageShell
+        title="Portfolio Model"
+        subtitle="Adopt a model or preview your subscription's adopted bundle"
+      >
+        <PortfolioRouterBody
+          view={view}
+          subscriptionId={user.subscription_id}
+          onAdoptStarted={handleAdoptStarted}
+          onOverlayDone={handleOverlayDone}
+          onOverlayFail={handleOverlayFail}
+        />
+      </PageShell>
     </StrictRoute>
   );
 }
@@ -318,12 +319,8 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
   const m = bundle.model;
 
   return (
-    <div className="model-preview">
-      <Header
-        name="portfolio_model_active"
-        className="model-preview__header"
-        title={<span className="model-preview__title">{m.name}</span>}
-      >
+    <>
+      <Panel name="portfolio_model_active" title={m.name}>
         {m.description && (
           <div className="model-preview__description">
             {m.description.split("\n\n").map((para, i) => {
@@ -334,16 +331,33 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
             })}
           </div>
         )}
-      </Header>
+      </Panel>
 
       <Panel name="portfolio_model_hierarchy" title="Portfolio Hierarchy">
         {localLayers === null
           ? <div className="placeholder"><h3 className="placeholder__title">Loading…</h3></div>
-          : <LayersTable
-              initialLayers={localLayers}
-              onLayersUpdated={setLocalLayers}
+          : <LayersPreviewTable
+              layers={localLayers}
               fixedItems={STRATEGY_FIXED_ITEMS}
               topAnchorTag="PRW"
+              panelNum="01"
+              panelTitle="Layers"
+              panelSubtitle="Strategy zone above, execution zone below. Click a cell to edit."
+              onCommitLayer={(id, field, next) => {
+                const trimmed = next.trim();
+                if (field === "tag" && (trimmed.length < 2 || trimmed.length > 4)) return false;
+                if (field === "name" && trimmed.length === 0) return false;
+                setLocalLayers((prev) =>
+                  prev === null
+                    ? prev
+                    : prev.map((l) =>
+                        l.id === id
+                          ? { ...l, [field]: field === "description_md" ? (trimmed || null) : trimmed }
+                          : l
+                      )
+                );
+                return true;
+              }}
             />
         }
       </Panel>
@@ -399,7 +413,7 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
           </div>
         </Panel>
       )}
-    </div>
+    </>
   );
 }
 

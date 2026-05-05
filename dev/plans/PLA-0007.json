@@ -1,107 +1,107 @@
 {
   "id": "PLA-0007",
-  "title": "Custom Roles & Permissions System — data-driven RBAC, Team Lead role, bespoke external account types",
+  "title": "Custom Roles & Permissions System \u2014 data-driven RBAC, Team Lead role, bespoke external account types",
   "date_created": "2026-05-03",
-  "date_started": null,
-  "date_last_updated": "2026-05-03",
+  "date_started": "2026-05-05",
+  "date_last_updated": "2026-05-05",
   "date_finished": null,
   "phase": "PH-0007",
   "scope": "<p>Replace Vector's hardcoded three-value <code>user_role</code> Postgres ENUM with a data-driven <strong>roles + permissions + role_permissions</strong> schema, refactor 4 layers of consumers (DB triggers, Go middleware, 21 frontend files, seeded migrations), introduce a fourth system role (<strong>Team Lead</strong>, rank 20), seed the Team Lead account (<code>team_lead@mmffdev.com</code>), and ship gadmin/padmin-facing UI to <strong>create custom roles, assign permission sets, and provision bespoke account types for external users</strong> (third-party agents, contractors, auditors).</p><p>This plan turns R030's evidence base into action. The full A&ndash;W workflow with ADD/UPDATE/REMOVE badges, action descriptions, and acceptance criteria is enumerated under <code>workflow_table</code> below.</p><p><strong>Architecture in one paragraph.</strong> A new <code>roles</code> table keyed on UUID with optional <code>subscription_id</code> (NULL = system role; non-null = tenant-custom). A <code>permissions</code> catalogue seeded from a Go-side source of truth. A <code>role_permissions</code> junction. <code>users.role</code> ENUM column replaced with <code>users.role_id uuid</code>. <code>page_roles.role</code> ENUM column replaced with <code>page_roles.role_id uuid</code>. <code>RequireRole</code> middleware replaced with <code>RequirePermission(\"code\")</code>. The static <code>Rank()</code> switch in Go is deleted; rank is read from the role row. The role-ceiling sentinel still fires on rank inequality &mdash; only the source moves from a typed-string switch to a row read. The 21 frontend role-equality checks become permission lookups via <code>useHasPermission(code)</code>. Custom roles are tenant-scoped, RLS-friendly, and visible only inside their owning tenant.</p><p><strong>Trust-No-One preserved.</strong> Tenant ID always from the verified session, never from the payload. Target role ID arrives in the payload but is validated server-side against the actor's <code>users.create.&lt;role_id&gt;</code> permission AND the role-ceiling rank check &mdash; both gates must pass. System roles are immutable from the API; only their label and description can be edited (for localisation). Self-elevation is forbidden &mdash; an actor cannot edit their own role at all. Permission catalogue is server-authoritative; tenants compose roles out of it but cannot invent permissions. Hardcoded protected human accounts (CLAUDE.md HARD RULE) untouched &mdash; their <code>role_id</code> simply points at the seeded system role row post-migration.</p><p><strong>Creator matrix in MVP.</strong> G_admin (rank 30) creates anyone: G_admin, P_admin, Team Lead, User, custom roles. P_admin (rank 25) creates Team Leads and Users only. Team Lead (rank 20) and User (rank 10) cannot create accounts. Custom roles get <code>users.create.&lt;target_role_id&gt;</code> grants explicitly per role. Single-role-per-user in MVP; multi-role deferred to Phase X.</p><p><strong>What this plan does NOT do (Phase X deferrals).</strong> No multi-role-per-user. No tri-state Allow/Deny/Inherit (binary only). No reusable named permission schemes (clone-and-edit only). No external-IdP gating, session-length caps, or time-bound provisioning for external roles (the <code>is_external</code> flag is metadata only in MVP). No NOTIFY/LISTEN realtime cache invalidation (TTL of 60s is enough). No per-workspace role overrides (existing <code>user_workspace_permissions</code> ACL covers that axis).</p>",
   "value": "<ul><li><strong>Unblocks Team Lead and every future role.</strong> The original ask &mdash; <code>team_lead@mmffdev.com</code> &mdash; takes one row to provision once the schema is data-driven; without this work it's a compile-time enum change that ripples across 80+ files.</li><li><strong>Tenants get role autonomy.</strong> G_admins shape their org's permissions without filing a ticket against Vector engineering &mdash; same value Jira's permission schemes deliver on Premium and Enterprise tiers, but offered to every tenant.</li><li><strong>Bespoke external-account types.</strong> Third-party agents, contractors, and auditors can be modelled as first-class roles with bounded permission sets &mdash; the gap that pushes regulated customers off Rally and Azure DevOps onto seat-by-seat carve-outs.</li><li><strong>Compliance posture improves.</strong> Every role/permission grant is audited; least-privilege is the default; the permission catalogue is closed and server-authoritative; system roles are immutable; self-elevation is forbidden. SOC2 / ISO 27001 evidence becomes a one-screen export.</li><li><strong>Removes a hidden tax on every feature ticket.</strong> Today, &ldquo;hide this from non-admins&rdquo; means editing the role union, the middleware allowlist, and 21 frontend files. After this work it's a permission entry plus a <code>RequirePermission</code> on the route.</li><li><strong>Page registry becomes fully dynamic.</strong> The existing <code>pages</code> + <code>page_roles</code> tables stop carrying an enum and start carrying role IDs &mdash; tenants can grant menu visibility to custom roles without code changes.</li><li><strong>Sets up Phase X cleanly.</strong> Multi-role-per-user, named permission schemes, time-bound provisioning, and external-IdP gating are all schema-additive on top of the v1 design &mdash; no rework of v1 to enable them.</li><li><strong>Beats Rally on flexibility.</strong> Rally's five-level fixed ladder is the competitor's known weakness; Vector's data-driven design with custom roles addresses it directly.</li><li><strong>Beats Jira on accessibility.</strong> Custom roles in Jira are gated to Premium/Enterprise plans; Vector ships them universally.</li></ul>",
   "implementation_plan": [
     "MVP cut (locked 2026-05-03): four system roles (gadmin rank 30, padmin rank 25, team_lead rank 20, user rank 10) plus one external-archetype seed (external rank 5). Custom roles tenant-scoped with rank in [11..24] or [26..29] (system bands reserved). Single-role-per-user. Binary permissions (no Allow/Deny/Inherit). Permission cache TTL 60s. Hardcoded protected human accounts unchanged. Team Lead seeded with the same permission set as P_admin in v0 (per the user's 'same rights as padmin for now' direction); ranks differ (20 vs 25) so role-ceiling produces the right answer when permissions diverge.",
-    "Migration A: roles table — UUID PK, subscription_id nullable FK (NULL=system, non-null=tenant-custom), code text, label text, description text, rank int (CHECK rank>0; tenant rank in [11..24] or [26..29]), is_system bool, is_external bool, archived_at, audit columns. Unique (subscription_id, code). Tenant-scoped index.",
-    "Migration B: permissions table — UUID PK, code text UNIQUE (e.g. 'users.create.team_lead'), label, category, description. Seeded from Go catalogue at migration time; startup-time check fails if a code-declared permission is missing.",
-    "Migration C: role_permissions junction — (role_id, permission_id) PK, granted_by FK users, granted_at. Seeded for system roles per the catalogue table in R030.",
-    "Migration D: seed system roles + their permission bags — gadmin/padmin/team_lead/user/external rows with stable UUIDs (recorded in Go constants for tests); role_permissions seeded per the R030 §7.2 table.",
-    "Migration E: users.role_id — add nullable FK column, backfill from users.role enum (SELECT id FROM roles WHERE code = users.role::text AND subscription_id IS NULL), set NOT NULL after verified, KEEP users.role column for one full release cycle for rollback.",
-    "Migration F: page_roles.role_id — add nullable FK column, backfill from page_roles.role enum, set NOT NULL, drop old role column (page_roles is internal).",
-    "Migration G: provision_on_first_gadmin trigger — rewrite to compare against the seeded gadmin role row by code, not the enum literal; idempotent re-run safe.",
-    "Migration H: bookmarks.go fan-out — replace hand-written `[]models.Role{...}` slice with a SELECT id FROM roles WHERE subscription_id IS NULL OR subscription_id = $1.",
+    "Migration A: roles table \u2014 UUID PK, subscription_id nullable FK (NULL=system, non-null=tenant-custom), code text, label text, description text, rank int (CHECK rank>0; tenant rank in [11..24] or [26..29]), is_system bool, is_external bool, archived_at, audit columns. Unique (subscription_id, code). Tenant-scoped index.",
+    "Migration B: permissions table \u2014 UUID PK, code text UNIQUE (e.g. 'users.create.team_lead'), label, category, description. Seeded from Go catalogue at migration time; startup-time check fails if a code-declared permission is missing.",
+    "Migration C: role_permissions junction \u2014 (role_id, permission_id) PK, granted_by FK users, granted_at. Seeded for system roles per the catalogue table in R030.",
+    "Migration D: seed system roles + their permission bags \u2014 gadmin/padmin/team_lead/user/external rows with stable UUIDs (recorded in Go constants for tests); role_permissions seeded per the R030 \u00a77.2 table.",
+    "Migration E: users.role_id \u2014 add nullable FK column, backfill from users.role enum (SELECT id FROM roles WHERE code = users.role::text AND subscription_id IS NULL), set NOT NULL after verified, KEEP users.role column for one full release cycle for rollback.",
+    "Migration F: page_roles.role_id \u2014 add nullable FK column, backfill from page_roles.role enum, set NOT NULL, drop old role column (page_roles is internal).",
+    "Migration G: provision_on_first_gadmin trigger \u2014 rewrite to compare against the seeded gadmin role row by code, not the enum literal; idempotent re-run safe.",
+    "Migration H: bookmarks.go fan-out \u2014 replace hand-written `[]models.Role{...}` slice with a SELECT id FROM roles WHERE subscription_id IS NULL OR subscription_id = $1.",
     "Backend A: delete `type Role string` constants and `Rank()` switch; introduce `type Role struct { ID uuid.UUID; Code string; Label string; Rank int; SubscriptionID *uuid.UUID; IsSystem bool; IsExternal bool }` with a tenant-scoped cache loaded on session create and refreshed on role change.",
     "Backend B: replace RequireRole middleware with RequirePermission(perm string); the actor's permission set is loaded once per session token, cached for 60s, and consulted on every request. Cache invalidation on role mutation broadcasts to in-process listeners.",
-    "Backend C: refactor 14+ RequireRole(models.Role*) call sites in cmd/server/main.go to RequirePermission('users.list'), RequirePermission('roles.create'), etc. — mechanical translation per the catalogue table.",
-    "Backend D: roles service — internal/roles/service.go with List, Get, Create, Update, Archive, AssignPermissions, RevokePermissions; server-enforces tenant scoping, role-ceiling on edits (actor's rank >= target role's rank), system-role immutability (only label/description editable), and self-elevation prohibition. Sentinel errors: ErrRoleNotFound, ErrSystemRoleImmutable, ErrSelfElevation, ErrPermissionDenied.",
-    "Backend E: permissions catalogue — internal/permissions/catalogue.go declares every permission as a typed Go constant; package init() seeds the permissions table on first run and validates parity at startup (refuses to start if catalogue and table diverge).",
-    "Backend F: role-ceiling generalisation — backend/internal/users/service.go, all 5 sites, swap actor.Role.Rank() for actor.role.Rank (struct field) loaded by the auth middleware. Same comparison; new data source.",
-    "Backend G: REST surface for roles — GET /api/roles (list, tenant-scoped + system), POST /api/roles (create custom, gadmin only, payload: code/label/rank/is_external), PATCH /api/roles/:id (rename/relabel/rerank), DELETE /api/roles/:id (soft-archive, tenant custom only), POST /api/roles/:id/permissions (grant), DELETE /api/roles/:id/permissions/:permId (revoke). All role-ceiling-checked, all audited.",
-    "Backend H: user-create payload validation — POST /api/users intercepts the target role_id and refuses with 403 unless actor has users.create.<target_role_id>. Existing role-ceiling check remains as second gate (belt-and-braces).",
-    "Frontend A: replace Role TS union in app/contexts/AuthContext.tsx — new type Role = { id; code; label; rank; is_system; is_external }; new useAuth() returns { user; role; permissions: Set<string> }; new useHasPermission(code) hook.",
-    "Frontend B: refactor 21 files doing role === 'gadmin' / role === 'padmin' equality — replace each with useHasPermission('<perm>') driven by the actual intent (menu.admin.view / roles.create / users.archive / etc). Add ESLint rule banning role === <string-literal> compares; CI fails on reintroduction.",
+    "Backend C: refactor 14+ RequireRole(models.Role*) call sites in cmd/server/main.go to RequirePermission('users.list'), RequirePermission('roles.create'), etc. \u2014 mechanical translation per the catalogue table.",
+    "Backend D: roles service \u2014 internal/roles/service.go with List, Get, Create, Update, Archive, AssignPermissions, RevokePermissions; server-enforces tenant scoping, role-ceiling on edits (actor's rank >= target role's rank), system-role immutability (only label/description editable), and self-elevation prohibition. Sentinel errors: ErrRoleNotFound, ErrSystemRoleImmutable, ErrSelfElevation, ErrPermissionDenied.",
+    "Backend E: permissions catalogue \u2014 internal/permissions/catalogue.go declares every permission as a typed Go constant; package init() seeds the permissions table on first run and validates parity at startup (refuses to start if catalogue and table diverge).",
+    "Backend F: role-ceiling generalisation \u2014 backend/internal/users/service.go, all 5 sites, swap actor.Role.Rank() for actor.role.Rank (struct field) loaded by the auth middleware. Same comparison; new data source.",
+    "Backend G: REST surface for roles \u2014 GET /api/roles (list, tenant-scoped + system), POST /api/roles (create custom, gadmin only, payload: code/label/rank/is_external), PATCH /api/roles/:id (rename/relabel/rerank), DELETE /api/roles/:id (soft-archive, tenant custom only), POST /api/roles/:id/permissions (grant), DELETE /api/roles/:id/permissions/:permId (revoke). All role-ceiling-checked, all audited.",
+    "Backend H: user-create payload validation \u2014 POST /api/users intercepts the target role_id and refuses with 403 unless actor has users.create.<target_role_id>. Existing role-ceiling check remains as second gate (belt-and-braces).",
+    "Frontend A: replace Role TS union in app/contexts/AuthContext.tsx \u2014 new type Role = { id; code; label; rank; is_system; is_external }; new useAuth() returns { user; role; permissions: Set<string> }; new useHasPermission(code) hook.",
+    "Frontend B: refactor 21 files doing role === 'gadmin' / role === 'padmin' equality \u2014 replace each with useHasPermission('<perm>') driven by the actual intent (menu.admin.view / roles.create / users.archive / etc). Add ESLint rule banning role === <string-literal> compares; CI fails on reintroduction.",
     "Frontend C: drop roleLabels: Record<Role,string> constants in 2 files; render role.label from the row.",
-    "Frontend D: /admin/roles list page — gadmin only, tenant-scoped + system view; Panel-wrapped per PLA-0005 addressables; columns: label, code, rank, is_system, is_external, member count; actions: create, edit, archive (custom only).",
-    "Frontend E: /admin/roles/:id detail page — name/label/rank/external editor; permission grid (groups by category); audit trail panel; member list with link to user detail. System roles: editable label/description only, all other fields read-only.",
-    "Frontend F: user-create / user-edit role picker — replaces the current closed-set dropdown with a server-filtered list of roles the actor can create (returned from a new GET /api/roles/creatable). External-flagged roles render under a separate 'External' section.",
-    "Backend I: bespoke external-account type seed — external system role at rank 5 with minimal permission set (portfolio.list only); is_external=true; tenant-customisable via clone-and-edit (POST /api/roles with clone_from=<role_id>).",
-    "Frontend G: external-account UX affordance — chip in user table for is_external roles, separate filter on /admin/users, copy adjustments per R030 §9 (the long-term IdP/session-cap features stay in Phase X but UI hooks are in place).",
-    "Backend J: audit log integration — new action codes (role_created, role_updated, role_archived, permissions_granted, permissions_revoked, user_role_changed); same audit table; queryable via existing reports.",
-    "Backend K: cache invalidation — on roles.update / role_permissions write, broadcast to in-process listeners that hold permission set caches; sessions for users in that role refresh on next request.",
-    "Tests A: tenant isolation — tenant A's custom role invisible to tenant B (server returns 404 on direct GET, omitted from list).",
-    "Tests B: role-ceiling — P_admin attempting to create G_admin via direct API returns 403 even when payload claims otherwise; permission gate fires first, rank gate fires second.",
-    "Tests C: creator-matrix — Team Lead and User cannot reach POST /api/users at all (403 via RequirePermission); P_admin can create Team Lead/User but not P_admin/G_admin.",
-    "Tests D: system-role immutability — PATCH /api/roles/<gadmin_id> with rank=5 returns 422; same with code change; label change succeeds.",
-    "Tests E: self-elevation prohibition — actor cannot edit own role; cannot grant own role new permissions.",
-    "Tests F: cache invalidation — user X has perm Y; admin revokes perm Y; within 60s X's next request returns 403.",
-    "Tests G: permission-catalogue parity — startup test fails if a Go-declared permission is not in the seeded permissions table or vice versa.",
-    "Tests H: hardcoded human accounts — gadmin@/padmin@/user@ rows have role_id pointing at the correct seeded system role post-migration; their password_hash, email, role_id, is_active are unchanged from pre-migration values.",
-    "Tests I: full e2e creation chain — gadmin creates Team Lead account team_lead@mmffdev.com / password123!; gadmin creates a custom 'External Auditor' role with portfolio.list only and is_external=true; gadmin creates a user under that role; the user logs in, sees only what the role permits, fails on every other route.",
-    "Backend L: protected accounts seed — verify migration leaves gadmin@/padmin@/user@ rows untouched in every credential field (password_hash, email, is_active, role_id maps to correct system role, password_changed_at preserved). Migration includes a post-step assertion query that fails the migration if any protected account row's credentials differ from pre-migration.",
+    "Frontend D: /admin/roles list page \u2014 gadmin only, tenant-scoped + system view; Panel-wrapped per PLA-0005 addressables; columns: label, code, rank, is_system, is_external, member count; actions: create, edit, archive (custom only).",
+    "Frontend E: /admin/roles/:id detail page \u2014 name/label/rank/external editor; permission grid (groups by category); audit trail panel; member list with link to user detail. System roles: editable label/description only, all other fields read-only.",
+    "Frontend F: user-create / user-edit role picker \u2014 replaces the current closed-set dropdown with a server-filtered list of roles the actor can create (returned from a new GET /api/roles/creatable). External-flagged roles render under a separate 'External' section.",
+    "Backend I: bespoke external-account type seed \u2014 external system role at rank 5 with minimal permission set (portfolio.list only); is_external=true; tenant-customisable via clone-and-edit (POST /api/roles with clone_from=<role_id>).",
+    "Frontend G: external-account UX affordance \u2014 chip in user table for is_external roles, separate filter on /admin/users, copy adjustments per R030 \u00a79 (the long-term IdP/session-cap features stay in Phase X but UI hooks are in place).",
+    "Backend J: audit log integration \u2014 new action codes (role_created, role_updated, role_archived, permissions_granted, permissions_revoked, user_role_changed); same audit table; queryable via existing reports.",
+    "Backend K: cache invalidation \u2014 on roles.update / role_permissions write, broadcast to in-process listeners that hold permission set caches; sessions for users in that role refresh on next request.",
+    "Tests A: tenant isolation \u2014 tenant A's custom role invisible to tenant B (server returns 404 on direct GET, omitted from list).",
+    "Tests B: role-ceiling \u2014 P_admin attempting to create G_admin via direct API returns 403 even when payload claims otherwise; permission gate fires first, rank gate fires second.",
+    "Tests C: creator-matrix \u2014 Team Lead and User cannot reach POST /api/users at all (403 via RequirePermission); P_admin can create Team Lead/User but not P_admin/G_admin.",
+    "Tests D: system-role immutability \u2014 PATCH /api/roles/<gadmin_id> with rank=5 returns 422; same with code change; label change succeeds.",
+    "Tests E: self-elevation prohibition \u2014 actor cannot edit own role; cannot grant own role new permissions.",
+    "Tests F: cache invalidation \u2014 user X has perm Y; admin revokes perm Y; within 60s X's next request returns 403.",
+    "Tests G: permission-catalogue parity \u2014 startup test fails if a Go-declared permission is not in the seeded permissions table or vice versa.",
+    "Tests H: hardcoded human accounts \u2014 gadmin@/padmin@/user@ rows have role_id pointing at the correct seeded system role post-migration; their password_hash, email, role_id, is_active are unchanged from pre-migration values.",
+    "Tests I: full e2e creation chain \u2014 gadmin creates Team Lead account team_lead@mmffdev.com / password123!; gadmin creates a custom 'External Auditor' role with portfolio.list only and is_external=true; gadmin creates a user under that role; the user logs in, sees only what the role permits, fails on every other route.",
+    "Backend L: protected accounts seed \u2014 verify migration leaves gadmin@/padmin@/user@ rows untouched in every credential field (password_hash, email, is_active, role_id maps to correct system role, password_changed_at preserved). Migration includes a post-step assertion query that fails the migration if any protected account row's credentials differ from pre-migration.",
     "Provision: insert team_lead@mmffdev.com with password123!; document in <accounts> reference; do NOT touch the existing protected human accounts.",
-    "Migration Z: drop users.role enum column (deferred — runs in a follow-up release after one full cycle of monitoring confirms zero reads of the old column). The user_role enum type itself stays in pg_type until the column is dropped, then DROP TYPE.",
-    "Docs: docs/c_c_roles_permissions.md leaf — schema, permission catalogue, creator matrix, immutability rules, audit shape, cache invalidation, Phase X deferrals; CLAUDE.md pointer; cross-link to R030 and PLA-0007 in c_scope.md."
+    "Migration Z: drop users.role enum column (deferred \u2014 runs in a follow-up release after one full cycle of monitoring confirms zero reads of the old column). The user_role enum type itself stays in pg_type until the column is dropped, then DROP TYPE.",
+    "Docs: docs/c_c_roles_permissions.md leaf \u2014 schema, permission catalogue, creator matrix, immutability rules, audit shape, cache invalidation, Phase X deferrals; CLAUDE.md pointer; cross-link to R030 and PLA-0007 in c_scope.md."
   ],
   "areas_impacted": [
-    "SQL: 9 migrations (A–H plus Z deferred drop) — roles, permissions, role_permissions, role_id columns on users + page_roles, trigger rewrite, bookmarks fan-out replacement, eventual enum drop.",
+    "SQL: 9 migrations (A\u2013H plus Z deferred drop) \u2014 roles, permissions, role_permissions, role_id columns on users + page_roles, trigger rewrite, bookmarks fan-out replacement, eventual enum drop.",
     "API: new internal/roles Go service (sole writer for roles + role_permissions); new internal/permissions catalogue with startup parity check; ~7 new REST endpoints; refactored RequirePermission middleware replaces RequireRole on 14+ existing routes.",
     "UI: new /admin/roles list and /admin/roles/:id detail pages (Panel + addressables); refactored 21 frontend files to use useHasPermission; user-create role picker rewrite; external-account chip and filter.",
     "DEV: ESLint rule banning role === string-literal; CI parity test for permission catalogue; e2e suite covering creator matrix, role ceiling, system-role immutability, cache invalidation, protected-account preservation.",
     "GOV: every role/permission mutation lands in the audit log; gadmin can review who created/edited/granted what and when.",
-    "SEC: trust-no-one boundary at internal/roles.Service — direct INSERTs/UPDATEs to roles or role_permissions outside the service forbidden; tenant scoping baked into every query; system roles immutable via API; self-elevation rejected; permission catalogue server-authoritative.",
+    "SEC: trust-no-one boundary at internal/roles.Service \u2014 direct INSERTs/UPDATEs to roles or role_permissions outside the service forbidden; tenant scoping baked into every query; system roles immutable via API; self-elevation rejected; permission catalogue server-authoritative.",
     "AUD: new audit action codes (role_created, role_updated, role_archived, permissions_granted, permissions_revoked, user_role_changed); existing audit table reused.",
     "DOC: one new leaf doc (c_c_roles_permissions.md) plus index pointer plus scope row plus R030 cross-reference."
   ],
   "feature_list": [
-    "roles table — system + tenant-custom, ranked, tenant-scoped, soft-archive, is_external flag.",
-    "permissions catalogue — closed Go-side source of truth, seeded into table, startup parity check.",
-    "role_permissions junction — auditable grants, granted_by tracked.",
-    "users.role_id replaces users.role enum — backfilled, NOT NULL, old column kept for one cycle.",
-    "page_roles.role_id replaces page_roles.role enum — same pattern.",
+    "roles table \u2014 system + tenant-custom, ranked, tenant-scoped, soft-archive, is_external flag.",
+    "permissions catalogue \u2014 closed Go-side source of truth, seeded into table, startup parity check.",
+    "role_permissions junction \u2014 auditable grants, granted_by tracked.",
+    "users.role_id replaces users.role enum \u2014 backfilled, NOT NULL, old column kept for one cycle.",
+    "page_roles.role_id replaces page_roles.role enum \u2014 same pattern.",
     "Team Lead seeded as fourth system role at rank 20.",
     "External seeded as system archetype at rank 5 for tenant clone-and-edit.",
-    "internal/roles.Service Go module — sole writer; tenant-scoped; role-ceiling enforced; self-elevation forbidden.",
-    "RequirePermission middleware — replaces RequireRole on all 14+ routes; permission set cached per session 60s.",
-    "Permission catalogue parity startup check — refuses to start if Go and DB diverge.",
-    "REST surface — /api/roles CRUD plus permissions grant/revoke plus /api/roles/creatable for user-create filtering.",
-    "/admin/roles list and detail UI — Panel-wrapped, addressable, gadmin-only, system-role label/description-only edit gate.",
+    "internal/roles.Service Go module \u2014 sole writer; tenant-scoped; role-ceiling enforced; self-elevation forbidden.",
+    "RequirePermission middleware \u2014 replaces RequireRole on all 14+ routes; permission set cached per session 60s.",
+    "Permission catalogue parity startup check \u2014 refuses to start if Go and DB diverge.",
+    "REST surface \u2014 /api/roles CRUD plus permissions grant/revoke plus /api/roles/creatable for user-create filtering.",
+    "/admin/roles list and detail UI \u2014 Panel-wrapped, addressable, gadmin-only, system-role label/description-only edit gate.",
     "useHasPermission frontend hook + ESLint rule banning role === string-literal compares.",
-    "User-create role picker — server-filtered to roles the actor can create; external roles in a separate section.",
+    "User-create role picker \u2014 server-filtered to roles the actor can create; external roles in a separate section.",
     "Cache invalidation broadcast on role / role_permissions mutations.",
     "Audit log integration for all role + permission events.",
-    "Protected-human-account preservation guard — migration assertion verifies gadmin@/padmin@/user@ credential fields unchanged.",
+    "Protected-human-account preservation guard \u2014 migration assertion verifies gadmin@/padmin@/user@ credential fields unchanged.",
     "team_lead@mmffdev.com seeded with password123!, role=team_lead.",
-    "Bespoke external-account UX — is_external flag drives chip, filter, and clone-and-edit flow.",
+    "Bespoke external-account UX \u2014 is_external flag drives chip, filter, and clone-and-edit flow.",
     "docs/c_c_roles_permissions.md leaf doc."
   ],
   "features_extended": [
     "<strong>R030 turns into action:</strong> the blocker map (DB / Go / 21 frontend files / hardcoded constraints) and the prior-art synthesis (Jira / Rally / Azure DevOps / RBAC best practices) drive the schema, the permission catalogue, and the immutability + tenant-isolation rules in this plan.",
     "<strong>PLA-0005 extends:</strong> /admin/roles and /admin/roles/:id adopt the addressables substrate from day one; every Panel is &lt;Panel&gt;-wrapped; each surface registers an addressable id.",
-    "<strong>page_roles dynamic gating extends:</strong> the existing pages + page_roles infrastructure becomes fully dynamic — tenants can grant menu visibility to custom roles without code changes.",
+    "<strong>page_roles dynamic gating extends:</strong> the existing pages + page_roles infrastructure becomes fully dynamic \u2014 tenants can grant menu visibility to custom roles without code changes.",
     "<strong>Audit log extends:</strong> existing audit table gains five new action codes for role + permission events; no schema change required."
   ],
   "features_removed": [
-    "user_role Postgres ENUM as the source of truth — superseded by the roles table; the enum type is dropped in Migration Z after a one-cycle observation window.",
-    "type Role string + Rank() switch in backend/internal/models/models.go — superseded by struct loaded from the role row.",
-    "RequireRole(roles ...models.Role) middleware — superseded by RequirePermission(perm string).",
-    "TS union type Role = 'user' | 'padmin' | 'gadmin' in app/contexts/AuthContext.tsx — superseded by struct + permission set.",
-    "Hand-written []models.Role{...} slice in nav/bookmarks.go:238 — superseded by SELECT from roles.",
-    "roleLabels: Record<Role,string> closed-set lookup in 2 files — superseded by reading role.label.",
-    "21 role === 'gadmin' equality checks across the frontend — superseded by useHasPermission (and an ESLint rule blocking reintroduction)."
+    "user_role Postgres ENUM as the source of truth \u2014 superseded by the roles table; the enum type is dropped in Migration Z after a one-cycle observation window.",
+    "type Role string + Rank() switch in backend/internal/models/models.go \u2014 superseded by struct loaded from the role row.",
+    "RequireRole(roles ...models.Role) middleware \u2014 superseded by RequirePermission(perm string).",
+    "TS union type Role = 'user' | 'padmin' | 'gadmin' in app/contexts/AuthContext.tsx \u2014 superseded by struct + permission set.",
+    "Hand-written []models.Role{...} slice in nav/bookmarks.go:238 \u2014 superseded by SELECT from roles.",
+    "roleLabels: Record<Role,string> closed-set lookup in 2 files \u2014 superseded by reading role.label.",
+    "21 role === 'gadmin' equality checks across the frontend \u2014 superseded by useHasPermission (and an ESLint rule blocking reintroduction)."
   ],
   "workflow_table": {
     "legend": {
-      "ADD": "Green badge — new entity (table, file, route, UI surface, or behaviour) introduced by this plan.",
-      "UPDATE": "Orange badge — existing entity is edited or refactored; original purpose preserved or generalised.",
-      "REMOVE": "Red badge — existing entity is removed; behaviour either replaced upstream or superseded by an ADD."
+      "ADD": "Green badge \u2014 new entity (table, file, route, UI surface, or behaviour) introduced by this plan.",
+      "UPDATE": "Orange badge \u2014 existing entity is edited or refactored; original purpose preserved or generalised.",
+      "REMOVE": "Red badge \u2014 existing entity is removed; behaviour either replaced upstream or superseded by an ADD."
     },
     "columns": [
       "Step",
@@ -113,19 +113,19 @@
       {
         "step": "A",
         "action": "ADD",
-        "description": "Create roles table — UUID PK, nullable subscription_id (NULL=system), code, label, rank int with CHECK constraint, is_system bool, is_external bool, archived_at, audit columns. Unique (subscription_id, code). Tenant-scoped index.",
+        "description": "Create roles table \u2014 UUID PK, nullable subscription_id (NULL=system), code, label, rank int with CHECK constraint, is_system bool, is_external bool, archived_at, audit columns. Unique (subscription_id, code). Tenant-scoped index.",
         "acceptance": "Migration runs cleanly on dev/staging; SELECT returns zero rows pre-seed; goose status reports up-to-date; CHECK constraint rejects rank in reserved system bands for tenant-custom rows."
       },
       {
         "step": "B",
         "action": "ADD",
-        "description": "Create permissions catalogue table — UUID PK, code text UNIQUE, label, category, description. Seeded from Go-side catalogue at migration time.",
+        "description": "Create permissions catalogue table \u2014 UUID PK, code text UNIQUE, label, category, description. Seeded from Go-side catalogue at migration time.",
         "acceptance": "Migration creates the table; seed populates the row count expected by the Go catalogue; startup parity check passes; no permission codes outside the catalogue exist in the DB."
       },
       {
         "step": "C",
         "action": "ADD",
-        "description": "Create role_permissions junction table — composite PK (role_id, permission_id), granted_by FK users, granted_at. Seeded with system-role permission bags per R030 §7.2.",
+        "description": "Create role_permissions junction table \u2014 composite PK (role_id, permission_id), granted_by FK users, granted_at. Seeded with system-role permission bags per R030 \u00a77.2.",
         "acceptance": "Migration creates the table; gadmin row has roles.create / roles.assign_permissions / users.create.* permissions; padmin has users.create.team_lead and users.create.user but not users.create.gadmin or users.create.padmin; team_lead and user have no users.create.* permissions."
       },
       {
@@ -143,19 +143,19 @@
       {
         "step": "F",
         "action": "UPDATE",
-        "description": "Add page_roles.role_id uuid FK column. Backfill from page_roles.role enum. Drop old role column (page_roles is internal — no external readers, safe to drop in same migration).",
+        "description": "Add page_roles.role_id uuid FK column. Backfill from page_roles.role enum. Drop old role column (page_roles is internal \u2014 no external readers, safe to drop in same migration).",
         "acceptance": "All page_role rows have role_id; page registry continues to gate menu visibility correctly per role; smoke test: gadmin sees admin menu, user does not."
       },
       {
         "step": "G",
         "action": "UPDATE",
-        "description": "Rewrite provision_on_first_gadmin trigger — compare against the seeded gadmin role row by code, not the enum literal. Idempotent re-run safe.",
+        "description": "Rewrite provision_on_first_gadmin trigger \u2014 compare against the seeded gadmin role row by code, not the enum literal. Idempotent re-run safe.",
         "acceptance": "Trigger fires only when first user with role.code='gadmin' inserted; re-running migration is a no-op; existing tenants unaffected."
       },
       {
         "step": "H",
         "action": "UPDATE",
-        "description": "Refactor backend/internal/nav/bookmarks.go:238 — replace `for _, r := range []models.Role{...}` with a SELECT from roles WHERE subscription_id IS NULL OR subscription_id = $1.",
+        "description": "Refactor backend/internal/nav/bookmarks.go:238 \u2014 replace `for _, r := range []models.Role{...}` with a SELECT from roles WHERE subscription_id IS NULL OR subscription_id = $1.",
         "acceptance": "Bookmarks fan-out emits the same per-role bookmarks as before plus any tenant-custom roles; no hardcoded role identifiers remain in the file."
       },
       {
@@ -191,43 +191,43 @@
       {
         "step": "N",
         "action": "UPDATE",
-        "description": "Refactor backend/internal/users/service.go — 5 sites reading actor.Role.Rank() now read actor.role.Rank as a struct field. Role-ceiling sentinel ErrRoleCeiling unchanged in name and meaning.",
+        "description": "Refactor backend/internal/users/service.go \u2014 5 sites reading actor.Role.Rank() now read actor.role.Rank as a struct field. Role-ceiling sentinel ErrRoleCeiling unchanged in name and meaning.",
         "acceptance": "Existing role-ceiling tests pass unchanged; new test confirms the same enforcement on a tenant-custom role with rank between system rows (e.g. tenant-custom rank 22 cannot edit a padmin at rank 25)."
       },
       {
         "step": "O",
         "action": "ADD",
-        "description": "Add internal/roles Go service — List, Get, Create, Update, Archive, AssignPermissions, RevokePermissions. Sole writer for roles + role_permissions. Tenant-scoped queries, role-ceiling enforced on edits, system-role immutability gate, self-elevation prohibition. Sentinel errors: ErrRoleNotFound, ErrSystemRoleImmutable, ErrSelfElevation, ErrPermissionDenied.",
+        "description": "Add internal/roles Go service \u2014 List, Get, Create, Update, Archive, AssignPermissions, RevokePermissions. Sole writer for roles + role_permissions. Tenant-scoped queries, role-ceiling enforced on edits, system-role immutability gate, self-elevation prohibition. Sentinel errors: ErrRoleNotFound, ErrSystemRoleImmutable, ErrSelfElevation, ErrPermissionDenied.",
         "acceptance": "Direct INSERT/UPDATE to roles or role_permissions outside this service flagged by lint:writer-boundary; system role label/description editable; system role rank/code/is_system not editable via API; self-edit attempt returns ErrSelfElevation."
       },
       {
         "step": "P",
         "action": "ADD",
-        "description": "Add internal/permissions/catalogue.go — typed Go constants for every permission code; package init() seeds the permissions table on first run; startup parity check refuses to start if catalogue and table diverge.",
-        "acceptance": "Server start fails with a parity error if a Go constant is missing in DB or vice versa; CI test asserts catalogue has every entry from the R030 §7.2 table; adding a permission requires both a Go constant and a migration row (documented)."
+        "description": "Add internal/permissions/catalogue.go \u2014 typed Go constants for every permission code; package init() seeds the permissions table on first run; startup parity check refuses to start if catalogue and table diverge.",
+        "acceptance": "Server start fails with a parity error if a Go constant is missing in DB or vice versa; CI test asserts catalogue has every entry from the R030 \u00a77.2 table; adding a permission requires both a Go constant and a migration row (documented)."
       },
       {
         "step": "Q",
         "action": "ADD",
-        "description": "Add REST surface for roles: GET /api/roles (list, tenant + system), POST /api/roles (create custom, gadmin only), PATCH /api/roles/:id, DELETE /api/roles/:id (soft-archive), POST /api/roles/:id/permissions, DELETE /api/roles/:id/permissions/:permId, GET /api/roles/creatable (filtered by actor's users.create.* perms — used by user-create form).",
+        "description": "Add REST surface for roles: GET /api/roles (list, tenant + system), POST /api/roles (create custom, gadmin only), PATCH /api/roles/:id, DELETE /api/roles/:id (soft-archive), POST /api/roles/:id/permissions, DELETE /api/roles/:id/permissions/:permId, GET /api/roles/creatable (filtered by actor's users.create.* perms \u2014 used by user-create form).",
         "acceptance": "All endpoints return 403 without the matching permission; tenant isolation verified via penetration test (tenant A cannot see tenant B's roles); audit log records every mutation; system-role mutation attempts return 422 ErrSystemRoleImmutable."
       },
       {
         "step": "R",
         "action": "UPDATE",
-        "description": "Update POST /api/users handler — payload's target role_id validated server-side against actor's users.create.<target_role_id> permission AND role-ceiling rank check. Both must pass. Failure returns 403 with which gate failed.",
+        "description": "Update POST /api/users handler \u2014 payload's target role_id validated server-side against actor's users.create.<target_role_id> permission AND role-ceiling rank check. Both must pass. Failure returns 403 with which gate failed.",
         "acceptance": "Penetration test: P_admin posts target role_id of gadmin, gets 403 (permission gate); P_admin posts custom role with rank 28 (above own 25), gets 403 (rank gate); both attempts audited."
       },
       {
         "step": "S",
         "action": "UPDATE",
-        "description": "Refactor app/contexts/AuthContext.tsx — replace `type Role = 'user'|'padmin'|'gadmin'` union with struct type; useAuth returns { user, role, permissions: Set<string> }; new useHasPermission(code) hook backed by the permission set.",
+        "description": "Refactor app/contexts/AuthContext.tsx \u2014 replace `type Role = 'user'|'padmin'|'gadmin'` union with struct type; useAuth returns { user, role, permissions: Set<string> }; new useHasPermission(code) hook backed by the permission set.",
         "acceptance": "TypeScript compiles; useAuth consumers get a Role object with rank etc; useHasPermission returns boolean; closed-set Role union no longer importable from AuthContext."
       },
       {
         "step": "T",
         "action": "UPDATE",
-        "description": "Refactor 21 frontend files doing `role === 'gadmin'` / `role === 'padmin'` equality — replace with useHasPermission('<perm>') matching the actual intent (menu.admin.view / roles.create / users.archive / etc). Drop the 2 `roleLabels` constants.",
+        "description": "Refactor 21 frontend files doing `role === 'gadmin'` / `role === 'padmin'` equality \u2014 replace with useHasPermission('<perm>') matching the actual intent (menu.admin.view / roles.create / users.archive / etc). Drop the 2 `roleLabels` constants.",
         "acceptance": "All 21 files migrated; ESLint rule banning role === string-literal compares passes in CI; visual smoke test of gadmin/padmin/user/team_lead login confirms menus and admin UI gate correctly."
       },
       {
@@ -239,7 +239,7 @@
       {
         "step": "V",
         "action": "UPDATE",
-        "description": "Refactor user-create / user-edit role picker — replace closed-set dropdown with a server-filtered list from /api/roles/creatable. External-flagged roles render in a separate 'External' section with a chip in the user table and a filter on /admin/users.",
+        "description": "Refactor user-create / user-edit role picker \u2014 replace closed-set dropdown with a server-filtered list from /api/roles/creatable. External-flagged roles render in a separate 'External' section with a chip in the user table and a filter on /admin/users.",
         "acceptance": "Gadmin sees gadmin/padmin/team_lead/user/custom roles in dropdown; padmin sees only team_lead/user (and any custom role they've been granted creator perms for); user-create endpoint refuses any role not in the actor's allowlist; external chip visible on /admin/users; filter narrows to is_external roles."
       },
       {
@@ -254,7 +254,7 @@
     {
       "order": 1,
       "criterion": "Schema in place: roles, permissions, role_permissions; users.role_id and page_roles.role_id replace the enum-typed columns. provision_on_first_gadmin trigger and bookmarks fan-out reference roles via code/id, not enum literals. Migration Z (drop users.role) is documented but deferred; users.role retained for one release cycle.",
-      "proven_by": "Migrations A–H run cleanly; goose status up-to-date; SELECT count(*) FROM roles WHERE is_system shows the four core roles plus external; SELECT count(*) FROM users WHERE role_id IS NULL = 0; trigger smoke test fires on gadmin insert.",
+      "proven_by": "Migrations A\u2013H run cleanly; goose status up-to-date; SELECT count(*) FROM roles WHERE is_system shows the four core roles plus external; SELECT count(*) FROM users WHERE role_id IS NULL = 0; trigger smoke test fires on gadmin insert.",
       "story_id": [
         "00292",
         "00293"
@@ -289,7 +289,8 @@
         "https://localhost:3333/cards/1767069007707375365",
         "https://localhost:3333/cards/1767069024115492628"
       ],
-      "done": false,
+      "done": true,
+      "done_note": "Verified 2026-05-05: lint:writer-boundary passes; backend/internal/roles/{service_test.go, handler_test.go} cover system-role immutability + self-elevation; zero direct INSERT/UPDATE to roles/role_permissions outside the service.",
       "covered_by": [
         {
           "story_id": "00295",
@@ -321,7 +322,8 @@
         "https://localhost:3333/cards/1767068880871622285",
         "https://localhost:3333/cards/1767069024115492628"
       ],
-      "done": false,
+      "done": true,
+      "done_note": "Verified 2026-05-05: zero RequireRole references in non-test backend code; 37 RequirePermission call sites; backend/internal/permissions/{catalogue_test.go, resolver_test.go} pass; cache_invalidation_test.go in backend/internal/roles passes.",
       "covered_by": [
         {
           "story_id": "00294",
@@ -344,7 +346,7 @@
     {
       "order": 4,
       "criterion": "Creator matrix is enforced: G_admin can create gadmin/padmin/team_lead/user/custom; P_admin can create team_lead/user; team_lead and user cannot create accounts. Server enforcement via users.create.<role_id> permission + role-ceiling; UI is convenience only.",
-      "proven_by": "Tests-C passes; penetration test (Tests-B) shows P_admin → G_admin POST returns 403 with permission-gate-fired audit row.",
+      "proven_by": "Tests-C passes; penetration test (Tests-B) shows P_admin \u2192 G_admin POST returns 403 with permission-gate-fired audit row.",
       "story_id": [
         "00299",
         "00306"
@@ -353,7 +355,8 @@
         "https://localhost:3333/cards/1767068912387622571",
         "https://localhost:3333/cards/1767069024115492628"
       ],
-      "done": false,
+      "done": true,
+      "done_note": "Verified 2026-05-05: backend/internal/users/handler_creator_matrix_test.go passes \u2014 TestTargetRoleCreateCode, TestCreate_creatorMatrix_403, TestCreate_creatorMatrix_400 all green.",
       "covered_by": [
         {
           "story_id": "00299",
@@ -377,7 +380,8 @@
         "https://localhost:3333/cards/1767068896424101532",
         "https://localhost:3333/cards/1767069024115492628"
       ],
-      "done": false,
+      "done": true,
+      "done_note": "Verified 2026-05-05: TestList_returnsRolesScopedToTenant in backend/internal/roles/handler_test.go passes — tenant A's list never contains tenant B's custom roles.",
       "covered_by": [
         {
           "story_id": "00298",
@@ -466,7 +470,7 @@
     {
       "order": 9,
       "criterion": "Audit log records every role + permission mutation with actor + IP + before/after; new action codes (role_created, role_updated, role_archived, permissions_granted, permissions_revoked, user_role_changed) are queryable via existing audit reports.",
-      "proven_by": "Audit smoke test: create custom role, edit it, archive it, and run an audit report — all five expected events present with correct actor and timestamps.",
+      "proven_by": "Audit smoke test: create custom role, edit it, archive it, and run an audit report \u2014 all five expected events present with correct actor and timestamps.",
       "story_id": "00304",
       "card_url": "https://localhost:3333/cards/1767068991634802422",
       "done": false,
@@ -495,104 +499,104 @@
   "risks": [
     {
       "impact": 5,
-      "risk": "Migration silently corrupts a protected human account's credentials. The HARD RULE is the most important invariant in the project — any drift on gadmin@/padmin@/user@ password_hash, email, is_active, role_id, or password_changed_at is a P0 incident.",
+      "risk": "Migration silently corrupts a protected human account's credentials. The HARD RULE is the most important invariant in the project \u2014 any drift on gadmin@/padmin@/user@ password_hash, email, is_active, role_id, or password_changed_at is a P0 incident.",
       "mitigation": "Migration L (per the workflow) includes a post-step assertion that diffs every credential field of the three protected accounts against a pre-migration snapshot and aborts the migration with a hard error if anything differs. The role_id update is the only permitted change. CLAUDE.md HARD RULE referenced explicitly in the migration comment. Test Tests-H gates the e2e suite. Backups taken before migration runs in production."
     },
     {
       "impact": 5,
-      "risk": "Permission cache leak — a stale permission set lets a user keep revoked authority past a tenant's expectation. For external auditor roles, this is a compliance breach.",
+      "risk": "Permission cache leak \u2014 a stale permission set lets a user keep revoked authority past a tenant's expectation. For external auditor roles, this is a compliance breach.",
       "mitigation": "TTL capped at 60s. Role / role_permissions writes broadcast invalidation events to in-process listeners that drop affected cache entries immediately. Test Tests-F gates the e2e suite. Where stronger guarantees are needed (e.g. revocation during an active session), document a follow-up Phase X feature for NOTIFY/LISTEN realtime invalidation."
     },
     {
       "impact": 4,
-      "risk": "Cross-tenant role leak — a bug in the SELECT returning roles to a tenant exposes another tenant's custom roles. Catastrophic for trust.",
+      "risk": "Cross-tenant role leak \u2014 a bug in the SELECT returning roles to a tenant exposes another tenant's custom roles. Catastrophic for trust.",
       "mitigation": "Every roles query goes through a single repository function with the tenant filter baked in; review-required PR; penetration test (Tests-A) gates the e2e suite; lint rule flags any direct SELECT FROM roles outside the repository."
     },
     {
       "impact": 4,
-      "risk": "21-file frontend refactor blast radius — a missed equality check returns true for the wrong role and exposes admin UI to a non-admin.",
+      "risk": "21-file frontend refactor blast radius \u2014 a missed equality check returns true for the wrong role and exposes admin UI to a non-admin.",
       "mitigation": "ESLint rule banning role === string-literal compares (CI gate); reviewer manually spot-checks the 21 files post-refactor; visual smoke test of all four system role logins (gadmin, padmin, team_lead, user) gates the deploy."
     },
     {
       "impact": 4,
-      "risk": "RequireRole → RequirePermission refactor on 14+ routes mis-maps an intent — a route ends up requiring the wrong permission and either over-restricts (functional regression) or under-restricts (security regression).",
+      "risk": "RequireRole \u2192 RequirePermission refactor on 14+ routes mis-maps an intent \u2014 a route ends up requiring the wrong permission and either over-restricts (functional regression) or under-restricts (security regression).",
       "mitigation": "Each refactor lands as a small commit referencing the catalogue code chosen; PR includes a before/after table; integration test suite must continue to pass for every prior gadmin/padmin role test; new tests added per route asserting the expected permission gate."
     },
     {
       "impact": 4,
-      "risk": "Permission catalogue drift — a refactor renames a Go permission constant without updating the seeded migration, or vice versa. Either side missing breaks the parity check at startup, blocking deploys.",
-      "mitigation": "Startup parity check is the gate — the server refuses to start if catalogue and DB diverge. Documentation explicitly requires both sides to be updated together. Adding a permission becomes a small migration + a small Go constant — both reviewed in the same PR."
+      "risk": "Permission catalogue drift \u2014 a refactor renames a Go permission constant without updating the seeded migration, or vice versa. Either side missing breaks the parity check at startup, blocking deploys.",
+      "mitigation": "Startup parity check is the gate \u2014 the server refuses to start if catalogue and DB diverge. Documentation explicitly requires both sides to be updated together. Adding a permission becomes a small migration + a small Go constant \u2014 both reviewed in the same PR."
     },
     {
       "impact": 3,
-      "risk": "Tenant rank collision — a tenant creates a custom role at rank 25 (matching P_admin), making role-ceiling produce confusing answers between the two roles.",
+      "risk": "Tenant rank collision \u2014 a tenant creates a custom role at rank 25 (matching P_admin), making role-ceiling produce confusing answers between the two roles.",
       "mitigation": "CHECK constraint on roles.rank refuses tenant rows in the system bands [10, 20, 25, 30] (and band 5 reserved for external system seed). Tenant-custom rank must be in [11..24] or [26..29]. Validator on Create/Update returns a clear 422 error if violated. Documented in /admin/roles UI copy."
     },
     {
       "impact": 3,
-      "risk": "MVP scope creep — once gadmins see /admin/roles, requests for multi-role-per-user, named permission schemes, time-bound external-account expiry, and tri-state permissions arrive mid-implementation and threaten the cut.",
+      "risk": "MVP scope creep \u2014 once gadmins see /admin/roles, requests for multi-role-per-user, named permission schemes, time-bound external-account expiry, and tri-state permissions arrive mid-implementation and threaten the cut.",
       "mitigation": "Phase X deferrals are written into the plan (scope), the leaf doc, and acceptance criterion #5. Story titles for MVP work include the suffix '(MVP)' so triage sees the cut. Phase X work gets its own future plan; requests get parked there, not folded into PLA-0007."
     },
     {
       "impact": 3,
-      "risk": "Migration Z (dropping users.role) is forgotten or runs prematurely — leaving the enum in place forever or breaking rollback before the observation window closes.",
+      "risk": "Migration Z (dropping users.role) is forgotten or runs prematurely \u2014 leaving the enum in place forever or breaking rollback before the observation window closes.",
       "mitigation": "Migration Z is documented as deferred; a calendar reminder for one full release cycle is added; rollback playbook covers reverting role_id reads back to users.role within the window. Z runs as its own PR after monitoring confirms zero reads of users.role across the application."
     },
     {
       "impact": 2,
-      "risk": "Performance of cold-cache permission lookup at high QPS — three-table join adds milliseconds to first-request latency on a fresh session.",
-      "mitigation": "Warm cache on session create; index on role_permissions(role_id) for the hot lookup; benchmark before launch with realistic tenant data (50 custom roles × 30 permissions × 1,000 fresh sessions/min). If cold-cache cost exceeds budget, materialise a denormalised role_permission_codes(role_id, codes text[]) materialised view refreshed on role_permissions write."
+      "risk": "Performance of cold-cache permission lookup at high QPS \u2014 three-table join adds milliseconds to first-request latency on a fresh session.",
+      "mitigation": "Warm cache on session create; index on role_permissions(role_id) for the hot lookup; benchmark before launch with realistic tenant data (50 custom roles \u00d7 30 permissions \u00d7 1,000 fresh sessions/min). If cold-cache cost exceeds budget, materialise a denormalised role_permission_codes(role_id, codes text[]) materialised view refreshed on role_permissions write."
     }
   ],
   "references": [
     {
       "kind": "internal",
-      "label": "R030 — Custom Roles & Permissions Architecture: Blockers and Prior Art (this plan's evidence base)",
+      "label": "R030 \u2014 Custom Roles & Permissions Architecture: Blockers and Prior Art (this plan's evidence base)",
       "href": "/dev/research/R030"
     },
     {
       "kind": "internal",
-      "label": "PLA-0005 — Universal addressable element registry (substrate /admin/roles adopts)",
+      "label": "PLA-0005 \u2014 Universal addressable element registry (substrate /admin/roles adopts)",
       "href": "/dev/plans/PLA-0005"
     },
     {
       "kind": "internal",
-      "label": "Schema docs — users, page_roles, audit",
+      "label": "Schema docs \u2014 users, page_roles, audit",
       "href": "/docs/c_schema"
     },
     {
       "kind": "internal",
-      "label": "c_security.md — Trust-No-One posture",
+      "label": "c_security.md \u2014 Trust-No-One posture",
       "href": "/docs/c_security"
     },
     {
       "kind": "internal",
-      "label": "feedback_role_ceiling.md — role-ceiling rule referenced in models.go",
+      "label": "feedback_role_ceiling.md \u2014 role-ceiling rule referenced in models.go",
       "href": "/docs/feedback_role_ceiling"
     },
     {
       "kind": "external",
-      "label": "Atlassian — Permissions Overview in Jira",
+      "label": "Atlassian \u2014 Permissions Overview in Jira",
       "href": "https://confluence.atlassian.com/jirakb/permissions-overview-in-jira-1234567.html"
     },
     {
       "kind": "external",
-      "label": "Microsoft Learn — About Permissions, Access Levels, and Security Groups (Azure DevOps)",
+      "label": "Microsoft Learn \u2014 About Permissions, Access Levels, and Security Groups (Azure DevOps)",
       "href": "https://learn.microsoft.com/en-us/azure/devops/organizations/security/about-permissions"
     },
     {
       "kind": "external",
-      "label": "Broadcom Rally — Permissions in Rally",
+      "label": "Broadcom Rally \u2014 Permissions in Rally",
       "href": "https://docs.broadcom.com/doc/permissions-in-rally"
     },
     {
       "kind": "external",
-      "label": "NIST — Role-Based Access Control (RBAC) Project",
+      "label": "NIST \u2014 Role-Based Access Control (RBAC) Project",
       "href": "https://csrc.nist.gov/projects/role-based-access-control"
     },
     {
       "kind": "external",
-      "label": "PostgreSQL Documentation — ALTER TYPE (enum value addition limitations)",
+      "label": "PostgreSQL Documentation \u2014 ALTER TYPE (enum value addition limitations)",
       "href": "https://www.postgresql.org/docs/current/sql-altertype.html"
     }
   ],
@@ -645,7 +649,7 @@
     },
     {
       "story_id": "00295",
-      "title": "Backend: internal/roles.Service — sole writer with system-role immutability and self-elevation gates",
+      "title": "Backend: internal/roles.Service \u2014 sole writer with system-role immutability and self-elevation gates",
       "card_url": "https://localhost:3333/cards/1767068849171072623",
       "card_id": "1767068849171072623",
       "status": "complete",
@@ -701,7 +705,7 @@
     },
     {
       "story_id": "00299",
-      "title": "API: POST /api/users dual-gate — users.create.<role_id> AND role-ceiling",
+      "title": "API: POST /api/users dual-gate \u2014 users.create.<role_id> AND role-ceiling",
       "card_url": "https://localhost:3333/cards/1767068912387622571",
       "card_id": "1767068912387622571",
       "status": "complete",
@@ -714,7 +718,7 @@
     },
     {
       "story_id": "00300",
-      "title": "Frontend: AuthContext refactor — Role struct, permissions Set, useHasPermission hook",
+      "title": "Frontend: AuthContext refactor \u2014 Role struct, permissions Set, useHasPermission hook",
       "card_url": "https://localhost:3333/cards/1767068928040765114",
       "card_id": "1767068928040765114",
       "status": "complete",
@@ -730,7 +734,7 @@
       "title": "Frontend: migrate 21 role-equality call sites to useHasPermission",
       "card_url": "https://localhost:3333/cards/1767068944297887433",
       "card_id": "1767068944297887433",
-      "status": "complete",
+      "status": "done",
       "workflow_steps": [
         "T"
       ],
@@ -789,7 +793,7 @@
     },
     {
       "story_id": "00306",
-      "title": "Dev: e2e security suite — tenant isolation, role-ceiling, creator matrix, immutability, self-elevation, cache invalidation",
+      "title": "Dev: e2e security suite \u2014 tenant isolation, role-ceiling, creator matrix, immutability, self-elevation, cache invalidation",
       "card_url": "https://localhost:3333/cards/1767069024115492628",
       "card_id": "1767069024115492628",
       "status": "complete",
@@ -833,6 +837,12 @@
       "proves_acceptance": [
         10
       ]
+    },
+    {
+      "title": "Backend: extend permission catalogue for library/portfolio/work-items gates",
+      "story_id": "00413",
+      "card_url": "http://localhost:3333/cards/1767923619301688697",
+      "status": "done"
     }
   ]
 }

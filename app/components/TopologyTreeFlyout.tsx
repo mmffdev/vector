@@ -505,15 +505,13 @@ export default function TopologyTreeFlyout({
                         body rows. */}
                     <th className="table__cell topo-tree-table__warn-cell" aria-hidden="true">
                       <span
-                        className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn"
-                        style={{ visibility: "hidden", pointerEvents: "none" }}
+                        className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn topo-tree-flyout__placeholder"
                         aria-hidden="true"
                       />
                     </th>
                     <th className="table__cell topo-tree-table__actions-cell" aria-hidden="true">
                       <span
-                        className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn"
-                        style={{ visibility: "hidden", pointerEvents: "none" }}
+                        className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn topo-tree-flyout__placeholder"
                         aria-hidden="true"
                       />
                     </th>
@@ -596,8 +594,15 @@ function TreeRow({
   // otherwise hash to a stable palette colour so every node carries a
   // consistent accent without needing a manual colour assigned.
   const accent = node.colour || paletteColour(node.id);
+  const trRef = useRef<HTMLTableRowElement | null>(null);
+  useEffect(() => {
+    const el = trRef.current;
+    if (!el) return;
+    el.style.setProperty("--node-accent", accent);
+  }, [accent]);
   return (
     <tr
+      ref={trRef}
       className={`table__row topo-tree-table__row${selected ? " table__row--selected" : ""}`}
       onClick={onSelect}
       onDoubleClick={onActivate}
@@ -606,7 +611,6 @@ function TreeRow({
       aria-selected={selected}
       aria-expanded={hasChildren ? !rowCollapsed : undefined}
       data-node-id={node.id}
-      style={{ ["--node-accent" as string]: accent }}
     >
       {/* Drag-grip — placeholder; six-dot affordance for future reorder. */}
       <td

@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 
 type Severity = "info" | "action" | "breaking";
@@ -54,20 +54,20 @@ type LoadState =
 
 export default function LibraryReleasesPage() {
   const { user } = useAuth();
+  const canViewReleases = useHasPermission("library.releases.view");
   const router = useRouter();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [acking, setAcking] = useState<string | null>(null);
 
-  // Role gate: only gadmin sees this page. Others bounce to dashboard.
   useEffect(() => {
-    if (user && user.role.code !== "gadmin") router.replace("/dashboard");
-  }, [user, router]);
+    if (user && !canViewReleases) router.replace("/dashboard");
+  }, [user, canViewReleases, router]);
 
   useEffect(() => {
-    if (!user || user.role.code !== "gadmin") return;
+    if (!user || !canViewReleases) return;
     void loadReleases();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, canViewReleases]);
 
   async function loadReleases() {
     setState({ kind: "loading" });
@@ -109,7 +109,7 @@ export default function LibraryReleasesPage() {
     }
   }
 
-  if (!user || user.role.code !== "gadmin") return null;
+  if (!user || !canViewReleases) return null;
 
   return (
     <StrictRoute>

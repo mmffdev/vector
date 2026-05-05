@@ -2,6 +2,8 @@
 
 Single source of truth for styling. **Load this file before writing any HTML or JSX element.**
 
+> **Dev Setup pages take a different catalog.** Anything rendered under `/dev` (panels in [`dev/pages/DevPage.tsx`](../dev/pages/DevPage.tsx)) MUST use the `.dui-*` primitives in [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css). See [`docs/c_c_dev_ui_primitives.md`](c_c_dev_ui_primitives.md) for the HARD RULE and the 14 primitive families. The rules below apply to user-facing app pages.
+
 ## Pre-flight (run this before every element you write)
 
 1. **Is there a catalog class for this element?** → use it. Tables use `.table` + `.table__row` + `.table__cell`. Buttons use `.btn` + variant. Inputs use `.form__input`. Headings and body text inherit from `globals.css` via the theme. Do not invent a bespoke class if one already exists.
@@ -102,20 +104,28 @@ Shape         → border-radius: 0;  height: 40px; (matches .btn geometry)
 
 **HARD RULE — canonical structure. Every table in the app MUST follow this exact shape. No variations.**
 
+The canonical wrapper is `.tree_accordion-dense__scroll`, which owns its own border, surface, and `overflow:auto` so a sticky header can stick. Use it for every table (`.table-wrap` is **deprecated** — see "Migration" below).
+
 ```jsx
-<div className="table-wrap">
-  <table className="table" aria-label="…">
-    <colgroup>…</colgroup>          {/* optional but recommended for fixed widths */}
-    <thead className="table__head">
+<div className="tree_accordion-dense__scroll">
+  <table className="tree_accordion-dense__table" aria-label="…">
+    <colgroup>
+      <col style={{ width: 56 }} />
+      <col style={{ width: 200 }} />
+      <col />
+    </colgroup>
+    <thead className="tree_accordion-dense__head">
       <tr>
-        <th className="table__cell">Column</th>
-        <th className="table__cell table__cell--numeric">Pts</th>
+        <th className="tree_accordion-dense__th tree_accordion-dense__th--numeric">#</th>
+        <th className="tree_accordion-dense__th">Name</th>
+        <th className="tree_accordion-dense__th">Description</th>
       </tr>
     </thead>
     <tbody>
-      <tr className="table__row">
-        <td className="table__cell">Value</td>
-        <td className="table__cell table__cell--numeric">5</td>
+      <tr className="tree_accordion-dense__row">
+        <td className="tree_accordion-dense__cell tree_accordion-dense__cell--numeric tree_accordion-dense__cell--mono">1</td>
+        <td className="tree_accordion-dense__cell">Backlog</td>
+        <td className="tree_accordion-dense__cell">Default first state.</td>
       </tr>
     </tbody>
   </table>
@@ -124,15 +134,54 @@ Shape         → border-radius: 0;  height: 40px; (matches .btn geometry)
 
 | Class | Where | Purpose |
 |---|---|---|
-| `.table-wrap` | outer `<div>` | surface bg, border, overflow:hidden |
-| `.table` | `<table>` | full-width, border-collapse |
-| `.table__head` | `<thead>` | sunken header background |
-| `.table__cell` | `<th>` and `<td>` | padding, height, ink colour, border |
-| `.table__row` | `<tr>` in `<tbody>` only | hover state, border-bottom |
-| `.table__cell--numeric` | modifier on `<th>`/`<td>` | right-aligned, tabular nums |
-| `.table__cell--muted` | modifier on `<td>` | de-emphasised ink colour |
+| `.tree_accordion-dense__scroll` | outer `<div>` | surface bg, border, `overflow:auto` (sticky-header friendly), `max-height: min(80vh, 720px)` |
+| `.tree_accordion-dense__table` | `<table>` | full-width, `border-collapse: separate`, `table-layout: fixed`, 13px ink |
+| `.tree_accordion-dense__head` | `<thead>` | sunken header background |
+| `.tree_accordion-dense__th` | `<th>` | uppercase eyebrow, sticky-top, 11px label |
+| `.tree_accordion-dense__th--numeric` | modifier on `<th>` | right-aligned |
+| `.tree_accordion-dense__th--center` | modifier on `<th>` | centred |
+| `.tree_accordion-dense__th--mono` | modifier on `<th>` | monospaced label |
+| `.tree_accordion-dense__row` | `<tr>` in `<tbody>` | 28px high, hover, zebra striping (even rows tinted) |
+| `.tree_accordion-dense__row--epic` | modifier on `<tr>` | bold (use for group/zone separator rows) |
+| `.tree_accordion-dense__row--child` | modifier on `<tr>` | structural marker (no visual change) |
+| `.tree_accordion-dense__row--selected` | modifier on `<tr>` | accent-tinted background |
+| `.tree_accordion-dense__cell` | `<td>` | 12px padding, ellipsis, vertical-align middle |
+| `.tree_accordion-dense__cell--numeric` | modifier on `<td>` | right-aligned |
+| `.tree_accordion-dense__cell--center` | modifier on `<td>` | centred |
+| `.tree_accordion-dense__cell--mono` | modifier on `<td>` | monospaced, smaller, muted ink |
 
-**Never put `table__head` on a `<tr>` inside `<tbody>`.** Header rows belong in `<thead>`. If a table needs mid-body section headings (e.g. zone separators), use a dedicated separator class (e.g. `.layers-editor__row--group-sep`), not a re-use of `.table__head`.
+**Column widths.** Set fixed widths via `<col style={{ width: N }} />` inside `<colgroup>`. This is the **only** sanctioned use of inline `style` in tables — it expresses a structural width that has no semantic class. The last `<col />` (no width) takes the remaining space.
+
+**Multiple stacked tables.** Wrap them in `<div className="u-stack--gap-3">…</div>` to space them — never invent a `__group` modifier on the wrapper.
+
+**Section header rows.** For mid-body group/zone separators (e.g. "Strategy Zone", "Execution Zone"), use a `<tr className="tree_accordion-dense__row tree_accordion-dense__row--epic">` with a `colSpan` cell containing an `<span className="eyebrow">` — not a re-use of `__head`.
+
+**Never put `tree_accordion-dense__head` on a `<tr>` inside `<tbody>`.** Header rows belong in `<thead>`.
+
+#### Migration: `.table` / `.table-wrap` is deprecated
+
+The legacy `.table` / `.table-wrap` / `.table__head` / `.table__row` / `.table__cell` family is **deprecated as of 2026-05-05**. Reasons:
+
+1. `.table-wrap` has `overflow:hidden`, which clips sticky headers — every long table eventually needs a scroll wrapper that allows sticky positioning, so we already have `.tree_accordion-dense__scroll` and don't need two systems.
+2. Live callers in the app already use `tree_accordion-dense__*` for the dense grids that actually scale; the rest are smaller tables that should adopt the same family for consistency.
+
+**Do not write new code against `.table*`.** When touching a file that still uses it, migrate that file's table(s) to `tree_accordion-dense__*` as part of the change. The bulk strip of `.table*` rules from `app/globals.css` lands once every TSX caller is migrated — see the technical-debt register entry.
+
+**Mapping (one-to-one):**
+
+| Legacy | Replacement |
+|---|---|
+| `.table-wrap` | `.tree_accordion-dense__scroll` |
+| `.table` | `.tree_accordion-dense__table` |
+| `.table__head` | `.tree_accordion-dense__head` |
+| `<th className="table__cell">` | `<th className="tree_accordion-dense__th">` |
+| `.table__cell--numeric` (on `<th>`) | `.tree_accordion-dense__th--numeric` |
+| `.table__row` | `.tree_accordion-dense__row` |
+| `.table__cell` (on `<td>`) | `.tree_accordion-dense__cell` |
+| `.table__cell--numeric` (on `<td>`) | `.tree_accordion-dense__cell--numeric` |
+| `.table__cell--muted` | (no direct replacement — base `__cell` is already muted enough; if you need stronger muting wrap content in `<span className="u-muted">` or extend the catalog) |
+| outer wrapper modifier (`.table-wrap foo__group`) | drop — use `<div className="u-stack--gap-3">` to space stacked tables |
+| per-table column-width class (`.foo__pos-cell`) | drop — set width via `<col style={{ width: N }} />` |
 
 ### Forms
 

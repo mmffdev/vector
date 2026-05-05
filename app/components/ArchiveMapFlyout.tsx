@@ -260,14 +260,20 @@ export default function ArchiveMapFlyout({
 
   const defaultWidth =
     typeof window !== "undefined" ? Math.max(360, Math.min(window.innerWidth * 0.5, window.innerWidth * 0.9)) : 480;
+  const effectiveWidth = width ?? defaultWidth;
+
+  useEffect(() => {
+    const el = asideRef.current;
+    if (!el) return;
+    el.style.setProperty("--flyout-w", `${effectiveWidth}px`);
+  }, [effectiveWidth]);
 
   return (
     <aside
       ref={asideRef}
-      className="topo-archive-map"
+      className="topo-archive-map archive-flyout-w"
       role="dialog"
       aria-label={`Archived descendants of ${nodeName}`}
-      style={{ width: `${width ?? defaultWidth}px` }}
     >
       {/* Left-edge resize handle. */}
       <div
@@ -300,7 +306,7 @@ export default function ArchiveMapFlyout({
 
       <Panel name="archive_map" className="panel--bare topo-archive-map__panel">
         <div className="topo-archive-map__body">
-          {error && <p className="topo-overlay__err-text">{error}</p>}
+          {error && <p className="form__error">{error}</p>}
           {!error && list === null && <p className="topo-archive-map__empty">Loading…</p>}
           {!error && list !== null && rows.length === 0 && (
             <p className="topo-archive-map__empty">No archived descendants.</p>

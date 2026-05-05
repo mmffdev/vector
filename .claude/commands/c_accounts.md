@@ -17,15 +17,17 @@ Test-tier accounts (`claude@`, `claude_1_test@`, `claude_2_test@`, `claude_3_tes
 
 ## App users (live DB)
 
-Requires tunnel on `:5434`. Query:
+Requires tunnel on `:5435` (dev VPS via `vector-dev-pg`). Query:
 
 ```bash
 PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local" | cut -d= -f2-) \
-/opt/homebrew/opt/libpq/bin/psql -h localhost -p 5434 -U mmff_dev -d mmff_vector \
+/opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector \
   -c "SELECT email, role, is_active, force_password_change FROM users ORDER BY role, email;"
 ```
 
 This is the authoritative list. If login fails, check this first — the user may not exist, may be inactive, or may have `force_password_change = true`.
+
+**Note (2026-05-05):** `backend/.env.local` is a dev-locked alias of `backend/.env.dev` (port 5435). Production DB creds are deliberately not stored here; if you ever need a one-off prod-DB session, open a transient `-L 5434:localhost:5432` tunnel against `mmffdev-pg` rather than re-adding prod creds to a long-lived env file.
 
 ## App credential locations
 
@@ -63,13 +65,13 @@ curl -s -X POST http://localhost:5100/api/dev/hash -d '{"password":"newpassword1
 
 # Then update directly:
 PGPASSWORD=$(grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-) \
-/opt/homebrew/opt/libpq/bin/psql -h localhost -p 5434 -U mmff_dev -d mmff_vector \
+/opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector \
   -c "UPDATE users SET password_hash = '<hash>' WHERE email = 'user@example.com';"
 ```
 
 ## Connection details
 
-- Tunnel port: `5434` (SSH tunnel → remote `5432`)  
+- Tunnel port: `5435` (SSH tunnel `vector-dev-pg` → dev VPS `5432`)
 - DB name: `mmff_vector`
 - DB user: `mmff_dev`
 - Psql binary: `/opt/homebrew/opt/libpq/bin/psql`

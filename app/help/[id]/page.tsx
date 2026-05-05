@@ -13,8 +13,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+import { api, ApiError } from "@/app/lib/api";
 
 type FetchState =
   | { kind: "loading" }
@@ -31,20 +30,9 @@ export default function HelpPage() {
     if (!id) return;
     let cancelled = false;
     setState({ kind: "loading" });
-    fetch(`${API_BASE}/api/page-help/${encodeURIComponent(id)}`, {
-      credentials: "include",
-    })
-      .then(async (r) => {
+    api<Partial<HelpDoc>>(`/api/page-help/${encodeURIComponent(id)}`)
+      .then((data) => {
         if (cancelled) return;
-        if (r.status === 404) {
-          setState({ kind: "not_found" });
-          return;
-        }
-        if (!r.ok) {
-          setState({ kind: "error", message: `HTTP ${r.status}` });
-          return;
-        }
-        const data = (await r.json()) as Partial<HelpDoc>;
         setState({
           kind: "ready",
           doc: {
@@ -58,6 +46,14 @@ export default function HelpPage() {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+        if (err instanceof ApiError && err.status === 404) {
+          setState({ kind: "not_found" });
+          return;
+        }
+        if (err instanceof ApiError) {
+          setState({ kind: "error", message: `HTTP ${err.status}` });
+          return;
+        }
         setState({
           kind: "error",
           message: err instanceof Error ? err.message : String(err),

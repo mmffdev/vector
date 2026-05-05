@@ -14,6 +14,8 @@ All lints share the same shape:
 | `lint:addressables` | `dev/scripts/lint_addressables.py` | `addressables_exempt.json` | every panel-shaped element wrapped in `<Panel name="…">` (PLA-0005) |
 | `lint:role-literals` | `dev/scripts/lint_role_literals.py` | `role_literals_exempt.json` | no `user.role === 'gadmin'`-style compares; use `useHasPermission(...)` (PLA-0007 / 00305) |
 | `lint:writer-boundary` | `dev/scripts/lint_writer_boundary.py` | `writer_boundary_exempt.json` | writes to `roles` / `permissions` / `role_permissions` route through `internal/roles/` only; `page_addressables` writes route through `internal/addressables/` only |
+| `lint:dev-css` | `dev/scripts/lint_dev_css.py` | _(no registry — hard gate)_ | zero `dev-*` / `dui-*` selectors in `app/globals.css`; zero imports of `app/globals.css` from anywhere under `dev/` (PLA-0013) |
+| `lint:secondary-nav` | `dev/scripts/lint_secondary_nav.py` | `secondary_nav_exempt.json` | every `<SecondaryNavigation reorderable …>` carries a `pageId="…"` so per-user tab order can persist (PLA-0014 / 00420) |
 
 ---
 
@@ -74,6 +76,33 @@ Scans every `*.go` under `backend/` (excluding `*_test.go` and `vendor/`) for `I
 Migration SQL files (`db/schema/*.sql`) are not scanned — migrations are the privileged bootstrap path.
 
 **Adding a new sole-writer boundary:** edit `WRITER_BOUNDARY` in `dev/scripts/lint_writer_boundary.py` and add the new `<table> → <package>` row.
+
+---
+
+## `lint:dev-css` — detail
+
+Two checks gate the dev-UI catalog (PLA-0013):
+
+1. **No `dev-*` / `dui-*` selectors in `app/globals.css`.** The selectors `.dev-help-editor__*`, `.dev-shortcuts-th--*`, `.ui-retro__*`, etc. that leaked into globals over five generations of dev panels MUST move to `dev/styles/dev-ui.css` under the `.dui-*` namespace. `app/globals.css` is the user-facing app stylesheet only.
+2. **No imports of `app/globals.css` from `dev/`.** Next.js loads `app/globals.css` once via the root layout — dev panels do not need to import it. Dev panels load `dev/styles/dev.css` + `dev/styles/dev-ui.css`.
+
+There is no exemption registry — this lint is a hard gate. The migration stories (00409 / 00410 / 00411 / 00412) evict each cluster of bespoke selectors and the lint must remain at exit 0 once each story lands.
+
+The detector strips `/* … */` comments before matching, so `.dev-foo` mentioned inside a comment is ignored. The selector regex requires a leading whitespace / comma / combinator / brace, so CSS custom-property names like `--dev-foo` do not trip it (they start with `--`, not `.`).
+
+---
+
+## `lint:secondary-nav` — detail
+
+Walks every `<SecondaryNavigation` opening tag (multi-line JSX supported) and checks that any element using `reorderable` also passes `pageId="…"`. The per-user tab order is keyed on `(user_id, subscription_id, page_id)`; without a stable `pageId` the toggle would render but persistence would silently no-op.
+
+The detector skips the component implementation file itself (`app/components/SecondaryNavigation.tsx`) because the component declares the props rather than consumes them. False positives can be parked in `dev/registries/secondary_nav_exempt.json`.
+
+**Migration playbook** when adding a new reorderable nav:
+
+1. Pick a stable string `pageId` (lowercase + dashes; mirrors the route segment — e.g. `"workspace-settings"`, `"theme"`, `"work-items"`).
+2. Pass `pageId={…}` and `reorderable` together — never one without the other.
+3. Run `npm run lint:secondary-nav` — must exit 0.
 
 ---
 

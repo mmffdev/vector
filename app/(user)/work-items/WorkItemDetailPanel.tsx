@@ -86,7 +86,7 @@ function InlineDateField({
   }
   return (
     <span
-      className="work-items-panel__inline-trigger"
+      className="inline-edit-trigger"
       title="Click to edit"
       onClick={() => setEditing(true)}
     >
@@ -154,7 +154,7 @@ function FieldValueInput({
         }}
         ariaLabel={fv.label}
         inputClassName="form__input form__input--sm form__input--numeric"
-        displayClassName="work-items-panel__inline-trigger"
+        displayClassName="inline-edit-trigger"
         clickToEdit
         allowEmpty
         emptyDisplay="—"
@@ -169,7 +169,7 @@ function FieldValueInput({
         onCommit={(next) => commit(next)}
         ariaLabel={fv.label}
         inputClassName="form__input"
-        displayClassName="work-items-panel__inline-trigger"
+        displayClassName="inline-edit-trigger"
         clickToEdit
         multiline
         rows={4}
@@ -185,7 +185,7 @@ function FieldValueInput({
       onCommit={(next) => commit(next)}
       ariaLabel={fv.label}
       inputClassName="form__input form__input--sm"
-      displayClassName="work-items-panel__inline-trigger"
+      displayClassName="inline-edit-trigger"
       clickToEdit
       allowEmpty
       emptyDisplay="—"
@@ -238,7 +238,7 @@ function PanelInlineSelect({
   }
   return (
     <span
-      className="work-items-panel__inline-trigger"
+      className="inline-edit-trigger"
       title="Click to edit"
       onClick={() => setEditing(true)}
     >
@@ -293,7 +293,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
               onCommit={(next) => onPatch(item.id, { title: next })}
               ariaLabel="Work item title"
               inputClassName="form__input"
-              displayClassName="work-items-panel__title-text"
+              displayClassName="inline-edit-trigger"
               clickToEdit
               maxLength={200}
             />
@@ -364,7 +364,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
                     }}
                     ariaLabel="Manual story points"
                     inputClassName="form__input form__input--sm form__input--numeric"
-                    displayClassName="work-items-panel__inline-trigger"
+                    displayClassName="inline-edit-trigger"
                     clickToEdit
                     allowEmpty
                     emptyDisplay="—"
@@ -385,7 +385,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
                 }}
                 ariaLabel="Story points"
                 inputClassName="form__input form__input--sm form__input--numeric"
-                displayClassName="work-items-panel__inline-trigger"
+                displayClassName="inline-edit-trigger"
                 clickToEdit
                 allowEmpty
                 emptyDisplay="—"

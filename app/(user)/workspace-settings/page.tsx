@@ -18,6 +18,7 @@ import { MdOutlineArrowForwardIos, MdOutlineEdit } from "react-icons/md";
 import { useTabState } from "@/app/hooks/useTabState";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import PageShell from "@/app/components/PageShell";
+import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
@@ -30,6 +31,15 @@ import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/
 const TopologyOverlayPage = dynamic(() => import("@/app/(overlay)/topology/page"), {
   ssr: false,
   loading: () => <div className="topology-tab-host__loading">Loading topology…</div>,
+});
+
+// Portfolio Model wizard mounted inline as a tab. The standalone
+// /portfolio-model route still exists (deep-link target), but the
+// canonical surface is now this tab so the gadmin reaches model
+// adoption from one place — Workspace Settings.
+const PortfolioModelPage = dynamic(() => import("@/app/(user)/portfolio-model/page"), {
+  ssr: false,
+  loading: () => <div className="topology-tab-host__loading">Loading portfolio model…</div>,
 });
 
 // AdminUser.role here is the bare role code string returned by
@@ -65,18 +75,20 @@ interface RoleSummary {
   rank: number;
 }
 
-const TABS = ["organization", "workspaces", "users", "permissions", "topology"] as const;
+const TABS = ["organization", "workspaces", "users", "permissions", "topology", "portfolio_model", "work_items"] as const;
 
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
+  const canAdminWorkspace = useHasPermission("workspace.archive");
+  const canManageFlows = useHasPermission("flows.manage");
   const router = useRouter();
   const [tab, setTab] = useTabState(TABS, "organization");
 
   useEffect(() => {
-    if (user && user.role.code !== "gadmin") router.replace("/dashboard");
-  }, [user, router]);
+    if (user && !canAdminWorkspace) router.replace("/dashboard");
+  }, [user, canAdminWorkspace, router]);
 
-  if (!user || user.role.code !== "gadmin") return null;
+  if (!user || !canAdminWorkspace) return null;
 
   // Story 00104 — Organization tab added as the default landing
   // tab so the workspace identity (display name, region, support
@@ -84,28 +96,29 @@ export default function WorkspaceSettingsPage() {
   // the operational tabs that come after.
   return (
     <PageShell title="Workspace Settings" subtitle="Organization, user management, and tenant-level configuration">
-      <div className="tabs">
-        <TabButton active={tab === "organization"} onClick={() => setTab("organization")}>
-          Organization
-        </TabButton>
-        <TabButton active={tab === "workspaces"} onClick={() => setTab("workspaces")}>
-          Workspaces
-        </TabButton>
-        <TabButton active={tab === "users"} onClick={() => setTab("users")}>
-          Users
-        </TabButton>
-        <TabButton active={tab === "permissions"} onClick={() => setTab("permissions")}>
-          Permissions
-        </TabButton>
-        <TabButton active={tab === "topology"} onClick={() => setTab("topology")}>
-          Topology
-        </TabButton>
-      </div>
+      <SecondaryNavigation<typeof TABS[number]>
+        ariaLabel="Workspace settings sections"
+        pageId="workspace-settings"
+        reorderable
+        active={tab}
+        onChange={setTab}
+        items={[
+          { key: "organization", label: "Organization", sortKey: "Organization" },
+          { key: "workspaces", label: "Workspaces", sortKey: "Workspaces" },
+          { key: "users", label: "Users", sortKey: "Users" },
+          { key: "permissions", label: "Permissions", sortKey: "Permissions" },
+          { key: "topology", label: "Topology", sortKey: "Topology" },
+          { key: "portfolio_model", label: "Portfolio Model", sortKey: "Portfolio Model" },
+          ...(canManageFlows ? [{ key: "work_items" as const, label: "Work Items", sortKey: "Work Items" }] : []),
+        ]}
+      />
       {tab === "organization" && <OrganizationTab />}
       {tab === "workspaces" && <WorkspacesTab />}
       {tab === "users" && <UsersTab />}
       {tab === "permissions" && <PermissionsTab />}
       {tab === "topology" && <TopologyTab />}
+      {tab === "portfolio_model" && <PortfolioModelTab />}
+      {tab === "work_items" && canManageFlows && <WorkItemsTab />}
     </PageShell>
   );
 }
@@ -593,23 +606,6 @@ function OrganizationTab() {
         <button type="button" className="btn btn--danger" disabled>Archive…</button>
       </div>
     </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  const cls = active ? "tabs__tab tabs__tab--active" : "tabs__tab";
-  return (
-    <button onClick={onClick} className={cls}>
-      {children}
-    </button>
   );
 }
 
@@ -1903,6 +1899,150 @@ function TopologyTab() {
   return (
     <div className="topology-tab-host">
       <TopologyOverlayPage />
+    </div>
+  );
+}
+
+// PortfolioModelTab mounts the same /portfolio-model page used by
+// the standalone route. Same host wrapper as TopologyTab — the
+// nested PageShell from the inner page is intentional, matching
+// the established Topology-as-tab pattern.
+function PortfolioModelTab() {
+  return (
+    <div className="ws-tab-embed">
+      <PortfolioModelPage />
+    </div>
+  );
+}
+
+interface FlowState {
+  id: string;
+  flow_position: number;
+  name: string;
+  canonical_code: string;
+  description?: string | null;
+}
+
+interface FlowGroup {
+  target_kind: "system" | "tenant" | "portfolio";
+  target_id: string;
+  target_label: string;
+  states: FlowState[] | null;
+}
+
+interface FlowsResponse {
+  system: FlowGroup[] | null;
+  tenant: FlowGroup[] | null;
+  portfolio: FlowGroup[] | null;
+}
+
+function WorkItemsTab() {
+  const [data, setData] = useState<FlowsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api<FlowsResponse>("/api/flows/")
+      .then((res) => {
+        if (cancelled) return;
+        setData(res);
+        setError(null);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        const msg = e instanceof ApiError ? e.message : String(e);
+        setError(msg);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) return <div className="empty-state">Loading flows…</div>;
+  if (error) return <div className="empty-state">Could not load flows: {error}</div>;
+  if (!data) return null;
+
+  const sections: Array<{ title: string; subtitle: string; groups: FlowGroup[] }> = [
+    {
+      title: "System types",
+      subtitle: "Vendor-defined artefact types (work items, defects, tasks, test cases, epics, strategic).",
+      groups: data.system ?? [],
+    },
+    {
+      title: "Portfolio layers",
+      subtitle: "Each strategy layer your tenant has defined (Feature, Initiative, Theme, …) has its own independent flow.",
+      groups: data.portfolio ?? [],
+    },
+    {
+      title: "Custom types",
+      subtitle: "Tenant-invented artefact types. Empty until a gadmin creates one.",
+      groups: data.tenant ?? [],
+    },
+  ];
+
+  return (
+    <div>
+      <div className="toolbar">
+        <div className="toolbar__meta">
+          Read-only view — editing arrives in the next iteration. Each row below is a state in the named flow, in execution order.
+        </div>
+      </div>
+
+      {sections.map((section) => (
+        <section key={section.title} className="flow-editor__section">
+          <h3 className="flow-editor__section-title">{section.title}</h3>
+          <p className="flow-editor__section-subtitle">{section.subtitle}</p>
+
+          {section.groups.length === 0 ? (
+            <div className="empty-state">No flows in this section.</div>
+          ) : (
+            <div className="u-stack--gap-3">
+              {section.groups.map((g) => (
+                <div key={g.target_id}>
+                  <div className="toolbar">
+                    <div className="toolbar__meta"><strong>{g.target_label}</strong></div>
+                  </div>
+                  <div className="tree_accordion-dense__scroll">
+                    <table className="tree_accordion-dense__table" aria-label={g.target_label}>
+                      <colgroup>
+                        <col style={{ width: 56 }} />
+                        <col style={{ width: 200 }} />
+                        <col style={{ width: 160 }} />
+                        <col />
+                      </colgroup>
+                      <thead className="tree_accordion-dense__head">
+                        <tr>
+                          <th className="tree_accordion-dense__th tree_accordion-dense__th--numeric">#</th>
+                          <th className="tree_accordion-dense__th">Name</th>
+                          <th className="tree_accordion-dense__th">Canonical</th>
+                          <th className="tree_accordion-dense__th">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(g.states ?? []).map((s) => (
+                          <tr key={s.id} className="tree_accordion-dense__row">
+                            <td className="tree_accordion-dense__cell tree_accordion-dense__cell--numeric tree_accordion-dense__cell--mono">{s.flow_position}</td>
+                            <td className="tree_accordion-dense__cell">{s.name}</td>
+                            <td className="tree_accordion-dense__cell">
+                              <span className="pill pill--neutral">{s.canonical_code}</span>
+                            </td>
+                            <td className="tree_accordion-dense__cell">{s.description ?? ""}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
     </div>
   );
 }

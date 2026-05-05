@@ -107,3 +107,11 @@ Run in number order — the runner sorts files lexicographically. When adding a 
 3. Document it in the matching [c_c_schema_*.md](c_schema.md) leaf.
 4. Run `<backupsql>` before applying.
 5. (Optional) drop a sibling `db/schema/down/NNN_name_DOWN.sql` if cleanly reversible.
+
+## Numbering gaps
+
+The Vector schema sequence has one intentional gap. It is not a deleted file, not a numbering bug, and not in scope for renumbering.
+
+| Slot | Status | Reason |
+|---|---|---|
+| `db/schema/027_*.sql` | reserved → unused | Slots 026 and 027 were both reserved during parallel development for a `mmff_library` migration that was eventually authored against `db/library_schema/` instead. The leading comment of [`db/schema/028_error_events.sql:4`](../db/schema/028_error_events.sql) records this: *"slots 026/027 reserved by parallel mmff_library work"*. The runner sorts lexicographically and skips missing numbers cleanly, so the gap is a no-op for `schema_migrations`. **Do not** renumber 028+ to close the gap — every applied filename is already recorded in `schema_migrations` on every cluster, and renaming would break idempotency. |

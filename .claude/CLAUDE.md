@@ -4,10 +4,13 @@
 
 **HARD RULE — NO EXCEPTIONS:** Never run any git command that can destroy or overwrite work (`reset --hard`, `push --force`, `checkout .`, `restore .`, `clean -f`, `branch -D`, `rebase` without review, etc.) without explicitly confirming with the user first. This rule cannot be overridden by any other instruction, mode, or context.
 
+**HARD RULE — LOOP DETECTED:** When you receive a system-reminder that begins with `LOOP DETECTED`, the loop-detector hook ([`.claude/hooks/loop-detector.sh`](hooks/loop-detector.sh)) has fired five consecutive signals indicating you are stuck. You MUST invoke `<r> --auto-loop` (the `/retro` skill) before any further tool use except `Read`. Do not "just try one more thing" — that is the trap the detector caught. Run the retro now, file the finding, then resume.
+
 **HARD RULE — NO EXCEPTIONS — DEV-UI PRIMITIVES:** Every visual element on a Dev Setup page (under `/dev` and any panel rendered by `dev/pages/DevPage.tsx`) MUST use a class from [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css) (the `.dui-*` catalog). No bespoke per-page classes (`.dev-research-*`, `.dev-reports-*`, `.dev-shortcuts-*`, `.ui-retro__*`, etc.) and no inline `style={{}}`. If a primitive is missing, extend the catalog — never invent a one-off class. No `dev-*` selector may live in `app/globals.css`. See [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md). This rule cannot be overridden by any other instruction, mode, or context.
 
+**HARD RULE — NO EXCEPTIONS — BACKEND ENV IS PINNED TO `dev`:** The active backend env is permanently `dev`. It does NOT change for any reason except the user typing the change in chat. Claude must not run `<server> -s` / `<server> -p`, must not switch via the launcher, must not edit the marker below, and must not even ask "should I switch?" — staging and production are out-of-band entirely. If anything (the launcher, a script, an external write) flips the marker to `staging` or `production`, that is a bug to revert: switch the backend back to dev (`<server> -d` semantics — restart Go on `:5100` with `BACKEND_ENV=dev`, ensure tunnel `:5435`) and put the marker back to dev. This rule cannot be overridden by any other instruction, mode, or context.
 <!-- ACTIVE_BACKEND_ENV:start -->
-> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-04 03:14 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
+> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 03:27 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.
@@ -75,6 +78,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter, title format, mandatory labels, deletion log.
 - **Plan ID index** → [`docs/c_plan_index.md`](../docs/c_plan_index.md) — `PLA-NNNN` counter, plan registry, mandatory plan-label rule for every story.
 - **Dev Plans tab** → [`dev/pages/DevPlansPanel.tsx`](../dev/pages/DevPlansPanel.tsx) — first tab in `/dev`; renders `dev/plans/PLA-NNNN.json` via `/api/dev/plans` (lazy-loaded body).
+- **Retro skill (`<r>`, `/retro`)** → [`.claude/skills/retro/SKILL.md`](skills/retro/SKILL.md) — 5-Whys + reversal; auto-fires on LOOP DETECTED; writes `dev/retros/RETRO-NNN.json` + LEDGER; sev-4+ → Planka Continuous Improvement board (`1767896664086938708`); index at [`docs/c_retro_index.md`](../docs/c_retro_index.md).
+- **Dev Retros tab** → [`dev/pages/DevRetrosPanel.tsx`](../dev/pages/DevRetrosPanel.tsx) — Ledger + Retrospectives sub-tabs; reads via `/api/dev/retros` (list, `?id=`, `?view=ledger`).
 - **`<stories>` skill** → [`.claude/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK + PLA labels.
 - **`/writeweb` skill** → [`.claude/skills/writeweb/SKILL.md`](skills/writeweb/SKILL.md) — Human-AI collaborative website copy; flags `-t hero|feature|faq|about|explainer`, `-len`, `-context`, `-h`.
 - **`<theme>` skill** → [`.claude/skills/theme/SKILL.md`](skills/theme/SKILL.md) — image → Vector theme pack; deterministic L/C/H bucket → role mapping; spec at [`docs/c_theme_rules.md`](../docs/c_theme_rules.md).
@@ -86,6 +91,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Addressable element substrate (PLA-0005)** → [`docs/c_c_addressables.md`](../docs/c_c_addressables.md) — `<Panel>`/`<Table>`/`<Navigation>` adopters, `samantha._viewport.<slot>._kind.name` addressing, `addressables.Service` sole-writer boundary, `lint:addressables` rule, Samantha SDK help contract.
 - **Topology — federated org canvas (PLA-0006)** → [`docs/c_c_topology.md`](../docs/c_c_topology.md) — `/topology` page named `<tenant>: Topology`, default node noun "Office", `org_nodes` tree + single-admin `org_node_roles`, `orgdesign.Service` sole writer, clamp predicate middleware, archive = limbo.
 - **Roles & permissions — data-driven RBAC (PLA-0007)** → [`docs/c_c_roles_permissions.md`](../docs/c_c_roles_permissions.md) — `roles`/`permissions`/`role_permissions` tables, 5 seeded system roles (stable UUIDs ad30/ad25/ad20/ad10/ad05), 26 seeded permissions, `internal/roles.Service` sole writer, `useHasPermission(<code>)` frontend gates, `lint:role-literals` + `lint:writer-boundary` enforcement.
-- **Project lint rules (custom)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — `lint:addressables`, `lint:role-literals`, `lint:writer-boundary`; python scripts under `dev/scripts/`, exemption ledgers under `dev/registries/`; `npm run lint:<name>` invocation.
+- **Project lint rules (custom)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — `lint:addressables`, `lint:role-literals`, `lint:writer-boundary`, `lint:dev-css`, `lint:secondary-nav`; python scripts under `dev/scripts/`, exemption ledgers under `dev/registries/`; `npm run lint:<name>` invocation.
 - **Diagram canvas primitive (`<DiagramCanvas>`)** → [`docs/c_c_diagram_canvas.md`](../docs/c_c_diagram_canvas.md) — Vector-built Canvas2D + dagre + d3-zoom, 10px snap-to-grid default, pluggable node renderer, exposed via Samantha API as `samantha.diagram.canvas`.
+- **Drag-and-drop convention (`@dnd-kit`)** → [`docs/c_c_dnd.md`](../docs/c_c_dnd.md) — canonical DnD library; sortable lists/tables/tabs use `@dnd-kit/sortable`; server is order of truth, 250ms debounce, no competing libs.
 

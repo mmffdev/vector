@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/app/lib/api";
+import Panel from "@/app/components/Panel";
 import {
   PORTFOLIO_MODELS_LIST_PATH,
   adoptModelPath,
@@ -138,7 +139,13 @@ export default function WizardModelCardList({
     setOpenId((prev) => (prev === id ? null : id));
   }
 
+  // PLA-0006/00336 — registers the strategy-wizard page under
+  // samantha._viewport.app._kind.panel.portfolio_strategy_wizard so
+  // Samantha can target the model-chooser. `panel--bare` strips Panel
+  // chrome; the existing .wizard-model-cards header stays as the
+  // visual surface unchanged.
   return (
+    <Panel name="portfolio_strategy_wizard" className="panel--bare">
     <div className="wizard-model-cards">
       <header className="wizard-model-cards__header">
         <h2 className="wizard-model-cards__title">Choose a portfolio model</h2>
@@ -371,5 +378,6 @@ export default function WizardModelCardList({
         </footer>
       )}
     </div>
+    </Panel>
   );
 }

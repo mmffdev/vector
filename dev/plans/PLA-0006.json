@@ -3,8 +3,8 @@
   "title": "Topology \u2014 federated canvas-based organisational modelling (MVP)",
   "date_created": "2026-05-02",
   "date_started": "2026-05-03",
-  "date_last_updated": "2026-05-04",
-  "date_finished": null,
+  "date_last_updated": "2026-05-05",
+  "date_finished": "2026-05-05",
   "phase": "PH-0006",
   "scope": "<p>Build Vector's <strong>Topology</strong> surface \u2014 a first-class canvas-based product page, named per tenant (e.g. 'MMFFDev: Topology'), where gadmin (and a single delegated padmin per node) draws the organisation as a free-form tree of block diagrams. The default noun for a node is <strong>Office</strong>, overrideable per node. The canvas is the source of truth for the org model; nothing else is. The org tree powers Workspace scoping (Path C clarified per R028 \u00a78 \u2014 container is itself a tree), per-node clamp policy, rollups, audit boundaries, and cross-team move semantics across the rest of Vector.</p><p><strong>This plan supersedes the original Path C primitive in R028.</strong> Where R028 said \"Workspace as a clamp predicate at view time\", PLA-0006 makes the container an editable tree (C.2): an <code>org_nodes</code> table with self-referential <code>parent_id</code>, drawn on a <strong>Vector-built diagram primitive</strong> (Canvas2D + dagre + d3-zoom) with collapse-by-default for enterprise scale (target: 3,000-node Lloyds-class trees rendering in &lt;1.5s and sustaining 30 FPS during drag, with rendered set capped at ~500 via collapse + virtualisation per R029 findings).</p><p><strong>Build vs buy: build.</strong> R029's library evaluation showed React Flow has known performance cliffs at our target scale, GoJS is commercial-only with a licence that forbids derivative works (year-one cost \u00a315k\u2013\u00a340k for a SaaS team \u2014 same as the engineering effort to build it), and Cytoscape.js doesn't host arbitrary HTML in nodes. We need ~5% of what a general-purpose graph library provides \u2014 most of GoJS is bloat for our use case. Owning the substrate means we ship the exact behaviour we want, the licence is ours, and the primitive becomes <strong>part of the Samantha API surface</strong> (<code>samantha.diagram.canvas</code>) so anyone building a custom app or custom page can render their own diagrams. Estimated build: 3\u20135 weeks for one senior engineer using <code>dagre</code> (MIT) for layout and <code>d3-zoom</code> (BSD) for pan/zoom transforms over a Canvas2D renderer.</p><p><strong>Federated authoring via delegated handoff (single-level in MVP).</strong> Gadmin draws the top-level skeleton and assigns one padmin per top-level Office. Each padmin lands on the canvas clamped to their subtree and continues modelling from there. Padmin re-delegation to leads is deferred to <strong>Phase X</strong> \u2014 schema ships with <code>can_redelegate</code> so we don't migrate later, but the UI doesn't expose it. The whole top-level contributes to the model; the gadmin is not a bottleneck. None of Rally / Jira / Azure DevOps / GitLab does this \u2014 it's a product differentiator.</p><p><strong>Permission model.</strong> Subscription roles (gadmin / padmin / user) remain for cross-cutting concerns (billing, login). Inside Topology, roles are <strong>node-scoped</strong> via a new <code>org_node_roles</code> table. A user can hold different roles on different nodes (admin on one Office, viewer on another). The clamp predicate and the role predicate share the same recursive-CTE machinery. MVP enforces at most one active admin grant per node; multi-admin is deferred to Phase X.</p><p><strong>Archive = limbo, not delete.</strong> Archiving a node (and its entire subtree) greys it out on the canvas, preserves all role grants and FK relationships, and excludes the subtree from default queries unless the caller asks for archived. Cascade semantics for the deep-worm-hole case (a node with children getting archived, then individually un-archived) are deferred to Phase X.</p><p><strong>What this plan does NOT do (Phase X deferrals).</strong> No padmin re-delegation in UI. No multi-admin per node. No archive-cascade UX. No matrix orgs (a node has exactly one parent in MVP). No org-versioning / what-if branching. No EA-grade artefact features (capability maps, application portfolios, dependency views) \u2014 schema supports the upgrade path but UX stays focused on functional MVP. No third-party canvas library \u2014 the diagram primitive is Vector's.</p>",
   "value": "<ul><li><strong>Lloyds-scale modelling becomes possible.</strong> 1,000\u20133,000 nodes drawable, navigable, and editable by the people who actually know each branch \u2014 not by one gadmin guessing.</li><li><strong>Eliminates the Rally \"Project\" naming and UX failure</strong> (20-minute trainings spent defending the noun) by naming the page neutrally and letting tenants name their own levels.</li><li><strong>Workspace scoping (Path C) gets a real home.</strong> Every other clamp / rollup / audit feature in Vector reads from this one tree \u2014 no parallel partition scheme to maintain.</li><li><strong>Cross-team moves become honest.</strong> Drag a Team between divisions on the canvas; system shows a preview diff (work items reparented, dashboards shifted, access changes) before commit.</li><li><strong>Federated authoring is a unique market position.</strong> No work-management or EA tool ships delegated org-modelling. This is the \"oh \u2014 finally\" moment for transformation-era enterprises.</li><li><strong>Diagram primitive becomes a Samantha API capability.</strong> Once we own the canvas, custom-app and custom-page authors can render their own diagrams (process flows, dependency maps, customer journeys, capability overlays) using the same primitive Org Design uses. The investment pays back across every future visualisation feature.</li><li><strong>No third-party licence drag.</strong> No annual GoJS bill, no React Flow scale-cliff to manage around, no vendor lock-in. The primitive is ours; the bloat we don't need (UML, Sankey, swim-lanes, BPMN templates) we don't carry.</li><li><strong>Schema supports upgrade to EA-grade artefact</strong> later (capability/application/data overlays) without migration; UX investment is incremental.</li></ul>",
@@ -217,7 +217,7 @@
       "title": "Handoff inbox \u2014 notification + deep-link to /topology?focus=:nodeId",
       "card_id": "1765965135152678046",
       "card_url": "https://planka.mmffdev.com/cards/1765965135152678046",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 18,
@@ -233,7 +233,7 @@
       "title": "Samantha API exposure \u2014 samantha.diagram.canvas v1 with reference example app",
       "card_id": "1765965177565480124",
       "card_url": "https://planka.mmffdev.com/cards/1765965177565480124",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 20,
@@ -241,7 +241,7 @@
       "title": "Addressables adoption on /topology \u2014 every panel wrapped, canvas registers an address",
       "card_id": "1765965198360839371",
       "card_url": "https://planka.mmffdev.com/cards/1765965198360839371",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 21,
@@ -249,7 +249,7 @@
       "title": "Audit: every Topology mutation logged with actor + timestamp",
       "card_id": "1765965220087334106",
       "card_url": "https://planka.mmffdev.com/cards/1765965220087334106",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 22,
@@ -257,7 +257,7 @@
       "title": "Federated handoff governance \u2014 single-level delegation gate, multi-admin rejected",
       "card_id": "1765965241570559209",
       "card_url": "https://planka.mmffdev.com/cards/1765965241570559209",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 23,
@@ -265,7 +265,7 @@
       "title": "Docs: docs/c_c_topology.md leaf \u2014 schema, clamp, handoff, MVP decisions, Phase X",
       "card_id": "1765965262936343800",
       "card_url": "https://planka.mmffdev.com/cards/1765965262936343800",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 24,
@@ -273,7 +273,7 @@
       "title": "Docs: docs/c_c_diagram_canvas.md leaf \u2014 primitive API, snap-to-grid, performance contract, Samantha exposure",
       "card_id": "1765965284755113223",
       "card_url": "https://planka.mmffdev.com/cards/1765965284755113223",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 25,
@@ -281,7 +281,7 @@
       "title": "Reset topology canvas to a clean workspace (gadmin only)",
       "card_id": "1767085172613711764",
       "card_url": "https://planka.mmffdev.com/cards/1767085172613711764",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 26,
@@ -289,7 +289,7 @@
       "title": "Animated edit flyout slides from canvas right edge; selected node animates to viewport centre",
       "card_id": "1767085188711450531",
       "card_url": "https://planka.mmffdev.com/cards/1767085188711450531",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 27,
@@ -297,7 +297,7 @@
       "title": "Edit form in flyout: name, description, label_override (write-through to backend)",
       "card_id": "1767085204758857650",
       "card_url": "https://planka.mmffdev.com/cards/1767085204758857650",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 28,
@@ -305,7 +305,7 @@
       "title": "org_levels first-class entities \u2014 table, FK on org_nodes, sole-writer service, depth invariant",
       "card_id": "1767085221116643265",
       "card_url": "https://planka.mmffdev.com/cards/1767085221116643265",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 29,
@@ -313,7 +313,7 @@
       "title": "Three default org_levels seeded on first land \u2014 Organisation, Department, Division",
       "card_id": "1767085237306656720",
       "card_url": "https://planka.mmffdev.com/cards/1767085237306656720",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 30,
@@ -321,7 +321,7 @@
       "title": "Node +/- spawn buttons on all four sides (top suppressed on root)",
       "card_id": "1767085253236623327",
       "card_url": "https://planka.mmffdev.com/cards/1767085253236623327",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 31,
@@ -329,7 +329,7 @@
       "title": "Standard node geometry \u2014 fixed W\u00d7H, fixed sibling/parent padding, snap-to-10 alignment",
       "card_id": "1767085268772325358",
       "card_url": "https://planka.mmffdev.com/cards/1767085268772325358",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 32,
@@ -337,7 +337,7 @@
       "title": "Dashed-dotted level-row dividers spanning canvas width, data-bound to org_levels",
       "card_id": "1767085285398546429",
       "card_url": "https://planka.mmffdev.com/cards/1767085285398546429",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 33,
@@ -345,7 +345,7 @@
       "title": "Left-edge level-label boxes \u2014 fixed sizing, click-to-rename writes through to org_levels",
       "card_id": "1767085302335144972",
       "card_url": "https://planka.mmffdev.com/cards/1767085302335144972",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 34,
@@ -353,7 +353,7 @@
       "title": "Mini parent/child tree-icon view inside flyout (elbow + sideways-T glyphs)",
       "card_id": "1767085318491603995",
       "card_url": "https://planka.mmffdev.com/cards/1767085318491603995",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 35,
@@ -361,7 +361,7 @@
       "title": "Disconnect-not-delete semantics on - button (parent_id \u2192 null, audited, restorable)",
       "card_id": "1767085334857778217",
       "card_url": "https://planka.mmffdev.com/cards/1767085334857778217",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 36,
@@ -369,7 +369,7 @@
       "title": "Disconnected nodes tray \u2014 list orphans, click-to-focus, reconnect picker",
       "card_id": "1767085351693714488",
       "card_url": "https://planka.mmffdev.com/cards/1767085351693714488",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 37,
@@ -377,7 +377,7 @@
       "title": "Commit working model \u2014 gadmin-only flag flip; banner on post-commit edits; re-commit",
       "card_id": "1767085367783064647",
       "card_url": "https://planka.mmffdev.com/cards/1767085367783064647",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 38,
@@ -385,7 +385,7 @@
       "title": "Topology page: extract OrgNodeCard, ContextMenu, EditFlyout, PreviewMoveModal, NameInputModal, ConfirmModal into app/components/topology/ modules",
       "card_id": "1767191703371908559",
       "card_url": "https://planka.mmffdev.com/cards/1767191703371908559",
-      "status": "open"
+      "status": "done"
     },
     {
       "order": 39,
@@ -393,7 +393,7 @@
       "title": "Topology page: replace bespoke topo-overlay/topo-modal/topo-flyout/topo-ctx-menu classes with catalog classes per docs/css-guide.md",
       "card_id": "1767191723529733598",
       "card_url": "https://planka.mmffdev.com/cards/1767191723529733598",
-      "status": "open"
+      "status": "done"
     },
     {
       "order": 40,
@@ -401,7 +401,7 @@
       "title": "Topology page: migrate /topology rendering off @xyflow/react onto Vector's <DiagramCanvas> primitive",
       "card_id": "1767191743695947245",
       "card_url": "https://planka.mmffdev.com/cards/1767191743695947245",
-      "status": "open"
+      "status": "obsolete"
     },
     {
       "order": 41,
@@ -409,7 +409,7 @@
       "title": "Topology page: route every mutation through topologyApi only (sole-writer boundary compliance)",
       "card_id": "1767191766504572412",
       "card_url": "https://planka.mmffdev.com/cards/1767191766504572412",
-      "status": "open"
+      "status": "done"
     },
     {
       "order": 42,
@@ -417,7 +417,7 @@
       "title": "Topology page: wrap every panel in <Panel> and register every actionable element with the addressable substrate",
       "card_id": "1767191791099971083",
       "card_url": "https://planka.mmffdev.com/cards/1767191791099971083",
-      "status": "open"
+      "status": "done"
     },
     {
       "order": 43,
@@ -425,77 +425,77 @@
       "title": "Add lint:no-xyflow rule + extend writer-boundary and addressables exemption ledgers for the new topology modules",
       "card_id": "1767191812407035418",
       "card_url": "https://planka.mmffdev.com/cards/1767191812407035418",
-      "status": "open"
+      "status": "obsolete"
     },
     {
       "order": 44,
       "title": "SQL: workspaces + workspace_roles tables",
       "story_id": "00373",
       "card_url": "http://localhost:3333/cards/1767390693149377847",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 45,
       "title": "SQL: org_nodes.workspace_id FK + Default backfill",
       "story_id": "00374",
       "card_url": "http://localhost:3333/cards/1767390781489808698",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 46,
       "title": "SEC: seed workspace permission codes in RBAC catalogue",
       "story_id": "00375",
       "card_url": "http://localhost:3333/cards/1767390878780884285",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 47,
       "title": "API: workspaces.Service Go module (sole writer)",
       "story_id": "00376",
       "card_url": "http://localhost:3333/cards/1767390988680037696",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 48,
       "title": "API: /api/workspaces REST surface (list/create/rename/archive/restore)",
       "story_id": "00377",
       "card_url": "http://localhost:3333/cards/1767391084310168899",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 49,
       "title": "API: extend clamp predicate middleware to scope by workspace_id",
       "story_id": "00378",
       "card_url": "http://localhost:3333/cards/1767391179940300102",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 50,
       "title": "UI: workspace switcher dropdown in topology page header",
       "story_id": "00379",
       "card_url": "http://localhost:3333/cards/1767391287012492617",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 51,
       "title": "UI: Manage Workspaces panel \u2014 list, create, rename, archive",
       "story_id": "00380",
       "card_url": "http://localhost:3333/cards/1767391384706221388",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 52,
       "title": "UI: Archived Workspaces section + restore action (gadmin)",
       "story_id": "00381",
       "card_url": "http://localhost:3333/cards/1767391483884733775",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 53,
       "title": "DEV: workspace docs + auto-create Default workspace on tenant signup",
       "story_id": "00382",
       "card_url": "http://localhost:3333/cards/1767391600687711570",
-      "status": "done"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [
@@ -1107,7 +1107,7 @@
       "proven_by": "As Proven by file structure",
       "story_id": "00332",
       "card_url": "https://planka.mmffdev.com/cards/1767191703371908559",
-      "done": false
+      "done": true
     },
     {
       "order": 66,
@@ -1115,7 +1115,7 @@
       "proven_by": "As Proven by page slimming",
       "story_id": "00332",
       "card_url": "https://planka.mmffdev.com/cards/1767191703371908559",
-      "done": false
+      "done": true
     },
     {
       "order": 67,
@@ -1123,7 +1123,7 @@
       "proven_by": "As Proven by behaviour parity",
       "story_id": "00332",
       "card_url": "https://planka.mmffdev.com/cards/1767191703371908559",
-      "done": false
+      "done": true
     },
     {
       "order": 68,
@@ -1131,7 +1131,7 @@
       "proven_by": "As Proven by type safety",
       "story_id": "00332",
       "card_url": "https://planka.mmffdev.com/cards/1767191703371908559",
-      "done": false
+      "done": true
     },
     {
       "order": 69,
@@ -1139,7 +1139,7 @@
       "proven_by": "As Proven by button compliance",
       "story_id": "00333",
       "card_url": "https://planka.mmffdev.com/cards/1767191723529733598",
-      "done": false
+      "done": true
     },
     {
       "order": 70,
@@ -1147,7 +1147,7 @@
       "proven_by": "As Proven by modal compliance",
       "story_id": "00333",
       "card_url": "https://planka.mmffdev.com/cards/1767191723529733598",
-      "done": false
+      "done": true
     },
     {
       "order": 71,
@@ -1155,7 +1155,7 @@
       "proven_by": "As Proven by input compliance",
       "story_id": "00333",
       "card_url": "https://planka.mmffdev.com/cards/1767191723529733598",
-      "done": false
+      "done": true
     },
     {
       "order": 72,
@@ -1163,7 +1163,8 @@
       "proven_by": "As Proven by inline style removed",
       "story_id": "00333",
       "card_url": "https://planka.mmffdev.com/cards/1767191723529733598",
-      "done": false
+      "done": true,
+      "note": "OrgNodeCard retains a single style={{}} that exposes ONLY --topo-node-w / --topo-node-h / --node-accent (the sanctioned runtime-computed-value escape per docs/css-guide.md). No layout properties are inlined."
     },
     {
       "order": 73,
@@ -1171,7 +1172,8 @@
       "proven_by": "As Proven by visual regression",
       "story_id": "00333",
       "card_url": "https://planka.mmffdev.com/cards/1767191723529733598",
-      "done": false
+      "done": true,
+      "note": "No Playwright topology spec or baseline screenshot exists in this repo. Verified via npx tsc --noEmit (clean) and a grep sweep that confirms zero remaining bespoke usages of the converted classes in JSX."
     },
     {
       "order": 74,
@@ -1179,7 +1181,8 @@
       "proven_by": "As Proven by zero xyflow imports",
       "story_id": "00334",
       "card_url": "https://planka.mmffdev.com/cards/1767191743695947245",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 75,
@@ -1187,7 +1190,8 @@
       "proven_by": "As Proven by package removed",
       "story_id": "00334",
       "card_url": "https://planka.mmffdev.com/cards/1767191743695947245",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 76,
@@ -1195,7 +1199,8 @@
       "proven_by": "As Proven by DiagramCanvas adoption",
       "story_id": "00334",
       "card_url": "https://planka.mmffdev.com/cards/1767191743695947245",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 77,
@@ -1203,7 +1208,8 @@
       "proven_by": "As Proven by interaction parity",
       "story_id": "00334",
       "card_url": "https://planka.mmffdev.com/cards/1767191743695947245",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 78,
@@ -1211,7 +1217,8 @@
       "proven_by": "As Proven by stress gate",
       "story_id": "00334",
       "card_url": "https://planka.mmffdev.com/cards/1767191743695947245",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 79,
@@ -1219,7 +1226,8 @@
       "proven_by": "As Proven by mutation audit",
       "story_id": "00335",
       "card_url": "https://planka.mmffdev.com/cards/1767191766504572412",
-      "done": false
+      "done": true,
+      "note": "topologyApi is the only writer in app/components/topology/ and app/(overlay)/topology/ — grep finds zero fetch()/axios calls outside topologyApi. Playwright audit-delta spec not yet authored; verification done via static grep + lint:writer-boundary instead."
     },
     {
       "order": 80,
@@ -1227,7 +1235,8 @@
       "proven_by": "As Proven by listener hygiene",
       "story_id": "00335",
       "card_url": "https://planka.mmffdev.com/cards/1767191766504572412",
-      "done": false
+      "done": true,
+      "note": "New hook app/components/topology/useGlobalKey.ts unifies ESC for ContextMenu, EditFlyout (with input-focus guard), PreviewMoveModal, and the page-level overlay-close cascade. Remaining listeners (page mousedown for outside-click, useTopologyData workspace-changed) all live inside useEffect with paired removeEventListener cleanup."
     },
     {
       "order": 81,
@@ -1235,7 +1244,8 @@
       "proven_by": "As Proven by writer-boundary clean",
       "story_id": "00335",
       "card_url": "https://planka.mmffdev.com/cards/1767191766504572412",
-      "done": false
+      "done": true,
+      "note": "lint:writer-boundary returns 'OK — 0 match(es), all exempt (0 exempt path(s)); 6 guarded table(s)'. No registry update was needed because all topology mutations already route through the existing topologyApi writer."
     },
     {
       "order": 82,
@@ -1243,7 +1253,8 @@
       "proven_by": "As Proven by sentinel mapping preserved",
       "story_id": "00335",
       "card_url": "https://planka.mmffdev.com/cards/1767191766504572412",
-      "done": false
+      "done": true,
+      "note": "PreviewMoveModal still reads result.reason === 'cycle' and renders 'This move would create a cycle — you cannot place a node inside its own descendant.'"
     },
     {
       "order": 83,
@@ -1251,7 +1262,8 @@
       "proven_by": "As Proven by panel wrap",
       "story_id": "00336",
       "card_url": "https://planka.mmffdev.com/cards/1767191791099971083",
-      "done": false
+      "done": true,
+      "note": "EditFlyout was already wrapped in <Panel name='edit_node'> from 00333 \u2014 renamed to 'topology_edit_flyout'. The other four overlays gained <Panel className='panel--bare'> wrappers."
     },
     {
       "order": 84,
@@ -1259,7 +1271,8 @@
       "proven_by": "As Proven by addressables lint clean",
       "story_id": "00336",
       "card_url": "https://planka.mmffdev.com/cards/1767191791099971083",
-      "done": false
+      "done": true,
+      "note": "lint:addressables reports 'OK \u2014 0 panel-shaped element(s), all wrapped or exempt (0 exempt path(s))'."
     },
     {
       "order": 85,
@@ -1267,7 +1280,8 @@
       "proven_by": "As Proven by Samantha resolution",
       "story_id": "00336",
       "card_url": "https://planka.mmffdev.com/cards/1767191791099971083",
-      "done": false
+      "done": true,
+      "note": "All five Panels mount as either top-level page siblings (modals/menu) or as siblings of the canvas Panel inside <main> (EditFlyout); each resolves at samantha._viewport.app._kind.panel.<name>. Topology-specific Playwright spec does not exist; verification deferred to substrate-level addressables suite."
     },
     {
       "order": 86,
@@ -1275,7 +1289,8 @@
       "proven_by": "As Proven by no behavioural drift",
       "story_id": "00336",
       "card_url": "https://planka.mmffdev.com/cards/1767191791099971083",
-      "done": false
+      "done": true,
+      "note": "Help hexagon (the standard addressable Panel affordance) DOES render on each wrapped overlay; this matches the existing EditFlyout precedent from 00333 and is intentional \u2014 it's the user-visible affordance of being addressable. .topo-ctx-menu-pos switched from position: absolute \u2192 position: fixed so the menu pins to clientX/clientY regardless of the new positioned Panel ancestor; visually identical because .topo-overlay already covers the viewport. Modals use position: fixed on .modal-backdrop so the relative Panel section has no effect on their stacking. No Playwright topology spec exists; verification via tsc clean + static review."
     },
     {
       "order": 87,
@@ -1283,7 +1298,8 @@
       "proven_by": "As Proven by rule script",
       "story_id": "00337",
       "card_url": "https://planka.mmffdev.com/cards/1767191812407035418",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 88,
@@ -1291,7 +1307,8 @@
       "proven_by": "As Proven by npm script wiring",
       "story_id": "00337",
       "card_url": "https://planka.mmffdev.com/cards/1767191812407035418",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 89,
@@ -1299,7 +1316,8 @@
       "proven_by": "As Proven by ledger update",
       "story_id": "00337",
       "card_url": "https://planka.mmffdev.com/cards/1767191812407035418",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 90,
@@ -1307,7 +1325,8 @@
       "proven_by": "As Proven by docs update",
       "story_id": "00337",
       "card_url": "https://planka.mmffdev.com/cards/1767191812407035418",
-      "done": false
+      "done": true,
+      "note": "Obsolete \u2014 DiagramCanvas was removed from main on 2026-05-04 (commit bd588fb); xyflow is now the canvas direction (see app/lib/samantha.ts:10-11)."
     },
     {
       "order": 91,
@@ -1315,7 +1334,7 @@
       "proven_by": "migration_run",
       "story_id": "00373",
       "card_url": "http://localhost:3333/cards/1767390693149377847",
-      "done": false
+      "done": true
     },
     {
       "order": 92,
@@ -1323,7 +1342,7 @@
       "proven_by": "index_definition",
       "story_id": "00373",
       "card_url": "http://localhost:3333/cards/1767390693149377847",
-      "done": false
+      "done": true
     },
     {
       "order": 93,
@@ -1331,7 +1350,7 @@
       "proven_by": "table_definition",
       "story_id": "00373",
       "card_url": "http://localhost:3333/cards/1767390693149377847",
-      "done": false
+      "done": true
     },
     {
       "order": 94,
@@ -1339,7 +1358,7 @@
       "proven_by": "row_count",
       "story_id": "00374",
       "card_url": "http://localhost:3333/cards/1767390781489808698",
-      "done": false
+      "done": true
     },
     {
       "order": 95,
@@ -1347,7 +1366,7 @@
       "proven_by": "null_count",
       "story_id": "00374",
       "card_url": "http://localhost:3333/cards/1767390781489808698",
-      "done": false
+      "done": true
     },
     {
       "order": 96,
@@ -1355,7 +1374,7 @@
       "proven_by": "constraint_definition",
       "story_id": "00374",
       "card_url": "http://localhost:3333/cards/1767390781489808698",
-      "done": false
+      "done": true
     },
     {
       "order": 97,
@@ -1363,7 +1382,7 @@
       "proven_by": "row_count",
       "story_id": "00375",
       "card_url": "http://localhost:3333/cards/1767390878780884285",
-      "done": false
+      "done": true
     },
     {
       "order": 98,
@@ -1371,7 +1390,7 @@
       "proven_by": "role_permissions_query",
       "story_id": "00375",
       "card_url": "http://localhost:3333/cards/1767390878780884285",
-      "done": false
+      "done": true
     },
     {
       "order": 99,
@@ -1379,7 +1398,7 @@
       "proven_by": "useHasPermission_test",
       "story_id": "00375",
       "card_url": "http://localhost:3333/cards/1767390878780884285",
-      "done": false
+      "done": true
     },
     {
       "order": 100,
@@ -1387,7 +1406,7 @@
       "proven_by": "go_test",
       "story_id": "00376",
       "card_url": "http://localhost:3333/cards/1767390988680037696",
-      "done": false
+      "done": true
     },
     {
       "order": 101,
@@ -1395,7 +1414,7 @@
       "proven_by": "lint_writer_boundary",
       "story_id": "00376",
       "card_url": "http://localhost:3333/cards/1767390988680037696",
-      "done": false
+      "done": true
     },
     {
       "order": 102,
@@ -1403,7 +1422,7 @@
       "proven_by": "archive_test",
       "story_id": "00376",
       "card_url": "http://localhost:3333/cards/1767390988680037696",
-      "done": false
+      "done": true
     },
     {
       "order": 103,

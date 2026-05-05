@@ -116,9 +116,9 @@ export default function InlineEditField({
 
   if (editing) {
     const stop = stopPointerOnInput ? { onPointerDown: (e: React.PointerEvent) => e.stopPropagation() } : {};
-    const inputCls = `inline-edit__input${multiline ? " inline-edit__input--multiline" : ""} ${inputClassName ?? ""}${hasError && errorClassName ? ` ${errorClassName}` : ""}`;
+    const inputCls = `inline-edit-text-field__input${multiline ? " inline-edit-text-field__input--multiline" : ""} ${inputClassName ?? ""}${hasError && errorClassName ? ` ${errorClassName}` : ""}`;
     return (
-      <span className={`inline-edit${multiline ? " inline-edit--multiline" : ""} ${containerClassName ?? ""}`}>
+      <span className={`inline-edit-text-field${multiline ? " inline-edit-text-field--multiline" : ""} ${containerClassName ?? ""}`}>
         {multiline ? (
           <textarea
             className={inputCls}
@@ -152,26 +152,26 @@ export default function InlineEditField({
         {/* onMouseDown fires before input blur, so the click is registered. */}
         <button
           type="button"
-          className="btn btn--icon btn--ghost btn--xs inline-edit__btn inline-edit__btn--cancel"
+          className="inline-edit-text-field__btn inline-edit-text-field__btn--cancel"
           aria-label="Cancel change"
           title="Cancel (Esc)"
           onMouseDown={(e) => { e.preventDefault(); cancel(); }}
           {...stop}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
         <button
           type="button"
-          className="btn btn--icon btn--ghost btn--xs inline-edit__btn inline-edit__btn--accept"
+          className="inline-edit-text-field__btn inline-edit-text-field__btn--accept"
           aria-label="Accept change"
           title={multiline ? "Accept (⌘/Ctrl+Enter)" : "Accept (Enter)"}
           onMouseDown={(e) => { e.preventDefault(); commit(); }}
           {...stop}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </button>

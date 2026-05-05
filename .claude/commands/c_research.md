@@ -80,6 +80,7 @@ Scan existing `dev/research/R*.json` files to find the highest existing ID, then
 - Use semantic HTML: `<h2>`, `<h3>`, `<p>`, `<ul>/<ol>/<li>`, `<table>/<thead>/<tbody>/<tr>/<th>/<td>`, `<code>`, `<pre><code>`
 - No `<script>`, `<style>`, or event handlers
 - No JSX syntax — pure HTML string
+- **HARD RULE — dev-ui catalog only.** The Research tab is a Dev Setup page; rendered HTML composes from the [`.dui-*` catalog](../../docs/c_c_dev_ui_primitives.md) — never invent classes (`.r-toc*`, `.research-*`, etc.) and never use inline `style=`. Tables use `class="dui-table"`, the body uses `.dui-doc`, the sticky TOC wrapper uses `.dui-toc-layout` / `.dui-toc`, code blocks use `.dui-pre`, status pills use `.dui-pill`. See [`c_research-paper-format.md`](c_research-paper-format.md) for the canonical HTML pattern.
 - **HARD RULE — JSON safety:** The `content` value is a JSON string. Raw double-quote characters (`"`) inside HTML attributes (e.g. `sandbox="..."`, `href="..."`) will silently truncate the file and cause it to fail JSON parsing. Always use one of these two safe paths:
   1. Replace all HTML attribute double quotes with `&quot;` entities — e.g. `sandbox=&quot;allow-scripts&quot;`
   2. Build the object in a Node script and write it via `JSON.stringify()` (safest for reports containing code examples)

@@ -1996,14 +1996,15 @@ table.tbl tbody tr:hover td {
    --ink-muted resting; tabular-nums for counts in tab labels.
    No box-shadow, no gradient.
    ============================================================ */
-.tabs {
+.navigation.secondary.tabular {
+  position: relative;
   display: flex;
   gap: var(--space-1);
   border-bottom: 1px solid var(--border);
   margin-bottom: var(--space-5);
 }
 
-.tabs__tab {
+.navigation.secondary.tabular .navigation__item {
   padding: var(--space-2) var(--space-4);
   background: transparent;
   color: var(--ink-muted);
@@ -2011,23 +2012,107 @@ table.tbl tbody tr:hover td {
   font-size: var(--text-sm);
   font-weight: 500;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition: color 120ms ease;
 }
 
-.tabs__tab:hover {
+.navigation.secondary.tabular .navigation__item:hover {
   color: var(--ink);
 }
 
-.tabs__tab--active {
+.navigation.secondary.tabular .navigation__item.is-active {
   color: var(--ink);
-  border-bottom-color: var(--ink);
 }
 
-.tabs__panel {
+/* Sliding indicator — single absolutely-positioned bar that animates
+   between active item positions. The is-animated class is added after
+   first paint so the bar doesn't slide in from x=0 on mount. The cubic
+   bezier gives a soft over-shoot bounce without being cartoonish. */
+.navigation.secondary.tabular .navigation__indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 1px;
+  pointer-events: none;
+  will-change: transform, width;
+}
+
+.navigation.secondary.tabular .navigation__indicator.is-animated {
+  transition:
+    transform 360ms cubic-bezier(0.34, 1.4, 0.5, 1),
+    width 360ms cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation.secondary.tabular .navigation__indicator.is-animated {
+    transition: none;
+  }
+}
+
+.navigation.secondary.tabular .navigation__panel {
   display: block;
+}
+
+/* Reorder mode (PLA-0014). Suppress the sliding indicator while edit mode
+   is active (the JSX already gates it, but the .is-edit-mode class keeps
+   any descendant transitions calm during a drag). The far-right toggle
+   sits in its own pushed-right slot via margin-left:auto. */
+.navigation.secondary.tabular .navigation__reorder-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.navigation.secondary.tabular .navigation__reorder-toggle:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.navigation.secondary.tabular .navigation__reorder-toggle.is-active {
+  color: var(--ink);
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.navigation.secondary.tabular .navigation__item.is-reorder {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.navigation.secondary.tabular .navigation__item.is-reorder.is-dragging {
+  cursor: grabbing;
+  opacity: 0.7;
+  z-index: 2;
+}
+
+.navigation.secondary.tabular .navigation__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
 }
 
 /* ============================================================
@@ -4099,73 +4184,79 @@ table.tbl tbody tr:hover td {
   border-color: var(--ink);
 }
 
-/* Shared inline-edit wrapper. Renders an input + a confirm (✓) button so
-   users can save with Enter, blur, or by clicking the trailing button.
-   The input fills the wrapper edge-to-edge; buttons overlay the right side
-   so the field's effective width stays identical between display and edit. */
-.inline-edit {
+/* Shared inline-edit-text-field wrapper. Renders an input + a confirm (✓)
+   button so users can save with Enter, blur, or by clicking the trailing
+   button. The input fills the wrapper edge-to-edge; buttons overlay the
+   right side so the field's effective width stays identical between
+   display and edit. */
+.inline-edit-text-field {
   position: relative;
   display: flex;
   align-items: stretch;
   flex: 1;
+  width: 100%;
   min-width: 0;
   gap: 0;
 }
-.inline-edit__input {
+.inline-edit-text-field__input {
   flex: 1;
   min-width: 0;
   width: 100%;
 }
-.inline-edit__input:focus {
+.inline-edit-text-field__input:focus {
   position: relative;
   z-index: 1;
 }
-.inline-edit:not(.inline-edit--multiline) .inline-edit__input {
-  padding-right: 60px;
+.inline-edit-text-field:not(.inline-edit-text-field--multiline) .inline-edit-text-field__input {
+  padding-right: 48px;
 }
-/* Inline-edit cancel/accept buttons are absolutely positioned inside
-   the input wrapper so they overlay the input edges. They compose
-   from .btn .btn--icon .btn--ghost .btn--xs but retain bespoke
-   accent colours (red/green) and explicit positioning since they
-   are not part of the .btn flex flow. The height: 100% override
-   stretches them to fill the input height (vertical visual seam). */
-.inline-edit__btn {
+/* Cancel/accept buttons sit inside the input on the right edge.
+   Ghost style — transparent background, subtle hover ring, red/green
+   accent only on the icon glyph. Sized 20px square and vertically
+   centered (no top/bottom stretch). */
+.inline-edit-text-field__btn {
   position: absolute;
-  top: 0;
-  height: 100%;
-  border-color: var(--ink);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  min-width: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-subtle);
   z-index: 2;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
-.inline-edit__btn--cancel {
-  right: 28px;
+.inline-edit-text-field__btn--cancel {
+  right: 24px;
 }
-.inline-edit__btn--accept {
-  right: 0;
+.inline-edit-text-field__btn--accept {
+  right: 2px;
 }
-.inline-edit--multiline .inline-edit__btn {
+.inline-edit-text-field--multiline .inline-edit-text-field__btn {
   top: auto;
-  bottom: 0;
-  height: 28px;
+  bottom: 6px;
+  transform: none;
 }
-.inline-edit__btn--cancel {
-  background: var(--danger, #dc2626);
-  color: var(--ink-contrast);
-}
-.inline-edit__btn--cancel:hover {
-  background: var(--surface);
+.inline-edit-text-field__btn--cancel:hover,
+.inline-edit-text-field__btn--cancel:focus-visible {
   color: var(--danger, #dc2626);
+  background: color-mix(in oklab, var(--danger, #dc2626) 12%, transparent);
+  border-color: color-mix(in oklab, var(--danger, #dc2626) 35%, transparent);
 }
-.inline-edit__btn--accept {
-  background: var(--success, #16a34a);
-  color: var(--ink-contrast);
-}
-.inline-edit__btn--accept:hover {
-  background: var(--surface);
+.inline-edit-text-field__btn--accept:hover,
+.inline-edit-text-field__btn--accept:focus-visible {
   color: var(--success, #16a34a);
+  background: color-mix(in oklab, var(--success, #16a34a) 12%, transparent);
+  border-color: color-mix(in oklab, var(--success, #16a34a) 35%, transparent);
 }
-.inline-edit__btn:focus {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+.inline-edit-text-field__btn:focus-visible {
+  outline: none;
   z-index: 3;
 }
 
@@ -4509,9 +4600,14 @@ table.tbl tbody tr:hover td {
   height: var(--node-h, auto);
 }
 
-/* Topology context-menu position (overlay page). */
+/* Topology context-menu position (overlay page).
+   `position: fixed` (not absolute) so the menu pins to viewport
+   coordinates from e.clientX/clientY regardless of which positioned
+   ancestor wraps it — needed because PLA-0006/00336 wraps the menu in
+   a `<Panel>` for addressable registration, which becomes a positioned
+   ancestor of its own. */
 .topo-ctx-menu-pos {
-  position: absolute;
+  position: fixed;
   left: var(--pos-x, 0);
   top: var(--pos-y, 0);
 }
@@ -6533,7 +6629,7 @@ table.tbl tbody tr:hover td {
 
 .layers-editor__col--drag  { width: 32px; }
 .layers-editor__col--order { width: 60px; }
-.layers-editor__col--tag   { width: 80px; }
+.layers-editor__col--tag   { width: 160px; }
 .layers-editor__col--name  { width: auto; }
 .layers-editor__col--desc  { width: 40%; }
 
@@ -8339,36 +8435,27 @@ table.tbl tbody tr:hover td {
   color: var(--ink-subtle);
 }
 
-/* Inline-edit triggers in tree rows + detail panel.
-   Click target is the cell content (title text, pill, points number).
-   Cursor + subtle hover hint signal "click to edit" without occupying
-   visual space — the cells must look like read-only data at rest. */
-.work-items-tree__title-text,
-.work-items-tree__pts-text,
-.work-items-tree__inline-trigger,
-.work-items-panel__inline-trigger,
-.work-items-panel__title-text {
-  cursor: text;
+/* ── Inline-edit trigger primitive ─────────────────────────────────────
+   Single read-mode cell used wherever a value can be edited inline.
+   Pair with <InlineEditField> / <InlineSelect> for the edit state.
+   Subtle hover tint signals "click to edit" without occupying visual
+   space at rest.
+
+   .inline-edit-trigger          — the primitive (clickable cell)
+   .inline-edit-trigger--empty   — muted em-dash for unset values
+*/
+.inline-edit-trigger {
   display: inline-block;
   min-width: 1ch;
   border-radius: 3px;
   padding: 0 2px;
+  cursor: pointer;
   transition: background-color 120ms ease;
 }
-.work-items-tree__inline-trigger,
-.work-items-panel__inline-trigger {
-  cursor: pointer;
-}
-.work-items-tree__title-text:hover,
-.work-items-tree__pts-text:hover,
-.work-items-tree__inline-trigger:hover,
-.work-items-panel__inline-trigger:hover,
-.work-items-panel__title-text:hover {
+.inline-edit-trigger:hover {
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
 }
-
-/* Read-only "—" placeholder when a cell is empty and not editable. */
-.work-items-tree__placeholder {
+.inline-edit-trigger--empty {
   color: var(--ink-subtle);
 }
 
@@ -9644,6 +9731,15 @@ table.tbl tbody tr:hover td {
   background: var(--surface-sunken, #f6f5f1);
 }
 
+/* Workspace-settings tab that mounts a full standalone page
+   (with its own PageShell). The outer workspace-settings PageShell
+   already provides the .page-body padding, so the nested .page-body
+   from the embedded page must be flattened — otherwise content sits
+   inset further than the sibling tabs. */
+.ws-tab-embed > .page-body {
+  padding: 0;
+}
+
 .topology-tab-host__loading {
   position: absolute;
   inset: 0;
@@ -9659,6 +9755,15 @@ table.tbl tbody tr:hover td {
 .topology-tab-host .topo-overlay__finish {
   display: none;
 }
+
+/* Workspace Settings → Work Items tab.
+   Flow editor read-only view — three sections (System / Portfolio /
+   Custom), each grouped by target via the .tree_accordion-dense__scroll
+   wrapper inside a .u-stack--gap-3 stack. Column widths set via <col>. */
+.flow-editor__section          { margin-bottom: var(--space-6); }
+.flow-editor__section + .flow-editor__section { margin-top: var(--space-4); }
+.flow-editor__section-title    { margin: 0 0 var(--space-1) 0; }
+.flow-editor__section-subtitle { margin: 0 0 var(--space-3) 0; color: var(--ink-muted); }
 
 /* Embedded mode → expand button toggles is-expanded; the overlay's
    absolute positioning anchors to the viewport instead of the tab host
@@ -9819,26 +9924,9 @@ table.tbl tbody tr:hover td {
   max-width: 220px;
 }
 
-/* .topo-overlay__btn family — fully canonical now; every JSX node composes
-   from .btn .btn--primary|--ghost|--danger .btn--sm. No bespoke CSS needed. */
-
-.topo-overlay__input {
-  display: block;
-  width: 100%;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border, #e5e1da);
-  background: var(--surface, #ffffff);
-  color: var(--ink, #1a1a1a);
-  font-size: 14px;
-  outline: none;
-}
-
-.topo-overlay__input:focus {
-  border-color: #0f172a;
-  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
-}
+/* .topo-overlay__btn family removed — every JSX node composes from
+   .btn .btn--primary|--ghost|--danger .btn--sm. .topo-overlay__input
+   removed — empty-state and modal inputs now use .form__input. */
 
 .topo-overlay__main {
   position: relative;
@@ -9909,9 +9997,13 @@ table.tbl tbody tr:hover td {
   position: relative;
   display: flex;
   flex-direction: column;
+  width: var(--topo-node-w);
+  height: var(--topo-node-h);
   background: var(--surface, #ffffff);
   border: 1px solid var(--border, #e5e7eb);
-  border-left: 5px solid var(--border, #e5e7eb); /* overridden inline with the node's label colour */
+  /* Left accent strip picks up --node-accent (set per-card from JSX); the
+     fallback keeps cards visible if a node ever renders without one. */
+  border-left: 5px solid var(--node-accent, var(--border, #e5e7eb));
   border-radius: 0;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
@@ -10116,11 +10208,8 @@ table.tbl tbody tr:hover td {
   color: #b91c1c;
 }
 
-.topo-overlay__err-text {
-  color: #b91c1c;
-  font-size: 13px;
-  margin: 4px 0 0;
-}
+/* .topo-overlay__err-text removed — every error string now uses
+   .form__error from the catalog. */
 
 /* ── Empty state ─────────────────────────────────────────────────── */
 
@@ -10192,23 +10281,14 @@ table.tbl tbody tr:hover td {
   gap: 1px;
 }
 
-.topo-ctx-menu button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 32px;
-  padding: 0 10px;
-  border: 0;
-  background: transparent;
-  color: var(--ink, #1a1a1a);
-  font-size: 13px;
+/* .topo-ctx-menu__item — positioning + alignment ONLY. Visual surface
+   (background, hover, colour, padding, height) flows through the .btn
+   .btn--ghost .btn--sm composition each item carries. Do not restate
+   any baseline declaration here. */
+.topo-ctx-menu__item {
+  justify-content: flex-start;
   text-align: left;
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.topo-ctx-menu button:hover {
-  background: var(--surface-sunken, #f4f3ef);
+  gap: 10px;
 }
 
 .topo-ctx-menu hr {
@@ -10227,13 +10307,8 @@ table.tbl tbody tr:hover td {
   color: var(--ink-muted, #5c5c5c);
 }
 
-.topo-ctx-menu__danger {
-  color: #b91c1c !important;
-}
-
-.topo-ctx-menu__danger .topo-ctx-menu__icon {
-  color: #b91c1c;
-}
+/* .topo-ctx-menu__danger removed — Delete now composes from
+   .btn .btn--danger .btn--sm; the icon inherits its colour. */
 
 /* ── Edit flyout ─────────────────────────────────────────────────── */
 
@@ -10369,63 +10444,10 @@ table.tbl tbody tr:hover td {
   font-size: 14px;
 }
 
-/* ── Move-preview modal ──────────────────────────────────────────── */
-
-.topo-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-}
-
-.topo-modal {
-  width: min(460px, 92vw);
-  background: var(--surface, #ffffff);
-  border-radius: 12px;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
-  overflow: hidden;
-}
-
-.topo-modal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border, #e5e1da);
-}
-
-.topo-modal__head h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-/* .topo-modal__head button — composes from .btn .btn--icon .btn--ghost .btn--sm.
-   Larger ✕ glyph (18px) is the only deviation from canonical icon-button. */
-.topo-modal__head button {
-  font-size: 18px;
-}
-
-.topo-modal__body {
-  padding: 20px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.topo-modal__body p {
-  margin: 0 0 8px;
-}
-
-.topo-modal__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px 16px;
-  border-top: 1px solid var(--border, #e5e1da);
-}
+/* .topo-modal-backdrop / .topo-modal / .topo-modal__head / __body / __foot
+   removed — ConfirmModal, NameInputModal and PreviewMoveModal all now
+   compose from the catalog .modal-backdrop / .modal / .modal__header /
+   .modal__title / .modal__close / .modal__body / .modal__actions stack. */
 
 /* ── Topology tree flyout ────────────────────────────────────────────
    Top-right rail inside .topo-overlay__main. Collapsed = 44px wide
@@ -10863,9 +10885,10 @@ table.tbl tbody tr:hover td {
   min-width: 0;
 }
 
-/* The inline-edit container injected by <InlineEditField> when editing.
-   Fixed width + height so the row geometry doesn't jump and the absolute
-   accept/cancel buttons (28x28) sit flush at the input's right edge. */
+/* The inline-edit-text-field container injected by <InlineEditField> when
+   editing. Fixed width + height so the row geometry doesn't jump and the
+   absolute accept/cancel buttons (28x28) sit flush at the input's right
+   edge. */
 .topo-tree-table__name-edit {
   width: 220px;
   height: 28px;
@@ -10878,8 +10901,8 @@ table.tbl tbody tr:hover td {
   font-size: 13px;
   line-height: 1.2;
   padding: 0 6px;
-  /* Preserve the 60px right reservation from .inline-edit__input so the
-     two buttons (28+28+spacing) don't overlap typed text. */
+  /* Preserve the 60px right reservation from .inline-edit-text-field__input
+     so the two buttons (28+28+spacing) don't overlap typed text. */
 }
 
 .topo-tree__empty {
@@ -11529,11 +11552,14 @@ table.tbl tbody tr:hover td {
 .tree_accordion-dense__type-badge--defect { background: var(--tree_accordion-dense-type-defect); }
 
 .tree_accordion-dense__title {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink);
+  display: flex;
+  align-items: center;
 }
 .tree_accordion-dense__title--epic { font-weight: 600; }
 
@@ -11617,24 +11643,10 @@ table.tbl tbody tr:hover td {
   font-weight: 600;
 }
 
-/* Inline-edit hover affordances inside Grid-Tree cells.
-   The display span lights up subtly to signal "click to edit" without
-   stealing visual space at rest. Uses the same hover tone as the
-   Example 1 tree's .work-items-tree__title-text. */
-.tree_accordion-dense__title-text,
-.tree_accordion-dense__pts-text {
-  cursor: text;
-  display: inline-block;
-  min-width: 1ch;
-  border-radius: 3px;
-  padding: 0 2px;
-  transition: background-color 120ms ease;
-}
-.tree_accordion-dense__title-text:hover,
-.tree_accordion-dense__pts-text:hover,
-.tree_accordion-dense__table .work-items-tree__inline-trigger:hover {
-  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
-}
+/* Grid-Tree title/points cells use the shared .inline-edit-trigger
+   primitive defined earlier. The block-namespaced selectors are kept
+   only as row-class hooks (e.g. .tree_accordion-dense__row--epic …)
+   and no longer carry their own visual rules. */
 
 /* ── Pagination row ─────────────────────────────────────────────────────
    Three-zone layout: row-range info on the left, pager in the middle,

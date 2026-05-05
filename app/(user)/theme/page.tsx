@@ -1,11 +1,94 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTabState } from "@/app/hooks/useTabState";
 import PageShell from "@/app/components/PageShell";
+import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
 import { useTheme } from "@/app/hooks/useTheme";
+
+// PLA-0011/00393 — replaces inline style attributes on theme swatches.
+// Sets the dynamic colour via ref.style.setProperty rather than inline style.
+function Swatch({
+  className,
+  background,
+  title,
+  ariaLabel,
+  role,
+  children,
+  asLabel,
+  htmlFor,
+}: {
+  className: string;
+  background: string;
+  title?: string;
+  ariaLabel?: string;
+  role?: string;
+  children?: ReactNode;
+  asLabel?: boolean;
+  htmlFor?: string;
+}) {
+  const ref = useRef<HTMLDivElement | HTMLLabelElement | null>(null);
+  useEffect(() => {
+    ref.current?.style.setProperty("--swatch-bg", background);
+  }, [background]);
+  if (asLabel) {
+    return (
+      <label
+        ref={ref as React.RefObject<HTMLLabelElement>}
+        className={`${className} u-swatch-bg`}
+        title={title}
+        aria-label={ariaLabel}
+        htmlFor={htmlFor}
+      >
+        {children}
+      </label>
+    );
+  }
+  return (
+    <div
+      ref={ref as React.RefObject<HTMLDivElement>}
+      className={`${className} u-swatch-bg`}
+      title={title}
+      aria-label={ariaLabel}
+      role={role}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PresetSwatch({ seed, label, onPick }: { seed: string; label: string; onPick: () => void }) {
+  const ref = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    ref.current?.style.setProperty("--swatch-bg", seed);
+  }, [seed]);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="theme-maker__quick-swatch u-swatch-bg"
+      title={`${label} — ${seed}`}
+      aria-label={`${label} — ${seed}`}
+      onClick={onPick}
+    />
+  );
+}
+
+function PresetGradient({ gradient }: { gradient: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    ref.current?.style.setProperty("--gradient", gradient);
+  }, [gradient]);
+  return (
+    <span
+      ref={ref}
+      className="theme-maker__preset-strip u-gradient-bg"
+      aria-hidden="true"
+    />
+  );
+}
 
 type Status = "exposed" | "new-token" | "future";
 
@@ -196,13 +279,13 @@ function ColourSelection({
       </header>
       <div className="theme-swatch-row" role="list" aria-label="Colour shades">
         {shades.map((hex, i) => (
-          <div
+          <Swatch
             key={`${i}-${hex}`}
             role="listitem"
             className="theme-swatch"
-            style={{ background: hex }}
+            background={hex}
             title={hex}
-            aria-label={hex}
+            ariaLabel={hex}
           />
         ))}
       </div>
@@ -307,14 +390,14 @@ function MakerPanel({
 
       {mode === "seed" && (
         <div className="theme-maker__body theme-maker__body--seed">
-          <label className="theme-maker__swatch" style={{ background: seed }}>
+          <Swatch asLabel className="theme-maker__swatch" background={seed}>
             <input
               type="color"
               value={seed}
               onChange={(e) => commitHex(e.target.value)}
               aria-label="Pick seed colour"
             />
-          </label>
+          </Swatch>
           <div className="theme-maker__field">
             <span className="theme-maker__field-label">Seed hex</span>
             <input
@@ -331,14 +414,11 @@ function MakerPanel({
             <span className="theme-maker__field-label">Quick pick</span>
             <div className="theme-maker__quick-row">
               {PRESETS.map((p) => (
-                <button
+                <PresetSwatch
                   key={p.seed}
-                  type="button"
-                  className="theme-maker__quick-swatch"
-                  style={{ background: p.seed }}
-                  title={`${p.name} — ${p.seed}`}
-                  aria-label={`${p.name} — ${p.seed}`}
-                  onClick={() => { setSeed(p.seed); setHexInput(p.seed); }}
+                  seed={p.seed}
+                  label={p.name}
+                  onPick={() => { setSeed(p.seed); setHexInput(p.seed); }}
                 />
               ))}
             </div>
@@ -363,7 +443,7 @@ function MakerPanel({
               type="file"
               accept="image/*"
               onChange={onFilePicked}
-              style={{ display: "none" }}
+              className="u-hidden"
               aria-label="Upload image for palette extraction"
             />
           </div>
@@ -383,11 +463,7 @@ function MakerPanel({
                   className={`theme-maker__preset ${active ? "theme-maker__preset--active" : ""}`}
                   onClick={() => { setSeed(p.seed); setHexInput(p.seed); }}
                 >
-                  <span
-                    className="theme-maker__preset-strip"
-                    style={{ background: `linear-gradient(to right, ${gradient})` }}
-                    aria-hidden="true"
-                  />
+                  <PresetGradient gradient={gradient} />
                   <span className="theme-maker__preset-name">{p.name}</span>
                   <span className="theme-maker__preset-hex">{p.seed}</span>
                 </button>
@@ -908,11 +984,19 @@ function ThemePreviewCard({ theme, mode = "light" }: { theme: ThemeEntry; mode?:
 }
 
 // ─── Swatch strip ─────────────────────────────────────────────────────────────
+function StripChip({ color }: { color: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    ref.current?.style.setProperty("--swatch-bg", color);
+  }, [color]);
+  return <span ref={ref} className="theme-swatch-strip__chip u-swatch-bg" title={color} />;
+}
+
 function SwatchStrip({ colors }: { colors: [string, string, string, string] }) {
   return (
     <div className="theme-swatch-strip" aria-hidden="true">
       {colors.map((c, i) => (
-        <span key={i} className="theme-swatch-strip__chip" style={{ background: c }} title={c} />
+        <StripChip key={i} color={c} />
       ))}
     </div>
   );
@@ -1229,26 +1313,17 @@ export default function ThemePage() {
 
   return (
     <PageShell title="Theme" subtitle="Choose how Vector looks for you">
-      <div className="tabs" role="tablist" aria-label="Theme sections">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={topTab === "themes"}
-          className={`tabs__tab${topTab === "themes" ? " tabs__tab--active" : ""}`}
-          onClick={() => setTopTab("themes")}
-        >
-          Themes
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={topTab === "maker"}
-          className={`tabs__tab${topTab === "maker" ? " tabs__tab--active" : ""}`}
-          onClick={() => setTopTab("maker")}
-        >
-          Maker
-        </button>
-      </div>
+      <SecondaryNavigation<"themes" | "maker">
+        ariaLabel="Theme sections"
+        pageId="theme"
+        reorderable
+        active={topTab}
+        onChange={setTopTab}
+        items={[
+          { key: "themes", label: "Themes", sortKey: "Themes" },
+          { key: "maker", label: "Maker", sortKey: "Maker" },
+        ]}
+      />
 
       {topTab === "themes" ? (
         <ThemesTab />

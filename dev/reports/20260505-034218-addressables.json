@@ -1,0 +1,20 @@
+{
+  "id": "20260505-034218-addressables",
+  "scope": "H",
+  "scopeName": "addressables",
+  "flag": "lint:addressables",
+  "timestamp": "2026-05-05T03:42:18",
+  "checks": [
+    {
+      "status": "pass",
+      "label": "lint:addressables",
+      "detail": "no raw panel shapes found across 4 scan dirs"
+    }
+  ],
+  "summary": {
+    "pass": 1,
+    "warn": 0,
+    "fail": 0,
+    "fixed": 0
+  }
+}

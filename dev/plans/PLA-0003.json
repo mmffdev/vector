@@ -3,7 +3,7 @@
   "title": "Adopt generic ranking + realtime drag-and-drop on the work-items table",
   "date_created": "2026-05-02",
   "date_started": "2026-05-02",
-  "date_last_updated": "2026-05-04",
+  "date_last_updated": "2026-05-03",
   "date_finished": "2026-05-03",
   "scope": "<p>Wire the generic ranking primitives (<code>useResourceRank</code>, <code>useOptimisticReorder</code>, <code>&lt;DragHandleColumn&gt;</code>) onto the work-items table at <code>app/(user)/work-items/page.tsx</code>; subscribe to <code>rankTopic(\"work_item\", …)</code> via <code>useRefetchOnPush</code> for cross-tab/user fan-out; verify the canonical <code>ORDER BY coalesce(sprint_position, backlog_position) NULLS LAST, key_num ASC</code> across all callers; cover with a Playwright spec; confirm parent-drag cascades children server-side.</p><p>The work-items table is the last first-class table not yet using the shared rank pattern landed in commit 43d7468.</p>",
   "value": "<p>Users (and gadmin/dev) gain consistent drag-to-reorder behaviour on work items in both backlog and per-sprint views, with reorders surviving reload and propagating to other tabs and users in real time. The change closes the generic-ranking adoption rollout and removes the last bespoke ordering surface in the app.</p>",
