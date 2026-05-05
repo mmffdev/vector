@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
+import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { api, ApiError } from "@/app/lib/api";
 import WorkItemDetailPanel from "./WorkItemDetailPanel";
+import Example2Tree from "./Example2Tree";
 import DragHandleColumn from "@/app/components/DragHandleColumn";
 import { useResourceRank, type MoveResult } from "@/app/hooks/useResourceRank";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
@@ -13,6 +15,7 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { MdOutlineCreateNewFolder, MdOutlineFolder, MdChecklist, MdOutlineBugReport, MdOutlineArrowForwardIos } from "react-icons/md";
 import InlineEditField from "@/app/components/InlineEditField";
+import { InlineSelect } from "./InlineSelect";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,15 +120,6 @@ function WorkItemsFilterBar({
 }) {
   return (
     <div className="backlog-filter" role="search">
-      <input
-        type="search"
-        className="backlog-filter__search"
-        placeholder="Search by title or key…"
-        value={filters.search}
-        onChange={(e) => onChange({ search: e.target.value })}
-        aria-label="Search work items"
-      />
-
       <ul className="backlog-filter__pills" aria-label="Status filters">
         {STATUS_FILTERS.map((f) => (
           <li key={f.key}>
@@ -178,63 +172,6 @@ function WorkItemsFilterBar({
 }
 
 // ─── Inline Select ────────────────────────────────────────────────────────────
-
-// Click-to-open native select. Trigger renders the parent-supplied pill (or
-// any node); when clicked it swaps to a focused <select> that commits on
-// change. Used inline in tree rows and the detail panel for status/priority.
-// Stops pointer + click propagation so a click doesn't also trigger row
-// selection or drag-source pickup.
-function InlineSelect({
-  value,
-  options,
-  onCommit,
-  ariaLabel,
-  trigger,
-  placeholder = "—",
-}: {
-  value: string;
-  options: { value: string; label: string }[];
-  onCommit: (next: string) => void;
-  ariaLabel: string;
-  trigger: React.ReactNode;
-  placeholder?: string;
-}) {
-  const [editing, setEditing] = useState(false);
-  if (editing) {
-    return (
-      <select
-        autoFocus
-        className="form__select form__select--sm"
-        value={value}
-        aria-label={ariaLabel}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          const next = e.target.value;
-          setEditing(false);
-          if (next !== value) onCommit(next);
-        }}
-        onBlur={() => setEditing(false)}
-        onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    );
-  }
-  return (
-    <span
-      className="work-items-tree__inline-trigger"
-      title="Click to edit"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-    >
-      {trigger}
-    </span>
-  );
-}
 
 // ─── Tree Row ─────────────────────────────────────────────────────────────────
 
@@ -984,13 +921,13 @@ function WorkItemsTree({
       <div className="table-wrap">
         <table className="table work-items-tree" aria-label="Work items">
           <colgroup>
-            <col style={{ width: colWidths.drag }} />
-            <col style={{ width: colWidths.toggle }} />
-            <col style={{ width: colWidths.tag }} />
-            <col style={colWidths.title ? { width: colWidths.title } : undefined} />
-            <col style={{ width: colWidths.status }} />
-            <col style={{ width: colWidths.priority }} />
-            <col style={{ width: colWidths.pts }} />
+            <DynCol w={colWidths.drag} />
+            <DynCol w={colWidths.toggle} />
+            <DynCol w={colWidths.tag} />
+            <DynCol w={colWidths.title} />
+            <DynCol w={colWidths.status} />
+            <DynCol w={colWidths.priority} />
+            <DynCol w={colWidths.pts} />
           </colgroup>
           <thead className="table__head">
             <tr>
@@ -1043,7 +980,16 @@ export default function WorkItemsPage() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  const [summary, setSummary] = useState<{
+    total: number;
+    epics: number;
+    stories: number;
+    tasks: number;
+    defects: number;
+    blocked: number;
+  } | null>(null);
   const treeRef = useRef<WorkItemsTreeHandle | null>(null);
+  const [activeTab, setActiveTab] = useState<"ex1" | "ex2">("ex1");
 
   const patchFilter = useCallback((patch: Partial<FilterState>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -1055,6 +1001,25 @@ export default function WorkItemsPage() {
       .catch(() => {});
   }, []);
 
+  // Summary scopes to subscription + sprint only — type/status/search filters
+  // are intentionally ignored so the strip reflects the whole-tree shape
+  // regardless of how the list is currently narrowed below.
+  const refetchSummary = useCallback(() => {
+    const params = new URLSearchParams();
+    if (filters.sprint_id) params.set("sprint_id", filters.sprint_id);
+    const qs = params.toString();
+    return api<{
+      total: number;
+      epics: number;
+      stories: number;
+      tasks: number;
+      defects: number;
+      blocked: number;
+    }>(`/api/work-items/summary${qs ? "?" + qs : ""}`)
+      .then((r) => setSummary(r))
+      .catch(() => setSummary(null));
+  }, [filters.sprint_id]);
+
   const refetch = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -1062,7 +1027,7 @@ export default function WorkItemsPage() {
     if (filters.sprint_id) params.set("sprint_id", filters.sprint_id);
     if (filters.item_type) params.set("item_type", filters.item_type);
     const qs = params.toString();
-    return api<{ items: WorkItem[] }>(`/api/work-items${qs ? "?" + qs : ""}`)
+    const list = api<{ items: WorkItem[] }>(`/api/work-items${qs ? "?" + qs : ""}`)
       .then((r) => {
         let rows = r.items;
         if (filters.search.trim()) {
@@ -1077,7 +1042,8 @@ export default function WorkItemsPage() {
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [filters]);
+    return Promise.all([list, refetchSummary()]).then(() => undefined);
+  }, [filters, refetchSummary]);
 
   useEffect(() => {
     void refetch();
@@ -1096,6 +1062,22 @@ export default function WorkItemsPage() {
     : null;
   useRefetchOnPush({ topic, refetch });
 
+  // Strip cells come from the /api/work-items/summary endpoint so counts
+  // span the whole tree (every descendant level), not just the top-level
+  // rows currently rendered. Defects + Blocked use the warning tone, which
+  // only paints amber when their value > 0. Blocked = open items that
+  // haven't been updated in 14 days (heuristic; no explicit flag yet).
+  const summaryCells = useMemo(() => {
+    const s = summary ?? { total: 0, epics: 0, stories: 0, tasks: 0, defects: 0, blocked: 0 };
+    return [
+      { label: "TOTAL ITEMS", value: s.total },
+      { label: "EPICS", value: s.epics },
+      { label: "TASKS", value: s.tasks },
+      { label: "DEFECTS", value: s.defects, tone: "warning" as const },
+      { label: "BLOCKED", value: s.blocked, tone: "warning" as const, glyph: "issue" as const },
+    ];
+  }, [summary]);
+
   return (
     <StrictRoute>
     <PageShell
@@ -1109,48 +1091,113 @@ export default function WorkItemsPage() {
         ) : undefined
       }
     >
-      <Panel name="work_items_filters" title="Filters">
-        <WorkItemsFilterBar
-          filters={filters}
-          sprints={sprints}
-          onChange={patchFilter}
-          onNew={() => {}}
-        />
-      </Panel>
+      <PageSummaryHeader
+        cells={summaryCells}
+        search={{
+          value: filters.search,
+          onChange: (next) => patchFilter({ search: next }),
+          placeholder: "Search by title or key…",
+          ariaLabel: "Search work items",
+        }}
+      />
 
-      <Panel name="work_items_tree" title="Work items">
-        {loading ? (
-          <div className="placeholder">
-            <p className="placeholder__body">Loading…</p>
-          </div>
-        ) : (
-          <div className="work-items-layout">
-            <div className="work-items-layout__tree">
-              <WorkItemsTree
-                items={items}
-                setItems={setItems}
-                selectedId={selectedItem?.id ?? null}
-                onSelect={setSelectedItem}
-                onItemSync={(synced) => setSelectedItem(synced)}
-                treeRef={treeRef}
-              />
-            </div>
-            {selectedItem && (
-              <WorkItemDetailPanel
-                item={selectedItem}
-                onClose={() => setSelectedItem(null)}
-                onPatch={(id, body) => {
-                  // Route every panel inline-edit through the tree's
-                  // patchAndApply so the row, ancestor rollups, and the
-                  // panel selection refresh in one render.
-                  treeRef.current?.patch(id, body);
-                }}
-              />
+      <div className="tabs" role="tablist" aria-label="Work item views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "ex1"}
+          className={`tabs__tab${activeTab === "ex1" ? " tabs__tab--active" : ""}`}
+          onClick={() => setActiveTab("ex1")}
+        >
+          Example 1
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "ex2"}
+          className={`tabs__tab${activeTab === "ex2" ? " tabs__tab--active" : ""}`}
+          onClick={() => setActiveTab("ex2")}
+        >
+          Example 2
+        </button>
+      </div>
+
+      {activeTab === "ex1" ? (
+        <>
+          <Panel name="work_items_filters" title="Filters">
+            <WorkItemsFilterBar
+              filters={filters}
+              sprints={sprints}
+              onChange={patchFilter}
+              onNew={() => {}}
+            />
+          </Panel>
+
+          <Panel name="work_items_tree" title="Work items">
+            {loading ? (
+              <div className="placeholder">
+                <p className="placeholder__body">Loading…</p>
+              </div>
+            ) : (
+              <div className="work-items-layout">
+                <div className="work-items-layout__tree">
+                  <WorkItemsTree
+                    items={items}
+                    setItems={setItems}
+                    selectedId={selectedItem?.id ?? null}
+                    onSelect={setSelectedItem}
+                    onItemSync={(synced) => setSelectedItem(synced)}
+                    treeRef={treeRef}
+                  />
+                </div>
+                {selectedItem && (
+                  <WorkItemDetailPanel
+                    item={selectedItem}
+                    onClose={() => setSelectedItem(null)}
+                    onPatch={(id, body) => {
+                      // Route every panel inline-edit through the tree's
+                      // patchAndApply so the row, ancestor rollups, and the
+                      // panel selection refresh in one render.
+                      treeRef.current?.patch(id, body);
+                    }}
+                  />
+                )}
+              </div>
             )}
-          </div>
-        )}
-      </Panel>
+          </Panel>
+        </>
+      ) : (
+        <Panel name="work_items_grid_tree" title="Grid-Tree">
+          {loading ? (
+            <div className="placeholder">
+              <p className="placeholder__body">Loading…</p>
+            </div>
+          ) : (
+            <Example2Tree
+              items={items}
+              setItems={setItems}
+              selectedId={selectedItem?.id ?? null}
+              onSelect={setSelectedItem}
+              onPatched={() => { void refetch(); }}
+            />
+          )}
+        </Panel>
+      )}
     </PageShell>
     </StrictRoute>
   );
+}
+
+function DynCol({ w }: { w: string | number | undefined }) {
+  const ref = useRef<HTMLTableColElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (w == null || w === "") {
+      el.style.removeProperty("--col-w");
+      return;
+    }
+    el.style.setProperty("--col-w", typeof w === "number" ? `${w}px` : String(w));
+  }, [w]);
+  return <col ref={ref} className="u-col-w" />;
 }

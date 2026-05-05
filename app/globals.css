@@ -11338,14 +11338,14 @@ table.tbl tbody tr:hover td {
   background: var(--surface);
 }
 
-/* Scroll container — body scrolls under a sticky header. Height is bounded
-   so the inner table can overflow; using min(80vh, 720px) keeps the panel
-   tall on big screens but still leaves room for chrome on laptops.
-   The .table-wrap.tree_accordion-dense__scroll selector beats the bare .table-wrap rule
-   on specificity (0,2,0 vs 0,1,0) so the base overflow:hidden is overridden. */
-.table-wrap.tree_accordion-dense__scroll {
+/* Scroll container — body scrolls under a sticky header. Owns its own border
+   and background so the component does not depend on the global .table-wrap
+   primitive (which has overflow:hidden and would clip the sticky header). */
+.tree_accordion-dense__scroll {
   max-height: min(80vh, 720px);
   overflow: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 /* Header row */
@@ -11634,4 +11634,87 @@ table.tbl tbody tr:hover td {
 .tree_accordion-dense__pts-text:hover,
 .tree_accordion-dense__table .work-items-tree__inline-trigger:hover {
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+}
+
+/* ── Pagination row ─────────────────────────────────────────────────────
+   Three-zone layout: row-range info on the left, pager in the middle,
+   page-size selector on the right. Sits directly below the scroll wrapper
+   and reuses the table's font + border tokens so it visually belongs to
+   the same block. */
+.tree_accordion-dense__pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--ink) 2%, var(--surface));
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+/* Top bar sits flush above the table; the scroll container owns the
+   shared divider, so we drop our bottom border. */
+.tree_accordion-dense__pagination--top {
+  border-bottom: 0;
+}
+/* Bottom bar sits flush below the table; the scroll container owns the
+   shared divider, so we drop our top border. */
+.tree_accordion-dense__pagination--bottom {
+  border-top: 0;
+}
+.tree_accordion-dense__pagination-info {
+  flex: 0 0 auto;
+}
+/* All three groups sit left-aligned in DOM order:
+   info → page-size → pager. No auto-margins, so the layout is stable
+   whether the pager is rendered or not. */
+.tree_accordion-dense__pagination-pagesize {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+.tree_accordion-dense__pagination-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+.tree_accordion-dense__pagination-btn,
+.tree_accordion-dense__pagination-pagesize-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.tree_accordion-dense__pagination-btn:hover:not(:disabled),
+.tree_accordion-dense__pagination-pagesize-btn:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+}
+.tree_accordion-dense__pagination-btn:disabled {
+  color: var(--ink-subtle);
+  cursor: default;
+}
+.tree_accordion-dense__pagination-btn--active,
+.tree_accordion-dense__pagination-pagesize-btn--active {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+.tree_accordion-dense__pagination-ellipsis {
+  padding: 0 4px;
+  color: var(--ink-subtle);
+  user-select: none;
 }

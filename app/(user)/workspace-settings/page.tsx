@@ -355,6 +355,10 @@ function OrganizationTab() {
   return (
     <div className="settings-panel">
 
+      {/* ── Color Code Work Items (placeholder) ──────────────── */}
+      <h3 className="eyebrow">Color Code Work Items</h3>
+      <p className="form__hint">Placeholder — work item type colours will be configurable here.</p>
+
       {/* ── Identity ─────────────────────────────────────────── */}
       <h3 className="eyebrow">Identity</h3>
       <form className="form" onSubmit={(e) => e.preventDefault()}>
