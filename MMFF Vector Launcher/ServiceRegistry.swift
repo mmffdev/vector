@@ -162,12 +162,18 @@ actor ServiceRegistry {
     private static func docsSpec() -> ServiceSpec {
         let port: UInt16 = 3000
         let url = URL(string: "http://127.0.0.1:\(port)/")!
-        // BROWSER=none stops Docusaurus from auto-opening Safari on every spawn.
+        // Belt-and-braces against Docusaurus' auto-open-browser behaviour:
+        //   1. `export BROWSER=none` inside the command so a bash-login shell
+        //      can't wipe it from a dotfile before `npm start` reads it.
+        //   2. `--no-open` flag on `docusaurus start` — parsed by Docusaurus
+        //      itself, immune to env tampering.
+        // Also setting `env: BROWSER=none` belongs as the last line of defence
+        // for any path that doesn't go through the login shell.
         return ServiceSpec(
             id: .docs,
             port: port,
             cwd: Paths.repoRoot.appendingPathComponent("api-reference", isDirectory: true),
-            command: "npm start",
+            command: "export BROWSER=none && npm start -- --no-open",
             env: ["BROWSER": "none"],
             logTag: .docs,
             adoptIf: ServiceSpec.adoptIfListening(port),
