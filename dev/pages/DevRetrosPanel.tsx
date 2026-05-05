@@ -334,14 +334,12 @@ function RetroItem({ meta }: { meta: RetroMeta }) {
                             ))}
                           </ol>
                           {f.chain_broken_at != null && (
-                            // GAP: no catalog primitive for an inline warning callout.
-                            <div className="ui-retro__chain-broken">
+                            <div className="dui-callout dui-callout--warn">
                               ⚠ chain broken at why-{f.chain_broken_at}
                             </div>
                           )}
                           {(f.reversal ?? []).length > 0 && (
-                            // GAP: no catalog primitive for collapsible details/summary.
-                            <details className="ui-retro__reversal">
+                            <details className="dui-disclosure">
                               <summary>Reversal chain</summary>
                               <ul>
                                 {(f.reversal ?? []).map((r, i) => (
@@ -483,18 +481,15 @@ export default function DevRetrosPanel() {
   return (
     <Panel name="dev_retros" title="Retros">
       <div className="dui-page">
-        {/* GAP: the dui-* catalog has no tabs primitive. Leaving the
-            ui-retro__subtabs / ui-retro__subtab classes in place per
-            PLA-0013 hard-constraint (no new catalog rules in this card). */}
-        <nav className="ui-retro__subtabs">
+        <nav className="dui-subtabs">
           <button
-            className={`ui-retro__subtab${subtab === "ledger" ? " is-active" : ""}`}
+            className={`dui-subtab${subtab === "ledger" ? " is-active" : ""}`}
             onClick={() => setAndPersist("ledger")}
           >
             Recurring ledger
           </button>
           <button
-            className={`ui-retro__subtab${subtab === "retrospectives" ? " is-active" : ""}`}
+            className={`dui-subtab${subtab === "retrospectives" ? " is-active" : ""}`}
             onClick={() => setAndPersist("retrospectives")}
           >
             Retrospectives

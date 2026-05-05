@@ -1254,6 +1254,97 @@
 }
 
 
+/* ─── 24. Sub-tabs (in-panel switcher) ─────────────────────── */
+/* Sits inside a .dui-page; mutually exclusive buttons; one .is-active. */
+
+.dui-subtabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+
+.dui-subtab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.dui-subtab:hover {
+  color: var(--ink);
+}
+
+.dui-subtab.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+  font-weight: 600;
+}
+
+
+/* ─── 25. Inline callout (one-liner banner) ────────────────── */
+/* Compact warning/info strip used inside table cells, accordion bodies. */
+
+.dui-callout {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  margin-top: var(--space-1);
+}
+
+.dui-callout--warn {
+  background: var(--warning-bg, var(--surface));
+  color: var(--warning, var(--ink));
+  border-color: var(--warning, var(--border));
+}
+
+
+/* ─── 26. Disclosure (native <details>) ────────────────────── */
+/* Pairs <details>/<summary> elements; safe to wrap any content. */
+
+.dui-disclosure {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.dui-disclosure > summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  list-style: none;
+  user-select: none;
+}
+
+.dui-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dui-disclosure > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  width: 1em;
+  transition: transform 120ms ease;
+}
+
+.dui-disclosure[open] > summary::before {
+  content: "▾ ";
+}
+
+.dui-disclosure > summary:hover {
+  color: var(--ink);
+}
+
+
 /* ─── Catalog preview tab support ──────────────────────────── */
 
 .dui-cat__section {
