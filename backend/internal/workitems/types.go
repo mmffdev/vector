@@ -25,6 +25,12 @@ var (
 // items with at least one non-archived child). When RollupPoints is set, it
 // is the value the UI shows — the manual value is preserved in the DB but
 // shadowed. Tasks may not have manual points (see canHaveManualPoints).
+//
+// Flow state: FlowStateID is the UUID FK into o_flow_tenant. FlowStateName
+// and FlowStateCode are joined from that row so the frontend can render the
+// current state without a second request. Use FlowStateID (not Status) for
+// all state reads/writes — Status is the legacy shadow column kept for one
+// release while readers migrate (see migration 119 → 120).
 type WorkItem struct {
 	ID             string     `json:"id"`
 	SubscriptionID string     `json:"subscription_id"`
@@ -33,6 +39,9 @@ type WorkItem struct {
 	Title          string     `json:"title"`
 	Description    *string    `json:"description,omitempty"`
 	Status         string     `json:"status"`
+	FlowStateID    string     `json:"flow_state_id"`
+	FlowStateName  string     `json:"flow_state_name"`
+	FlowStateCode  string     `json:"flow_state_code"`
 	Priority       *string    `json:"priority,omitempty"`
 	StoryPoints    *int       `json:"story_points,omitempty"`
 	RollupPoints   *int       `json:"rollup_points,omitempty"`
@@ -75,6 +84,7 @@ type PatchWorkItemInput struct {
 	Title       *string
 	Description *string
 	Status      *string
+	FlowStateID *string // UUID — replaces Status; both accepted during transition
 	Priority    *string
 	StoryPoints *int
 	SprintID    *string
@@ -213,6 +223,16 @@ type FieldValue struct {
 	NumberValue    *string `json:"number_value,omitempty"`
 	TextValue      *string `json:"text_value,omitempty"`
 	DateValue      *string `json:"date_value,omitempty"`
+}
+
+// WorkItemFlowState is a slim projection of o_flow_tenant scoped to the
+// execution_work_items flow for a subscription. The frontend uses this to
+// populate the Status dropdown without needing flows.manage permission.
+type WorkItemFlowState struct {
+	ID            string `json:"id"`
+	Position      int    `json:"flow_position"`
+	Name          string `json:"name"`
+	CanonicalCode string `json:"canonical_code"`
 }
 
 // UpsertFieldValueInput holds the value to write for one field on a work item.

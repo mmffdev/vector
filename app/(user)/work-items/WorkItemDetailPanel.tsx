@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/app/lib/api";
 import InlineEditField from "@/app/components/InlineEditField";
+import { useWorkItemFlowStates } from "./useWorkItemFlowStates";
 
 interface WorkItem {
   id: string;
@@ -11,6 +12,9 @@ interface WorkItem {
   title: string;
   description?: string | null;
   status: string;
+  flow_state_id: string;
+  flow_state_name: string;
+  flow_state_code: string;
   priority: string | null;
   story_points: number | null;
   rollup_points: number | null;
@@ -48,7 +52,6 @@ interface Props {
   onPatch: (id: string, body: Record<string, unknown>) => void;
 }
 
-const STATUS_OPTIONS = ["open", "in_progress", "done", "cancelled"];
 const PRIORITY_OPTIONS = ["critical", "high", "medium", "low"];
 
 // Click-to-edit date picker. Display shows the formatted date as plain text;
@@ -248,6 +251,7 @@ function PanelInlineSelect({
 }
 
 export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
+  const flowStates = useWorkItemFlowStates();
   const [fieldValues, setFieldValues] = useState<FieldValue[]>([]);
   const [fvLoading, setFvLoading] = useState(false);
 
@@ -319,11 +323,11 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
           <dt>Status</dt>
           <dd>
             <PanelInlineSelect
-              value={item.status}
-              options={STATUS_OPTIONS.map((s) => ({ value: s, label: s.replace("_", " ") }))}
-              onCommit={(next) => onPatch(item.id, { status: next })}
+              value={item.flow_state_id}
+              options={flowStates.map((s) => ({ value: s.id, label: s.name }))}
+              onCommit={(next) => onPatch(item.id, { flow_state_id: next })}
               ariaLabel="Work item status"
-              trigger={<span>{item.status.replace("_", " ")}</span>}
+              trigger={<span>{item.flow_state_name}</span>}
             />
           </dd>
         </div>

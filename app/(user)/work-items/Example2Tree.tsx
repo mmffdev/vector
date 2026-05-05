@@ -6,6 +6,7 @@ import { MdOutlineArrowForwardIos, MdSearch, MdTune, MdOutlineCheckBox, MdOutlin
 import { BsArrowsCollapse, BsArrowsExpand } from "react-icons/bs";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "./InlineSelect";
+import { useWorkItemFlowStates, CANONICAL_PILL, type WorkItemFlowState } from "./useWorkItemFlowStates";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,9 @@ export interface WorkItem {
   item_type: string;
   title: string;
   status: string;
+  flow_state_id: string;
+  flow_state_name: string;
+  flow_state_code: string;
   priority: string | null;
   story_points: number | null;
   rollup_points: number | null;
@@ -42,18 +46,6 @@ const TYPE_VARIANT: Record<string, string> = {
   defect: "tree_accordion-dense__type-badge--defect",
 };
 
-// Map backend status → status modifier + display label.
-const STATUS_VARIANT: Record<string, { mod: string; label: string }> = {
-  open: { mod: "neutral", label: "To do" },
-  todo: { mod: "neutral", label: "To do" },
-  in_progress: { mod: "info", label: "In progress" },
-  in_review: { mod: "review", label: "In review" },
-  review: { mod: "review", label: "In review" },
-  done: { mod: "success", label: "Done" },
-  blocked: { mod: "danger", label: "Blocked" },
-  cancelled: { mod: "neutral", label: "Cancelled" },
-};
-
 // Backend priority strings → P0/P1/P2 short codes.
 const PRIORITY_CODE: Record<string, { code: string; mod: string }> = {
   critical: { code: "P0", mod: "p0" },
@@ -62,16 +54,12 @@ const PRIORITY_CODE: Record<string, { code: string; mod: string }> = {
   low:      { code: "P3", mod: "p3" },
 };
 
-const STATUS_OPTIONS = ["open", "in_progress", "done", "cancelled"];
 const PRIORITY_OPTIONS = ["critical", "high", "medium", "low"];
 
 function canHaveManualPoints(itemType: string): boolean {
   return itemType !== "task";
 }
 
-function formatStatus(raw: string) {
-  return STATUS_VARIANT[raw] ?? { mod: "neutral", label: raw.replace(/_/g, " ") };
-}
 function formatPriority(raw: string | null) {
   if (!raw) return null;
   return PRIORITY_CODE[raw] ?? { code: raw.toUpperCase().slice(0, 2), mod: "p3" };
@@ -194,6 +182,7 @@ function GridRow({
   isLast,
   hasVisibleChildren,
   continuations,
+  flowStates,
 }: {
   item: WorkItem;
   depth: number;
@@ -206,8 +195,9 @@ function GridRow({
   isLast: boolean;
   hasVisibleChildren: boolean;
   continuations: boolean[];
+  flowStates: WorkItemFlowState[];
 }) {
-  const status = formatStatus(item.status);
+  const statusMod = CANONICAL_PILL[item.flow_state_code] ?? "neutral";
   const pri = formatPriority(item.priority);
   const isEpic = item.item_type === "epic";
   const idText = `${TYPE_PREFIX[item.item_type] ?? "?"}-${item.key_num}`;
@@ -272,14 +262,14 @@ function GridRow({
       </td>
       <td className="tree_accordion-dense__cell">
         <InlineSelect
-          value={item.status}
-          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s.replace("_", " ") }))}
-          onCommit={(next) => onPatch(item.id, { status: next })}
+          value={item.flow_state_id}
+          options={flowStates.map((s) => ({ value: s.id, label: s.name }))}
+          onCommit={(next) => onPatch(item.id, { flow_state_id: next })}
           ariaLabel="Work item status"
           trigger={
-            <span className={"tree_accordion-dense__status tree_accordion-dense__status--" + status.mod}>
+            <span className={"tree_accordion-dense__status tree_accordion-dense__status--" + statusMod}>
               <span className="tree_accordion-dense__status-dot" />
-              <span className="tree_accordion-dense__status-text">{status.label}</span>
+              <span className="tree_accordion-dense__status-text">{item.flow_state_name}</span>
             </span>
           }
         />
@@ -349,6 +339,7 @@ export default function Example2Tree({
   onSelect: (item: WorkItem) => void;
   onPatched?: () => void;
 }) {
+  const flowStates = useWorkItemFlowStates();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [childMap, setChildMap] = useState<Record<string, WorkItem[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -528,6 +519,7 @@ export default function Example2Tree({
             isLast={isLast}
             hasVisibleChildren={hasVisibleChildren}
             continuations={ancestorContinuations}
+            flowStates={flowStates}
           />
           {loadingId === item.id && (
             <tr>

@@ -723,6 +723,7 @@ func main() {
 		r.Get("/", workItemsH.List)
 		r.Post("/", workItemsH.Create)
 		r.Get("/summary", workItemsH.Summary)
+		r.Get("/flow-states", workItemsH.ListFlowStates)
 		r.Get("/{id}", workItemsH.Get)
 		r.Patch("/{id}", workItemsH.Patch)
 		r.Delete("/{id}", workItemsH.Archive)

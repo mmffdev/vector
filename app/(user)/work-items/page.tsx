@@ -17,6 +17,7 @@ import { MdOutlineCreateNewFolder, MdOutlineFolder, MdChecklist, MdOutlineBugRep
 import InlineEditField from "@/app/components/InlineEditField";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { InlineSelect } from "./InlineSelect";
+import { useWorkItemFlowStates, CANONICAL_PILL } from "./useWorkItemFlowStates";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,9 @@ interface WorkItem {
   item_type: string;
   title: string;
   status: string;
+  flow_state_id: string;
+  flow_state_name: string;
+  flow_state_code: string;
   priority: string | null;
   story_points: number | null;
   rollup_points: number | null;
@@ -53,6 +57,10 @@ interface Sprint {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// STATUS_FILTERS still uses the legacy status text values because the list
+// API filters by the shadow `status` column during the migration window.
+// Migration 120 will drop `status`; at that point this filter must switch
+// to filtering by flow_state_id UUID.
 const STATUS_FILTERS = [
   { key: "", label: "All" },
   { key: "open", label: "Open" },
@@ -68,12 +76,7 @@ const PRIORITY_PILL: Record<string, string> = {
   low: "pill--neutral",
 };
 
-const STATUS_PILL: Record<string, string> = {
-  open: "pill--neutral",
-  in_progress: "pill--info",
-  done: "pill--success",
-  cancelled: "pill--neutral",
-};
+// pill class derived from canonical_code (flow_state_code) at render time.
 
 const TYPE_ICON: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   epic:   MdOutlineCreateNewFolder,
@@ -89,7 +92,6 @@ const TYPE_PREFIX: Record<string, string> = {
   task: "TA",
 };
 
-const STATUS_OPTIONS_TREE = ["open", "in_progress", "done", "cancelled"];
 const PRIORITY_OPTIONS_TREE = ["critical", "high", "medium", "low"];
 
 // Tasks (and any other bottom-layer item type) cannot have manual points;
@@ -194,6 +196,7 @@ function WorkItemRow({
   hasVisibleChildren,
   rowProps,
   handleProps,
+  flowStates,
 }: {
   item: WorkItem;
   depth: number;
@@ -210,6 +213,7 @@ function WorkItemRow({
   hasVisibleChildren?: boolean;
   rowProps: React.HTMLAttributes<HTMLTableRowElement> & { "data-rank-row-id"?: string };
   handleProps: React.HTMLAttributes<HTMLTableCellElement> & { draggable?: boolean };
+  flowStates: import("./useWorkItemFlowStates").WorkItemFlowState[];
 }) {
   const TypeIcon = TYPE_ICON[item.item_type] ?? null;
   const { className: rankClass = "", ...restRowProps } = rowProps;
@@ -356,13 +360,13 @@ function WorkItemRow({
       </td>
       <td className="table__cell">
         <InlineSelect
-          value={item.status}
-          options={STATUS_OPTIONS_TREE.map((s) => ({ value: s, label: s.replace("_", " ") }))}
-          onCommit={(next) => onPatch(item.id, { status: next })}
+          value={item.flow_state_id}
+          options={flowStates.map((s) => ({ value: s.id, label: s.name }))}
+          onCommit={(next) => onPatch(item.id, { flow_state_id: next })}
           ariaLabel="Work item status"
           trigger={
-            <span className={"pill pill--sm " + (STATUS_PILL[item.status] ?? "pill--neutral")}>
-              {item.status.replace("_", " ")}
+            <span className={"pill pill--sm pill--" + (CANONICAL_PILL[item.flow_state_code] ?? "neutral")}>
+              {item.flow_state_name}
             </span>
           }
         />
@@ -428,7 +432,8 @@ type SortKey = "tag" | "title" | "status" | "priority" | "pts";
 type SortDir = "asc" | "desc";
 
 const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-const STATUS_ORDER: Record<string, number> = { open: 0, in_progress: 1, done: 2, cancelled: 3 };
+// Status sort uses canonical_code order (flow_position ascending = natural progression).
+const CANONICAL_ORDER: Record<string, number> = { backlog: 0, ready: 1, doing: 2, completed: 3, accepted: 4 };
 
 function sortItems(items: WorkItem[], key: SortKey, dir: SortDir): WorkItem[] {
   const sorted = [...items].sort((a, b) => {
@@ -441,7 +446,7 @@ function sortItems(items: WorkItem[], key: SortKey, dir: SortDir): WorkItem[] {
         cmp = a.title.localeCompare(b.title);
         break;
       case "status":
-        cmp = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+        cmp = (CANONICAL_ORDER[a.flow_state_code] ?? 99) - (CANONICAL_ORDER[b.flow_state_code] ?? 99);
         break;
       case "priority":
         cmp = (PRIORITY_ORDER[a.priority ?? ""] ?? 99) - (PRIORITY_ORDER[b.priority ?? ""] ?? 99);
@@ -528,6 +533,7 @@ function WorkItemsTree({
   onItemSync?: (item: WorkItem) => void;
   treeRef?: React.MutableRefObject<WorkItemsTreeHandle | null>;
 }) {
+  const flowStates = useWorkItemFlowStates();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
   const [childMap, setChildMap] = useState<Record<string, WorkItem[]>>({});
@@ -895,6 +901,7 @@ function WorkItemsTree({
             hasVisibleChildren={isExpanded && children.length > 0}
             rowProps={composeRowProps(item.id)}
             handleProps={rank.handleProps(item.id)}
+            flowStates={flowStates}
           />
           {loadingId === item.id && (
             <tr key={item.id + "-loading"}>

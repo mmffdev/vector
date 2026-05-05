@@ -96,13 +96,15 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	// table CHECK guarantees exactly one is non-NULL per row. NULLS LAST
 	// covers any pre-backfill row; key_num is the stable tiebreaker.
 	q := fmt.Sprintf(`
-		SELECT id, subscription_id, key_num, item_type, title, description,
-		       status, priority, story_points, sprint_id, parent_id, root_feature_id,
-		       owner_id, created_by, created_at, updated_at, archived_at,
+		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
+		       wi.status, wi.flow_state_id, fs.name, fs.canonical_code,
+		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
+		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       %s AS rollup_points
 		FROM o_artefacts_execution_work_items wi
+		JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE %s
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC
 		LIMIT $%d OFFSET $%d`,
@@ -176,12 +178,14 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID string,
 func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uuid.UUID) (*WorkItem, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
-		       wi.status, wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
+		       wi.status, wi.flow_state_id, fs.name, fs.canonical_code,
+		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
+		JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE wi.id = $1 AND wi.subscription_id = $2 AND wi.archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -269,16 +273,32 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 		sprintPos = &p
 	}
 
+	// Resolve the position-1 flow state for this subscription's work_items flow.
+	var defaultFlowStateID string
+	err = tx.QueryRow(ctx, `
+		SELECT ft.id FROM o_flow_tenant ft
+		JOIN o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		WHERE ft.subscription_id = $1
+		  AND ats.scope_key = 'execution_work_items'
+		  AND ft.flow_position = 1
+		  AND ft.archived_at IS NULL
+		LIMIT 1`,
+		subscriptionID,
+	).Scan(&defaultFlowStateID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve default flow state: %w", err)
+	}
+
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
 		INSERT INTO o_artefacts_execution_work_items
 			(subscription_id, key_num, item_type, title, description,
-			 status, priority, story_points, sprint_id, parent_id, root_feature_id,
+			 status, flow_state_id, priority, story_points, sprint_id, parent_id, root_feature_id,
 			 owner_id, created_by, backlog_position, sprint_position)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 		RETURNING id`,
 		subscriptionID, keyNum, in.ItemType, in.Title, in.Description,
-		status, in.Priority, in.StoryPoints, in.SprintID, in.ParentID, rootFeatureID,
+		status, defaultFlowStateID, in.Priority, in.StoryPoints, in.SprintID, in.ParentID, rootFeatureID,
 		in.OwnerID, in.CreatedBy, backlogPos, sprintPos,
 	).Scan(&id)
 	if err != nil {
@@ -388,6 +408,23 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 		args = append(args, *in.Status)
 		n++
 	}
+	if in.FlowStateID != nil {
+		// Validate the flow state belongs to this subscription before writing.
+		var fsSub string
+		err := tx.QueryRow(ctx,
+			`SELECT subscription_id FROM o_flow_tenant WHERE id = $1 AND archived_at IS NULL`,
+			*in.FlowStateID,
+		).Scan(&fsSub)
+		if err != nil {
+			return nil, fmt.Errorf("%w: flow_state_id not found", ErrInvalidInput)
+		}
+		if fsSub != subscriptionID {
+			return nil, fmt.Errorf("%w: flow_state_id belongs to a different subscription", ErrInvalidInput)
+		}
+		sets = append(sets, fmt.Sprintf("flow_state_id = $%d", n))
+		args = append(args, *in.FlowStateID)
+		n++
+	}
 	if in.Priority != nil {
 		sets = append(sets, fmt.Sprintf("priority = $%d", n))
 		args = append(args, *in.Priority)
@@ -480,12 +517,14 @@ func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID string, id
 func (s *Service) ListChildren(ctx context.Context, subscriptionID string, parentID uuid.UUID) ([]WorkItem, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
-		       wi.status, wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
+		       wi.status, wi.flow_state_id, fs.name, fs.canonical_code,
+		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
+		JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE wi.subscription_id = $1 AND wi.parent_id = $2 AND wi.archived_at IS NULL
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC`,
 		subscriptionID, parentID,
@@ -999,7 +1038,8 @@ func scanWorkItem(row scannable) (*WorkItem, error) {
 	var wi WorkItem
 	err := row.Scan(
 		&wi.ID, &wi.SubscriptionID, &wi.KeyNum, &wi.ItemType, &wi.Title, &wi.Description,
-		&wi.Status, &wi.Priority, &wi.StoryPoints, &wi.SprintID, &wi.ParentID, &wi.RootFeatureID,
+		&wi.Status, &wi.FlowStateID, &wi.FlowStateName, &wi.FlowStateCode,
+		&wi.Priority, &wi.StoryPoints, &wi.SprintID, &wi.ParentID, &wi.RootFeatureID,
 		&wi.OwnerID, &wi.CreatedBy, &wi.CreatedAt, &wi.UpdatedAt, &wi.ArchivedAt,
 		&wi.ChildrenCount, &wi.RollupPoints,
 	)
@@ -1085,4 +1125,37 @@ func scanCustomFields(rows pgx.Rows) ([]CustomField, error) {
 		fields = []CustomField{}
 	}
 	return fields, rows.Err()
+}
+
+// ListFlowStates returns the ordered flow states for the execution_work_items
+// flow scoped to the subscription. Used by the frontend Status dropdown without
+// requiring flows.manage permission.
+func (s *Service) ListFlowStates(ctx context.Context, subscriptionID string) ([]WorkItemFlowState, error) {
+	const q = `
+		SELECT ft.id, ft.flow_position, ft.name, ft.canonical_code
+		FROM   o_flow_tenant ft
+		JOIN   o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		WHERE  ft.subscription_id = $1
+		  AND  ats.scope_key = 'execution_work_items'
+		  AND  ft.archived_at IS NULL
+		ORDER  BY ft.flow_position`
+
+	rows, err := s.pool.Query(ctx, q, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var states []WorkItemFlowState
+	for rows.Next() {
+		var st WorkItemFlowState
+		if err := rows.Scan(&st.ID, &st.Position, &st.Name, &st.CanonicalCode); err != nil {
+			return nil, err
+		}
+		states = append(states, st)
+	}
+	if states == nil {
+		states = []WorkItemFlowState{}
+	}
+	return states, rows.Err()
 }

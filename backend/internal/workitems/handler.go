@@ -153,6 +153,7 @@ type patchWorkItemReq struct {
 	Title       *string `json:"title,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Status      *string `json:"status,omitempty"`
+	FlowStateID *string `json:"flow_state_id,omitempty"`
 	Priority    *string `json:"priority,omitempty"`
 	StoryPoints *int    `json:"story_points,omitempty"`
 	SprintID    *string `json:"sprint_id,omitempty"`
@@ -175,6 +176,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
+		FlowStateID: req.FlowStateID,
 		Priority:    req.Priority,
 		StoryPoints: req.StoryPoints,
 		SprintID:    req.SprintID,
@@ -681,6 +683,22 @@ func (h *Handler) RemoveTemplateField(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /api/work-items/flow-states
+//
+// Returns the ordered flow states for the execution_work_items flow of the
+// caller's subscription. Any authenticated user may call this — no flows.manage
+// permission required — so the Status dropdown on the work items page can
+// populate itself from live DB values rather than hardcoded strings.
+func (h *Handler) ListFlowStates(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	states, err := h.Svc.ListFlowStates(r.Context(), u.SubscriptionID.String())
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"states": states})
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
