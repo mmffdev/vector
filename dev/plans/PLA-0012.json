@@ -1,0 +1,244 @@
+{
+  "id": "PLA-0012",
+  "title": "Reusable Page Summary Header \u2014 full-span stat strip + Work Items adopter",
+  "date_created": "2026-05-05",
+  "date_started": "2026-05-05",
+  "date_last_updated": "2026-05-05",
+  "date_finished": "2026-05-05",
+  "scope": "<p>Introduce a Vector-standard <strong>Page Summary Header</strong> primitive \u2014 a full-span horizontal stat strip rendered above a page's main content. The strip shows label+value cells (e.g. <em>TOTAL ITEMS, EPICS, TASKS, DEFECTS</em>) and an optional trailing search slot, modelled on the screenshot reference supplied by the operator.</p><p>The component composes <code>&lt;Panel name=\"page_summary\"&gt;</code> so it inherits the addressable substrate (PLA-0005), the <code>TbHelpHexagon</code> trigger top-right, and the Page Help fetch path (PLA-0008). All visual rules live in <code>app/globals.css</code> as a single <code>.page-summary</code> catalog block \u2014 <strong>no inline styles, no per-component CSS-in-JS</strong>, per the project HARD CSS RULE.</p><p>The first adopter is the <code>/work-items</code> page: the strip renders above the Filters panel with five cells driven by the work-items tree state (Total, Epics, Tasks, Defects, Blocked) and the search input is hoisted out of <code>WorkItemsFilterBar</code> into the new strip's trailing slot.</p>",
+  "value": "<ul><li>Gives users an at-a-glance read of any dataset rendered below \u2014 they can see the shape (counts by type, defect/blocked totals) before scanning rows.</li><li>Establishes a single reusable primitive for every page in the product, reducing drift in summary-strip implementations.</li><li>Inherits the Page Help substrate automatically, so every adopter gains a discoverable, gadmin-editable help doc by virtue of being a registered <code>_panel.page_summary</code> addressable.</li><li>Hardens the no-inline-styles rule by adding a clean catalog block that other adopters extend rather than duplicate.</li></ul>",
+  "implementation_plan": [
+    "Build the <PageSummaryHeader> primitive in app/components/ composing <Panel name=\"page_summary\">; types: cells: SummaryCell[], search?: SearchSlotProps. Tone 'warning' paints amber only when value > 0.",
+    "Add the .page-summary catalog block to app/globals.css (grid layout, cell, glyph, search, warning-tone, responsive collapse). Reuse .tile__label and .t-metric tokens for typography.",
+    "Adopt on /work-items above the Filters panel; compute 5 cells from items state (Total, Epics, Tasks, Defects, Blocked). Hoist the existing search input into the strip's trailing slot.",
+    "Seed a Page Help row keyed to addressable kind=panel name=page_summary so the help icon resolves a real doc.",
+    "Land Vitest contract tests covering empty cells, populated cells, warning-tone class application, and search-slot onChange so future refactors regress visibly in CI."
+  ],
+  "areas_impacted": [
+    "UI: new <PageSummaryHeader> primitive in app/components/, new .page-summary CSS catalog block in app/globals.css",
+    "ITM: Work Items page (/work-items) becomes the first adopter; filter-bar layout adjusted to remove the search input",
+    "AUD: page_help seed for the new panel.page_summary addressable, sourced from the existing library_help_defaults seed mechanism"
+  ],
+  "feature_list": [
+    "<PageSummaryHeader> primitive: cells prop (label, value, optional tone, optional glyph) + optional search slot",
+    "Composition over <Panel> so the strip auto-registers as samantha._<viewport>._panel.page_summary",
+    "Help icon (TbHelpHexagon) top-right with click popover backed by Page Help",
+    ".page-summary CSS catalog block (grid, cell, glyph, search, --issue tone, responsive collapse)",
+    "Warning tone paints --warning only when the cell's value > 0 (resting state stays neutral)",
+    "First adopter: /work-items strip with 5 tree-state cells (Total, Epics, Tasks, Defects, Blocked) + hoisted search",
+    "Seed Page Help doc for panel.page_summary so the help icon serves real content from day one",
+    "Vitest contract tests covering empty/populated/warning/search behaviours"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "Search input no longer rendered inside <WorkItemsFilterBar> (moved into the new <PageSummaryHeader> trailing slot)"
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Build <PageSummaryHeader> primitive composing <Panel> with metric cells + search slot",
+      "story_id": "00397",
+      "card_url": "http://localhost:3333/cards/1767866585634047832",
+      "status": "done"
+    },
+    {
+      "order": 2,
+      "title": "Add .page-summary catalog classes to app/globals.css",
+      "story_id": "00398",
+      "card_url": "http://localhost:3333/cards/1767866601891170151",
+      "status": "done"
+    },
+    {
+      "order": 3,
+      "title": "Adopt PageSummaryHeader on Work Items page above filters with tree-state cells",
+      "story_id": "00399",
+      "card_url": "http://localhost:3333/cards/1767866618399950710",
+      "status": "done"
+    },
+    {
+      "order": 4,
+      "title": "Seed Page Help row for panel.page_summary so the help icon serves content",
+      "story_id": "00400",
+      "card_url": "http://localhost:3333/cards/1767866635101669253",
+      "status": "done"
+    },
+    {
+      "order": 5,
+      "title": "Vitest snapshot + render tests for PageSummaryHeader",
+      "story_id": "00401",
+      "card_url": "http://localhost:3333/cards/1767866651434289044",
+      "status": "done"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "app/components/PageSummaryHeader.tsx exports a default React component with TypeScript prop types {cells: SummaryCell[], search?: SearchSlotProps, name?: string}",
+      "proven_by": "File exists at the path; tsc --noEmit passes; props typecheck against fixtures used by the Vitest suite",
+      "story_id": "00397",
+      "card_url": "http://localhost:3333/cards/1767866585634047832",
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "Rendered output contains a <section class=\"panel\"> with data-address attribute matching samantha._<viewport>._panel.page_summary",
+      "proven_by": "DOM inspection in test harness or Storybook shows the data-address attribute populated correctly",
+      "story_id": "00397",
+      "card_url": "http://localhost:3333/cards/1767866585634047832",
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "For input cells with a warning tone and value>0, the DOM shows .page-summary__cell--issue on that cell",
+      "proven_by": "Vitest assertion against rendered DOM with cells fixture {label:'DEFECTS',value:6,tone:'warning'}",
+      "story_id": "00397",
+      "card_url": "http://localhost:3333/cards/1767866585634047832",
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "Passing search={value, onChange, placeholder} renders an <input type=\"search\"> with class .page-summary__search and the provided value",
+      "proven_by": "Vitest assertion against rendered DOM with a non-empty search prop",
+      "story_id": "00397",
+      "card_url": "http://localhost:3333/cards/1767866585634047832",
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "grep -nE '\\.page-summary( |\\.|__|--|\\{)' app/globals.css returns at least 6 declarations including all named subclasses",
+      "proven_by": "Shell grep emits 6+ matches covering .page-summary, __cell, __cell--issue, __glyph, __search, plus an @media collapse rule",
+      "story_id": "00398",
+      "card_url": "http://localhost:3333/cards/1767866601891170151",
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "grep -n 'style={{' app/components/PageSummaryHeader.tsx returns zero matches",
+      "proven_by": "Shell grep returns zero matches; eslint custom rule on inline styles also passes for the file",
+      "story_id": "00398",
+      "card_url": "http://localhost:3333/cards/1767866601891170151",
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "Computed style of .page-summary__cell--issue .t-metric resolves to var(--warning)",
+      "proven_by": "Browser computed-style readback OR Vitest jsdom + getComputedStyle assertion confirms the colour token",
+      "story_id": "00398",
+      "card_url": "http://localhost:3333/cards/1767866601891170151",
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "Visiting /work-items shows a full-span .page-summary strip rendered above the Filters panel",
+      "proven_by": "Manual browser check on /work-items + DOM contains .page-summary as the first child of PageShell content",
+      "story_id": "00399",
+      "card_url": "http://localhost:3333/cards/1767866618399950710",
+      "done": true
+    },
+    {
+      "order": 9,
+      "criterion": "Cell values reflect items state \u2014 totals match items.length and per-type counts match item_type filters",
+      "proven_by": "With a 28-item fixture (4 epics, 12 tasks, 6 defects, 6 stories) the rendered cells show 28/4/12/6 with DEFECTS carrying .page-summary__cell--issue",
+      "story_id": "00399",
+      "card_url": "http://localhost:3333/cards/1767866618399950710",
+      "done": true
+    },
+    {
+      "order": 10,
+      "criterion": "Typing in the .page-summary__search input updates filters.search via patchFilter and re-filters the items list",
+      "proven_by": "Manual or e2e check: typing reduces visible rows AND reduces matching cell totals to the filtered subset",
+      "story_id": "00399",
+      "card_url": "http://localhost:3333/cards/1767866618399950710",
+      "done": true
+    },
+    {
+      "order": 11,
+      "criterion": "A library_help_defaults row exists for addressable_kind='panel' AND addressable_name='page_summary'",
+      "proven_by": "psql SELECT against the seeded row returns one record with title='Page summary' and body_html length > 50",
+      "story_id": "00400",
+      "card_url": "http://localhost:3333/cards/1767866635101669253",
+      "done": true
+    },
+    {
+      "order": 12,
+      "criterion": "GET /api/page-help/<id> for the page_summary panel returns 200 with a non-empty body_html and matching title",
+      "proven_by": "curl response status 200 + JSON body containing title:'Page summary' and body_html length > 50",
+      "story_id": "00400",
+      "card_url": "http://localhost:3333/cards/1767866635101669253",
+      "done": true
+    },
+    {
+      "order": 13,
+      "criterion": "Clicking the help icon on the work-items summary strip opens a popover whose body contains the seeded help copy",
+      "proven_by": "Manual /work-items click test: popover shows 'Cells are derived from\u2026' substring rendered by HelpDocRenderer",
+      "story_id": "00400",
+      "card_url": "http://localhost:3333/cards/1767866635101669253",
+      "done": true
+    },
+    {
+      "order": 14,
+      "criterion": "app/components/__tests__/PageSummaryHeader.test.tsx contains 3 it() blocks covering empty/populated/search behaviours",
+      "proven_by": "File exists with 3 it() blocks; npm run test -- PageSummaryHeader exits 0",
+      "story_id": "00401",
+      "card_url": "http://localhost:3333/cards/1767866651434289044",
+      "done": true
+    },
+    {
+      "order": 15,
+      "criterion": "The populated + warning tone test asserts that tone:'warning' value:0 does NOT carry --issue while tone:'warning' value:6 does",
+      "proven_by": "Vitest output shows both assertions green when run; commenting either out flips the suite to red",
+      "story_id": "00401",
+      "card_url": "http://localhost:3333/cards/1767866651434289044",
+      "done": true
+    }
+  ],
+  "risks": [
+    {
+      "impact": 1,
+      "risk": "Hoisting the search input out of WorkItemsFilterBar could regress an existing e2e/keyboard-flow test that targets the old DOM location",
+      "mitigation": "Run the work-items e2e suite after the adopter lands; update any selectors that target the old search input path; the hoist is a single-file change so reverting is trivial"
+    },
+    {
+      "impact": 1,
+      "risk": "Tree-state cell counts could drift from server-side totals if the local items state is filtered before the cells receive it",
+      "mitigation": "Compute cells from the same items array WorkItemsTree consumes, after the search filter is applied \u2014 the spec explicitly defines cells as reflecting the filtered subset, so this is the desired behaviour"
+    },
+    {
+      "impact": 1,
+      "risk": "Page Help seed could fail to find the addressable_id at first render if the panel hasn't registered yet on a cold mount",
+      "mitigation": "Panel.tsx already lazy-fetches /api/page-help/<id> on first popover open AND only after addressable_id resolves; the existing fallback path covers this"
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "Panel primitive (composition base)",
+      "href": "app/components/Panel.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Addressable substrate (PLA-0005)",
+      "href": "docs/c_c_addressables.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Page Help Library (PLA-0008)",
+      "href": "dev/plans/PLA-0008.json"
+    },
+    {
+      "kind": "internal",
+      "label": "CSS catalog rule + tile/metric tokens",
+      "href": "docs/css-guide.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Code naming standards",
+      "href": ".claude/commands/c_code-standards.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Work Items page (first adopter)",
+      "href": "app/(user)/work-items/page.tsx"
+    }
+  ]
+}

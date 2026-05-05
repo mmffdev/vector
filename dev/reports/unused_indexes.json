@@ -1,0 +1,2107 @@
+{
+  "count_droppable_secondary_nonunique": 148,
+  "count_primary_keys": 44,
+  "count_total": 233,
+  "count_unique_constraints": 41,
+  "db": "mmff_vector",
+  "host": "localhost:5435",
+  "indexes": [
+    {
+      "schemaname": "public",
+      "relname": "audit_log",
+      "indexrelname": "audit_log_pkey",
+      "idx_scan": 0,
+      "size_kb": 88,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "audit_log",
+      "indexrelname": "idx_audit_log_action",
+      "idx_scan": 0,
+      "size_kb": 40,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "canonical_states",
+      "indexrelname": "canonical_states_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "company_roadmap",
+      "indexrelname": "company_roadmap_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "company_roadmap",
+      "indexrelname": "company_roadmap_subscription_id_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "defects_key_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "defects_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "idx_defects_active",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "idx_defects_linked_story",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "idx_defects_schedule_state",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "idx_defects_severity",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "defects",
+      "indexrelname": "idx_defects_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "entity_stakeholders",
+      "indexrelname": "entity_stakeholders_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "entity_stakeholders",
+      "indexrelname": "idx_stakeholders_entity",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "entity_stakeholders",
+      "indexrelname": "stakeholder_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "error_events",
+      "indexrelname": "error_events_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "error_events",
+      "indexrelname": "idx_error_events_subscription_code",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "execution_item_types",
+      "indexrelname": "execution_item_types_name_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "execution_item_types",
+      "indexrelname": "execution_item_types_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "execution_item_types",
+      "indexrelname": "execution_item_types_tag_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "execution_item_types",
+      "indexrelname": "idx_execution_item_types_active",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_definitions",
+      "indexrelname": "idx_item_field_definitions_entity_kind",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_definitions",
+      "indexrelname": "idx_item_field_definitions_item_type",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_definitions",
+      "indexrelname": "idx_item_field_definitions_subscription",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_definitions",
+      "indexrelname": "item_field_definitions_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_options",
+      "indexrelname": "idx_item_field_options_entity_kind",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_options",
+      "indexrelname": "idx_item_field_options_field_definition",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_options",
+      "indexrelname": "idx_item_field_options_subscription",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_options",
+      "indexrelname": "item_field_options_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_options",
+      "indexrelname": "item_field_options_value_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_values",
+      "indexrelname": "idx_item_field_values_entity_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_values",
+      "indexrelname": "idx_item_field_values_field_definition",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_values",
+      "indexrelname": "idx_item_field_values_subscription",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_field_values",
+      "indexrelname": "item_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_labels",
+      "indexrelname": "idx_item_labels_item",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_labels",
+      "indexrelname": "item_labels_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_labels",
+      "indexrelname": "item_labels_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_tags",
+      "indexrelname": "idx_item_tags_item",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_tags",
+      "indexrelname": "item_tags_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "item_tags",
+      "indexrelname": "item_tags_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "library_acknowledgements",
+      "indexrelname": "idx_library_acks_release",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_notes",
+      "indexrelname": "idx_o_an_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_notes",
+      "indexrelname": "idx_o_an_parent",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_notes",
+      "indexrelname": "idx_o_an_sub",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_notes",
+      "indexrelname": "o_artefact_notes_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_versions",
+      "indexrelname": "idx_o_av_expires",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_versions",
+      "indexrelname": "o_artefact_versions_artefact_type_artefact_id_version_num_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_versions",
+      "indexrelname": "o_artefact_versions_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefact_visibility_levels",
+      "indexrelname": "o_artefact_visibility_levels_name_key",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_parent",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_root_feature",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_search",
+      "idx_scan": 0,
+      "size_kb": 24,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_severity",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_sprint",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_status",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_sub_created",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects",
+      "indexrelname": "idx_o_de_sub_owner",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects_field_values",
+      "indexrelname": "idx_o_de_fv_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects_field_values",
+      "indexrelname": "idx_o_de_fv_library",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects_field_values",
+      "indexrelname": "idx_o_de_fv_template",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects_field_values",
+      "indexrelname": "o_artefacts_execution_defects_field__artefact_id_field_name_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_defects_field_values",
+      "indexrelname": "o_artefacts_execution_defects_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics",
+      "indexrelname": "idx_o_ep_root_feature",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics",
+      "indexrelname": "idx_o_ep_search",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics",
+      "indexrelname": "idx_o_ep_sub_created",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics",
+      "indexrelname": "idx_o_ep_sub_owner",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics",
+      "indexrelname": "o_artefacts_execution_epics_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics_field_values",
+      "indexrelname": "idx_o_ep_fv_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics_field_values",
+      "indexrelname": "idx_o_ep_fv_library",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics_field_values",
+      "indexrelname": "idx_o_ep_fv_template",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics_field_values",
+      "indexrelname": "o_artefacts_execution_epics_field_va_artefact_id_field_name_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_epics_field_values",
+      "indexrelname": "o_artefacts_execution_epics_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_parent_de",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_parent_wi",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_root_feature",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_search",
+      "idx_scan": 0,
+      "size_kb": 24,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_sprint",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_status",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_sub_created",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks",
+      "indexrelname": "idx_o_ta_sub_owner",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks_field_values",
+      "indexrelname": "idx_o_ta_fv_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks_field_values",
+      "indexrelname": "idx_o_ta_fv_library",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks_field_values",
+      "indexrelname": "idx_o_ta_fv_template",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks_field_values",
+      "indexrelname": "o_artefacts_execution_tasks_field_va_artefact_id_field_name_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_tasks_field_values",
+      "indexrelname": "o_artefacts_execution_tasks_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases",
+      "indexrelname": "idx_o_tc_search",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases",
+      "indexrelname": "idx_o_tc_sub_created",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases",
+      "indexrelname": "idx_o_tc_sub_owner",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases",
+      "indexrelname": "o_artefacts_execution_test_cases_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases_field_values",
+      "indexrelname": "idx_o_tc_fv_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases_field_values",
+      "indexrelname": "idx_o_tc_fv_library",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases_field_values",
+      "indexrelname": "idx_o_tc_fv_template",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases_field_values",
+      "indexrelname": "o_artefacts_execution_test_cases_fie_artefact_id_field_name_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_test_cases_field_values",
+      "indexrelname": "o_artefacts_execution_test_cases_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_backlog_position",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_priority",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_root_feature",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_search",
+      "idx_scan": 0,
+      "size_kb": 24,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_sprint",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_sprint_position",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_sub_created",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_sub_owner",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items",
+      "indexrelname": "idx_o_wi_type",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items_field_values",
+      "indexrelname": "idx_o_wi_fv_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items_field_values",
+      "indexrelname": "idx_o_wi_fv_library",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items_field_values",
+      "indexrelname": "idx_o_wi_fv_template",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items_field_values",
+      "indexrelname": "o_artefacts_execution_user_stories_f_artefact_id_field_name_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_execution_work_items_field_values",
+      "indexrelname": "o_artefacts_execution_user_stories_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic",
+      "indexrelname": "idx_o_pi_hierarchy",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic",
+      "indexrelname": "idx_o_pi_search",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic",
+      "indexrelname": "idx_o_pi_sub_created",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic",
+      "indexrelname": "idx_o_pi_sub_owner",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic",
+      "indexrelname": "o_artefacts_strategic_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic_field_values",
+      "indexrelname": "idx_o_pi_fv_artefact",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic_field_values",
+      "indexrelname": "idx_o_st_fv_library",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic_field_values",
+      "indexrelname": "idx_o_st_fv_template",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic_field_values",
+      "indexrelname": "o_artefacts_strategic_field_values_artefact_id_field_name_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_artefacts_strategic_field_values",
+      "indexrelname": "o_artefacts_strategic_field_values_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_execution_custom_field_library",
+      "indexrelname": "idx_o_cfl_sub",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_execution_work_item_template_fields",
+      "indexrelname": "idx_o_witf_template",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_execution_work_item_template_fields",
+      "indexrelname": "o_execution_work_item_template_fields_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_execution_work_item_templates",
+      "indexrelname": "idx_o_wit_sub",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_search_index_outbox",
+      "indexrelname": "idx_o_sio_claimed",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_search_index_outbox",
+      "indexrelname": "idx_o_sio_unclaimed",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "o_search_index_outbox",
+      "indexrelname": "o_search_index_outbox_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_node_roles",
+      "indexrelname": "idx_org_node_roles_node",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_node_roles",
+      "indexrelname": "idx_org_node_roles_user",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_node_roles",
+      "indexrelname": "org_node_roles_active_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_node_roles",
+      "indexrelname": "org_node_roles_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_node_roles",
+      "indexrelname": "org_node_roles_single_admin_mvp",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_node_view_state",
+      "indexrelname": "org_node_view_state_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_nodes",
+      "indexrelname": "idx_org_nodes_level_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_nodes",
+      "indexrelname": "idx_org_nodes_sibling_order",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_nodes",
+      "indexrelname": "idx_org_nodes_subscription_parent",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "org_nodes",
+      "indexrelname": "idx_org_nodes_workspace_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_addressables",
+      "indexrelname": "page_addressables_gc_idx",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_entity_refs",
+      "indexrelname": "idx_page_entity_refs_lookup",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_entity_refs",
+      "indexrelname": "page_entity_refs_entity_kind_entity_id_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_entity_refs",
+      "indexrelname": "page_entity_refs_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_help",
+      "indexrelname": "page_help_addressable_idx",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_roles",
+      "indexrelname": "idx_page_roles_role",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "page_roles",
+      "indexrelname": "idx_page_roles_role_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pages",
+      "indexrelname": "idx_pages_creator",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pages",
+      "indexrelname": "idx_pages_subscription",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pages",
+      "indexrelname": "idx_pages_tag",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pages",
+      "indexrelname": "pages_unique_key_shared_subscription",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pages",
+      "indexrelname": "pages_unique_key_user",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "password_resets",
+      "indexrelname": "idx_password_resets_expires_at",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pending_library_cleanup_jobs",
+      "indexrelname": "idx_pending_library_cleanup_jobs_claimable",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pending_library_cleanup_jobs",
+      "indexrelname": "idx_pending_library_cleanup_jobs_dead",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "pending_library_cleanup_jobs",
+      "indexrelname": "pending_library_cleanup_jobs_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "permissions",
+      "indexrelname": "idx_permissions_category",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio",
+      "indexrelname": "idx_portfolio_workspace_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio",
+      "indexrelname": "portfolio_key_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio",
+      "indexrelname": "portfolio_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_item_types",
+      "indexrelname": "idx_portfolio_item_types_subscription",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_item_types",
+      "indexrelname": "portfolio_item_types_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_created_at",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_flow_state",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_org_node",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_owner",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_parent",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_subscription",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "idx_portfolio_items_type",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "portfolio_items",
+      "indexrelname": "portfolio_items_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "product",
+      "indexrelname": "idx_product_parent_portfolio_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "product",
+      "indexrelname": "idx_product_workspace_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "product",
+      "indexrelname": "product_key_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "product",
+      "indexrelname": "product_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "role_permissions",
+      "indexrelname": "idx_role_permissions_perm",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "roles",
+      "indexrelname": "idx_roles_rank",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "roles",
+      "indexrelname": "uq_roles_system_code",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "sessions",
+      "indexrelname": "idx_sessions_expires_at",
+      "idx_scan": 0,
+      "size_kb": 64,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "sessions",
+      "indexrelname": "sessions_token_hash_key",
+      "idx_scan": 0,
+      "size_kb": 144,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "sprints",
+      "indexrelname": "idx_sp_sub",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_artifacts",
+      "indexrelname": "idx_subscription_artifacts_source",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_artifacts",
+      "indexrelname": "idx_subscription_artifacts_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_artifacts",
+      "indexrelname": "subscription_artifacts_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_item_type_icons",
+      "indexrelname": "siti_sub_type_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_item_type_icons",
+      "indexrelname": "subscription_item_type_icons_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_layers",
+      "indexrelname": "idx_subscription_layers_parent",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_layers",
+      "indexrelname": "idx_subscription_layers_source",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_layers",
+      "indexrelname": "idx_subscription_layers_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_portfolio_model_state",
+      "indexrelname": "idx_subscription_portfolio_model_state_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_terminology",
+      "indexrelname": "idx_subscription_terminology_source",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_terminology",
+      "indexrelname": "idx_subscription_terminology_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_terminology",
+      "indexrelname": "subscription_terminology_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_workflow_transitions",
+      "indexrelname": "idx_subscription_workflow_transitions_source",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_workflow_transitions",
+      "indexrelname": "idx_subscription_workflow_transitions_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_workflow_transitions",
+      "indexrelname": "subscription_workflow_transitions_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_workflows",
+      "indexrelname": "idx_subscription_workflows_layer",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_workflows",
+      "indexrelname": "idx_subscription_workflows_source",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscription_workflows",
+      "indexrelname": "idx_subscription_workflows_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "subscriptions",
+      "indexrelname": "subscriptions_slug_key",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_custom_page_views",
+      "indexrelname": "user_custom_page_views_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_custom_page_views",
+      "indexrelname": "user_custom_page_views_unique_label",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_custom_page_views",
+      "indexrelname": "user_custom_page_views_unique_position",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_groups",
+      "indexrelname": "uq_user_nav_groups_user_label_ci",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_groups",
+      "indexrelname": "user_nav_groups_unique_position",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_prefs",
+      "indexrelname": "idx_user_nav_prefs_group",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_prefs",
+      "indexrelname": "idx_user_nav_prefs_parent",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_prefs",
+      "indexrelname": "user_nav_prefs_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_prefs",
+      "indexrelname": "user_nav_prefs_unique_position_nested",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_prefs",
+      "indexrelname": "user_nav_prefs_unique_position_top",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_profile_groups",
+      "indexrelname": "idx_user_nav_profile_groups_group",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_profile_groups",
+      "indexrelname": "user_nav_profile_groups_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_profile_groups",
+      "indexrelname": "user_nav_profile_groups_unique_position",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_profiles",
+      "indexrelname": "uq_user_nav_profiles_label_ci",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_nav_profiles",
+      "indexrelname": "user_nav_profiles_unique_position",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "idx_user_stories_active",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "idx_user_stories_hierarchy_parent",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "idx_user_stories_org_node",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "idx_user_stories_schedule_state",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "idx_user_stories_sprint",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "idx_user_stories_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "user_stories_key_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_stories",
+      "indexrelname": "user_stories_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_workspace_permissions",
+      "indexrelname": "idx_uwp_workspace_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_workspace_permissions",
+      "indexrelname": "user_project_permissions_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "user_workspace_permissions",
+      "indexrelname": "user_workspace_permissions_user_id_workspace_id_key",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "users",
+      "indexrelname": "idx_users_active_nav_profile",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "users",
+      "indexrelname": "idx_users_department",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "users",
+      "indexrelname": "idx_users_last_name",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "users",
+      "indexrelname": "idx_users_role_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "users",
+      "indexrelname": "idx_users_subscription_id",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "vector_icons",
+      "indexrelname": "idx_vi_default_for",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "vector_icons",
+      "indexrelname": "idx_vi_pack",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "vector_icons",
+      "indexrelname": "vector_icons_pkey",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": true
+    },
+    {
+      "schemaname": "public",
+      "relname": "vector_icons",
+      "indexrelname": "vi_pack_name_unique",
+      "idx_scan": 0,
+      "size_kb": 16,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "workspace",
+      "indexrelname": "idx_workspace_active",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "workspace",
+      "indexrelname": "idx_workspace_company_roadmap_id",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": false,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "workspace",
+      "indexrelname": "workspace_key_unique",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": false
+    },
+    {
+      "schemaname": "public",
+      "relname": "workspace",
+      "indexrelname": "workspace_pkey",
+      "idx_scan": 0,
+      "size_kb": 8,
+      "is_unique": true,
+      "is_primary": true
+    }
+  ]
+}
