@@ -25,6 +25,7 @@ If any step fails, don't skip forward — the later ones depend on earlier.
 |---|---|
 | Apply a migration, verify its effect | [c_c_postgresql_migrations.md](c_c_postgresql_migrations.md) |
 | Tunnel lifecycle (start, stop, health-check) | [c_c_postgresql_tunnel.md](c_c_postgresql_tunnel.md) |
+| Introspection cookbook + backfill verification recipes | [c_c_db_playbook.md](c_c_db_playbook.md) |
 
 ## Gotchas that bite
 
