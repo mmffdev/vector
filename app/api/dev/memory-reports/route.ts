@@ -39,7 +39,10 @@ export async function GET() {
     for (const file of files) {
       try {
         const raw = fs.readFileSync(path.join(REPORTS_DIR, file), "utf-8");
-        reports.push(JSON.parse(raw) as MemoryReport);
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.id === "string" && Array.isArray(parsed?.checks)) {
+          reports.push(parsed as MemoryReport);
+        }
       } catch {
         // skip malformed files
       }
