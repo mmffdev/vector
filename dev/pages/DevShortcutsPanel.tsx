@@ -221,11 +221,11 @@ const DATA: Category[] = [
 
 function LoadPath({ path }: { path: string[] }) {
   return (
-    <div className="dev-sc-path">
+    <div className="dui-breadcrumb">
       {path.map((seg, i) => (
-        <span key={i} className="dev-sc-path__item">
-          {i > 0 && <span className="dev-sc-path__arrow">→</span>}
-          <code className={`dev-sc-path__seg${i === 0 ? " dev-sc-path__seg--root" : ""}`}>{seg}</code>
+        <span key={i} className="dui-breadcrumb__item">
+          {i > 0 && <span className="dui-breadcrumb__sep">→</span>}
+          <code className={`dui-breadcrumb__seg${i === 0 ? " dui-breadcrumb__seg--root" : ""}`}>{seg}</code>
         </span>
       ))}
     </div>
@@ -235,44 +235,43 @@ function LoadPath({ path }: { path: string[] }) {
 export default function DevShortcutsPanel() {
   return (
     <Panel name="dev_shortcuts" title="Shortcuts">
-    <div className="dev-sc">
-      <div className="table-wrap">
-        <table className="table">
+      <div className="dui-page">
+        <table className="dui-table">
           <thead>
-            <tr className="table__head">
-              <th className="table__cell" style={{ width: "10%" }}>Shortcut</th>
-              <th className="table__cell" style={{ width: "50%" }}>What it does</th>
-              <th className="table__cell" style={{ width: "20%" }}>Flags</th>
-              <th className="table__cell" style={{ width: "20%" }}>Load path</th>
+            <tr>
+              <th>Shortcut</th>
+              <th>What it does</th>
+              <th>Flags</th>
+              <th>Load path</th>
             </tr>
           </thead>
           <tbody>
             {DATA.map((cat) => (
               <Fragment key={cat.name}>
-                <tr className="dev-sc-category">
-                  <td className="dev-sc-cell" colSpan={4}>{cat.name}</td>
+                <tr className="dui-table__group">
+                  <td colSpan={4}>{cat.name}</td>
                 </tr>
                 {cat.shortcuts.map((sc) => (
-                  <tr key={sc.tag} className="table__row">
-                    <td className="table__cell dev-sc-cell">
-                      <span className="dev-sc-tag">{sc.tag}</span>
+                  <tr key={sc.tag}>
+                    <td className="dui-table__cell--rich dui-table__cell--shrink">
+                      <span className="dui-tag">{sc.tag}</span>
                     </td>
-                    <td className="table__cell dev-sc-cell dev-sc-desc">{sc.desc}</td>
-                    <td className="table__cell dev-sc-cell">
+                    <td className="dui-table__cell--rich dui-table__cell--lede">{sc.desc}</td>
+                    <td className="dui-table__cell--rich">
                       {sc.flags.length === 0 ? (
-                        <span className="dev-sc-noflag">—</span>
+                        <span className="dui-kbd-list__empty">—</span>
                       ) : (
-                        <div className="dev-sc-flags">
+                        <div className="dui-kbd-list">
                           {sc.flags.map((f) => (
-                            <div key={f.label} className="dev-sc-flag-row">
-                              <code className="dev-sc-flag">{f.label}</code>
-                              {f.note && <span className="dev-sc-flag-note">{f.note}</span>}
+                            <div key={f.label} className="dui-kbd-list__row">
+                              <code className="dui-kbd">{f.label}</code>
+                              {f.note && <span className="dui-kbd-list__note">{f.note}</span>}
                             </div>
                           ))}
                         </div>
                       )}
                     </td>
-                    <td className="table__cell dev-sc-cell">
+                    <td className="dui-table__cell--rich">
                       <LoadPath path={sc.loadPath} />
                     </td>
                   </tr>
@@ -281,11 +280,10 @@ export default function DevShortcutsPanel() {
             ))}
           </tbody>
         </table>
+        <p className="dui-page__subtitle">
+          Run <code className="dui-kbd">&lt;?&gt; -u</code> in Claude Code to rescan and regenerate from source.
+        </p>
       </div>
-      <p className="dev-sc-footer">
-        Run <code>&lt;?&gt; -u</code> in Claude Code to rescan and regenerate from source.
-      </p>
-    </div>
     </Panel>
   );
 }
