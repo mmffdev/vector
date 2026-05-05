@@ -1005,6 +1005,255 @@
 }
 
 
+/* ─── 19. Buttons (action) ─────────────────────────────────── */
+
+.dui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+  white-space: nowrap;
+}
+
+.dui-btn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.dui-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dui-btn--sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--text-xs);
+}
+
+.dui-btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ink-contrast);
+}
+
+.dui-btn--primary:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ink-contrast);
+  opacity: 0.9;
+}
+
+.dui-btn--danger {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.dui-btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--ink-contrast);
+}
+
+.dui-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+
+/* ─── 20. Inputs (text / textarea) ─────────────────────────── */
+
+.dui-input {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.dui-input:focus {
+  border-color: var(--ink);
+}
+
+.dui-input:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dui-textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+}
+
+.dui-textarea:focus {
+  border-color: var(--ink);
+}
+
+.dui-textarea:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+
+/* ─── 21. Form layout (label + fieldset + row) ─────────────── */
+
+.dui-form__label {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--space-1);
+}
+
+.dui-form__inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.dui-form__note {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.dui-form__group {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.dui-form__group-legend {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0 var(--space-2);
+}
+
+.dui-form__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.dui-form__row:last-child {
+  margin-bottom: 0;
+}
+
+.dui-form__row-stack {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+
+/* ─── 22. Stack + section + preview ────────────────────────── */
+
+.dui-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dui-stack--tight {
+  gap: var(--space-2);
+}
+
+.dui-section {
+  margin-top: var(--space-5);
+}
+
+.dui-section:first-child {
+  margin-top: 0;
+}
+
+.dui-section__title {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-2);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.dui-section__title-meta {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--ink-subtle);
+}
+
+.dui-preview {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+
+/* ─── 23. Alerts (inline banner) ───────────────────────────── */
+
+.dui-alert {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  background: var(--surface);
+  color: var(--ink);
+  margin-top: var(--space-2);
+}
+
+.dui-alert--error {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+
 /* ─── Catalog preview tab support ──────────────────────────── */
 
 .dui-cat__section {
