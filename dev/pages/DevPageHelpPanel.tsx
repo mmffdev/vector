@@ -193,30 +193,28 @@ function HelpRow({
   };
 
   const header = (
-    <>
-      <span className="dev-plan-id">{row.address}</span>
-      <span className="dev-plan-meta">
-        <span className="dev-plan-dates-strip">
-          <span>{row.kind}</span>
-          <span>edited {fmtDate(row.updated_at)}</span>
-          <span>by {row.updated_by_email ?? "—"}</span>
-        </span>
+    <span className="dui-meta">
+      <span className="dui-meta__id">{row.address}</span>
+      <span className="dui-meta__sub">
+        <span>{row.kind}</span>
+        <span>{" · "}edited {fmtDate(row.updated_at)}</span>
+        <span>{" · "}by {row.updated_by_email ?? "—"}</span>
       </span>
-      {row.is_library_default && <span className="badge">library default</span>}
+      {row.is_library_default && <span className="dui-pill dui-pill--neutral">library default</span>}
       {row.video_embeds.length > 0 && (
-        <span className="badge">{row.video_embeds.length} video{row.video_embeds.length === 1 ? "" : "s"}</span>
+        <span className="dui-pill dui-pill--neutral">{row.video_embeds.length} video{row.video_embeds.length === 1 ? "" : "s"}</span>
       )}
       {row.image_urls.length > 0 && (
-        <span className="badge">{row.image_urls.length} image{row.image_urls.length === 1 ? "" : "s"}</span>
+        <span className="dui-pill dui-pill--neutral">{row.image_urls.length} image{row.image_urls.length === 1 ? "" : "s"}</span>
       )}
-      {savedToast && <span className="badge badge-pass">saved</span>}
-    </>
+      {savedToast && <span className="dui-pill dui-pill--pass">saved</span>}
+    </span>
   );
 
   return (
     <DevAccordionItem header={header}>
       {!editing && (
-        <div className="dev-plan-body">
+        <div className="dui-stack">
           <HelpDocRenderer
             doc={{
               addressable_id: row.addressable_id,
@@ -228,8 +226,8 @@ function HelpRow({
             variant="full"
             showOpenFullLink={false}
           />
-          {error && <div className="dev-alert dev-alert--error" style={{ marginTop: 8 }}>{error}</div>}
-          <label className="dev-p" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+          {error && <div className="dui-alert dui-alert--error">{error}</div>}
+          <label className="dui-form__inline">
             <input
               type="checkbox"
               checked={row.helpable}
@@ -237,12 +235,12 @@ function HelpRow({
               onChange={e => toggleHelpable(e.target.checked)}
             />
             Help icon visible
-            {togglingHelpable && <span className="dev-plan-meta">· saving…</span>}
+            {togglingHelpable && <span className="dui-meta__sub">· saving…</span>}
           </label>
-          <div className="dev-btn-group" style={{ marginTop: 12 }}>
-            <button className="dev-btn dev-btn--primary dev-btn--sm" onClick={startEdit}>Edit</button>
+          <div className="dui-btn-group">
+            <button className="dui-btn dui-btn--primary dui-btn--sm" onClick={startEdit}>Edit</button>
             <a
-              className="dev-btn dev-btn--sm"
+              className="dui-btn dui-btn--sm"
               href={`/help/${encodeURIComponent(row.addressable_id)}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -250,16 +248,16 @@ function HelpRow({
               Open page
             </a>
             {!confirmArchive && (
-              <button className="dev-btn dev-btn--danger dev-btn--sm" onClick={() => setConfirmArchive(true)} disabled={saving}>
+              <button className="dui-btn dui-btn--danger dui-btn--sm" onClick={() => setConfirmArchive(true)} disabled={saving}>
                 Archive
               </button>
             )}
             {confirmArchive && (
               <>
-                <button className="dev-btn dev-btn--danger dev-btn--sm" onClick={archive} disabled={saving}>
+                <button className="dui-btn dui-btn--danger dui-btn--sm" onClick={archive} disabled={saving}>
                   {saving ? "Archiving…" : "Confirm archive"}
                 </button>
-                <button className="dev-btn dev-btn--sm" onClick={() => setConfirmArchive(false)} disabled={saving}>
+                <button className="dui-btn dui-btn--sm" onClick={() => setConfirmArchive(false)} disabled={saving}>
                   Cancel
                 </button>
               </>
@@ -269,165 +267,161 @@ function HelpRow({
       )}
 
       {editing && (
-        <div className="dev-plan-body">
-          <div className="dev-help-editor">
-            <label className="dev-p" style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
-              Title
-            </label>
+        <div className="dui-stack">
+          <div>
+            <label className="dui-form__label">Title</label>
             <input
               type="text"
-              className="dev-research-search"
-              style={{ width: "100%" }}
+              className="dui-input"
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
               disabled={saving}
               placeholder="Optional heading shown above the body"
             />
+          </div>
 
-            <label className="dev-p" style={{ display: "block", fontWeight: 600, marginTop: 12, marginBottom: 4 }}>
-              Body HTML
-            </label>
+          <div>
+            <label className="dui-form__label">Body HTML</label>
             <textarea
-              className="dev-research-search"
-              style={{ width: "100%", minHeight: 160, fontFamily: "var(--font-mono, monospace)" }}
+              className="dui-textarea"
               value={draftBody}
               onChange={(e) => setDraftBody(e.target.value)}
               disabled={saving}
               placeholder="<p>Help body HTML…</p>"
             />
+          </div>
 
-            <fieldset className="dev-help-editor__group" style={{ marginTop: 12, padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)" }}>
-              <legend className="dev-p" style={{ fontWeight: 600 }}>YouTube videos</legend>
-              {draftVideos.length === 0 && (
-                <p className="dev-plan-meta" style={{ marginTop: 0 }}>No videos. Use Add to attach one.</p>
-              )}
-              {draftVideos.map((v, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <input
-                      type="url"
-                      className="dev-research-search"
-                      placeholder="https://www.youtube.com/watch?v=…"
-                      value={v.url}
-                      disabled={saving}
-                      onChange={(e) =>
-                        setDraftVideos((arr) =>
-                          arr.map((row, i) => (i === idx ? { ...row, url: e.target.value } : row)),
-                        )
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="dev-research-search"
-                      placeholder="Optional caption"
-                      value={v.title ?? ""}
-                      disabled={saving}
-                      onChange={(e) =>
-                        setDraftVideos((arr) =>
-                          arr.map((row, i) => (i === idx ? { ...row, title: e.target.value } : row)),
-                        )
-                      }
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="dev-btn dev-btn--sm dev-btn--danger"
-                    onClick={() => setDraftVideos((arr) => arr.filter((_, i) => i !== idx))}
+          <fieldset className="dui-form__group">
+            <legend className="dui-form__group-legend">YouTube videos</legend>
+            {draftVideos.length === 0 && (
+              <p className="dui-form__note">No videos. Use Add to attach one.</p>
+            )}
+            {draftVideos.map((v, idx) => (
+              <div key={idx} className="dui-form__row">
+                <div className="dui-form__row-stack">
+                  <input
+                    type="url"
+                    className="dui-input"
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    value={v.url}
                     disabled={saving}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                className="dev-btn dev-btn--sm"
-                onClick={() => setDraftVideos((arr) => [...arr, { url: "", title: "" }])}
-                disabled={saving}
-              >
-                Add video
-              </button>
-            </fieldset>
-
-            <fieldset className="dev-help-editor__group" style={{ marginTop: 12, padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)" }}>
-              <legend className="dev-p" style={{ fontWeight: 600 }}>Images</legend>
-              {draftImages.length === 0 && (
-                <p className="dev-plan-meta" style={{ marginTop: 0 }}>No images. Use Add to attach one.</p>
-              )}
-              {draftImages.map((img, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <input
-                      type="url"
-                      className="dev-research-search"
-                      placeholder="https://… (image URL)"
-                      value={img.url}
-                      disabled={saving}
-                      onChange={(e) =>
-                        setDraftImages((arr) =>
-                          arr.map((row, i) => (i === idx ? { ...row, url: e.target.value } : row)),
-                        )
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="dev-research-search"
-                      placeholder="Alt text (accessibility)"
-                      value={img.alt ?? ""}
-                      disabled={saving}
-                      onChange={(e) =>
-                        setDraftImages((arr) =>
-                          arr.map((row, i) => (i === idx ? { ...row, alt: e.target.value } : row)),
-                        )
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="dev-research-search"
-                      placeholder="Caption shown under the image"
-                      value={img.caption ?? ""}
-                      disabled={saving}
-                      onChange={(e) =>
-                        setDraftImages((arr) =>
-                          arr.map((row, i) => (i === idx ? { ...row, caption: e.target.value } : row)),
-                        )
-                      }
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="dev-btn dev-btn--sm dev-btn--danger"
-                    onClick={() => setDraftImages((arr) => arr.filter((_, i) => i !== idx))}
+                    onChange={(e) =>
+                      setDraftVideos((arr) =>
+                        arr.map((row, i) => (i === idx ? { ...row, url: e.target.value } : row)),
+                      )
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="dui-input"
+                    placeholder="Optional caption"
+                    value={v.title ?? ""}
                     disabled={saving}
-                  >
-                    Remove
-                  </button>
+                    onChange={(e) =>
+                      setDraftVideos((arr) =>
+                        arr.map((row, i) => (i === idx ? { ...row, title: e.target.value } : row)),
+                      )
+                    }
+                  />
                 </div>
-              ))}
-              <button
-                type="button"
-                className="dev-btn dev-btn--sm"
-                onClick={() => setDraftImages((arr) => [...arr, { url: "", alt: "", caption: "" }])}
-                disabled={saving}
-              >
-                Add image
-              </button>
-            </fieldset>
-
-            <div style={{ marginTop: 12 }}>
-              <p className="dev-p" style={{ marginBottom: 4, fontWeight: 600 }}>Live preview (full page)</p>
-              <div style={{ padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)" }}>
-                <HelpDocRenderer doc={previewDoc} variant="full" showOpenFullLink={false} />
+                <button
+                  type="button"
+                  className="dui-btn dui-btn--sm dui-btn--danger"
+                  onClick={() => setDraftVideos((arr) => arr.filter((_, i) => i !== idx))}
+                  disabled={saving}
+                >
+                  Remove
+                </button>
               </div>
+            ))}
+            <button
+              type="button"
+              className="dui-btn dui-btn--sm"
+              onClick={() => setDraftVideos((arr) => [...arr, { url: "", title: "" }])}
+              disabled={saving}
+            >
+              Add video
+            </button>
+          </fieldset>
+
+          <fieldset className="dui-form__group">
+            <legend className="dui-form__group-legend">Images</legend>
+            {draftImages.length === 0 && (
+              <p className="dui-form__note">No images. Use Add to attach one.</p>
+            )}
+            {draftImages.map((img, idx) => (
+              <div key={idx} className="dui-form__row">
+                <div className="dui-form__row-stack">
+                  <input
+                    type="url"
+                    className="dui-input"
+                    placeholder="https://… (image URL)"
+                    value={img.url}
+                    disabled={saving}
+                    onChange={(e) =>
+                      setDraftImages((arr) =>
+                        arr.map((row, i) => (i === idx ? { ...row, url: e.target.value } : row)),
+                      )
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="dui-input"
+                    placeholder="Alt text (accessibility)"
+                    value={img.alt ?? ""}
+                    disabled={saving}
+                    onChange={(e) =>
+                      setDraftImages((arr) =>
+                        arr.map((row, i) => (i === idx ? { ...row, alt: e.target.value } : row)),
+                      )
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="dui-input"
+                    placeholder="Caption shown under the image"
+                    value={img.caption ?? ""}
+                    disabled={saving}
+                    onChange={(e) =>
+                      setDraftImages((arr) =>
+                        arr.map((row, i) => (i === idx ? { ...row, caption: e.target.value } : row)),
+                      )
+                    }
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="dui-btn dui-btn--sm dui-btn--danger"
+                  onClick={() => setDraftImages((arr) => arr.filter((_, i) => i !== idx))}
+                  disabled={saving}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="dui-btn dui-btn--sm"
+              onClick={() => setDraftImages((arr) => [...arr, { url: "", alt: "", caption: "" }])}
+              disabled={saving}
+            >
+              Add image
+            </button>
+          </fieldset>
+
+          <div>
+            <p className="dui-form__label">Live preview (full page)</p>
+            <div className="dui-preview">
+              <HelpDocRenderer doc={previewDoc} variant="full" showOpenFullLink={false} />
             </div>
           </div>
 
-          {error && <div className="dev-alert dev-alert--error" style={{ marginTop: 8 }}>{error}</div>}
-          <div className="dev-btn-group" style={{ marginTop: 12 }}>
-            <button className="dev-btn dev-btn--primary dev-btn--sm" onClick={save} disabled={saving}>
+          {error && <div className="dui-alert dui-alert--error">{error}</div>}
+          <div className="dui-btn-group">
+            <button className="dui-btn dui-btn--primary dui-btn--sm" onClick={save} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </button>
-            <button className="dev-btn dev-btn--sm" onClick={cancelEdit} disabled={saving}>Cancel</button>
+            <button className="dui-btn dui-btn--sm" onClick={cancelEdit} disabled={saving}>Cancel</button>
           </div>
         </div>
       )}
@@ -474,7 +468,7 @@ export default function DevPageHelpPanel() {
   if (!user) return null;
   if (user.role.code !== "gadmin") {
     return (
-      <div className="dev-research-empty">
+      <div className="dui-empty">
         Page Help editor is gadmin-only. Your role: <code>{user.role.code}</code>.
       </div>
     );
@@ -482,60 +476,69 @@ export default function DevPageHelpPanel() {
 
   return (
     <Panel name="dev_page_help" title="Page Help">
-    <div className="dev-plans-panel">
-      <div className="dev-research-header">
-        <div>
-          <p className="dev-p" style={{ marginBottom: 0 }}>
-            Edit the help body shown by the <code>TbHelpHexagon</code> popover on every registered addressable.
-            Saved edits flip <code>seeded_from='manual'</code> (the schema's name for editor-authored content);
-            future library churn will not retro-apply.
-          </p>
+      <div className="dui-page">
+        <header className="dui-page__header">
+          <div>
+            <h1 className="dui-page__title">Page Help</h1>
+            <p className="dui-page__subtitle">
+              Edit the help body shown by the <code>TbHelpHexagon</code> popover on every registered addressable.
+              Saved edits flip <code>seeded_from=&apos;manual&apos;</code> (the schema&apos;s name for editor-authored content);
+              future library churn will not retro-apply.
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="dui-btn dui-btn--sm"
+            aria-label="Refresh page-help rows"
+          >
+            {loading ? "Loading…" : "Refresh"}
+          </button>
+        </header>
+
+        <div className="dui-toolbar">
+          <input
+            type="search"
+            className="dui-search"
+            placeholder="Search by address or page_route…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
-        <button onClick={load} disabled={loading} className="dev-btn dev-btn--sm">
-          {loading ? "Loading…" : "Refresh"}
-        </button>
+
+        {error && <div className="dui-alert dui-alert--error">{error}</div>}
+
+        {!loading && rows.length === 0 && !error && (
+          <div className="dui-empty">
+            No page_help rows. Register addressables via build-reconcile first.
+          </div>
+        )}
+
+        {grouped.map(([route, list]) => (
+          <section key={route} className="dui-section">
+            <h3 className="dui-section__title">
+              <code>{route}</code>
+              <span className="dui-section__title-meta">· {list.length} row{list.length === 1 ? "" : "s"}</span>
+            </h3>
+            <DevAccordion>
+              {list.map(r => (
+                <HelpRow
+                  key={r.help_id}
+                  row={r}
+                  onChanged={next => setRows(prev => prev.map(x => x.help_id === next.help_id ? next : x))}
+                  onArchived={id => setRows(prev => prev.filter(x => x.help_id !== id))}
+                />
+              ))}
+            </DevAccordion>
+          </section>
+        ))}
+
+        {!loading && grouped.length === 0 && rows.length > 0 && (
+          <div className="dui-empty">
+            No rows match &ldquo;<em>{search}</em>&rdquo;.
+          </div>
+        )}
       </div>
-
-      <div className="dev-research-toolbar">
-        <input
-          type="search"
-          className="dev-research-search"
-          placeholder="Search by address or page_route…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
-      {error && <div className="dev-alert dev-alert--error">{error}</div>}
-
-      {!loading && rows.length === 0 && !error && (
-        <div className="dev-research-empty">
-          No page_help rows. Register addressables via build-reconcile first.
-        </div>
-      )}
-
-      {grouped.map(([route, list]) => (
-        <section key={route} className="dev-section">
-          <h3 className="dev-h3"><code>{route}</code> <span className="dev-plan-meta">· {list.length} row{list.length === 1 ? "" : "s"}</span></h3>
-          <DevAccordion>
-            {list.map(r => (
-              <HelpRow
-                key={r.help_id}
-                row={r}
-                onChanged={next => setRows(prev => prev.map(x => x.help_id === next.help_id ? next : x))}
-                onArchived={id => setRows(prev => prev.filter(x => x.help_id !== id))}
-              />
-            ))}
-          </DevAccordion>
-        </section>
-      ))}
-
-      {!loading && grouped.length === 0 && rows.length > 0 && (
-        <div className="dev-research-empty">
-          No rows match &ldquo;<em>{search}</em>&rdquo;.
-        </div>
-      )}
-    </div>
     </Panel>
   );
 }
