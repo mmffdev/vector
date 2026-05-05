@@ -1,0 +1,230 @@
+---
+title: Badge
+sidebar_label: Badge
+sidebar_position: 1
+---
+
+# Badge
+
+`<Badge>` is the platform's small inline status indicator — the React surface for the `.pill` design-system class family. One component, four shapes, six semantic tones.
+
+> **The shape of the data contract, in one sentence:** the caller hands the badge a **fact**; the badge owns the **mapping**; the design system owns the **paint**.
+
+That sentence is the whole API. The rest of this page is the detail.
+
+---
+
+## When custom apps will use this
+
+When the custom-app API ships, an endpoint can return a `BadgeSpec` JSON object anywhere a small status indicator belongs (table cells, headers, list rows, navigation badges). A generic renderer on the platform side does `<Badge {...spec} />`. The custom app never picks colours, never ships CSS, never ships icons — only state.
+
+This page documents the JSON contract. The React component is at [`app/components/Badge.tsx`](pathname:///source/app/components/Badge.tsx); the canonical CSS is the `.pill` family in [`app/globals.css`](pathname:///source/app/globals.css).
+
+---
+
+## The `BadgeSpec` JSON shape
+
+```ts
+type BadgeSpec = {
+  kind: "status" | "count" | "letter" | "tag";
+  state?: string;                    // status kind
+  value?: number;                    // count kind
+  domain?: string;                   // letter kind
+  domainValue?: string;              // letter kind
+  label?: string;                    // tag kind, or override on any kind
+  tone?: BadgeTone;                  // explicit override (rarely needed from API)
+  iconRef?: string;                  // reserved — registered icon name
+  title?: string;                    // tooltip
+  href?: string;                     // turns the badge into a link
+  size?: "sm" | "md";                // default "sm"
+};
+
+type BadgeTone =
+  | "success" | "warning" | "danger" | "info" | "neutral" | "brand";
+```
+
+What's **not** in this shape: `color`, `bg`, `style`, `className`, raw SVG, raw HTML. **A custom app cannot paint the badge.** It can only describe what the badge represents. This is a load-bearing security property — see [Why no colours?](#why-no-colours) below.
+
+---
+
+## The four kinds
+
+### `kind: "status"` — semantic status pill
+
+Use for "this thing is in *that* state." The most common case.
+
+```json
+{ "kind": "status", "state": "active" }
+{ "kind": "status", "state": "failed",  "title": "Pipeline failed at 14:02" }
+{ "kind": "status", "state": "pending", "label": "Awaiting review" }
+```
+
+Renders an inline pill. Tone is **derived from `state`** (see [Tone resolution](#tone-resolution)). Label defaults to the title-cased state ("active" → "Active") but can be overridden.
+
+### `kind: "count"` — counter bubble
+
+Use for unread counts, notification badges, queue depths.
+
+```json
+{ "kind": "count", "value": 7 }
+{ "kind": "count", "value": 0 }                      // → renders nothing
+{ "kind": "count", "value": 47, "href": "/inbox" }   // clickable
+```
+
+Renders a round 18px counter. `value <= 0` → the badge disappears entirely (returns `null`). `value > 9` → renders `"9+"` so the bubble doesn't grow unboundedly.
+
+### `kind: "letter"` — categorical tag
+
+Use for one- or two-letter codes that represent a category from a known **domain**.
+
+```json
+{ "kind": "letter", "domain": "work-item-type", "domainValue": "epic" }
+{ "kind": "letter", "domain": "env",            "domainValue": "production" }
+```
+
+Renders a 22×22 monospace square. Tone is derived from `(domain, domainValue)` (see [Tone resolution](#tone-resolution)). Label defaults to the first two characters of `domainValue`, uppercased ("epic" → "EP").
+
+Domains are platform-registered. Unknown domains fall through to neutral — they don't error, but they also can't invent visual identity.
+
+### `kind: "tag"` — free-form label
+
+Use for short text labels that don't map to a known status or domain.
+
+```json
+{ "kind": "tag", "label": "Core" }
+{ "kind": "tag", "label": "Beta", "tone": "info" }
+```
+
+Renders an inline pill. Defaults to `tone: "neutral"`.
+
+---
+
+## Tone resolution
+
+Tones are picked by a deterministic, side-effect-free function. The order is:
+
+1. **Explicit `tone`** wins, if the caller passed one.
+2. **`kind: "status"`** → look up `state.toLowerCase()` in the platform's `STATUS_TONES` map:
+
+   | State keys | → Tone |
+   |---|---|
+   | `active`, `enabled`, `ok`, `healthy` | `success` |
+   | `pending`, `warning`, `degraded` | `warning` |
+   | `failed`, `error`, `blocked` | `danger` |
+   | `inactive`, `disabled`, `archived` | `neutral` |
+   | `info` | `info` |
+
+3. **`kind: "letter"`** → look up `(domain, domainValue)` in the platform's `DOMAIN_TONES` map:
+
+   | Domain | Value | → Tone |
+   |---|---|---|
+   | `work-item-type` | `epic` | `info` |
+   | `work-item-type` | `story` | `brand` |
+   | `work-item-type` | `task` | `neutral` |
+   | `work-item-type` | `defect` | `danger` |
+   | `env` | `dev` | `info` |
+   | `env` | `staging` | `warning` |
+   | `env` | `production` | `danger` |
+
+4. **Anything else** → `neutral`.
+
+The maps are **registries the platform owns**. New states and domains land in platform PRs, reviewed like any other code change. Custom apps cannot extend them at runtime.
+
+---
+
+## Label resolution
+
+If `label` is set, it's used verbatim. Otherwise, derived per-kind:
+
+- `status` + `state` → title-cased state.
+- `count` + `value` → the number, or `"9+"` if greater than 9.
+- `letter` + `domainValue` → first two characters, uppercased.
+- `tag` with no `label` → empty string (no visible text).
+
+---
+
+## Wrapper element
+
+The DOM element rendered depends on which interaction prop is present:
+
+| Props present | Renders |
+|---|---|
+| `href` | `<Link>` (Next.js client navigation) |
+| `onClick` *(platform-side only — not in `BadgeSpec`)* | `<button>` |
+| Neither | `<span>` |
+
+`onClick` is React-only and not part of the JSON contract — custom-app payloads can't bind handlers across the wire. Use `href` for navigation; for richer interactions, the surrounding cell or row owns the click target.
+
+---
+
+## Examples — end-to-end
+
+### Custom-app row endpoint returning two badges per row
+
+```json
+{
+  "rows": [
+    {
+      "id": "u-123",
+      "name": "Alice",
+      "status": { "kind": "status", "state": "active" },
+      "type":   { "kind": "letter", "domain": "work-item-type", "domainValue": "epic" }
+    },
+    {
+      "id": "u-124",
+      "name": "Bob",
+      "status": { "kind": "status", "state": "inactive" },
+      "type":   { "kind": "letter", "domain": "work-item-type", "domainValue": "task" }
+    }
+  ]
+}
+```
+
+The platform-side table renders each cell as `<Badge {...row.status} />` and `<Badge {...row.type} />`. No per-app code, no per-app CSS, no colour negotiation.
+
+### Header notification count
+
+```json
+{ "kind": "count", "value": 3, "href": "/library-releases", "title": "3 releases to acknowledge" }
+```
+
+### Soft-deletes a row's badge
+
+```json
+{ "kind": "count", "value": 0 }
+```
+
+Returns nothing — the cell stays empty. No need for the custom app to omit the field.
+
+---
+
+## Why no colours?
+
+The `BadgeSpec` shape deliberately has no `color`, `bg`, or `style` field. Three reasons:
+
+1. **Theme integrity.** Tones resolve to `var(--success-bg)` etc., which are owned by the active theme pack. A custom app shouldn't be able to make a "danger" badge that doesn't read as danger under the user's theme.
+2. **Injection surface.** Inline `style={{ background: untrusted }}` is a CSS injection sink — `url()`, `var()`, `attr()` can all exfiltrate data from the user's browser. If the platform never accepts colour from the wire, the sink doesn't exist.
+3. **Vocabulary control.** Six tones is a small, reviewable vocabulary. Arbitrary hex is unbounded. Bounded vocabularies stay coherent across hundreds of custom apps; unbounded ones fragment.
+
+A future palette extension will let custom apps **pick from named slots** in the active theme (`tone: "palette-3"`, etc.) — never from raw hex. That extension is out of scope for the current API.
+
+---
+
+## Failure modes
+
+- **Unknown `state`** (`"haxxor"`) — falls back to `tone: "neutral"`. Never throws.
+- **Unknown `domain`** (`"made-up"`) — falls back to `tone: "neutral"`. Never throws.
+- **Unknown `domainValue`** within a known domain — falls back to `tone: "neutral"`.
+- **Unknown `tone`** — falls back to `neutral` via the underlying CSS class allow-list.
+- **`kind: "count"` with `value <= 0`** — renders nothing (intentional, not an error).
+- **Missing required field for the kind** (`status` without `state`, `count` without `value`) — renders an empty pill in `neutral`. Not an error, but visually obvious that the spec was incomplete.
+
+The badge is **safe by construction for any payload** the API can produce — a property the platform relies on when rendering arbitrary custom-app data.
+
+---
+
+## Out of scope
+
+- **`EnvBadge`** ([`app/components/EnvBadge.tsx`](pathname:///source/app/components/EnvBadge.tsx)) is a *control* — it polls a status endpoint, opens a menu, holds 3 seconds before switching to production. It is not a `<Badge>` and is not exposed to custom apps.
+- **`tree_accordion-dense__type-badge`** carries domain-specific colour tokens owned by the work-items feature. It will be migrated to `<Badge kind="letter">` later; the colours are platform-controlled either way.
+- **User-supplied colours** are deferred to a future palette-slot extension. Until then, only platform code instantiates `<Badge>` and tone is always derived from state.

@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
+import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
@@ -131,29 +132,79 @@ export default function LibraryReleasesPage() {
           </div>
         )}
         {state.kind === "ready" && state.releases.length > 0 && (
-          <div className="table-wrap">
-            <table className="table">
-              <thead className="table__head">
-                <tr className="table__row">
-                  <th className="table__cell">Version</th>
-                  <th className="table__cell">Title</th>
-                  <th className="table__cell">Severity</th>
-                  <th className="table__cell">Released</th>
-                  <th className="table__cell table__cell--numeric">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.releases.map((r) => (
-                  <ReleaseRow
-                    key={r.id}
-                    release={r}
-                    acking={acking === r.id}
-                    onAck={ack}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table<ReleaseDTO>
+            pageId="library-releases"
+            slot="outstanding"
+            ariaLabel="Outstanding releases"
+            rows={state.releases}
+            rowKey={(r) => r.id}
+            columns={[
+              {
+                key: "library_version",
+                header: "Version",
+                width: 120,
+                kind: "mono",
+                render: (r) => `v${r.library_version}`,
+              },
+              {
+                key: "title",
+                header: "Title",
+                kind: "custom",
+                render: (r) => (
+                  <>
+                    <div>{r.title}</div>
+                    <div className="release-row__summary">{r.summary_md}</div>
+                  </>
+                ),
+              },
+              {
+                key: "severity",
+                header: "Severity",
+                width: 130,
+                kind: "pill",
+                pillVariant: (r) =>
+                  r.severity === "breaking"
+                    ? "danger"
+                    : r.severity === "action"
+                    ? "warning"
+                    : "info",
+                pillLabel: (r) => r.severity.toUpperCase(),
+              },
+              {
+                key: "released_at",
+                header: "Released",
+                width: 140,
+                kind: "custom",
+                render: (r) => new Date(r.released_at).toLocaleDateString(),
+              },
+              {
+                key: "action",
+                header: "Action",
+                width: 160,
+                kind: "custom",
+                render: (r) => {
+                  const sortedActions = [...r.actions].sort(
+                    (a, b) => a.sort_order - b.sort_order
+                  );
+                  const primaryAction = sortedActions[0];
+                  return (
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      disabled={acking === r.id}
+                      onClick={() =>
+                        ack(r.id, primaryAction?.action_key ?? "dismissed")
+                      }
+                    >
+                      {acking === r.id
+                        ? "Acknowledging…"
+                        : primaryAction?.label ?? "Acknowledge"}
+                    </button>
+                  );
+                },
+              },
+            ]}
+          />
         )}
       </Panel>
     </PageShell>
@@ -161,58 +212,3 @@ export default function LibraryReleasesPage() {
   );
 }
 
-function severityPillClass(s: Severity): string {
-  switch (s) {
-    case "breaking":
-      return "pill--danger";
-    case "action":
-      return "pill--warning";
-    case "info":
-    default:
-      return "pill--info";
-  }
-}
-
-function ReleaseRow({
-  release,
-  acking,
-  onAck,
-}: {
-  release: ReleaseDTO;
-  acking: boolean;
-  onAck: (releaseId: string, actionKey: ActionDTO["action_key"]) => void;
-}) {
-  const sortedActions = [...release.actions].sort(
-    (a, b) => a.sort_order - b.sort_order
-  );
-  const primaryAction = sortedActions[0];
-  const releasedAt = new Date(release.released_at).toLocaleDateString();
-
-  return (
-    <tr className="table__row">
-      <td className="table__cell t-mono">v{release.library_version}</td>
-      <td className="table__cell">
-        <div>{release.title}</div>
-        <div className="release-row__summary">{release.summary_md}</div>
-      </td>
-      <td className="table__cell">
-        <span className={`pill ${severityPillClass(release.severity)}`}>
-          {release.severity.toUpperCase()}
-        </span>
-      </td>
-      <td className="table__cell table__cell--muted">{releasedAt}</td>
-      <td className="table__cell table__cell--numeric">
-        <button
-          type="button"
-          className="btn btn--primary"
-          disabled={acking}
-          onClick={() =>
-            onAck(release.id, primaryAction?.action_key ?? "dismissed")
-          }
-        >
-          {acking ? "Acknowledging…" : (primaryAction?.label ?? "Acknowledge")}
-        </button>
-      </td>
-    </tr>
-  );
-}

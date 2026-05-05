@@ -32,6 +32,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
+import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
@@ -364,53 +365,40 @@ function BundleView({ bundle }: { bundle: BundleDTO }) {
 
       {bundle.artifacts.length > 0 && (
         <Panel name="portfolio_model_artifacts" title="Artifacts">
-          <div className="table-wrap">
-            <table className="table">
-              <thead className="table__head">
-                <tr className="table__row">
-                  <th className="table__cell">Key</th>
-                  <th className="table__cell">Enabled</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bundle.artifacts.map((a) => (
-                  <tr key={a.id} className="table__row">
-                    <td className="table__cell u-mono">{a.artifact_key}</td>
-                    <td className="table__cell">
-                      {a.enabled ? (
-                        <span className="pill pill--success">on</span>
-                      ) : (
-                        <span className="pill pill--neutral">off</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table<ArtifactDTO>
+            pageId="portfolio-model"
+            slot="artifacts"
+            ariaLabel="Artifacts"
+            rows={bundle.artifacts}
+            rowKey={(a) => a.id}
+            columns={[
+              { key: "artifact_key", header: "Key", kind: "mono" },
+              {
+                key: "enabled",
+                header: "Enabled",
+                width: 110,
+                kind: "pill",
+                pillVariant: (a) => (a.enabled ? "success" : "neutral"),
+                pillLabel: (a) => (a.enabled ? "on" : "off"),
+              },
+            ]}
+          />
         </Panel>
       )}
 
       {bundle.terminology.length > 0 && (
         <Panel name="portfolio_model_terminology" title="Terminology">
-          <div className="table-wrap">
-            <table className="table">
-              <thead className="table__head">
-                <tr className="table__row">
-                  <th className="table__cell">Key</th>
-                  <th className="table__cell">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bundle.terminology.map((t) => (
-                  <tr key={t.id} className="table__row">
-                    <td className="table__cell u-mono">{t.key}</td>
-                    <td className="table__cell">{t.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table<TerminologyDTO>
+            pageId="portfolio-model"
+            slot="terminology"
+            ariaLabel="Terminology"
+            rows={bundle.terminology}
+            rowKey={(t) => t.id}
+            columns={[
+              { key: "key", header: "Key", kind: "mono" },
+              { key: "value", header: "Value" },
+            ]}
+          />
         </Panel>
       )}
     </>

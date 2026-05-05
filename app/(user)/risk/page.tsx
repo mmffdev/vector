@@ -1,14 +1,12 @@
 "use client";
 
-// /risk — risk register.
-// Story 00097 restyle: header (28px / --ink-muted) from PageShell.
-// Body is a Vector .table-wrap + .table — surface-sunken thead with
-// eyebrow column heads, 48px rows from --row-height, hover lifts to
-// --surface-sunken (rules in the base table block of globals.css).
-// Severity uses .pill variants: HIGH=danger, MEDIUM=warning,
-// LOW=neutral. No legacy .tag classes; no lime-green.
+// /risk — risk register. Body uses <Table> (PLA-0015); severity column
+// is `kind: "pill"` with HIGH=danger, MEDIUM=warning, LOW=neutral.
 
 import PageShell from "@/app/components/PageShell";
+import Table from "@/app/components/Table";
+
+type PillVariant = "success" | "warning" | "danger" | "info" | "neutral";
 
 interface Risk {
   id: string;
@@ -17,13 +15,13 @@ interface Risk {
   likelihood: "HIGH" | "MEDIUM" | "LOW";
   owner: string;
   status: string;
-  statusClass: string;
+  statusVariant: PillVariant;
 }
 
-const SEVERITY_CLASS: Record<Risk["severity"], string> = {
-  HIGH: "pill--danger",
-  MEDIUM: "pill--warning",
-  LOW: "pill--neutral",
+const SEVERITY_VARIANT: Record<Risk["severity"], PillVariant> = {
+  HIGH: "danger",
+  MEDIUM: "warning",
+  LOW: "neutral",
 };
 
 const RISKS: Risk[] = [
@@ -34,7 +32,7 @@ const RISKS: Risk[] = [
     likelihood: "MEDIUM",
     owner: "R. Cook",
     status: "Mitigating",
-    statusClass: "pill--info",
+    statusVariant: "info",
   },
   {
     id: "RSK-0002",
@@ -43,7 +41,7 @@ const RISKS: Risk[] = [
     likelihood: "LOW",
     owner: "M. Patel",
     status: "Monitoring",
-    statusClass: "pill--neutral",
+    statusVariant: "neutral",
   },
   {
     id: "RSK-0003",
@@ -52,7 +50,7 @@ const RISKS: Risk[] = [
     likelihood: "LOW",
     owner: "Design",
     status: "Resolved",
-    statusClass: "pill--success",
+    statusVariant: "success",
   },
 ];
 
@@ -66,38 +64,42 @@ export default function Risk() {
       }
     >
       <h3 className="eyebrow">Active risks</h3>
-      <div className="table-wrap">
-        <table className="table">
-          <thead className="table__head">
-            <tr className="table__row">
-              <th className="table__cell">ID</th>
-              <th className="table__cell">Risk</th>
-              <th className="table__cell">Severity</th>
-              <th className="table__cell">Likelihood</th>
-              <th className="table__cell">Owner</th>
-              <th className="table__cell">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {RISKS.map((r) => (
-              <tr key={r.id} className="table__row">
-                <td className="table__cell t-mono">{r.id}</td>
-                <td className="table__cell">{r.title}</td>
-                <td className="table__cell">
-                  <span className={`pill ${SEVERITY_CLASS[r.severity]}`}>{r.severity}</span>
-                </td>
-                <td className="table__cell">
-                  <span className={`pill ${SEVERITY_CLASS[r.likelihood]}`}>{r.likelihood}</span>
-                </td>
-                <td className="table__cell table__cell--muted">{r.owner}</td>
-                <td className="table__cell">
-                  <span className={`pill ${r.statusClass}`}>{r.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table<Risk>
+        pageId="risk"
+        slot="active_risks"
+        ariaLabel="Active risks"
+        rows={RISKS}
+        rowKey={(r) => r.id}
+        columns={[
+          { key: "id", header: "ID", width: 110, kind: "mono" },
+          { key: "title", header: "Risk" },
+          {
+            key: "severity",
+            header: "Severity",
+            width: 110,
+            kind: "pill",
+            pillVariant: (r) => SEVERITY_VARIANT[r.severity],
+            pillLabel: (r) => r.severity,
+          },
+          {
+            key: "likelihood",
+            header: "Likelihood",
+            width: 120,
+            kind: "pill",
+            pillVariant: (r) => SEVERITY_VARIANT[r.likelihood],
+            pillLabel: (r) => r.likelihood,
+          },
+          { key: "owner", header: "Owner", width: 140 },
+          {
+            key: "status",
+            header: "Status",
+            width: 130,
+            kind: "pill",
+            pillVariant: (r) => r.statusVariant,
+            pillLabel: (r) => r.status,
+          },
+        ]}
+      />
     </PageShell>
   );
 }

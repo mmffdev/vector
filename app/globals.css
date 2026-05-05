@@ -1584,14 +1584,15 @@ input[type="reset"] {
 }
 
 /* ============================================================
-   Tables — Vector Design System (story 00078)
-   .table-wrap container: surface bg, 1px --border, --radius-lg,
-   overflow:hidden so the corners clip cleanly.
-   .table thead: --surface-sunken with 11px uppercase --ink-muted
-   column labels. Rows 48px tall, 1px hairline, last row no bottom.
-   Hover shifts row to --surface-sunken. Numeric columns get
-   font-variant-numeric: tabular-nums.
-   Both BEM (.table __head/__cell) and Vector kit (.tbl) names work.
+   Tables — legacy .table* BEM (originally story 00078).
+   PLA-0015 / Story 00427c — DEPRECATED but RETAINED.
+   The canonical data table is now <Table> in app/components/Table.tsx
+   (composes from tree_accordion-dense__*). The .table* BEM rules below
+   survive ONLY for the eight call sites on the lint:no-raw-table
+   allow-list (4 tree exceptions, 4 provisional). The old Vector-kit
+   .tbl alias was unused and has been removed in this story. Do NOT
+   add new consumers of these classes — use <Table> instead. When the
+   provisional allow-list is cleared the entire block can be stripped.
    ============================================================ */
 .table-wrap {
   background: transparent;
@@ -1601,23 +1602,18 @@ input[type="reset"] {
   box-shadow: none;
 }
 
-.table,
-table.tbl {
+.table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-sans);
   font-size: 13px;
 }
 
-/* table.work-items-tree { table-layout: fixed; } */
-
-.table__head,
-table.tbl thead {
+.table__head {
   background: var(--surface-sunken);
 }
 
-.table__head .table__cell,
-table.tbl thead th {
+.table__head .table__cell {
   background: var(--surface-sunken);
   color: var(--ink-muted);
   font-weight: 500;
@@ -1629,24 +1625,20 @@ table.tbl thead th {
   border-bottom: 1px solid var(--border);
 }
 
-.table__row,
-table.tbl tbody tr {
+.table__row {
   border-bottom: 1px solid var(--border);
   transition: background 0.15s ease;
 }
 
-.table__row:last-child,
-table.tbl tbody tr:last-child {
+.table__row:last-child {
   border-bottom: none;
 }
 
-.table__row:last-child .table__cell,
-table.tbl tbody tr:last-child td {
+.table__row:last-child .table__cell {
   border-bottom: none;
 }
 
-.table__cell,
-table.tbl tbody td {
+.table__cell {
   padding: 0 16px;
   height: var(--row-height);
   background: transparent;
@@ -1655,8 +1647,7 @@ table.tbl tbody td {
   border-bottom: 1px solid var(--border);
 }
 
-.table__row:hover .table__cell,
-table.tbl tbody tr:hover td {
+.table__row:hover .table__cell {
   background: var(--surface-sunken);
 }
 
@@ -1681,9 +1672,6 @@ table.tbl tbody tr:hover td {
   font-size: 12px;
 }
 
-/* ============================================================
-   Forms
-   ============================================================ */
 /* ============================================================
    Forms — Vector Design System (story 00075)
    40px input height, --radius-md, --border-strong rest border, ink
@@ -2170,6 +2158,46 @@ table.tbl tbody tr:hover td {
 .pill--danger  { background: var(--danger-bg);  color: var(--danger); }
 .pill--info    { background: var(--info-bg);    color: var(--info); }
 .pill--neutral { background: var(--surface-sunken); color: var(--ink-muted); }
+.pill--brand   { background: var(--accent-bg, var(--surface-sunken)); color: var(--accent, var(--ink)); }
+
+/* Pill shapes — composed via <Badge kind="…">. The base .pill rule
+   above is the inline status pill (status/tag); these modifiers add
+   the two other shapes the component supports.
+   --count: counter bubble (header bell, notification dots). 18px tall,
+            min-width 18px so single digits render as a square; "9+"
+            extends. Tabular numerals so 1/7/8 don't jitter.
+   --letter: 22×22 square monospace tag (D/S/P, EP/US/TA). Used for
+             single-letter or two-letter codes; centred, bold. */
+.pill--count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  border-color: currentColor;
+}
+.pill--letter {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.pill--md {
+  font-size: 13px;
+  line-height: 18px;
+  padding: 3px 11px;
+}
+.pill--md.pill--count  { height: 22px; min-width: 22px; line-height: 22px; font-size: 12px; padding: 0 6px; }
+.pill--md.pill--letter { width: 26px; height: 26px; line-height: 26px; font-size: 13px; }
+.pill__icon { display: inline-flex; }
+.pill__label { display: inline-block; }
 
 /* Legacy .tag aliases — keep visual parity with .pill semantics so any
    un-migrated JSX still reads correctly under the new palette. */
@@ -5268,14 +5296,12 @@ table.tbl tbody tr:hover td {
   margin-left: auto;
 }
 
-/* table-wrap override: let inner scroll container handle overflow; no outer border */
 .theme-lib__table-wrap {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: none;
 }
 
 /* Scrollable region inside the table-wrap border */

@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0014`
+**Last issued:** `PLA-0017`
 
 ## Format
 
@@ -35,6 +35,9 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0012` | Reusable Page Summary Header — full-span stat strip + Work Items adopter | 2026-05-05 | complete |
 | `PLA-0013` | Dev-UI Primitives & Migration — Standardize Dev Setup CSS | 2026-05-05 | active |
 | `PLA-0014` | Tab reorder primitive — drag-and-drop substrate + per-user tab order | 2026-05-05 | complete |
+| `PLA-0015` | `<Table>` component — declarative table primitive with expander, inline-edit, panel, pills | 2026-05-05 | active |
+| `PLA-0016` | Docs site as a fourth Launcher component — supervised api-reference Docusaurus on :3000 | 2026-05-05 | complete |
+| `PLA-0017` | `<Table>` universal modes — tree, accordion, dnd, section, dense; absorb the 8 allow-listed callers; final .table* CSS strip | 2026-05-05 | active |
 
 ## Deletion log
 

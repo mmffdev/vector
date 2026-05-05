@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
+import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api } from "@/app/lib/api";
@@ -165,44 +166,52 @@ function CustomFieldLibrary() {
           <p className="placeholder__text">No custom fields yet. Create one above.</p>
         </div>
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr>
-                <th className="table__cell">Field name</th>
-                <th className="table__cell">Label</th>
-                <th className="table__cell">Type</th>
-                <th className="table__cell">Created</th>
-                <th className="table__cell" />
-              </tr>
-            </thead>
-            <tbody>
-              {fields.map((f) => (
-                <tr key={f.id} className="table__row">
-                  <td className="table__cell">
-                    <span className="wi-settings__field-name">{f.field_name}</span>
-                  </td>
-                  <td className="table__cell">{f.label}</td>
-                  <td className="table__cell">
-                    <span className="pill pill--neutral pill--sm">{f.type}</span>
-                  </td>
-                  <td className="table__cell wi-settings__field-meta-cell">
-                    {new Date(f.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="table__cell">
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm btn--danger"
-                      onClick={() => archive(f.id)}
-                    >
-                      Archive
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table<CustomField>
+          pageId="work-items-settings"
+          slot="custom_fields"
+          ariaLabel="Custom fields"
+          rows={fields}
+          rowKey={(f) => f.id}
+          columns={[
+            {
+              key: "field_name",
+              header: "Field name",
+              kind: "custom",
+              render: (f) => <span className="wi-settings__field-name">{f.field_name}</span>,
+            },
+            { key: "label", header: "Label" },
+            {
+              key: "type",
+              header: "Type",
+              width: 130,
+              kind: "pill",
+              pillVariant: () => "neutral",
+              pillLabel: (f) => f.type,
+            },
+            {
+              key: "created_at",
+              header: "Created",
+              width: 140,
+              kind: "custom",
+              render: (f) => new Date(f.created_at).toLocaleDateString(),
+            },
+            {
+              key: "actions",
+              header: "",
+              width: 120,
+              kind: "custom",
+              render: (f) => (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm btn--danger"
+                  onClick={() => archive(f.id)}
+                >
+                  Archive
+                </button>
+              ),
+            },
+          ]}
+        />
       )}
     </div>
   );
@@ -358,46 +367,52 @@ function TemplateBuilder() {
                         No fields added yet.
                       </p>
                     ) : (
-                      <div className="table-wrap wi-settings__type-table">
-                        <table className="table">
-                          <thead className="table__head">
-                            <tr>
-                              <th className="table__cell">Pos</th>
-                              <th className="table__cell">Label</th>
-                              <th className="table__cell">Type</th>
-                              <th className="table__cell">Required</th>
-                              <th className="table__cell" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {[...t.fields].sort((a, b) => a.position - b.position).map((f) => (
-                              <tr key={f.id} className="table__row">
-                                <td className="table__cell table__cell--numeric">{f.position}</td>
-                                <td className="table__cell">{f.label}</td>
-                                <td className="table__cell">
-                                  <span className="pill pill--neutral pill--sm">{f.field_type}</span>
-                                </td>
-                                <td className="table__cell">
-                                  {f.required ? (
-                                    <span className="pill pill--warning pill--sm">required</span>
-                                  ) : (
-                                    <span className="wi-settings__optional">optional</span>
-                                  )}
-                                </td>
-                                <td className="table__cell">
-                                  <button
-                                    type="button"
-                                    className="btn btn--ghost btn--sm"
-                                    onClick={() => removeField(t.id, f.field_library_id)}
-                                  >
-                                    Remove
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table<TemplateField>
+                        pageId="work-items-settings"
+                        slot={`template_fields__${t.id.replace(/-/g, "_")}`}
+                        ariaLabel={`Fields for ${t.name}`}
+                        rows={[...t.fields].sort((a, b) => a.position - b.position)}
+                        rowKey={(f) => f.id}
+                        columns={[
+                          { key: "position", header: "Pos", width: 60, kind: "numeric" },
+                          { key: "label", header: "Label" },
+                          {
+                            key: "field_type",
+                            header: "Type",
+                            width: 130,
+                            kind: "pill",
+                            pillVariant: () => "neutral",
+                            pillLabel: (f) => f.field_type,
+                          },
+                          {
+                            key: "required",
+                            header: "Required",
+                            width: 130,
+                            kind: "custom",
+                            render: (f) =>
+                              f.required ? (
+                                <span className="pill pill--warning pill--sm">required</span>
+                              ) : (
+                                <span className="wi-settings__optional">optional</span>
+                              ),
+                          },
+                          {
+                            key: "actions",
+                            header: "",
+                            width: 110,
+                            kind: "custom",
+                            render: (f) => (
+                              <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                onClick={() => removeField(t.id, f.field_library_id)}
+                              >
+                                Remove
+                              </button>
+                            ),
+                          },
+                        ]}
+                      />
                     )}
 
                     {available.length > 0 && (

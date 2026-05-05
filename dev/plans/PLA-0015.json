@@ -1,0 +1,80 @@
+{
+  "id": "PLA-0015",
+  "title": "<Table> component — declarative table primitive with expander, inline-edit, panel, pills",
+  "date_created": "2026-05-05",
+  "date_started": null,
+  "date_last_updated": "2026-05-05",
+  "date_finished": null,
+  "scope": "<p>Replace the hand-written <code>tree_accordion-dense__*</code> JSX scaffold (currently 9 flat-table call sites and growing) with a single declarative <code>&lt;Table&gt;</code> React component in <code>app/components/Table.tsx</code>. Every CSS hook from the <code>tree_accordion-dense__*</code> catalog is wired internally; call sites declare what they need via props and omit what they don't.</p><ul><li><strong>v1 surface (must-have, ≥2 sites):</strong> columns w/ render fn, expander column, panel row (colSpan), inline-edit cells (text input + Enter/Esc + useDraft), pill/mono/numeric/center cell kinds, empty + loading states, bespoke row + cell className hooks for page-namespaced modifiers.</li><li><strong>v1 extension (also ≥2 sites):</strong> pagination (Prev/Next + page meta), search filter, dropdown filter — each opt-in via a single prop.</li><li><strong>Explicitly out of v1:</strong> column sort, dnd-kit row reorder, native HTML5 drag-drop, column resize handles, multi-level tree indentation. These remain bespoke (work-items tree, layers editor) until a 2nd flat-table caller appears.</li><li><strong>Migration scope:</strong> 9 flat call sites — workspace-settings (Users, Workspaces, Archived, Permissions, Grant rules), portfolio-model (Artifacts, Terminology, LayersPreviewTable), library-releases, risk, work-items/settings, theme tokens. Tree call sites (Example2Tree, work-items legacy tree, layers editor) stay bespoke.</li><li><strong>Enforcement:</strong> <code>lint:no-raw-table</code> python rule under <code>dev/scripts/</code> blocks any <code>&lt;table&gt;</code> outside <code>app/components/Table.tsx</code> and the four documented tree exceptions; ledger under <code>dev/registries/raw-table-allow.txt</code>.</li><li><strong>Strip pass:</strong> after migration completes, delete the deprecated <code>.table-wrap</code> / <code>.table</code> / <code>.table__*</code> family from <code>app/globals.css</code> and the duplicate <code>.btn--row-expander</code> in favour of <code>.tree_accordion-dense__expander</code>.</li></ul>",
+  "value": "<p>Eight near-identical <code>&lt;table&gt;</code> scaffolds today — every call site re-solves the same problems (sticky head, colgroup, expander icon, pagination, empty rows). One component absorbs all of it; new tables become declarative; bug-fixes happen in one place; lint can finally enforce the catalog rule because there's only one allowed table site.</p><ul><li><strong>For developers:</strong> add a table by listing columns + rows; every footgun (forgot &lt;colgroup&gt;? wrong row class? bespoke expander icon?) becomes structurally impossible.</li><li><strong>For users:</strong> consistent expanders, consistent pagination, consistent empty/loading copy across every table in the product.</li><li><strong>For the codebase:</strong> finally enforces the css_tables hard rule via lint, deletes the deprecated .table* family, and unblocks a future <code>&lt;TreeTable&gt;</code> sibling for the multi-level cases.</li></ul>",
+  "implementation_plan": [
+    "Story 00421 — Document the v1 component contract. Write docs/c_c_table_component.md describing props (columns/rows/rowKey/expandable/panel/inlineEdit/pagination/toolbar/empty/loading), the rowClassName/cellClassName hooks for page-namespaced modifiers, and the four bespoke-tree exceptions that don't migrate. Add CLAUDE.md pointer.",
+    "Story 00422 — Scaffold app/components/Table.tsx with column rendering, kind cells (mono/numeric/center/pill), empty + loading states, ariaLabel + colgroup widths. Storybook-style harness on /dev page rendering all configurations side-by-side. No call-site migration yet.",
+    "Story 00423 — Add expander column + panel row support. Use canonical .tree_accordion-dense__expander primitive (kill the bespoke .btn--row-expander in this code path). Panel takes a renderPanel(row) prop; renders <tr><td colSpan={N}> with the page-namespaced panel modifier passed via cellClassName.",
+    "Story 00424 — Add inline-edit cell kind. Edit-mode flag per cell, draft buffer wired to useDraft hook (so accidental nav doesn't lose typing), Enter saves, Esc cancels, error display, kb handlers. Save callback returns Promise so the cell can flip back to read-mode on success or surface an error.",
+    "Story 00425 — Add pagination + search-filter + dropdown-filter as opt-in toolbar slots. Pagination prop = { pageSize, onPageChange }; toolbar prop = { search?, filters?, actions?, meta? }. Filters are an array of { key, label, options, value, onChange } so callers can declare without writing JSX.",
+    "Story 00426 — Migrate one canary call site — Permissions matrix (simplest, no expander/edit/pagination). Confirm zero visual regression with screenshot diff. Update css_tables memory entry to point at <Table> as the canonical surface.",
+    "Story 00427 — Migrate the remaining 8 flat call sites + add lint:no-raw-table rule + strip .table-wrap/.table/.table__* from app/globals.css + remove .btn--row-expander. Update technical-debt register entry. Document the four bespoke-tree exceptions in dev/registries/raw-table-allow.txt."
+  ],
+  "areas_impacted": [
+    "DEV: docs/c_c_table_component.md, CLAUDE.md pointer, lint:no-raw-table script + allow-list ledger, css_tables memory update",
+    "UI: new app/components/Table.tsx + harness page under /dev",
+    "UI: 9 flat call-site migrations (workspace-settings 5, portfolio-model 3, library-releases, risk, work-items/settings, theme tokens)",
+    "CSS: app/globals.css — strip .table-wrap, .table, .table__*, .btn--row-expander once migration completes",
+    "DOCS: docs/css-guide.md updated tables section pointing at <Table> first; tree_accordion-dense__* documented as the underlying catalog only"
+  ],
+  "feature_list": [
+    "Declarative columns array — { key, header, width, kind?, render?, sortable? }",
+    "Cell kinds: text (default), mono, numeric, center, pill, expander, custom render fn",
+    "Expander column with canonical .tree_accordion-dense__expander icon + rotation",
+    "Panel row — expanded row reveals colSpan panel via renderPanel(row) prop",
+    "Inline-edit cell — useDraft-backed text input, Enter/Esc keyboard, Promise save",
+    "Pagination opt-in (Prev/Next + page meta)",
+    "Search filter opt-in (toolbar input + onChange)",
+    "Dropdown filter opt-in (declarative filters[] in toolbar)",
+    "Empty state row (single prop: empty='No users match the current filters')",
+    "Loading state row (single prop: loading=true)",
+    "Bespoke className hooks: rowClassName(row), cellClassName(row, col) for page-namespaced modifiers",
+    "ariaLabel required prop — accessibility by default",
+    "lint:no-raw-table rule — fails CI on any <table> outside Table.tsx + the four bespoke-tree exceptions"
+  ],
+  "features_extended": [
+    "<strong>tree_accordion-dense__* CSS catalog:</strong> stays as the underlying primitive; <code>&lt;Table&gt;</code> is the only sanctioned consumer. Catalog can grow (new cell kinds) but call sites consume only via the component.",
+    "<strong>useDraft hook:</strong> gains a typed integration point for inline-edit cells — the draft key is auto-derived from <code>{pageId, rowKey, columnKey}</code> so logout-purge already works."
+  ],
+  "features_removed": [
+    "<strong>.btn--row-expander:</strong> deprecated; canonical replacement is <code>.tree_accordion-dense__expander</code>. Component uses the canonical class internally; the bespoke btn modifier is removed from globals.css after migration.",
+    "<strong>.table / .table-wrap / .table__head / .table__row / .table__cell / .table__cell--muted / .table__cell-meta:</strong> the deprecated table family is stripped from app/globals.css after the migration story lands."
+  ],
+  "work_item_backlog": [
+    { "order": 1, "title": "Document <Table> component contract (props + hooks + tree exceptions)", "story_id": "00421", "card_url": null, "status": "pending" },
+    { "order": 2, "title": "Scaffold Table.tsx + /dev harness (columns + cell kinds + empty/loading)", "story_id": "00422", "card_url": null, "status": "pending" },
+    { "order": 3, "title": "Add expander column + panel row support", "story_id": "00423", "card_url": null, "status": "pending" },
+    { "order": 4, "title": "Add inline-edit cell kind (useDraft integration)", "story_id": "00424", "card_url": null, "status": "pending" },
+    { "order": 5, "title": "Add pagination + search-filter + dropdown-filter toolbar slots", "story_id": "00425", "card_url": null, "status": "pending" },
+    { "order": 6, "title": "Canary migration — Permissions matrix call site", "story_id": "00426", "card_url": null, "status": "pending" },
+    { "order": 7, "title": "Migrate remaining 8 flat call sites + lint:no-raw-table + strip .table* from globals.css", "story_id": "00427", "card_url": null, "status": "pending" }
+  ],
+  "acceptance_criteria": [
+    { "order": 1, "criterion": "docs/c_c_table_component.md exists with props table, cell-kind reference, rowClassName/cellClassName hooks, and the four bespoke-tree exceptions named explicitly", "proven_by": "file present; CLAUDE.md has a pointer to it", "story_id": "00421" },
+    { "order": 2, "criterion": "app/components/Table.tsx renders columns + rows with mono/numeric/center/pill cell kinds + empty + loading + ariaLabel", "proven_by": "/dev/table-harness route shows all configurations side-by-side; no console errors", "story_id": "00422" },
+    { "order": 3, "criterion": "Expander column toggles open state per row; panel row renders renderPanel(row) inside <td colSpan={N}>; expander icon uses .tree_accordion-dense__expander (not .btn--row-expander)", "proven_by": "harness page demonstrates expand/collapse; visual matches Example2Tree expander; no .btn--row-expander reference in Table.tsx", "story_id": "00423" },
+    { "order": 4, "criterion": "Inline-edit cell flips to <input>, draft persists across nav-aways via useDraft, Enter saves (Promise round-trip), Esc cancels, error displays inline", "proven_by": "harness page has an editable cell; draft survives reload mid-edit; failed save shows error string", "story_id": "00424" },
+    { "order": 5, "criterion": "Pagination, search filter, and dropdown filter are opt-in via single props; omitting any prop renders no UI for it", "proven_by": "harness page toggles each on/off with no layout shift; meta updates live; filters narrow rows", "story_id": "00425" },
+    { "order": 6, "criterion": "Permissions matrix in workspace-settings/page.tsx renders via <Table> with zero visual regression", "proven_by": "before/after screenshot diff shows pixel-equivalent output; css_tables memory entry updated", "story_id": "00426" },
+    { "order": 7, "criterion": "All 9 flat call sites migrated; lint:no-raw-table fails CI on any new <table>; deprecated .table-wrap/.table/.table__*/.btn--row-expander removed from app/globals.css", "proven_by": "grep '<table' under app/ returns only Table.tsx + 4 ledgered exceptions; npm run lint:no-raw-table passes; globals.css diff shows the deprecated rules deleted", "story_id": "00427" }
+  ],
+  "risks": [
+    "<strong>Bespoke modifier surface:</strong> 5 call sites use page-namespaced modifiers. If the rowClassName/cellClassName hooks are too narrow, callers fork the component instead of using it. Mitigation: harness page intentionally exercises a bespoke-modifier example in story 00422 so the hook shape is proven before migration starts.",
+    "<strong>Inline-edit + useDraft coupling:</strong> if useDraft can't take a composite key cleanly, story 00424 stalls. Mitigation: validate the integration in the harness before any call-site migration.",
+    "<strong>Stripping .table* prematurely:</strong> if any tree call site secretly inherits .table__cell, the strip in story 00427 breaks it. Mitigation: grep audit of every tree file confirms zero references before the strip lands; the four bespoke-tree exceptions are explicitly named and verified clean."
+  ],
+  "out_of_scope": [
+    "Column sorting (no current call site uses it)",
+    "@dnd-kit row reorder integration into <Table> (work-items tree keeps its bespoke implementation; layers editor uses native HTML5 drag-drop and stays out of v1)",
+    "Column resize handles (work-items legacy tree only)",
+    "Multi-level tree indentation with <TreeLines> (Example2Tree stays bespoke; future <TreeTable> sibling tracked separately)",
+    "Virtualization (no call site has >200 rows in the v1 surface; theme tokens at ~100 rows is fine without)",
+    "Realtime row updates via NOTIFY (no current call site uses; ranking primitive already covers the orderable case)"
+  ]
+}

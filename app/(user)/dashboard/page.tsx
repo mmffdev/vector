@@ -215,24 +215,20 @@ export default function Dashboard() {
         </Panel>
 
         <Panel name="recent_activity" title="Recent activity">
-          <Table name="recent_activity_table" ariaLabel="Recent activity">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">When</th>
-                <th className="table__cell">Item</th>
-                <th className="table__cell">Action</th>
-                <th className="table__cell">By</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="table__row">
-                <td className="table__cell">—</td>
-                <td className="table__cell">No activity yet</td>
-                <td className="table__cell">—</td>
-                <td className="table__cell">—</td>
-              </tr>
-            </tbody>
-          </Table>
+          <Table<{ id: string; when: string; item: string; action: string; by: string }>
+            pageId="dashboard"
+            slot="recent_activity"
+            ariaLabel="Recent activity"
+            columns={[
+              { key: "when", header: "When" },
+              { key: "item", header: "Item" },
+              { key: "action", header: "Action" },
+              { key: "by", header: "By" },
+            ]}
+            rows={[]}
+            rowKey={(r) => r.id}
+            empty="No activity yet."
+          />
         </Panel>
       </StrictRoute>
     </PageShell>

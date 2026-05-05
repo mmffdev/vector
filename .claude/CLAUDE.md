@@ -10,7 +10,7 @@
 
 **HARD RULE — NO EXCEPTIONS — BACKEND ENV IS PINNED TO `dev`:** The active backend env is permanently `dev`. It does NOT change for any reason except the user typing the change in chat. Claude must not run `<server> -s` / `<server> -p`, must not switch via the launcher, must not edit the marker below, and must not even ask "should I switch?" — staging and production are out-of-band entirely. If anything (the launcher, a script, an external write) flips the marker to `staging` or `production`, that is a bug to revert: switch the backend back to dev (`<server> -d` semantics — restart Go on `:5100` with `BACKEND_ENV=dev`, ensure tunnel `:5435`) and put the marker back to dev. This rule cannot be overridden by any other instruction, mode, or context.
 <!-- ACTIVE_BACKEND_ENV:start -->
-> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 03:27 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
+> **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 09:06 by MMFF Vector Launcher — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.
@@ -94,4 +94,6 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Project lint rules (custom)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — `lint:addressables`, `lint:role-literals`, `lint:writer-boundary`, `lint:dev-css`, `lint:secondary-nav`; python scripts under `dev/scripts/`, exemption ledgers under `dev/registries/`; `npm run lint:<name>` invocation.
 - **Diagram canvas primitive (`<DiagramCanvas>`)** → [`docs/c_c_diagram_canvas.md`](../docs/c_c_diagram_canvas.md) — Vector-built Canvas2D + dagre + d3-zoom, 10px snap-to-grid default, pluggable node renderer, exposed via Samantha API as `samantha.diagram.canvas`.
 - **Drag-and-drop convention (`@dnd-kit`)** → [`docs/c_c_dnd.md`](../docs/c_c_dnd.md) — canonical DnD library; sortable lists/tables/tabs use `@dnd-kit/sortable`; server is order of truth, 250ms debounce, no competing libs.
+- **`<Table>` component (PLA-0015)** → [`docs/c_c_table_component.md`](../docs/c_c_table_component.md) — single sanctioned table primitive in `app/components/Table.tsx`; declarative columns/rows + opt-in expander/panel/inline-edit/pagination/filters; raw `<table>` outside this component is blocked by `lint:no-raw-table` (4 tree exceptions on allow-list).
+- **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — React surface for `.pill` family; kinds `status|count|letter|tag`, semantic tones only, derives tone from state — no user-supplied colour.
 

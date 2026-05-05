@@ -1,6 +1,6 @@
 "use client";
 
-import { usePageHeaderState } from "@/app/contexts/PageHeaderContext";
+import { usePageHeaderRoot, usePageHeaderState } from "@/app/contexts/PageHeaderContext";
 import { useTheme } from "@/app/hooks/useTheme";
 import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
@@ -9,14 +9,24 @@ import ProfileBar from "@/app/components/ProfileBar";
 import { toTitleCase } from "@/app/lib/titleCase";
 
 export default function PageHeaderBar() {
-  const header = usePageHeaderState();
+  // Use the root (bottom-of-stack) header so the bar keeps showing
+  // the route the user navigated to even when an embedded subpage
+  // pushes its own header on top (e.g. Workspace Settings tabs).
+  // Falls back to the top of the stack until the root mounts and
+  // honours an explicit barTitle override on either entry.
+  const root = usePageHeaderRoot();
+  const top = usePageHeaderState();
+  const header = root ?? top;
   const { theme, toggle, mounted } = useTheme();
 
   return (
     <header className="page-header">
       <div className="page-header__left">
         <h1 className="page-header__title">
-          Vector <span className="prefix prefix-pink">+</span> {header?.title ? toTitleCase(header.title) : null}
+          Vector <span className="prefix prefix-pink">+</span> {(() => {
+            const label = header?.barTitle ?? header?.title;
+            return label ? toTitleCase(label) : null;
+          })()}
         </h1>
         {header?.breadcrumbs && <div className="page-header__breadcrumbs">{header.breadcrumbs}</div>}
       </div>

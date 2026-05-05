@@ -7,6 +7,11 @@ export interface PageHeaderState {
   subtitle?: string;
   breadcrumbs?: React.ReactNode;
   actions?: React.ReactNode;
+  // Optional override for the top header bar's "Vector + …" label.
+  // Defaults to `title` when unset. Lets a page show one label in
+  // the navigation bar (e.g. the route name) and a different
+  // title/subtitle in the in-page title row (e.g. the active tab).
+  barTitle?: string;
 }
 
 interface StackEntry extends PageHeaderState {
@@ -17,6 +22,11 @@ interface PageHeaderContextValue {
   push: (id: string, h: PageHeaderState) => void;
   pop: (id: string) => void;
   top: PageHeaderState | null;
+  // First push on the stack — the route-level header. Used by
+  // PageHeaderBar so the "Vector + …" label keeps showing the
+  // route the user navigated to, even when nested PageShells (e.g.
+  // an embedded tab) push a more specific section header on top.
+  root: PageHeaderState | null;
 }
 
 const PageHeaderContext = createContext<PageHeaderContextValue | null>(null);
@@ -36,6 +46,7 @@ export function PageHeaderProvider({ children }: { children: React.ReactNode }) 
       }),
     pop: (id) => setStack((prev) => prev.filter((e) => e.id !== id)),
     top: stack.length > 0 ? stack[stack.length - 1] : null,
+    root: stack.length > 0 ? stack[0] : null,
   }), [stack]);
 
   return <PageHeaderContext.Provider value={value}>{children}</PageHeaderContext.Provider>;
@@ -47,6 +58,15 @@ export function usePageHeaderState(): PageHeaderState | null {
   return ctx.top;
 }
 
+// Bottom-of-stack accessor. Returns the route-level header — the
+// first PageShell to push, which represents the page the user
+// navigated to. Stays stable when nested PageShells push and pop.
+export function usePageHeaderRoot(): PageHeaderState | null {
+  const ctx = useContext(PageHeaderContext);
+  if (!ctx) throw new Error("usePageHeaderRoot must be inside PageHeaderProvider");
+  return ctx.root;
+}
+
 export function usePageHeader(h: PageHeaderState) {
   const ctx = useContext(PageHeaderContext);
   if (!ctx) throw new Error("usePageHeader must be inside PageHeaderProvider");
@@ -56,9 +76,9 @@ export function usePageHeader(h: PageHeaderState) {
   const popRef = useRef(pop);
   pushRef.current = push;
   popRef.current = pop;
-  const { title, subtitle, breadcrumbs, actions } = h;
+  const { title, subtitle, breadcrumbs, actions, barTitle } = h;
   useEffect(() => {
-    pushRef.current(id, { title, subtitle, breadcrumbs, actions });
+    pushRef.current(id, { title, subtitle, breadcrumbs, actions, barTitle });
     return () => popRef.current(id);
-  }, [id, title, subtitle, breadcrumbs, actions]);
+  }, [id, title, subtitle, breadcrumbs, actions, barTitle]);
 }

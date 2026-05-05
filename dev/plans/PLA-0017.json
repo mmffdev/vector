@@ -1,0 +1,260 @@
+{
+  "id": "PLA-0017",
+  "title": "<Table> universal modes — one primitive, every table-shaped surface",
+  "date_created": "2026-05-05",
+  "date_started": null,
+  "date_last_updated": "2026-05-05",
+  "date_finished": null,
+  "scope": "<p>Take the v1 <code>&lt;Table&gt;</code> primitive landed in PLA-0015 and extend it so <strong>every</strong> table-shaped surface in the app composes from the same component. The visual contract — row height, hairline, head treatment, hover lift, expander glyph, numeric/mono cell typography, pill cells — is identical across modes; only the data shape and the capability flags change. Callers never pick a primitive; they declare what their data looks like and which capabilities they need, and <code>&lt;Table&gt;</code> dispatches to the right internal renderer.</p><ul><li><strong>Tree mode</strong> — rows may carry a <code>children</code> array; <code>&lt;Table&gt;</code> auto-indents and renders an expander column when any row has children. Multiple rows can be open simultaneously; depth unbounded. Visually identical chrome to flat mode (same hairline, same row height, same hover).</li><li><strong>Accordion flag</strong> — <code>accordion: true</code> uses the same <code>children</code> data shape as tree mode but switches open-state semantics so only one parent is open at a time. Typically depth-1 (one panel per parent row). When the user opens a second parent the previously-open one closes. Same expander glyph, same indent, same chrome.</li><li><strong>Drag-reorder flag</strong> — <code>dnd</code> prop (<code>true</code> for default behaviour, or <code>{ onReorder, scope }</code> for control) wires <code>@dnd-kit/sortable</code> internally. A grip cell appears as the leftmost column when enabled. Server is order of truth, 250 ms debounce, matches the project's existing DnD convention. Works for flat, tree, and accordion shapes.</li><li><strong>Section-header rows</strong> — a row may carry <code>kind: \"section\"</code> with a <code>label</code>; <code>&lt;Table&gt;</code> renders a column-spanning header row with a distinct treatment (no hover, slightly darker bg). Solves the LayersPreviewTable provisional case without bespoke JSX.</li><li><strong>Dense mode</strong> — <code>density=\"dense\"</code> prop tightens row padding, drops hover, removes hairlines between consecutive rows of the same group. Solves the flyout / health-panel provisional cases (ArchiveMapFlyout, ServiceHealthPanel, TopologyTreeFlyout).</li><li><strong>Migration of all 8 allow-listed callers</strong> — work-items page tree, Example2Tree, LayersTable, WizardModelCardList, LayersPreviewTable, ArchiveMapFlyout, ServiceHealthPanel, TopologyTreeFlyout. Each gets converted to the new <code>&lt;Table&gt;</code> spec and dropped from <code>raw_table_exempt.json</code>.</li><li><strong>Allow-list teardown</strong> — <code>raw_table_exempt.json</code> goes from 8 entries to 0. The hard architectural invariant becomes \"every <code>&lt;table&gt;</code> in app/ goes through Table.tsx, no exceptions\" — same posture as <code>lint:addressables</code>.</li><li><strong>Final CSS strip</strong> — once the allow-list is empty, the deprecated <code>.table-wrap</code> / <code>.table</code> / <code>.table__*</code> family and <code>.btn--row-expander</code> are deleted from <code>app/globals.css</code>. <code>.tree_accordion-dense__*</code> remains as Table's internal scaffold.</li></ul>",
+  "value": "<p>PLA-0015 unified <em>flat</em> tables. Eight surfaces stayed bespoke because the v1 <code>&lt;Table&gt;</code> couldn't represent them. The result is two-tier: nine declarative call sites that look perfect, and eight hand-rolled scaffolds that look <em>almost</em> the same but drift every time someone tweaks one. PLA-0017 closes the gap so there's exactly one place a row height, a hairline colour, an expander glyph, or a hover behaviour is defined.</p><ul><li><strong>For developers:</strong> when adding a new table-shaped surface, the choice between \"use Table\" and \"hand-roll because my data is hierarchical / draggable / has section headers\" disappears. The capability flags (<code>dnd</code>, <code>children</code>, <code>kind: \"section\"</code>, <code>density</code>) compose freely.</li><li><strong>For visual consistency:</strong> a single change to the row-height token, hairline, or hover treatment lands across every table-shaped surface simultaneously — the work-items tree, the topology flyout, the layers editor, and the flat tables all move together.</li><li><strong>For governance:</strong> <code>lint:no-raw-table</code> becomes a hard architectural invariant (zero allow-list entries) rather than a tolerated 8-file carve-out. New raw <code>&lt;table&gt;</code> JSX is structurally impossible to introduce.</li><li><strong>For the CSS budget:</strong> ~80 lines of legacy <code>.table*</code> BEM and the duplicate <code>.btn--row-expander</code> deletion-eligible from <code>globals.css</code> once the migration completes.</li></ul>",
+  "implementation_plan": [
+    "Story 00433 — <Table> tree mode: when any row carries `children: T[]`, render with auto-indent + per-row expander. Re-uses the existing expandable column kind for the toggle. Visually identical to flat-mode rows; indent applied via padding-left = depth * indentStep (default 24px). Open-state lives in the same `openRows` Set as the existing expandable.renderPanel feature. Multiple rows openable simultaneously; depth unbounded.",
+    "Story 00433b — <Table> accordion flag: same `children` data shape as tree mode but with single-open semantics. `accordion: true` (or `accordion: { initialOpenId? }`) switches the open-state model: opening a second parent closes the previously-open one. Internally a single `openId | null` instead of the tree mode's Set. Same expander glyph, same indent, same chrome — accordion is a behavioural flag on the same renderer, not a separate mode.",
+    "Story 00434 — <Table> drag-reorder flag: new `dnd` prop accepting boolean | { onReorder, scope }. Internally wraps tbody in a @dnd-kit/sortable SortableContext, prepends a grip cell, debounces 250ms, calls onReorder(orderedIds) on drop. Works on flat, tree, and accordion shapes (tree/accordion dnd is intra-parent only; cross-parent moves are out of scope for v1).",
+    "Story 00435 — <Table> section-header rows: a row whose `kind === \"section\"` is rendered as a colSpan-all header strip with distinct typography (12px uppercase, --ink-muted, --surface-sunken bg, no hover). Solves the LayersPreviewTable case. Section rows are non-interactive — no expander, no inline-edit, no dnd handle.",
+    "Story 00436 — <Table> density='dense' prop: tighter row height (32px vs 48px), tighter cell padding (8px vs 16px), no hover lift, optional `groupId` per row that suppresses the inter-row hairline within a group. Solves the ArchiveMapFlyout / ServiceHealthPanel / TopologyTreeFlyout cases.",
+    "Story 00437 — Migrate work-items tree (work-items/page.tsx + Example2Tree.tsx) onto <Table> tree mode. Drop both files from raw_table_exempt.json. Verify drag-reorder still works (uses the new `dnd` flag) and addressable substrate names still resolve.",
+    "Story 00438 — Migrate portfolio-model trees (LayersTable.tsx + WizardModelCardList.tsx + LayersPreviewTable.tsx) onto <Table>. LayersTable uses tree + dnd. LayersPreviewTable uses section-header rows. Drop all three from raw_table_exempt.json.",
+    "Story 00439 — Migrate flyouts + health panel (ArchiveMapFlyout.tsx + ServiceHealthPanel.tsx + TopologyTreeFlyout.tsx) onto <Table> with density='dense'. TopologyTreeFlyout also needs tree mode + dnd. Drop all three from raw_table_exempt.json.",
+    "Story 00440 — Allow-list teardown + final CSS strip: raw_table_exempt.json `exempt_paths` array is now empty (the file remains as a registry; emptiness is the hard invariant). Delete `.table-wrap`, `.table`, `.table__head`, `.table__row`, `.table__cell`, `.table__cell--numeric`, `.table__cell--muted`, `.table__row--selected`, and `.btn--row-expander` from `app/globals.css`. Update `docs/c_c_table_component.md` to document tree / dnd / section / density modes.",
+    "Story 00441 — /table-harness extension: add panels for tree mode, dnd flag, section-header rows, dense mode, and combinations (tree+dnd, dense+section). The harness becomes the visual regression surface for the universal-mode contract."
+  ],
+  "areas_impacted": [
+    "FE-UI: app/components/Table.tsx (tree + dnd + section + density mode internals)",
+    "FE-UI: app/(user)/work-items/page.tsx + Example2Tree.tsx (tree migration)",
+    "FE-UI: app/(user)/portfolio-model/LayersTable.tsx + WizardModelCardList.tsx + LayersPreviewTable.tsx (tree + dnd + section migration)",
+    "FE-UI: app/components/ArchiveMapFlyout.tsx + ServiceHealthPanel.tsx + TopologyTreeFlyout.tsx (dense migration)",
+    "FE-UX: app/(user)/table-harness/page.tsx (regression surface for new modes)",
+    "DEV: dev/registries/raw_table_exempt.json (teardown to empty array)",
+    "FE-UI: app/globals.css (delete .table* BEM family + .btn--row-expander)",
+    "DOC: docs/c_c_table_component.md (document tree / dnd / section / density modes)"
+  ],
+  "feature_list": [
+    "Tree mode: rows with `children` auto-indent and gain a per-row expander (multi-open)",
+    "Accordion flag: `accordion: true` reuses the tree data shape with single-open semantics",
+    "Drag-reorder flag: `dnd` prop wires @dnd-kit/sortable internally with grip cell",
+    "Section-header rows: `kind: \"section\"` renders a colSpan-all header strip",
+    "Density modes: `density=\"dense\"` tightens row height + drops hover for flyout/grid use",
+    "Universal migration: all 8 allow-listed call sites converted",
+    "Allow-list teardown: raw_table_exempt.json goes to zero entries",
+    "CSS strip: legacy .table* BEM and .btn--row-expander deleted from globals.css",
+    "Harness regression coverage: every new mode + combo exercised on /table-harness"
+  ],
+  "features_extended": [
+    "<strong>&lt;Table&gt; primitive (PLA-0015):</strong> v1 covered flat + expandable-panel + inline-edit + pagination + toolbar. v2 adds tree + accordion + dnd + section-header + density as composable capability flags.",
+    "<strong>lint:no-raw-table (PLA-0015 / Story 00427b):</strong> currently warn-via-allow-list for 8 sites; this plan reduces the allow-list to 0 so the lint becomes a hard invariant.",
+    "<strong>tree_accordion-dense__* CSS catalog:</strong> remains as Table's internal scaffold; consumers continue to ignore it. The legacy .table* family that lived alongside it is deleted at the end of this plan."
+  ],
+  "features_removed": [
+    "Bespoke <table> JSX in work-items/page.tsx, Example2Tree.tsx, LayersTable.tsx, WizardModelCardList.tsx, LayersPreviewTable.tsx, ArchiveMapFlyout.tsx, ServiceHealthPanel.tsx, TopologyTreeFlyout.tsx — all replaced by &lt;Table&gt; spec calls.",
+    ".table-wrap / .table / .table__head / .table__row / .table__cell / .table__cell--numeric / .table__cell--muted / .table__row--selected / .btn--row-expander rules in app/globals.css — deleted once the migration completes."
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "<Table> tree mode (rows with children auto-indent + expander, multi-open)",
+      "story_id": "00433",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 1.5,
+      "title": "<Table> accordion flag (single-open variant of tree shape)",
+      "story_id": "00433b",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 2,
+      "title": "<Table> drag-reorder flag (dnd prop, @dnd-kit/sortable, grip cell)",
+      "story_id": "00434",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 3,
+      "title": "<Table> section-header rows (kind: 'section', colSpan-all strip)",
+      "story_id": "00435",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 4,
+      "title": "<Table> density='dense' prop (tight rows, no hover, group hairline suppression)",
+      "story_id": "00436",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 5,
+      "title": "Migrate work-items tree (page.tsx + Example2Tree.tsx) → drop from allow-list",
+      "story_id": "00437",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 6,
+      "title": "Migrate portfolio-model trees (LayersTable + WizardModelCardList + LayersPreviewTable) → drop from allow-list",
+      "story_id": "00438",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 7,
+      "title": "Migrate flyouts + health panel (ArchiveMap + ServiceHealth + TopologyTree) with density='dense' → drop from allow-list",
+      "story_id": "00439",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 8,
+      "title": "Allow-list teardown + final .table*/.btn--row-expander strip from globals.css + docs update",
+      "story_id": "00440",
+      "card_url": null,
+      "status": "pending"
+    },
+    {
+      "order": 9,
+      "title": "/table-harness — extend with tree / dnd / section / density panels and combos",
+      "story_id": "00441",
+      "card_url": null,
+      "status": "pending"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "<Table> renders rows with `children` arrays as a tree with auto-indent and per-row expander",
+      "proven_by": "/table-harness tree panel renders depth>=3 nodes with correct indent steps; clicking the expander toggles the children",
+      "story_id": "00433",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "Tree-mode rows share the exact visual contract as flat-mode rows (same row height, hairline, hover, typography)",
+      "proven_by": "screenshot diff between flat and tree panels on /table-harness shows zero pixel difference in chrome",
+      "story_id": "00433",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2.5,
+      "criterion": "<Table accordion> opens only one parent at a time; opening a second parent closes the first",
+      "proven_by": "/table-harness accordion panel: open parent A, then click parent B → A is now closed, B is open; verified via DOM: only one panel row is mounted at any time",
+      "story_id": "00433b",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2.6,
+      "criterion": "Accordion shares the same expander glyph, indent, and row chrome as tree mode (visually indistinguishable when both are at depth 1)",
+      "proven_by": "screenshot diff between accordion and tree depth-1 panels on /table-harness shows zero pixel difference in chrome",
+      "story_id": "00433b",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "<Table> with `dnd={{ onReorder }}` shows a grip cell and calls onReorder(orderedIds) 250ms after drop",
+      "proven_by": "/table-harness dnd panel: drag a row → console.log of onReorder fires once with the new id order; no second call within 1s",
+      "story_id": "00434",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "dnd flag composes with tree mode (intra-parent reorder works on a row's children)",
+      "proven_by": "/table-harness tree+dnd panel: drag a child node within its parent → reorder fires; dragging across parents is rejected (or no-op)",
+      "story_id": "00434",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "A row with `kind: 'section'` renders as a colSpan-all header strip with --surface-sunken bg and no hover",
+      "proven_by": "/table-harness section panel: section row spans all columns; hovering does not change the bg",
+      "story_id": "00435",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "density='dense' produces 32px rows with 8px padding, no hover, and suppresses inter-row hairlines within a `groupId`",
+      "proven_by": "/table-harness dense panel: row height computed === 32; hover bg unchanged; consecutive same-groupId rows have no border-bottom",
+      "story_id": "00436",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "work-items/page.tsx and Example2Tree.tsx use <Table> tree mode and are removed from raw_table_exempt.json",
+      "proven_by": "git grep '<table' returns no hit in those two files; jq '.exempt_paths | length' on the registry decreases by 2",
+      "story_id": "00437",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "LayersTable, WizardModelCardList, LayersPreviewTable use <Table> and are removed from raw_table_exempt.json",
+      "proven_by": "git grep '<table' returns no hit in those three files; registry shrinks by 3",
+      "story_id": "00438",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "ArchiveMapFlyout, ServiceHealthPanel, TopologyTreeFlyout use <Table density='dense'> and are removed from raw_table_exempt.json",
+      "proven_by": "git grep '<table' returns no hit in those three files; registry shrinks by 3",
+      "story_id": "00439",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "raw_table_exempt.json `exempt_paths` is `[]` and lint:no-raw-table reports zero matches outside Table.tsx",
+      "proven_by": "npm run lint:no-raw-table prints `OK — 0 match(es), all exempt (0 exempt path(s))`",
+      "story_id": "00440",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "Legacy .table* BEM (.table-wrap, .table, .table__head, .table__row, .table__cell, .table__cell--numeric, .table__cell--muted, .table__row--selected) and .btn--row-expander deleted from app/globals.css",
+      "proven_by": "git grep -nE '^\\.table(-wrap|__|,|\\s|\\b)|^\\.btn--row-expander' app/globals.css returns zero hits",
+      "story_id": "00440",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 12,
+      "criterion": "docs/c_c_table_component.md documents tree / dnd / section / density modes with code examples and the empty-allow-list invariant",
+      "proven_by": "manual read shows four new sections; /writeweb / librarian audit confirms naming + flag schema accurate against Table.tsx source",
+      "story_id": "00440",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 13,
+      "criterion": "/table-harness has dedicated panels for tree, accordion, dnd, section, dense, and at least two combo panels (tree+dnd, dense+section)",
+      "proven_by": "manual visit to /table-harness shows all six new panels render without runtime errors",
+      "story_id": "00441",
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    "Migrating the work-items tree is high-risk: it has bespoke drag-handles, per-row hover state, and a registered addressable name per leaf. The new dnd flag must preserve every existing affordance or the regression will be visible. Mitigation: 00437 ships behind a feature flag; both old and new render are kept side-by-side on /table-harness for one cycle before the old code is deleted.",
+    "Section-header rows in LayersPreviewTable today carry domain semantics (sticky-tier headers); converting to a generic `kind: 'section'` row may lose that. Mitigation: 00438 inspects each section's behaviour first; if stickiness is load-bearing it becomes a sub-prop on the section row (sticky?: boolean).",
+    "@dnd-kit's SortableContext nesting (tree + dnd) is an under-tested combination. Mitigation: 00434 explicitly scopes dnd to intra-parent only for v1; cross-parent moves are out of scope and called out in the docs.",
+    "Deleting .table* from globals.css is a one-shot strip — if any allow-list caller wasn't fully migrated, the visual regression hits production immediately. Mitigation: 00440 runs lint:no-raw-table as a precondition (must report 0 hits outside Table.tsx) before the strip, and a screenshot diff against the previous deploy gates the merge."
+  ],
+  "out_of_scope": [
+    "Cross-parent drag-reorder in tree mode (intra-parent only for v1).",
+    "Column sort and column resize handles — explicit non-goals from PLA-0015 v1; they remain non-goals.",
+    "Virtualisation for huge row counts — the largest current call site (work-items tree) tops out at ~1000 rows and renders fine without virtualisation. If a future caller hits the wall, that's a separate plan.",
+    "Migration of dev-tab tables (under /dev) — those use the .dui-table primitive which is a separate catalog; this plan covers app/ only."
+  ],
+  "status": "active",
+  "phase_id": "PH-0001"
+}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode 
 import { useTabState } from "@/app/hooks/useTabState";
 import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
+import Table from "@/app/components/Table";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
 import { useTheme } from "@/app/hooks/useTheme";
@@ -1215,8 +1216,7 @@ function ThemesTab() {
 
       {renderPaginationBar("top")}
 
-      {/* Card grid — standard table-wrap container, 4 cols, hairline dividers */}
-      <div className="table-wrap theme-lib__table-wrap">
+      <div className="theme-lib__table-wrap">
         <div className="theme-lib__scroll">
           {rows.length === 0 ? (
             <div className="theme-lib__empty">
@@ -1358,36 +1358,41 @@ export default function ThemePage() {
       {sections.map((section) => (
         <div key={section} className="theme-section">
           <h3 className="theme-section__title">{section}</h3>
-          <div className="table-wrap">
-            <table className="table">
-              <thead className="table__head">
-                <tr>
-                  <th className="table__cell">Control</th>
-                  <th className="table__cell">CSS token</th>
-                  <th className="table__cell">Light default</th>
-                  <th className="table__cell">Dark default</th>
-                  <th className="table__cell">Status</th>
-                  <th className="table__cell">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ARTEFACTS.filter((a) => a.section === section).map((a) => (
-                  <tr key={`${a.section}-${a.control}`} className="table__row">
-                    <td className="table__cell">{a.control}</td>
-                    <td className="table__cell"><code>{a.token}</code></td>
-                    <td className="table__cell table__cell--muted">{a.light}</td>
-                    <td className="table__cell table__cell--muted">{a.dark}</td>
-                    <td className="table__cell">
-                      <span className={`theme-status theme-status--${a.status}`}>
-                        {STATUS_LABEL[a.status]}
-                      </span>
-                    </td>
-                    <td className="table__cell table__cell--muted">{a.notes ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table<Artefact>
+            pageId="theme"
+            slot={`artefacts__${section.toLowerCase().replace(/\s+/g, "_")}`}
+            ariaLabel={`Theme artefacts — ${section}`}
+            rows={ARTEFACTS.filter((a) => a.section === section)}
+            rowKey={(a) => `${a.section}-${a.control}`}
+            columns={[
+              { key: "control", header: "Control" },
+              {
+                key: "token",
+                header: "CSS token",
+                kind: "custom",
+                render: (a) => <code>{a.token}</code>,
+              },
+              { key: "light", header: "Light default" },
+              { key: "dark", header: "Dark default" },
+              {
+                key: "status",
+                header: "Status",
+                width: 130,
+                kind: "custom",
+                render: (a) => (
+                  <span className={`theme-status theme-status--${a.status}`}>
+                    {STATUS_LABEL[a.status]}
+                  </span>
+                ),
+              },
+              {
+                key: "notes",
+                header: "Notes",
+                kind: "custom",
+                render: (a) => a.notes ?? "",
+              },
+            ]}
+          />
         </div>
       ))}
         </>

@@ -2,23 +2,23 @@
 
 /**
  * /workspace-settings — Story 00101 restyle.
- * gadmin-only tenant administration. The Users tab renders a
- * Vector .table-wrap + .table — sunken thead with eyebrow column
- * heads, 48px rows, hover lifts to --surface-sunken. Status
+ * gadmin-only tenant administration. Tables compose from the
+ * canonical .tree_accordion-dense__* catalog — sunken thead with
+ * sticky header (overflow:auto on the scroll wrapper). Status is
  * conveyed by .pill variants only (active=success, inactive=neutral,
- * pending pw=warning). Dates render in --ink-muted with
- * tabular-nums. No box-shadow, no gradient, no lime-green; one
- * primary button per region (the "+ New user" toolbar action).
+ * pending pw=warning). No box-shadow, no gradient, no lime-green;
+ * one primary button per region (the "+ New user" toolbar action).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { MdOutlineArrowForwardIos, MdOutlineEdit } from "react-icons/md";
+import { MdOutlineEdit } from "react-icons/md";
 import { useTabState } from "@/app/hooks/useTabState";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
+import Table from "@/app/components/Table";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
@@ -77,6 +77,37 @@ interface RoleSummary {
 
 const TABS = ["organization", "workspaces", "users", "permissions", "topology", "portfolio_model", "work_items"] as const;
 
+const TAB_HEADERS: Record<typeof TABS[number], { title: string; subtitle: string }> = {
+  organization: {
+    title: "Organization",
+    subtitle: "Workspace identity, region, and support contact",
+  },
+  workspaces: {
+    title: "Workspaces",
+    subtitle: "Active and archived workspaces in this tenant",
+  },
+  users: {
+    title: "Users",
+    subtitle: "Invite, manage, and assign roles to tenant members",
+  },
+  permissions: {
+    title: "Permissions",
+    subtitle: "Capabilities granted to each role in this tenant",
+  },
+  topology: {
+    title: "Topology",
+    subtitle: "Federated org canvas — offices, teams, and reporting lines",
+  },
+  portfolio_model: {
+    title: "Portfolio Model",
+    subtitle: "Adopt a model or preview your subscription's adopted bundle",
+  },
+  work_items: {
+    title: "Work Items",
+    subtitle: "Flows for system, portfolio, and custom artefact types",
+  },
+};
+
 export default function WorkspaceSettingsPage() {
   const { user } = useAuth();
   const canAdminWorkspace = useHasPermission("workspace.archive");
@@ -94,8 +125,10 @@ export default function WorkspaceSettingsPage() {
   // tab so the workspace identity (display name, region, support
   // contact) is visible at a glance. Users + Permissions remain
   // the operational tabs that come after.
+  const header = TAB_HEADERS[tab];
+
   return (
-    <PageShell title="Workspace Settings" subtitle="Organization, user management, and tenant-level configuration">
+    <PageShell title={header.title} subtitle={header.subtitle} barTitle="Workspace Settings">
       <SecondaryNavigation<typeof TABS[number]>
         ariaLabel="Workspace settings sections"
         pageId="workspace-settings"
@@ -618,8 +651,7 @@ function OrganizationTab() {
 // slug_taken 409 inline (an archived workspace may share the slug —
 // the gate is "live workspaces only"). After every mutation we call
 // emitWorkspacesChanged() so the topology workspace switcher (story
-// 00379) refetches without a page reload. Dates render in --ink-muted
-// via .table__cell--muted, mirroring the Users tab's tabular-nums style.
+// 00379) refetches without a page reload.
 //
 // PLA-0006 / story 00381 — Archived Workspaces section.
 // When the caller holds `workspace.view_archived` we mount a second
@@ -710,41 +742,55 @@ function WorkspacesTab() {
 
       {err && <div className="form__error">{err}</div>}
 
-      {rows && (
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">Name</th>
-                <th className="table__cell">Slug</th>
-                <th className="table__cell">Created</th>
-                <th className="table__cell" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((w) => (
-                <WorkspaceRow
-                  key={w.id}
-                  w={w}
-                  isEditing={editingId === w.id}
-                  canArchive={canArchive}
-                  onStartEdit={() => setEditingId(w.id)}
-                  onCancelEdit={() => setEditingId(null)}
-                  onRename={(name) => renameWorkspace(w.id, name)}
-                  onArchive={() => archiveWorkspace(w.id)}
-                />
-              ))}
-              {rows.length === 0 && (
-                <tr className="table__row">
-                  <td className="table__cell table__cell--muted" colSpan={4}>
-                    No live workspaces. Use &quot;+ New workspace&quot; to create one.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Table<Workspace>
+        pageId="workspace-settings"
+        slot="workspaces"
+        ariaLabel="Workspaces"
+        rows={rows}
+        rowKey={(w) => w.id}
+        loading={!rows}
+        empty='No live workspaces. Use "+ New workspace" to create one.'
+        columns={[
+          {
+            key: "name",
+            header: "Name",
+            kind: "custom",
+            render: (w) => (
+              <WorkspaceNameCell
+                w={w}
+                isEditing={editingId === w.id}
+                canArchive={canArchive}
+                onStartEdit={() => setEditingId(w.id)}
+                onCancelEdit={() => setEditingId(null)}
+                onRename={(name) => renameWorkspace(w.id, name)}
+              />
+            ),
+          },
+          { key: "slug", header: "Slug", width: 200, kind: "mono" },
+          {
+            key: "created",
+            header: "Created",
+            width: 140,
+            kind: "custom",
+            render: (w) => new Date(w.created_at).toLocaleDateString(),
+          },
+          {
+            key: "actions",
+            header: "",
+            width: 200,
+            kind: "custom",
+            render: (w) => (
+              <WorkspaceActionsCell
+                w={w}
+                isEditing={editingId === w.id}
+                canArchive={canArchive}
+                onStartEdit={() => setEditingId(w.id)}
+                onArchive={() => archiveWorkspace(w.id)}
+              />
+            ),
+          },
+        ]}
+      />
 
       {/* 00381 — Archived section. Entirely hidden (heading, error,
           and table all suppressed) when the caller lacks
@@ -788,45 +834,45 @@ function ArchivedWorkspacesSection({
       <h3 className="eyebrow">Archived workspaces</h3>
       {err && <div className="form__error">{err}</div>}
       {rows && (
-        <div className="table-wrap">
-          <table className="table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell">Name</th>
-                <th className="table__cell">Slug</th>
-                <th className="table__cell">Archived</th>
-                <th className="table__cell" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((w) => (
-                <ArchivedWorkspaceRow
-                  key={w.id}
+        <Table<Workspace>
+          pageId="workspace-settings"
+          slot="archived_workspaces"
+          ariaLabel="Archived workspaces"
+          rows={rows}
+          rowKey={(w) => w.id}
+          empty="No archived workspaces."
+          columns={[
+            { key: "name", header: "Name" },
+            { key: "slug", header: "Slug", width: 200, kind: "mono" },
+            {
+              key: "archived",
+              header: "Archived",
+              width: 140,
+              kind: "custom",
+              render: (w) =>
+                w.archived_at ? new Date(w.archived_at).toLocaleDateString() : "—",
+            },
+            {
+              key: "actions",
+              header: "",
+              width: 160,
+              kind: "custom",
+              render: (w) => (
+                <ArchivedWorkspaceActionsCell
                   w={w}
                   canRestore={canRestore}
                   onRestore={() => onRestore(w.id)}
                 />
-              ))}
-              {rows.length === 0 && (
-                <tr className="table__row">
-                  <td className="table__cell table__cell--muted" colSpan={4}>
-                    No archived workspaces.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ),
+            },
+          ]}
+        />
       )}
     </>
   );
 }
 
-// ArchivedWorkspaceRow — story 00381. Renders a single archived row.
-// Restore button confirms via window.confirm() before calling the
-// parent — symmetrical with WorkspaceRow's archive confirm so the
-// two destructive-ish actions feel the same.
-function ArchivedWorkspaceRow({
+function ArchivedWorkspaceActionsCell({
   w,
   canRestore,
   onRestore,
@@ -837,6 +883,8 @@ function ArchivedWorkspaceRow({
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  if (!canRestore) return null;
 
   async function restore() {
     if (!confirm(`Restore workspace "${w.name}" to the live list?`)) return;
@@ -851,40 +899,26 @@ function ArchivedWorkspaceRow({
     }
   }
 
-  const archived = w.archived_at ? new Date(w.archived_at).toLocaleDateString() : "—";
-
   return (
-    <tr className="table__row">
-      <td className="table__cell">{w.name}</td>
-      <td className="table__cell t-mono">{w.slug}</td>
-      <td className="table__cell table__cell--muted">{archived}</td>
-      <td className="table__cell">
-        {canRestore && (
-          <div className="table__cell-meta">
-            <button
-              type="button"
-              className="btn btn--secondary btn--sm"
-              onClick={restore}
-              disabled={busy}
-            >
-              {busy ? "Restoring…" : "Restore"}
-            </button>
-            {err && <span className="form__error">{err}</span>}
-          </div>
-        )}
-      </td>
-    </tr>
+    <div className="u-row u-row--gap-2">
+      <button
+        type="button"
+        className="btn btn--secondary btn--sm"
+        onClick={restore}
+        disabled={busy}
+      >
+        {busy ? "Restoring…" : "Restore"}
+      </button>
+      {err && <span className="form__error">{err}</span>}
+    </div>
   );
 }
 
-function WorkspaceRow({
+function WorkspaceNameCell({
   w,
   isEditing,
-  canArchive,
-  onStartEdit,
   onCancelEdit,
   onRename,
-  onArchive,
 }: {
   w: Workspace;
   isEditing: boolean;
@@ -892,15 +926,11 @@ function WorkspaceRow({
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onRename: (name: string) => Promise<void>;
-  onArchive: () => Promise<void>;
 }) {
   const [name, setName] = useState(w.name);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [archiveBusy, setArchiveBusy] = useState(false);
 
-  // Re-sync local edit buffer when the row swaps in/out of edit mode
-  // or when the underlying name changes from a reload.
   useEffect(() => {
     if (!isEditing) {
       setName(w.name);
@@ -925,76 +955,78 @@ function WorkspaceRow({
     }
   }
 
+  if (!isEditing) return <span>{w.name}</span>;
+  return (
+    <div className="u-row u-row--gap-2">
+      <input
+        type="text"
+        className="form__input form__input--sm"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); save(); }
+          if (e.key === "Escape") { e.preventDefault(); onCancelEdit(); }
+        }}
+      />
+      <button type="button" className="btn btn--primary btn--sm" onClick={save} disabled={busy}>
+        {busy ? "Saving…" : "Save"}
+      </button>
+      <button type="button" className="btn btn--secondary btn--sm" onClick={onCancelEdit} disabled={busy}>
+        Cancel
+      </button>
+      {err && <span className="form__error">{err}</span>}
+    </div>
+  );
+}
+
+function WorkspaceActionsCell({
+  w,
+  isEditing,
+  canArchive,
+  onStartEdit,
+  onArchive,
+}: {
+  w: Workspace;
+  isEditing: boolean;
+  canArchive: boolean;
+  onStartEdit: () => void;
+  onArchive: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
   async function archive() {
     if (!confirm(`Archive workspace "${w.name}"?`)) return;
-    setArchiveBusy(true);
+    setBusy(true);
     try {
       await onArchive();
     } catch (e) {
       setErr(e instanceof ApiError ? String(e.body ?? `Error ${e.status}`) : "Archive failed");
     } finally {
-      setArchiveBusy(false);
+      setBusy(false);
     }
   }
 
-  const created = new Date(w.created_at).toLocaleDateString();
-
+  if (isEditing) return null;
   return (
-    <tr className="table__row">
-      <td className="table__cell">
-        {isEditing ? (
-          <div className="table__cell-meta">
-            <input
-              type="text"
-              className="form__input form__input--sm"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); save(); }
-                if (e.key === "Escape") { e.preventDefault(); onCancelEdit(); }
-              }}
-            />
-            <button type="button" className="btn btn--primary btn--sm" onClick={save} disabled={busy}>
-              {busy ? "Saving…" : "Save"}
-            </button>
-            <button type="button" className="btn btn--secondary btn--sm" onClick={onCancelEdit} disabled={busy}>
-              Cancel
-            </button>
-            {err && <span className="form__error">{err}</span>}
-          </div>
-        ) : (
-          <span>{w.name}</span>
-        )}
-      </td>
-      <td className="table__cell t-mono">{w.slug}</td>
-      <td className="table__cell table__cell--muted">{created}</td>
-      <td className="table__cell">
-        {!isEditing && (
-          <div className="table__cell-meta">
-            <button
-              type="button"
-              className="btn btn--icon btn--ghost btn--sm"
-              aria-label="Rename workspace"
-              title="Rename workspace"
-              onClick={onStartEdit}
-            >
-              <MdOutlineEdit size={14} />
-            </button>
-            {canArchive && (
-              <button
-                type="button"
-                className="btn btn--danger btn--sm"
-                onClick={archive}
-                disabled={archiveBusy}
-              >
-                {archiveBusy ? "Archiving…" : "Archive"}
-              </button>
-            )}
-          </div>
-        )}
-      </td>
-    </tr>
+    <div className="u-row u-row--gap-2">
+      <button
+        type="button"
+        className="btn btn--icon btn--ghost btn--sm"
+        aria-label="Rename workspace"
+        title="Rename workspace"
+        onClick={onStartEdit}
+      >
+        <MdOutlineEdit size={14} />
+      </button>
+      {canArchive && (
+        <button type="button" className="btn btn--danger btn--sm" onClick={archive} disabled={busy}>
+          {busy ? "Archiving…" : "Archive"}
+        </button>
+      )}
+      {err && <span className="form__error">{err}</span>}
+    </div>
   );
 }
 
@@ -1116,9 +1148,6 @@ function UsersTab() {
   const [pageSize, setPageSize]     = useState<PageSize>(25);
   const [page, setPage]             = useState(1);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const rowRefs = useRef<Map<string, HTMLTableRowElement | null>>(new Map());
-
   const load = useCallback(async () => {
     setErr(null);
     try {
@@ -1180,31 +1209,12 @@ function UsersTab() {
   // Reset to page 1 whenever filters change.
   useEffect(() => { setPage(1); }, [search, deptFilter, roleFilter, externalOnly, pageSize]);
 
-  // Page slice.
+  // Page meta — slicing now lives inside <Table>; we only need total + safePage
+  // for the toolbar meta string and the pagination config wiring.
   const total      = filtered?.length ?? 0;
   const sizeNumber = pageSize === "all" ? Math.max(total, 1) : pageSize;
   const pageCount  = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / sizeNumber));
   const safePage   = Math.min(page, pageCount);
-  const pageRows   = useMemo(() => {
-    if (!filtered) return null;
-    if (pageSize === "all") return filtered;
-    const start = (safePage - 1) * sizeNumber;
-    return filtered.slice(start, start + sizeNumber);
-  }, [filtered, pageSize, sizeNumber, safePage]);
-
-  function toggleExpand(id: string) {
-    setExpandedId((cur) => {
-      const next = cur === id ? null : id;
-      if (next) {
-        // Anchor: scroll the opened row to the top of the viewport on next paint.
-        requestAnimationFrame(() => {
-          const el = rowRefs.current.get(next);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      }
-      return next;
-    });
-  }
 
   async function patchUser(id: string, patch: Partial<{
     role: AdminUserRole; is_active: boolean;
@@ -1224,144 +1234,161 @@ function UsersTab() {
 
   async function deleteUser(id: string) {
     await api(`/api/admin/users/${id}`, { method: "DELETE" });
-    setExpandedId(null);
     await load();
   }
 
+  const usersFiltered = filtered;
+  const paginationConfig =
+    pageSize === "all" || total <= pageSize
+      ? undefined
+      : { pageSize, page: safePage - 1, onPageChange: (n: number) => setPage(n + 1) };
+
   return (
     <div>
-      <div className="toolbar toolbar--users">
-        <div className="toolbar__filters">
-          <input
-            type="search"
-            className="form__input form__input--sm"
-            placeholder="Search name, email, department…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search users"
-          />
-          <select
-            className="form__select form__select--sm"
-            value={deptFilter}
-            onChange={(e) => setDeptFilter(e.target.value)}
-            aria-label="Filter by department"
-          >
-            <option value="">All departments</option>
-            {departments.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-          <select
-            className="form__select form__select--sm"
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            aria-label="Filter by role"
-          >
-            <option value="">All roles</option>
-            {(visibleRoles ?? []).map((r) => (
-              <option key={r.id} value={r.code}>
-                {r.label}{r.is_external ? " (external)" : ""}
-              </option>
-            ))}
-          </select>
-          <label className="form__label form__label--inline" title="Show only users on roles flagged is_external">
-            <input
-              type="checkbox"
-              checked={externalOnly}
-              onChange={(e) => setExternalOnly(e.target.checked)}
-            />
-            <span>External only</span>
-          </label>
-          <select
-            className="form__select form__select--sm"
-            value={String(pageSize)}
-            onChange={(e) => {
-              const v = e.target.value;
-              setPageSize(v === "all" ? "all" : (Number(v) as PageSize));
-            }}
-            aria-label="Page size"
-          >
-            <option value="all">All</option>
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
-        <div className="toolbar__meta">
-          {filtered ? `${total} user${total === 1 ? "" : "s"}` : "Loading…"}
-        </div>
-        <button onClick={() => setShowCreate(true)} className="btn btn--primary">
-          + New user
-        </button>
-      </div>
-
       {err && <div className="form__error">{err}</div>}
 
-      {pageRows && (
-        <div className="table-wrap">
-          <table className="table users-table">
-            <thead className="table__head">
-              <tr className="table__row">
-                <th className="table__cell users-table__th--toggle" aria-label="Expand" />
-                <th className="table__cell">Last name</th>
-                <th className="table__cell">First name</th>
-                <th className="table__cell">Email</th>
-                <th className="table__cell">Department</th>
-                <th className="table__cell">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((u) => {
-                const isOpen = expandedId === u.id;
-                return (
-                  <FragmentRow
-                    key={u.id}
-                    u={u}
-                    isOpen={isOpen}
-                    isExternal={!!roleByCode.get(u.role)?.is_external}
-                    onToggle={() => toggleExpand(u.id)}
-                    rowRef={(el) => { rowRefs.current.set(u.id, el); }}
-                    onSave={patchUser}
-                    onIssueReset={issueReset}
-                    onDelete={() => deleteUser(u.id)}
+      {usersFiltered && (
+        <Table<AdminUser>
+          pageId="workspace-settings"
+          slot="users"
+          ariaLabel="Users"
+          rows={usersFiltered}
+          rowKey={(u) => u.id}
+          empty="No users match the current filters."
+          expandable={{
+            renderPanel: (u) => (
+              <UserEditPanel
+                u={u}
+                onSave={patchUser}
+                onIssueReset={issueReset}
+                onDelete={() => deleteUser(u.id)}
+              />
+            ),
+            canExpand: () => true,
+          }}
+          pagination={paginationConfig}
+          toolbar={{
+            search: {
+              value: search,
+              onChange: setSearch,
+              placeholder: "Search name, email, department…",
+            },
+            filters: [
+              {
+                key: "department",
+                label: "Department",
+                value: deptFilter,
+                onChange: setDeptFilter,
+                options: [
+                  { value: "", label: "All departments" },
+                  ...departments.map((d) => ({ value: d, label: d })),
+                ],
+              },
+              {
+                key: "role",
+                label: "Role",
+                value: roleFilter,
+                onChange: (v) => setRoleFilter(v as "" | AdminUserRole),
+                options: [
+                  { value: "", label: "All roles" },
+                  ...(visibleRoles ?? []).map((r) => ({
+                    value: r.code,
+                    label: `${r.label}${r.is_external ? " (external)" : ""}`,
+                  })),
+                ],
+              },
+            ],
+            meta: filtered ? `${total} user${total === 1 ? "" : "s"}` : "Loading…",
+            actions: (
+              <>
+                <label
+                  className="form__label form__label--inline"
+                  title="Show only users on roles flagged is_external"
+                >
+                  <input
+                    type="checkbox"
+                    checked={externalOnly}
+                    onChange={(e) => setExternalOnly(e.target.checked)}
                   />
-                );
-              })}
-              {pageRows.length === 0 && (
-                <tr className="table__row">
-                  <td className="table__cell table__cell--muted" colSpan={6}>
-                    No users match the current filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {pageRows && pageSize !== "all" && pageCount > 1 && (
-        <div className="users-table__pagination">
-          <button
-            type="button"
-            className="btn btn--secondary btn--sm"
-            disabled={safePage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Prev
-          </button>
-          <span className="users-table__pagination-meta">
-            Page {safePage} of {pageCount}
-          </span>
-          <button
-            type="button"
-            className="btn btn--secondary btn--sm"
-            disabled={safePage >= pageCount}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-          >
-            Next
-          </button>
-        </div>
+                  <span>External only</span>
+                </label>
+                <select
+                  className="form__select form__select--sm"
+                  value={String(pageSize)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setPageSize(v === "all" ? "all" : (Number(v) as PageSize));
+                  }}
+                  aria-label="Page size"
+                >
+                  <option value="all">All</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+                <button onClick={() => setShowCreate(true)} className="btn btn--primary">
+                  + New user
+                </button>
+              </>
+            ),
+          }}
+          columns={[
+            { key: "expander", width: 40, kind: "expander" },
+            {
+              key: "last_name",
+              header: "Last name",
+              width: 160,
+              kind: "custom",
+              render: (u) => u.last_name ?? <span>—</span>,
+            },
+            {
+              key: "first_name",
+              header: "First name",
+              width: 160,
+              kind: "custom",
+              render: (u) => u.first_name ?? <span>—</span>,
+            },
+            {
+              key: "email",
+              header: "Email",
+              kind: "custom",
+              render: (u) => (
+                <div className="u-row u-row--gap-2">
+                  <span>{u.email}</span>
+                  {roleByCode.get(u.role)?.is_external && (
+                    <span
+                      className="pill pill--neutral"
+                      title="Role is flagged external (e.g. partner / contractor)"
+                    >
+                      external
+                    </span>
+                  )}
+                  {u.force_password_change && (
+                    <span className="pill pill--warning" title="Must change password on next login">
+                      pending pw
+                    </span>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: "department",
+              header: "Department",
+              width: 200,
+              kind: "custom",
+              render: (u) => u.department ?? <span>—</span>,
+            },
+            {
+              key: "status",
+              header: "Status",
+              width: 110,
+              kind: "pill",
+              pillVariant: (u) => (u.is_active ? "success" : "neutral"),
+              pillLabel: (u) => (u.is_active ? "Active" : "Inactive"),
+            },
+          ]}
+        />
       )}
 
       {showCreate && (
@@ -1377,93 +1404,6 @@ function UsersTab() {
 
       {resetUrl && <ResetLinkModal email={resetUrl.email} url={resetUrl.url} onClose={() => setResetUrl(null)} />}
     </div>
-  );
-}
-
-function FragmentRow({
-  u,
-  isOpen,
-  isExternal,
-  onToggle,
-  rowRef,
-  onSave,
-  onIssueReset,
-  onDelete,
-}: {
-  u: AdminUser;
-  isOpen: boolean;
-  isExternal: boolean;
-  onToggle: () => void;
-  rowRef: (el: HTMLTableRowElement | null) => void;
-  onSave: (id: string, patch: Partial<{ role: AdminUserRole; is_active: boolean; first_name: string; last_name: string; department: string }>) => Promise<void>;
-  onIssueReset: (id: string) => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  return (
-    <>
-      <tr ref={rowRef} className={`table__row users-table__row${isOpen ? " users-table__row--open" : ""}`}>
-        <td className="table__cell users-table__toggle-cell">
-          <button
-            type="button"
-            className="btn btn--icon btn--row-expander"
-            aria-label={isOpen ? "Collapse" : "Expand"}
-            aria-expanded={isOpen}
-            onClick={onToggle}
-          >
-            <MdOutlineArrowForwardIos
-              size={12}
-              className={"users-table__expander-icon" + (isOpen ? " users-table__expander-icon--open" : "")}
-            />
-          </button>
-        </td>
-        <td className="table__cell" onClick={onToggle}>
-          {u.last_name ?? <span className="table__cell--muted">—</span>}
-        </td>
-        <td className="table__cell" onClick={onToggle}>
-          {u.first_name ?? <span className="table__cell--muted">—</span>}
-        </td>
-        <td className="table__cell" onClick={onToggle}>
-          <div className="table__cell-meta">
-            <span>{u.email}</span>
-            {isExternal && (
-              <span className="pill pill--neutral" title="Role is flagged external (e.g. partner / contractor)">
-                external
-              </span>
-            )}
-            {u.force_password_change && (
-              <span className="pill pill--warning" title="Must change password on next login">
-                pending pw
-              </span>
-            )}
-          </div>
-        </td>
-        <td className="table__cell" onClick={onToggle}>
-          {u.department ?? <span className="table__cell--muted">—</span>}
-        </td>
-        <td className="table__cell users-table__status-cell" onClick={onToggle}>
-          <span
-            className={
-              "users-table__status-badge" +
-              (u.is_active ? " users-table__status-badge--active" : " users-table__status-badge--inactive")
-            }
-          >
-            {u.is_active ? "Active" : "Inactive"}
-          </span>
-        </td>
-      </tr>
-      {isOpen && (
-        <tr className="table__row users-table__panel-row">
-          <td className="table__cell users-table__panel-cell" colSpan={6}>
-            <UserEditPanel
-              u={u}
-              onSave={onSave}
-              onIssueReset={onIssueReset}
-              onDelete={onDelete}
-            />
-          </td>
-        </tr>
-      )}
-    </>
   );
 }
 
@@ -1815,12 +1755,11 @@ function ResetLinkModal({ email, url, onClose }: { email: string; url: string; o
   );
 }
 
-// Story 00102 — Permissions tab uses a Vector .table-wrap +
-// .table to render the role/capability matrix. Cells render a
-// .pill (--success grant, --neutral deny) so granted vs denied is
-// visible at a glance without colour saturation. Header row uses
-// the sunken thead with eyebrow column heads from the base table
-// block. The backend grid (/api/admin/permissions) will hydrate
+// Story 00102 — Permissions tab renders the role/capability matrix
+// via the canonical .tree_accordion-dense__* table catalog. Cells
+// render a .pill (--success grant, --neutral deny) so granted vs
+// denied is visible at a glance without colour saturation. The
+// backend grid (/api/admin/permissions) will hydrate
 // these cells once the projects module ships; for now the matrix
 // is rendered from STATIC defaults so the visual contract is
 // locked.
@@ -1844,48 +1783,36 @@ const DEFAULT_GRID: Record<AdminUserRole, Record<string, boolean>> = {
 };
 
 function PermissionsTab() {
+  const columns = [
+    { key: "label", header: "Capability", width: 220 },
+    ...ROLES.map((role) => ({
+      key: role,
+      header: role,
+      width: 120,
+      kind: "pill" as const,
+      pillVariant: (row: { key: string }) =>
+        (DEFAULT_GRID[role][row.key] ? "success" : "neutral") as "success" | "neutral",
+      pillLabel: (row: { key: string }) => (DEFAULT_GRID[role][row.key] ? "Allow" : "Deny"),
+    })),
+  ];
+
   return (
-    <div>
-      <div className="toolbar">
-        <div className="toolbar__meta">
-          {CAPABILITIES.length} capabilities &times; {ROLES.length} roles
-        </div>
-        <button type="button" className="btn btn--primary" disabled>
-          Save changes
-        </button>
-      </div>
-      <div className="table-wrap">
-        <table className="table">
-          <thead className="table__head">
-            <tr className="table__row">
-              <th className="table__cell">Capability</th>
-              {ROLES.map((r) => (
-                <th key={r} className="table__cell">
-                  {r}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {CAPABILITIES.map((c) => (
-              <tr key={c.key} className="table__row">
-                <td className="table__cell">{c.label}</td>
-                {ROLES.map((r) => {
-                  const granted = DEFAULT_GRID[r][c.key];
-                  return (
-                    <td key={r} className="table__cell">
-                      <span className={`pill ${granted ? "pill--success" : "pill--neutral"}`}>
-                        {granted ? "Allow" : "Deny"}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Table<{ key: string; label: string }>
+      pageId="workspace-settings"
+      slot="permissions"
+      ariaLabel="Permissions"
+      columns={columns}
+      rows={CAPABILITIES}
+      rowKey={(r) => r.key}
+      toolbar={{
+        meta: `${CAPABILITIES.length} capabilities × ${ROLES.length} roles`,
+        actions: (
+          <button type="button" className="btn btn--primary" disabled>
+            Save changes
+          </button>
+        ),
+      }}
+    />
   );
 }
 
@@ -2004,39 +1931,35 @@ function WorkItemsTab() {
             <div className="u-stack--gap-3">
               {section.groups.map((g) => (
                 <div key={g.target_id}>
-                  <div className="toolbar">
-                    <div className="toolbar__meta"><strong>{g.target_label}</strong></div>
-                  </div>
-                  <div className="tree_accordion-dense__scroll">
-                    <table className="tree_accordion-dense__table" aria-label={g.target_label}>
-                      <colgroup>
-                        <col style={{ width: 56 }} />
-                        <col style={{ width: 200 }} />
-                        <col style={{ width: 160 }} />
-                        <col />
-                      </colgroup>
-                      <thead className="tree_accordion-dense__head">
-                        <tr>
-                          <th className="tree_accordion-dense__th tree_accordion-dense__th--numeric">#</th>
-                          <th className="tree_accordion-dense__th">Name</th>
-                          <th className="tree_accordion-dense__th">Canonical</th>
-                          <th className="tree_accordion-dense__th">Description</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(g.states ?? []).map((s) => (
-                          <tr key={s.id} className="tree_accordion-dense__row">
-                            <td className="tree_accordion-dense__cell tree_accordion-dense__cell--numeric tree_accordion-dense__cell--mono">{s.flow_position}</td>
-                            <td className="tree_accordion-dense__cell">{s.name}</td>
-                            <td className="tree_accordion-dense__cell">
-                              <span className="pill pill--neutral">{s.canonical_code}</span>
-                            </td>
-                            <td className="tree_accordion-dense__cell">{s.description ?? ""}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <Table<FlowState>
+                    pageId="workspace-settings"
+                    slot={`flows__${g.target_id.replace(/-/g, "_")}`}
+                    ariaLabel={g.target_label}
+                    rows={g.states ?? []}
+                    rowKey={(s) => s.id}
+                    toolbar={{ meta: <strong>{g.target_label}</strong> }}
+                    cellClassName={(_s, c) =>
+                      c.key === "flow_position" ? "tree_accordion-dense__cell--mono" : undefined
+                    }
+                    columns={[
+                      { key: "flow_position", header: "#", width: 56, kind: "numeric" },
+                      { key: "name", header: "Name", width: 200 },
+                      {
+                        key: "canonical_code",
+                        header: "Canonical",
+                        width: 160,
+                        kind: "pill",
+                        pillVariant: () => "neutral",
+                        pillLabel: (s) => s.canonical_code,
+                      },
+                      {
+                        key: "description",
+                        header: "Description",
+                        kind: "custom",
+                        render: (s) => s.description ?? "",
+                      },
+                    ]}
+                  />
                 </div>
               ))}
             </div>
