@@ -98,16 +98,25 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
   }, []);
 
   return (
-    <div className="dui-doc" ref={bodyRef}>
-      <p>
-        <strong>Date Created</strong> {fmtDate(plan.date_created)}
-        {" · "}
-        <strong>Date Started</strong> {fmtDate(plan.date_started)}
-        {" · "}
-        <strong>Last Updated</strong> {fmtDate(plan.date_last_updated)}
-        {" · "}
-        <strong>Date Finished</strong> {fmtDate(plan.date_finished)}
-      </p>
+    <div className="dui-doc dui-doc--wide" ref={bodyRef}>
+      <div className="dui-meta-strip">
+        <div className="dui-meta-strip__cell">
+          <span className="dui-meta-strip__label">Date Created</span>
+          <span className="dui-meta-strip__value">{fmtDate(plan.date_created)}</span>
+        </div>
+        <div className="dui-meta-strip__cell">
+          <span className="dui-meta-strip__label">Date Started</span>
+          <span className="dui-meta-strip__value">{fmtDate(plan.date_started)}</span>
+        </div>
+        <div className="dui-meta-strip__cell">
+          <span className="dui-meta-strip__label">Last Updated</span>
+          <span className="dui-meta-strip__value">{fmtDate(plan.date_last_updated)}</span>
+        </div>
+        <div className="dui-meta-strip__cell">
+          <span className="dui-meta-strip__label">Date Finished</span>
+          <span className="dui-meta-strip__value">{fmtDate(plan.date_finished)}</span>
+        </div>
+      </div>
 
       <div className="dui-toc-layout">
         <aside className="dui-toc">
