@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useCallback, useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo, useRef, useEffect } from "react";
 import { api } from "@/app/lib/api";
-import { MdOutlineArrowForwardIos, MdSearch, MdTune, MdOutlineCheckBox, MdOutlinePerson } from "react-icons/md";
+import { MdOutlineArrowForwardIos, MdSearch, MdTune, MdOutlineCheckBox, MdOutlinePerson, MdUnfoldMore, MdExpandLess, MdExpandMore } from "react-icons/md";
 import { BsArrowsCollapse, BsArrowsExpand } from "react-icons/bs";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "./InlineSelect";
-import { useWorkItemFlowStates, CANONICAL_PILL, type WorkItemFlowState } from "./useWorkItemFlowStates";
+import { useWorkItemFlowStates, type WorkItemFlowState } from "./useWorkItemFlowStates";
+import { FlowStatePillRow } from "./FlowStatePillRow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,218 @@ const PRIORITY_CODE: Record<string, { code: string; mod: string }> = {
 };
 
 const PRIORITY_OPTIONS = ["critical", "high", "medium", "low"];
+
+// ─── Sort ─────────────────────────────────────────────────────────────────────
+
+type SortKey = "id" | "title" | "status" | "priority" | "points" | "sprint" | "due";
+type SortDir = "asc" | "desc";
+
+const CANONICAL_ORDER: Record<string, number> = {
+  backlog: 0, ready: 1, doing: 2, completed: 3, accepted: 4,
+};
+const PRIORITY_ORDER: Record<string, number> = {
+  critical: 0, high: 1, medium: 2, low: 3,
+};
+
+function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkItem[] {
+  const asc = dir === "asc";
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+    switch (key) {
+      case "id":       cmp = a.key_num - b.key_num; break;
+      case "title":    cmp = a.title.localeCompare(b.title); break;
+      case "status":   cmp = (CANONICAL_ORDER[a.flow_state_code] ?? 99) - (CANONICAL_ORDER[b.flow_state_code] ?? 99); break;
+      case "priority": cmp = (PRIORITY_ORDER[a.priority ?? ""] ?? 99) - (PRIORITY_ORDER[b.priority ?? ""] ?? 99); break;
+      case "points":   cmp = ((a.rollup_points ?? a.story_points ?? -1)) - ((b.rollup_points ?? b.story_points ?? -1)); break;
+      case "sprint":   cmp = (a.sprint_id ?? "").localeCompare(b.sprint_id ?? ""); break;
+      case "due":      cmp = (a.updated_at ?? "").localeCompare(b.updated_at ?? ""); break;
+    }
+    return asc ? cmp : -cmp;
+  });
+}
+
+// ─── Sort icon ────────────────────────────────────────────────────────────────
+
+function SortIcon({ col, sortKey, sortDir, onClick }: {
+  col: SortKey;
+  sortKey: SortKey | null;
+  sortDir: SortDir;
+  onClick: (col: SortKey) => void;
+}) {
+  const active = sortKey === col;
+  return (
+    <button
+      type="button"
+      className={"tree_accordion-dense__sort-btn" + (active ? " tree_accordion-dense__sort-btn--active" : "")}
+      aria-label={active ? (sortDir === "asc" ? "Sorted ascending" : "Sorted descending") : "Sort"}
+      title={active ? (sortDir === "asc" ? "Sorted ascending — click to reverse" : "Sorted descending — click to clear") : "Sort"}
+      onClick={(e) => { e.stopPropagation(); onClick(col); }}
+    >
+      {!active && <MdUnfoldMore size={16} />}
+      {active && sortDir === "asc" && <MdExpandLess size={16} />}
+      {active && sortDir === "desc" && <MdExpandMore size={16} />}
+    </button>
+  );
+}
+
+// ─── Column resize ────────────────────────────────────────────────────────────
+
+// Per-column sizing model. Most columns are FIXED at a content-appropriate
+// pixel width; SUMMARY is the FLEX column that absorbs all leftover space.
+// This matches Rally's `flex` config — one greedy column, the rest fixed.
+//
+// Columns: [ID, Summary, Status, Pri, PtsOwner, Sprint, Due]
+// Minimums are the width needed to render the header label without truncation
+// (label text + sort icon + padding; ID adds its expand toggle). Columns can
+// never shrink below these — neither via drag nor via narrow viewport.
+const FIXED_WIDTHS: Array<number | null> = [90, null, 220, 70, 110, 95, 80];
+const MIN_COL_WIDTHS = [70, 200, 180, 70, 110, 95, 70];
+
+// Compute final pixel widths: every fixed column gets its declared width,
+// the flex column (any null entry) gets `container - sumOfFixed`. If the
+// container is too narrow, the flex column drops to its min and the table
+// width may exceed the container — but `overflow-x: hidden` clips it.
+function fitToContainer(
+  fixed: Array<number | null>,
+  mins: number[],
+  totalPx: number,
+): number[] {
+  const n = fixed.length;
+  const result = new Array<number>(n);
+  let consumed = 0;
+  let flexIdx = -1;
+  for (let i = 0; i < n; i++) {
+    if (fixed[i] === null) { flexIdx = i; continue; }
+    result[i] = fixed[i] as number;
+    consumed += result[i];
+  }
+  if (flexIdx >= 0) {
+    result[flexIdx] = Math.max(mins[flexIdx], totalPx - consumed);
+  }
+  return result;
+}
+
+function useColumnResize(
+  tableRef: React.RefObject<HTMLTableElement | null>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
+) {
+  // Initial state: fixed columns take their declared widths; flex column
+  // gets its min until the effect runs and measures the container.
+  const [widths, setWidths] = useState<number[]>(() =>
+    fitToContainer(FIXED_WIDTHS, MIN_COL_WIDTHS, 1000),
+  );
+  const minWidths = useRef<number[]>(MIN_COL_WIDTHS);
+
+  // Measure container on mount + on resize. Fixed columns stay at their
+  // declared widths; the flex column absorbs the remainder. No scrollbars.
+  useEffect(() => {
+    const fit = () => {
+      const c = containerRef.current;
+      if (!c) return;
+      const w = c.clientWidth;
+      if (w <= 0) return;
+      setWidths(fitToContainer(FIXED_WIDTHS, MIN_COL_WIDTHS, w));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [containerRef]);
+
+  // Drag model: column[i]'s right edge tracks the mouse. Width change is
+  // absorbed first by the immediate next neighbour (so the visual edge moves
+  // with the cursor); when the neighbour is pinned at its min, the remainder
+  // spills into the flex (Summary) column. Total table width stays constant.
+  const startResize = useCallback((colIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const table = tableRef.current;
+    if (!table) return;
+    const cols = Array.from(table.querySelectorAll<HTMLElement>("colgroup col"));
+    if (colIndex >= cols.length - 1) return; // last col has no neighbour to take from
+
+    const flexIdx = FIXED_WIDTHS.findIndex((v) => v === null);
+    const nextIdx = colIndex + 1;
+    const useFlex = flexIdx >= 0 && flexIdx !== colIndex && flexIdx !== nextIdx;
+
+    const startX = e.clientX;
+    const startThis = parseInt(cols[colIndex]?.style.width || "0", 10) || 80;
+    const startNext = parseInt(cols[nextIdx]?.style.width || "0", 10) || 80;
+    const startFlex = useFlex ? (parseInt(cols[flexIdx]?.style.width || "0", 10) || 80) : 0;
+    const minThis = minWidths.current[colIndex] ?? 40;
+    const minNext = minWidths.current[nextIdx] ?? 40;
+    const minFlex = useFlex ? (minWidths.current[flexIdx] ?? 40) : 0;
+
+    const thisSlack = Math.max(0, startThis - minThis);
+    const neighborSlack = Math.max(0, startNext - minNext);
+    const flexSlack = useFlex ? Math.max(0, startFlex - minFlex) : 0;
+
+    const onMove = (mv: MouseEvent) => {
+      let delta = mv.clientX - startX;
+      // Clamp by combined donor capacity in each direction:
+      //  - Growing right: neighbour slack + flex slack
+      //  - Shrinking left: this column's slack + flex slack
+      delta = Math.max(delta, -(thisSlack + flexSlack));
+      delta = Math.min(delta, neighborSlack + flexSlack);
+
+      let thisChange = delta;
+      let nextChange = 0;
+      let flexChange = 0;
+      if (delta > 0) {
+        // Growing: drain neighbour first, spill the remainder into flex.
+        const fromNeighbor = Math.min(delta, neighborSlack);
+        nextChange = -fromNeighbor;
+        flexChange = -(delta - fromNeighbor);
+      } else if (delta < 0) {
+        // Shrinking: this column shrinks first; once pinned at its min,
+        // additional shrinkage is absorbed by flex (Summary), and the
+        // neighbour grows by the full |delta|.
+        const wantedShrink = -delta;
+        nextChange = wantedShrink;
+        if (wantedShrink > thisSlack) {
+          thisChange = -thisSlack;
+          flexChange = -(wantedShrink - thisSlack);
+        }
+      }
+
+      if (cols[colIndex]) cols[colIndex].style.width = (startThis + thisChange) + "px";
+      if (cols[nextIdx]) cols[nextIdx].style.width = (startNext + nextChange) + "px";
+      if (useFlex && flexChange !== 0 && cols[flexIdx]) {
+        cols[flexIdx].style.width = (startFlex + flexChange) + "px";
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      const final = cols.map((c) => parseInt(c.style.width || "0", 10) || 80);
+      setWidths(final);
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [tableRef]);
+
+  return { widths, startResize };
+}
+
+// ─── Resize handle ────────────────────────────────────────────────────────────
+
+function ResizeHandle({ colIndex, onStart }: {
+  colIndex: number;
+  onStart: (colIndex: number, e: React.MouseEvent) => void;
+}) {
+  return (
+    <span
+      className="tree_accordion-dense__resize-handle"
+      onMouseDown={(e) => onStart(colIndex, e)}
+      aria-hidden="true"
+    />
+  );
+}
 
 function canHaveManualPoints(itemType: string): boolean {
   return itemType !== "task";
@@ -197,7 +410,6 @@ function GridRow({
   continuations: boolean[];
   flowStates: WorkItemFlowState[];
 }) {
-  const statusMod = CANONICAL_PILL[item.flow_state_code] ?? "neutral";
   const pri = formatPriority(item.priority);
   const isEpic = item.item_type === "epic";
   const idText = `${TYPE_PREFIX[item.item_type] ?? "?"}-${item.key_num}`;
@@ -260,18 +472,12 @@ function GridRow({
           </span>
         </span>
       </td>
-      <td className="tree_accordion-dense__cell">
-        <InlineSelect
-          value={item.flow_state_id}
-          options={flowStates.map((s) => ({ value: s.id, label: s.name }))}
+      <td className="tree_accordion-dense__cell" onClick={(e) => e.stopPropagation()}>
+        <FlowStatePillRow
+          currentId={item.flow_state_id}
+          currentCode={item.flow_state_code}
+          states={flowStates}
           onCommit={(next) => onPatch(item.id, { flow_state_id: next })}
-          ariaLabel="Work item status"
-          trigger={
-            <span className={"tree_accordion-dense__status tree_accordion-dense__status--" + statusMod}>
-              <span className="tree_accordion-dense__status-dot" />
-              <span className="tree_accordion-dense__status-text">{item.flow_state_name}</span>
-            </span>
-          }
         />
       </td>
       <td className="tree_accordion-dense__cell">
@@ -337,7 +543,7 @@ export default function Example2Tree({
   setItems: (next: WorkItem[]) => void;
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
-  onPatched?: () => void;
+  onPatched?: (body: Record<string, unknown>) => void;
 }) {
   const flowStates = useWorkItemFlowStates();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -372,7 +578,7 @@ export default function Example2Tree({
         method: "PATCH",
         body: JSON.stringify(body),
       })
-        .then(() => { onPatched?.(); })
+        .then(() => { onPatched?.(body); })
         .catch(() => { /* swallow — refetch on next push */ });
     },
     [items, setItems, onPatched],
@@ -450,16 +656,36 @@ export default function Example2Tree({
     setExpanded(new Set());
   }, []);
 
+  const tableRef = useRef<HTMLTableElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { widths, startResize } = useColumnResize(tableRef, scrollRef);
+
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const onSort = useCallback((col: SortKey) => {
+    setSortKey((prev) => {
+      if (prev !== col) { setSortDir("asc"); return col; }
+      if (sortDir === "asc") { setSortDir("desc"); return col; }
+      return null; // third click clears
+    });
+  }, [sortDir]);
+
   const roots = useMemo(() => items.filter((i) => !i.parent_id), [items]);
 
   // Quick filter — only filters root rows by title or VEC-id.
-  const visibleRoots = useMemo(() => {
+  const filteredRoots = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return roots;
     return roots.filter(
       (r) => r.title.toLowerCase().includes(q) || `vec-${r.key_num}`.includes(q),
     );
   }, [roots, search]);
+
+  const visibleRoots = useMemo(() => {
+    if (!sortKey) return filteredRoots;
+    return sortRoots(filteredRoots, sortKey, sortDir);
+  }, [filteredRoots, sortKey, sortDir]);
 
   // Pagination — slice of roots actually rendered. "all" returns the full
   // filtered list. pageIndex is clamped against the current page count so
@@ -586,51 +812,57 @@ export default function Example2Tree({
         position="top"
       />
 
-      <div className="tree_accordion-dense__scroll">
-        <table className="tree_accordion-dense__table" aria-label="Work items dense grid">
+      <div ref={scrollRef} className="tree_accordion-dense__scroll">
+        <table
+          ref={tableRef}
+          className="tree_accordion-dense__table tree_accordion-dense__table--resizable tree_accordion-dense__table--fixed"
+          style={{ tableLayout: "fixed", width: "100%" }}
+          aria-label="Work items dense grid"
+        >
           <colgroup>
-            <col style={{ width: 220 }} />
-            <col />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 60 }} />
-            <col style={{ width: 100 }} />
-            <col style={{ width: 80 }} />
-            <col style={{ width: 80 }} />
+            {widths.map((w, i) => <col key={i} style={{ width: w }} />)}
           </colgroup>
           <thead className="tree_accordion-dense__head">
             <tr>
               <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
                 <span className="tree_accordion-dense__th-id">
                   {expanded.size > 0 ? (
-                    <button
-                      type="button"
-                      className="tree_accordion-dense__th-toggle"
-                      aria-label="Collapse all"
-                      title="Collapse all"
-                      onClick={collapseAll}
-                    >
+                    <button type="button" className="tree_accordion-dense__th-toggle" aria-label="Collapse all" title="Collapse all" onClick={collapseAll}>
                       <BsArrowsCollapse size={10} />
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      className="tree_accordion-dense__th-toggle"
-                      aria-label="Expand all"
-                      title="Expand all"
-                      onClick={() => { void expandAll(); }}
-                    >
+                    <button type="button" className="tree_accordion-dense__th-toggle" aria-label="Expand all" title="Expand all" onClick={() => { void expandAll(); }}>
                       <BsArrowsExpand size={10} />
                     </button>
                   )}
                   ID
+                  <SortIcon col="id" sortKey={sortKey} sortDir={sortDir} onClick={onSort} />
                 </span>
               </th>
-              <th className="tree_accordion-dense__th">Summary</th>
-              <th className="tree_accordion-dense__th">Status</th>
-              <th className="tree_accordion-dense__th">Pri</th>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">PtsOwner</th>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">Sprint</th>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">Due</th>
+              <th className="tree_accordion-dense__th">
+                <ResizeHandle colIndex={0} onStart={startResize} />
+                <span className="tree_accordion-dense__th-sortable">Summary <SortIcon col="title" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
+              </th>
+              <th className="tree_accordion-dense__th">
+                <ResizeHandle colIndex={1} onStart={startResize} />
+                <span className="tree_accordion-dense__th-sortable">Status <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
+              </th>
+              <th className="tree_accordion-dense__th">
+                <ResizeHandle colIndex={2} onStart={startResize} />
+                <span className="tree_accordion-dense__th-sortable">Pri <SortIcon col="priority" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
+              </th>
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+                <ResizeHandle colIndex={3} onStart={startResize} />
+                <span className="tree_accordion-dense__th-sortable">PtsOwner <SortIcon col="points" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
+              </th>
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+                <ResizeHandle colIndex={4} onStart={startResize} />
+                <span className="tree_accordion-dense__th-sortable">Sprint <SortIcon col="sprint" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
+              </th>
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+                <ResizeHandle colIndex={5} onStart={startResize} />
+                <span className="tree_accordion-dense__th-sortable">Due <SortIcon col="due" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
+              </th>
             </tr>
           </thead>
           <tbody>{renderRows(pagedRoots, 0)}</tbody>

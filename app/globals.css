@@ -8493,6 +8493,78 @@ input[type="reset"] {
   color: var(--ink-muted);
 }
 
+/* ── Flow state pill-row ────────────────────────────────────────────────────
+   Segmented button strip replacing the InlineSelect drop-down on work item
+   rows. One button per flow state; active segment filled, inactive muted.
+   Colours mirror .pill--* so the visual language stays consistent.        */
+.wi-flow-row {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.wi-flow-row__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: var(--ink-subtle);
+  color: var(--surface, #fff);
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 80ms;
+  margin-left: 2px;
+}
+.wi-flow-row__btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+.wi-flow-row__btn:last-child  { border-radius: 0 3px 3px 0; }
+.wi-flow-row__btn:hover:not(.wi-flow-row__btn--active) {
+  opacity: 0.6;
+  z-index: 1;
+}
+/* Active variants — keyed to canonical_code, not renamed state names */
+.wi-flow-row__btn--active {
+  z-index: 1;
+  cursor: default;
+  opacity: 1;
+}
+/* backlog — orange */
+.wi-flow-row__btn--active-backlog {
+  background: #f97316;
+  color: #fff;
+  border-color: #f97316;
+}
+/* ready (in progress) — purple */
+.wi-flow-row__btn--active-ready {
+  background: #9333ea;
+  color: #fff;
+  border-color: #9333ea;
+}
+/* doing — blue */
+.wi-flow-row__btn--active-doing {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+/* completed — green */
+.wi-flow-row__btn--active-completed {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+/* accepted — dark green */
+.wi-flow-row__btn--active-accepted {
+  background: #14532d;
+  color: #fff;
+  border-color: #14532d;
+}
+
 /* Numeric input variant — right-aligned, narrow, used in inline points
    editors so the cell layout doesn't jump on edit. */
 .form__input--numeric {
@@ -11381,7 +11453,7 @@ input[type="reset"] {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: fixed;
+  table-layout: auto;
   font-size: 13px;
   color: var(--ink);
   background: var(--surface);
@@ -11392,7 +11464,8 @@ input[type="reset"] {
    primitive (which has overflow:hidden and would clip the sticky header). */
 .tree_accordion-dense__scroll {
   max-height: min(80vh, 720px);
-  overflow: auto;
+  overflow-x: hidden; /* Rally-style: table fills container, never wider */
+  overflow-y: auto;
   border: 1px solid var(--border);
   background: var(--surface);
 }
@@ -11424,8 +11497,58 @@ input[type="reset"] {
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
 }
+.tree_accordion-dense__th-sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  justify-content: space-between;
+}
+.tree_accordion-dense__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ink);
+  opacity: 0.5;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.tree_accordion-dense__sort-btn:hover {
+  opacity: 0.85;
+}
+.tree_accordion-dense__sort-btn--active {
+  opacity: 1;
+  color: var(--accent, #2563eb);
+}
 .tree_accordion-dense__th--numeric { text-align: right; }
 .tree_accordion-dense__th--center { text-align: center; }
+
+/* Column resize handle — child of the RIGHT-side <th>, positioned at its
+   left edge straddling the boundary. Lives in the right cell's stacking
+   context so it paints over the left cell (which is earlier in the DOM
+   and would otherwise cover an overflow-bleed handle). */
+.tree_accordion-dense__resize-handle {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 3;
+}
+.tree_accordion-dense__resize-handle:hover,
+.tree_accordion-dense__resize-handle:active {
+  background: var(--accent, #2563eb);
+  opacity: 0.4;
+}
+.tree_accordion-dense__table--resizable .tree_accordion-dense__th {
+  overflow: visible; /* allow absolute handle to bleed past cell edge */
+}
 
 /* Header ID cell groups the expand/collapse toggle with the "ID" label.
    Toggle sits left of the label, sized so it does not increase the th

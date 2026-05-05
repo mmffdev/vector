@@ -17,7 +17,8 @@ import { MdOutlineCreateNewFolder, MdOutlineFolder, MdChecklist, MdOutlineBugRep
 import InlineEditField from "@/app/components/InlineEditField";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { InlineSelect } from "./InlineSelect";
-import { useWorkItemFlowStates, CANONICAL_PILL } from "./useWorkItemFlowStates";
+import { useWorkItemFlowStates } from "./useWorkItemFlowStates";
+import { FlowStatePillRow } from "./FlowStatePillRow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -358,17 +359,12 @@ function WorkItemRow({
           maxLength={200}
         />
       </td>
-      <td className="table__cell">
-        <InlineSelect
-          value={item.flow_state_id}
-          options={flowStates.map((s) => ({ value: s.id, label: s.name }))}
+      <td className="table__cell" onClick={(e) => e.stopPropagation()}>
+        <FlowStatePillRow
+          currentId={item.flow_state_id}
+          currentCode={item.flow_state_code}
+          states={flowStates}
           onCommit={(next) => onPatch(item.id, { flow_state_id: next })}
-          ariaLabel="Work item status"
-          trigger={
-            <span className={"pill pill--sm pill--" + (CANONICAL_PILL[item.flow_state_code] ?? "neutral")}>
-              {item.flow_state_name}
-            </span>
-          }
         />
       </td>
       <td className="table__cell">
@@ -1177,7 +1173,13 @@ export default function WorkItemsPage() {
               setItems={setItems}
               selectedId={selectedItem?.id ?? null}
               onSelect={setSelectedItem}
-              onPatched={() => { void refetch(); }}
+              onPatched={(body) => {
+                // flow_state_id and priority are optimistically applied in the
+                // tree; no refetch needed. story_points and title affect rollups
+                // or summary counts, so those still trigger a full refetch.
+                const needsRefetch = "story_points" in body || "title" in body;
+                if (needsRefetch) void refetch();
+              }}
             />
           )}
         </Panel>
