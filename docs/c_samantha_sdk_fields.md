@@ -96,6 +96,7 @@ Reads values for an artefact.
 
 ```ts
 samantha.portfolio.fields.getValue(
+  artefactType: ArtefactType,
   artefactID: string,
   fieldName: string
 ): Promise<FieldValue | null>
@@ -106,7 +107,7 @@ Returns `null` when no value has been written for that field on that artefact.
 ### Bulk
 
 ```ts
-samantha.portfolio.fields.getValues(artefactID: string): Promise<FieldValue[]>
+samantha.portfolio.fields.getValues(artefactType: ArtefactType, artefactID: string): Promise<FieldValue[]>
 ```
 
 Returns all field values for the artefact, ordered by `field_name`.
@@ -147,6 +148,7 @@ Writes values for an artefact. Upsert semantics — `(artefact_id, field_name)` 
 
 ```ts
 samantha.portfolio.fields.setValue(
+  artefactType: ArtefactType,
   artefactID: string,
   fieldName: string,
   value: unknown // typed per the field's `type` — see coercion table below
@@ -157,6 +159,7 @@ samantha.portfolio.fields.setValue(
 
 ```ts
 samantha.portfolio.fields.setValues(
+  artefactType: ArtefactType,
   artefactID: string,
   values: Record<string, unknown>
 ): Promise<FieldValue[]>
@@ -199,7 +202,7 @@ const artefact = await samantha.portfolio.artefacts.create("execution_defects", 
 })
 
 // 2. Bulk-write field values
-await samantha.portfolio.fields.setValues(artefact.id, {
+await samantha.portfolio.fields.setValues("execution_defects", artefact.id, {
   f_severity: "high",
   f_steps_to_reproduce: "<p>Click login</p>",
   f_first_seen: "2026-04-30"
