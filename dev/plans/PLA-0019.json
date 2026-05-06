@@ -54,7 +54,7 @@
       "title": "Standardise all handler errors to RFC 9457 Problem Details",
       "story_id": "00442",
       "card_url": "http://localhost:3333/cards/1768715465510618299",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 4,
@@ -126,7 +126,7 @@
       "proven_by": "every 4xx and 5xx response from any Go handler returns Content-Type: application/problem+json with type, title, status, detail, and instance fields",
       "story_id": "00442",
       "card_url": "http://localhost:3333/cards/1768715465510618299",
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -134,7 +134,7 @@
       "proven_by": "handlers returning 422 include a violations array with per-field { field, message } entries",
       "story_id": "00442",
       "card_url": "http://localhost:3333/cards/1768715465510618299",
-      "done": false
+      "done": true
     },
     {
       "order": 9,
@@ -142,7 +142,7 @@
       "proven_by": "app/lib/api.ts extracts RFC 9457 fields (title, detail, violations) for user-facing error display, replacing ad-hoc field lookups",
       "story_id": "00442",
       "card_url": "http://localhost:3333/cards/1768715465510618299",
-      "done": false
+      "done": true
     },
     {
       "order": 10,
