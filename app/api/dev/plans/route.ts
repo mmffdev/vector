@@ -270,7 +270,8 @@ export async function GET(request: Request) {
   try {
     const files = fs.readdirSync(PLANS_DIR)
       .filter(f => /^PLA-\d{4,}\.json$/.test(f))
-      .sort();
+      .sort()
+      .reverse();
 
     const plans: PlanMeta[] = [];
     for (const file of files) {

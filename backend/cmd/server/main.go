@@ -427,6 +427,18 @@ func main() {
 		})
 	})
 
+	// ---- /ws ----
+	// One WebSocket per connected client; topic-based fan-out via the
+	// realtime hub. JWT via Authorization: Bearer or ?access_token= on
+	// the upgrade request (browsers cannot set headers on WS upgrade).
+	// Stays unversioned — WebSocket framing is versioned via subprotocol,
+	// not URL.
+	r.Group(func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Get("/ws", realtime.ServeWS(rtHub))
+	})
+
 	// ---- /v1 — all external API routes ----
 	// Internal/infra routes (/healthz, /api/status/pipeline, /api/env,
 	// /api/env/switch, /ws) are mounted above and stay unversioned.
@@ -718,18 +730,6 @@ func main() {
 		r.Use(httprate.LimitByIP(240, time.Minute))
 
 		r.Post("/move", rankH.Move)
-	})
-
-	// ---- /ws ----
-	// One WebSocket per connected client; topic-based fan-out via the
-	// realtime hub. Auth: session-cookie required (RequireAuth runs on
-	// the upgrade request before Accept). Tenant isolation: every
-	// subscribe frame is rejected unless the topic carries the caller's
-	// own subscription_id — see Client.topicAllowed.
-	r.Group(func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Get("/ws", realtime.ServeWS(rtHub))
 	})
 
 	// ---- /api/work-items ----
