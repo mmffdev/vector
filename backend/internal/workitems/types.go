@@ -37,22 +37,22 @@ type WorkItem struct {
 	KeyNum         int64      `json:"key_num"`
 	ItemType       string     `json:"item_type"`
 	Title          string     `json:"title"`
-	Description    *string    `json:"description,omitempty"`
+	Description    *string    `json:"description"`
 	Status         string     `json:"status"`
 	FlowStateID    string     `json:"flow_state_id"`
 	FlowStateName  string     `json:"flow_state_name"`
 	FlowStateCode  string     `json:"flow_state_code"`
-	Priority       *string    `json:"priority,omitempty"`
-	StoryPoints    *int       `json:"story_points,omitempty"`
-	RollupPoints   *int       `json:"rollup_points,omitempty"`
-	SprintID       *string    `json:"sprint_id,omitempty"`
-	ParentID       *string    `json:"parent_id,omitempty"`
-	RootFeatureID  *string    `json:"root_feature_id,omitempty"`
+	Priority       *string    `json:"priority"`
+	StoryPoints    *int       `json:"story_points"`
+	RollupPoints   *int       `json:"rollup_points"`
+	SprintID       *string    `json:"sprint_id"`
+	ParentID       *string    `json:"parent_id"`
+	RootFeatureID  *string    `json:"root_feature_id"`
 	OwnerID        string     `json:"owner_id"`
 	CreatedBy      string     `json:"created_by"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
-	ArchivedAt     *time.Time `json:"archived_at,omitempty"`
+	ArchivedAt     *time.Time `json:"archived_at"`
 	ChildrenCount  int        `json:"children_count"`
 }
 
