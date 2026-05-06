@@ -38,7 +38,11 @@ Sets `rt` (refresh token) as an HttpOnly / SameSite=Strict cookie scoped to `/ap
 
 | Status | Meaning |
 |---|---|
-| `401` | Invalid credentials |
+| `401` | Invalid credentials — detail: "The email or password you entered is incorrect." |
+| `403` | Account inactive — detail: "Your account is not active. Please contact your administrator." |
+| `423` | Account locked — detail: "Your account has been locked after too many failed attempts. Please contact your administrator." |
+
+See [Error Handling](../../getting-started/05-error-handling.mdx) for the full RFC 9457 response shape.
 
 ---
 

@@ -25,10 +25,21 @@ Content-Type: application/json
 
 ```json
 {
-  "token": "<jwt>",
-  "user": { "id": "...", "role": "padmin" }
+  "access_token": "<jwt>",
+  "user": {
+    "id": "...",
+    "email": "user@example.com",
+    "role": { "code": "padmin", "label": "Project Admin" },
+    "permissions": ["portfolios.create", "portfolios.list", ...],
+    "is_active": true
+  }
 }
 ```
+
+**Errors** — See [Error Handling](./05-error-handling.mdx):
+- `401` Invalid credentials
+- `403` Account inactive or locked
+- `423` Account locked (too many failed attempts)
 
 ## Using the token
 

@@ -1,0 +1,221 @@
+---
+title: Error Handling
+sidebar_position: 5
+---
+
+# Error Handling
+
+All API errors follow [RFC 9457 Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457.html), returning `application/problem+json` with a consistent structure.
+
+## Error Response Format
+
+Every error response includes:
+
+```json
+{
+  "type": "about:blank",
+  "title": "HTTP Status Title",
+  "status": 401,
+  "detail": "Human-readable error message",
+  "instance": "/v1/api/endpoint-path"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | RFC URI identifying the error class (default: `about:blank`) |
+| `title` | string | Human-readable HTTP status title (e.g., "Unauthorized", "Bad Request") |
+| `status` | number | HTTP status code |
+| `detail` | string | **Human-readable description of what went wrong** — the primary error message for end-users |
+| `instance` | string | The URI path where the error occurred |
+
+## Common Error Codes
+
+### 400 Bad Request
+
+**Invalid request body:**
+```json
+{
+  "status": 400,
+  "title": "Bad Request",
+  "detail": "The request body was not valid."
+}
+```
+
+**Invalid ID format:**
+```json
+{
+  "status": 400,
+  "title": "Bad Request",
+  "detail": "The ID provided was not valid."
+}
+```
+
+**Missing required fields:**
+```json
+{
+  "status": 400,
+  "title": "Bad Request",
+  "detail": "Some required fields are missing."
+}
+```
+
+### 401 Unauthorized
+
+**Missing or invalid credentials:**
+```json
+{
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "The email or password you entered is incorrect."
+}
+```
+
+**Missing authentication:**
+```json
+{
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "You must be signed in to do that."
+}
+```
+
+**Token expired:**
+```json
+{
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "Your session has expired. Please sign in again."
+}
+```
+
+### 403 Forbidden
+
+**Insufficient permissions:**
+```json
+{
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "You don't have permission to do that."
+}
+```
+
+**Password change required:**
+```json
+{
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "You must change your password before continuing."
+}
+```
+
+**CSRF validation failed:**
+```json
+{
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "Your session appears invalid. Please refresh the page and try again."
+}
+```
+
+### 404 Not Found
+
+```json
+{
+  "status": 404,
+  "title": "Not Found",
+  "detail": "The requested item could not be found."
+}
+```
+
+### 409 Conflict
+
+```json
+{
+  "status": 409,
+  "title": "Conflict",
+  "detail": "This action conflicts with existing data."
+}
+```
+
+### 422 Unprocessable Entity
+
+Validation errors include a `violations` array with field-level feedback:
+
+```json
+{
+  "status": 422,
+  "title": "Unprocessable Entity",
+  "detail": "Validation failed",
+  "violations": [
+    {
+      "field": "email",
+      "message": "Invalid email format"
+    },
+    {
+      "field": "name",
+      "message": "Name is required"
+    }
+  ]
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "status": 500,
+  "title": "Internal Server Error",
+  "detail": "Something went wrong on our end. Please try again."
+}
+```
+
+## Client Error Handling
+
+### JavaScript / TypeScript
+
+Always check the `detail` field for user-facing messages:
+
+```ts
+try {
+  const res = await fetch('/v1/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    // error.detail is the message to show the user
+    console.error(`Error: ${error.detail}`);
+  }
+} catch (err) {
+  console.error('Network error');
+}
+```
+
+### Rate Limits
+
+When rate-limited, the API returns:
+
+```json
+{
+  "status": 429,
+  "title": "Too Many Requests",
+  "detail": "Rate limit exceeded. Please wait before retrying."
+}
+```
+
+Check the `Retry-After` header (seconds) before retrying.
+
+## Human-Readable Messaging
+
+All `detail` fields are written for end-users and are safe to display directly in the UI. They avoid technical jargon and provide actionable guidance:
+
+- ❌ `"invalid id"`
+- ✅ `"The ID provided was not valid."`
+
+- ❌ `"unauthorized"`
+- ✅ `"You must be signed in to do that."`
+
+- ❌ `"token expired"`
+- ✅ `"Your session has expired. Please sign in again."`
