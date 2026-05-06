@@ -890,51 +890,55 @@ func main() {
 	// ---- /api/admin ----
 	r.Route("/api/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
 
-		// Users — per-route permission codes (PLA-0007).
-		// POST creates the actor's chosen target role; the handler is
-		// responsible for self-elevation guard against the actor's grid,
-		// so the gate at the route level is the union of creator-matrix
-		// codes (any one is enough to enter the route — handler discriminates).
-		r.With(auth.RequireAnyPermission(permResolver,
-			permissions.UsersCreateGadmin,
-			permissions.UsersCreatePadmin,
-			permissions.UsersCreateTeamLead,
-			permissions.UsersCreateUser,
-			permissions.UsersCreateExternal,
-		)).Post("/users", usersH.Create)
-		r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
-			Patch("/users/{id}", usersH.Patch)
-		r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
-			Delete("/users/{id}", usersH.Delete)
-		r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
-			Post("/users/{id}/password-reset", usersH.IssueReset)
-
-		// List users — direct mapping to users.list.
-		r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
-			Get("/users", usersH.List)
-
-		// Per-user permissions (legacy table) — gadmin/padmin equivalent.
-		// Tech-debt: this surface is the OLD per-user grants table; on
-		// PLA-0007 G4/G5 it gets folded into the role grid. Gate via
-		// roles.list (closest existing code). See PLA-0007 G3.
+		// Require fresh password for most admin routes
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequirePermission(permResolver, permissions.RolesList))
-			r.Post("/permissions", permsH.Grant)
-			r.Delete("/permissions/{id}", permsH.Revoke)
-			r.Get("/permissions", permsH.List)
+			r.Use(authSvc.RequireFreshPassword)
+
+			// Users — per-route permission codes (PLA-0007).
+			// POST creates the actor's chosen target role; the handler is
+			// responsible for self-elevation guard against the actor's grid,
+			// so the gate at the route level is the union of creator-matrix
+			// codes (any one is enough to enter the route — handler discriminates).
+			r.With(auth.RequireAnyPermission(permResolver,
+				permissions.UsersCreateGadmin,
+				permissions.UsersCreatePadmin,
+				permissions.UsersCreateTeamLead,
+				permissions.UsersCreateUser,
+				permissions.UsersCreateExternal,
+			)).Post("/users", usersH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
+				Patch("/users/{id}", usersH.Patch)
+			r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
+				Delete("/users/{id}", usersH.Delete)
+			r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
+				Post("/users/{id}/password-reset", usersH.IssueReset)
+
+			// List users — direct mapping to users.list.
+			r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
+				Get("/users", usersH.List)
+
+			// Per-user permissions (legacy table) — gadmin/padmin equivalent.
+			// Tech-debt: this surface is the OLD per-user grants table; on
+			// PLA-0007 G4/G5 it gets folded into the role grid. Gate via
+			// roles.list (closest existing code). See PLA-0007 G3.
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequirePermission(permResolver, permissions.RolesList))
+				r.Post("/permissions", permsH.Grant)
+				r.Delete("/permissions/{id}", permsH.Revoke)
+				r.Get("/permissions", permsH.List)
+			})
+
+			// Dev tools — gadmin or padmin (reset is scoped to caller's subscription).
+			// PLA-0007: gated via portfolio.list (closest existing code).
+			// Tech-debt: own code dev.adoption_reset — see PLA-0007 G3.
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
+				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
+			})
 		})
 
-		// Dev tools — gadmin or padmin (reset is scoped to caller's subscription).
-		// PLA-0007: gated via portfolio.list (closest existing code).
-		// Tech-debt: own code dev.adoption_reset — see PLA-0007 G3.
-		r.Group(func(r chi.Router) {
-			r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
-			r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
-		})
-
-		// API keys (story 00443 — PLA-0019). Padmin-only for now.
+		// API keys (story 00443 — PLA-0019) — no RequireFreshPassword (programmatic access).
 		// Tech-debt: PLA-0007 gate via api_keys.manage permission.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequirePermission(permResolver, permissions.UsersList)) // Temp gate; should be api_keys.manage
@@ -942,6 +946,7 @@ func main() {
 			r.Get("/api-keys", apiKeysH.List)
 			r.Post("/api-keys/revoke", apiKeysH.Revoke)
 		})
+
 	})
 
 	// ---- /api/roles (PLA-0007 G3) ----

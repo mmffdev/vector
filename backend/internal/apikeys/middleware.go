@@ -26,7 +26,14 @@ func Middleware(svc *Service) func(http.Handler) http.Handler {
 
 			rawKey := strings.TrimPrefix(authHeader, "Bearer ")
 
-			// Validate the key
+			// Only validate if it looks like an API key (sam_live_ prefix)
+			if !strings.HasPrefix(rawKey, "sam_live_") {
+				// JWT token, fall through to JWT auth middleware
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Validate the API key
 			info, err := svc.ValidateKey(r.Context(), rawKey)
 			if err != nil {
 				// Invalid/expired/revoked key

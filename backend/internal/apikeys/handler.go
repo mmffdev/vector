@@ -2,6 +2,7 @@ package apikeys
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -40,15 +41,22 @@ func (h *Handler) Issue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get subscription_id from user context
-	user := auth.UserFromCtx(r.Context())
-	if user == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, "missing user context")
+	// Support both JWT (user context) and API key auth (subscription_id in context)
+	subscriptionID := ""
+	if user := auth.UserFromCtx(r.Context()); user != nil {
+		subscriptionID = user.SubscriptionID.String()
+	} else if apiKeySubID := GetSubscriptionIDFromContext(r); apiKeySubID != "" {
+		subscriptionID = apiKeySubID
+	}
+
+	if subscriptionID == "" {
+		httperr.Write(w, r, http.StatusUnauthorized, "missing user or api key context")
 		return
 	}
 
-	key, err := h.svc.Issue(r.Context(), user.SubscriptionID.String(), req.ExpiresAt, req.Scopes)
+	key, err := h.svc.Issue(r.Context(), subscriptionID, req.ExpiresAt, req.Scopes)
 	if err != nil {
+		log.Printf("apikeys.Issue error: %v", err)
 		httperr.Write(w, r, http.StatusInternalServerError, "could not issue key")
 		return
 	}
@@ -65,13 +73,20 @@ type ListResponse struct {
 
 // List returns all active keys for the caller's subscription.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromCtx(r.Context())
-	if user == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, "missing user context")
+	// Support both JWT (user context) and API key auth (subscription_id in context)
+	subscriptionID := ""
+	if user := auth.UserFromCtx(r.Context()); user != nil {
+		subscriptionID = user.SubscriptionID.String()
+	} else if apiKeySubID := GetSubscriptionIDFromContext(r); apiKeySubID != "" {
+		subscriptionID = apiKeySubID
+	}
+
+	if subscriptionID == "" {
+		httperr.Write(w, r, http.StatusUnauthorized, "missing user or api key context")
 		return
 	}
 
-	keys, err := h.svc.ListKeys(r.Context(), user.SubscriptionID.String())
+	keys, err := h.svc.ListKeys(r.Context(), subscriptionID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, "could not list keys")
 		return
@@ -88,6 +103,7 @@ type RevokeRequest struct {
 }
 
 // Revoke marks a key as revoked (soft-delete).
+// Supports both JWT (user context) and API key auth (subscription_id in context).
 func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 	var req RevokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

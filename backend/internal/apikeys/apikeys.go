@@ -49,8 +49,14 @@ type KeyInfo struct {
 // Issue creates a new API key. Returns the full key (raw_key) once; never returned again.
 func (s *Service) Issue(ctx context.Context, subscriptionID string, expiresAt *time.Time, scopes []string) (*Key, error) {
 	rawKey := generateKey()
-	prefix := rawKey[:8] // e.g., "sam_live"
+	// Prefix is first 16 chars to ensure uniqueness (sam_live_XXXXXXXX)
+	prefix := rawKey[:16]
 	hash := hashKey(rawKey)
+
+	// Default empty scopes to empty array (not nil)
+	if scopes == nil {
+		scopes = []string{}
+	}
 
 	var id string
 	err := s.db.QueryRow(ctx,
@@ -76,7 +82,7 @@ func (s *Service) Issue(ctx context.Context, subscriptionID string, expiresAt *t
 // ValidateKey checks if a key is valid (exists, not revoked, not expired) and updates last_used_at.
 func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, error) {
 	hash := hashKey(rawKey)
-	prefix := rawKey[:8]
+	prefix := rawKey[:16]
 
 	var info KeyInfo
 	err := s.db.QueryRow(ctx,
@@ -167,17 +173,21 @@ func (s *Service) Revoke(ctx context.Context, keyID string) error {
 // generateKey produces a key in format sam_live_<32-char-base62> or sam_test_<32-char-base62>.
 // For now, always returns sam_live_ prefix; test prefix can be used when needed.
 func generateKey() string {
-	// Generate 24 random bytes; base62 encode to get ~32 chars.
-	b := make([]byte, 24)
+	// Generate 32 random bytes for the full key (not just the suffix).
+	b := make([]byte, 32)
 	_, err := rand.Read(b)
 	if err != nil {
 		panic(fmt.Sprintf("rand.Read failed: %v", err))
 	}
-	// Base64 encode and take the first 32 chars (base64 is not base62, but good enough for now).
+	// Base64 encode and sanitize.
 	encoded := base64.RawURLEncoding.EncodeToString(b)
 	// Replace URL-unsafe chars with base62-safe alternatives.
 	encoded = strings.ReplaceAll(encoded, "-", "a")
 	encoded = strings.ReplaceAll(encoded, "_", "b")
+	// Ensure we have at least 32 chars.
+	for len(encoded) < 32 {
+		encoded += "z"
+	}
 	if len(encoded) > 32 {
 		encoded = encoded[:32]
 	}

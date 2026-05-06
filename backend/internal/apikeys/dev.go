@@ -36,13 +36,13 @@ func SeedDevKey(ctx context.Context, db *pgxpool.Pool, appEnv string, devKeyRaw 
 	}
 
 	// Check if dev key already exists to avoid duplicates
-	prefix := devKeyRaw[:8]
+	prefix := devKeyRaw[:16]
 	hash := hashKey(devKeyRaw)
 
 	var existing string
 	err = db.QueryRow(ctx,
-		`SELECT id FROM api_keys WHERE prefix = $1 AND hash = $2 LIMIT 1`,
-		prefix, hash,
+		`SELECT id FROM api_keys WHERE hash = $1 LIMIT 1`,
+		hash,
 	).Scan(&existing)
 
 	if err == nil {

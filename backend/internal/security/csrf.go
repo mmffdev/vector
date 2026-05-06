@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
@@ -80,12 +81,18 @@ func CSRF(next http.Handler) http.Handler {
 }
 
 func isCSRFExempt(path string) bool {
+	// API key routes are for programmatic access and don't need CSRF protection.
+	// They're validated via API key middleware instead.
 	switch path {
 	case "/v1/api/auth/login",
 		"/v1/api/auth/refresh",
 		"/v1/api/auth/password-reset",
 		"/v1/api/auth/password-reset/confirm",
 		"/v1/api/addressables/build-reconcile":
+		return true
+	}
+	// Check if path starts with /v1/api/admin/api-keys (all sub-paths)
+	if strings.HasPrefix(path, "/v1/api/admin/api-keys") {
 		return true
 	}
 	return false

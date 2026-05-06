@@ -31,6 +31,13 @@ func WithUserForTest(ctx context.Context, u *models.User) context.Context {
 
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if API key auth was already validated by apikeys middleware
+		if apiKeySubID := r.Context().Value("api_key_subscription_id"); apiKeySubID != nil {
+			// API key already validated upstream; proceed
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Browsers cannot set Authorization headers on the WebSocket
 		// upgrade handshake, so we also accept ?access_token=... for
 		// the /ws route. Header takes precedence when both are sent.
@@ -79,11 +86,17 @@ func (s *Service) RequireFreshPassword(next http.Handler) http.Handler {
 // permission codes (logical AND). Resolves the actor's effective code
 // set via the resolver's process-local cache. Codes are defined in
 // internal/permissions/catalogue.go (PLA-0007).
+// API key auth (no user context) passes through without permission checks.
 func RequirePermission(res *permissions.Resolver, codes ...permissions.Code) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := UserFromCtx(r.Context())
+			// API key auth: no user context, but api_key_subscription_id is set — pass through
 			if u == nil {
+				if r.Context().Value("api_key_subscription_id") != nil {
+					next.ServeHTTP(w, r)
+					return
+				}
 				httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 				return
 			}
