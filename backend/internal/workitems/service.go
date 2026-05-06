@@ -91,6 +91,11 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 		args = append(args, *f.SprintID)
 		n++
 	}
+	if f.OwnerID != nil {
+		conds = append(conds, fmt.Sprintf("wi.owner_id = $%d", n))
+		args = append(args, *f.OwnerID)
+		n++
+	}
 
 	args = append(args, f.Limit, f.Offset)
 	// Order by the active scope's position column. coalesce(sprint_position,
@@ -173,6 +178,11 @@ func (s *Service) CountWorkItems(ctx context.Context, subscriptionID string, f L
 	if f.SprintID != nil {
 		conds = append(conds, fmt.Sprintf("sprint_id = $%d", n))
 		args = append(args, *f.SprintID)
+		n++
+	}
+	if f.OwnerID != nil {
+		conds = append(conds, fmt.Sprintf("owner_id = $%d", n))
+		args = append(args, *f.OwnerID)
 		n++
 	}
 	q := fmt.Sprintf(`SELECT COUNT(*) FROM o_artefacts_execution_work_items WHERE %s`,

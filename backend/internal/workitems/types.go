@@ -97,6 +97,7 @@ type ListWorkItemsFilter struct {
 	Status   *string
 	Priority *string
 	SprintID *string
+	OwnerID  *string
 	Limit    int
 	Offset   int
 	// Sort overrides the default position-based ORDER BY. Currently only "id"

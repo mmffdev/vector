@@ -59,6 +59,27 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
+// defaultFlowStateID returns the position-1 (default-on-create) flow_state_id
+// for the subscription's execution_work_items flow. Direct INSERTs into
+// o_artefacts_execution_work_items must populate flow_state_id — the trigger
+// rejects NULL/cross-tenant values. Mirrors workitems.Service.CreateWorkItem.
+func defaultFlowStateID(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID uuid.UUID) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	err := pool.QueryRow(ctx, `
+		SELECT ft.id FROM o_flow_tenant ft
+		JOIN o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		WHERE ft.subscription_id = $1
+		  AND ats.scope_key = 'execution_work_items'
+		  AND ft.flow_position = 1
+		  AND ft.archived_at IS NULL
+		LIMIT 1`, subID).Scan(&id)
+	if err != nil {
+		t.Fatalf("resolve default flow_state_id: %v", err)
+	}
+	return id
+}
+
 // pickAnyUser returns (subscription_id, user_id) for the first user we
 // can find. Both columns are needed for FK satisfaction on inserts.
 func pickAnyUser(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID) {
@@ -118,18 +139,19 @@ func nextKey(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID uuid.U
 
 func seedRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID, userID uuid.UUID, rows []seedRow) []uuid.UUID {
 	t.Helper()
+	flowID := defaultFlowStateID(t, ctx, pool, subID)
 	ids := make([]uuid.UUID, len(rows))
 	for i, r := range rows {
 		key := nextKey(t, ctx, pool, subID)
 		var id uuid.UUID
 		err := pool.QueryRow(ctx,
 			`INSERT INTO o_artefacts_execution_work_items
-			   (subscription_id, key_num, item_type, title, status,
+			   (subscription_id, key_num, item_type, title, status, flow_state_id,
 			    owner_id, created_by, backlog_position, sprint_position, sprint_id)
-			 VALUES ($1, $2, 'story', $3, 'open',
-			         $4, $4, $5, $6, $7)
+			 VALUES ($1, $2, 'story', $3, 'open', $4,
+			         $5, $5, $6, $7, $8)
 			 RETURNING id`,
-			subID, key, r.title, userID, r.backlogPos, r.sprintPos, r.sprintID,
+			subID, key, r.title, flowID, userID, r.backlogPos, r.sprintPos, r.sprintID,
 		).Scan(&id)
 		if err != nil {
 			t.Fatalf("seed %q: %v", r.title, err)
@@ -196,6 +218,113 @@ func TestListWorkItems_OrderByCanonical(t *testing.T) {
 	}
 }
 
+// TestListWorkItems_OwnerFilter seeds two rows with different owner_id
+// values and confirms that ListWorkItems + CountWorkItems both narrow to
+// the owner_id supplied in ListWorkItemsFilter.OwnerID. PLA-0021/00450 —
+// underpins the front-end owner chip in WorkItemsFilterChips.
+func TestListWorkItems_OwnerFilter(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	ctx := context.Background()
+
+	subID, userID := pickAnyUser(t, pool)
+	svc := workitems.New(pool)
+
+	// Seed three rows: two owned by userID, one owned by a fresh second
+	// user (so we can prove the filter excludes non-matchers).
+	otherID := uuid.New()
+	// SystemRoleUser UUID — see internal/roles/service.go. role_id is NOT
+	// NULL after migration 088; legacy enum `role` is kept until PLA-0007 G4.
+	systemRoleUser := uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
+	_, err := pool.Exec(ctx,
+		`INSERT INTO users (id, email, password_hash, role, role_id, is_active, subscription_id)
+		 VALUES ($1, $2, '!', 'user', $3, true, $4)
+		 ON CONFLICT (id) DO NOTHING`,
+		otherID, "owner-filter-"+otherID.String()+"@test.local", systemRoleUser, subID,
+	)
+	if err != nil {
+		t.Skipf("cannot seed second user: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, otherID)
+	})
+
+	pos1, pos2, pos3 := 1100, 1200, 1300
+	rows := []seedRow{
+		{title: "owner-filter-A (userID)", backlogPos: &pos1},
+		{title: "owner-filter-B (other)", backlogPos: &pos2},
+		{title: "owner-filter-C (userID)", backlogPos: &pos3},
+	}
+	ids := seedRows(t, ctx, pool, subID, userID, rows)
+
+	// Re-owner row B to otherID (seedRows always seeds owner = userID).
+	if _, err := pool.Exec(ctx,
+		`UPDATE o_artefacts_execution_work_items SET owner_id = $1 WHERE id = $2`,
+		otherID, ids[1],
+	); err != nil {
+		t.Fatalf("re-owner: %v", err)
+	}
+
+	uid := userID.String()
+	got, err := svc.ListWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{
+		OwnerID: &uid,
+		Limit:   200,
+	})
+	if err != nil {
+		t.Fatalf("ListWorkItems(owner=userID): %v", err)
+	}
+	for _, w := range got {
+		if w.ID == ids[1].String() {
+			t.Errorf("row B (owned by other) leaked through OwnerID=userID filter")
+		}
+	}
+	// The two userID-owned seeded rows must be present.
+	seen := 0
+	for _, w := range got {
+		if w.ID == ids[0].String() || w.ID == ids[2].String() {
+			seen++
+		}
+	}
+	if seen != 2 {
+		t.Errorf("expected 2 userID-owned seeded rows in result, saw %d", seen)
+	}
+
+	// Count parity.
+	totalUser, err := svc.CountWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{OwnerID: &uid})
+	if err != nil {
+		t.Fatalf("CountWorkItems(owner=userID): %v", err)
+	}
+	totalAll, err := svc.CountWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{})
+	if err != nil {
+		t.Fatalf("CountWorkItems(no filter): %v", err)
+	}
+	if totalUser >= totalAll {
+		t.Errorf("expected owner-filtered count < unfiltered count, got user=%d all=%d", totalUser, totalAll)
+	}
+
+	// Other-owner filter must include row B and exclude rows A,C.
+	other := otherID.String()
+	gotOther, err := svc.ListWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{
+		OwnerID: &other,
+		Limit:   200,
+	})
+	if err != nil {
+		t.Fatalf("ListWorkItems(owner=other): %v", err)
+	}
+	hasB := false
+	for _, w := range gotOther {
+		if w.ID == ids[1].String() {
+			hasB = true
+		}
+		if w.ID == ids[0].String() || w.ID == ids[2].String() {
+			t.Errorf("userID-owned row %s leaked through OwnerID=other filter", w.ID)
+		}
+	}
+	if !hasB {
+		t.Errorf("row B (owned by other) missing from OwnerID=other result")
+	}
+}
+
 // TestListWorkItems_NullsLast confirms that a row with NULL position
 // (no backlog_position and no sprint_position) sorts after rows with
 // non-NULL positions. Pre-rank-rollout rows are the canonical
@@ -222,18 +351,19 @@ func TestListWorkItems_NullsLast(t *testing.T) {
 
 	// Direct insert that allows NULL/NULL — uses the same column list
 	// as seedRows but with explicit NULLs.
+	flowID := defaultFlowStateID(t, ctx, pool, subID)
 	ids := make([]uuid.UUID, 0, 2)
 	for _, r := range rows {
 		key := nextKey(t, ctx, pool, subID)
 		var id uuid.UUID
 		err := pool.QueryRow(ctx,
 			`INSERT INTO o_artefacts_execution_work_items
-			   (subscription_id, key_num, item_type, title, status,
+			   (subscription_id, key_num, item_type, title, status, flow_state_id,
 			    owner_id, created_by, backlog_position, sprint_position)
-			 VALUES ($1, $2, 'story', $3, 'open',
-			         $4, $4, $5, $6)
+			 VALUES ($1, $2, 'story', $3, 'open', $4,
+			         $5, $5, $6, $7)
 			 RETURNING id`,
-			subID, key, r.title, userID, r.backlogPos, r.sprintPos,
+			subID, key, r.title, flowID, userID, r.backlogPos, r.sprintPos,
 		).Scan(&id)
 		if err != nil {
 			t.Skipf("cannot seed NULL/NULL row (CHECK rejects?): %v", err)
@@ -247,7 +377,10 @@ func TestListWorkItems_NullsLast(t *testing.T) {
 			 WHERE id = ANY($1)`, ids)
 	})
 
-	got, err := svc.ListWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{Limit: 200})
+	// Limit is large enough to span the dev fixture's full work-item set —
+	// the null-position row sorts last under NULLS LAST, so a small limit
+	// would page it out before the assertion.
+	got, err := svc.ListWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{Limit: 10000})
 	if err != nil {
 		t.Fatalf("ListWorkItems: %v", err)
 	}
@@ -262,7 +395,7 @@ func TestListWorkItems_NullsLast(t *testing.T) {
 		}
 	}
 	if positionedIdx < 0 || nullIdx < 0 {
-		t.Fatalf("rows not found: positioned=%d null=%d", positionedIdx, nullIdx)
+		t.Fatalf("rows not found: positioned=%d null=%d (total returned=%d)", positionedIdx, nullIdx, len(got))
 	}
 	if !(positionedIdx < nullIdx) {
 		t.Errorf("expected NULL-position row to sort after positioned row, got positioned=%d null=%d", positionedIdx, nullIdx)
@@ -290,6 +423,7 @@ func TestListChildren_OrderByCanonical(t *testing.T) {
 
 	// Seed three children with out-of-key-order positions.
 	posA, posB, posC := 30, 10, 20
+	flowID := defaultFlowStateID(t, ctx, pool, subID)
 	var childIDs []uuid.UUID
 	for _, c := range []struct {
 		title string
@@ -304,12 +438,12 @@ func TestListChildren_OrderByCanonical(t *testing.T) {
 		key := nextKey(t, ctx, pool, subID)
 		err := pool.QueryRow(ctx,
 			`INSERT INTO o_artefacts_execution_work_items
-			   (subscription_id, key_num, item_type, title, status,
+			   (subscription_id, key_num, item_type, title, status, flow_state_id,
 			    owner_id, created_by, backlog_position, parent_id)
-			 VALUES ($1, $2, 'story', $3, 'open',
-			         $4, $4, $5, $6)
+			 VALUES ($1, $2, 'story', $3, 'open', $4,
+			         $5, $5, $6, $7)
 			 RETURNING id`,
-			subID, key, c.title, userID, p, parentID,
+			subID, key, c.title, flowID, userID, p, parentID,
 		).Scan(&id)
 		if err != nil {
 			t.Fatalf("seed child %q: %v", c.title, err)
@@ -355,18 +489,19 @@ func TestRollupPoints_SumsDescendants(t *testing.T) {
 
 	// Insert epic with manual story_points=99 and two leaf-story children
 	// with 3 points each. The epic's RollupPoints must equal 6, not 99.
+	flowID := defaultFlowStateID(t, ctx, pool, subID)
 	epicKey := nextKey(t, ctx, pool, subID)
 	pos := 1
 	manual := 99
 	var epicID uuid.UUID
 	err := pool.QueryRow(ctx, `
 		INSERT INTO o_artefacts_execution_work_items
-		  (subscription_id, key_num, item_type, title, status,
+		  (subscription_id, key_num, item_type, title, status, flow_state_id,
 		   owner_id, created_by, backlog_position, story_points)
-		VALUES ($1, $2, 'epic', 'rollup-epic', 'open',
-		        $3, $3, $4, $5)
+		VALUES ($1, $2, 'epic', 'rollup-epic', 'open', $3,
+		        $4, $4, $5, $6)
 		RETURNING id`,
-		subID, epicKey, userID, pos, manual,
+		subID, epicKey, flowID, userID, pos, manual,
 	).Scan(&epicID)
 	if err != nil {
 		t.Fatalf("seed epic: %v", err)
@@ -380,12 +515,12 @@ func TestRollupPoints_SumsDescendants(t *testing.T) {
 		var id uuid.UUID
 		if err := pool.QueryRow(ctx, `
 			INSERT INTO o_artefacts_execution_work_items
-			  (subscription_id, key_num, item_type, title, status,
+			  (subscription_id, key_num, item_type, title, status, flow_state_id,
 			   owner_id, created_by, backlog_position, parent_id, story_points)
-			VALUES ($1, $2, 'story', $3, 'open',
-			        $4, $4, $5, $6, $7)
+			VALUES ($1, $2, 'story', $3, 'open', $4,
+			        $5, $5, $6, $7, $8)
 			RETURNING id`,
-			subID, key, label, userID, p, epicID, pts,
+			subID, key, label, flowID, userID, p, epicID, pts,
 		).Scan(&id); err != nil {
 			t.Fatalf("seed child %s: %v", label, err)
 		}
@@ -436,17 +571,18 @@ func TestPatchWorkItem_RejectsPointsOnTask(t *testing.T) {
 
 	// Seed one row of each type. Tasks need a parent (FK chain via
 	// migration 063 XOR), so create a parent story first.
+	flowID := defaultFlowStateID(t, ctx, pool, subID)
 	pos := 1
 	parentKey := nextKey(t, ctx, pool, subID)
 	var parentID uuid.UUID
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO o_artefacts_execution_work_items
-		  (subscription_id, key_num, item_type, title, status,
+		  (subscription_id, key_num, item_type, title, status, flow_state_id,
 		   owner_id, created_by, backlog_position)
-		VALUES ($1, $2, 'story', 'task-parent', 'open',
-		        $3, $3, $4)
+		VALUES ($1, $2, 'story', 'task-parent', 'open', $3,
+		        $4, $4, $5)
 		RETURNING id`,
-		subID, parentKey, userID, pos,
+		subID, parentKey, flowID, userID, pos,
 	).Scan(&parentID); err != nil {
 		t.Fatalf("seed parent: %v", err)
 	}
@@ -474,12 +610,12 @@ func TestPatchWorkItem_RejectsPointsOnTask(t *testing.T) {
 		var id uuid.UUID
 		if err := pool.QueryRow(ctx, `
 			INSERT INTO o_artefacts_execution_work_items
-			  (subscription_id, key_num, item_type, title, status,
+			  (subscription_id, key_num, item_type, title, status, flow_state_id,
 			   owner_id, created_by, backlog_position, parent_id)
-			VALUES ($1, $2, $3, $4, 'open',
-			        $5, $5, $6, $7)
+			VALUES ($1, $2, $3, $4, 'open', $5,
+			        $6, $6, $7, $8)
 			RETURNING id`,
-			subID, key, c.itemType, "points-gate-"+c.itemType, userID, key, c.parent,
+			subID, key, c.itemType, "points-gate-"+c.itemType, flowID, userID, key, c.parent,
 		).Scan(&id); err != nil {
 			t.Fatalf("seed %s: %v", c.itemType, err)
 		}

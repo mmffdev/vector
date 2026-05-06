@@ -10,7 +10,7 @@
   "implementation_plan": [
     "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx — generic component accepting Sets 1–5 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> ✓",
     "WS1-B: Restore DnD rank from reference/dnd_tree.tsx; wire useResourceRank + applyDrop + snapshot rollback into ResourceTree; add PATCH /api/work-items/:id/rank { before_id?, after_id? } backend handler",
-    "WS2-A: Replace stub filter chips with controlled chip rows in WorkItemsTree props; thread filter state into URL via PLA-0018 nuqs params; backend: append ?type=&status=&assignee= to list query",
+    "WS2-A (backend): <s>append ?owner_id= to list query (other 7 filter params + ?sort= already wired)</s> ✓ — frontend chips + URL nuqs threading still pending",
     "WS2-B: Promote sort to URL query param + server ORDER BY on all sortable columns; remove client-window sort branches from WorkItemsTree",
     "WS3-A: Add useKeyboardGrid hook on ResourceTree root — Tab → next editable cell, Enter → next row same column, Esc cancels active edit",
     "WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree",
@@ -130,7 +130,7 @@
       "title": "Backend: add ?owner_id= filter to GET /api/work-items",
       "story_id": "00450",
       "card_url": "http://localhost:3333/cards/1769197511685178779",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 7,
@@ -302,7 +302,8 @@
       "proven_by": "GET /api/work-items?owner_id=<uuid> returns only matching rows; CountWorkItems agrees.",
       "story_id": "00450",
       "card_url": "http://localhost:3333/cards/1769197511685178779",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 18,
@@ -310,7 +311,8 @@
       "proven_by": "Service test asserts ListWorkItemsFilter{ OwnerID: &uid } produces an owner_id WHERE clause.",
       "story_id": "00450",
       "card_url": "http://localhost:3333/cards/1769197511685178779",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 19,
@@ -318,7 +320,8 @@
       "proven_by": "Absence of owner_id= returns the unfiltered set (no regression on existing callers).",
       "story_id": "00450",
       "card_url": "http://localhost:3333/cards/1769197511685178779",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 20,

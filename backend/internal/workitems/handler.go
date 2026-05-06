@@ -55,6 +55,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("sprint_id"); v != "" {
 		f.SprintID = &v
 	}
+	if v := q.Get("owner_id"); v != "" {
+		f.OwnerID = &v
+	}
 	if v := q.Get("sort"); v != "" {
 		f.Sort = v
 	}
