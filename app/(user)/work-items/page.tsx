@@ -10,6 +10,7 @@ import WorkItemsTree from "@/app/components/WorkItemsTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useHintOnce } from "@/app/lib/hints";
 import type { WorkItem } from "@/app/components/WorkItemsTree";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ interface Sprint {
 
 export default function WorkItemsPage() {
   const { user } = useAuth();
+  useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);

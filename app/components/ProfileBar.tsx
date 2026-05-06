@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavPrefs, type NavProfile } from "@/app/contexts/NavPrefsContext";
+import { showHintOnce } from "@/app/lib/hints";
 import { notify } from "@/app/lib/toast";
 
 export const MAX_PROFILES = 10;
@@ -268,7 +269,10 @@ export default function ProfileBar() {
                 role="tab"
                 aria-selected={active}
                 className={`profile-bar__pill ${active ? "active" : ""}`}
-                onClick={() => { if (!active) void setActiveProfile(p.id); }}
+                onClick={() => {
+                  if (!active) void setActiveProfile(p.id);
+                  showHintOnce("PROFILE_BAR_FIRST_USE");
+                }}
                 title={p.label}
               >
                 {p.label}

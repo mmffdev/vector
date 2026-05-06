@@ -14,6 +14,7 @@ import {
   topologyApi,
   type ArchivedDescendant,
 } from "@/app/lib/topologyApi";
+import { useHintOnce } from "@/app/lib/hints";
 import { notify } from "@/app/lib/toast";
 import Panel from "@/app/components/Panel";
 
@@ -186,6 +187,8 @@ export default function ArchiveMapFlyout({
   const [width, setWidth] = useState<number | null>(null);
   const asideRef = useRef<HTMLElement | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useHintOnce("ARCHIVE_MAP_FIRST_OPEN");
 
   const reload = useCallback(async () => {
     try {

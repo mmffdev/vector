@@ -36,6 +36,7 @@ import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
+import { useHintOnce } from "@/app/lib/hints";
 import WizardModelCardList from "./WizardModelCardList";
 import AdoptionOverlay, {
   type AdoptionDoneEvent,
@@ -125,6 +126,8 @@ export default function PortfolioModelPage() {
   const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
   const [view, setView] = useState<StateView>({ kind: "loading" });
+
+  useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT", canEditModel);
 
   // Step 1 — capability gate. Run BEFORE any fetch so unprivileged users
   // never fire the adoption-state request.
