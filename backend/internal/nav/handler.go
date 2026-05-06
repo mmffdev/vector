@@ -13,6 +13,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/models"
 )
 
@@ -38,14 +39,14 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	reg, err := h.Svc.Registry.Get(r.Context())
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	cat := reg.CatalogFor(u.Role, u.SubscriptionID)
 
 	extras, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	for _, e := range extras {
@@ -87,26 +88,26 @@ func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	explicit, err := parseProfileQuery(r)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	pid, err := h.Svc.ResolveProfile(r.Context(), u.ID, u.SubscriptionID, explicit)
 	if err != nil {
 		if errors.Is(err, ErrProfileNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	rows, err := h.Svc.GetPrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, pid)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	groups, err := h.Svc.GetCustomGroups(r.Context(), u.ID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, prefsResp{ProfileID: pid, Prefs: rows, Groups: groups})
@@ -129,23 +130,23 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req putPrefsReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	pid, err := h.Svc.ResolveProfile(r.Context(), u.ID, u.SubscriptionID, req.ProfileID)
 	if err != nil {
 		if errors.Is(err, ErrProfileNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
 		log.Printf("nav.PutPrefs: ResolveProfile user=%s sub=%s: %v", u.ID, u.SubscriptionID, err)
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
 		log.Printf("nav.PutPrefs: customPageEntriesFor user=%s sub=%s: %v", u.ID, u.SubscriptionID, err)
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	if err := h.Svc.ReplacePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries, pid); err != nil {
@@ -169,12 +170,12 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 			log.Printf("nav.PutPrefs: 400 user=%s sub=%s pid=%s pinned=%d groups=%d: %v",
 				u.ID, u.SubscriptionID, pid, len(req.Pinned), len(req.Groups), err)
 			// Generic 400 — do not echo the offending key back to the client.
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 			return
 		default:
 			log.Printf("nav.PutPrefs: ReplacePrefsForProfile user=%s sub=%s pid=%s pinned=%d groups=%d: %v",
 				u.ID, u.SubscriptionID, pid, len(req.Pinned), len(req.Groups), err)
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 			return
 		}
 	}
@@ -185,7 +186,7 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 	groups, err := h.Svc.GetCustomGroups(r.Context(), u.ID)
 	if err != nil {
 		log.Printf("nav.PutPrefs: GetCustomGroups user=%s: %v", u.ID, err)
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, putPrefsResp{Groups: groups})
@@ -208,23 +209,23 @@ func (h *Handler) DeletePrefs(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	explicit, err := parseProfileQuery(r)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if explicit != nil {
 		if err := h.Svc.DeletePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, *explicit); err != nil {
 			if errors.Is(err, ErrProfileNotFound) {
-				httperr.Write(w, r, http.StatusNotFound, "not found")
+				httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 				return
 			}
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if err := h.Svc.DeletePrefs(r.Context(), u.ID, u.SubscriptionID); err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -239,7 +240,7 @@ func (h *Handler) StartPage(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.SubscriptionID, u.Role)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	if !ok {
@@ -262,23 +263,23 @@ func (h *Handler) PinBookmark(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req bookmarkReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.SubscriptionID, u.Role, EntityKind(req.EntityKind), req.EntityID)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownEntityKind):
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		case errors.Is(err, ErrEntityNotFound):
 			// 404 doesn't leak existence — same response either way.
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		case errors.Is(err, ErrEntityArchived):
-			httperr.Write(w, r, http.StatusConflict, "archived")
+			httperr.Write(w, r, http.StatusConflict, messages.ResourceArchived)
 		case errors.Is(err, ErrBookmarkCap):
-			httperr.Write(w, r, http.StatusConflict, "cap reached")
+			httperr.Write(w, r, http.StatusConflict, messages.LimitReached)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -291,15 +292,15 @@ func (h *Handler) UnpinBookmark(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req bookmarkReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if err := h.Bookmarks.Unpin(r.Context(), u.ID, u.SubscriptionID, EntityKind(req.EntityKind), req.EntityID); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownEntityKind):
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -317,16 +318,16 @@ func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
 	kind := EntityKind(q.Get("entity_kind"))
 	id, err := uuid.Parse(q.Get("entity_id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	pinned, err := h.Bookmarks.IsPinned(r.Context(), u.ID, u.SubscriptionID, kind, id)
 	if err != nil {
 		if errors.Is(err, ErrUnknownEntityKind) {
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, bookmarkCheckResp{Pinned: pinned})
@@ -378,12 +379,12 @@ func (h *Handler) ListProfiles(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	profs, err := h.Svc.ListProfiles(r.Context(), u.ID, u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	activeID, err := h.Svc.GetActiveProfileID(r.Context(), u.ID, u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, profilesResp{Profiles: profs, ActiveProfileID: activeID})
@@ -398,7 +399,7 @@ func (h *Handler) CreateProfile(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	p, err := h.Svc.CreateProfile(r.Context(), u.ID, u.SubscriptionID, req.Label)
@@ -406,13 +407,13 @@ func (h *Handler) CreateProfile(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrProfileLabelEmpty),
 			errors.Is(err, ErrProfileLabelTooLong):
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		case errors.Is(err, ErrDuplicateProfileLabel):
-			httperr.Write(w, r, http.StatusConflict, "duplicate label")
+			httperr.Write(w, r, http.StatusConflict, messages.Conflict)
 		case errors.Is(err, ErrTooManyProfiles):
-			httperr.Write(w, r, http.StatusConflict, "cap reached")
+			httperr.Write(w, r, http.StatusConflict, messages.LimitReached)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -428,25 +429,25 @@ func (h *Handler) RenameProfile(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	var req renameProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.RenameProfile(r.Context(), u.ID, u.SubscriptionID, id, req.Label); err != nil {
 		switch {
 		case errors.Is(err, ErrProfileLabelEmpty),
 			errors.Is(err, ErrProfileLabelTooLong):
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		case errors.Is(err, ErrDuplicateProfileLabel):
-			httperr.Write(w, r, http.StatusConflict, "duplicate label")
+			httperr.Write(w, r, http.StatusConflict, messages.Conflict)
 		case errors.Is(err, ErrProfileNotFound):
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -458,17 +459,17 @@ func (h *Handler) DeleteProfile(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.DeleteProfile(r.Context(), u.ID, u.SubscriptionID, id); err != nil {
 		switch {
 		case errors.Is(err, ErrProfileNotFound):
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		case errors.Is(err, ErrCannotDeleteDefault):
 			httperr.Write(w, r, http.StatusConflict, "cannot delete default")
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -484,17 +485,17 @@ func (h *Handler) ReorderProfiles(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req reorderProfilesReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.ReorderProfiles(r.Context(), u.ID, u.SubscriptionID, req.Order); err != nil {
 		switch {
 		case errors.Is(err, ErrBadPositions):
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		case errors.Is(err, ErrProfileNotFound):
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -510,16 +511,16 @@ func (h *Handler) ListProfileGroups(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	out, err := h.Svc.ListProfileGroups(r.Context(), u.ID, u.SubscriptionID, id)
 	if err != nil {
 		if errors.Is(err, ErrProfileNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, profileGroupsResp{Placements: out})
@@ -534,23 +535,23 @@ func (h *Handler) SetProfileGroups(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	var req setProfileGroupsReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.SetProfileGroups(r.Context(), u.ID, u.SubscriptionID, id, req.Placements); err != nil {
 		switch {
 		case errors.Is(err, ErrProfileNotFound):
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		case errors.Is(err, ErrUnknownGroup),
 			errors.Is(err, ErrBadPositions):
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}
@@ -566,17 +567,17 @@ func (h *Handler) SetActiveProfile(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req setActiveProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.SetActiveProfile(r.Context(), u.ID, u.SubscriptionID, req.ProfileID); err != nil {
 		switch {
 		case errors.Is(err, ErrProfileNotFound):
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		case errors.Is(err, ErrProfileWrongSubscription):
 			httperr.Write(w, r, http.StatusConflict, "wrong subscription")
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		}
 		return
 	}

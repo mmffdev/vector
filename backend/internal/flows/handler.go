@@ -6,6 +6,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // Handler exposes the flows domain over HTTP.
@@ -24,7 +25,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	out, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID.String())
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)

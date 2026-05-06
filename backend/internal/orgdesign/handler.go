@@ -13,6 +13,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // Handler exposes Service over HTTP under /api/topology. The router
@@ -135,7 +136,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createNodeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	n, err := h.Svc.CreateNode(r.Context(), CreateNodeInput{
@@ -185,12 +186,12 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req patchNodeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	hasMove := req.ParentID != nil || (req.ClearRoot != nil && *req.ClearRoot)
@@ -201,7 +202,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !hasMove && !hasFields {
-		httperr.Write(w, r, http.StatusBadRequest, "patch requires at least one field")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 	if hasMove {
@@ -284,7 +285,7 @@ func (h *Handler) Disconnect(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.DisconnectNode(r.Context(), u.SubscriptionID, id); err != nil {
@@ -327,7 +328,7 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createLevelReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	l, err := h.Svc.CreateLevel(r.Context(), CreateLevelInput{
@@ -355,12 +356,12 @@ func (h *Handler) RenameLevel(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req renameLevelReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.RenameLevel(r.Context(), u.SubscriptionID, id, req.Name); err != nil {
@@ -430,7 +431,7 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.ArchiveNode(r.Context(), u.SubscriptionID, id); err != nil {
@@ -458,7 +459,7 @@ func (h *Handler) Duplicate(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	n, err := h.Svc.DuplicateSubtree(r.Context(), u.SubscriptionID, id)
@@ -484,7 +485,7 @@ func (h *Handler) BulkPosition(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req bulkPositionReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if len(req.Updates) == 0 {
@@ -545,7 +546,7 @@ func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 	} else {
 		parsed, err := uuid.Parse(rootParam)
 		if err != nil {
-			httperr.Write(w, r, http.StatusBadRequest, "invalid root id")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 			return
 		}
 		rootID = parsed
@@ -570,7 +571,7 @@ func (h *Handler) ArchivedDescendants(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	descendants, err := h.Svc.ArchivedDescendants(r.Context(), u.SubscriptionID, id)
@@ -592,7 +593,7 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req struct {
@@ -602,7 +603,7 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	// EOF so callers can send Content-Length:0.
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 			return
 		}
 	}
@@ -629,7 +630,7 @@ func (h *Handler) Ancestors(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	nodes, err := h.Svc.AncestorsOf(r.Context(), u.SubscriptionID, id)
@@ -645,12 +646,12 @@ func (h *Handler) GrantRole(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	nodeID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req grantRoleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	grantID, err := h.Svc.GrantRole(r.Context(), u.SubscriptionID, nodeID, req.UserID, req.Role, u.ID, string(u.Role), req.CanRedelegate)
@@ -678,7 +679,7 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	grantID, err := uuid.Parse(chi.URLParam(r, "grant_id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid grant_id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.RevokeRole(r.Context(), u.SubscriptionID, grantID, u.ID); err != nil {
@@ -699,12 +700,12 @@ func (h *Handler) ViewState(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	nodeID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req viewStateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.SetViewState(r.Context(), u.SubscriptionID, nodeID, u.ID, req.Collapsed); err != nil {
@@ -725,14 +726,14 @@ func (h *Handler) PreviewMove(w http.ResponseWriter, r *http.Request) {
 	nodeIDStr := r.URL.Query().Get("node")
 	nodeID, err := uuid.Parse(nodeIDStr)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid node id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var newParent *uuid.UUID
 	if pidStr := r.URL.Query().Get("new_parent"); pidStr != "" {
 		pid, err := uuid.Parse(pidStr)
 		if err != nil {
-			httperr.Write(w, r, http.StatusBadRequest, "invalid new_parent id")
+			httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 			return
 		}
 		newParent = &pid
@@ -799,27 +800,27 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrNodeNotFound), errors.Is(err, ErrTenantMismatch), errors.Is(err, ErrGrantNotFound):
-		httperr.Write(w, r, http.StatusNotFound, "not found")
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 	case errors.Is(err, ErrCycleDetected):
 		httperr.Write(w, r, http.StatusBadRequest, "move would create a cycle")
 	case errors.Is(err, ErrInvalidLayoutMode):
 		httperr.Write(w, r, http.StatusBadRequest, "invalid layout_mode")
 	case errors.Is(err, ErrInvalidRole):
-		httperr.Write(w, r, http.StatusBadRequest, "invalid role")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 	case errors.Is(err, ErrInvalidName):
-		httperr.Write(w, r, http.StatusBadRequest, "name must be non-empty")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 	case errors.Is(err, ErrManualXYRequired):
 		httperr.Write(w, r, http.StatusBadRequest, "manual layout requires manual_x and manual_y")
 	case errors.Is(err, ErrManualXYForbidden):
 		httperr.Write(w, r, http.StatusBadRequest, "manual_x/manual_y only allowed in manual layout")
 	case errors.Is(err, ErrAdminAlreadyGranted):
-		httperr.Write(w, r, http.StatusConflict, "an admin grant already exists for this node")
+		httperr.Write(w, r, http.StatusConflict, messages.Conflict)
 	case errors.Is(err, ErrDelegationDepth):
 		httperr.Write(w, r, http.StatusForbidden, "delegation depth exceeded — only gadmin may grant in MVP")
 	case errors.Is(err, ErrRedelegationDisabled):
 		httperr.Write(w, r, http.StatusForbidden, "can_redelegate is reserved for Phase X")
 	case errors.Is(err, ErrLevelNotFound):
-		httperr.Write(w, r, http.StatusNotFound, "level not found")
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 	case errors.Is(err, ErrInvalidLevelDepth):
 		httperr.Write(w, r, http.StatusBadRequest, "level depth must be >= 0")
 	case errors.Is(err, ErrCommitForbidden):
@@ -835,6 +836,6 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrParentMissing):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "parent_missing"})
 	default:
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 	}
 }

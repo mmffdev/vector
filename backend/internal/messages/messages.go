@@ -27,6 +27,8 @@ const (
 	Conflict           = "This action conflicts with existing data."
 	InternalError      = "Something went wrong on our end. Please try again."
 	ServiceUnavailable = "This feature is temporarily unavailable. Please try again shortly."
+	LimitReached       = "You've reached the maximum number allowed."
+	ResourceArchived   = "This resource has been archived and cannot be modified."
 )
 
 // Success

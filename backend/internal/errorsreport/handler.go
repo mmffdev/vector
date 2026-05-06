@@ -46,6 +46,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // MaxContextBytes caps the encoded JSON size of the context payload.
@@ -80,13 +81,13 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
 		// RequireAuth should have rejected this already; defensive guard.
-		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
 
 	var req reportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid_request_body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if req.Code == "" {
@@ -109,7 +110,7 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	// trying to prevent. Revisit if profiling shows this in the
 	// hot path (TD-LIB-007 already tracks the cross-DB FK gap).
 	if ok, err := h.codeExists(r.Context(), req.Code); err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	} else if !ok {
 		httperr.Write(w, r, http.StatusBadRequest, "unknown_error_code")
@@ -134,7 +135,7 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 		u.SubscriptionID, u.ID, req.Code, ctxPayload, nullIfEmpty(requestID),
 	)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 
@@ -143,7 +144,7 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 
 // codeExists returns true iff the given code is present in
 // mmff_library.error_codes. Errors are propagated as-is; the caller
-// distinguishes "not found" (false, nil) from "lookup failed".
+// distinguishes messages.NotFound (false, nil) from "lookup failed".
 func (h *Handler) codeExists(ctx context.Context, code string) (bool, error) {
 	var found int
 	err := h.LibRO.QueryRow(ctx,

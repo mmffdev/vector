@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // CtxKeySubscriptionID is the context key for the validated subscription ID from an API key.
@@ -37,7 +38,7 @@ func Middleware(svc *Service) func(http.Handler) http.Handler {
 			info, err := svc.ValidateKey(r.Context(), rawKey)
 			if err != nil {
 				// Invalid/expired/revoked key
-				httperr.Write(w, r, http.StatusUnauthorized, "invalid or expired API key")
+				httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 				return
 			}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // Handler exposes all artefact routes. Routes are mounted under
@@ -38,11 +39,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		OwnerID     string  `json:"owner_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if req.Title == "" || req.OwnerID == "" {
-		httperr.Write(w, r, http.StatusBadRequest, "title and owner_id are required")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 	a, err := h.Svc.Create(r.Context(), artefactType(r), u.SubscriptionID, u.ID, CreateInput{
@@ -62,7 +63,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	a, err := h.Svc.Get(r.Context(), artefactType(r), u.SubscriptionID, id)
@@ -78,7 +79,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req struct {
@@ -87,7 +88,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		OwnerID     *string `json:"owner_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	a, err := h.Svc.Patch(r.Context(), artefactType(r), u.SubscriptionID, id, PatchInput{
@@ -107,14 +108,14 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), artefactType(r), u.SubscriptionID, id); err != nil {
 		h.handleErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "archived"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": messages.ResourceArchived})
 }
 
 // ── Schema management (padmin only — enforced in router) ──────────────
@@ -147,11 +148,11 @@ func (h *Handler) CreateSchema(w http.ResponseWriter, r *http.Request) {
 		ConfigJSON   *string `json:"config_json,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if req.FieldName == "" || req.Label == "" || req.Type == "" {
-		httperr.Write(w, r, http.StatusBadRequest, "field_name, label, and type are required")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 	f, err := h.Svc.CreateSchema(r.Context(), artefactType(r), u.SubscriptionID, CreateSchemaInput{
@@ -176,7 +177,7 @@ func (h *Handler) PatchSchema(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "schema_id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid schema_id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req struct {
@@ -188,7 +189,7 @@ func (h *Handler) PatchSchema(w http.ResponseWriter, r *http.Request) {
 		ConfigJSON   *string `json:"config_json,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	f, err := h.Svc.PatchSchema(r.Context(), artefactType(r), u.SubscriptionID, id, PatchSchemaInput{
@@ -211,14 +212,14 @@ func (h *Handler) ArchiveSchema(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "schema_id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid schema_id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.ArchiveSchema(r.Context(), artefactType(r), u.SubscriptionID, id); err != nil {
 		h.handleErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "archived"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": messages.ResourceArchived})
 }
 
 // ── Field values ──────────────────────────────────────────────────────
@@ -228,7 +229,7 @@ func (h *Handler) ListFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	vals, err := h.Svc.ListFieldValues(r.Context(), artefactType(r), u.SubscriptionID, id)
@@ -247,12 +248,12 @@ func (h *Handler) WriteFieldValue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	fieldName := chi.URLParam(r, "field_name")
 	if fieldName == "" {
-		httperr.Write(w, r, http.StatusBadRequest, "field_name required")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 	var req struct {
@@ -262,7 +263,7 @@ func (h *Handler) WriteFieldValue(w http.ResponseWriter, r *http.Request) {
 		DateValue   *string `json:"date_value,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	fv, err := h.Svc.WriteFieldValue(r.Context(), artefactType(r), u.SubscriptionID, id, fieldName, WriteFieldInput{
@@ -283,7 +284,7 @@ func (h *Handler) BulkWriteFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req map[string]struct {
@@ -293,7 +294,7 @@ func (h *Handler) BulkWriteFieldValues(w http.ResponseWriter, r *http.Request) {
 		DateValue   *string `json:"date_value,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	inputs := make(map[string]WriteFieldInput, len(req))
@@ -329,6 +330,6 @@ func (h *Handler) handleErr(w http.ResponseWriter, r *http.Request, err error) {
 			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 type Handler struct {
@@ -29,11 +30,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if req.TypeID == "" || req.Name == "" {
-		httperr.Write(w, r, http.StatusBadRequest, "type_id and name are required")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 	story, err := h.Svc.Create(r.Context(), u.SubscriptionID, u.ID, CreateInput{
@@ -47,7 +48,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, story)
@@ -58,16 +59,16 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	story, err := h.Svc.Get(r.Context(), u.SubscriptionID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, story)
@@ -103,12 +104,12 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	story, err := h.Svc.Patch(r.Context(), u.SubscriptionID, id, PatchInput{
@@ -137,10 +138,10 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, story)
@@ -151,15 +152,15 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, "not found")
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

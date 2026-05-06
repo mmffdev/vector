@@ -8,6 +8,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // Handler provides HTTP handlers for API key operations.
@@ -37,7 +38,7 @@ type IssueResponse struct {
 func (h *Handler) Issue(w http.ResponseWriter, r *http.Request) {
 	var req IssueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 
@@ -50,14 +51,14 @@ func (h *Handler) Issue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if subscriptionID == "" {
-		httperr.Write(w, r, http.StatusUnauthorized, "missing user or api key context")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
 
 	key, err := h.svc.Issue(r.Context(), subscriptionID, req.ExpiresAt, req.Scopes)
 	if err != nil {
 		log.Printf("apikeys.Issue error: %v", err)
-		httperr.Write(w, r, http.StatusInternalServerError, "could not issue key")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 
@@ -82,13 +83,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if subscriptionID == "" {
-		httperr.Write(w, r, http.StatusUnauthorized, "missing user or api key context")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
 
 	keys, err := h.svc.ListKeys(r.Context(), subscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "could not list keys")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 
@@ -107,18 +108,18 @@ type RevokeRequest struct {
 func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 	var req RevokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 
 	if req.ID == "" {
-		httperr.Write(w, r, http.StatusBadRequest, "id is required")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 
 	err := h.svc.Revoke(r.Context(), req.ID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, "could not revoke key")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 

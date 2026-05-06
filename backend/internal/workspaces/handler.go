@@ -35,6 +35,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 // Handler is the chi-mountable HTTP surface for workspaces.
@@ -87,7 +88,7 @@ type patchReq struct {
 // Non-holders of workspace.view_archived → 403 (ErrPermissionDenied).
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	includeArchived := r.URL.Query().Get("archived") == "true"
+	includeArchived := r.URL.Query().Get(messages.ResourceArchived) == "true"
 	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, includeArchived, u.ID)
 	if err != nil {
 		writeErr(w, r, err)
@@ -114,7 +115,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	row, err := h.Svc.Create(r.Context(), CreateInput{
@@ -138,16 +139,16 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if req.Name == nil && req.Slug == nil {
-		httperr.Write(w, r, http.StatusBadRequest, "patch requires at least one field")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 		return
 	}
 	if req.Slug != nil && req.Name == nil {
@@ -169,7 +170,7 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), u.SubscriptionID, id, u.ID); err != nil {
@@ -185,7 +186,7 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Restore(r.Context(), u.SubscriptionID, id, u.ID); err != nil {
@@ -209,7 +210,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrGrantNotFound):
-		httperr.Write(w, r, http.StatusNotFound, "not found")
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 	case errors.Is(err, ErrSlugTaken):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "slug_taken"})
 	case errors.Is(err, ErrAlreadyArchived):
@@ -221,14 +222,14 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrSingleAdminViolation):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "single_admin_violation"})
 	case errors.Is(err, ErrInvalidName):
-		httperr.Write(w, r, http.StatusBadRequest, "name must be non-empty")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
 	case errors.Is(err, ErrInvalidSlug):
 		httperr.Write(w, r, http.StatusBadRequest, "slug must match ^[a-z0-9][a-z0-9-]*$")
 	case errors.Is(err, ErrInvalidRole):
-		httperr.Write(w, r, http.StatusBadRequest, "invalid role")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 	case errors.Is(err, ErrPermissionDenied):
-		httperr.Write(w, r, http.StatusForbidden, "forbidden")
+		httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
 	default:
-		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 	}
 }
