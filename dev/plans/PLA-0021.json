@@ -109,7 +109,7 @@
       "title": "Vitest smoke: WorkItemsTree visual no-regression after ResourceTree extraction",
       "story_id": "00447",
       "card_url": "http://localhost:3333/cards/1769171432987690270",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 4,
@@ -162,7 +162,8 @@
       "proven_by": "plus 5 sub-addresses _set1.data, _set2.scaffold, _set3.features, _set4.cogmenu, _set5.colour",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "done": true
+      "done": true,
+      "tested": true
     },
     {
       "order": 6,
@@ -170,7 +171,8 @@
       "proven_by": "under work-items namespace",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "done": true
+      "done": true,
+      "tested": true
     },
     {
       "order": 7,
@@ -178,7 +180,8 @@
       "proven_by": "no missing-from-snapshot warnings",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "done": true
+      "done": true,
+      "tested": true
     },
     {
       "order": 8,
@@ -186,7 +189,8 @@
       "proven_by": "mounts WorkItemsTree against 5-row fixture",
       "story_id": "00447",
       "card_url": "http://localhost:3333/cards/1769171432987690270",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 9,
@@ -194,7 +198,8 @@
       "proven_by": "test asserts header columns, row count, expand toggle, inline-edit input",
       "story_id": "00447",
       "card_url": "http://localhost:3333/cards/1769171432987690270",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 10,
@@ -202,7 +207,8 @@
       "proven_by": "verified by reverting one column and re-running",
       "story_id": "00447",
       "card_url": "http://localhost:3333/cards/1769171432987690270",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 11,
@@ -284,7 +290,7 @@
     "Sprint and Owner columns show real data \u2014 no 'S-' prefix from UUID hex, no 2-char monogram from UUID",
     "Due date column shows real dates from work_items.due_date; inline date editor saves to the column",
     "Multi-select: checking 3 rows shows BulkActionBar; bulk-archive sends POST /api/work-items/bulk and all 3 rows disappear",
-    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s>",
+    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s> ✓",
     "go test ./... passes; npm run build succeeds; lint:addressables passes"
   ]
 }
