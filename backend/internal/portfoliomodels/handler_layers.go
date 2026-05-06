@@ -29,7 +29,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
-// LayersBatchHandler holds the vector pool for subscription_layers writes.
+// LayersBatchHandler holds the vector pool for obj_strategy_types_layers writes.
 // Padmin-equivalent gating is enforced at the router layer
 // (RequirePermission(PortfolioList) — PLA-0007).
 type LayersBatchHandler struct {
@@ -52,7 +52,7 @@ type layerPatchInput struct {
 
 // subscriptionLayerDTO is the wire shape of one layer in the PATCH response.
 // It mirrors layerDTO (dto.go) but uses source_library_id in place of
-// model_id — subscription_layers has no model_id column.
+// model_id — obj_strategy_types_layers has no model_id column.
 type subscriptionLayerDTO struct {
 	ID              uuid.UUID  `json:"id"`
 	SourceLibraryID uuid.UUID  `json:"source_library_id"`
@@ -79,7 +79,7 @@ type fieldError struct {
 }
 
 // GetLayers — GET /api/subscription/layers
-// Returns all live subscription_layers rows for the caller's subscription,
+// Returns all live obj_strategy_types_layers rows for the caller's subscription,
 // ordered by sort_order. This is the authoritative source for the editable
 // layers table — IDs here are subscription UUIDs, not library UUIDs.
 func (h *LayersBatchHandler) GetLayers(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +95,7 @@ func (h *LayersBatchHandler) GetLayers(w http.ResponseWriter, r *http.Request) {
 		       description_md, help_md,
 		       allows_children, is_leaf,
 		       archived_at, created_at, updated_at
-		  FROM subscription_layers
+		  FROM obj_strategy_types_layers
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY sort_order`,
@@ -150,7 +150,7 @@ func (h *LayersBatchHandler) PatchLayersBatch(w http.ResponseWriter, r *http.Req
 	// ── Fetch live layer IDs for this subscription ───────────────────
 	rows, err := h.VectorPool.Query(r.Context(), `
 		SELECT id
-		  FROM subscription_layers
+		  FROM obj_strategy_types_layers
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL`,
 		u.SubscriptionID,
@@ -261,7 +261,7 @@ func (h *LayersBatchHandler) PatchLayersBatch(w http.ResponseWriter, r *http.Req
 
 	for _, inp := range inputs {
 		if _, err := tx.Exec(r.Context(), `
-			UPDATE subscription_layers
+			UPDATE obj_strategy_types_layers
 			   SET name           = $1,
 			       tag            = $2,
 			       sort_order     = $3,
@@ -284,7 +284,7 @@ func (h *LayersBatchHandler) PatchLayersBatch(w http.ResponseWriter, r *http.Req
 		       description_md, help_md,
 		       allows_children, is_leaf,
 		       archived_at, created_at, updated_at
-		  FROM subscription_layers
+		  FROM obj_strategy_types_layers
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY sort_order, name`,

@@ -516,7 +516,7 @@ func (o *Orchestrator) markFailed(ctx context.Context, stateID uuid.UUID) {
 func loadLayerMap(ctx context.Context, tx pgx.Tx, subscriptionID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT source_library_id, id
-		  FROM subscription_layers
+		  FROM obj_strategy_types_layers
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL`,
 		subscriptionID,
@@ -578,7 +578,7 @@ func (o *Orchestrator) writeLayers(
 	//             mirror row to set the correct mirror parent_layer_id.
 	//
 	// ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL
-	// matches `idx_subscription_layers_name_unique` (migration 029) —
+	// matches `idx_obj_strategy_types_layers_name_unique` (migration 029) —
 	// idempotent on retry.
 
 	// Phase 1: insert all live layers without the FK column set.
@@ -587,7 +587,7 @@ func (o *Orchestrator) writeLayers(
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_layers
+			INSERT INTO obj_strategy_types_layers
 			    (subscription_id, source_library_id, source_library_version,
 			     name, tag, sort_order, parent_layer_id,
 			     icon, colour, description_md, help_md,
@@ -625,7 +625,7 @@ func (o *Orchestrator) writeLayers(
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			UPDATE subscription_layers
+			UPDATE obj_strategy_types_layers
 			   SET parent_layer_id = $1
 			 WHERE id = $2
 			   AND archived_at IS NULL`,

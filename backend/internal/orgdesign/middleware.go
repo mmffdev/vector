@@ -77,12 +77,12 @@ func WithClampForTest(ctx context.Context, c Clamp) context.Context {
 // ClampMiddleware wraps a handler chain so that every request lands
 // with a precomputed Clamp in its context. The middleware is mounted
 // once at the router level (see backend/cmd/server/main.go) on every
-// route group whose handlers query portfolio_items / user_stories or
+// route group whose handlers query obj_portfolio_items / user_stories or
 // any other table carrying org_node_id.
 //
 // Costs: one recursive CTE per request. The query is indexed
 // (idx_org_node_roles_user_active in migration 083 +
-// idx_portfolio_items_org_node in migration 085) and bounded by the
+// idx_obj_portfolio_items_org_node in migration 085) and bounded by the
 // size of the user's grant set, which is small in practice. We do
 // NOT cache across requests — the user's grants can change at any
 // time and stale clamps would mean unauthorised reads, which is the

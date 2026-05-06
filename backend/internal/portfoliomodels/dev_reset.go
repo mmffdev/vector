@@ -96,7 +96,7 @@ func (h *DevResetHandler) resetTables(ctx context.Context, subscriptionID uuid.U
 
 	// Delete layers (self-FK on parent_layer_id; delete all with source_library_id)
 	_, err = h.VectorPool.Exec(ctx, `
-		DELETE FROM subscription_layers
+		DELETE FROM obj_strategy_types_layers
 		WHERE subscription_id = $1 AND source_library_id IS NOT NULL
 	`, subscriptionID)
 	if err != nil {

@@ -310,7 +310,7 @@ function PortfolioRouterBody({
 }
 
 function BundleView({ bundle }: { bundle: BundleDTO }) {
-  // Layers come exclusively from subscription_layers — the tenant's own
+  // Layers come exclusively from obj_strategy_types_layers — the tenant's own
   // copy written at adoption time. The library bundle is never used as a
   // display source after adoption so library-side edits never bleed through.
   const [localLayers, setLocalLayers] = useState<LayerDTO[] | null>(null);

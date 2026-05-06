@@ -31,16 +31,16 @@ func New(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 // NULL so the frontend keeps showing the manual value.
 const rollupPointsExpr = `(
 	CASE WHEN EXISTS (
-		SELECT 1 FROM o_artefacts_execution_work_items c
+		SELECT 1 FROM obj_work_items c
 		WHERE c.parent_id = wi.id AND c.archived_at IS NULL
 	) THEN (
 		WITH RECURSIVE descendants AS (
 			SELECT id, story_points
-			FROM o_artefacts_execution_work_items
+			FROM obj_work_items
 			WHERE parent_id = wi.id AND archived_at IS NULL
 			UNION ALL
 			SELECT child.id, child.story_points
-			FROM o_artefacts_execution_work_items child
+			FROM obj_work_items child
 			JOIN descendants d ON child.parent_id = d.id
 			WHERE child.archived_at IS NULL
 		)
@@ -169,11 +169,11 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
 		       NULL::text AS owner_avatar_url,
 		       wi.due_date::text,
-		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
+		       (SELECT COUNT(*) FROM obj_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       %s AS rollup_points
-		FROM o_artefacts_execution_work_items wi
-		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		FROM obj_work_items wi
+		LEFT JOIN obj_flow_tenant fs ON fs.id = wi.flow_state_id
 		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
 		LEFT JOIN users u ON u.id = wi.owner_id
 		WHERE %s
@@ -231,7 +231,7 @@ func (s *Service) CountWorkItems(ctx context.Context, subscriptionID string, f L
 		args = append(args, *f.OwnerID)
 		n++
 	}
-	q := fmt.Sprintf(`SELECT COUNT(*) FROM o_artefacts_execution_work_items WHERE %s`,
+	q := fmt.Sprintf(`SELECT COUNT(*) FROM obj_work_items WHERE %s`,
 		strings.Join(conds, " AND "))
 	var total int
 	if err := s.pool.QueryRow(ctx, q, args...).Scan(&total); err != nil {
@@ -282,7 +282,7 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID string,
 			COUNT(*) FILTER (
 				WHERE status = 'open' AND updated_at < NOW() - INTERVAL '14 days'
 			) AS blocked
-		FROM o_artefacts_execution_work_items
+		FROM obj_work_items
 		WHERE %s`,
 		strings.Join(conds, " AND "),
 	)
@@ -308,11 +308,11 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uui
 		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
 		       NULL::text AS owner_avatar_url,
 		       wi.due_date::text,
-		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
+		       (SELECT COUNT(*) FROM obj_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
-		FROM o_artefacts_execution_work_items wi
-		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		FROM obj_work_items wi
+		LEFT JOIN obj_flow_tenant fs ON fs.id = wi.flow_state_id
 		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
 		LEFT JOIN users u ON u.id = wi.owner_id
 		WHERE wi.id = $1 AND wi.subscription_id = $2 AND wi.archived_at IS NULL`,
@@ -372,7 +372,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 	if in.ParentID != nil {
 		var rfID *string
 		_ = tx.QueryRow(ctx,
-			`SELECT root_feature_id FROM o_artefacts_execution_work_items WHERE id = $1`,
+			`SELECT root_feature_id FROM obj_work_items WHERE id = $1`,
 			*in.ParentID,
 		).Scan(&rfID)
 		rootFeatureID = rfID
@@ -386,7 +386,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 		var p int
 		_ = tx.QueryRow(ctx, `
 			SELECT coalesce(MAX(backlog_position), 0) + 100
-			FROM o_artefacts_execution_work_items
+			FROM obj_work_items
 			WHERE subscription_id = $1 AND sprint_id IS NULL AND archived_at IS NULL`,
 			subscriptionID,
 		).Scan(&p)
@@ -395,7 +395,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 		var p int
 		_ = tx.QueryRow(ctx, `
 			SELECT coalesce(MAX(sprint_position), 0) + 100
-			FROM o_artefacts_execution_work_items
+			FROM obj_work_items
 			WHERE subscription_id = $1 AND sprint_id = $2 AND archived_at IS NULL`,
 			subscriptionID, *in.SprintID,
 		).Scan(&p)
@@ -405,8 +405,8 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 	// Resolve the position-1 flow state for this subscription's work_items flow.
 	var defaultFlowStateID string
 	err = tx.QueryRow(ctx, `
-		SELECT ft.id FROM o_flow_tenant ft
-		JOIN o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		SELECT ft.id FROM obj_flow_tenant ft
+		JOIN obj_execution_types ats ON ats.id = ft.system_artefact_type_id
 		WHERE ft.subscription_id = $1
 		  AND ats.scope_key = 'execution_work_items'
 		  AND ft.flow_position = 1
@@ -420,7 +420,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO o_artefacts_execution_work_items
+		INSERT INTO obj_work_items
 			(subscription_id, key_num, item_type, title, description,
 			 status, flow_state_id, priority, story_points, sprint_id, parent_id, root_feature_id,
 			 owner_id, created_by, backlog_position, sprint_position)
@@ -437,7 +437,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID string, in 
 	// If no parent, set root_feature_id = self.
 	if in.ParentID == nil {
 		_, err = tx.Exec(ctx,
-			`UPDATE o_artefacts_execution_work_items SET root_feature_id = id WHERE id = $1`, id)
+			`UPDATE obj_work_items SET root_feature_id = id WHERE id = $1`, id)
 		if err != nil {
 			return nil, err
 		}
@@ -492,7 +492,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 		var cur *string
 		err := tx.QueryRow(ctx, `
 			SELECT sprint_id::text, item_type
-			FROM o_artefacts_execution_work_items
+			FROM obj_work_items
 			WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
 			FOR UPDATE`,
 			id, subscriptionID,
@@ -541,7 +541,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 		// Validate the flow state belongs to this subscription before writing.
 		var fsSub string
 		err := tx.QueryRow(ctx,
-			`SELECT subscription_id FROM o_flow_tenant WHERE id = $1 AND archived_at IS NULL`,
+			`SELECT subscription_id FROM obj_flow_tenant WHERE id = $1 AND archived_at IS NULL`,
 			*in.FlowStateID,
 		).Scan(&fsSub)
 		if err != nil {
@@ -601,7 +601,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 			sets = append(sets, fmt.Sprintf(
 				`backlog_position = (
 					SELECT coalesce(MIN(backlog_position), 100) - 100
-					FROM o_artefacts_execution_work_items
+					FROM obj_work_items
 					WHERE subscription_id = $%d AND sprint_id IS NULL AND archived_at IS NULL
 				)`, n))
 			args = append(args, subscriptionID)
@@ -612,7 +612,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 			sets = append(sets, fmt.Sprintf(
 				`sprint_position = (
 					SELECT coalesce(MAX(sprint_position), 0) + 100
-					FROM o_artefacts_execution_work_items
+					FROM obj_work_items
 					WHERE subscription_id = $%d AND sprint_id = $%d AND archived_at IS NULL
 				)`, n, n+1))
 			args = append(args, subscriptionID, *in.SprintID)
@@ -623,7 +623,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 
 	args = append(args, id, subscriptionID)
 	q := fmt.Sprintf(`
-		UPDATE o_artefacts_execution_work_items
+		UPDATE obj_work_items
 		SET %s
 		WHERE id = $%d AND subscription_id = $%d AND archived_at IS NULL`,
 		strings.Join(sets, ", "), n, n+1,
@@ -645,7 +645,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 // ArchiveWorkItem soft-deletes a work item by setting archived_at.
 func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID string, id uuid.UUID) error {
 	ct, err := s.pool.Exec(ctx, `
-		UPDATE o_artefacts_execution_work_items
+		UPDATE obj_work_items
 		SET archived_at = now(), updated_at = now()
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
 		id, subscriptionID,
@@ -701,7 +701,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 	// pgx maps it to text[] which casts to uuid[] in the WHERE clause.
 	rows, err := tx.Query(ctx, `
 		SELECT id::text, item_type, sprint_id::text
-		FROM o_artefacts_execution_work_items
+		FROM obj_work_items
 		WHERE subscription_id = $1 AND id::text = ANY($2) AND archived_at IS NULL
 		FOR UPDATE`,
 		subscriptionID, ids,
@@ -755,7 +755,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 		// Validate flow state belongs to this subscription before writing.
 		var fsSub string
 		if err := tx.QueryRow(ctx,
-			`SELECT subscription_id::text FROM o_flow_tenant WHERE id = $1 AND archived_at IS NULL`,
+			`SELECT subscription_id::text FROM obj_flow_tenant WHERE id = $1 AND archived_at IS NULL`,
 			fsRaw,
 		).Scan(&fsSub); err != nil {
 			for _, r := range visible {
@@ -776,7 +776,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 			return out, nil
 		}
 		ct, err := tx.Exec(ctx, `
-			UPDATE o_artefacts_execution_work_items
+			UPDATE obj_work_items
 			SET flow_state_id = $1, updated_at = now()
 			WHERE subscription_id = $2 AND id::text = ANY($3) AND archived_at IS NULL`,
 			fsRaw, subscriptionID, idsOf(visible),
@@ -798,7 +798,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 			return out, nil
 		}
 		ct, err := tx.Exec(ctx, `
-			UPDATE o_artefacts_execution_work_items
+			UPDATE obj_work_items
 			SET priority = $1, updated_at = now()
 			WHERE subscription_id = $2 AND id::text = ANY($3) AND archived_at IS NULL`,
 			prRaw, subscriptionID, idsOf(visible),
@@ -845,7 +845,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 			return out, nil
 		}
 		ct, err := tx.Exec(ctx, `
-			UPDATE o_artefacts_execution_work_items
+			UPDATE obj_work_items
 			SET owner_id = $1, updated_at = now()
 			WHERE subscription_id = $2 AND id::text = ANY($3) AND archived_at IS NULL`,
 			ownerRaw, subscriptionID, idsOf(visible),
@@ -857,7 +857,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 
 	case "archive":
 		ct, err := tx.Exec(ctx, `
-			UPDATE o_artefacts_execution_work_items
+			UPDATE obj_work_items
 			SET archived_at = now(), updated_at = now()
 			WHERE subscription_id = $1 AND id::text = ANY($2) AND archived_at IS NULL`,
 			subscriptionID, idsOf(visible),
@@ -869,7 +869,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []stri
 
 	case "delete":
 		ct, err := tx.Exec(ctx, `
-			DELETE FROM o_artefacts_execution_work_items
+			DELETE FROM obj_work_items
 			WHERE subscription_id = $1 AND id::text = ANY($2)`,
 			subscriptionID, idsOf(visible),
 		)
@@ -917,11 +917,11 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID string, paren
 		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
 		       NULL::text AS owner_avatar_url,
 		       wi.due_date::text,
-		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
+		       (SELECT COUNT(*) FROM obj_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
-		FROM o_artefacts_execution_work_items wi
-		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		FROM obj_work_items wi
+		LEFT JOIN obj_flow_tenant fs ON fs.id = wi.flow_state_id
 		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
 		LEFT JOIN users u ON u.id = wi.owner_id
 		WHERE wi.subscription_id = $1 AND wi.parent_id = $2 AND wi.archived_at IS NULL
@@ -1073,7 +1073,7 @@ func (s *Service) ListCustomFields(ctx context.Context, subscriptionID string) (
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, subscription_id, field_name, label, type, options_json, config_json,
 		       created_by, created_at, updated_at, archived_at
-		FROM o_execution_custom_field_library
+		FROM obj_custom_field_lib
 		WHERE subscription_id = $1 AND archived_at IS NULL
 		ORDER BY field_name ASC`,
 		subscriptionID,
@@ -1090,7 +1090,7 @@ func (s *Service) GetCustomField(ctx context.Context, subscriptionID string, id 
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, subscription_id, field_name, label, type, options_json, config_json,
 		       created_by, created_at, updated_at, archived_at
-		FROM o_execution_custom_field_library
+		FROM obj_custom_field_lib
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -1114,7 +1114,7 @@ func (s *Service) CreateCustomField(ctx context.Context, subscriptionID string, 
 	}
 	var id uuid.UUID
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO o_execution_custom_field_library
+		INSERT INTO obj_custom_field_lib
 			(subscription_id, field_name, label, type, options_json, config_json, created_by)
 		VALUES ($1,$2,$3,$4,$5,$6,$7)
 		RETURNING id`,
@@ -1153,7 +1153,7 @@ func (s *Service) PatchCustomField(ctx context.Context, subscriptionID string, i
 
 	args = append(args, id, subscriptionID)
 	q := fmt.Sprintf(`
-		UPDATE o_execution_custom_field_library SET %s
+		UPDATE obj_custom_field_lib SET %s
 		WHERE id = $%d AND subscription_id = $%d AND archived_at IS NULL`,
 		strings.Join(sets, ", "), n, n+1,
 	)
@@ -1170,7 +1170,7 @@ func (s *Service) PatchCustomField(ctx context.Context, subscriptionID string, i
 // ArchiveCustomField soft-deletes a library entry.
 func (s *Service) ArchiveCustomField(ctx context.Context, subscriptionID string, id uuid.UUID) error {
 	ct, err := s.pool.Exec(ctx, `
-		UPDATE o_execution_custom_field_library SET archived_at = now(), updated_at = now()
+		UPDATE obj_custom_field_lib SET archived_at = now(), updated_at = now()
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -1190,7 +1190,7 @@ func (s *Service) ListTemplates(ctx context.Context, subscriptionID string) ([]T
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, subscription_id, name, description, item_type,
 		       created_by, created_at, updated_at, archived_at
-		FROM o_execution_work_item_templates
+		FROM obj_field_templates
 		WHERE subscription_id = $1 AND archived_at IS NULL
 		ORDER BY name ASC`,
 		subscriptionID,
@@ -1217,7 +1217,7 @@ func (s *Service) GetTemplate(ctx context.Context, subscriptionID string, id uui
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, subscription_id, name, description, item_type,
 		       created_by, created_at, updated_at, archived_at
-		FROM o_execution_work_item_templates
+		FROM obj_field_templates
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -1234,8 +1234,8 @@ func (s *Service) GetTemplate(ctx context.Context, subscriptionID string, id uui
 	frows, err := s.pool.Query(ctx, `
 		SELECT f.id, f.template_id, f.field_library_id, l.field_name, l.label, l.type,
 		       f.position, f.required, f.default_value
-		FROM o_execution_work_item_template_fields f
-		JOIN o_execution_custom_field_library l ON l.id = f.field_library_id
+		FROM obj_field_template_fields f
+		JOIN obj_custom_field_lib l ON l.id = f.field_library_id
 		WHERE f.template_id = $1
 		ORDER BY f.position ASC`,
 		id,
@@ -1262,7 +1262,7 @@ func (s *Service) CreateTemplate(ctx context.Context, subscriptionID string, in 
 	}
 	var id uuid.UUID
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO o_execution_work_item_templates
+		INSERT INTO obj_field_templates
 			(subscription_id, name, description, item_type, created_by)
 		VALUES ($1,$2,$3,$4,$5)
 		RETURNING id`,
@@ -1281,7 +1281,7 @@ func (s *Service) CreateTemplate(ctx context.Context, subscriptionID string, in 
 func (s *Service) AddTemplateField(ctx context.Context, templateID uuid.UUID, in AddTemplateFieldInput) (*TemplateField, error) {
 	var id uuid.UUID
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO o_execution_work_item_template_fields
+		INSERT INTO obj_field_template_fields
 			(template_id, field_library_id, position, required, default_value)
 		VALUES ($1,$2,$3,$4,$5)
 		RETURNING id`,
@@ -1297,8 +1297,8 @@ func (s *Service) AddTemplateField(ctx context.Context, templateID uuid.UUID, in
 	row := s.pool.QueryRow(ctx, `
 		SELECT f.id, f.template_id, f.field_library_id, l.field_name, l.label, l.type,
 		       f.position, f.required, f.default_value
-		FROM o_execution_work_item_template_fields f
-		JOIN o_execution_custom_field_library l ON l.id = f.field_library_id
+		FROM obj_field_template_fields f
+		JOIN obj_custom_field_lib l ON l.id = f.field_library_id
 		WHERE f.id = $1`, id,
 	)
 	var tf TemplateField
@@ -1311,7 +1311,7 @@ func (s *Service) AddTemplateField(ctx context.Context, templateID uuid.UUID, in
 
 // RemoveTemplateField removes a field slot from a template.
 func (s *Service) RemoveTemplateField(ctx context.Context, fieldID uuid.UUID) error {
-	ct, err := s.pool.Exec(ctx, `DELETE FROM o_execution_work_item_template_fields WHERE id = $1`, fieldID)
+	ct, err := s.pool.Exec(ctx, `DELETE FROM obj_field_template_fields WHERE id = $1`, fieldID)
 	if err != nil {
 		return err
 	}
@@ -1334,8 +1334,8 @@ func (s *Service) ListFieldValues(ctx context.Context, subscriptionID string, wo
 		SELECT fv.id, fv.work_item_id, fv.field_library_id, fv.template_id,
 		       l.field_name, l.label, l.type, l.options_json,
 		       fv.string_value, fv.number_value, fv.text_value, fv.date_value
-		FROM o_artefacts_execution_work_items_field_values fv
-		JOIN o_execution_custom_field_library l ON l.id = fv.field_library_id
+		FROM obj_work_items_field_values fv
+		JOIN obj_custom_field_lib l ON l.id = fv.field_library_id
 		WHERE fv.work_item_id = $1
 		ORDER BY l.field_name ASC`,
 		workItemID,
@@ -1395,7 +1395,7 @@ func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID string, w
 	}
 
 	_, err = s.pool.Exec(ctx, `
-		INSERT INTO o_artefacts_execution_work_items_field_values
+		INSERT INTO obj_work_items_field_values
 			(work_item_id, field_library_id, string_value, number_value, text_value, date_value)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		ON CONFLICT (work_item_id, field_library_id)
@@ -1415,7 +1415,7 @@ func (s *Service) DeleteFieldValue(ctx context.Context, subscriptionID string, w
 		return err
 	}
 	ct, err := s.pool.Exec(ctx,
-		`DELETE FROM o_artefacts_execution_work_items_field_values WHERE id = $1 AND work_item_id = $2`,
+		`DELETE FROM obj_work_items_field_values WHERE id = $1 AND work_item_id = $2`,
 		fvID, workItemID,
 	)
 	if err != nil {
@@ -1556,8 +1556,8 @@ func scanCustomFields(rows pgx.Rows) ([]CustomField, error) {
 func (s *Service) ListFlowStates(ctx context.Context, subscriptionID string) ([]WorkItemFlowState, error) {
 	const q = `
 		SELECT ft.id, ft.flow_position, ft.name, ft.canonical_code
-		FROM   o_flow_tenant ft
-		JOIN   o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		FROM   obj_flow_tenant ft
+		JOIN   obj_execution_types ats ON ats.id = ft.system_artefact_type_id
 		WHERE  ft.subscription_id = $1
 		  AND  ats.scope_key = 'execution_work_items'
 		  AND  ft.archived_at IS NULL

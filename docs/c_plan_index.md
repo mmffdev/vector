@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0021`
+**Last issued:** `PLA-0022`
 
 ## Format
 
@@ -42,6 +42,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0019` | Samantha External API Surface — OpenAPI Spec, Versioning, Error Standards, API Keys, SDK | 2026-05-06 | active |
 | `PLA-0020` | E2E Human-Friendly Feedback System — Message constants, Toast layer, mmff-cli, Hints | 2026-05-06 | active |
 | `PLA-0021` | ResourceTree — generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap) | 2026-05-06 | active |
+| `PLA-0022` | Auth bootstrap dedup — share AuthProvider.refresh() in-flight promise to prevent tab-duplicate logout | 2026-05-06 | active |
 
 ## Deletion log
 

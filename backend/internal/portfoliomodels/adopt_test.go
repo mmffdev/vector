@@ -18,7 +18,7 @@ import (
 // Coverage shape:
 //   - happy path: run the saga end-to-end against the seeded MMFF
 //     library bundle, assert state row flips to `completed` and at
-//     least one row landed in subscription_layers.
+//     least one row landed in obj_strategy_types_layers.
 //   - failure path: invoke with FailAtStep="layers", assert state row
 //     ends up `failed`, an error_event landed with code
 //     ADOPT_STEP_FAIL_LAYERS, and the orchestrator returns an
@@ -62,13 +62,13 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 	// At least one mirror layer row should now exist.
 	var layerCount int
 	if err := vec.QueryRow(ctx, `
-		SELECT COUNT(*) FROM subscription_layers
+		SELECT COUNT(*) FROM obj_strategy_types_layers
 		 WHERE subscription_id = $1 AND archived_at IS NULL`,
 		user.SubscriptionID).Scan(&layerCount); err != nil {
 		t.Fatalf("count layers: %v", err)
 	}
 	if layerCount == 0 {
-		t.Errorf("subscription_layers: want >0 rows after happy-path adopt, got 0")
+		t.Errorf("obj_strategy_types_layers: want >0 rows after happy-path adopt, got 0")
 	}
 }
 
@@ -191,7 +191,7 @@ func resetAdoptionFixture(ctx context.Context, pool *pgxpool.Pool, subscriptionI
 	for _, table := range []string{
 		"subscription_workflow_transitions",
 		"subscription_workflows",
-		"subscription_layers",
+		"obj_strategy_types_layers",
 		"subscription_artifacts",
 		"subscription_terminology",
 	} {

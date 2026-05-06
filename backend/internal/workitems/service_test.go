@@ -61,14 +61,14 @@ func testPool(t *testing.T) *pgxpool.Pool {
 
 // defaultFlowStateID returns the position-1 (default-on-create) flow_state_id
 // for the subscription's execution_work_items flow. Direct INSERTs into
-// o_artefacts_execution_work_items must populate flow_state_id — the trigger
+// obj_work_items must populate flow_state_id — the trigger
 // rejects NULL/cross-tenant values. Mirrors workitems.Service.CreateWorkItem.
 func defaultFlowStateID(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID uuid.UUID) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
 	err := pool.QueryRow(ctx, `
-		SELECT ft.id FROM o_flow_tenant ft
-		JOIN o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		SELECT ft.id FROM obj_flow_tenant ft
+		JOIN obj_execution_types ats ON ats.id = ft.system_artefact_type_id
 		WHERE ft.subscription_id = $1
 		  AND ats.scope_key = 'execution_work_items'
 		  AND ft.flow_position = 1
@@ -113,7 +113,7 @@ func nextKey(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID uuid.U
 	_, _ = pool.Exec(ctx, `
 		INSERT INTO subscription_sequence (subscription_id, scope, next_num)
 		SELECT $1, 'work_item', coalesce(MAX(key_num), 0) + 1
-		FROM o_artefacts_execution_work_items
+		FROM obj_work_items
 		WHERE subscription_id = $1
 		ON CONFLICT (subscription_id, scope) DO UPDATE
 			SET next_num = GREATEST(
@@ -145,7 +145,7 @@ func seedRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID, user
 		key := nextKey(t, ctx, pool, subID)
 		var id uuid.UUID
 		err := pool.QueryRow(ctx,
-			`INSERT INTO o_artefacts_execution_work_items
+			`INSERT INTO obj_work_items
 			   (subscription_id, key_num, item_type, title, status, flow_state_id,
 			    owner_id, created_by, backlog_position, sprint_position, sprint_id)
 			 VALUES ($1, $2, 'story', $3, 'open', $4,
@@ -160,7 +160,7 @@ func seedRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID, user
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE o_artefacts_execution_work_items
+			`UPDATE obj_work_items
 			 SET archived_at = now()
 			 WHERE id = ANY($1)`, ids)
 	})
@@ -259,7 +259,7 @@ func TestListWorkItems_OwnerFilter(t *testing.T) {
 
 	// Re-owner row B to otherID (seedRows always seeds owner = userID).
 	if _, err := pool.Exec(ctx,
-		`UPDATE o_artefacts_execution_work_items SET owner_id = $1 WHERE id = $2`,
+		`UPDATE obj_work_items SET owner_id = $1 WHERE id = $2`,
 		otherID, ids[1],
 	); err != nil {
 		t.Fatalf("re-owner: %v", err)
@@ -409,7 +409,7 @@ func TestListWorkItems_NullsLast(t *testing.T) {
 		key := nextKey(t, ctx, pool, subID)
 		var id uuid.UUID
 		err := pool.QueryRow(ctx,
-			`INSERT INTO o_artefacts_execution_work_items
+			`INSERT INTO obj_work_items
 			   (subscription_id, key_num, item_type, title, status, flow_state_id,
 			    owner_id, created_by, backlog_position, sprint_position)
 			 VALUES ($1, $2, 'story', $3, 'open', $4,
@@ -424,7 +424,7 @@ func TestListWorkItems_NullsLast(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE o_artefacts_execution_work_items
+			`UPDATE obj_work_items
 			 SET archived_at = now()
 			 WHERE id = ANY($1)`, ids)
 	})
@@ -489,7 +489,7 @@ func TestListChildren_OrderByCanonical(t *testing.T) {
 		p := c.pos
 		key := nextKey(t, ctx, pool, subID)
 		err := pool.QueryRow(ctx,
-			`INSERT INTO o_artefacts_execution_work_items
+			`INSERT INTO obj_work_items
 			   (subscription_id, key_num, item_type, title, status, flow_state_id,
 			    owner_id, created_by, backlog_position, parent_id)
 			 VALUES ($1, $2, 'story', $3, 'open', $4,
@@ -504,7 +504,7 @@ func TestListChildren_OrderByCanonical(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE o_artefacts_execution_work_items
+			`UPDATE obj_work_items
 			 SET archived_at = now()
 			 WHERE id = ANY($1)`, childIDs)
 	})
@@ -547,7 +547,7 @@ func TestRollupPoints_SumsDescendants(t *testing.T) {
 	manual := 99
 	var epicID uuid.UUID
 	err := pool.QueryRow(ctx, `
-		INSERT INTO o_artefacts_execution_work_items
+		INSERT INTO obj_work_items
 		  (subscription_id, key_num, item_type, title, status, flow_state_id,
 		   owner_id, created_by, backlog_position, story_points)
 		VALUES ($1, $2, 'epic', 'rollup-epic', 'open', $3,
@@ -566,7 +566,7 @@ func TestRollupPoints_SumsDescendants(t *testing.T) {
 		pts := 3
 		var id uuid.UUID
 		if err := pool.QueryRow(ctx, `
-			INSERT INTO o_artefacts_execution_work_items
+			INSERT INTO obj_work_items
 			  (subscription_id, key_num, item_type, title, status, flow_state_id,
 			   owner_id, created_by, backlog_position, parent_id, story_points)
 			VALUES ($1, $2, 'story', $3, 'open', $4,
@@ -581,7 +581,7 @@ func TestRollupPoints_SumsDescendants(t *testing.T) {
 	t.Cleanup(func() {
 		all := append([]uuid.UUID{epicID}, childIDs...)
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE o_artefacts_execution_work_items SET archived_at = now() WHERE id = ANY($1)`, all)
+			`UPDATE obj_work_items SET archived_at = now() WHERE id = ANY($1)`, all)
 	})
 
 	wi, err := svc.GetWorkItem(ctx, subID.String(), epicID)
@@ -628,7 +628,7 @@ func TestPatchWorkItem_RejectsPointsOnTask(t *testing.T) {
 	parentKey := nextKey(t, ctx, pool, subID)
 	var parentID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO o_artefacts_execution_work_items
+		INSERT INTO obj_work_items
 		  (subscription_id, key_num, item_type, title, status, flow_state_id,
 		   owner_id, created_by, backlog_position)
 		VALUES ($1, $2, 'story', 'task-parent', 'open', $3,
@@ -654,14 +654,14 @@ func TestPatchWorkItem_RejectsPointsOnTask(t *testing.T) {
 	ids := []uuid.UUID{parentID}
 	defer func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE o_artefacts_execution_work_items SET archived_at = now() WHERE id = ANY($1)`, ids)
+			`UPDATE obj_work_items SET archived_at = now() WHERE id = ANY($1)`, ids)
 	}()
 
 	for _, c := range cases {
 		key := nextKey(t, ctx, pool, subID)
 		var id uuid.UUID
 		if err := pool.QueryRow(ctx, `
-			INSERT INTO o_artefacts_execution_work_items
+			INSERT INTO obj_work_items
 			  (subscription_id, key_num, item_type, title, status, flow_state_id,
 			   owner_id, created_by, backlog_position, parent_id)
 			VALUES ($1, $2, $3, $4, 'open', $5,

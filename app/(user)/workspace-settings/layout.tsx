@@ -6,7 +6,7 @@ import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
-const TABS = ["organization", "workspaces", "users", "permissions", "topology", "portfolio_model", "work_items"] as const;
+const TABS = ["organization", "workspaces", "users", "permissions", "topology", "portfolio_model", "work_items", "custom_fields"] as const;
 type TabKey = typeof TABS[number];
 
 const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
@@ -17,12 +17,14 @@ const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
   topology:        { title: "Topology",        subtitle: "Federated org canvas — offices, teams, and reporting lines" },
   portfolio_model: { title: "Portfolio Model", subtitle: "Adopt a model or preview your subscription's adopted bundle" },
   work_items:      { title: "Work Items",      subtitle: "Flows for system, portfolio, and custom artefact types" },
+  custom_fields:   { title: "Custom Fields",   subtitle: "Tenant-defined fields available on work items and portfolio artefacts" },
 };
 
 // Tab key → URL path segment (only overrides where they differ)
 const KEY_TO_SEG: Partial<Record<TabKey, string>> = {
   portfolio_model: "portfolio-model",
   work_items:      "work-items",
+  custom_fields:   "custom-fields",
 };
 
 // URL path segment → tab key
@@ -34,11 +36,25 @@ const SEG_TO_KEY: Record<string, TabKey> = {
   topology:        "topology",
   "portfolio-model": "portfolio_model",
   "work-items":    "work_items",
+  "custom-fields": "custom_fields",
 };
 
 function segmentForKey(key: TabKey): string {
   return KEY_TO_SEG[key] ?? key;
 }
+
+// Per-tab third-level (tertiary) sub-tab labels, keyed by URL segment.
+// Used to extend the page title (e.g. "Custom Fields // Defects") when a
+// top-level tab introduces its own nested routes.
+const SUB_TAB_LABELS: Partial<Record<TabKey, Record<string, string>>> = {
+  custom_fields: {
+    "work-items":      "Work Items",
+    "portfolio-items": "Portfolio Items",
+    tasks:             "Tasks",
+    defects:           "Defects",
+    risks:             "Risks",
+  },
+};
 
 export default function WorkspaceSettingsLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -53,19 +69,27 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
 
   if (!user || !canAdminWorkspace) return null;
 
-  // Derive active tab from the last path segment.
+  // Derive active tab from the segment immediately after `workspace-settings`.
+  // (Reading the *last* segment would break when a tab adds its own sub-routes,
+  // e.g. /workspace-settings/custom-fields/work-items.)
   const segments = pathname.split("/").filter(Boolean);
-  const lastSeg  = segments[segments.length - 1] ?? "";
-  const activeTab: TabKey = SEG_TO_KEY[lastSeg] ?? "organization";
+  const rootIdx  = segments.indexOf("workspace-settings");
+  const tabSeg   = rootIdx >= 0 ? segments[rootIdx + 1] ?? "" : "";
+  const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "organization";
 
   const header = TAB_HEADERS[activeTab];
+
+  // Extend title with the active tertiary sub-tab label when present.
+  const subSeg    = rootIdx >= 0 ? segments[rootIdx + 2] ?? "" : "";
+  const subLabel  = SUB_TAB_LABELS[activeTab]?.[subSeg];
+  const fullTitle = subLabel ? `${header.title} // ${subLabel}` : header.title;
 
   function handleTabChange(key: TabKey) {
     router.push(`/workspace-settings/${segmentForKey(key)}`);
   }
 
   return (
-    <PageShell title={header.title} subtitle={header.subtitle} barTitle="Workspace Settings">
+    <PageShell title={fullTitle} subtitle={header.subtitle} barTitle="Workspace Settings">
       <SecondaryNavigation<TabKey>
         ariaLabel="Workspace settings sections"
         pageId="workspace-settings"
@@ -80,6 +104,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
           { key: "topology",        label: "Topology",        sortKey: "Topology" },
           { key: "portfolio_model", label: "Portfolio Model", sortKey: "Portfolio Model" },
           ...(canManageFlows ? [{ key: "work_items" as const, label: "Work Items", sortKey: "Work Items" }] : []),
+          { key: "custom_fields",   label: "Custom Fields",   sortKey: "Custom Fields" },
         ]}
       />
       {children}

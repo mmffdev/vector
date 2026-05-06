@@ -18,7 +18,7 @@ var (
 	ErrWrongValueColumn = errors.New("value column does not match field type")
 )
 
-// WorkItem is the wire representation of o_artefacts_execution_work_items.
+// WorkItem is the wire representation of obj_work_items.
 //
 // Points model: StoryPoints is the manually-entered value; RollupPoints is
 // the sum of leaf points across the descendant subtree (only populated for
@@ -26,7 +26,7 @@ var (
 // is the value the UI shows — the manual value is preserved in the DB but
 // shadowed. Tasks may not have manual points (see canHaveManualPoints).
 //
-// Flow state: FlowStateID is the UUID FK into o_flow_tenant. FlowStateName
+// Flow state: FlowStateID is the UUID FK into obj_flow_tenant. FlowStateName
 // and FlowStateCode are joined from that row so the frontend can render the
 // current state without a second request. Use FlowStateID (not Status) for
 // all state reads/writes — Status is the legacy shadow column kept for one
@@ -52,7 +52,7 @@ type WorkItem struct {
 	OwnerID        string     `json:"owner_id"`
 	Owner          *OwnerRef  `json:"owner"`
 	// PLA-0021 / 00460 (WS4-C) — DueDate is the wire form of the new
-	// nullable due_date column on o_artefacts_execution_work_items. The
+	// nullable due_date column on obj_work_items. The
 	// SELECT casts to ::text so we read YYYY-MM-DD without paying for
 	// time.Time/RFC-3339 round-trip. Nil ⇒ JSON `null` (no `omitempty`)
 	// so absent vs cleared can both render as the em-dash placeholder.
@@ -185,7 +185,7 @@ type PatchSprintInput struct {
 	Status    *string
 }
 
-// CustomField is the wire representation of o_execution_custom_field_library.
+// CustomField is the wire representation of obj_custom_field_lib.
 type CustomField struct {
 	ID             string     `json:"id"`
 	SubscriptionID string     `json:"subscription_id"`
@@ -217,7 +217,7 @@ type PatchCustomFieldInput struct {
 	ConfigJSON  *string
 }
 
-// Template is the wire representation of o_execution_work_item_templates.
+// Template is the wire representation of obj_field_templates.
 type Template struct {
 	ID             string          `json:"id"`
 	SubscriptionID string          `json:"subscription_id"`
@@ -231,7 +231,7 @@ type Template struct {
 	ArchivedAt     *time.Time      `json:"archived_at,omitempty"`
 }
 
-// TemplateField is one slot in o_execution_work_item_template_fields.
+// TemplateField is one slot in obj_field_template_fields.
 type TemplateField struct {
 	ID             string  `json:"id"`
 	TemplateID     string  `json:"template_id"`
@@ -276,7 +276,7 @@ type FieldValue struct {
 	DateValue      *string `json:"date_value,omitempty"`
 }
 
-// WorkItemFlowState is a slim projection of o_flow_tenant scoped to the
+// WorkItemFlowState is a slim projection of obj_flow_tenant scoped to the
 // execution_work_items flow for a subscription. The frontend uses this to
 // populate the Status dropdown without needing flows.manage permission.
 type WorkItemFlowState struct {

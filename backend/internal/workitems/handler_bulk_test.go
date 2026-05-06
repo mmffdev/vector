@@ -48,8 +48,8 @@ func secondFlowStateID(t *testing.T, ctx context.Context, pool *pgxpool.Pool, su
 	t.Helper()
 	var id uuid.UUID
 	err := pool.QueryRow(ctx, `
-		SELECT ft.id FROM o_flow_tenant ft
-		JOIN o_artefact_types_system ats ON ats.id = ft.system_artefact_type_id
+		SELECT ft.id FROM obj_flow_tenant ft
+		JOIN obj_execution_types ats ON ats.id = ft.system_artefact_type_id
 		WHERE ft.subscription_id = $1
 		  AND ats.scope_key = 'execution_work_items'
 		  AND ft.flow_position = 2
@@ -93,9 +93,9 @@ func pickSecondTenant(t *testing.T, pool *pgxpool.Pool, excludeSub uuid.UUID) (u
 		// best-effort cleanup; FK chain (users → work_items → flow_tenant)
 		// resolves naturally via cascade or our own deletes below.
 		_, _ = pool.Exec(context.Background(),
-			`DELETE FROM o_artefacts_execution_work_items WHERE subscription_id = $1`, subID)
+			`DELETE FROM obj_work_items WHERE subscription_id = $1`, subID)
 		_, _ = pool.Exec(context.Background(),
-			`DELETE FROM o_flow_tenant WHERE subscription_id = $1`, subID)
+			`DELETE FROM obj_flow_tenant WHERE subscription_id = $1`, subID)
 		_, _ = pool.Exec(context.Background(),
 			`DELETE FROM users WHERE subscription_id = $1`, subID)
 		_, _ = pool.Exec(context.Background(),
@@ -104,14 +104,14 @@ func pickSecondTenant(t *testing.T, pool *pgxpool.Pool, excludeSub uuid.UUID) (u
 			`DELETE FROM subscriptions WHERE id = $1`, subID)
 	})
 
-	// Backfill flow_tenant rows from o_flow_system for the new sub —
+	// Backfill flow_tenant rows from obj_flow_system for the new sub —
 	// mirrors migration 118 exactly. Without this seedRows would fail
 	// because there's no default flow_state to point at.
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO o_flow_tenant
+		INSERT INTO obj_flow_tenant
 		    (subscription_id, system_artefact_type_id, flow_position, name, canonical_code, description)
 		SELECT $1, fs.system_artefact_type_id, fs.flow_position, fs.name, fs.canonical_code, fs.description
-		FROM   o_flow_system fs
+		FROM   obj_flow_system fs
 		ON CONFLICT DO NOTHING`, subID); err != nil {
 		t.Skipf("cannot backfill flow_tenant for synthetic sub: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestBulk_AllSuccessSetStatus(t *testing.T) {
 	for _, id := range ids {
 		var fsID uuid.UUID
 		if err := pool.QueryRow(ctx,
-			`SELECT flow_state_id FROM o_artefacts_execution_work_items WHERE id = $1`, id,
+			`SELECT flow_state_id FROM obj_work_items WHERE id = $1`, id,
 		).Scan(&fsID); err != nil {
 			t.Errorf("re-read %s: %v", id, err)
 			continue
@@ -244,7 +244,7 @@ func TestBulk_PartialFailureCrossTenant(t *testing.T) {
 	t2ID := t2IDs[0]
 	var t2OriginalFS uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT flow_state_id FROM o_artefacts_execution_work_items WHERE id = $1`, t2ID,
+		`SELECT flow_state_id FROM obj_work_items WHERE id = $1`, t2ID,
 	).Scan(&t2OriginalFS); err != nil {
 		t.Fatalf("read T2 original flow_state: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestBulk_PartialFailureCrossTenant(t *testing.T) {
 	// T2 row must be untouched — same flow_state as before the call.
 	var t2AfterFS uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT flow_state_id FROM o_artefacts_execution_work_items WHERE id = $1`, t2ID,
+		`SELECT flow_state_id FROM obj_work_items WHERE id = $1`, t2ID,
 	).Scan(&t2AfterFS); err != nil {
 		t.Fatalf("re-read T2: %v", err)
 	}
@@ -305,7 +305,7 @@ func TestBulk_PartialFailureCrossTenant(t *testing.T) {
 	for _, id := range t1IDs {
 		var fsID uuid.UUID
 		if err := pool.QueryRow(ctx,
-			`SELECT flow_state_id FROM o_artefacts_execution_work_items WHERE id = $1`, id,
+			`SELECT flow_state_id FROM obj_work_items WHERE id = $1`, id,
 		).Scan(&fsID); err != nil {
 			t.Errorf("re-read T1 row %s: %v", id, err)
 			continue

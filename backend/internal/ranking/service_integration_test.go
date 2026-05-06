@@ -65,7 +65,7 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	// for authz live in the handler suite; here we exercise the
 	// concurrency path only.
 	ranking.Register("work_item", ranking.ResourceConfig{
-		Table:       "o_artefacts_execution_work_items",
+		Table:       "obj_work_items",
 		ScopeColumn: "sprint_id",
 		Permissions: ranking.PermissionCheckerFunc(func(_ context.Context, _, _ uuid.UUID) (bool, error) {
 			return true, nil
@@ -94,7 +94,7 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE o_artefacts_execution_work_items
+			`UPDATE obj_work_items
 			 SET archived_at = now()
 			 WHERE id = ANY($1)`,
 			[]uuid.UUID{a, b, c},
@@ -178,7 +178,7 @@ func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID uu
 	for i, pos := range []int{100, 200, 300} {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx,
-			`INSERT INTO o_artefacts_execution_work_items
+			`INSERT INTO obj_work_items
 			   (subscription_id, kind, title, key_num, backlog_position, created_at, updated_at)
 			 VALUES ($1, 'story', $2, nextval('artefacts_work_item_key_seq'), $3, now(), now())
 			 RETURNING id`,
@@ -196,7 +196,7 @@ func readBacklogCohort(t *testing.T, ctx context.Context, pool *pgxpool.Pool, su
 	t.Helper()
 	rows, err := pool.Query(ctx,
 		`SELECT id, backlog_position
-		 FROM o_artefacts_execution_work_items
+		 FROM obj_work_items
 		 WHERE id = ANY($1) AND subscription_id = $2`,
 		ids, subID,
 	)

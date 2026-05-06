@@ -100,7 +100,6 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscription_sequence       WHERE subscription_id = $1`,
-			`DELETE FROM pending_library_cleanup_jobs WHERE subscription_id = $1`,
 			`DELETE FROM password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
 			`DELETE FROM roles                       WHERE subscription_id = $1`,

@@ -29,7 +29,7 @@ func (c Code) String() string { return string(c) }
 //   - portfolio.*         — portfolio resource
 //   - workspace.*         — workspace tier surface (PLA-0006 / migration 100)
 //   - library.*           — library release channel (PLA-0007 / migration 104)
-//   - portfolio_items.*   — portfolio items reader gate (migration 104)
+//   - portfolio_items.*       — portfolio items reader gate (migration 104)
 //   - portfolio_settings.*— portfolio settings reader gate (migration 104)
 //   - work_items.*        — work_items configuration surface (migration 104)
 const (

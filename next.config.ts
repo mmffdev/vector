@@ -19,14 +19,17 @@ const csp = [
   "img-src 'self' data:",
   "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self' ${apiBase} ${apiBaseWs}`,
-  "frame-ancestors 'none'",
+  // 'self' (not 'none') so internal tooling can iframe sibling routes
+  // same-origin (e.g. /v2/compare A/B rig). Cross-origin embedding stays
+  // blocked.
+  "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
 ].join("; ");
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "geolocation=(), camera=(), microphone=()" },
   { key: "Content-Security-Policy", value: csp },

@@ -201,7 +201,7 @@ func (s *Service) CleanupChildren(ctx context.Context, tx pgx.Tx, kind EntityKin
 // childRel describes one (table, kind-column, id-column) tuple in the
 // cleanup registry. Tables that pair the same parent kind with
 // different child columns (e.g. an item_type_states row keyed by a
-// future portfolio_item_types extension) need their own entry here.
+// future obj_strategy_types extension) need their own entry here.
 type childRel struct {
 	table   string
 	kindCol string

@@ -264,7 +264,7 @@ func main() {
 	// the loadRowForUpdate scopes by subscription_id, so a permissive
 	// checker is safe (tenant isolation is enforced at the SQL boundary).
 	ranking.Register("work_item", ranking.ResourceConfig{
-		Table:       "o_artefacts_execution_work_items",
+		Table:       "obj_work_items",
 		ScopeColumn: "sprint_id",
 		Permissions: ranking.PermissionCheckerFunc(func(ctx context.Context, subscriptionID, rowID uuid.UUID) (bool, error) {
 			return true, nil

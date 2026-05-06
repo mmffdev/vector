@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -62,6 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  // Concurrent refresh() calls (e.g. React StrictMode firing the bootstrap
+  // effect twice, or a duplicated tab mounting fresh while the original
+  // tab is still alive) would otherwise both POST /api/auth/refresh with
+  // the same one-time-use rt cookie. The second arrival hits the
+  // refresh-token-reuse branch in backend service.go and revokes every
+  // session for the user — sending the page to /login. Sharing one
+  // in-flight promise collapses concurrent callers onto a single fetch.
+  const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const applyLogin = useCallback((res: LoginResp) => {
     setApiToken(res.access_token);
@@ -70,14 +78,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    try {
-      const res = await api<LoginResp>("/api/auth/refresh", { method: "POST", skipAuth: true });
-      applyLogin(res);
-    } catch {
-      setApiToken(null);
-      setUser(null);
-      clearSessionCookie();
-    }
+    if (refreshInFlight.current) return refreshInFlight.current;
+    const flight = (async () => {
+      try {
+        const res = await api<LoginResp>("/api/auth/refresh", { method: "POST", skipAuth: true });
+        applyLogin(res);
+      } catch {
+        setApiToken(null);
+        setUser(null);
+        clearSessionCookie();
+      }
+    })().finally(() => {
+      refreshInFlight.current = null;
+    });
+    refreshInFlight.current = flight;
+    return flight;
   }, [applyLogin]);
 
   useEffect(() => {

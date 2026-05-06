@@ -52,7 +52,7 @@ export interface WorkItem {
   // The legacy `owner_id` field is kept for writers (PATCH still posts it).
   owner: { id: string; display_name: string; avatar_url: string | null } | null;
   // PLA-0021 / 00460 (WS4-C) — real per-row due date from
-  // o_artefacts_execution_work_items.due_date. Wire shape is YYYY-MM-DD
+  // obj_work_items.due_date. Wire shape is YYYY-MM-DD
   // (Postgres ::text cast). null when unset; the inline date editor in
   // the Due column posts "" or null to clear, and a parsed YYYY-MM-DD
   // string to set. Replaces the previous synthetic dueLabel(updated_at).

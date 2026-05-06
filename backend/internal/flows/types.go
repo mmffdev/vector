@@ -2,19 +2,19 @@
 //
 // A "flow" is the ordered list of states an artefact moves through. Every
 // artefact-shaped row in the system is governed by exactly one flow, and
-// each flow attaches to one of three target columns on o_flow_tenant:
+// each flow attaches to one of three target columns on obj_flow_tenant:
 //
 //   - system_artefact_type_id  → vendor-defined types (work_items, defects,…)
 //   - tenant_artefact_type_id  → tenant-invented custom types
 //   - portfolio_item_type_id   → strategy layers (Feature, Initiative, Theme…)
 //
 // The exactly-one CHECK is enforced at the DB level. This package is the sole
-// writer to o_flow_tenant; all reads/writes go through Service.
+// writer to obj_flow_tenant; all reads/writes go through Service.
 package flows
 
 import "time"
 
-// FlowState is one row in o_flow_tenant — one state in one flow.
+// FlowState is one row in obj_flow_tenant — one state in one flow.
 type FlowState struct {
 	ID             string  `json:"id"`
 	SubscriptionID string  `json:"subscription_id"`

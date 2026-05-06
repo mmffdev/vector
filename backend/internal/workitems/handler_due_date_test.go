@@ -106,7 +106,7 @@ func TestPatch_DueDate_SetThenClearNullThenClearEmpty(t *testing.T) {
 	}
 	var dbDate *string
 	if err := pool.QueryRow(ctx,
-		`SELECT due_date::text FROM o_artefacts_execution_work_items WHERE id = $1`, id,
+		`SELECT due_date::text FROM obj_work_items WHERE id = $1`, id,
 	).Scan(&dbDate); err != nil {
 		t.Fatalf("step 1: re-read: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestPatch_DueDate_SetThenClearNullThenClearEmpty(t *testing.T) {
 		t.Errorf("step 2: response DueDate = %q, want nil", *got.DueDate)
 	}
 	if err := pool.QueryRow(ctx,
-		`SELECT due_date::text FROM o_artefacts_execution_work_items WHERE id = $1`, id,
+		`SELECT due_date::text FROM obj_work_items WHERE id = $1`, id,
 	).Scan(&dbDate); err != nil {
 		t.Fatalf("step 2: re-read: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestPatch_DueDate_SetThenClearNullThenClearEmpty(t *testing.T) {
 		t.Errorf("step 4: response DueDate = %q, want nil", *got.DueDate)
 	}
 	if err := pool.QueryRow(ctx,
-		`SELECT due_date::text FROM o_artefacts_execution_work_items WHERE id = $1`, id,
+		`SELECT due_date::text FROM obj_work_items WHERE id = $1`, id,
 	).Scan(&dbDate); err != nil {
 		t.Fatalf("step 4: re-read: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestPatch_DueDate_RejectsMalformed(t *testing.T) {
 	// Confirm DB row was not written — due_date must still be NULL.
 	var dbDate *string
 	if err := pool.QueryRow(ctx,
-		`SELECT due_date::text FROM o_artefacts_execution_work_items WHERE id = $1`, id,
+		`SELECT due_date::text FROM obj_work_items WHERE id = $1`, id,
 	).Scan(&dbDate); err != nil {
 		t.Fatalf("re-read: %v", err)
 	}

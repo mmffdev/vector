@@ -1,5 +1,5 @@
 {
-  "description": "Per-file exemption list for lint:no-raw-table (PLA-0015 / Story 00427b). Every data table in app/ MUST go through app/components/Table.tsx — raw <table> JSX bypasses the addressable substrate, the toolbar contract, the inline-edit useDraft integration, and the tree_accordion-dense__* class catalog. Two reasons an entry can land here: (1) TREE EXCEPTION — work-items tree views compose row fragments per leaf, which doesn't fit the v1 columns+rows API. (2) PROVISIONAL — call sites that need a feature the v1 <Table> doesn't yet provide (section-header rows, dense multi-cell grids inside flyouts/health panels). Each provisional entry MUST be paired with a follow-up story that either extends <Table> or refactors the consumer.",
+  "description": "Per-file exemption list for lint:no-raw-table (PLA-0015 / Story 00427b). Every data table in app/ MUST go through app/components/Table.tsx — raw <table> JSX bypasses the addressable substrate, the toolbar contract, the inline-edit useDraft integration, and the tree_accordion-dense__* class catalog. Three reasons an entry can land here: (1) TREE EXCEPTION — work-items tree views compose row fragments per leaf, which doesn't fit the v1 columns+rows API. (2) PROVISIONAL — call sites that need a feature the v1 <Table> doesn't yet provide (section-header rows, dense multi-cell grids inside flyouts/health panels). Each provisional entry MUST be paired with a follow-up story that either extends <Table> or refactors the consumer. (3) TEST HARNESS — Vitest fixtures that exist to exercise grid/keyboard contracts against bare semantic markup. Routing them through <Table> would test <Table> rather than the unit under test.",
   "exempt_paths": [
     "app/(user)/work-items/Example2Tree.tsx",
     "app/(user)/work-items/page.tsx",
@@ -9,7 +9,8 @@
     "app/components/ArchiveMapFlyout.tsx",
     "app/components/ServiceHealthPanel.tsx",
     "app/components/TopologyTreeFlyout.tsx",
-    "app/components/ResourceTree.tsx"
+    "app/components/ResourceTree.tsx",
+    "app/hooks/__tests__/useKeyboardGrid.test.tsx"
   ],
   "categories": {
     "tree_exception": [
@@ -24,6 +25,9 @@
       "app/components/ArchiveMapFlyout.tsx",
       "app/components/ServiceHealthPanel.tsx",
       "app/components/TopologyTreeFlyout.tsx"
+    ],
+    "test_harness": [
+      "app/hooks/__tests__/useKeyboardGrid.test.tsx"
     ]
   }
 }

@@ -1226,7 +1226,7 @@ func (s *Service) RestoreNode(
 // in an empty list response from any clamped endpoint.
 //
 // Wired in as cross-cutting middleware on every list endpoint that
-// touches portfolio_items or user_stories. Feature teams MUST NOT
+// touches obj_portfolio_items or user_stories. Feature teams MUST NOT
 // re-implement this — the docs/c_c_topology.md "Clamp predicate"
 // section is the single contract.
 func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uuid.UUID) ([]uuid.UUID, error) {

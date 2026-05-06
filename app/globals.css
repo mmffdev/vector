@@ -8008,14 +8008,55 @@ input[type="reset"] {
   width: 100%;
 }
 
+/* Wider variant for table-bearing panels (custom-fields manager etc.). */
+.settings-panel--wide {
+  max-width: 100%;
+}
+
 .settings-panel .form {
   margin-bottom: var(--space-8);
+}
+
+/* Header row inside a settings panel (eyebrow on left, action button right). */
+.settings-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* Disclosure block inside a settings panel. */
+.settings-panel__details {
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+
+.settings-panel__details > summary {
+  cursor: pointer;
+  list-style: none;
+  padding-bottom: var(--space-2);
 }
 
 /* Flush button row — right-aligned save action inside any .form */
 .form__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Inline action group (e.g. arm + cancel buttons in a table cell). */
+.form__actions--inline {
+  display: inline-flex;
+  gap: var(--space-2);
+  justify-content: flex-start;
+}
+
+/* Horizontal variant of .form__row (label + control on one line). */
+.form__row--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 /* === Danger zone === */

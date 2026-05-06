@@ -100,7 +100,7 @@ func TestList_OwnerJoin_DisplayNameAndAvatar(t *testing.T) {
 
 	// Re-owner the 5th row to userB; seedRows always seeds owner = userA.
 	if _, err := pool.Exec(ctx,
-		`UPDATE o_artefacts_execution_work_items SET owner_id = $1 WHERE id = $2`,
+		`UPDATE obj_work_items SET owner_id = $1 WHERE id = $2`,
 		userB, ids[4],
 	); err != nil {
 		t.Fatalf("re-owner row 5: %v", err)

@@ -32,7 +32,7 @@ import (
 // required. The registry rejects partial configs at Register time.
 type ResourceConfig struct {
 	// Table is the unqualified Postgres table name (e.g.
-	// "o_artefacts_execution_work_items"). The rank service writes
+	// "obj_work_items"). The rank service writes
 	// position columns directly against this table.
 	Table string
 

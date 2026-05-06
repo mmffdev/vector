@@ -12,6 +12,8 @@ backend/.env.local
 backend/.env.dev
 backend/.env.staging
 backend/.env.production
+.env.local
+.env*.local
 dev/remote_setup.html
 .claude/settings.json
 .claude/settings.json.bak

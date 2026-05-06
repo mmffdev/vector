@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service is the sole writer to o_flow_tenant. All queries are scoped by
+// Service is the sole writer to obj_flow_tenant. All queries are scoped by
 // subscription_id at the SQL boundary — callers pass the caller's
 // SubscriptionID and the service refuses to leak across tenants.
 type Service struct {
@@ -47,8 +47,8 @@ func (s *Service) listSystem(ctx context.Context, subID string) ([]FlowGroup, er
 		    f.system_artefact_type_id, f.tenant_artefact_type_id, f.portfolio_item_type_id,
 		    f.created_at, f.updated_at,
 		    t.id AS target_id, t.display_label_plural AS target_label
-		FROM o_flow_tenant f
-		JOIN o_artefact_types_system t ON t.id = f.system_artefact_type_id
+		FROM obj_flow_tenant f
+		JOIN obj_execution_types t ON t.id = f.system_artefact_type_id
 		WHERE f.subscription_id = $1
 		  AND f.system_artefact_type_id IS NOT NULL
 		  AND f.archived_at IS NULL
@@ -63,8 +63,8 @@ func (s *Service) listTenant(ctx context.Context, subID string) ([]FlowGroup, er
 		    f.system_artefact_type_id, f.tenant_artefact_type_id, f.portfolio_item_type_id,
 		    f.created_at, f.updated_at,
 		    t.id AS target_id, t.display_label_plural AS target_label
-		FROM o_flow_tenant f
-		JOIN o_artefact_types_tenant t ON t.id = f.tenant_artefact_type_id
+		FROM obj_flow_tenant f
+		JOIN obj_execution_types_tenant t ON t.id = f.tenant_artefact_type_id
 		WHERE f.subscription_id = $1
 		  AND f.tenant_artefact_type_id IS NOT NULL
 		  AND f.archived_at IS NULL
@@ -80,8 +80,8 @@ func (s *Service) listPortfolio(ctx context.Context, subID string) ([]FlowGroup,
 		    f.system_artefact_type_id, f.tenant_artefact_type_id, f.portfolio_item_type_id,
 		    f.created_at, f.updated_at,
 		    p.id AS target_id, p.name AS target_label
-		FROM o_flow_tenant f
-		JOIN portfolio_item_types p ON p.id = f.portfolio_item_type_id
+		FROM obj_flow_tenant f
+		JOIN obj_strategy_types p ON p.id = f.portfolio_item_type_id
 		WHERE f.subscription_id = $1
 		  AND f.portfolio_item_type_id IS NOT NULL
 		  AND f.archived_at IS NULL

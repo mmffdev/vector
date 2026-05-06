@@ -1,5 +1,5 @@
 // Package portfolioitems owns the portfolio item artefact — CRUD against the
-// portfolio_items table with subscription-scoped tenant isolation.
+// obj_portfolio_items table with subscription-scoped tenant isolation.
 // key_num is allocated from subscription_sequence(scope='POR') atomically
 // inside the create transaction.
 package portfolioitems
@@ -17,7 +17,7 @@ import (
 
 var ErrNotFound = errors.New("portfolio item not found")
 
-// PortfolioItem is the wire-safe view of a portfolio_items row.
+// PortfolioItem is the wire-safe view of a obj_portfolio_items row.
 type PortfolioItem struct {
 	ID             string  `json:"id"`
 	SubscriptionID string  `json:"subscription_id"`
@@ -174,7 +174,7 @@ func (s *Service) Create(ctx context.Context, subscriptionID, authorID uuid.UUID
 
 	id := uuid.New()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO portfolio_items (
+		INSERT INTO obj_portfolio_items (
 			id, subscription_id, key_num, type_id,
 			name, description,
 			name_author, name_owner
@@ -215,7 +215,7 @@ func (s *Service) Get(ctx context.Context, subscriptionID, id uuid.UUID) (*Portf
 			count_child_defects, count_child_user_stories, count_dependants,
 			count_rollup_defect, count_rollup_defects, count_rollup_estimation, count_rollup_risks, done_by_story_count,
 			created_at, updated_at, archived_at
-		FROM portfolio_items
+		FROM obj_portfolio_items
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
 		id, subscriptionID,
 	).Scan(
@@ -267,7 +267,7 @@ func (s *Service) Get(ctx context.Context, subscriptionID, id uuid.UUID) (*Portf
 
 func (s *Service) Patch(ctx context.Context, subscriptionID, id uuid.UUID, in PatchInput) (*PortfolioItem, error) {
 	tag, err := s.Pool.Exec(ctx, `
-		UPDATE portfolio_items SET
+		UPDATE obj_portfolio_items SET
 			name                          = COALESCE($3,  name),
 			description                   = COALESCE($4,  description),
 			acceptance_criteria           = COALESCE($5,  acceptance_criteria),
@@ -317,7 +317,7 @@ func (s *Service) Patch(ctx context.Context, subscriptionID, id uuid.UUID, in Pa
 
 func (s *Service) Archive(ctx context.Context, subscriptionID, id uuid.UUID) error {
 	tag, err := s.Pool.Exec(ctx, `
-		UPDATE portfolio_items
+		UPDATE obj_portfolio_items
 		SET archived_at = NOW()
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
 		id, subscriptionID)

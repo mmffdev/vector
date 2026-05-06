@@ -7,6 +7,9 @@ const PUBLIC_PATHS = [
   "/change-password",
   // PLA-0008 / 00327 — help pages are shareable read-only references.
   "/help",
+  // Phase 2 PoC: /v2/* hits vector_artefacts via /api/v2/* and uses fixture
+  // IDs instead of the Go session. Production authz does not gate it.
+  "/v2",
 ];
 
 export function middleware(req: NextRequest) {
