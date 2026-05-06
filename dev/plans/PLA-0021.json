@@ -12,7 +12,7 @@
     "<s>WS1-B: Restore DnD rank from reference/dnd_tree.tsx; wire useResourceRank + applyDrop + snapshot rollback into ResourceTree; add PATCH /api/work-items/:id/rank { before_id?, after_id? } backend handler</s>",
     "<s>WS2-A (backend): append ?owner_id= to list query (other 7 filter params + ?sort= already wired); frontend chips + URL nuqs threading</s> \u2713",
     "<s>WS2-B: Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default); frontend URL nuqs threading</s> \u2713",
-    "WS3-A: Add useKeyboardGrid hook on ResourceTree root \u2014 Tab \u2192 next editable cell, Enter \u2192 next row same column, Esc cancels active edit",
+    "<s>WS3-A: Add useKeyboardGrid hook on ResourceTree root \u2014 Tab \u2192 next editable cell, Enter \u2192 next row same column, Esc cancels active edit</s> \u2713",
     "WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree",
     "WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission",
     "WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column",
@@ -158,7 +158,7 @@
       "title": "Add useKeyboardGrid hook to ResourceTree (Tab/Enter/Esc/Arrow grid keyboarding)",
       "story_id": "00454",
       "card_url": "http://localhost:3333/cards/1769230236299298314",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 11,
@@ -434,7 +434,8 @@
       "proven_by": "focus moves to the next editable cell on the same row; at row end wraps to next row",
       "story_id": "00454",
       "card_url": "http://localhost:3333/cards/1769230236299298314",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 30,
@@ -442,7 +443,8 @@
       "proven_by": "the column's editComponent is rendered and refocusing on the cell shell after Esc",
       "story_id": "00454",
       "card_url": "http://localhost:3333/cards/1769230236299298314",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 31,
@@ -450,7 +452,8 @@
       "proven_by": "editor is dismissed and focus returns to the cell shell with the original value intact",
       "story_id": "00454",
       "card_url": "http://localhost:3333/cards/1769230236299298314",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 32,
@@ -458,7 +461,8 @@
       "proven_by": "focus moves to the same column on the next row; ArrowUp reverses",
       "story_id": "00454",
       "card_url": "http://localhost:3333/cards/1769230236299298314",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 33,
