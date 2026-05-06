@@ -391,7 +391,7 @@ func main() {
 			return
 		}
 
-		script := "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/bin/switch-server"
+		script := "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/bin/switch-server"
 		if _, err := os.Stat(script); err != nil {
 			http.Error(w, "switch-server script missing", http.StatusInternalServerError)
 			return
@@ -416,6 +416,11 @@ func main() {
 			"target": body.Target,
 		})
 	})
+
+	// ---- /v1 — all external API routes ----
+	// Internal/infra routes (/healthz, /api/status/pipeline, /api/env,
+	// /api/env/switch, /ws) are mounted above and stay unversioned.
+	r.Route("/v1", func(r chi.Router) {
 
 	// ---- /api/auth ----
 	r.Route("/api/auth", func(r chi.Router) {
@@ -944,6 +949,8 @@ func main() {
 		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
 			Delete("/{id}/permissions", rolesH.RevokePermissions)
 	})
+
+	}) // end /v1
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

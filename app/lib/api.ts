@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+// Versioned base for all external API calls. Infra/internal routes
+// (/healthz, /api/env, /api/status/pipeline, /api/env/switch) are
+// unversioned and must use API_INFRA_BASE instead.
+export const API_INFRA_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/v1";
 
 let _accessToken: string | null = null;
 // Registered by AuthContext so api() can silently refresh an expired JWT
@@ -37,7 +41,7 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> {
   const headers = new Headers(opts.headers);
   if (!headers.has("Content-Type") && opts.body && typeof opts.body === "string") {
     headers.set("Content-Type", "application/json");
@@ -51,7 +55,7 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
-  const res = await fetch(API_BASE + path, {
+  const res = await fetch(base + path, {
     ...opts,
     headers,
     credentials: "include",
@@ -72,7 +76,7 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
     }
     await _refreshPromise;
     if (_accessToken) {
-      return api<T>(path, { ...opts, _retried: true });
+      return _fetch<T>(base, path, { ...opts, _retried: true });
     }
   }
 
@@ -80,4 +84,13 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
     throw new ApiError(res.status, body, typeof body === "string" ? body : `HTTP ${res.status}`);
   }
   return body as T;
+}
+
+export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+  return _fetch<T>(API_BASE, path, opts);
+}
+
+// For unversioned infra routes: /healthz, /api/env, /api/status/pipeline, /api/env/switch
+export async function apiInfra<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+  return _fetch<T>(API_INFRA_BASE, path, opts);
 }
