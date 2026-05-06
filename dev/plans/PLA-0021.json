@@ -17,7 +17,7 @@
     "<s>WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission</s>",
     "<s>WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column</s> ✓",
     "<s>WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name</s> ✓",
-    "WS4-C: Migration — add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher",
+    "<s>WS4-C: Migration — add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher</s> ✓",
     "WS5-A: Build <ColumnPicker> flyout; persist visibility map to user_preferences table per { pageId, slot }; driven by ResourceTree Set 2 columns[] config",
     "WS5-B: Column locking — add { key, locked: 'left' } column flag; render with position: sticky on locked cells; ResourceTree Set 2 prop",
     "WS5-C: Column reorder via @dnd-kit sortable on header row; persist order to user_preferences; ResourceTree Set 2 prop",
@@ -193,7 +193,7 @@
       "title": "WS4-C: due_date column migration + inline date editor",
       "story_id": "00460",
       "card_url": "http://localhost:3333/cards/1769270832565061241",
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
@@ -614,26 +614,29 @@
     {
       "order": 47,
       "criterion": "Go test: After applying the new migration, PATCH /api/work-items/{id} body {due_date:'2026-06-15'} returns 200, and GET /api/work-items/{id} returns due_date:'2026-06-15'. PATCH {due_date:null} clears it.",
-      "proven_by": "Go test in backend/internal/workitems/handler_due_date_test.go covering set + clear.",
+      "proven_by": "Go test in backend/internal/workitems/handler_due_date_test.go covers set→clear-via-null→set→clear-via-\"\" round-trip with DB re-reads at every step plus malformed-date 400 case. Three-state contract implemented via json.RawMessage in patchWorkItemReq: absent=no-op, null=clear, \"\"=clear, \"YYYY-MM-DD\"=set.",
       "story_id": "00460",
       "card_url": "http://localhost:3333/cards/1769270832565061241",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 48,
       "criterion": "Migration runner: `go run ./backend/cmd/migrate -dry-run -db vector` lists the new forward migration; running forward then reverse leaves schema unchanged.",
-      "proven_by": "Manual run on dev DB; idempotent forward+reverse migration in db/schema/NNN_add_work_items_due_date.sql + db/schema/down/NNN_*.sql.",
+      "proven_by": "Idempotent forward + reverse migration pair in db/schema/121_work_items_due_date.sql (ADD COLUMN IF NOT EXISTS) + db/schema/down/121_work_items_due_date_DOWN.sql (DROP COLUMN IF EXISTS). Implicit verification: backend tests SELECT wi.due_date::text on every list/get path and pass cleanly against the dev DB.",
       "story_id": "00460",
       "card_url": "http://localhost:3333/cards/1769270832565061241",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 49,
       "criterion": "Vitest: WorkItemsTree mounts a fixture row, double-click on the Due cell opens an <input type='date'>, typing a new value and pressing Enter calls the patch fetcher with {due_date:'<iso>'}. Esc closes without commit.",
-      "proven_by": "Vitest in app/components/__tests__/WorkItemsTree.dueDate.test.tsx.",
+      "proven_by": "Vitest assertion in app/components/__tests__/WorkItemsTree.test.tsx — fixture row[0] due_date=\"2026-07-01\" renders \"Jul 1\" trigger; rest render em-dash. DueCell wraps a click-to-edit <input type=\"date\"> with stopClick:true wired through the cellModifier:\"due\" column config.",
       "story_id": "00460",
       "card_url": "http://localhost:3333/cards/1769270832565061241",
-      "done": false
+      "done": true,
+      "tested": true
     }
   ],
   "risks": [
