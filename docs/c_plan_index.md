@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0017`
+**Last issued:** `PLA-0018`
 
 ## Format
 
@@ -38,6 +38,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0015` | `<Table>` component — declarative table primitive with expander, inline-edit, panel, pills | 2026-05-05 | active |
 | `PLA-0016` | Docs site as a fourth Launcher component — supervised api-reference Docusaurus on :3000 | 2026-05-05 | complete |
 | `PLA-0017` | `<Table>` universal modes — tree, accordion, dnd, section, dense; absorb the 8 allow-listed callers; final .table* CSS strip | 2026-05-05 | active |
+| `PLA-0018` | Nested-tab deep-linking via nuqs — bookmarkable secondary tabs across the app | 2026-05-06 | complete |
 
 ## Deletion log
 

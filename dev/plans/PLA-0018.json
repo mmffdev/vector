@@ -1,0 +1,300 @@
+{
+  "id": "PLA-0018",
+  "title": "Nested-tab deep-linking via nuqs \u2014 bookmarkable secondary tabs across the app",
+  "date_created": "2026-05-06",
+  "date_started": null,
+  "date_last_updated": "2026-05-06",
+  "date_finished": "2026-05-06",
+  "scope": "<p>Add URL-encoded deep-link support to every page that uses <code>&lt;SecondaryNavigation&gt;</code>, so that the active secondary tab is reflected in the query string (<code>?tab=&lt;key&gt;</code>), survives page reload, and can be bookmarked or shared.</p><p>The implementation follows the architectural recommendation from <strong>R040</strong> (Nested Tab Deep-Linking in Next.js 14+ App Router): query-param encoding via the <code>nuqs</code> library (<code>useQueryState</code> + <code>parseAsStringLiteral</code>), <code>history:'replace'</code> with <code>scroll:false</code> on every tab click, a mandatory <code>&lt;Suspense&gt;</code> boundary audit, and a custom <code>lint:tab-deep-link</code> rule to enforce the boundary at CI time.</p>",
+  "value": "<p>Secondary tabs currently store their active state in component-local <code>useState</code>. This means:</p><ul><li>Reloading the page drops the user back to the default tab.</li><li>Sharing a link to a non-default tab sends the recipient to the wrong place.</li><li>Browser back/forward does not restore the tab that was open.</li></ul><p>Query-param deep-linking solves all three with a single, lightweight convention that requires no backend changes and no new routes.</p>",
+  "implementation_plan": [
+    "Step 1 \u2014 Document the nuqs convention (urlKey pattern, Suspense requirement, router.replace semantics) in docs/c_c_secondary_nav_deeplink.md.",
+    "Step 2 \u2014 Install nuqs, mount NuqsAdapter at app/layout.tsx root; add Vitest smoke test.",
+    "Step 3 \u2014 Extend SecondaryNavigation with urlKey?: string prop; when present, delegate active/onChange to useQueryState instead of the caller.",
+    "Step 4 \u2014 Migrate work-items page: remove activeTab useState; pass urlKey='tab'; wrap in Suspense.",
+    "Step 5 \u2014 Migrate workspace-settings page: pass urlKey='tab'; preserve dirty-state guard; wrap in Suspense.",
+    "Step 6 \u2014 Migrate theme page: pass urlKey='tab'; wrap in Suspense.",
+    "Step 7 \u2014 Write lint:tab-deep-link Python script; verify CI exits 0 across all adopters."
+  ],
+  "areas_impacted": [
+    "FE-UI: SecondaryNavigation component extended with urlKey prop",
+    "FE-DEV: nuqs install, NuqsAdapter root mount, convention doc, lint rule",
+    "FE-POR: work-items page tab-state migration",
+    "FE-UX: workspace-settings dirty-state guard preserved through URL migration",
+    "FE-UI: theme page tab-state migration"
+  ],
+  "feature_list": [
+    "URL-encoded secondary tab state via nuqs (query-param ?tab=<key>)",
+    "SecondaryNavigation urlKey prop \u2014 opt-in, backward-compatible",
+    "NuqsAdapter mounted at root layout",
+    "Suspense boundary enforcement across all adopters",
+    "Custom lint:tab-deep-link CI rule"
+  ],
+  "features_extended": [
+    "<strong>SecondaryNavigation</strong> \u2014 gains <code>urlKey?: string</code> prop alongside existing <code>pageId</code> (PLA-0014 tab-order); the two props are independent and composable.",
+    "<strong>work-items page</strong> \u2014 activeTab useState removed; tabs become bookmarkable.",
+    "<strong>workspace-settings page</strong> \u2014 tab deep-link added; existing dirty-state warning preserved.",
+    "<strong>theme page</strong> \u2014 tab deep-link added (no dirty-state guard needed)."
+  ],
+  "features_removed": [],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Adopt nuqs + nested-tab deep-link convention doc",
+      "story_id": "00433",
+      "card_url": "http://localhost:3333/cards/1768576682416932853",
+      "status": "completed"
+    },
+    {
+      "order": 2,
+      "title": "SecondaryNavigation: urlKey prop + nuqs-backed deep-link",
+      "story_id": "00434",
+      "card_url": "http://localhost:3333/cards/1768577631193662468",
+      "status": "completed"
+    },
+    {
+      "order": 3,
+      "title": "Adopt deep-link tabs on work-items page",
+      "story_id": "00435",
+      "card_url": "http://localhost:3333/cards/1768577999856206867",
+      "status": "completed"
+    },
+    {
+      "order": 4,
+      "title": "Adopt deep-link tabs on workspace-settings page (dirty-state guard)",
+      "story_id": "00436",
+      "card_url": "http://localhost:3333/cards/1768578133931328548",
+      "status": "completed"
+    },
+    {
+      "order": 5,
+      "title": "Adopt deep-link tabs on theme page",
+      "story_id": "00437",
+      "card_url": "http://localhost:3333/cards/1768578241473283125",
+      "status": "completed"
+    },
+    {
+      "order": 6,
+      "title": "Suspense boundary audit + lint:tab-deep-link rule",
+      "story_id": "00438",
+      "card_url": "http://localhost:3333/cards/1768578373317035078",
+      "status": "completed"
+    },
+    {
+      "order": 7,
+      "title": "Install NuqsAdapter at root layout",
+      "story_id": "00439",
+      "card_url": "http://localhost:3333/cards/1768578514916738133",
+      "status": "completed"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "Convention doc exists at docs/c_c_secondary_nav_deeplink.md describing urlKey, Suspense requirement, and router.replace semantics",
+      "proven_by": "file exists and lint:tab-deep-link references it",
+      "story_id": "00433",
+      "card_url": "http://localhost:3333/cards/1768576682416932853",
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "nuqs is in package.json and NuqsAdapter is mounted in app/layout.tsx",
+      "proven_by": "grep confirms import and usage in layout",
+      "story_id": "00433",
+      "card_url": "http://localhost:3333/cards/1768576682416932853",
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "Vitest smoke test confirms useQueryState resolves without missing-provider error under NuqsAdapter",
+      "proven_by": "test suite exits 0",
+      "story_id": "00433",
+      "card_url": "http://localhost:3333/cards/1768576682416932853",
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "Clicking a secondary tab updates the URL to ?tab=<key> via router.replace (no scroll-jump) and reload restores that tab",
+      "proven_by": "manual browser test on any adopter page",
+      "story_id": "00434",
+      "card_url": "http://localhost:3333/cards/1768577631193662468",
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "SecondaryNavigation exposes urlKey?: string; when provided it uses useQueryState with parseAsStringLiteral and history:replace",
+      "proven_by": "code inspection + TypeScript type check passes",
+      "story_id": "00434",
+      "card_url": "http://localhost:3333/cards/1768577631193662468",
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "Vitest contract test verifies URL updates on click, initial render reads ?tab=, unknown values fall back to active prop",
+      "proven_by": "test suite exits 0",
+      "story_id": "00434",
+      "card_url": "http://localhost:3333/cards/1768577631193662468",
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "useState<'ex1'|'ex2'> removed from work-items/page.tsx; SecondaryNavigation receives urlKey='tab'",
+      "proven_by": "code inspection",
+      "story_id": "00435",
+      "card_url": "http://localhost:3333/cards/1768577999856206867",
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "Navigating to /work-items?tab=ex1 renders the ex1 panel on first paint without client-side flicker",
+      "proven_by": "browser test with JS throttling",
+      "story_id": "00435",
+      "card_url": "http://localhost:3333/cards/1768577999856206867",
+      "done": true
+    },
+    {
+      "order": 9,
+      "criterion": "next build passes with Suspense boundary present on work-items page",
+      "proven_by": "CI build exits 0",
+      "story_id": "00435",
+      "card_url": "http://localhost:3333/cards/1768577999856206867",
+      "done": true
+    },
+    {
+      "order": 10,
+      "criterion": "Navigating to /workspace-settings?tab=<key> lands on the correct settings panel on first paint",
+      "proven_by": "browser test",
+      "story_id": "00436",
+      "card_url": "http://localhost:3333/cards/1768578133931328548",
+      "done": true
+    },
+    {
+      "order": 11,
+      "criterion": "Clicking a tab while the form is dirty triggers the existing unsaved-changes warning before the URL updates; cancelling leaves the URL unchanged",
+      "proven_by": "manual browser test on workspace-settings with dirty form",
+      "story_id": "00436",
+      "card_url": "http://localhost:3333/cards/1768578133931328548",
+      "done": true
+    },
+    {
+      "order": 12,
+      "criterion": "next build passes with Suspense boundary present on workspace-settings page",
+      "proven_by": "CI build exits 0",
+      "story_id": "00436",
+      "card_url": "http://localhost:3333/cards/1768578133931328548",
+      "done": true
+    },
+    {
+      "order": 13,
+      "criterion": "Navigating to /theme?tab=<key> renders the correct panel on first paint",
+      "proven_by": "browser test",
+      "story_id": "00437",
+      "card_url": "http://localhost:3333/cards/1768578241473283125",
+      "done": true
+    },
+    {
+      "order": 14,
+      "criterion": "Local activeTab useState removed from theme page; SecondaryNavigation receives urlKey='tab'",
+      "proven_by": "code inspection",
+      "story_id": "00437",
+      "card_url": "http://localhost:3333/cards/1768578241473283125",
+      "done": true
+    },
+    {
+      "order": 15,
+      "criterion": "next build passes with Suspense boundary present on theme page",
+      "proven_by": "CI build exits 0",
+      "story_id": "00437",
+      "card_url": "http://localhost:3333/cards/1768578241473283125",
+      "done": true
+    },
+    {
+      "order": 16,
+      "criterion": "lint:tab-deep-link (dev/scripts/lint_tab_deep_link.py) exits non-zero if any file using urlKey on SecondaryNavigation is not wrapped in Suspense",
+      "proven_by": "CI run exits 0; deliberately broken test file causes exit 1",
+      "story_id": "00438",
+      "card_url": "http://localhost:3333/cards/1768578373317035078",
+      "done": true
+    },
+    {
+      "order": 17,
+      "criterion": "docs/c_c_secondary_nav_deeplink.md documents urlKey adoption pattern, Suspense requirement, and lint rule with example",
+      "proven_by": "file exists and is linked from CLAUDE.md",
+      "story_id": "00438",
+      "card_url": "http://localhost:3333/cards/1768578373317035078",
+      "done": true
+    },
+    {
+      "order": 18,
+      "criterion": "next build exits 0 after all three adopter pages are wrapped correctly",
+      "proven_by": "CI build exits 0",
+      "story_id": "00438",
+      "card_url": "http://localhost:3333/cards/1768578373317035078",
+      "done": true
+    },
+    {
+      "order": 19,
+      "criterion": "nuqs appears in package.json dependencies; NuqsAdapter imported and mounted in app/layout.tsx wrapping {children}",
+      "proven_by": "code inspection",
+      "story_id": "00439",
+      "card_url": "http://localhost:3333/cards/1768578514916738133",
+      "done": true
+    },
+    {
+      "order": 20,
+      "criterion": "Vitest setup or smoke test confirms useQueryState resolves without missing-provider error under the adapter",
+      "proven_by": "test suite exits 0",
+      "story_id": "00439",
+      "card_url": "http://localhost:3333/cards/1768578514916738133",
+      "done": true
+    },
+    {
+      "order": 21,
+      "criterion": "next build exits 0 with adapter in place and no console warnings about missing providers",
+      "proven_by": "CI build exits 0",
+      "story_id": "00439",
+      "card_url": "http://localhost:3333/cards/1768578514916738133",
+      "done": true
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "Missing Suspense boundary causes next build to fail (CSR bailout)",
+      "mitigation": "lint:tab-deep-link rule enforces boundary at CI time before merge"
+    },
+    {
+      "impact": 2,
+      "risk": "NuqsAdapter at root layout may conflict with future SSR-heavy pages that need different query-state handling",
+      "mitigation": "nuqs is designed for App Router; NuqsAdapter is a thin context provider with no SSR side-effects"
+    },
+    {
+      "impact": 1,
+      "risk": "workspace-settings dirty-state guard may be bypassed if urlKey fires before onChange",
+      "mitigation": "urlKey delegates to onChange; nuqs only writes URL after the caller's onChange returns without throwing"
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "R040 \u2014 Nested Tab Deep-Linking in Next.js App Router",
+      "href": "dev/research/R040.json"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0014 \u2014 Tab reorder primitive (pageId prop, dnd-kit, user_tab_order)",
+      "href": "dev/plans/PLA-0014.json"
+    },
+    {
+      "kind": "internal",
+      "label": "SecondaryNavigation component",
+      "href": "app/components/SecondaryNavigation.tsx"
+    },
+    {
+      "kind": "external",
+      "label": "nuqs \u2014 Type-safe URL state for Next.js",
+      "href": "https://nuqs.47ng.com"
+    }
+  ]
+}

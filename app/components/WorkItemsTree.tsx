@@ -5,9 +5,9 @@ import { api } from "@/app/lib/api";
 import { MdOutlineArrowForwardIos, MdSearch, MdTune, MdOutlineCheckBox, MdOutlinePerson, MdUnfoldMore, MdExpandLess, MdExpandMore } from "react-icons/md";
 import { BsArrowsCollapse, BsArrowsExpand } from "react-icons/bs";
 import InlineEditField from "@/app/components/InlineEditField";
-import { InlineSelect } from "./InlineSelect";
-import { useWorkItemFlowStates, type WorkItemFlowState } from "./useWorkItemFlowStates";
-import { FlowStatePillRow } from "./FlowStatePillRow";
+import { InlineSelect } from "@/app/components/InlineSelect";
+import { useWorkItemFlowStates, type WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
+import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,12 +69,19 @@ const PRIORITY_ORDER: Record<string, number> = {
   critical: 0, high: 1, medium: 2, low: 3,
 };
 
+const TYPE_TIER: Record<string, number> = { epic: 1, story: 2, task: 3, defect: 4 };
+
 function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkItem[] {
   const asc = dir === "asc";
   return [...rows].sort((a, b) => {
     let cmp = 0;
     switch (key) {
-      case "id":       cmp = a.key_num - b.key_num; break;
+      case "id": {
+        const ta = TYPE_TIER[a.item_type] ?? 99;
+        const tb = TYPE_TIER[b.item_type] ?? 99;
+        cmp = ta !== tb ? ta - tb : a.key_num - b.key_num;
+        break;
+      }
       case "title":    cmp = a.title.localeCompare(b.title); break;
       case "status":   cmp = (CANONICAL_ORDER[a.flow_state_code] ?? 99) - (CANONICAL_ORDER[b.flow_state_code] ?? 99); break;
       case "priority": cmp = (PRIORITY_ORDER[a.priority ?? ""] ?? 99) - (PRIORITY_ORDER[b.priority ?? ""] ?? 99); break;
@@ -251,7 +258,32 @@ function useColumnResize(
     window.addEventListener("mouseup", onUp);
   }, [tableRef]);
 
-  return { widths, startResize };
+  // Double-click reset: snap a single column back to its FIXED_WIDTHS default
+  // (or refit the whole layout if the dblclicked column is the flex one).
+  // The flex column (Summary) absorbs the difference for non-flex columns.
+  const resetColumn = useCallback((colIndex: number) => {
+    setWidths((prev) => {
+      const target = FIXED_WIDTHS[colIndex];
+      const flexIdx = FIXED_WIDTHS.findIndex((v) => v === null);
+      if (target === null) {
+        const c = containerRef.current;
+        const w = c?.clientWidth ?? prev.reduce((s, x) => s + x, 0);
+        return fitToContainer(FIXED_WIDTHS, MIN_COL_WIDTHS, w);
+      }
+      const next = [...prev];
+      const delta = target - next[colIndex];
+      next[colIndex] = target;
+      if (flexIdx >= 0 && flexIdx !== colIndex) {
+        next[flexIdx] = Math.max(
+          minWidths.current[flexIdx] ?? 0,
+          next[flexIdx] - delta,
+        );
+      }
+      return next;
+    });
+  }, [containerRef]);
+
+  return { widths, startResize, resetColumn };
 }
 
 // ─── Resize handle ────────────────────────────────────────────────────────────
@@ -264,6 +296,7 @@ function ResizeHandle({ colIndex, onStart }: {
     <span
       className="tree_accordion-dense__resize-handle"
       onMouseDown={(e) => onStart(colIndex, e)}
+      onDoubleClick={(e) => e.stopPropagation()}
       aria-hidden="true"
     />
   );
@@ -532,15 +565,11 @@ function GridRow({
 
 // ─── Tree ─────────────────────────────────────────────────────────────────────
 
-export default function Example2Tree({
-  items,
-  setItems,
+export default function WorkItemsTree({
   selectedId,
   onSelect,
   onPatched,
 }: {
-  items: WorkItem[];
-  setItems: (next: WorkItem[]) => void;
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
   onPatched?: (body: Record<string, unknown>) => void;
@@ -550,21 +579,75 @@ export default function Example2Tree({
   const [childMap, setChildMap] = useState<Record<string, WorkItem[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  // Pagination operates on root rows only — descendants come along with the
-  // root when a row is expanded. "all" disables paging entirely.
+  // Server-side pagination — the LL tab fetches one window of root rows at a
+  // time using ?limit&offset. "all" requests up to the backend max (5000).
   const [pageSize, setPageSize] = useState<number | "all">(25);
   const [pageIndex, setPageIndex] = useState(0);
+  const [windowRoots, setWindowRoots] = useState<WorkItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loadingWindow, setLoadingWindow] = useState(false);
+  // Sort state lives here (rather than below) so refetchWindow can include
+  // sort/dir in the request URL — server-side ORDER BY is the only way for
+  // pagination to honour tier-grouping across pages.
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  // PATCH a single field; optimistically update local state in roots/childMap,
-  // then notify the parent so it can refetch (which keeps rollups + summary
-  // accurate). On error we silently leave the optimistic value — the next
-  // realtime push or refetch will reconcile.
+  // Fetch the current window of root rows from the backend. Re-runs whenever
+  // pageSize or pageIndex changes; also exposed as `refetchWindow` so a
+  // rollup-affecting patch can refresh ancestor rollup_points.
+  // "View all" issues a first chunk to learn total, then fetches remaining
+  // chunks in parallel — children are still loaded lazily on expand.
+  const refetchWindow = useCallback(async () => {
+    setLoadingWindow(true);
+    const sortQuery = sortKey === "id" ? `&sort=id&dir=${sortDir}` : "";
+    try {
+      if (pageSize === "all") {
+        const CHUNK = 1000;
+        const first = await api<{ items: WorkItem[]; total: number }>(
+          `/api/work-items?limit=${CHUNK}&offset=0${sortQuery}`,
+        );
+        const totalRoots = first.total ?? first.items.length;
+        if (totalRoots <= first.items.length) {
+          setWindowRoots(first.items);
+          setTotal(totalRoots);
+          return;
+        }
+        const offsets: number[] = [];
+        for (let o = first.items.length; o < totalRoots; o += CHUNK) offsets.push(o);
+        const rest = await Promise.all(
+          offsets.map((o) =>
+            api<{ items: WorkItem[]; total: number }>(
+              `/api/work-items?limit=${CHUNK}&offset=${o}${sortQuery}`,
+            ),
+          ),
+        );
+        const all = [...first.items, ...rest.flatMap((r) => r.items)];
+        setWindowRoots(all);
+        setTotal(totalRoots);
+        return;
+      }
+      const offset = pageIndex * pageSize;
+      const res = await api<{ items: WorkItem[]; total: number }>(
+        `/api/work-items?limit=${pageSize}&offset=${offset}${sortQuery}`,
+      );
+      setWindowRoots(res.items);
+      setTotal(res.total ?? res.items.length);
+    } finally {
+      setLoadingWindow(false);
+    }
+  }, [pageSize, pageIndex, sortKey, sortDir]);
+
+  useEffect(() => { void refetchWindow(); }, [refetchWindow]);
+
+  // PATCH a single field; optimistically update local state in
+  // windowRoots/childMap, then notify the parent (so the summary strip
+  // refreshes). For rollup-affecting patches we also re-fetch this window —
+  // the same patch can shift rollup_points on ancestors.
   const patchAndApply = useCallback(
     (id: string, body: Record<string, unknown>) => {
-      // Optimistic merge into roots.
-      const inRoots = items.some((r) => r.id === id);
+      const inRoots = windowRoots.some((r) => r.id === id);
       if (inRoots) {
-        setItems(items.map((r) => (r.id === id ? { ...r, ...body } as WorkItem : r)));
+        setWindowRoots((prev) => prev.map((r) => (r.id === id ? { ...r, ...body } as WorkItem : r)));
       } else {
         setChildMap((prev) => {
           const next: Record<string, WorkItem[]> = {};
@@ -578,10 +661,13 @@ export default function Example2Tree({
         method: "PATCH",
         body: JSON.stringify(body),
       })
-        .then(() => { onPatched?.(body); })
+        .then(() => {
+          onPatched?.(body);
+          if ("story_points" in body) void refetchWindow();
+        })
         .catch(() => { /* swallow — refetch on next push */ });
     },
-    [items, setItems, onPatched],
+    [windowRoots, onPatched, refetchWindow],
   );
 
   const toggle = useCallback(async (item: WorkItem) => {
@@ -624,16 +710,28 @@ export default function Example2Tree({
       return unfetched;
     };
 
-    let toFetch = collectUnfetched(items);
+    const CONCURRENCY = 6;
+    const fetchInPool = async (
+      items: WorkItem[],
+    ): Promise<{ id: string; children: WorkItem[] }[]> => {
+      const out: { id: string; children: WorkItem[] }[] = new Array(items.length);
+      let next = 0;
+      const workers = Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
+        while (true) {
+          const i = next++;
+          if (i >= items.length) return;
+          const it = items[i];
+          const res = await api<{ items: WorkItem[] }>(`/api/work-items/${it.id}/children`);
+          out[i] = { id: it.id, children: res.items };
+        }
+      });
+      await Promise.all(workers);
+      return out;
+    };
+
+    let toFetch = collectUnfetched(windowRoots);
     while (toFetch.length > 0) {
-      const results = await Promise.all(
-        toFetch.map((it) =>
-          api<{ items: WorkItem[] }>(`/api/work-items/${it.id}/children`).then((res) => ({
-            id: it.id,
-            children: res.items,
-          })),
-        ),
-      );
+      const results = await fetchInPool(toFetch);
       for (const { id, children } of results) {
         currentMap[id] = children;
         for (const c of children) {
@@ -650,7 +748,7 @@ export default function Example2Tree({
       for (const id of allExpandable) next.add(id);
       return next;
     });
-  }, [items, childMap]);
+  }, [windowRoots, childMap]);
 
   const collapseAll = useCallback(() => {
     setExpanded(new Set());
@@ -658,10 +756,7 @@ export default function Example2Tree({
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { widths, startResize } = useColumnResize(tableRef, scrollRef);
-
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const { widths, startResize, resetColumn } = useColumnResize(tableRef, scrollRef);
 
   const onSort = useCallback((col: SortKey) => {
     setSortKey((prev) => {
@@ -671,9 +766,15 @@ export default function Example2Tree({
     });
   }, [sortDir]);
 
-  const roots = useMemo(() => items.filter((i) => !i.parent_id), [items]);
+  // The backend already returned roots only (parent_id IS NULL default). The
+  // filter is kept as a defensive identity in case future callers pass a
+  // server payload that includes children.
+  const roots = useMemo(() => windowRoots.filter((i) => !i.parent_id), [windowRoots]);
 
-  // Quick filter — only filters root rows by title or VEC-id.
+  // Quick filter and client sort operate on the loaded window only — this is
+  // the lazy-load tradeoff. Switching pages re-fetches a fresh slice from the
+  // server-side ORDER BY, so sorting is consistent within a page but does not
+  // cross page boundaries.
   const filteredRoots = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return roots;
@@ -687,18 +788,14 @@ export default function Example2Tree({
     return sortRoots(filteredRoots, sortKey, sortDir);
   }, [filteredRoots, sortKey, sortDir]);
 
-  // Pagination — slice of roots actually rendered. "all" returns the full
-  // filtered list. pageIndex is clamped against the current page count so
-  // changing pageSize doesn't strand the user on a non-existent page.
-  const pageCount = pageSize === "all"
-    ? 1
-    : Math.max(1, Math.ceil(visibleRoots.length / pageSize));
+  // Server tells us the total — use it to compute page count without holding
+  // every row in memory. "View all" loads every root in one window (chunked
+  // under the hood) so pageCount collapses to 1.
+  const pageCount = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
   const safePageIndex = Math.min(pageIndex, pageCount - 1);
-  const pagedRoots = useMemo(() => {
-    if (pageSize === "all") return visibleRoots;
-    const start = safePageIndex * pageSize;
-    return visibleRoots.slice(start, start + pageSize);
-  }, [visibleRoots, pageSize, safePageIndex]);
+  // The window IS the page — no client slice. visibleRoots already reflects
+  // the active sort/filter applied to the loaded window.
+  const pagedRoots = visibleRoots;
 
   // Total visible count (incl. expanded children) for the "N items" indicator.
   const visibleCount = useMemo(() => {
@@ -803,7 +900,7 @@ export default function Example2Tree({
       </div>
 
       <Pagination
-        totalRoots={visibleRoots.length}
+        totalRoots={total}
         pageSize={pageSize}
         pageIndex={safePageIndex}
         pageCount={pageCount}
@@ -824,7 +921,7 @@ export default function Example2Tree({
           </colgroup>
           <thead className="tree_accordion-dense__head">
             <tr>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono" onDoubleClick={() => resetColumn(0)} title="Double-click to reset column width">
                 <span className="tree_accordion-dense__th-id">
                   {expanded.size > 0 ? (
                     <button type="button" className="tree_accordion-dense__th-toggle" aria-label="Collapse all" title="Collapse all" onClick={collapseAll}>
@@ -839,27 +936,27 @@ export default function Example2Tree({
                   <SortIcon col="id" sortKey={sortKey} sortDir={sortDir} onClick={onSort} />
                 </span>
               </th>
-              <th className="tree_accordion-dense__th">
+              <th className="tree_accordion-dense__th" onDoubleClick={() => resetColumn(1)} title="Double-click to reset column width">
                 <ResizeHandle colIndex={0} onStart={startResize} />
                 <span className="tree_accordion-dense__th-sortable">Summary <SortIcon col="title" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
               </th>
-              <th className="tree_accordion-dense__th">
+              <th className="tree_accordion-dense__th" onDoubleClick={() => resetColumn(2)} title="Double-click to reset column width">
                 <ResizeHandle colIndex={1} onStart={startResize} />
                 <span className="tree_accordion-dense__th-sortable">Status <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
               </th>
-              <th className="tree_accordion-dense__th">
+              <th className="tree_accordion-dense__th" onDoubleClick={() => resetColumn(3)} title="Double-click to reset column width">
                 <ResizeHandle colIndex={2} onStart={startResize} />
                 <span className="tree_accordion-dense__th-sortable">Pri <SortIcon col="priority" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
               </th>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono" onDoubleClick={() => resetColumn(4)} title="Double-click to reset column width">
                 <ResizeHandle colIndex={3} onStart={startResize} />
                 <span className="tree_accordion-dense__th-sortable">PtsOwner <SortIcon col="points" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
               </th>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono" onDoubleClick={() => resetColumn(5)} title="Double-click to reset column width">
                 <ResizeHandle colIndex={4} onStart={startResize} />
                 <span className="tree_accordion-dense__th-sortable">Sprint <SortIcon col="sprint" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
               </th>
-              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono">
+              <th className="tree_accordion-dense__th tree_accordion-dense__th--mono" onDoubleClick={() => resetColumn(6)} title="Double-click to reset column width">
                 <ResizeHandle colIndex={5} onStart={startResize} />
                 <span className="tree_accordion-dense__th-sortable">Due <SortIcon col="due" sortKey={sortKey} sortDir={sortDir} onClick={onSort} /></span>
               </th>
@@ -870,7 +967,7 @@ export default function Example2Tree({
       </div>
 
       <Pagination
-        totalRoots={visibleRoots.length}
+        totalRoots={total}
         pageSize={pageSize}
         pageIndex={safePageIndex}
         pageCount={pageCount}
@@ -879,7 +976,12 @@ export default function Example2Tree({
         position="bottom"
       />
 
-      {visibleRoots.length === 0 && (
+      {loadingWindow && visibleRoots.length === 0 && (
+        <div className="placeholder">
+          <p className="placeholder__body">Loading…</p>
+        </div>
+      )}
+      {!loadingWindow && visibleRoots.length === 0 && (
         <div className="placeholder">
           <p className="placeholder__body">No work items match the current filters.</p>
         </div>
@@ -905,10 +1007,12 @@ function Pagination({
   onPageSizeChange: (next: number | "all") => void;
   position: "top" | "bottom";
 }) {
+  // "View all" loads everything (chunked) — single page, no prev/next needed.
+  const effSize = pageSize === "all" ? Math.max(totalRoots, 1) : pageSize;
   // Page-button window: show first, last, current ±1, with ellipses elsewhere.
   // Keeps the pager compact even with hundreds of pages.
   const pages: (number | "…")[] = [];
-  if (pageSize === "all" || pageCount <= 1) {
+  if (pageCount <= 1) {
     // no pager when there's nothing to page through
   } else {
     const window = new Set<number>([0, pageCount - 1, pageIndex - 1, pageIndex, pageIndex + 1]);
@@ -924,16 +1028,13 @@ function Pagination({
   }
 
   const sizeOptions: ({ value: number | "all"; label: string })[] = [
-    { value: "all", label: "View all" },
     { value: 25, label: "25" },
     { value: 50, label: "50" },
     { value: 100, label: "100" },
   ];
 
-  const start = pageSize === "all" ? 1 : pageIndex * pageSize + 1;
-  const end = pageSize === "all"
-    ? totalRoots
-    : Math.min(totalRoots, (pageIndex + 1) * pageSize);
+  const start = totalRoots === 0 ? 0 : pageIndex * effSize + 1;
+  const end = Math.min(totalRoots, (pageIndex + 1) * effSize);
 
   return (
     <div
