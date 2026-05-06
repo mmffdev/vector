@@ -152,6 +152,27 @@
       "story_id": "00453",
       "card_url": "http://localhost:3333/cards/1769198046173726152",
       "status": "done"
+    },
+    {
+      "order": 10,
+      "title": "Add useKeyboardGrid hook to ResourceTree (Tab/Enter/Esc/Arrow grid keyboarding)",
+      "story_id": "00454",
+      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "status": "todo"
+    },
+    {
+      "order": 11,
+      "title": "Add multi-select checkbox column to ResourceTree (range shift-click + header toggle)",
+      "story_id": "00455",
+      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "status": "todo"
+    },
+    {
+      "order": 12,
+      "title": "Build BulkActionBar wired to POST /api/work-items/bulk for batch ops",
+      "story_id": "00456",
+      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "status": "todo"
     }
   ],
   "acceptance_criteria": [
@@ -406,6 +427,102 @@
       "card_url": "http://localhost:3333/cards/1769198046173726152",
       "done": true,
       "tested": true
+    },
+    {
+      "order": 29,
+      "criterion": "Tab fires on a focused editable cell",
+      "proven_by": "focus moves to the next editable cell on the same row; at row end wraps to next row",
+      "story_id": "00454",
+      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "done": false
+    },
+    {
+      "order": 30,
+      "criterion": "Enter on a focused cell renders edit component",
+      "proven_by": "the column's editComponent is rendered and refocusing on the cell shell after Esc",
+      "story_id": "00454",
+      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "done": false
+    },
+    {
+      "order": 31,
+      "criterion": "Esc dismisses an open editor",
+      "proven_by": "editor is dismissed and focus returns to the cell shell with the original value intact",
+      "story_id": "00454",
+      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "done": false
+    },
+    {
+      "order": 32,
+      "criterion": "ArrowDown moves cell focus",
+      "proven_by": "focus moves to the same column on the next row; ArrowUp reverses",
+      "story_id": "00454",
+      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "done": false
+    },
+    {
+      "order": 33,
+      "criterion": "Click row checkbox",
+      "proven_by": "row's id appears in the onSelectionChange callback's set; clicking again removes it",
+      "story_id": "00455",
+      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "done": false
+    },
+    {
+      "order": 34,
+      "criterion": "Shift-click between rows",
+      "proven_by": "ids of rows 1\u20134 are all in the selection set after click row 1, shift-click row 4",
+      "story_id": "00455",
+      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "done": false
+    },
+    {
+      "order": 35,
+      "criterion": "Click header checkbox on 5-row fixture",
+      "proven_by": "all 5 ids are in the selection set; clicking again clears it",
+      "story_id": "00455",
+      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "done": false
+    },
+    {
+      "order": 36,
+      "criterion": "Header indeterminate state when partial",
+      "proven_by": "header checkbox renders with indeterminate=true when 2 of 5 rows selected",
+      "story_id": "00455",
+      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "done": false
+    },
+    {
+      "order": 37,
+      "criterion": "POST /api/work-items/bulk with set_status op against 5-row fixture",
+      "proven_by": "{updated:5, failed:[]} returned and rows reflect the new flow_state_id in the DB",
+      "story_id": "00456",
+      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "done": false
+    },
+    {
+      "order": 38,
+      "criterion": "Cross-tenant id included in batch",
+      "proven_by": "response lists that id under failed with reason 'forbidden' while other rows update",
+      "story_id": "00456",
+      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "done": false
+    },
+    {
+      "order": 39,
+      "criterion": "BulkActionBar visibility on selection size",
+      "proven_by": "[data-testid=\"bulk-action-bar\"] present with text matching '2 selected' when 2 ids selected; absent when empty",
+      "story_id": "00456",
+      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "done": false
+    },
+    {
+      "order": 40,
+      "criterion": "BulkActionBar permission gating",
+      "proven_by": "Delete button not rendered when useHasPermission stub denies work_items.delete; Status/Priority/Owner remain",
+      "story_id": "00456",
+      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "done": false
     }
   ],
   "risks": [
