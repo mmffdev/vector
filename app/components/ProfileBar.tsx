@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavPrefs, type NavProfile } from "@/app/contexts/NavPrefsContext";
+import { notify } from "@/app/lib/toast";
 
 export const MAX_PROFILES = 10;
 const MAX_LABEL = 32;
@@ -88,12 +89,14 @@ export default function ProfileBar() {
     try {
       if (edit.mode === "creating") {
         await createProfile(trimmed);
+        notify.success("Profile created.");
       } else if (edit.mode === "renaming") {
         await renameProfile(edit.id, trimmed);
+        notify.success("Profile renamed.");
       }
       reset();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
+      notify.apiError(e);
     } finally {
       setBusy(false);
     }
@@ -106,8 +109,9 @@ export default function ProfileBar() {
     try {
       await deleteProfile(p.id);
       setConfirmingDeleteId(null);
+      notify.success("Profile deleted.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
+      notify.apiError(e);
     } finally {
       setBusy(false);
     }
@@ -181,7 +185,7 @@ export default function ProfileBar() {
       try {
         await reorderProfiles(next);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Reorder failed");
+        notify.apiError(err, "Reorder failed");
         setPendingOrder(null); // fall back to server order
       } finally {
         setBusy(false);

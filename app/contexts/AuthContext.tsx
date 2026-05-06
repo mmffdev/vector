@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 
 // PLA-0007: role is now a structured row from the `roles` table, not an
@@ -113,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
+    notify.success("You've been signed out.");
     router.push("/login");
   }, [router, user]);
 

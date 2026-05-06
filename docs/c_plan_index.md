@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0019`
+**Last issued:** `PLA-0020`
 
 ## Format
 
@@ -40,6 +40,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0017` | `<Table>` universal modes — tree, accordion, dnd, section, dense; absorb the 8 allow-listed callers; final .table* CSS strip | 2026-05-05 | active |
 | `PLA-0018` | Nested-tab deep-linking via nuqs — bookmarkable secondary tabs across the app | 2026-05-06 | complete |
 | `PLA-0019` | Samantha External API Surface — OpenAPI Spec, Versioning, Error Standards, API Keys, SDK | 2026-05-06 | active |
+| `PLA-0020` | E2E Human-Friendly Feedback System — Message constants, Toast layer, mmff-cli, Hints | 2026-05-06 | active |
 
 ## Deletion log
 

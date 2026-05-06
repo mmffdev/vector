@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/security"
@@ -114,23 +115,23 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *models.User) userPayl
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "bad request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	ip := clientIP(r)
 	res, err := h.Svc.Login(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), req.Password, ip, r.UserAgent())
 	if err != nil {
 		status := http.StatusUnauthorized
-		msg := "invalid credentials"
+		msg := messages.AuthInvalidCredentials
 		if errors.Is(err, ErrAccountLocked) {
 			status = http.StatusLocked
-			msg = "account locked"
+			msg = messages.AuthAccountLocked
 		} else if errors.Is(err, ErrAccountInactive) {
 			status = http.StatusForbidden
-			msg = "account inactive"
+			msg = messages.AuthAccountInactive
 		} else if !errors.Is(err, ErrInvalidCredentials) {
 			status = http.StatusInternalServerError
-			msg = "internal error"
+			msg = messages.InternalError
 		}
 		httperr.Write(w, r, status, msg)
 		return
@@ -143,13 +144,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("rt")
 	if err != nil || c.Value == "" {
-		httperr.Write(w, r, http.StatusUnauthorized, "no refresh token")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
 		return
 	}
 	res, err := h.Svc.Refresh(r.Context(), c.Value, clientIP(r), r.UserAgent())
 	if err != nil {
 		clearRefreshCookie(w)
-		httperr.Write(w, r, http.StatusUnauthorized, "token expired")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
 		return
 	}
 	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
@@ -169,7 +170,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
 	writeJSON(w, 200, h.buildUserPayload(r.Context(), u))
@@ -183,17 +184,17 @@ type changePwdReq struct {
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
+		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
 	var req changePwdReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "bad request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.ChangePassword(r.Context(), u.ID, req.Current, req.New, clientIP(r)); err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			httperr.Write(w, r, http.StatusUnauthorized, "invalid current password")
+			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthInvalidCurrentPassword)
 			return
 		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())
@@ -221,12 +222,12 @@ type resetConfirmReq struct {
 func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 	var req resetConfirmReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, "bad request")
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, clientIP(r)); err != nil {
 		if errors.Is(err, ErrTokenExpired) {
-			httperr.Write(w, r, http.StatusBadRequest, "token expired or used")
+			httperr.Write(w, r, http.StatusBadRequest, messages.AuthTokenExpired)
 			return
 		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())

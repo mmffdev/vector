@@ -14,6 +14,7 @@ import {
   topologyApi,
   type ArchivedDescendant,
 } from "@/app/lib/topologyApi";
+import { notify } from "@/app/lib/toast";
 import Panel from "@/app/components/Panel";
 
 const STEP = 24;
@@ -192,7 +193,7 @@ export default function ArchiveMapFlyout({
       setList(res);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load archive map");
+      notify.apiError(err, "Failed to load archive map");
     }
   }, [nodeId]);
 
@@ -246,9 +247,11 @@ export default function ArchiveMapFlyout({
       setRowError(null);
       try {
         await topologyApi.restore(id);
+        notify.success("Node restored.");
         onChange();
         await reload();
       } catch (err) {
+        notify.apiError(err, "Restore failed");
         const message = err instanceof Error ? err.message : "Restore failed";
         setRowError({ id, message });
       } finally {

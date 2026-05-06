@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
@@ -39,22 +41,22 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		} else if q := r.URL.Query().Get("access_token"); q != "" {
 			raw = q
 		} else {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 			return
 		}
 		claims, err := ParseAccessToken(raw)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 			return
 		}
 		uid, err := uuid.Parse(claims.Subject)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 			return
 		}
 		u, err := s.FindUserByID(r.Context(), uid)
 		if err != nil || !u.IsActive {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 			return
 		}
 		ctx := context.WithValue(r.Context(), userCtxKey, u)
@@ -66,7 +68,7 @@ func (s *Service) RequireFreshPassword(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := UserFromCtx(r.Context())
 		if u != nil && u.ForcePasswordChange {
-			http.Error(w, `{"error":"password_change_required"}`, http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, messages.AuthPasswordChangeRequired)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -82,17 +84,17 @@ func RequirePermission(res *permissions.Resolver, codes ...permissions.Code) fun
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := UserFromCtx(r.Context())
 			if u == nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 				return
 			}
 			set, err := res.PermissionsFor(r.Context(), u.ID)
 			if err != nil {
-				http.Error(w, "forbidden", http.StatusForbidden)
+				httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
 				return
 			}
 			for _, code := range codes {
 				if _, ok := set[code]; !ok {
-					http.Error(w, "forbidden", http.StatusForbidden)
+					httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
 					return
 				}
 			}
@@ -109,12 +111,12 @@ func RequireAnyPermission(res *permissions.Resolver, codes ...permissions.Code) 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := UserFromCtx(r.Context())
 			if u == nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 				return
 			}
 			set, err := res.PermissionsFor(r.Context(), u.ID)
 			if err != nil {
-				http.Error(w, "forbidden", http.StatusForbidden)
+				httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
 				return
 			}
 			for _, code := range codes {
@@ -123,7 +125,7 @@ func RequireAnyPermission(res *permissions.Resolver, codes ...permissions.Code) 
 					return
 				}
 			}
-			http.Error(w, "forbidden", http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
 		})
 	}
 }

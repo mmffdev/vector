@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/contexts/AuthContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
+import { Toaster } from "@/app/components/Toaster";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
 import AddressDevtool from "@/app/components/AddressDevtool";
 import AddressAnchorResolver from "@/app/components/AddressAnchorResolver";
@@ -41,6 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
+        <Toaster />
         <DevTabProvider>
           <AuthProvider>
             {children}

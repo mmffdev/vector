@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"net/http"
 	"os"
+
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
 const (
@@ -64,12 +67,12 @@ func CSRF(next http.Handler) http.Handler {
 		}
 		cookie, err := r.Cookie(CSRFCookieName)
 		if err != nil || cookie.Value == "" {
-			http.Error(w, "csrf token missing", http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, messages.AuthCSRFInvalid)
 			return
 		}
 		header := r.Header.Get(CSRFHeaderName)
 		if header == "" || subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(header)) != 1 {
-			http.Error(w, "csrf token mismatch", http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, messages.AuthCSRFInvalid)
 			return
 		}
 		next.ServeHTTP(w, r)
