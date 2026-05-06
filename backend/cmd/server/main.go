@@ -39,7 +39,6 @@ import (
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/wsperms"
-	"github.com/mmffdev/vector-backend/internal/artefacts"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolioitems"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
@@ -249,9 +248,6 @@ func main() {
 	// router; per-route gating happens inside Service.requirePermission.
 	workspacesSvc := workspaces.New(pool, auditLog, permResolver)
 	workspacesH := workspaces.NewHandler(workspacesSvc)
-
-	artefactsSvc := artefacts.New(pool)
-	artefactsH := artefacts.NewHandler(artefactsSvc)
 
 	workItemsSvc := workitems.New(pool)
 	workItemsH := workitems.NewHandler(workItemsSvc)
@@ -687,36 +683,6 @@ func main() {
 		r.Get("/{id}", defectsH.Get)
 		r.Patch("/{id}", defectsH.Patch)
 		r.Delete("/{id}", defectsH.Archive)
-	})
-
-	// ---- /api/artefacts/{type} ----
-	// Core CRUD: all authenticated roles.
-	// Schema management: padmin-equivalent (RequirePermission per sub-route).
-	// Field values: all authenticated roles.
-	r.Route("/api/artefacts/{type}", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-
-		r.Post("/", artefactsH.Create)
-		r.Get("/{id}", artefactsH.Get)
-		r.Patch("/{id}", artefactsH.Patch)
-		r.Delete("/{id}", artefactsH.Archive)
-
-		r.Get("/{id}/fields", artefactsH.ListFieldValues)
-		r.Put("/{id}/fields/{field_name}", artefactsH.WriteFieldValue)
-		r.Post("/{id}/fields/bulk", artefactsH.BulkWriteFieldValues)
-
-		r.Group(func(r chi.Router) {
-			// PLA-0007: padmin-equivalent gate via portfolio.list (closest
-			// existing code). Tech-debt: own code artefacts.schema.write — see
-			// PLA-0007 G3.
-			r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
-			r.Get("/schema", artefactsH.ListSchema)
-			r.Post("/schema", artefactsH.CreateSchema)
-			r.Patch("/schema/{schema_id}", artefactsH.PatchSchema)
-			r.Delete("/schema/{schema_id}", artefactsH.ArchiveSchema)
-		})
 	})
 
 	// ---- /api/rank ----
