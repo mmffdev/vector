@@ -35,6 +35,7 @@ import {
 import { BsArrowsCollapse, BsArrowsExpand } from "react-icons/bs";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
+import { useKeyboardGrid } from "@/app/hooks/useKeyboardGrid";
 import DragHandleColumn from "@/app/components/DragHandleColumn";
 
 // PLA-0021 / 00446 — closed vocabulary of prop-set sub-addresses registered
@@ -77,6 +78,13 @@ export interface ColumnDef<T> {
   cellModifier?: string;
   /** When true, cell `onClick` calls `stopPropagation` (for interactive cells). */
   stopClick?: boolean;
+  /** When true, the cell `<td>` is keyboard-focusable and participates in the
+   *  Tab/Enter/Esc/Arrow grid driven by `useKeyboardGrid`. The cell renderer
+   *  is responsible for opening an editor in response to a click on the cell
+   *  (the keyboard hook synthesises a click on Enter). Editors should mark
+   *  their root with `data-cell-editor="true"` so the hook stops consuming
+   *  Tab/Arrow while the editor owns input. */
+  editable?: boolean;
   /** Cell renderer. Receives row + render context (depth, expand toggle). */
   render: (row: T, ctx: RenderCtx<T>) => ReactNode;
 }
@@ -796,6 +804,11 @@ function ResourceTreeImpl<T>({
     scrollRef,
   );
 
+  // Keyboard grid traversal (Tab/Enter/Esc/Arrow) over editable cells. The
+  // hook is a no-op when no column declares `editable: true` (no cells match
+  // the data-attribute query).
+  useKeyboardGrid({ rootRef: scrollRef });
+
   // ── Expand / collapse ────────────────────────────────────────────────────
 
   const toggle = useCallback(
@@ -1030,6 +1043,14 @@ function ResourceTreeImpl<T>({
                 (col.cellModifier
                   ? ` tree_accordion-dense__cell--${col.cellModifier}`
                   : "");
+              const editableProps = col.editable
+                ? {
+                    tabIndex: 0,
+                    "data-editable-cell": "true",
+                    "data-row-id": id,
+                    "data-col-key": col.key,
+                  }
+                : null;
               return (
                 <td
                   key={col.key}
@@ -1039,6 +1060,7 @@ function ResourceTreeImpl<T>({
                       ? (e) => e.stopPropagation()
                       : undefined
                   }
+                  {...editableProps}
                 >
                   {col.render(item, ctx)}
                 </td>
