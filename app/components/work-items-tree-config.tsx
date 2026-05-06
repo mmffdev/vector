@@ -6,9 +6,11 @@
 // the panel header, and the /api/work-items I/O hook. The wrapper in
 // WorkItemsTree.tsx wires these into ResourceTree props.
 
-import React, { useCallback, useEffect, useState } from "react";
-import { MdTune, MdOutlineCheckBox, MdOutlinePerson } from "react-icons/md";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag, MdClose } from "react-icons/md";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { api } from "@/app/lib/api";
+import { useAuth } from "@/app/contexts/AuthContext";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
@@ -383,28 +385,204 @@ export function WorkItemsPanelHeader() {
   );
 }
 
-// Filter chips (Type/Status/Assignee) — currently stub buttons; wired in WS3.
+// ─── Filter state (URL-backed) ────────────────────────────────────────────────
+
+export interface WorkItemsFilters {
+  type: string | null;
+  status: string | null;
+  priority: string | null;
+  owner_id: string | null;
+}
+
+export const EMPTY_FILTERS: WorkItemsFilters = {
+  type: null,
+  status: null,
+  priority: null,
+  owner_id: null,
+};
+
+// Single source of truth: URL search params. Each filter maps to one param
+// of the same name (so the URL stays human-readable). All updates route
+// through router.replace() so back/forward history is not polluted on each
+// chip flick — bookmarking still works because params are persisted.
+export function useWorkItemsFilters(): {
+  filters: WorkItemsFilters;
+  hasAny: boolean;
+  setFilter: <K extends keyof WorkItemsFilters>(key: K, value: WorkItemsFilters[K]) => void;
+  clearAll: () => void;
+} {
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+
+  const filters = useMemo<WorkItemsFilters>(
+    () => ({
+      type: search.get("type"),
+      status: search.get("status"),
+      priority: search.get("priority"),
+      owner_id: search.get("owner_id"),
+    }),
+    [search],
+  );
+
+  const hasAny = !!(filters.type || filters.status || filters.priority || filters.owner_id);
+
+  const setFilter = useCallback(
+    <K extends keyof WorkItemsFilters>(key: K, value: WorkItemsFilters[K]) => {
+      const next = new URLSearchParams(search.toString());
+      if (value == null || value === "") next.delete(key);
+      else next.set(key, String(value));
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, search],
+  );
+
+  const clearAll = useCallback(() => {
+    const next = new URLSearchParams(search.toString());
+    (["type", "status", "priority", "owner_id"] as const).forEach((k) => next.delete(k));
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [router, pathname, search]);
+
+  return { filters, hasAny, setFilter, clearAll };
+}
+
+// ─── Filter chips (controlled) ────────────────────────────────────────────────
+
+const TYPE_CHIP_OPTIONS = [
+  { value: "epic", label: "Epic" },
+  { value: "story", label: "Story" },
+  { value: "task", label: "Task" },
+  { value: "defect", label: "Defect" },
+];
+
+// Backend `?status=` filter is the legacy enum (open/in_progress/done/cancelled)
+// and lives alongside the new flow_state_id substrate during the migration
+// window — see types.go WorkItem.Status comment. The chip uses the legacy
+// values until the backend exposes a `?flow_state_code=` filter.
+const STATUS_CHIP_OPTIONS = [
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In progress" },
+  { value: "done", label: "Done" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const PRIORITY_CHIP_OPTIONS = [
+  { value: "critical", label: "Critical" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
+
+function FilterChip({
+  icon,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | null;
+  options: { value: string; label: string }[];
+  onChange: (next: string | null) => void;
+}) {
+  const active = !!value;
+  const display = active ? (options.find((o) => o.value === value)?.label ?? value!) : label;
+  return (
+    <span
+      className={
+        "tree_accordion-dense__filterbar-chip" +
+        (active ? " tree_accordion-dense__filterbar-chip--active" : "")
+      }
+    >
+      <span className="tree_accordion-dense__filterbar-chip-icon">{icon}</span>
+      <span className="tree_accordion-dense__filterbar-chip-label">{display}</span>
+      <select
+        className="tree_accordion-dense__filterbar-chip-select"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
+        aria-label={`Filter by ${label}`}
+      >
+        <option value="">All {label.toLowerCase()}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      {active && (
+        <button
+          type="button"
+          className="tree_accordion-dense__filterbar-chip-clear"
+          onClick={(e) => { e.stopPropagation(); onChange(null); }}
+          aria-label={`Clear ${label.toLowerCase()} filter`}
+        >
+          <MdClose size={12} />
+        </button>
+      )}
+    </span>
+  );
+}
+
+// Controlled filter chips. State lives in URL via useWorkItemsFilters().
+// Owner chip is a "Mine" toggle that filters to the current user — full
+// owner-picker UI requires a /api/users endpoint with users.list permission
+// (deferred to a Wave-4 Owner-column story).
 export function WorkItemsFilterChips() {
+  const { user } = useAuth();
+  const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters();
+  const meId = user?.id ?? null;
+  const ownerIsMe = !!filters.owner_id && filters.owner_id === meId;
+
   return (
     <>
-      <button type="button" className="tree_accordion-dense__filterbar-chip">
-        <span className="tree_accordion-dense__filterbar-chip-icon">
-          <MdTune size={14} />
-        </span>
-        Type
-      </button>
-      <button type="button" className="tree_accordion-dense__filterbar-chip">
-        <span className="tree_accordion-dense__filterbar-chip-icon">
-          <MdOutlineCheckBox size={14} />
-        </span>
-        Status
-      </button>
-      <button type="button" className="tree_accordion-dense__filterbar-chip">
+      <FilterChip
+        icon={<MdTune size={14} />}
+        label="Type"
+        value={filters.type}
+        options={TYPE_CHIP_OPTIONS}
+        onChange={(v) => setFilter("type", v)}
+      />
+      <FilterChip
+        icon={<MdOutlineCheckBox size={14} />}
+        label="Status"
+        value={filters.status}
+        options={STATUS_CHIP_OPTIONS}
+        onChange={(v) => setFilter("status", v)}
+      />
+      <FilterChip
+        icon={<MdFlag size={14} />}
+        label="Priority"
+        value={filters.priority}
+        options={PRIORITY_CHIP_OPTIONS}
+        onChange={(v) => setFilter("priority", v)}
+      />
+      <button
+        type="button"
+        className={
+          "tree_accordion-dense__filterbar-chip" +
+          (ownerIsMe ? " tree_accordion-dense__filterbar-chip--active" : "")
+        }
+        onClick={() => setFilter("owner_id", ownerIsMe ? null : meId)}
+        disabled={!meId}
+        aria-pressed={ownerIsMe}
+      >
         <span className="tree_accordion-dense__filterbar-chip-icon">
           <MdOutlinePerson size={14} />
         </span>
-        Assignee
+        <span className="tree_accordion-dense__filterbar-chip-label">
+          {ownerIsMe ? "Mine" : "Owner"}
+        </span>
       </button>
+      {hasAny && (
+        <button
+          type="button"
+          className="tree_accordion-dense__filterbar-clear"
+          onClick={clearAll}
+        >
+          Clear filters
+        </button>
+      )}
     </>
   );
 }
@@ -423,16 +601,30 @@ export interface UseWorkItemsWindowResult {
 // Fetches a window of root work items + supplies optimistic PATCH and lazy
 // child loading. "View all" issues a first chunk to learn total, then fetches
 // remaining chunks in parallel — children stay lazy.
+//
+// Filters: each non-null entry is appended to the request query. The backend
+// `?status=` param is the legacy enum during the flow_state migration window.
+// The chip-level `type` field maps to the server param `item_type`.
 export function useWorkItemsWindow(
   pageSize: number | "all",
   pageIndex: number,
   sortKey: SortKey | null,
   sortDir: SortDir,
+  filters: WorkItemsFilters,
   onPatched?: (body: Record<string, unknown>) => void,
 ): UseWorkItemsWindowResult {
   const [windowRoots, setWindowRoots] = useState<WorkItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loadingWindow, setLoadingWindow] = useState(false);
+
+  const filterQuery = useMemo(() => {
+    const parts: string[] = [];
+    if (filters.type) parts.push(`item_type=${encodeURIComponent(filters.type)}`);
+    if (filters.status) parts.push(`status=${encodeURIComponent(filters.status)}`);
+    if (filters.priority) parts.push(`priority=${encodeURIComponent(filters.priority)}`);
+    if (filters.owner_id) parts.push(`owner_id=${encodeURIComponent(filters.owner_id)}`);
+    return parts.length ? `&${parts.join("&")}` : "";
+  }, [filters.type, filters.status, filters.priority, filters.owner_id]);
 
   const refetchWindow = useCallback(async () => {
     setLoadingWindow(true);
@@ -441,7 +633,7 @@ export function useWorkItemsWindow(
       if (pageSize === "all") {
         const CHUNK = 1000;
         const first = await api<{ items: WorkItem[]; total: number }>(
-          `/api/work-items?limit=${CHUNK}&offset=0${sortQuery}`,
+          `/api/work-items?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
         );
         const totalRoots = first.total ?? first.items.length;
         if (totalRoots <= first.items.length) {
@@ -454,7 +646,7 @@ export function useWorkItemsWindow(
         const rest = await Promise.all(
           offsets.map((o) =>
             api<{ items: WorkItem[]; total: number }>(
-              `/api/work-items?limit=${CHUNK}&offset=${o}${sortQuery}`,
+              `/api/work-items?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
             ),
           ),
         );
@@ -464,14 +656,14 @@ export function useWorkItemsWindow(
       }
       const offset = pageIndex * pageSize;
       const res = await api<{ items: WorkItem[]; total: number }>(
-        `/api/work-items?limit=${pageSize}&offset=${offset}${sortQuery}`,
+        `/api/work-items?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
       );
       setWindowRoots(res.items);
       setTotal(res.total ?? res.items.length);
     } finally {
       setLoadingWindow(false);
     }
-  }, [pageSize, pageIndex, sortKey, sortDir]);
+  }, [pageSize, pageIndex, sortKey, sortDir, filterQuery]);
 
   useEffect(() => { void refetchWindow(); }, [refetchWindow]);
 

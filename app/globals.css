@@ -11397,6 +11397,7 @@ input[type="reset"] {
   display: inline-flex;
 }
 .tree_accordion-dense__filterbar-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -11409,14 +11410,79 @@ input[type="reset"] {
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 .tree_accordion-dense__filterbar-chip:hover {
   background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
 }
+.tree_accordion-dense__filterbar-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tree_accordion-dense__filterbar-chip--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent-ink, var(--ink));
+}
 .tree_accordion-dense__filterbar-chip-icon {
   color: var(--ink-subtle);
   display: inline-flex;
+}
+.tree_accordion-dense__filterbar-chip--active .tree_accordion-dense__filterbar-chip-icon {
+  color: var(--accent);
+}
+.tree_accordion-dense__filterbar-chip-label {
+  white-space: nowrap;
+}
+/* Native <select> overlaid on the chip — invisible but receives all clicks
+   and pointer events, so the chip looks like a custom button while the
+   browser still handles dropdown UX, keyboard nav, and a11y. */
+.tree_accordion-dense__filterbar-chip-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+}
+.tree_accordion-dense__filterbar-chip-clear {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+}
+.tree_accordion-dense__filterbar-chip-clear:hover {
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.tree_accordion-dense__filterbar-clear {
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tree_accordion-dense__filterbar-clear:hover {
+  color: var(--ink);
 }
 .tree_accordion-dense__filterbar-spacer {
   flex: 1 1 auto;

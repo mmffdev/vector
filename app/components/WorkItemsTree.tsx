@@ -5,12 +5,13 @@
 // work-items-tree-config.tsx. Every tree concern (lines, expand, resize, etc.)
 // lives in <ResourceTree>; every work-items concern lives in the config file.
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
   buildWorkItemsColumns,
   sortRoots,
+  useWorkItemsFilters,
   useWorkItemsWindow,
   WorkItemsFilterChips,
   WorkItemsPanelHeader,
@@ -35,9 +36,16 @@ export default function WorkItemsTree({
   const [pageIndex, setPageIndex] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const { filters } = useWorkItemsFilters();
+
+  // Filter changes invalidate the page offset — page 5 of an unfiltered set
+  // is meaningless on a filtered set. Reset on every filter change.
+  useEffect(() => {
+    setPageIndex(0);
+  }, [filters.type, filters.status, filters.priority, filters.owner_id]);
 
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren } =
-    useWorkItemsWindow(pageSize, pageIndex, sortKey, sortDir, onPatched);
+    useWorkItemsWindow(pageSize, pageIndex, sortKey, sortDir, filters, onPatched);
 
   // Local sort over the loaded window — only `id` is server-driven.
   const sortedRoots = useMemo(() => {
