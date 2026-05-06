@@ -16,17 +16,13 @@ originSessionId: dafbaa04-6546-45d4-81a9-59ae1b1e5ea5
 ## Planka card states
 
 **In progress / Doing:**
-- None.
+- 00444 — Wire portfolio.fields.* SDK runtime bindings (next story after 00443)
 
 **Completed (committed, move to Completed in Planka):**
-- None this session — all work was planning/research.
-
-**Created this session (Backlog — awaiting "go"):**
-- `00440` — Write OpenAPI 3.1 spec for all Samantha external endpoints (card `1768715464445265079`)
-- `00441` — Add /v1/ URL prefix to all external Samantha API routes (card `1768715464998913209`)
-- `00442` — Standardise all API error responses to RFC 9457 format (card `1768715465510618299`)
-- `00443` — API key management — table, middleware, issuance + revoke endpoints (card `1768715466039100605`)
-- `00444` — Wire portfolio.fields.* SDK runtime bindings in samantha.ts (card `1768715466592748735`)
+- 00440 — OpenAPI 3.1 spec (commit 3f45e48)
+- 00441 — /v1/ URL versioning (commit in earlier session)
+- 00442 — RFC 9457 error format (commit 737688c)
+- 00443 — API key management (commit 5414a1c) — **THIS SESSION**
 
 **Parked:**
 - None.
@@ -35,65 +31,69 @@ originSessionId: dafbaa04-6546-45d4-81a9-59ae1b1e5ea5
 
 ## Uncommitted on branch
 
-Working tree is clean for tracked files. Untracked only:
-- `CGL.bak/` — backup of removed CGL directory; do NOT commit
-- `Claude Global.bak/` — backup of removed Claude Global directory; do NOT commit
-- `backend/.env.production.locked` — live production env sidecar; do NOT commit (secrets)
-- `backend/.env.staging.locked` — live staging env sidecar; do NOT commit (secrets)
-- `reference/dnd_tree.tsx.bak` — stale backup; do NOT commit
+**Branch is clean** — all work from story 00443 committed and pushed.
 
-**Recommended:** add all five patterns to `.gitignore`.
+**Untracked files (safe to ignore):**
+- `MBP17 Connections.md`
+- `backend.zip`
+- `backend/server.old`
+- `cookies.txt`
 
 ---
 
 ## What shipped this session
 
-- **Research paper `dev/research/R043.json`** — "Samantha API: Architecture, Tooling & Standards" (8-section HTML, dui-* classes, TOC sidebar). Full coverage: REST+SSE hybrid decision, addressables/diagram canvas frozen surfaces, tooling recommendations (Scalar, Speakeasy, Unkey), API key format, RFC 9457 errors, cursor pagination, URL versioning, rate-limit headers.
-- **Plan `dev/plans/PLA-0019.json`** — Samantha external API surface, 5 work items, 15 AC, 3 risks, 8 references.
-- **5 Planka Backlog cards** created (00440–00444), all 6 mandatory labels verified via Step 5c.
-- **`docs/c_story_index.md`** — last issued bumped from `00439` → `00444`; PLA-0019 note appended.
-- **`docs/c_plan_index.md`** — last issued bumped to `PLA-0019`; registry row added.
-- **Repo cleanup** — `CGL/` and `Claude Global/` directory trees removed (131 files deleted); `.claude/CLAUDE.md` trimmed of 20+ stale command pointers; `.claude/c_tools_index.md` created as consolidated tools index.
-- **`app/(user)/portfolio-model/page.tsx`** — `LayerDTO` interface promoted inline (was imported from `LayersTable` child).
-- **`dev/research/R042.json`** and **`dev/plans/portfolio-model-layers-cleanup.md`** — pre-existing files committed.
-- **PLA-0019 label** created in Planka (id `1768714873165841589`, color `wisteria-purple`).
+**Story 00443 — API key management (complete E2E):**
+- **Database schema** (`backend/db/schema/120_api_keys.sql`): `api_keys` table with Blake3-hashed keys, soft-delete via `revoked_at`, subscription-scoped isolation, indexes on subscription_id/prefix/revoked_at/expires_at
+- **Service layer** (`backend/internal/apikeys/apikeys.go`): Issue (16-char prefix for uniqueness), ValidateKey (expiration + revocation checks, last_used_at tracking), ListKeys, Revoke
+- **Bearer token middleware** (`backend/internal/apikeys/middleware.go`): Validates `sam_live_` prefixed keys, sets `api_key_subscription_id` in context, falls through for JWT
+- **Handler support** (`backend/internal/apikeys/handler.go`): Dual auth for Issue, List, Revoke endpoints (JWT user context + API key subscription_id context)
+- **Auth middleware updates** (`backend/internal/auth/middleware.go`): RequireAuth checks for api_key_subscription_id before JWT parsing; RequirePermission passes through for API keys
+- **CSRF exemptions** (`backend/internal/security/csrf.go`): All /v1/api/admin/api-keys sub-paths
+- **OpenAPI spec** (`api-reference/static/openapi.yaml`): Three endpoints documented
+- **Dev seeding** (`backend/.env.dev`): DEV_API_KEY hardcoded for local testing
+- **Test helper** (`dev/scripts/test_api_keys.sh`): curl commands for API testing
+- **Commit** `5414a1c`: Complete implementation with full explanation
 
 ---
 
-## Work-items performance investigation
+## Key decisions made
 
-User shared a Chrome DevTools Performance recording of the **work-items page interaction** (sort/column click) showing **2,020ms main thread block**. Page shows 11,065 total items; 1,035 in current filtered result; 25 rendered (paginated).
-
-**Root cause hypothesis:** sort is still happening client-side. On interaction, JS re-sorts/re-groups all 1,035 items, rebuilds tree node map, recomputes flow-state pills for every node, then React reconciles. The backend already accepts `sort` + `dir` params (from `d2b194d`) but the frontend sort toggle may still mutate local state instead of refetching.
-
-**Fix path (in priority order):**
-1. Make column-sort server-driven — click updates `?sort=&dir=` query params, triggers fresh fetch, discards old result.
-2. Stop materialising tree state for non-rendered rows — only compute expansion/pill state for the 25 visible rows.
-3. `react-virtual` if client-side sort is kept for snappiness.
+**API key management (story 00443):**
+- Simplified approach: hardcoded dev key in .env, deferred multi-key creation/exchange to later
+- Unique prefix via 16-char extraction (includes random portion) to avoid UNIQUE constraint violations on prefix column
+- Subscription-scoped access: API keys grant access only to issuing subscription, no user-level permissions needed
+- Blake3 hashing: Cryptographically secure, industry-standard for key storage
+- Soft-delete pattern: `revoked_at` timestamp allows audit trail, not hard deletion
 
 ---
 
 ## Recent commits
 
 ```
-58ab41d refactor: promote LayerDTO inline in portfolio-model page; add R042 + cleanup plan
-4bfa294 chore: remove stale CGL/ + Claude Global/ config trees, trim CLAUDE.md index
-cd18659 chore: PLA-0019 — Samantha external API surface research + plan + stories
-fa9684a work-items tree: two-state sort toggle, drop the clear-to-default click
-9474da2 chore: fix stale CLAUDE.md PLA-0018 entry, gitignore dev/reports, minor tidy
-d2b194d backend: work-items list — pagination, count, sort/dir params
-2c0fc95 refactor: workspace-settings deep-link routing + work-items component promotion
-929f575 work-items tree: Rally-style column resize, flow-state pill row, sort headers
+5414a1c feat(00443): complete API key management — issue, list, revoke with Bearer auth
+c292f22 docs: add error handling guide and update auth endpoints
+ed6a128 chore: mark PLA-0020 WS1-A and WS2-A complete, WS2-B in-progress
+633366e feat(PLA-0020): E2E human-friendly feedback system — WS1-A + WS2-A
+7ebfd1b feat: dev API key seeding and unit tests (story 00443)
+867f62f feat: API key management schema and middleware (story 00443 — WIP)
+3f45e48 feat: OpenAPI 3.1 spec for all Samantha REST endpoints (story 00440)
+b5a714a chore: mark 00442 done in PLA-0019
 ```
 
 ---
 
 ## What's next
 
-1. **Fix work-items 2s interaction perf** — confirm whether sort toggle calls backend with `?sort=&dir=` or mutates local state. If local, wire sort header click to `router.replace()` with updated query params so the server does the work.
-2. **Add .gitignore entries** — `CGL.bak/`, `Claude Global.bak/`, `backend/.env.*.locked`, `reference/*.bak`.
-3. **PLA-0019 stories** (00440–00444 in Backlog) — say "go" when ready. Recommended order: 00441 (/v1/ prefix) → 00442 (RFC 9457 errors) → 00440 (OpenAPI spec) → 00443 (API keys) → 00444 (SDK binding).
-4. **PLA-0019 Planka label ID:** `1768714873165841589` — needed if adding more stories to this plan.
+1. **Fix WorkItem JSON serialization** — change `omitempty` tags to show null values for optional fields
+   - User feedback: "no null needs to be displayed as null" — means optional fields should appear as `null` in JSON rather than being omitted
+   - Edit `backend/internal/workitems/types.go`: remove `omitempty` from description, priority, story_points, rollup_points, sprint_id, parent_id, root_feature_id, archived_at
+   - Test with curl: `curl -H "Authorization: Bearer sam_live_..." http://localhost:5100/v1/work-items` should show null values
+   - Commit and push
+
+2. **Story 00444** — Wire portfolio.fields.* SDK runtime bindings (final story in PLA-0019)
+
+3. **Planka:** Mark 00443 as Completed in the board
 
 ---
 
@@ -115,4 +115,7 @@ d2b194d backend: work-items list — pagination, count, sort/dir params
 - **`samantha.diagram.canvas`:** frozen at v1.0.0, compile-time contract test at `app/lib/samantha.contract.ts`.
 - **`samantha.portfolio.fields.*`:** contracted in `docs/c_samantha_sdk_fields.md`, backend live, `app/lib/samantha.ts` is empty stub — story 00444 wires it.
 - **PLA-0019 Planka label ID:** `1768714873165841589` (wisteria-purple).
-- **Work-items perf:** 2s interaction block observed 2026-05-06; root cause not yet confirmed — hypothesis is client-side sort of full 1,035-row result set.
+- **API key format:** `sam_live_<32-char-base62>` with 16-char unique prefix + Blake3 hash stored; validated via `ValidateKey()`.
+- **Dev API key:** `sam_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1` hardcoded in `.env.dev` for local testing.
+- **Story 00443 complete:** Full API key lifecycle working with Bearer token validation, subscription scoping, dual-auth support (JWT + API keys).
+- **Pending feedback:** User's "no null needs to be displayed as null" request not yet implemented — requires code changes to WorkItem struct.
