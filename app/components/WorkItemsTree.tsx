@@ -107,7 +107,7 @@ function SortIcon({ col, sortKey, sortDir, onClick }: {
       type="button"
       className={"tree_accordion-dense__sort-btn" + (active ? " tree_accordion-dense__sort-btn--active" : "")}
       aria-label={active ? (sortDir === "asc" ? "Sorted ascending" : "Sorted descending") : "Sort"}
-      title={active ? (sortDir === "asc" ? "Sorted ascending — click to reverse" : "Sorted descending — click to clear") : "Sort"}
+      title={active ? (sortDir === "asc" ? "Sorted ascending — click to reverse" : "Sorted descending — click to reverse") : "Sort"}
       onClick={(e) => { e.stopPropagation(); onClick(col); }}
     >
       {!active && <MdUnfoldMore size={16} />}
@@ -758,13 +758,20 @@ export default function WorkItemsTree({
   const scrollRef = useRef<HTMLDivElement>(null);
   const { widths, startResize, resetColumn } = useColumnResize(tableRef, scrollRef);
 
+  // Two-state toggle on the active column: asc ↔ desc. Switching to a
+  // different column resets to asc on the new column. There is no "off"
+  // state from clicking the active column — to clear, click another column.
+  // State updaters must be pure (strict-mode double-invokes them), so we
+  // read current sortKey/sortDir from the closure and call both setters
+  // unconditionally at the top level.
   const onSort = useCallback((col: SortKey) => {
-    setSortKey((prev) => {
-      if (prev !== col) { setSortDir("asc"); return col; }
-      if (sortDir === "asc") { setSortDir("desc"); return col; }
-      return null; // third click clears
-    });
-  }, [sortDir]);
+    if (sortKey !== col) {
+      setSortKey(col);
+      setSortDir("asc");
+    } else {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    }
+  }, [sortKey, sortDir]);
 
   // The backend already returned roots only (parent_id IS NULL default). The
   // filter is kept as a defensive identity in case future callers pass a
