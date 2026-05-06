@@ -46,6 +46,7 @@ type WorkItem struct {
 	StoryPoints    *int       `json:"story_points"`
 	RollupPoints   *int       `json:"rollup_points"`
 	SprintID       *string    `json:"sprint_id"`
+	Sprint         *SprintRef `json:"sprint"`
 	ParentID       *string    `json:"parent_id"`
 	RootFeatureID  *string    `json:"root_feature_id"`
 	OwnerID        string     `json:"owner_id"`
@@ -54,6 +55,20 @@ type WorkItem struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 	ArchivedAt     *time.Time `json:"archived_at"`
 	ChildrenCount  int        `json:"children_count"`
+}
+
+// SprintRef is the slim sprint projection embedded on each WorkItem when
+// the row's sprint_id resolves to a non-archived sprints row. Alias is
+// sourced from sprints.name (the sprint's display label). Stays nil when
+// sprint_id is NULL or points at an archived/deleted sprint, so the
+// frontend renders the em-dash placeholder.
+//
+// This is intentionally a separate struct from Sprint (the wire shape used
+// by the /api/sprints endpoints) — the embedded form is read-only and only
+// carries the two fields a row-level renderer needs.
+type SprintRef struct {
+	ID    string `json:"id"`
+	Alias string `json:"alias"`
 }
 
 // canHaveManualPoints reports whether an item of the given type may have

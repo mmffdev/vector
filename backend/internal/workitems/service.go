@@ -148,16 +148,23 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 			orderBy = "wi.updated_at " + dir + " NULLS LAST, wi.key_num ASC"
 		}
 	}
+	// PLA-0021 / 00458 — LEFT JOIN sprints so each row carries a {id, alias}
+	// SprintRef. The join is non-archive-filtered intentionally: if a sprint
+	// is later archived, its rows still know what they used to belong to.
+	// Scan-side guards collapse a NULL join to a nil SprintRef.
 	q := fmt.Sprintf(`
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
 		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
-		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
+		       wi.priority, wi.story_points, wi.sprint_id,
+		       s.id::text, s.name,
+		       wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       %s AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d`,
@@ -282,13 +289,16 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uui
 	row := s.pool.QueryRow(ctx, `
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
 		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
-		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
+		       wi.priority, wi.story_points, wi.sprint_id,
+		       s.id::text, s.name,
+		       wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
 		WHERE wi.id = $1 AND wi.subscription_id = $2 AND wi.archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -866,13 +876,16 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID string, paren
 	rows, err := s.pool.Query(ctx, `
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
 		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
-		       wi.priority, wi.story_points, wi.sprint_id, wi.parent_id, wi.root_feature_id,
+		       wi.priority, wi.story_points, wi.sprint_id,
+		       s.id::text, s.name,
+		       wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
+		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
 		WHERE wi.subscription_id = $1 AND wi.parent_id = $2 AND wi.archived_at IS NULL
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC`,
 		subscriptionID, parentID,
@@ -1384,15 +1397,25 @@ type scannable interface {
 
 func scanWorkItem(row scannable) (*WorkItem, error) {
 	var wi WorkItem
+	// PLA-0021 / 00458 — sprint join produces (id, alias) which are NULL
+	// when the row has no sprint_id (or the joined sprint is archived).
+	// Mirror the existing optional-column pattern with *string locals; if
+	// either side is non-NULL we materialise a SprintRef on the wire row.
+	var sprintRefID, sprintRefAlias *string
 	err := row.Scan(
 		&wi.ID, &wi.SubscriptionID, &wi.KeyNum, &wi.ItemType, &wi.Title, &wi.Description,
 		&wi.Status, &wi.FlowStateID, &wi.FlowStateName, &wi.FlowStateCode,
-		&wi.Priority, &wi.StoryPoints, &wi.SprintID, &wi.ParentID, &wi.RootFeatureID,
+		&wi.Priority, &wi.StoryPoints, &wi.SprintID,
+		&sprintRefID, &sprintRefAlias,
+		&wi.ParentID, &wi.RootFeatureID,
 		&wi.OwnerID, &wi.CreatedBy, &wi.CreatedAt, &wi.UpdatedAt, &wi.ArchivedAt,
 		&wi.ChildrenCount, &wi.RollupPoints,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if sprintRefID != nil && sprintRefAlias != nil {
+		wi.Sprint = &SprintRef{ID: *sprintRefID, Alias: *sprintRefAlias}
 	}
 	return &wi, nil
 }

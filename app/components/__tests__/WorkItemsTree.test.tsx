@@ -64,7 +64,11 @@ const FIXTURE: WorkItem[] = Array.from({ length: 5 }, (_, i) => ({
   priority: "medium",
   story_points: i === 0 ? null : (i + 1) * 2,
   rollup_points: null,
-  sprint_id: null,
+  // PLA-0021 / 00458 — first fixture row carries a real sprint ref so the
+  // Sprint-cell renderer test below can find an aliased cell; remaining
+  // rows stay null so the em-dash placeholder branch is also covered.
+  sprint_id: i === 0 ? "sprint-1" : null,
+  sprint: i === 0 ? { id: "sprint-1", alias: "S-1" } : null,
   parent_id: null,
   owner_id: `user-0000${i}`,
   created_at: "2026-05-01T00:00:00Z",
@@ -188,6 +192,39 @@ describe("WorkItemsTree (PLA-0021 smoke)", () => {
       'input[type="search"], input[placeholder*="Search work items"]',
     );
     expect(search).not.toBeNull();
+  });
+
+  // PLA-0021 / 00458 — Sprint column renders the joined sprint alias when
+  // the row carries a real `sprint = {id, alias}`, and falls back to the
+  // em-dash placeholder when sprint is null. The fixture is built with the
+  // first row sprint=`{id:"sprint-1", alias:"S-1"}` and the rest null;
+  // we count cells, not specific rows, because ResourceTree decorates the
+  // table layout with header/handle/expander cells that shift indices.
+  it("renders the joined sprint alias for sprint-bearing rows and em-dash for null", () => {
+    const { container } = render(
+      <WorkItemsTree
+        selectedId={null}
+        onSelect={() => undefined}
+        onPatched={() => undefined}
+      />,
+    );
+
+    // Find every body cell rendered for the Sprint column. The Sprint
+    // column carries cellModifier:"sprint" → a stable
+    // `tree_accordion-dense__cell--sprint` class on each <td>. We filter
+    // to <tbody> so the (themed) header strip is not picked up.
+    const sprintCells = container.querySelectorAll(
+      "tbody td.tree_accordion-dense__cell--sprint",
+    );
+    expect(sprintCells.length).toBe(5);
+
+    // Row 0 carries the real sprint — text must contain "S-1".
+    expect(sprintCells[0].textContent ?? "").toMatch(/S-1/);
+
+    // Rows 1..4 have sprint = null — must render the em-dash placeholder.
+    for (let i = 1; i < 5; i++) {
+      expect(sprintCells[i].textContent ?? "").toBe("—");
+    }
   });
 
   // PLA-0021 / 00449 — DnD AC: tree mounts without throwing when the rank

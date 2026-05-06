@@ -37,6 +37,12 @@ export interface WorkItem {
   story_points: number | null;
   rollup_points: number | null;
   sprint_id: string | null;
+  // PLA-0021 / 00458 — backend now joins the sprints row and emits
+  // `sprint: {id, alias}` (alias = sprints.name). null when the row has
+  // no sprint or the sprint is archived. Renders the alias directly —
+  // no client-side derivation. The legacy `sprint_id` field is kept
+  // for writers (PATCH still posts sprint_id).
+  sprint: { id: string; alias: string } | null;
   parent_id: string | null;
   owner_id: string;
   created_at: string;
@@ -86,16 +92,6 @@ export function formatPriority(raw: string | null) {
 export function ownerGlyph(ownerId: string): string {
   const clean = ownerId.replace(/[^a-zA-Z0-9]/g, "");
   return (clean.slice(-2) || "??").toUpperCase();
-}
-
-// Sprint label: backend gives sprint_id; we render a short "S-NN" alias.
-// With no real sprint mapping yet we hash the last 2 hex digits.
-export function sprintAlias(sprintId: string | null): string {
-  if (!sprintId) return "—";
-  const tail = sprintId.replace(/[^0-9a-fA-F]/g, "").slice(-2);
-  if (!tail) return "—";
-  const num = (parseInt(tail, 16) % 30) + 1;
-  return `S-${num.toString().padStart(2, "0")}`;
 }
 
 // Due: backend has no due date yet; offset from updated_at as a stand-in.
@@ -356,7 +352,8 @@ export function buildWorkItemsColumns(
       width: 95,
       minWidth: 95,
       align: "mono",
-      render: (row) => <>{sprintAlias(row.sprint_id)}</>,
+      cellModifier: "sprint",
+      render: (row) => <>{row.sprint?.alias ?? "—"}</>,
     },
     {
       key: "due",
