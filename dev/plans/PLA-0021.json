@@ -13,7 +13,7 @@
     "<s>WS2-A (backend): append ?owner_id= to list query (other 7 filter params + ?sort= already wired); frontend chips + URL nuqs threading</s> \u2713",
     "<s>WS2-B: Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default); frontend URL nuqs threading</s> \u2713",
     "<s>WS3-A: Add useKeyboardGrid hook on ResourceTree root \u2014 Tab \u2192 next editable cell, Enter \u2192 next row same column, Esc cancels active edit</s> \u2713",
-    "WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree",
+    "<s>WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree</s> \u2713",
     "WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission",
     "WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column",
     "WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name",
@@ -165,7 +165,7 @@
       "title": "Add multi-select checkbox column to ResourceTree (range shift-click + header toggle)",
       "story_id": "00455",
       "card_url": "http://localhost:3333/cards/1769230238539056653",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 12,
@@ -470,7 +470,8 @@
       "proven_by": "row's id appears in the onSelectionChange callback's set; clicking again removes it",
       "story_id": "00455",
       "card_url": "http://localhost:3333/cards/1769230238539056653",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 34,
@@ -478,7 +479,8 @@
       "proven_by": "ids of rows 1\u20134 are all in the selection set after click row 1, shift-click row 4",
       "story_id": "00455",
       "card_url": "http://localhost:3333/cards/1769230238539056653",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 35,
@@ -486,7 +488,8 @@
       "proven_by": "all 5 ids are in the selection set; clicking again clears it",
       "story_id": "00455",
       "card_url": "http://localhost:3333/cards/1769230238539056653",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 36,
@@ -494,7 +497,8 @@
       "proven_by": "header checkbox renders with indeterminate=true when 2 of 5 rows selected",
       "story_id": "00455",
       "card_url": "http://localhost:3333/cards/1769230238539056653",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 37,
