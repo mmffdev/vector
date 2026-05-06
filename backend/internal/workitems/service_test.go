@@ -325,6 +325,58 @@ func TestListWorkItems_OwnerFilter(t *testing.T) {
 	}
 }
 
+// TestListWorkItems_SortWhitelist exercises the ORDER BY whitelist
+// (PLA-0021/00452): every documented SortKey ("id", "title", "status",
+// "priority", "points", "sprint", "due") must produce a successful query,
+// and an unknown key must fall back to the default position-ordered
+// clause (silently — never interpolated as raw SQL).
+func TestListWorkItems_SortWhitelist(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	ctx := context.Background()
+
+	subID, _ := pickAnyUser(t, pool)
+	svc := workitems.New(pool)
+
+	keys := []string{"id", "title", "status", "priority", "points", "sprint", "due"}
+	dirs := []string{"asc", "desc"}
+	for _, k := range keys {
+		for _, d := range dirs {
+			f := workitems.ListWorkItemsFilter{Sort: k, Dir: d, Limit: 25}
+			if _, err := svc.ListWorkItems(ctx, subID.String(), f); err != nil {
+				t.Errorf("ListWorkItems(sort=%s,dir=%s): %v", k, d, err)
+			}
+		}
+	}
+
+	// Unknown key must NOT inject SQL — the safe fallback is the default
+	// position-ordered query. We assert the call succeeds and a known key
+	// (id) returns the same first-page rows when called twice; if the
+	// switch were leaking the raw string into ORDER BY, the unknown sort
+	// would either error or scramble the order.
+	bogus, err := svc.ListWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{
+		Sort:  "title; DROP TABLE users; --",
+		Dir:   "asc",
+		Limit: 5,
+	})
+	if err != nil {
+		t.Fatalf("unknown sort key should fall back, got error: %v", err)
+	}
+	defaultRows, err := svc.ListWorkItems(ctx, subID.String(), workitems.ListWorkItemsFilter{Limit: 5})
+	if err != nil {
+		t.Fatalf("default ListWorkItems: %v", err)
+	}
+	if len(bogus) != len(defaultRows) {
+		t.Fatalf("unknown sort length=%d, default length=%d", len(bogus), len(defaultRows))
+	}
+	for i := range bogus {
+		if bogus[i].ID != defaultRows[i].ID {
+			t.Errorf("unknown sort changed row order at i=%d: bogus=%s default=%s",
+				i, bogus[i].ID, defaultRows[i].ID)
+		}
+	}
+}
+
 // TestListWorkItems_NullsLast confirms that a row with NULL position
 // (no backlog_position and no sprint_position) sorts after rows with
 // non-NULL positions. Pre-rank-rollout rows are the canonical

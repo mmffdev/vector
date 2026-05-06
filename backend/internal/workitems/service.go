@@ -103,22 +103,50 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	// table CHECK guarantees exactly one is non-NULL per row. NULLS LAST
 	// covers any pre-backfill row; key_num is the stable tiebreaker.
 	//
-	// When the caller sets f.Sort = "id", we instead order tier-first
-	// (epic → story → task → defect) and then by key_num. This keeps the
-	// tree-shaped hierarchy intact across paginated windows so users see
-	// every epic before any orphan story, regardless of raw key_num.
+	// When the caller sets f.Sort, we route through a whitelist mirroring
+	// the frontend SortKey union ("id"|"title"|"status"|"priority"|"points"|
+	// "sprint"|"due"). Anything outside the whitelist is silently dropped
+	// (defaults to position-order) — never interpolated as raw SQL.
 	orderBy := "coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC"
-	if f.Sort == "id" {
+	if f.Sort != "" {
 		dir := "ASC"
 		if f.Dir == "desc" {
 			dir = "DESC"
 		}
-		orderBy = `CASE wi.item_type
-			WHEN 'epic' THEN 1
-			WHEN 'story' THEN 2
-			WHEN 'task' THEN 3
-			WHEN 'defect' THEN 4
-			ELSE 99 END ASC, wi.key_num ` + dir
+		switch f.Sort {
+		case "id":
+			// Tier-first (epic → story → task → defect), then key_num.
+			// Keeps the tree shape intact across paginated windows.
+			orderBy = `CASE wi.item_type
+				WHEN 'epic' THEN 1
+				WHEN 'story' THEN 2
+				WHEN 'task' THEN 3
+				WHEN 'defect' THEN 4
+				ELSE 99 END ASC, wi.key_num ` + dir
+		case "title":
+			orderBy = "wi.title " + dir + ", wi.key_num ASC"
+		case "status":
+			// Sort by flow_position (left-to-right canonical order); tie on key_num.
+			orderBy = "fs.flow_position " + dir + " NULLS LAST, wi.key_num ASC"
+		case "priority":
+			// Map critical→0, high→1, medium→2, low→3 (matching frontend).
+			orderBy = `CASE wi.priority
+				WHEN 'critical' THEN 0
+				WHEN 'high' THEN 1
+				WHEN 'medium' THEN 2
+				WHEN 'low' THEN 3
+				ELSE 99 END ` + dir + ", wi.key_num ASC"
+		case "points":
+			// Rollup wins when set; manual story_points otherwise. Mirrors UI render.
+			// Inline rollupPointsExpr — Postgres won't resolve a SELECT alias here
+			// when the alias is itself a correlated subquery.
+			orderBy = "coalesce(" + rollupPointsExpr + ", wi.story_points) " + dir + " NULLS LAST, wi.key_num ASC"
+		case "sprint":
+			orderBy = "wi.sprint_id " + dir + " NULLS LAST, wi.key_num ASC"
+		case "due":
+			// Until WS4-C adds due_date, sort by updated_at to match frontend.
+			orderBy = "wi.updated_at " + dir + " NULLS LAST, wi.key_num ASC"
+		}
 	}
 	q := fmt.Sprintf(`
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,

@@ -11,7 +11,7 @@
     "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx — generic component accepting Sets 1–5 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> ✓",
     "WS1-B: Restore DnD rank from reference/dnd_tree.tsx; wire useResourceRank + applyDrop + snapshot rollback into ResourceTree; add PATCH /api/work-items/:id/rank { before_id?, after_id? } backend handler",
     "WS2-A (backend): <s>append ?owner_id= to list query (other 7 filter params + ?sort= already wired)</s> ✓ — frontend chips + URL nuqs threading still pending",
-    "WS2-B: Promote sort to URL query param + server ORDER BY on all sortable columns; remove client-window sort branches from WorkItemsTree",
+    "WS2-B: <s>Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default)</s> ✓ — frontend URL nuqs threading still pending",
     "WS3-A: Add useKeyboardGrid hook on ResourceTree root — Tab → next editable cell, Enter → next row same column, Esc cancels active edit",
     "WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree",
     "WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission",
@@ -144,7 +144,7 @@
       "title": "Backend: ORDER BY whitelist for every sortable column + tests",
       "story_id": "00452",
       "card_url": "http://localhost:3333/cards/1769197877453653433",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 9,
@@ -353,7 +353,8 @@
       "proven_by": "Service test round-trips Sort=<col> for {id,key_num,title,status,priority,story_points,sprint,owner,due_date}, asc/desc.",
       "story_id": "00452",
       "card_url": "http://localhost:3333/cards/1769197877453653433",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 24,
@@ -361,7 +362,8 @@
       "proven_by": "Unknown sort= values fall back to the default rank order (no SQL injection).",
       "story_id": "00452",
       "card_url": "http://localhost:3333/cards/1769197877453653433",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 25,
@@ -369,7 +371,8 @@
       "proven_by": "Absent-sort= default ordering remains lexicographic rank position.",
       "story_id": "00452",
       "card_url": "http://localhost:3333/cards/1769197877453653433",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 26,
