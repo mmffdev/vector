@@ -82,7 +82,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setRefreshCallback(refresh);
-    refresh().finally(() => setLoading(false));
+    // Only call refresh if a prior session might exist. session_alive is
+    // set on successful login (line above) and cleared on logout/401 —
+    // its absence guarantees no session, so calling /auth/refresh would
+    // just produce a noisy 401 in the console on every cold mount.
+    const hasSessionHint =
+      typeof document !== "undefined" &&
+      document.cookie.split("; ").some((c) => c.startsWith("session_alive="));
+    if (hasSessionHint) {
+      refresh().finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
     return () => setRefreshCallback(null);
   }, [refresh]);
 
