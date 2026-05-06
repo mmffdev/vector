@@ -284,9 +284,10 @@ func pgvectorLiteral(v []float32) string {
 
 // coreTable maps scope_key → core table name. Empty during the
 // vector_artefacts cutover (see docs/c_c_vector_artefacts_backfill.md):
-// the legacy per-type tables (o_artefacts_execution_*, o_artefacts_strategic)
-// are slated for drop and have no producers enqueueing outbox rows.
-// Re-populate when the worker is rewired against the new substrate.
+// migration 124 dropped the empty legacy per-type artefact tables; the two
+// remaining (o_artefacts_execution_defects, o_artefacts_execution_tasks)
+// hold demo seed data and have no outbox producers. Re-populate when the
+// worker is rewired against the new substrate.
 var coreTableMap = map[string]string{}
 
 func coreTable(artefactType string) (string, bool) {
