@@ -99,6 +99,11 @@ type ListWorkItemsFilter struct {
 	SprintID *string
 	Limit    int
 	Offset   int
+	// Sort overrides the default position-based ORDER BY. Currently only "id"
+	// is honoured (tier-then-key_num). Empty string keeps the default.
+	Sort string
+	// Dir is "asc" or "desc"; only meaningful when Sort is set. Defaults to "asc".
+	Dir string
 }
 
 // Sprint is the wire representation of the sprints table.

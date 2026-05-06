@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -27,6 +28,16 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	f := ListWorkItemsFilter{Limit: 50}
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			f.Limit = n // service caps at 200
+		}
+	}
+	if v := q.Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			f.Offset = n
+		}
+	}
 	if v := q.Get("parent_id"); v != "" {
 		f.ParentID = &v
 	}
@@ -42,6 +53,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("sprint_id"); v != "" {
 		f.SprintID = &v
 	}
+	if v := q.Get("sort"); v != "" {
+		f.Sort = v
+	}
+	if v := q.Get("dir"); v != "" {
+		f.Dir = v
+	}
 
 	items, err := h.Svc.ListWorkItems(r.Context(), u.SubscriptionID.String(), f)
 	if err != nil {
@@ -49,7 +66,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	total, err := h.Svc.CountWorkItems(r.Context(), u.SubscriptionID.String(), f)
+	if err != nil {
+		log.Printf("CountWorkItems error: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
 }
 
 // GET /api/work-items/summary

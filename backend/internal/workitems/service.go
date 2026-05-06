@@ -53,8 +53,10 @@ const rollupPointsExpr = `(
 // ListWorkItems returns a flat page of work items for the subscription,
 // filtered by optional params. Archived rows are excluded.
 func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f ListWorkItemsFilter) ([]WorkItem, error) {
-	if f.Limit <= 0 || f.Limit > 200 {
+	if f.Limit <= 0 {
 		f.Limit = 50
+	} else if f.Limit > 5000 {
+		f.Limit = 5000
 	}
 
 	args := []any{subscriptionID}
@@ -95,6 +97,24 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	// backlog_position) collapses both into one orderable value because the
 	// table CHECK guarantees exactly one is non-NULL per row. NULLS LAST
 	// covers any pre-backfill row; key_num is the stable tiebreaker.
+	//
+	// When the caller sets f.Sort = "id", we instead order tier-first
+	// (epic → story → task → defect) and then by key_num. This keeps the
+	// tree-shaped hierarchy intact across paginated windows so users see
+	// every epic before any orphan story, regardless of raw key_num.
+	orderBy := "coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC"
+	if f.Sort == "id" {
+		dir := "ASC"
+		if f.Dir == "desc" {
+			dir = "DESC"
+		}
+		orderBy = `CASE wi.item_type
+			WHEN 'epic' THEN 1
+			WHEN 'story' THEN 2
+			WHEN 'task' THEN 3
+			WHEN 'defect' THEN 4
+			ELSE 99 END ASC, wi.key_num ` + dir
+	}
 	q := fmt.Sprintf(`
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
 		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
@@ -106,9 +126,9 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		WHERE %s
-		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d`,
-		rollupPointsExpr, strings.Join(conds, " AND "), n, n+1,
+		rollupPointsExpr, strings.Join(conds, " AND "), orderBy, n, n+1,
 	)
 
 	rows, err := s.pool.Query(ctx, q, args...)
@@ -117,6 +137,51 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	}
 	defer rows.Close()
 	return scanWorkItems(rows)
+}
+
+// CountWorkItems returns the total number of rows that ListWorkItems would
+// return for the same filter, ignoring Limit/Offset. Used by the lazy-load
+// pagination UX so the frontend knows total page count without loading every
+// row up front.
+func (s *Service) CountWorkItems(ctx context.Context, subscriptionID string, f ListWorkItemsFilter) (int, error) {
+	args := []any{subscriptionID}
+	conds := []string{"subscription_id = $1", "archived_at IS NULL"}
+	n := 2
+
+	if f.ParentID != nil {
+		conds = append(conds, fmt.Sprintf("parent_id = $%d", n))
+		args = append(args, *f.ParentID)
+		n++
+	} else if f.ItemType == nil {
+		conds = append(conds, "parent_id IS NULL")
+	}
+	if f.ItemType != nil {
+		conds = append(conds, fmt.Sprintf("item_type = $%d", n))
+		args = append(args, *f.ItemType)
+		n++
+	}
+	if f.Status != nil {
+		conds = append(conds, fmt.Sprintf("status = $%d", n))
+		args = append(args, *f.Status)
+		n++
+	}
+	if f.Priority != nil {
+		conds = append(conds, fmt.Sprintf("priority = $%d", n))
+		args = append(args, *f.Priority)
+		n++
+	}
+	if f.SprintID != nil {
+		conds = append(conds, fmt.Sprintf("sprint_id = $%d", n))
+		args = append(args, *f.SprintID)
+		n++
+	}
+	q := fmt.Sprintf(`SELECT COUNT(*) FROM o_artefacts_execution_work_items WHERE %s`,
+		strings.Join(conds, " AND "))
+	var total int
+	if err := s.pool.QueryRow(ctx, q, args...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 // WorkItemsSummary is the count payload backing the Page Summary Header
