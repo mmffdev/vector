@@ -10,12 +10,11 @@ import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
   buildWorkItemsColumns,
-  sortRoots,
   useWorkItemsFilters,
+  useWorkItemsSort,
   useWorkItemsWindow,
   WorkItemsFilterChips,
   WorkItemsPanelHeader,
-  type SortDir,
   type SortKey,
   type WorkItem,
 } from "@/app/components/work-items-tree-config";
@@ -34,24 +33,17 @@ export default function WorkItemsTree({
   const flowStates = useWorkItemFlowStates();
   const [pageSize, setPageSize] = useState<number | "all">(25);
   const [pageIndex, setPageIndex] = useState(0);
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const { filters } = useWorkItemsFilters();
+  const { sortKey, sortDir, setSort } = useWorkItemsSort();
 
-  // Filter changes invalidate the page offset — page 5 of an unfiltered set
-  // is meaningless on a filtered set. Reset on every filter change.
+  // Filter or sort changes invalidate the page offset — page 5 of an
+  // unfiltered/default-sorted set is meaningless on a filtered/resorted set.
   useEffect(() => {
     setPageIndex(0);
-  }, [filters.type, filters.status, filters.priority, filters.owner_id]);
+  }, [filters.type, filters.status, filters.priority, filters.owner_id, sortKey, sortDir]);
 
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren } =
     useWorkItemsWindow(pageSize, pageIndex, sortKey, sortDir, filters, onPatched);
-
-  // Local sort over the loaded window — only `id` is server-driven.
-  const sortedRoots = useMemo(() => {
-    if (!sortKey || sortKey === "id") return windowRoots;
-    return sortRoots(windowRoots, sortKey, sortDir);
-  }, [windowRoots, sortKey, sortDir]);
 
   // Patch wrapper to satisfy the ResourceTree contract (returns the row).
   const patchRemote = useCallback(
@@ -69,17 +61,16 @@ export default function WorkItemsTree({
 
   const handleSortChange = useCallback(
     (key: string | null, dir: "asc" | "desc") => {
-      setSortKey(key as SortKey | null);
-      setSortDir(dir);
+      setSort(key as SortKey | null, dir);
     },
-    [],
+    [setSort],
   );
 
   return (
     <div>
       <WorkItemsPanelHeader />
       <ResourceTree<WorkItem>
-        roots={sortedRoots}
+        roots={windowRoots}
         total={total}
         getId={(r) => r.id}
         getParentId={(r) => r.parent_id}

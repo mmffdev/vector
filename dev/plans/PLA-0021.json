@@ -1,60 +1,60 @@
 {
   "id": "PLA-0021",
-  "title": "ResourceTree \u2014 generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap)",
+  "title": "ResourceTree — generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap)",
   "date_created": "2026-05-06",
   "date_started": "2026-05-06",
   "date_last_updated": "2026-05-06",
   "date_finished": null,
-  "scope": "<p><code>WorkItemsTree</code> is refactored into two layers: a generic <code>&lt;ResourceTree&gt;</code> primitive that accepts five prop sets (Data types, UI scaffold, Feature requirements, Cog menu, Colour overrides) and a thin <code>WorkItemsTree</code> preset wrapper that passes the work-items configuration. The five prop-set configs are registered in the addressables registry (PLA-0005) under stable addresses such as <code>samantha.work-items._tree.workitems</code>. Future adopters (PortfolioItemsTree, TopologyTree, etc.) get all 28 features for free by passing their own prop sets. The 28 features from R042 \u00a70.B are implemented in ranked order across work streams.</p>",
-  "value": "<p>The current <code>WorkItemsTree</code> has 14 \u274c missing features, 4 \ud83d\udce6 stubbed features (fake sprint, owner, due-date columns), and 2 \ud83d\udea7 partial features from the R042 feature matrix \u2014 covering only inline-edit, server-sort on id only, and ad-hoc realtime. Users see synthetic data in three columns. DnD rank code exists but is parked in <code>reference/dnd_tree.tsx</code> and not wired. This plan delivers the full feature set in importance order, with ResourceTree as a reusable primitive so every future tree view inherits the complete capability stack including realtime sync, RBAC-gated columns, URL deep-linking, streaming skeletons, and mobile responsive layout \u2014 features Rally never had.</p>",
+  "scope": "<p><code>WorkItemsTree</code> is refactored into two layers: a generic <code>&lt;ResourceTree&gt;</code> primitive that accepts five prop sets (Data types, UI scaffold, Feature requirements, Cog menu, Colour overrides) and a thin <code>WorkItemsTree</code> preset wrapper that passes the work-items configuration. The five prop-set configs are registered in the addressables registry (PLA-0005) under stable addresses such as <code>samantha.work-items._tree.workitems</code>. Future adopters (PortfolioItemsTree, TopologyTree, etc.) get all 28 features for free by passing their own prop sets. The 28 features from R042 §0.B are implemented in ranked order across work streams.</p>",
+  "value": "<p>The current <code>WorkItemsTree</code> has 14 ❌ missing features, 4 📦 stubbed features (fake sprint, owner, due-date columns), and 2 🚧 partial features from the R042 feature matrix — covering only inline-edit, server-sort on id only, and ad-hoc realtime. Users see synthetic data in three columns. DnD rank code exists but is parked in <code>reference/dnd_tree.tsx</code> and not wired. This plan delivers the full feature set in importance order, with ResourceTree as a reusable primitive so every future tree view inherits the complete capability stack including realtime sync, RBAC-gated columns, URL deep-linking, streaming skeletons, and mobile responsive layout — features Rally never had.</p>",
   "implementation_plan": [
-    "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx \u2014 generic component accepting Sets 1\u20135 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> \u2713",
+    "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx — generic component accepting Sets 1–5 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> ✓",
     "WS1-B: Restore DnD rank from reference/dnd_tree.tsx; wire useResourceRank + applyDrop + snapshot rollback into ResourceTree; add PATCH /api/work-items/:id/rank { before_id?, after_id? } backend handler",
-    "<s>WS2-A (backend): append ?owner_id= to list query (other 7 filter params + ?sort= already wired); frontend chips + URL nuqs threading</s> \u2713",
-    "WS2-B: <s>Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default)</s> \u2713 \u2014 frontend URL nuqs threading still pending",
-    "WS3-A: Add useKeyboardGrid hook on ResourceTree root \u2014 Tab \u2192 next editable cell, Enter \u2192 next row same column, Esc cancels active edit",
+    "<s>WS2-A (backend): append ?owner_id= to list query (other 7 filter params + ?sort= already wired); frontend chips + URL nuqs threading</s> ✓",
+    "<s>WS2-B: Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default); frontend URL nuqs threading</s> ✓",
+    "WS3-A: Add useKeyboardGrid hook on ResourceTree root — Tab → next editable cell, Enter → next row same column, Esc cancels active edit",
     "WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree",
     "WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission",
     "WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column",
     "WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name",
-    "WS4-C: Migration \u2014 add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher",
+    "WS4-C: Migration — add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher",
     "WS5-A: Build <ColumnPicker> flyout; persist visibility map to user_preferences table per { pageId, slot }; driven by ResourceTree Set 2 columns[] config",
-    "WS5-B: Column locking \u2014 add { key, locked: 'left' } column flag; render with position: sticky on locked cells; ResourceTree Set 2 prop",
+    "WS5-B: Column locking — add { key, locked: 'left' } column flag; render with position: sticky on locked cells; ResourceTree Set 2 prop",
     "WS5-C: Column reorder via @dnd-kit sortable on header row; persist order to user_preferences; ResourceTree Set 2 prop",
-    "WS5-D: Multi-column sort \u2014 promote sort to { field, dir }[] array; URL: ?sort=field1:asc,field2:desc; ResourceTree Set 3 prop",
-    "WS6-A: Virtual scroll \u2014 adopt @tanstack/react-virtual when row count > 500; ResourceTree Set 3 { virtual: { threshold: 500 } } prop",
-    "WS6-B: Row context menu \u2014 add onContextMenu handler on each row showing the cog-menu items (Set 4) at cursor position",
-    "WS7-A: Tags + custom fields \u2014 migration: add tags TEXT[] + custom_fields JSONB to work_items; render chip cell with autocomplete from workspace tag dictionary",
-    "WS7-B: Group summaries \u2014 ResourceTree Set 3 { grouping: { by, summaries: [{ col, agg }] } }; server returns one summary row per group via Postgres aggregation",
+    "WS5-D: Multi-column sort — promote sort to { field, dir }[] array; URL: ?sort=field1:asc,field2:desc; ResourceTree Set 3 prop",
+    "WS6-A: Virtual scroll — adopt @tanstack/react-virtual when row count > 500; ResourceTree Set 3 { virtual: { threshold: 500 } } prop",
+    "WS6-B: Row context menu — add onContextMenu handler on each row showing the cog-menu items (Set 4) at cursor position",
+    "WS7-A: Tags + custom fields — migration: add tags TEXT[] + custom_fields JSONB to work_items; render chip cell with autocomplete from workspace tag dictionary",
+    "WS7-B: Group summaries — ResourceTree Set 3 { grouping: { by, summaries: [{ col, agg }] } }; server returns one summary row per group via Postgres aggregation",
     "WS8-A: Bake useRefetchOnPush(rankTopic(resourceType, parentId)) into ResourceTree driven by Set 1 resourceType; remove ad-hoc adopter wiring",
-    "WS8-B: Permission-gated columns and actions \u2014 per-column { requires: 'permission.code' } in Set 1 columns consumed via useHasPermission; per-action requires in Set 4",
-    "WS8-C: Full URL-encoded tree state \u2014 encode { openIds, sort, filters, selection, columnOrder } into search params via PLA-0018 nuqs; extends current partial URL state",
-    "WS9-A: CSV export \u2014 GET /api/work-items.csv?\u2026filters streamed from Postgres COPY TO STDOUT; permission-checked at route; cog-menu action",
-    "WS9-B: Cross-parent DnD reparent \u2014 drop on a different parent row \u2192 PATCH /api/work-items/:id { parent_id } + rank recompute; ResourceTree Set 3 { dnd: { allowReparent: true } }",
-    "WS9-C: Saved views (two-layer) \u2014 Layer A always-on in-memory + cookie; Layer B explicit Save View \u2192 user_view_state(user_id, address, name); addressable via Samantha",
-    "WS10-A: Keyboard new-item create \u2014 sentinel last row when Set 3 { canCreate: true }; Enter on empty row \u2192 POST /api/work-items; optimistic insert with realtime echo dedup",
-    "WS10-B: Copy URL cog action \u2014 navigator.clipboard.writeText(rowDeepLink(r)); deep-link URL is canonical via PLA-0018",
-    "WS10-C: Mobile responsive collapse \u2014 at < 720px swap row template to card layout (Set 2 alt scaffold: 'card'); same data, different scaffold per viewport",
-    "WS10-D: Streaming skeleton \u2014 wrap ResourceTree fetch in <Suspense fallback={<TreeSkeleton/>}>; server-stream the first page via Next.js App Router"
+    "WS8-B: Permission-gated columns and actions — per-column { requires: 'permission.code' } in Set 1 columns consumed via useHasPermission; per-action requires in Set 4",
+    "WS8-C: Full URL-encoded tree state — encode { openIds, sort, filters, selection, columnOrder } into search params via PLA-0018 nuqs; extends current partial URL state",
+    "WS9-A: CSV export — GET /api/work-items.csv?…filters streamed from Postgres COPY TO STDOUT; permission-checked at route; cog-menu action",
+    "WS9-B: Cross-parent DnD reparent — drop on a different parent row → PATCH /api/work-items/:id { parent_id } + rank recompute; ResourceTree Set 3 { dnd: { allowReparent: true } }",
+    "WS9-C: Saved views (two-layer) — Layer A always-on in-memory + cookie; Layer B explicit Save View → user_view_state(user_id, address, name); addressable via Samantha",
+    "WS10-A: Keyboard new-item create — sentinel last row when Set 3 { canCreate: true }; Enter on empty row → POST /api/work-items; optimistic insert with realtime echo dedup",
+    "WS10-B: Copy URL cog action — navigator.clipboard.writeText(rowDeepLink(r)); deep-link URL is canonical via PLA-0018",
+    "WS10-C: Mobile responsive collapse — at < 720px swap row template to card layout (Set 2 alt scaffold: 'card'); same data, different scaffold per viewport",
+    "WS10-D: Streaming skeleton — wrap ResourceTree fetch in <Suspense fallback={<TreeSkeleton/>}>; server-stream the first page via Next.js App Router"
   ],
   "areas_impacted": [
-    "app/components/WorkItemsTree.tsx \u2014 refactored to preset wrapper (thin config file)",
-    "app/components/ResourceTree.tsx (new) \u2014 generic hierarchical tree primitive",
-    "app/components/BulkActionBar.tsx (new) \u2014 bulk-action overlay rendered above ResourceTree",
-    "app/components/ColumnPicker.tsx (new) \u2014 column visibility flyout",
-    "app/components/OwnerChip.tsx (new) \u2014 avatar + name chip for owner column",
-    "app/components/TreeSkeleton.tsx (new) \u2014 Suspense fallback skeleton",
-    "app/hooks/useResourceRank.ts (new) \u2014 DnD rank apply + rollback",
-    "app/hooks/useKeyboardGrid.ts (new) \u2014 Tab/Enter/Esc cell traversal",
-    "app/hooks/useGridClipboard.ts (new) \u2014 in-app cell clipboard + paste import",
-    "backend/internal/workitems/ \u2014 add sprint/owner joins, server-sort on all columns, tags/custom_fields, due_date, CSV endpoint, bulk endpoint, rank PATCH",
-    "db/schema/ \u2014 migrations: due_date, tags, custom_fields on work_items; user_view_state table (new)",
-    "app/lib/addressables/ \u2014 register 5 prop-set configs for samantha.work-items._tree.workitems",
-    "docs/ \u2014 add docs/c_c_resource_tree.md leaf spec"
+    "app/components/WorkItemsTree.tsx — refactored to preset wrapper (thin config file)",
+    "app/components/ResourceTree.tsx (new) — generic hierarchical tree primitive",
+    "app/components/BulkActionBar.tsx (new) — bulk-action overlay rendered above ResourceTree",
+    "app/components/ColumnPicker.tsx (new) — column visibility flyout",
+    "app/components/OwnerChip.tsx (new) — avatar + name chip for owner column",
+    "app/components/TreeSkeleton.tsx (new) — Suspense fallback skeleton",
+    "app/hooks/useResourceRank.ts (new) — DnD rank apply + rollback",
+    "app/hooks/useKeyboardGrid.ts (new) — Tab/Enter/Esc cell traversal",
+    "app/hooks/useGridClipboard.ts (new) — in-app cell clipboard + paste import",
+    "backend/internal/workitems/ — add sprint/owner joins, server-sort on all columns, tags/custom_fields, due_date, CSV endpoint, bulk endpoint, rank PATCH",
+    "db/schema/ — migrations: due_date, tags, custom_fields on work_items; user_view_state table (new)",
+    "app/lib/addressables/ — register 5 prop-set configs for samantha.work-items._tree.workitems",
+    "docs/ — add docs/c_c_resource_tree.md leaf spec"
   ],
   "feature_list": [
     "#1 DnD rank within parent (useResourceRank + applyDrop, server fractional index API)",
-    "#2 Filter chips \u2014 Type / Status / Assignee (controlled, URL-threaded)",
+    "#2 Filter chips — Type / Status / Assignee (controlled, URL-threaded)",
     "#3 Server-sort on every column (?sort=col:dir)",
     "#4 Keyboard nav (Tab/Enter cell traversal via useKeyboardGrid)",
     "#5 Multi-select checkbox column + selectedIds",
@@ -63,7 +63,7 @@
     "#8 Owner column real (users join + OwnerChip)",
     "#9 Due date real (due_date migration + inline date editor)",
     "#10 Column visibility picker (ColumnPicker + user_preferences persist)",
-    "#11 Column locking \u2014 pin Title left (sticky CSS)",
+    "#11 Column locking — pin Title left (sticky CSS)",
     "#12 Column reorder (header @dnd-kit + user_preferences persist)",
     "#13 Multi-column sort (sorters array + URL)",
     "#14 Virtual scroll (@tanstack/react-virtual at 500 row threshold)",
@@ -76,17 +76,17 @@
     "#21 CSV export (GET /api/work-items.csv COPY TO STDOUT streamed)",
     "#22 Cross-parent DnD reparent (PATCH parent_id + rank recompute)",
     "#23 Saved views two-layer (cookie always-on + user_view_state named profile)",
-    "#24 Keyboard new-item create (sentinel row + Enter \u2192 POST)",
+    "#24 Keyboard new-item create (sentinel row + Enter → POST)",
     "#25 Copy URL to row (navigator.clipboard cog action)",
     "#26 Mobile responsive card layout (< 720px scaffold swap)",
     "#27 Streaming skeleton via Suspense (Next.js App Router first-page stream)",
     "#28 Clipboard paste import (useGridClipboard hook + bulk endpoint)"
   ],
   "features_extended": [
-    "PLA-0005 addressables \u2014 5 prop-set configs registered as stable addresses",
-    "PLA-0015 <Table> \u2014 ResourceTree is a separate primitive; Table tree mode (PLA-0017) coexists; ResourceTree handles unlimited-depth hierarchical data with DnD rank",
-    "PLA-0018 deep-linking \u2014 URL-encoded tree state extends nuqs params to cover openIds + columnOrder",
-    "PLA-0007 RBAC \u2014 per-column and per-action permission gates via useHasPermission"
+    "PLA-0005 addressables — 5 prop-set configs registered as stable addresses",
+    "PLA-0015 <Table> — ResourceTree is a separate primitive; Table tree mode (PLA-0017) coexists; ResourceTree handles unlimited-depth hierarchical data with DnD rank",
+    "PLA-0018 deep-linking — URL-encoded tree state extends nuqs params to cover openIds + columnOrder",
+    "PLA-0007 RBAC — per-column and per-action permission gates via useHasPermission"
   ],
   "features_removed": [],
   "work_item_backlog": [
@@ -113,7 +113,7 @@
     },
     {
       "order": 4,
-      "title": "Doc leaf: docs/c_c_resource_tree.md \u2014 ResourceTree component spec",
+      "title": "Doc leaf: docs/c_c_resource_tree.md — ResourceTree component spec",
       "story_id": "00448",
       "card_url": "http://localhost:3333/cards/1769171531075683617",
       "status": "done"
@@ -151,7 +151,7 @@
       "title": "Frontend: thread sort/dir into URL via nuqs; drop client sort branch",
       "story_id": "00453",
       "card_url": "http://localhost:3333/cards/1769198046173726152",
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
@@ -167,7 +167,7 @@
     {
       "order": 2,
       "criterion": "app/components/WorkItemsTree.tsx is a thin wrapper",
-      "proven_by": "imports ResourceTree and passes work-items config (\u2264100 lines)",
+      "proven_by": "imports ResourceTree and passes work-items config (≤100 lines)",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
       "done": true,
@@ -383,7 +383,8 @@
       "proven_by": "Clicking a sortable header writes ?sort=<col>&dir=<asc|desc> to the URL.",
       "story_id": "00453",
       "card_url": "http://localhost:3333/cards/1769198046173726152",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 27,
@@ -391,7 +392,8 @@
       "proven_by": "sortRoots() import + useMemo-over-sort removed from WorkItemsTree.tsx; sort state comes from nuqs.",
       "story_id": "00453",
       "card_url": "http://localhost:3333/cards/1769198046173726152",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 28,
@@ -399,29 +401,30 @@
       "proven_by": "Existing WorkItemsTree.test.tsx smoke still passes after the refactor.",
       "story_id": "00453",
       "card_url": "http://localhost:3333/cards/1769198046173726152",
-      "done": false
+      "done": true,
+      "tested": true
     }
   ],
   "risks": [
-    "RISK-HIGH: DnD rank restore \u2014 reference/dnd_tree.tsx (1195 lines from b0d8e4a) may have diverged from current WorkItemsTree structure; read both before integrating",
-    "RISK-MED: ResourceTree prop-set extraction is a big refactor of WorkItemsTree.tsx \u2014 do it in one focused PR; avoid incremental partial states that break the existing tree",
-    "RISK-MED: @tanstack/react-virtual (WS6-A) + @dnd-kit sortable (WS5-C) interact via scrollable container; the virtualised scroll root must be the DnD container \u2014 test with 500+ rows before shipping",
+    "RISK-HIGH: DnD rank restore — reference/dnd_tree.tsx (1195 lines from b0d8e4a) may have diverged from current WorkItemsTree structure; read both before integrating",
+    "RISK-MED: ResourceTree prop-set extraction is a big refactor of WorkItemsTree.tsx — do it in one focused PR; avoid incremental partial states that break the existing tree",
+    "RISK-MED: @tanstack/react-virtual (WS6-A) + @dnd-kit sortable (WS5-C) interact via scrollable container; the virtualised scroll root must be the DnD container — test with 500+ rows before shipping",
     "RISK-LOW: user_view_state table (new) requires migration + service layer; follow polymorphic FK pattern if linking to addressables",
-    "RISK-LOW: CSV COPY TO STDOUT streaming requires http.Flusher in the Go handler \u2014 standard pattern but test with large datasets"
+    "RISK-LOW: CSV COPY TO STDOUT streaming requires http.Flusher in the Go handler — standard pattern but test with large datasets"
   ],
   "references": [
-    "app/components/WorkItemsTree.tsx \u2014 current source to extract from",
-    "reference/dnd_tree.tsx \u2014 parked DnD implementation (1195 lines, recovered from b0d8e4a)",
-    "dev/research/R042.json \u2014 full feature matrix, prop-set architecture, implementation sequence (v1.0.5)",
-    "docs/c_c_addressables.md \u2014 addressables registry patterns and lint rules",
-    "docs/c_c_dnd.md \u2014 @dnd-kit canonical usage, 250ms debounce, server-as-truth",
-    "docs/c_c_roles_permissions.md \u2014 useHasPermission gate pattern",
-    "docs/c_c_secondary_nav_deeplink.md \u2014 nuqs URL params (PLA-0018)",
-    "docs/c_c_table_component.md \u2014 <Table> component (PLA-0015); ResourceTree is a separate primitive for unlimited-depth DnD trees"
+    "app/components/WorkItemsTree.tsx — current source to extract from",
+    "reference/dnd_tree.tsx — parked DnD implementation (1195 lines, recovered from b0d8e4a)",
+    "dev/research/R042.json — full feature matrix, prop-set architecture, implementation sequence (v1.0.5)",
+    "docs/c_c_addressables.md — addressables registry patterns and lint rules",
+    "docs/c_c_dnd.md — @dnd-kit canonical usage, 250ms debounce, server-as-truth",
+    "docs/c_c_roles_permissions.md — useHasPermission gate pattern",
+    "docs/c_c_secondary_nav_deeplink.md — nuqs URL params (PLA-0018)",
+    "docs/c_c_table_component.md — <Table> component (PLA-0015); ResourceTree is a separate primitive for unlimited-depth DnD trees"
   ],
   "work_item_backlog_roadmap": [
-    "<s>WS1-A: Extract ResourceTree + register prop sets in addressables</s> \u2713",
-    "WS1-B: Restore DnD rank (reference/dnd_tree.tsx \u2192 ResourceTree)",
+    "<s>WS1-A: Extract ResourceTree + register prop sets in addressables</s> ✓",
+    "WS1-B: Restore DnD rank (reference/dnd_tree.tsx → ResourceTree)",
     "WS2-A: Filter chips controlled + URL-threaded",
     "WS2-B: Promote sort to URL + server ORDER BY all columns",
     "WS3-A: useKeyboardGrid hook",
@@ -450,14 +453,14 @@
     "WS10-D: Streaming skeleton via Suspense"
   ],
   "acceptance_criteria_existing": [
-    "WorkItemsTree renders via ResourceTree with identical visual output \u2014 no regression in existing tree behaviour",
+    "WorkItemsTree renders via ResourceTree with identical visual output — no regression in existing tree behaviour",
     "DnD rank: dragging a row within a parent sends PATCH /api/work-items/:id/rank and the row stays in its new position after refresh",
     "Filter chips: selecting a Type chip appends ?type=story to the URL and the list updates without client-side filtering",
     "Sort: clicking any column header appends ?sort=col:asc to the URL and the backend returns rows in that order",
-    "Sprint and Owner columns show real data \u2014 no 'S-' prefix from UUID hex, no 2-char monogram from UUID",
+    "Sprint and Owner columns show real data — no 'S-' prefix from UUID hex, no 2-char monogram from UUID",
     "Due date column shows real dates from work_items.due_date; inline date editor saves to the column",
     "Multi-select: checking 3 rows shows BulkActionBar; bulk-archive sends POST /api/work-items/bulk and all 3 rows disappear",
-    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s> \u2713",
+    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s> ✓",
     "go test ./... passes; npm run build succeeds; lint:addressables passes"
   ]
 }

@@ -16,6 +16,15 @@ beforeAll(() => {
 });
 
 // ─── Mocks ───────────────────────────────────────────────────────────────
+// useWorkItemsFilters / useWorkItemsSort read URL state via next/navigation.
+// The smoke tests don't exercise URL plumbing — return inert stand-ins.
+vi.mock("next/navigation", () => ({
+  __esModule: true,
+  useRouter: () => ({ replace: () => undefined, push: () => undefined }),
+  usePathname: () => "/work-items",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // Track every useRegisterAddressable call so the test can assert that
 // ResourceTree registers itself + 5 prop-set sub-addresses.
 const registerCalls: Array<{ kind: string; name: string }> = [];

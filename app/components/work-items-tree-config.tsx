@@ -448,6 +448,48 @@ export function useWorkItemsFilters(): {
   return { filters, hasAny, setFilter, clearAll };
 }
 
+// ─── Sort URL state ───────────────────────────────────────────────────────────
+
+const SORT_KEYS: ReadonlySet<string> = new Set([
+  "id", "title", "status", "priority", "points", "sprint", "due",
+]);
+
+// Sort state mirrors the filter pattern: URL is the single source of truth.
+// `?sort=<key>&dir=asc|desc`; absent ⇒ default (no sort key, server uses
+// position order). setSort with key=null clears both params at once.
+export function useWorkItemsSort(): {
+  sortKey: SortKey | null;
+  sortDir: SortDir;
+  setSort: (key: SortKey | null, dir: SortDir) => void;
+} {
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+
+  const rawKey = search.get("sort");
+  const rawDir = search.get("dir");
+  const sortKey = (rawKey && SORT_KEYS.has(rawKey) ? rawKey : null) as SortKey | null;
+  const sortDir: SortDir = rawDir === "desc" ? "desc" : "asc";
+
+  const setSort = useCallback(
+    (key: SortKey | null, dir: SortDir) => {
+      const next = new URLSearchParams(search.toString());
+      if (key == null) {
+        next.delete("sort");
+        next.delete("dir");
+      } else {
+        next.set("sort", key);
+        next.set("dir", dir);
+      }
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, search],
+  );
+
+  return { sortKey, sortDir, setSort };
+}
+
 // ─── Filter chips (controlled) ────────────────────────────────────────────────
 
 const TYPE_CHIP_OPTIONS = [
@@ -628,7 +670,10 @@ export function useWorkItemsWindow(
 
   const refetchWindow = useCallback(async () => {
     setLoadingWindow(true);
-    const sortQuery = sortKey === "id" ? `&sort=id&dir=${sortDir}` : "";
+    // Backend ORDER BY whitelist (00452) covers every SortKey value, so any
+    // non-null key threads through to the server. Default (null) keeps the
+    // canonical position-then-key order.
+    const sortQuery = sortKey ? `&sort=${sortKey}&dir=${sortDir}` : "";
     try {
       if (pageSize === "all") {
         const CHUNK = 1000;
