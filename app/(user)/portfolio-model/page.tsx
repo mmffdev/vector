@@ -41,8 +41,15 @@ import AdoptionOverlay, {
   type AdoptionDoneEvent,
   type AdoptionFailEvent,
 } from "./AdoptionOverlay";
-import { type LayerDTO } from "./LayersTable";
 import LayersPreviewTable from "./LayersPreviewTable";
+
+export interface LayerDTO {
+  id: string;
+  name: string;
+  tag: string;
+  sort_order: number;
+  description_md: string | null;
+}
 
 // Post-R010: portfolio_templates are flat — no family, no version. The
 // preview fetches the adopted template by its UUID (from
