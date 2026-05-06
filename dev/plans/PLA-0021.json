@@ -117,6 +117,41 @@
       "story_id": "00448",
       "card_url": "http://localhost:3333/cards/1769171531075683617",
       "status": "done"
+    },
+    {
+      "order": 5,
+      "title": "Wire DnD rank into ResourceTree from reference/dnd_tree.tsx.bak",
+      "story_id": "00449",
+      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "status": "todo"
+    },
+    {
+      "order": 6,
+      "title": "Backend: add ?owner_id= filter to GET /api/work-items",
+      "story_id": "00450",
+      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "status": "todo"
+    },
+    {
+      "order": 7,
+      "title": "Frontend: controlled filter chips + URL nuqs (type/status/priority/owner)",
+      "story_id": "00451",
+      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "status": "todo"
+    },
+    {
+      "order": 8,
+      "title": "Backend: ORDER BY whitelist for every sortable column + tests",
+      "story_id": "00452",
+      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "status": "todo"
+    },
+    {
+      "order": 9,
+      "title": "Frontend: thread sort/dir into URL via nuqs; drop client sort branch",
+      "story_id": "00453",
+      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "status": "todo"
     }
   ],
   "acceptance_criteria": [
@@ -236,6 +271,126 @@
       "card_url": "http://localhost:3333/cards/1769171531075683617",
       "done": true,
       "tested": true
+    },
+    {
+      "order": 14,
+      "criterion": "Dragging a root row to between two siblings reorders rows in the DOM before any network round-trip.",
+      "proven_by": "Dragging a root row to between two siblings reorders rows in the DOM before any network round-trip.",
+      "story_id": "00449",
+      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "done": false
+    },
+    {
+      "order": 15,
+      "criterion": "POST /api/rank/move fires once with { resource_type, row_id, before_id?/after_id? } after the drop.",
+      "proven_by": "POST /api/rank/move fires once with { resource_type, row_id, before_id?/after_id? } after the drop.",
+      "story_id": "00449",
+      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "done": false
+    },
+    {
+      "order": 16,
+      "criterion": "On rank POST 4xx/5xx the row snaps back to its original position.",
+      "proven_by": "On rank POST 4xx/5xx the row snaps back to its original position.",
+      "story_id": "00449",
+      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "done": false
+    },
+    {
+      "order": 17,
+      "criterion": "GET /api/work-items?owner_id=<uuid> returns only matching rows; CountWorkItems agrees.",
+      "proven_by": "GET /api/work-items?owner_id=<uuid> returns only matching rows; CountWorkItems agrees.",
+      "story_id": "00450",
+      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "done": false
+    },
+    {
+      "order": 18,
+      "criterion": "Service test asserts ListWorkItemsFilter{ OwnerID: &uid } produces an owner_id WHERE clause.",
+      "proven_by": "Service test asserts ListWorkItemsFilter{ OwnerID: &uid } produces an owner_id WHERE clause.",
+      "story_id": "00450",
+      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "done": false
+    },
+    {
+      "order": 19,
+      "criterion": "Absence of owner_id= returns the unfiltered set (no regression on existing callers).",
+      "proven_by": "Absence of owner_id= returns the unfiltered set (no regression on existing callers).",
+      "story_id": "00450",
+      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "done": false
+    },
+    {
+      "order": 20,
+      "criterion": "Clicking the Epic chip writes ?type=epic to the URL; the network request includes item_type=epic.",
+      "proven_by": "Clicking the Epic chip writes ?type=epic to the URL; the network request includes item_type=epic.",
+      "story_id": "00451",
+      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "done": false
+    },
+    {
+      "order": 21,
+      "criterion": "Loading /work-items?type=story&priority=high renders only matching rows on first paint.",
+      "proven_by": "Loading /work-items?type=story&priority=high renders only matching rows on first paint.",
+      "story_id": "00451",
+      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "done": false
+    },
+    {
+      "order": 22,
+      "criterion": "Clear-filters resets all chip state and removes the params from the URL in a single push.",
+      "proven_by": "Clear-filters resets all chip state and removes the params from the URL in a single push.",
+      "story_id": "00451",
+      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "done": false
+    },
+    {
+      "order": 23,
+      "criterion": "Service test round-trips Sort=<col> for {id,key_num,title,status,priority,story_points,sprint,owner,due_date}, asc/desc.",
+      "proven_by": "Service test round-trips Sort=<col> for {id,key_num,title,status,priority,story_points,sprint,owner,due_date}, asc/desc.",
+      "story_id": "00452",
+      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "done": false
+    },
+    {
+      "order": 24,
+      "criterion": "Unknown sort= values fall back to the default rank order (no SQL injection).",
+      "proven_by": "Unknown sort= values fall back to the default rank order (no SQL injection).",
+      "story_id": "00452",
+      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "done": false
+    },
+    {
+      "order": 25,
+      "criterion": "Absent-sort= default ordering remains lexicographic rank position.",
+      "proven_by": "Absent-sort= default ordering remains lexicographic rank position.",
+      "story_id": "00452",
+      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "done": false
+    },
+    {
+      "order": 26,
+      "criterion": "Clicking a sortable header writes ?sort=<col>&dir=<asc|desc> to the URL.",
+      "proven_by": "Clicking a sortable header writes ?sort=<col>&dir=<asc|desc> to the URL.",
+      "story_id": "00453",
+      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "done": false
+    },
+    {
+      "order": 27,
+      "criterion": "sortRoots() import + useMemo-over-sort removed from WorkItemsTree.tsx; sort state comes from nuqs.",
+      "proven_by": "sortRoots() import + useMemo-over-sort removed from WorkItemsTree.tsx; sort state comes from nuqs.",
+      "story_id": "00453",
+      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "done": false
+    },
+    {
+      "order": 28,
+      "criterion": "Existing WorkItemsTree.test.tsx smoke still passes after the refactor.",
+      "proven_by": "Existing WorkItemsTree.test.tsx smoke still passes after the refactor.",
+      "story_id": "00453",
+      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "done": false
     }
   ],
   "risks": [
