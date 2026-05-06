@@ -21,6 +21,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/addressables"
+	"github.com/mmffdev/vector-backend/internal/apikeys"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
@@ -136,6 +137,9 @@ func main() {
 
 	authSvc := auth.NewService(pool, auditLog, mailer)
 	authH := auth.NewHandler(authSvc, permResolver, pool)
+
+	apiKeysSvc := apikeys.New(pool)
+	apiKeysH := apikeys.NewHandler(apiKeysSvc)
 
 	usersSvc := users.New(pool, auditLog, mailer)
 	usersH := users.NewHandler(usersSvc, permResolver)
@@ -421,6 +425,9 @@ func main() {
 	// Internal/infra routes (/healthz, /api/status/pipeline, /api/env,
 	// /api/env/switch, /ws) are mounted above and stay unversioned.
 	r.Route("/v1", func(r chi.Router) {
+		// API key validation middleware (story 00443).
+		// Validates Bearer token API keys; falls through to JWT auth if not present.
+		r.Use(apikeys.Middleware(apiKeysSvc))
 
 	// ---- /api/auth ----
 	r.Route("/api/auth", func(r chi.Router) {
@@ -919,6 +926,15 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 			r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
+		})
+
+		// API keys (story 00443 — PLA-0019). Padmin-only for now.
+		// Tech-debt: PLA-0007 gate via api_keys.manage permission.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequirePermission(permResolver, permissions.UsersList)) // Temp gate; should be api_keys.manage
+			r.Post("/api-keys/issue", apiKeysH.Issue)
+			r.Get("/api-keys", apiKeysH.List)
+			r.Post("/api-keys/revoke", apiKeysH.Revoke)
 		})
 	})
 
