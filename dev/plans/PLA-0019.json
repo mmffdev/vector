@@ -2,7 +2,7 @@
   "id": "PLA-0019",
   "title": "Samantha External API Surface \u2014 OpenAPI Spec, Versioning, Error Standards, API Keys, SDK",
   "date_created": "2026-05-06",
-  "date_started": null,
+  "date_started": "2026-05-06",
   "date_last_updated": "2026-05-06",
   "date_finished": null,
   "scope": "<p>Five foundational stories that establish the external developer API surface for the Samantha platform: an OpenAPI 3.1 spec covering all current REST endpoints, URL versioning via <code>/v1/</code> path prefix, RFC 9457 Problem Details error format across all Go handlers, API key management (Postgres table + Go middleware + issuance/revoke endpoints), and runtime binding of the <code>samantha.portfolio.fields.*</code> SDK surface in <code>app/lib/samantha.ts</code>.</p>",
@@ -47,7 +47,7 @@
       "title": "Add /v1/ URL prefix to all external Samantha routes",
       "story_id": "00441",
       "card_url": "http://localhost:3333/cards/1768715464998913209",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 3,
@@ -102,7 +102,7 @@
       "proven_by": "all public REST routes in backend/cmd/server/main.go are mounted under /v1/ chi group; internal routes (healthz, ws, build-reconcile) remain at current paths",
       "story_id": "00441",
       "card_url": "http://localhost:3333/cards/1768715464998913209",
-      "done": false
+      "done": true
     },
     {
       "order": 5,
@@ -110,7 +110,7 @@
       "proven_by": "app/lib/api.ts prepends /v1/ to all external API calls and the app remains fully functional with no 404s in dev",
       "story_id": "00441",
       "card_url": "http://localhost:3333/cards/1768715464998913209",
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -118,7 +118,7 @@
       "proven_by": "all existing integration tests and dev server start cleanly with the new prefix; no handler returns 404 for a previously working route",
       "story_id": "00441",
       "card_url": "http://localhost:3333/cards/1768715464998913209",
-      "done": false
+      "done": true
     },
     {
       "order": 7,
