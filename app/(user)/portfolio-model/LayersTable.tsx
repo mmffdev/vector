@@ -30,6 +30,7 @@ import {
   type DragEvent,
 } from "react";
 import { api, ApiError } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 import InlineEditField from "@/app/components/InlineEditField";
 
 export interface LayerDTO {
@@ -76,7 +77,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
   const [localFixed, setLocalFixed] = useState<LayerDTO[]>(() => fixedItems ?? []);
   // keyed "${id}.${field}"
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
-  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Drag state — held in refs to avoid re-renders during drag
@@ -107,7 +107,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
     setLocalLayers(s);
     setOriginalLayers(s);
     setErrors(new Map());
-    setFormError(null);
   }, [initialLayers, topAnchorTag]);
 
   useEffect(() => {
@@ -288,7 +287,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
     if (!runClientValidation()) return;
 
     setSaving(true);
-    setFormError(null);
     try {
       const updated = await api<LayerDTO[]>("/api/subscription/layers/batch", {
         method: "PATCH",
@@ -302,7 +300,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           }))
         ),
       });
-      // Update original to match saved state; parent gets the new array
       const s = sorted(updated);
       setOriginalLayers(s);
       setLocalLayers(s);
@@ -310,7 +307,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
       onLayersUpdated(s);
     } catch (e) {
       if (e instanceof ApiError && e.status === 422) {
-        // Try to surface field-level errors from the response body
         const body = e.body as
           | { errors?: Array<{ id: string; field: string; message: string }> }
           | string
@@ -322,20 +318,14 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           }
           setErrors(nextErrors);
         } else {
-          setFormError(
+          notify.error(
             typeof body === "string"
               ? body
               : "Validation failed. Check the highlighted fields."
           );
         }
       } else {
-        setFormError(
-          e instanceof ApiError
-            ? `Error ${e.status}: ${
-                typeof e.body === "string" ? e.body : "Request failed"
-              }`
-            : "Failed to save changes. Please try again."
-        );
+        notify.apiError(e, "Failed to save changes. Please try again.");
       }
     } finally {
       setSaving(false);
@@ -345,7 +335,6 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
   const handleCancel = useCallback(() => {
     setLocalLayers(sorted(originalLayers));
     setErrors(new Map());
-    setFormError(null);
   }, [originalLayers]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -441,10 +430,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
           <span className="pop-up-change-banner__text">
             Changes detected — press <strong>Confirm Changes</strong> to save.
           </span>
-          {formError && (
-            <span className="pop-up-change-banner__error">{formError}</span>
-          )}
-          <div className="pop-up-change-banner__actions">
+<div className="pop-up-change-banner__actions">
             <button
               type="button"
               className="btn btn--secondary btn--sm"

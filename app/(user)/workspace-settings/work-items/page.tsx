@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Table from "@/app/components/Table";
-import { api, ApiError } from "@/app/lib/api";
+import { api } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 
 interface FlowState {
   id: string;
@@ -27,7 +28,7 @@ interface FlowsResponse {
 
 export default function WorkItemsPage() {
   const [data,    setData]    = useState<FlowsResponse | null>(null);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error,   setError]   = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,12 +38,11 @@ export default function WorkItemsPage() {
       .then((res) => {
         if (cancelled) return;
         setData(res);
-        setError(null);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        const msg = e instanceof ApiError ? e.message : String(e);
-        setError(msg);
+        notify.apiError(e, "Could not load flows.");
+        setError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -51,7 +51,7 @@ export default function WorkItemsPage() {
   }, []);
 
   if (loading) return <div className="empty-state">Loading flows…</div>;
-  if (error)   return <div className="empty-state">Could not load flows: {error}</div>;
+  if (error)   return <div className="empty-state">Could not load flows — reload the page to try again.</div>;
   if (!data)   return null;
 
   const sections: Array<{ title: string; subtitle: string; groups: FlowGroup[] }> = [

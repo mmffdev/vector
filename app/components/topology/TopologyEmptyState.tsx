@@ -2,22 +2,21 @@
 
 import { useState } from "react";
 import { topologyApi } from "@/app/lib/topologyApi";
+import { notify } from "@/app/lib/toast";
 
 export function TopologyEmptyState({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     if (!name.trim() || busy) return;
     setBusy(true);
-    setError(null);
     try {
       await topologyApi.create({ name: name.trim() });
       setName("");
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create node");
+      notify.apiError(err, "Failed to create node.");
     } finally {
       setBusy(false);
     }
@@ -50,7 +49,6 @@ export function TopologyEmptyState({ onCreated }: { onCreated: () => void }) {
             {busy ? "Creating…" : "Create"}
           </button>
         </div>
-        {error && <p className="form__error">{error}</p>}
       </div>
     </div>
   );

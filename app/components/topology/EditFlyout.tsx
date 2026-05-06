@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { topologyApi, type OrgNode } from "@/app/lib/topologyApi";
+import { notify } from "@/app/lib/toast";
 import Panel from "@/app/components/Panel";
 import { COLOUR_PALETTE } from "./types";
 import { useGlobalKey } from "./useGlobalKey";
@@ -45,7 +46,6 @@ export function EditFlyout({
   const [draftDescription, setDraftDescription] = useState(node.description ?? "");
   const [draftLabel, setDraftLabel] = useState(node.label_override ?? "");
   const [draftColour, setDraftColour] = useState(node.colour ?? "");
-  const [error, setError] = useState<string | null>(null);
 
   // ESC closes the flyout — but only when no input is focused, so the
   // user's keystroke inside Name/Label/Description doesn't get hijacked
@@ -71,12 +71,11 @@ export function EditFlyout({
     field: "name" | "description" | "label_override" | "colour",
     value: string,
   ) => {
-    setError(null);
     try {
       await topologyApi.patchFields(node.id, { [field]: value });
       onChange();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Update of ${field} failed`);
+      notify.apiError(err, `Update of ${field} failed.`);
     }
   };
 
@@ -199,7 +198,6 @@ export function EditFlyout({
           </div>
         </div>
 
-        {error && <p className="form__error">{error}</p>}
       </div>
       </Panel>
     </aside>

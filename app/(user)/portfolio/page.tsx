@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import PageShell from "@/app/components/PageShell";
 import PinButton from "@/app/components/PinButton";
 import { api } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 
 interface EntityRow {
   kind: "portfolio" | "product";
@@ -29,7 +30,7 @@ interface EntitiesResp {
 export default function Portfolio() {
   const [rows, setRows] = useState<EntityRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +39,10 @@ export default function Portfolio() {
         const r = await api<EntitiesResp>("/api/nav/entities");
         if (!cancelled) setRows(r.entities ?? []);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "failed to load");
+        if (!cancelled) {
+          notify.apiError(e, "Failed to load portfolio entities.");
+          setError(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -57,7 +61,7 @@ export default function Portfolio() {
       {error && (
         <div className="placeholder">
           <h3 className="placeholder__title">Couldn’t load entities</h3>
-          <p className="placeholder__body">{error}</p>
+          <p className="placeholder__body">Reload the page to try again.</p>
         </div>
       )}
       {!loading && !error && rows.length === 0 && (

@@ -38,6 +38,7 @@ import {
 } from "@/app/contexts/NavPrefsContext";
 import { createCustomPage, patchCustomPage, deleteCustomPage } from "@/app/lib/customPages";
 import { ApiError } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 import { useDraft } from "@/app/hooks/useDraft";
 
 const MAX_PINNED = 50;
@@ -848,11 +849,9 @@ export default function NavPreferencesPage() {
   // and Pinned. Reset by the hydration effect after every refetch.
   const [baseline, setBaseline] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const [newPageLabel, setNewPageLabel] = useState("");
   const [creatingPage, setCreatingPage] = useState(false);
-  const [createPageErr, setCreatePageErr] = useState<string | null>(null);
   const [newGroupLabel, setNewGroupLabel] = useState("");
   const [createGroupErr, setCreateGroupErr] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -970,7 +969,6 @@ export default function NavPreferencesPage() {
     };
     setDraft(hydrated);
     setBaseline(hydrated);
-    setError(null);
     // Intentionally key on content hashes, not array refs. `prefs/customGroups/
     // tags` get fresh array identities on every refetch — including refetches
     // triggered by save/delete/create — even when content is identical. Hashing
@@ -1158,10 +1156,9 @@ export default function NavPreferencesPage() {
       (g) => g.id !== id && g.label.toLowerCase() === trimmed.toLowerCase(),
     );
     if (dup) {
-      setError(`Group "${trimmed}" already exists.`);
+      notify.error(`Group "${trimmed}" already exists.`);
       return;
     }
-    setError(null);
     setDraft({
       ...draft,
       customGroups: draft.customGroups.map((g) => (g.id === id ? { ...g, label: trimmed } : g)),
@@ -1245,10 +1242,9 @@ export default function NavPreferencesPage() {
     const existing = draft.childrenByParent[parentKey] ?? [];
     if (existing.includes(key)) return;
     if (existing.length >= MAX_CHILDREN_PER_PARENT) {
-      setError(`Maximum ${MAX_CHILDREN_PER_PARENT} sub-pages per page.`);
+      notify.error(`Maximum ${MAX_CHILDREN_PER_PARENT} sub-pages per page.`);
       return;
     }
-    setError(null);
     const next: DraftState = {
       ...draft,
       itemsByBucket: { ...draft.itemsByBucket },
@@ -1454,7 +1450,6 @@ export default function NavPreferencesPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
     try {
       // Flatten: walk bucketOrder; top-level rows carry a contiguous 0..N-1
       // position counter. Children carry a per-parent 0..M-1 counter — the
@@ -1524,8 +1519,9 @@ export default function NavPreferencesPage() {
         await setProfileGroups(activeProfileId, placements);
         await refetch();
       }
+      notify.success("Navigation preferences saved.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "failed to save");
+      notify.apiError(e, "Failed to save navigation preferences.");
     } finally {
       setSaving(false);
     }
@@ -1533,25 +1529,23 @@ export default function NavPreferencesPage() {
 
   const handleRenameCustomPage = (key: string, label: string) => {
     const id = key.slice("custom:".length);
-    // Update local catalogue only — a full refetch would rebuild the
-    // draft from server prefs and clobber any unsaved local pin edits.
     patchCustomPage(id, { label })
       .then(() => patchCatalogueEntry(key, { label }))
-      .catch((e) => setError(e instanceof Error ? e.message : "Rename failed"));
+      .catch((e) => notify.apiError(e, "Rename failed."));
   };
 
   const handleDeleteCustomPage = (key: string) => {
     const id = key.slice("custom:".length);
     deleteCustomPage(id)
       .then(refetch)
-      .catch((e) => setError(e instanceof Error ? e.message : "Delete failed"));
+      .catch((e) => notify.apiError(e, "Delete failed."));
   };
 
   const handleSetPoolIcon = (key: string, icon: string) => {
     const id = key.slice("custom:".length);
     patchCustomPage(id, { icon })
       .then(() => patchCatalogueEntry(key, { icon }))
-      .catch((e) => setError(e instanceof Error ? e.message : "Icon update failed"));
+      .catch((e) => notify.apiError(e, "Icon update failed."));
   };
 
   // Build pool grouped by tag for display. user_custom entries break out
@@ -1611,9 +1605,6 @@ export default function NavPreferencesPage() {
           <span className="pop-up-change-banner__text">
             Changes detected — press <strong>Confirm Changes</strong> to save.
           </span>
-          {error && (
-            <span className="pop-up-change-banner__error">{error}</span>
-          )}
           <div className="pop-up-change-banner__actions">
             <button
               type="button"
@@ -1713,23 +1704,18 @@ export default function NavPreferencesPage() {
                 const label = newPageLabel.trim();
                 if (!label || creatingPage) return;
                 setCreatingPage(true);
-                setCreatePageErr(null);
                 try {
                   await createCustomPage(label);
                   await newPageDraft.clear();
                   setNewPageLabel("");
                   await refetch();
                 } catch (err) {
-                  if (err instanceof ApiError) {
-                    if (err.status === 400) {
-                      setCreatePageErr("Could not create page — duplicate name or limit reached.");
-                    } else if (err.status === 403) {
-                      setCreatePageErr("Session expired — please refresh the page and try again.");
-                    } else {
-                      setCreatePageErr(`Could not create page (${err.status}: ${typeof err.body === "string" ? err.body : "server error"}).`);
-                    }
+                  if (err instanceof ApiError && err.status === 400) {
+                    notify.error("Could not create page — duplicate name or limit reached.");
+                  } else if (err instanceof ApiError && err.status === 403) {
+                    notify.error("Session expired — please refresh the page and try again.");
                   } else {
-                    setCreatePageErr("Could not create page — unexpected error.");
+                    notify.apiError(err, "Could not create page.");
                   }
                 } finally {
                   setCreatingPage(false);
@@ -1755,7 +1741,6 @@ export default function NavPreferencesPage() {
                 {creatingPage ? "Creating…" : "+ New page"}
               </button>
             </form>
-            {createPageErr && <p className="nav-prefs__error" role="alert">{createPageErr}</p>}
             </Panel>
           </section>
 
@@ -1810,7 +1795,6 @@ export default function NavPreferencesPage() {
       </div>
 
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
-      {error && <p className="nav-prefs__error" role="alert">{error}</p>}
       </StrictRoute>
     </PageShell>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import { api } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 
 interface EntityRow {
   kind: "portfolio" | "product";
@@ -20,7 +21,7 @@ export default function ProductDetailPage() {
   const id = params?.id ?? "";
   const [name, setName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +32,10 @@ export default function ProductDetailPage() {
         const match = (r.entities ?? []).find((e) => e.kind === "product" && e.id === id);
         setName(match?.name ?? null);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "failed to load");
+        if (!cancelled) {
+          notify.apiError(e, "Failed to load product.");
+          setError(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -52,7 +56,7 @@ export default function ProductDetailPage() {
       {error && (
         <div className="placeholder">
           <h3 className="placeholder__title">Couldn’t load product</h3>
-          <p className="placeholder__body">{error}</p>
+          <p className="placeholder__body">Reload the page to try again.</p>
         </div>
       )}
       {!loading && !error && !name && (
