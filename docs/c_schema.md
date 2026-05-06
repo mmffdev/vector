@@ -1,8 +1,38 @@
 # Database schema — golden source
 
-> Last verified live: 2026-04-25 against `mmff_vector` (snapshot taken via tunnel; migration 028 applied + dropped during the verification; migration 029 applied via SSH+docker and verified with `\d` on all five mirror tables). Doc updated 2026-04-25 post Phase-1 (`mmff_library` scaffolding: bundle tables + roles + grants + MMFF seed) and Phase-4 prep (migration 026 added the `subscription_portfolio_model_state` adoption-state table — file shipped, not yet deployed). Migration 028 added the error-tracking domain (`error_events`, append-only). Migration 029 added the five adoption-mirror tables (`subscription_layers`, `subscription_workflows`, `subscription_workflow_transitions`, `subscription_artifacts`, `subscription_terminology`) populated by the adoption orchestrator from a `mmff_library` portfolio-model bundle — see [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md). Phase-0 covered migrations 017 (`tenants → subscriptions`), 018 (`subscriptions.tier`), 019 (`pending_library_cleanup_jobs`).
+> Last verified live: 2026-04-25 against `mmff_vector`. Doc patched 2026-05-07 to reflect Phase 1+2 schema cleanup (migrations 122–123) — see "Phase 1+2 cleanup" callout below. Detailed column tables for unrenamed objects retain their 2026-04-25 verification; renamed/dropped tables are flagged inline. Re-snapshot pending — when you do, regenerate via the SQL at the bottom of this file.
+>
+> **Phase 4 / vector_artefacts cutover** — the `obj_*` family in this doc is the *current production* substrate. A separate PoC schema (`vector_artefacts` DB) is being prepared as the cutover target; production migration plan lives in [`c_c_vector_artefacts_backfill.md`](c_c_vector_artefacts_backfill.md). When that lands, this doc must be re-snapshotted in full.
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
+
+## Phase 1+2 cleanup (migrations 122–123) — 2026-05-07
+
+**Migration 122 dropped 11 orphan tables** (CASCADE; zero callers verified prior):
+`o_artefact_note_reads`, `o_artefact_notes`, `o_artefact_versions`,
+`o_artefacts_execution_epics`, `o_artefacts_execution_epics_field_values`,
+`item_field_definitions`, `item_field_options`, `item_field_values`, `item_labels`, `item_tags`,
+`pending_library_cleanup_jobs`.
+
+**Migration 123 renamed 13 live tables to the `obj_*` family** (catalog-only; zero rows rewritten):
+
+| Old name | New name |
+|---|---|
+| `o_artefacts_execution_work_items` | `obj_work_items` |
+| `o_artefacts_execution_work_items_field_values` | `obj_work_items_field_values` |
+| `o_execution_work_item_templates` | `obj_field_templates` |
+| `o_execution_work_item_template_fields` | `obj_field_template_fields` |
+| `o_execution_custom_field_library` | `obj_custom_field_lib` |
+| `o_artefact_types_system` | `obj_execution_types` |
+| `o_artefact_types_tenant` | `obj_execution_types_tenant` |
+| `o_artefact_types_overrides` | `obj_execution_types_overrides` |
+| `portfolio_item_types` | `obj_strategy_types` |
+| `portfolio_items` | `obj_portfolio_items` |
+| `subscription_layers` | `obj_strategy_types_layers` |
+| `o_flow_system` | `obj_flow_system` |
+| `o_flow_tenant` | `obj_flow_tenant` |
+
+Deferred (not yet renamed/dropped): `o_artefacts_execution_{defects,tasks,test_cases}*`, `o_artefacts_strategic*`, `o_search_index_outbox`, `o_artefact_visibility_levels`, `canonical_states`. The per-type tables and the `artefacts` Go package were retired together in a follow-up commit (the Go package was deleted; tables to be dropped in a later migration once Samantha SDK v1 is also retired).
 
 > **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `error_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/library_schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
@@ -12,8 +42,8 @@ If you find drift, re-run the snapshot at the bottom of this file and update.
 
 - **Postgres 16** in Docker container `mmff-ops-postgres` on `mmffdev.com`.
 - **Database:** `mmff_vector`.
-- **App role:** `mmff_dev`. Password in `backend/.env.local` (`DB_PASSWORD`).
-- **Local access:** SSH tunnel `localhost:5434` → server `:5432`. See [c_postgresql.md](c_postgresql.md).
+- **App role:** `mmff_dev`. Password in `backend/.env.dev` (`DB_PASSWORD`).
+- **Local access:** SSH tunnel `localhost:5435` → server `:5432` (dev env; see active marker in [`/.claude/CLAUDE.md`](../.claude/CLAUDE.md)). See [c_postgresql.md](c_postgresql.md).
 - **Schema migrations:** `db/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; … COMMIT;`.
 
 ## Invariants that span tables
@@ -34,22 +64,33 @@ These rules are the contract; every query/handler/migration honours them.
 
 | Domain | Tables |
 |---|---|
-| Subscription & auth | `subscriptions`, `users`, `sessions`, `password_resets` |
-| Topology — workspaces tier (PLA-0006) | `workspaces`, `workspace_roles` |
-| ACL | `user_workspace_permissions` |
+| Subscription & auth | `subscriptions`, `users`, `sessions`, `password_resets`, `api_keys` |
+| Topology — workspaces tier (PLA-0006) | `workspaces`, `workspace_roles`, `org_nodes`, `org_node_roles`, `org_node_view_state`, `org_levels` |
+| Roles & permissions (PLA-0007) | `roles`, `permissions`, `role_permissions` |
+| ACL (legacy) | `user_workspace_permissions` |
 | Audit & history | `audit_log`, `item_state_history` |
 | Numbering | `subscription_sequence` |
-| Portfolio stack | `company_roadmap`, `workspace`, `portfolio`, `product`, `entity_stakeholders` |
-| Item type catalogues | `portfolio_item_types`, `execution_item_types` |
+| Portfolio stack (legacy singular) | `company_roadmap`, `workspace`, `portfolio`, `product`, `entity_stakeholders` |
+| **Strategy artefacts (`obj_*`)** | `obj_portfolio_items`, `obj_strategy_types`, `obj_strategy_types_layers` |
+| **Execution artefacts (`obj_*`)** | `obj_work_items`, `obj_work_items_field_values`, `obj_execution_types`, `obj_execution_types_tenant`, `obj_execution_types_overrides` |
+| **Custom-field plumbing (`obj_*`)** | `obj_custom_field_lib`, `obj_field_templates`, `obj_field_template_fields` |
+| **Flows (`obj_*`)** | `obj_flow_system`, `obj_flow_tenant` |
+| Item type catalogues (legacy execution) | `execution_item_types` |
 | Workflow states | `canonical_states`, `item_type_states`, `item_type_transition_edges` |
-| Page registry | `pages`, `page_tags`, `page_roles`, `page_entity_refs` |
-| User navigation | `user_nav_prefs`, `user_nav_groups` |
+| Page registry | `pages`, `page_tags`, `page_roles`, `page_entity_refs`, `page_help` |
+| User navigation | `user_nav_prefs`, `user_nav_groups`, `user_nav_profiles`, `user_nav_profiles_links`, `user_tab_order`, `user_theme_pack` |
 | User custom pages | `user_custom_pages`, `user_custom_page_views` |
-| Library reconciliation | `pending_library_cleanup_jobs` |
 | Library release acks | `library_acknowledgements` |
 | Library adoption state | `subscription_portfolio_model_state` |
-| Portfolio model mirror | `subscription_layers`, `subscription_workflows`, `subscription_workflow_transitions`, `subscription_artifacts`, `subscription_terminology` |
+| Portfolio model mirror | `subscription_workflows`, `subscription_workflow_transitions`, `subscription_artifacts`, `subscription_terminology` |
+| Search infra | `o_search_index_outbox` |
 | Error tracking | `error_events` |
+| Icons | `vector_icons` |
+
+Notes:
+- Tables marked **`obj_*`** are renamed in migration 123. Detailed column tables further down still appear under their pre-rename names (e.g. `portfolio_item_types`); treat the `obj_*` name as canonical and the legacy column tables as accurate-by-shape pending re-snapshot.
+- `pending_library_cleanup_jobs` (migration 019) was dropped in migration 122 — see Phase 1+2 callout above.
+- `subscription_layers` was renamed to `obj_strategy_types_layers` in migration 123 (kept its column tables under the legacy name in the adoption-mirrors leaf [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md) until that doc is refreshed).
 
 ---
 
@@ -307,9 +348,9 @@ Polymorphic ownership/role grants on portfolio entities. `entity_kind` ∈ {`com
 | `role`* | text | no | `'stakeholder'` | e.g. `owner`, `stakeholder` |
 | `created_at`* | timestamptz | no | `now()` | |
 
-### `portfolio_item_types`
+### `portfolio_item_types` → renamed `obj_strategy_types` (migration 123)
 
-Per-subscription catalogue of portfolio-stack node types (the catalogue, not instances).
+Per-subscription catalogue of strategy-layer node types (the catalogue, not instances). Renamed by migration 123 to `obj_strategy_types`; columns unchanged.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -502,27 +543,9 @@ Constraints:
 - `UNIQUE (user_id, subscription_id, label)` — label unique per owner within subscription.
 - Index `idx_user_custom_pages_owner ON (user_id, subscription_id)`.
 
-### `pending_library_cleanup_jobs`
+### `pending_library_cleanup_jobs` — DROPPED (migration 122)
 
-Postgres-backed work queue for cross-DB cleanup of `mmff_library`-derived entities (migration 019). The archive saga can't span two Postgres databases atomically, so writers enqueue here in the same txn as the archive UPDATE; a worker drains via `SELECT ... FOR UPDATE SKIP LOCKED` and DELETE-on-success / retry-with-backoff on failure (see `dev/planning/feature_library_db_and_portfolio_presets_v3.md` §4).
-
-| Column | Type | Nullable | Default | Notes |
-|---|---|---|---|---|
-| `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
-| `job_kind`* | text | no | — | CHECK in (`preset_archive_propagation`, `template_instance_unlink`, `library_mirror_purge`) |
-| `payload`* | jsonb | no | — | worker-specific (entity ids, library refs) |
-| `status`* | text | no | `'pending'` | CHECK in (`pending`, `dead`) |
-| `attempts`* | int | no | `0` | CHECK ≥ 0 |
-| `max_attempts`* | int | no | `8` | CHECK > 0; row moves to `dead` once exceeded |
-| `last_error` | text | yes | — | populated on failed claim |
-| `visible_at`* | timestamptz | no | `now()` | claim gate; bumped on retry with exp backoff |
-| `created_at`* | timestamptz | no | `now()` | |
-| `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
-
-Indexes:
-- `idx_pending_library_cleanup_jobs_claimable ON (visible_at) WHERE status = 'pending'` — hot path for worker poll.
-- `idx_pending_library_cleanup_jobs_dead ON (subscription_id, updated_at DESC) WHERE status = 'dead'` — ops dead-letter view.
+Created by migration 019 as a Postgres-backed work queue for cross-DB cleanup of `mmff_library`-derived entities, but dropped (CASCADE) in migration 122 with zero rows ever in production. The archive-saga design that motivated it has not been built. If a cross-DB cleanup queue is needed in future, build a fresh implementation against the current substrate rather than resurrecting this table.
 
 ### `user_custom_page_views`
 
@@ -635,19 +658,20 @@ pages.subscription_id          → subscriptions.id      (CASCADE)
 
 password_resets.user_id        → users.id              (CASCADE)
 
-pending_library_cleanup_jobs.subscription_id → subscriptions.id (RESTRICT)
+-- pending_library_cleanup_jobs DROPPED in migration 122
 
 subscription_portfolio_model_state.subscription_id    → subscriptions.id (RESTRICT)
 subscription_portfolio_model_state.adopted_by_user_id → users.id         (RESTRICT)
 -- adopted_model_id → mmff_library.portfolio_models.id  (APP-ENFORCED; no DB FK, cross-DB)
 
-subscription_layers.subscription_id    → subscriptions.id          (RESTRICT)
-subscription_layers.parent_layer_id    → subscription_layers.id    (RESTRICT)
--- source_library_id → mmff_library.portfolio_model_layers.id      (APP-ENFORCED cross-DB)
+-- subscription_layers RENAMED to obj_strategy_types_layers in migration 123 — FK shape unchanged
+obj_strategy_types_layers.subscription_id    → subscriptions.id              (RESTRICT)
+obj_strategy_types_layers.parent_layer_id    → obj_strategy_types_layers.id  (RESTRICT)
+-- source_library_id → mmff_library.portfolio_model_layers.id                (APP-ENFORCED cross-DB)
 
-subscription_workflows.subscription_id → subscriptions.id          (RESTRICT)
-subscription_workflows.layer_id        → subscription_layers.id    (CASCADE)
--- source_library_id → mmff_library.portfolio_model_workflows.id   (APP-ENFORCED cross-DB)
+subscription_workflows.subscription_id → subscriptions.id                (RESTRICT)
+subscription_workflows.layer_id        → obj_strategy_types_layers.id    (CASCADE)
+-- source_library_id → mmff_library.portfolio_model_workflows.id         (APP-ENFORCED cross-DB)
 
 subscription_workflow_transitions.subscription_id  → subscriptions.id        (RESTRICT)
 subscription_workflow_transitions.from_state_id    → subscription_workflows.id (CASCADE)
@@ -664,7 +688,8 @@ portfolio.subscription_id      → subscriptions.id      (RESTRICT)
 portfolio.workspace_id         → workspace.id          (RESTRICT)
 portfolio.owner_user_id        → users.id              (RESTRICT)
 
-portfolio_item_types.subscription_id → subscriptions.id (RESTRICT)
+-- portfolio_item_types RENAMED to obj_strategy_types in migration 123
+obj_strategy_types.subscription_id → subscriptions.id (RESTRICT)
 
 product.subscription_id        → subscriptions.id      (RESTRICT)
 product.workspace_id           → workspace.id          (RESTRICT)
@@ -721,7 +746,7 @@ Pattern summary:
 002_auth_permissions.sql           -- user extensions, password_resets, user_project_permissions (pre-rename)
 003_mfa_scaffold.sql               -- MFA columns on users (dormant)
 004_portfolio_stack.sql            -- tenant_sequence (pre-rename), company_roadmap, workspace, portfolio, product, entity_stakeholders
-005_item_types.sql                 -- portfolio_item_types, execution_item_types + name-lock trigger
+005_item_types.sql                 -- portfolio_item_types (→ obj_strategy_types in 123), execution_item_types + name-lock trigger
 006_states.sql                     -- canonical_states seed, item_type_states, item_type_transition_edges, item_state_history
 007_rename_permissions.sql         -- user_project_permissions → user_workspace_permissions + FK
 008_user_nav_prefs.sql             -- user_nav_prefs (pinned sidebar items + start page)
@@ -730,18 +755,117 @@ Pattern summary:
 011_nav_subpages_custom_groups.sql -- user_nav_groups + parent_item_key/group_id on user_nav_prefs
 012_pages_partial_unique.sql       -- 3 partial unique indexes on pages (system / shared / user-custom)
 013_polymorphic_dispatch_triggers.sql -- dispatch fn + BEFORE INSERT/UPDATE triggers on entity_stakeholders, page_entity_refs, item_type_states (TD-001 Phase 1 defence-in-depth)
-014_page_theme.sql                    -- page-level theme column (details in migration file)
-015_user_nav_icon_override.sql        -- per-user icon override on user_nav_prefs
-016_user_custom_pages.sql             -- user_custom_pages + user_custom_page_views + custom_view_kind enum
-017_subscriptions_rename.sql          -- tenants → subscriptions, tenant_id → subscription_id, tenant_sequence → subscription_sequence; FKs/indexes/triggers/dispatch fns updated in same tx (TD-LIB-001 Phase 0)
-018_subscription_tier.sql             -- subscriptions.tier TEXT NOT NULL DEFAULT 'pro' CHECK in (free,pro,enterprise) — drives mmff_library entitlements (TD-LIB-002)
-019_pending_library_cleanup_jobs.sql  -- cross-DB cleanup work queue for the archive saga (TD-LIB-003)
-026_subscription_portfolio_model_state.sql -- per-subscription adoption-state table (Phase 4 prep): id, subscription_id, adopted_model_id (app-enforced cross-DB FK to mmff_library.portfolio_models), adopted_by_user_id (padmin), status saga lifecycle, partial unique on active row (TD-LIB-007)
-028_error_events.sql                  -- per-subscription append-only error log: subscription_id (RESTRICT), user_id (SET NULL), code (app-enforced cross-DB FK to mmff_library.error_codes), context jsonb, occurred_at, request_id; UPDATE/DELETE rejected by trigger (matches item_state_history). (TD-LIB-008)
-029_adoption_mirror_tables.sql        -- 5 per-subscription mirror tables for the adoption orchestrator: subscription_layers, subscription_workflows, subscription_workflow_transitions, subscription_artifacts, subscription_terminology. Each carries source_library_id + source_library_version (app-enforced cross-DB to mmff_library.portfolio_model_*); cross-FKs between mirrors use mirror UUIDs. See c_c_schema_adoption_mirrors.md. (TD-LIB-009)
+014_page_theme.sql                 -- page-level theme column
+015_user_nav_icon_override.sql     -- per-user icon override on user_nav_prefs
+016_user_custom_pages.sql          -- user_custom_pages + user_custom_page_views + custom_view_kind enum
+017_subscriptions_rename.sql       -- tenants → subscriptions, tenant_id → subscription_id, tenant_sequence → subscription_sequence (TD-LIB-001 Phase 0)
+018_subscription_tier.sql          -- subscriptions.tier (free|pro|enterprise) — drives mmff_library entitlements
+019_pending_library_cleanup_jobs.sql -- cross-DB cleanup queue (DROPPED in 122)
+020_portfolio_model_page.sql       -- pages registry row for /workspace-settings/portfolio-model
+021_library_acknowledgements.sql   -- per-subscription acks for library releases
+022_library_releases_page.sql      -- pages row for the library releases page
+023_backfill_library_releases_pin.sql -- one-time backfill default-pin for the library releases page
+024_backfill_portfolio_model_pin.sql  -- one-time backfill default-pin for portfolio-model page
+025_nav_group_reorder.sql          -- nav-group reorder helper / index tweaks
+026_subscription_portfolio_model_state.sql -- per-subscription adoption-state (TD-LIB-007)
+028_error_events.sql               -- append-only error log; cross-DB FK to mmff_library.error_codes by value (TD-LIB-008)
+029_adoption_mirror_tables.sql     -- 5 per-subscription adoption mirror tables (TD-LIB-009; see c_c_schema_adoption_mirrors.md)
+030_unpin_gadmin_portfolio_model.sql  -- remove gadmin auto-pin for portfolio-model page
+031_nav_dev_library.sql            -- /dev library nav entry
+032_drop_pre_adoption_item_types.sql  -- cleanup pre-adoption item-type seed rows
+033_theme_unpinnable_product_strategic.sql -- theme/pin flags for product+strategic
+034_user_nav_profiles.sql          -- user_nav_profiles (named profiles)
+035_user_nav_profiles_links.sql    -- profile↔page links
+036_backfill_default_profiles.sql  -- backfill default profile for existing users
+037_user_nav_prefs_position_per_parent.sql -- partial uniqueness on (parent, position)
+038_pin_product_entity_bookmark.sql -- bookmark pin for product entities
+039_user_theme_pack.sql            -- user_theme_pack table
+040_theme_page_library.sql         -- theme rows for library pages
+041_fix_subscription_layer_sort_order.sql -- data fix on subscription_layers
+042_theme_pack_drop_check.sql      -- relax theme-pack CHECK constraint
+043_user_stories.sql               -- legacy user_stories table (writer at internal/userstories — Phase 3 deferred migration)
+044_defects.sql                    -- legacy defects table (writer at internal/defects — Phase 3 deferred migration)
+045_item_labels_tags.sql           -- item_labels + item_tags (DROPPED in 122)
+046_portfolio_items.sql            -- portfolio_items (→ obj_portfolio_items in 123)
+047_custom_fields.sql              -- item_field_definitions (DROPPED in 122)
+048_item_field_options.sql         -- item_field_options + item_field_values (DROPPED in 122)
+049_artefact_type_registry.sql     -- o_artefact_types_system/_tenant/_overrides (→ obj_execution_types* in 123)
+050_artefact_visibility.sql        -- o_artefact_visibility_levels lookup (still live)
+051_artefacts_execution_user_stories.sql  -- legacy per-type artefact tables (deferred drop; package retired)
+052_artefacts_execution_defects.sql       -- (same — deferred drop)
+053_artefacts_execution_tasks.sql         -- (same — deferred drop)
+054_artefacts_execution_test_cases.sql    -- (same — deferred drop)
+055_artefacts_strategic.sql               -- (same — deferred drop)
+056_artefact_notes.sql             -- o_artefact_notes/_note_reads (DROPPED in 122)
+057_artefact_versions.sql          -- o_artefact_versions (DROPPED in 122)
+058_search_index_outbox.sql        -- o_search_index_outbox (still live; worker at internal/searchworker)
+059_artefact_type_registry_seed.sql -- seed system artefact types
+060_artefact_schema_tables.sql     -- per-artefact schema tables (most superseded; see 122)
+061_artefact_field_values_reshape.sql -- field-value column reshape
+062_work_items_page.sql            -- pages row for /work-items
+063_work_items_rename_and_epics.sql -- consolidated work_items + epics (epics later dropped in 122)
+064_custom_field_library.sql       -- o_execution_custom_field_library (→ obj_custom_field_lib in 123)
+065_execution_core_columns.sql     -- core columns on execution work items
+066_work_items_expand_types.sql    -- broaden item_type set on work_items
+067_icon_catalogue.sql             -- vector_icons table
+068_ranking_position_columns.sql   -- ranking position columns (PLA generic ranking)
+069_ranking_notify_trigger.sql     -- pg_notify trigger for ranking realtime
+070_page_scope.sql                 -- page scope column
+071_pane_help.sql                  -- pane_help table (later replaced by page_help — see 075/076)
+072_portfolio_items_page.sql       -- pages row for portfolio items
+073_planning_canonical_order.sql   -- canonical_states sort_order tweak
+074_page_addressables.sql          -- pages.is_addressable + addressable_key columns
+075_page_help.sql                  -- page_help (replacement for pane_help)
+076_drop_pane_help.sql             -- drop pane_help
+077_seed_dev_addressables.sql      -- seed addressables for /dev pages
+078_seed_portfolio_addressables.sql  -- seed addressables for portfolio pages
+079_seed_work_items_addressables.sql -- seed addressables for work-items
+080_seed_library_releases_addressables.sql -- seed addressables for library-releases
+081_addressables_helpable.sql      -- helpable flag on addressables
+082_org_nodes.sql                  -- org_nodes tree (PLA-0006 topology)
+083_org_node_roles.sql             -- org_node_roles
+084_org_node_view_state.sql        -- org_node_view_state
+085_org_node_id_fk.sql             -- org_node_id FKs / hardening
+086_users_profile_fields.sql       -- profile fields on users
+087_topology_page.sql              -- pages row for /topology
+088_roles_permissions.sql          -- roles + permissions + role_permissions (PLA-0007 RBAC)
+089_users_page_roles_role_id.sql   -- role_id on users + page_roles wiring
+090_org_levels.sql                 -- org_levels lookup
+091_org_nodes_level_id.sql         -- level_id FK on org_nodes
+092_subscriptions_topology_committed.sql -- subscriptions.topology_committed flag
+093_org_nodes_description_not_null.sql   -- enforce description NOT NULL
+094_admin_roles_page.sql           -- pages row for admin/roles
+095_seed_team_lead_account.sql     -- seed team-lead test account
+096_org_nodes_drop_name_unique.sql -- drop unique(name) constraint on org_nodes
+097_page_help_rich_content.sql     -- page_help body becomes rich content
+098_workspaces.sql                 -- workspaces tier above org_nodes (PLA-0006)
+099_org_nodes_workspace_id.sql     -- workspace_id FK on org_nodes
+100_workspace_permissions_seed.sql -- seed workspace.* permission codes
+101_workspace_roles_backfill.sql   -- backfill workspace_roles
+102_seed_page_summary_help.sql     -- seed help summaries
+103_page_help_seeded_from_placeholder.sql -- mark seeded rows
+104_extend_permission_catalogue.sql -- library/portfolio/work-items permissions
+105_artefact_flow_states.sql       -- artefact flow-state rows
+106_artefact_types_naming_and_tenant.sql -- naming + tenant additions on artefact types
+107_flow_tables_rename.sql         -- o_flow_* names (renamed again to obj_flow_* in 123)
+108_canonical_states_rename.sql    -- canonical_states rename pass (still live)
+109_seed_defects_flow.sql          -- seed defects flow
+110_seed_remaining_flows.sql       -- seed remaining flows
+111_portfolio_item_type_flow_seed_trigger.sql -- trigger to seed flow when type added
+112_grant_gadmin_portfolio_model_edit.sql -- grant portfolio.model.edit to gadmin
+113_grant_gadmin_portfolio_model_page_role.sql -- page_roles row
+114_remove_portfolio_model_from_sidebar.sql -- nav cleanup
+115_user_tab_order.sql             -- user_tab_order
+117_flows_manage_permission.sql    -- flows.manage permission code
+118_backfill_system_flows_to_tenants.sql -- per-tenant flow backfill
+119_artefact_flow_state_fk.sql     -- FK hardening on flow states
+120_api_keys.sql                   -- api_keys table
+121_work_items_due_date.sql        -- due_date column on work_items
+122_drop_orphaned_tables.sql       -- DROP 11 orphan tables (notes, versions, epics, item_field_*, item_labels, item_tags, pending_library_cleanup_jobs)
+123_rename_tables_to_obj_family.sql -- RENAME 13 live tables to obj_* family (catalog-only; zero rewrites). See Phase 1+2 callout above.
 ```
 
-> Migrations 020–025 (portfolio model page, library acks, library releases page, default-pin backfills, nav group reorder) and 027 are present on disk but are out of scope for this list — see the files in `db/schema/` directly until the next librarian sweep.
+> Gaps: migration **027** and **116** are not present on disk (numbers reserved/skipped during planning).
 
 ## Naming conventions
 
@@ -772,14 +896,14 @@ When the schema drifts, regenerate columns + FKs from the live DB and update thi
 
 ```bash
 # Columns
-PGPASSWORD=… /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5434 -U mmff_dev -d mmff_vector -At -F '|' -c "
+PGPASSWORD=… /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector -At -F '|' -c "
 SELECT table_name, column_name, data_type, is_nullable, column_default
 FROM information_schema.columns
 WHERE table_schema='public'
 ORDER BY table_name, ordinal_position;"
 
 # Foreign keys + delete rules
-PGPASSWORD=… /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5434 -U mmff_dev -d mmff_vector -At -F '|' -c "
+PGPASSWORD=… /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector -At -F '|' -c "
 SELECT tc.table_name, kcu.column_name, ccu.table_name AS ref_table, ccu.column_name AS ref_column, rc.delete_rule
 FROM information_schema.table_constraints tc
 JOIN information_schema.key_column_usage kcu USING (constraint_schema, constraint_name)
