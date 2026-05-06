@@ -48,8 +48,8 @@ func ClearCSRFCookie(w http.ResponseWriter) {
 }
 
 // CSRF middleware enforces the double-submit check on state-changing methods.
-// Safe methods (GET/HEAD/OPTIONS) pass through. The /api/auth/login and
-// /api/auth/refresh endpoints also pass — they ARE how the user obtains the
+// Safe methods (GET/HEAD/OPTIONS) pass through. The /v1/api/auth/login and
+// /v1/api/auth/refresh endpoints also pass — they ARE how the user obtains the
 // token, and they're protected by rate limiting + credentials.
 func CSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,11 +78,11 @@ func CSRF(next http.Handler) http.Handler {
 
 func isCSRFExempt(path string) bool {
 	switch path {
-	case "/api/auth/login",
-		"/api/auth/refresh",
-		"/api/auth/password-reset",
-		"/api/auth/password-reset/confirm",
-		"/api/addressables/build-reconcile":
+	case "/v1/api/auth/login",
+		"/v1/api/auth/refresh",
+		"/v1/api/auth/password-reset",
+		"/v1/api/auth/password-reset/confirm",
+		"/v1/api/addressables/build-reconcile":
 		return true
 	}
 	return false

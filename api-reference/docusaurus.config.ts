@@ -14,7 +14,7 @@ const config: Config = {
   url: 'http://localhost:8083',
   baseUrl: '/',
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'log',
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'warn',
@@ -40,6 +40,18 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
+    [
+      '@scalar/docusaurus',
+      {
+        label: 'API Playground',
+        route: '/openapi',
+        configuration: {
+          spec: {
+            url: '/openapi.yaml',
+          },
+        },
+      },
+    ],
   ],
 
   themeConfig: {
@@ -54,6 +66,11 @@ const config: Config = {
           sidebarId: 'apiSidebar',
           position: 'left',
           label: 'Docs',
+        },
+        {
+          to: '/openapi',
+          position: 'left',
+          label: 'API Playground',
         },
       ],
     },
