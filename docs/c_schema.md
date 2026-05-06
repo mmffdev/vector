@@ -34,7 +34,9 @@ This is the canonical map of every table in `mmff_vector`. Read here first inste
 
 **Migration 124 dropped 6 more legacy tables** (verified empty in dev 2026-05-07): `o_artefacts_execution_test_cases`, `o_artefacts_execution_test_cases_field_values`, `o_artefacts_execution_defects_field_values`, `o_artefacts_execution_tasks_field_values`, `o_artefacts_strategic`, `o_artefacts_strategic_field_values`.
 
-Still deferred (carry seed/demo data; revisit when seed is rewired against `obj_work_items`): `o_artefacts_execution_defects` (2 rows), `o_artefacts_execution_tasks` (4 rows). Also still live: `o_search_index_outbox` (active worker queue), `o_artefact_visibility_levels` (FK target), `canonical_states` (FK target of `obj_flow_*`).
+**Migration 125 dropped the last 2** (`o_artefacts_execution_defects`, `o_artefacts_execution_tasks`) — the 6 rows they held were dummy payload superseded by the canonical `obj_work_items` seed in `db/seed/002_work_items_poc.sql`. The whole legacy per-type artefact family is retired.
+
+Still live (intentionally): `o_search_index_outbox` (active worker queue), `o_artefact_visibility_levels` (FK target), `canonical_states` (FK target of `obj_flow_*`).
 
 > **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `error_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/library_schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
@@ -866,6 +868,7 @@ Pattern summary:
 122_drop_orphaned_tables.sql       -- DROP 11 orphan tables (notes, versions, epics, item_field_*, item_labels, item_tags, pending_library_cleanup_jobs)
 123_rename_tables_to_obj_family.sql -- RENAME 13 live tables to obj_* family (catalog-only; zero rewrites). See Phase 1+2 callout above.
 124_drop_empty_legacy_artefact_tables.sql -- Drop 6 empty per-type artefact tables (test_cases*, *_field_values for defects/tasks, strategic*). Defects + tasks parents retained — hold seed data.
+125_drop_remaining_legacy_artefact_tables.sql -- Drop the last 2 (o_artefacts_execution_defects, _tasks). Their 6 rows were dummy payload — obj_work_items seed (db/seed/002_work_items_poc.sql) already holds canonical fixtures.
 ```
 
 > Gaps: migration **027** and **116** are not present on disk (numbers reserved/skipped during planning).
