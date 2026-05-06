@@ -130,6 +130,16 @@ export interface DnDConfig {
   resourceType: string;
 }
 
+// PLA-0021 / 00455 — multi-select. Selection state stays caller-owned; the
+// tree renders a leading checkbox column, supports shift-click range over
+// the visible window, and a header checkbox that toggles all visible ids
+// (rendered with `indeterminate=true` when partially selected).
+export interface SelectionConfig {
+  mode: "multi";
+  selectedIds: Set<string>;
+  onSelectionChange: (next: Set<string>) => void;
+}
+
 // Set 4 — CogMenu. Type only; not wired in this card.
 export interface MenuItem {
   key: string;
@@ -166,6 +176,7 @@ export interface ResourceTreeProps<T> {
   search?: SearchConfig<T>;
   sort?: SortConfig;
   dnd?: DnDConfig;
+  selection?: SelectionConfig;
   expandAllConcurrency?: number;
 
   // ── Set 4: CogMenu (type-only this card) ──
@@ -640,6 +651,7 @@ function ResourceTreeImpl<T>({
   search,
   sort,
   dnd,
+  selection,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
   // (cogMenu / patch / tone are accepted to keep the surface contract; column
@@ -779,21 +791,31 @@ function ResourceTreeImpl<T>({
   );
 
   // ── Column resize ────────────────────────────────────────────────────────
-  // When DnD is enabled we prepend a fixed-width drag-handle column at index 0
-  // so colgroup / thead / tbody all share the same column count, and so the
-  // resize maths line up with the rendered DOM columns.
+  // Lead columns (selection checkbox + DnD drag handle) sit before the user
+  // columns so colgroup / thead / tbody share the same column count and the
+  // resize maths line up with the rendered DOM. Order is: selection → DnD →
+  // user-columns; consumers can enable either, both, or neither.
+  const SELECTION_COL_WIDTH = 28;
   const DRAG_COL_WIDTH = 22;
+  const selectionOffset = selection ? 1 : 0;
   const dndOffset = dnd ? 1 : 0;
-  const primaryColIdx = dndOffset;
+  const leadOffset = selectionOffset + dndOffset;
+  const primaryColIdx = leadOffset;
 
   const fixedWidths = useMemo<Array<number | null>>(() => {
     const userWidths = columns.map((c) => (c.width === undefined ? 100 : c.width));
-    return dnd ? [DRAG_COL_WIDTH, ...userWidths] : userWidths;
-  }, [columns, dnd]);
+    const lead: Array<number | null> = [];
+    if (selection) lead.push(SELECTION_COL_WIDTH);
+    if (dnd) lead.push(DRAG_COL_WIDTH);
+    return [...lead, ...userWidths];
+  }, [columns, dnd, selection]);
   const minWidthsArr = useMemo<number[]>(() => {
     const userMins = columns.map((c) => c.minWidth ?? 40);
-    return dnd ? [DRAG_COL_WIDTH, ...userMins] : userMins;
-  }, [columns, dnd]);
+    const lead: number[] = [];
+    if (selection) lead.push(SELECTION_COL_WIDTH);
+    if (dnd) lead.push(DRAG_COL_WIDTH);
+    return [...lead, ...userMins];
+  }, [columns, dnd, selection]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -979,6 +1001,75 @@ function ResourceTreeImpl<T>({
     return n;
   }, [pagedRoots, expanded, childMap, getId]);
 
+  // ── Selection (00455) ────────────────────────────────────────────────────
+  // Flat list of row ids in render order — drives shift-click range and the
+  // header toggle-all set. Children of expanded rows are included so a range
+  // can span an opened sub-tree.
+  const visibleIds = useMemo<string[]>(() => {
+    const out: string[] = [];
+    const walk = (rows: T[]) => {
+      for (const r of rows) {
+        const id = getId(r);
+        out.push(id);
+        if (expanded.has(id)) {
+          const kids = childMap[id] ?? [];
+          if (kids.length) walk(kids);
+        }
+      }
+    };
+    walk(pagedRoots);
+    return out;
+  }, [pagedRoots, expanded, childMap, getId]);
+
+  const lastClickedRef = useRef<string | null>(null);
+  const handleRowCheckboxClick = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      if (!selection) return;
+      e.stopPropagation();
+      const next = new Set(selection.selectedIds);
+      if (e.shiftKey && lastClickedRef.current && lastClickedRef.current !== id) {
+        const a = visibleIds.indexOf(lastClickedRef.current);
+        const b = visibleIds.indexOf(id);
+        if (a >= 0 && b >= 0) {
+          const [lo, hi] = a < b ? [a, b] : [b, a];
+          for (let i = lo; i <= hi; i++) next.add(visibleIds[i]);
+        }
+      } else {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        lastClickedRef.current = id;
+      }
+      selection.onSelectionChange(next);
+    },
+    [selection, visibleIds],
+  );
+
+  const allVisibleSelected =
+    !!selection &&
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selection.selectedIds.has(id));
+  const someVisibleSelected =
+    !!selection && visibleIds.some((id) => selection.selectedIds.has(id));
+  const headerIndeterminate = !allVisibleSelected && someVisibleSelected;
+
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = headerIndeterminate;
+    }
+  }, [headerIndeterminate]);
+
+  const handleHeaderToggle = useCallback(() => {
+    if (!selection) return;
+    const next = new Set(selection.selectedIds);
+    if (allVisibleSelected) {
+      for (const id of visibleIds) next.delete(id);
+    } else {
+      for (const id of visibleIds) next.add(id);
+    }
+    selection.onSelectionChange(next);
+  }, [selection, visibleIds, allVisibleSelected]);
+
   // ── Row rendering ────────────────────────────────────────────────────────
 
   function renderRows(
@@ -1028,6 +1119,21 @@ function ResourceTreeImpl<T>({
             onDrop={dndProps?.onDrop}
             onClick={() => onSelect?.(item)}
           >
+            {selection && (
+              <td
+                className="tree_accordion-dense__cell tree_accordion-dense__cell--selection"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  data-selection-row-id={id}
+                  checked={selection.selectedIds.has(id)}
+                  onChange={() => undefined}
+                  onClick={(e) => handleRowCheckboxClick(id, e)}
+                  aria-label="Select row"
+                />
+              </td>
+            )}
             {dnd && (
               <DragHandleColumn
                 {...rank.handleProps(id)}
@@ -1071,7 +1177,7 @@ function ResourceTreeImpl<T>({
             <tr>
               <td
                 className="tree_accordion-dense__cell"
-                colSpan={columns.length + dndOffset}
+                colSpan={columns.length + leadOffset}
                 style={{
                   paddingLeft: 12 + depth * indentStep + 32,
                   color: "var(--ink-subtle)",
@@ -1152,6 +1258,21 @@ function ResourceTreeImpl<T>({
           </colgroup>
           <thead className="tree_accordion-dense__head">
             <tr>
+              {selection && (
+                <th
+                  key="__selection"
+                  className="tree_accordion-dense__th tree_accordion-dense__th--selection"
+                >
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    data-selection-header="true"
+                    checked={allVisibleSelected}
+                    onChange={handleHeaderToggle}
+                    aria-label="Select all visible rows"
+                  />
+                </th>
+              )}
               {dnd && (
                 <th
                   key="__drag"
@@ -1160,9 +1281,10 @@ function ResourceTreeImpl<T>({
                 />
               )}
               {columns.map((col, userCi) => {
-                // Effective column index in the rendered DOM (drag col occupies 0
-                // when dnd is on, so user columns shift by dndOffset).
-                const ci = userCi + dndOffset;
+                // Effective column index in the rendered DOM (selection col then
+                // drag col occupy the lead slots when enabled, so user columns
+                // shift by leadOffset).
+                const ci = userCi + leadOffset;
                 const thClass =
                   "tree_accordion-dense__th" +
                   (col.align === "mono"

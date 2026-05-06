@@ -11701,6 +11701,20 @@ input[type="reset"] {
 .tree_accordion-dense__cell--numeric { text-align: right; }
 .tree_accordion-dense__cell--center { text-align: center; }
 
+/* PLA-0021 / 00455 — selection checkbox column (28px). Centered in both
+   header and body cells; checkbox sits flush against the row gridline. */
+.tree_accordion-dense__th--selection,
+.tree_accordion-dense__cell--selection {
+  text-align: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.tree_accordion-dense__th--selection input[type="checkbox"],
+.tree_accordion-dense__cell--selection input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 /* Summary cell inner: tree indent → expander → type-badge → title */
 .tree_accordion-dense__summary {
   display: flex;
