@@ -102,7 +102,10 @@ actor ServiceRegistry {
     }
 
     private static func tunnelSpec(id: ServiceID, port: UInt16, sshAlias: String) -> ServiceSpec {
-        let cmd = "ssh -fN -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes \(sshAlias)"
+        // No -f: keep ssh in the foreground so the Supervisor owns the PID
+        // and can watch it with kill -0. With -f the shell forks off and the
+        // returned pid exits immediately, causing a false "pid-dead" restart loop.
+        let cmd = "ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes \(sshAlias)"
         return ServiceSpec(
             id: id,
             port: port,

@@ -26,7 +26,7 @@ enum Paths {
         // launcher is dev-only and tied to this repo.
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         return URL(fileURLWithPath:
-            home + "/Documents/MMFFDev-Projects/MMFFDev - Vector",
+            home + "/Documents/MMFFDev - Projects/MMFFDev - Vector",
             isDirectory: true)
     }
 

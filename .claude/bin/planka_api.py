@@ -17,14 +17,16 @@ BACKLOG_LIST = "1760700028730475544"
 TOKEN_FILE = f"/tmp/.planka_token_{os.getpid()}"
 
 def get_credential(key):
-    """Read credential from backend/.env.local safely"""
-    env_path = Path("/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local")
-    if not env_path.exists():
-        return None
-    with open(env_path) as f:
-        for line in f:
-            if line.startswith(f"{key}="):
-                return line.split("=", 1)[1].strip()
+    """Read credential from backend env files, trying each in order."""
+    base = Path("/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/backend")
+    for name in (".env.local", ".env.dev", ".env.production", ".env.staging"):
+        env_path = base / name
+        if not env_path.exists():
+            continue
+        with open(env_path) as f:
+            for line in f:
+                if line.startswith(f"{key}="):
+                    return line.split("=", 1)[1].strip()
     return None
 
 def get_token():
