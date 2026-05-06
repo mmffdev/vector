@@ -616,6 +616,251 @@ func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID string, id
 	return nil
 }
 
+// BulkOps applies a single op to the given ids inside one transaction.
+// Tenant isolation is enforced by the read predicate
+// `WHERE subscription_id = $1 AND id = ANY($2)` — any id not returned by
+// that read is appended to Failed with reason "forbidden" (it was either
+// cross-tenant or already archived/non-existent).
+//
+// Per-row validation failures (invalid flow_state, bad priority, etc.)
+// are appended to Failed with the underlying reason. Successful rows in
+// the same call still commit — the contract is "best-effort over the
+// batch", not all-or-nothing. Unknown op returns ErrInvalidInput up
+// front.
+//
+// PLA-0021 / 00456 — first writer for the bulk surface; mirror this
+// shape if you add more ops later.
+func (s *Service) BulkOps(ctx context.Context, subscriptionID string, ids []string, op string, payload map[string]any) (BulkOpResult, error) {
+	switch op {
+	case "set_status", "set_priority", "set_owner", "archive", "delete":
+		// supported
+	default:
+		return BulkOpResult{}, fmt.Errorf("%w: unsupported op %q", ErrInvalidInput, op)
+	}
+	if len(ids) == 0 {
+		return BulkOpResult{Updated: 0, Failed: nil}, nil
+	}
+
+	// Index of all ids supplied by the caller. We'll subtract the ids the
+	// tenant-scoped read returns, and the leftover are "forbidden".
+	supplied := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		supplied[id] = struct{}{}
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return BulkOpResult{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// Read tenant-owned, non-archived rows. ANY($2) needs []string —
+	// pgx maps it to text[] which casts to uuid[] in the WHERE clause.
+	rows, err := tx.Query(ctx, `
+		SELECT id::text, item_type, sprint_id::text
+		FROM o_artefacts_execution_work_items
+		WHERE subscription_id = $1 AND id::text = ANY($2) AND archived_at IS NULL
+		FOR UPDATE`,
+		subscriptionID, ids,
+	)
+	if err != nil {
+		return BulkOpResult{}, err
+	}
+	var visible []bulkRowInfo
+	for rows.Next() {
+		var r bulkRowInfo
+		if err := rows.Scan(&r.id, &r.itemType, &r.sprintID); err != nil {
+			rows.Close()
+			return BulkOpResult{}, err
+		}
+		visible = append(visible, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return BulkOpResult{}, err
+	}
+
+	visibleSet := make(map[string]struct{}, len(visible))
+	for _, r := range visible {
+		visibleSet[r.id] = struct{}{}
+	}
+
+	out := BulkOpResult{Failed: []BulkFailure{}}
+
+	// Cross-tenant / non-existent ids → forbidden.
+	for id := range supplied {
+		if _, ok := visibleSet[id]; !ok {
+			out.Failed = append(out.Failed, BulkFailure{ID: id, Reason: "forbidden"})
+		}
+	}
+
+	// Validate payload shape per op. Unknown payload shape kicks every
+	// visible row into Failed with the reason — the tx still commits the
+	// (empty) update so the read transaction closes cleanly.
+	switch op {
+	case "set_status":
+		fsRaw, _ := payload["flow_state_id"].(string)
+		if fsRaw == "" {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "flow_state_id required"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		// Validate flow state belongs to this subscription before writing.
+		var fsSub string
+		if err := tx.QueryRow(ctx,
+			`SELECT subscription_id::text FROM o_flow_tenant WHERE id = $1 AND archived_at IS NULL`,
+			fsRaw,
+		).Scan(&fsSub); err != nil {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "flow_state_id not found"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		if fsSub != subscriptionID {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "flow_state_id belongs to a different subscription"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		ct, err := tx.Exec(ctx, `
+			UPDATE o_artefacts_execution_work_items
+			SET flow_state_id = $1, updated_at = now()
+			WHERE subscription_id = $2 AND id::text = ANY($3) AND archived_at IS NULL`,
+			fsRaw, subscriptionID, idsOf(visible),
+		)
+		if err != nil {
+			return BulkOpResult{}, err
+		}
+		out.Updated = int(ct.RowsAffected())
+
+	case "set_priority":
+		prRaw, _ := payload["priority"].(string)
+		if !validPriorities[prRaw] {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "invalid priority"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		ct, err := tx.Exec(ctx, `
+			UPDATE o_artefacts_execution_work_items
+			SET priority = $1, updated_at = now()
+			WHERE subscription_id = $2 AND id::text = ANY($3) AND archived_at IS NULL`,
+			prRaw, subscriptionID, idsOf(visible),
+		)
+		if err != nil {
+			return BulkOpResult{}, err
+		}
+		out.Updated = int(ct.RowsAffected())
+
+	case "set_owner":
+		ownerRaw, _ := payload["owner_id"].(string)
+		if ownerRaw == "" {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "owner_id required"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		// Owner must be a user inside the same subscription. If the lookup
+		// fails or returns a different sub, every row is rejected — there's
+		// no per-row variation here so a single check suffices.
+		var ownerSub string
+		if err := tx.QueryRow(ctx,
+			`SELECT subscription_id::text FROM users WHERE id = $1 AND is_active = true`,
+			ownerRaw,
+		).Scan(&ownerSub); err != nil {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "owner_id not found"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		if ownerSub != subscriptionID {
+			for _, r := range visible {
+				out.Failed = append(out.Failed, BulkFailure{ID: r.id, Reason: "owner_id belongs to a different subscription"})
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return BulkOpResult{}, err
+			}
+			return out, nil
+		}
+		ct, err := tx.Exec(ctx, `
+			UPDATE o_artefacts_execution_work_items
+			SET owner_id = $1, updated_at = now()
+			WHERE subscription_id = $2 AND id::text = ANY($3) AND archived_at IS NULL`,
+			ownerRaw, subscriptionID, idsOf(visible),
+		)
+		if err != nil {
+			return BulkOpResult{}, err
+		}
+		out.Updated = int(ct.RowsAffected())
+
+	case "archive":
+		ct, err := tx.Exec(ctx, `
+			UPDATE o_artefacts_execution_work_items
+			SET archived_at = now(), updated_at = now()
+			WHERE subscription_id = $1 AND id::text = ANY($2) AND archived_at IS NULL`,
+			subscriptionID, idsOf(visible),
+		)
+		if err != nil {
+			return BulkOpResult{}, err
+		}
+		out.Updated = int(ct.RowsAffected())
+
+	case "delete":
+		ct, err := tx.Exec(ctx, `
+			DELETE FROM o_artefacts_execution_work_items
+			WHERE subscription_id = $1 AND id::text = ANY($2)`,
+			subscriptionID, idsOf(visible),
+		)
+		if err != nil {
+			return BulkOpResult{}, err
+		}
+		out.Updated = int(ct.RowsAffected())
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return BulkOpResult{}, err
+	}
+	return out, nil
+}
+
+// bulkRowInfo is a slim row projection used by BulkOps to remember the
+// tenant-visible ids (and a couple of metadata columns reserved for
+// future per-row gates like task-points rejection).
+type bulkRowInfo struct {
+	id       string
+	itemType string
+	sprintID *string
+}
+
+// idsOf projects the visible-row slice into the []string shape pgx
+// wants for ANY($N).
+func idsOf(rows []bulkRowInfo) []string {
+	out := make([]string, len(rows))
+	for i, r := range rows {
+		out[i] = r.id
+	}
+	return out
+}
+
 // ListChildren returns direct children of the given parent work item.
 func (s *Service) ListChildren(ctx context.Context, subscriptionID string, parentID uuid.UUID) ([]WorkItem, error) {
 	rows, err := s.pool.Query(ctx, `

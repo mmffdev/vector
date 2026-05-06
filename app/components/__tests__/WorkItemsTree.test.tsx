@@ -106,6 +106,14 @@ vi.mock("@/app/lib/api", () => ({
   api: vi.fn(async () => ({ items: [], total: 0 })),
 }));
 
+// PLA-0021 / 00456 — BulkActionBar reads useHasPermission unconditionally
+// (hooks run before its empty-selection early return). The smoke harness
+// doesn't mount AuthProvider, so stub the hook to a permissive default.
+vi.mock("@/app/contexts/AuthContext", () => ({
+  __esModule: true,
+  useHasPermission: () => true,
+}));
+
 import WorkItemsTree from "@/app/components/WorkItemsTree";
 
 // ─── Tests ──────────────────────────────────────────────────────────────

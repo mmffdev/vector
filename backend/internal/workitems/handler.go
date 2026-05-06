@@ -244,6 +244,41 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// bulkOpsReq is the wire shape for POST /api/work-items/bulk.
+type bulkOpsReq struct {
+	IDs     []string       `json:"ids"`
+	Op      string         `json:"op"`
+	Payload map[string]any `json:"payload"`
+}
+
+// POST /api/work-items/bulk
+//
+// Apply one op (set_status | set_priority | set_owner | archive | delete)
+// to a batch of work-item ids in a single transaction. Returns 200 with
+// {updated, failed} even when partial failures occur — callers inspect
+// failed[] to learn which ids were rejected. Cross-tenant ids surface as
+// reason="forbidden"; per-row validation rejects carry the underlying
+// reason. PLA-0021 / 00456.
+func (h *Handler) Bulk(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req bulkOpsReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		return
+	}
+	out, err := h.Svc.BulkOps(r.Context(), u.SubscriptionID.String(), req.IDs, req.Op, req.Payload)
+	if err != nil {
+		if errors.Is(err, ErrInvalidInput) {
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
+			return
+		}
+		log.Printf("BulkOps error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 // ─── Field Values ─────────────────────────────────────────────────────────────
 
 // GET /api/work-items/{id}/field-values

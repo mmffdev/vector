@@ -6,6 +6,7 @@
 // lives in <ResourceTree>; every work-items concern lives in the config file.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import BulkActionBar from "@/app/components/BulkActionBar";
 import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
@@ -35,6 +36,12 @@ export default function WorkItemsTree({
   const [pageIndex, setPageIndex] = useState(0);
   const { filters } = useWorkItemsFilters();
   const { sortKey, sortDir, setSort } = useWorkItemsSort();
+
+  // PLA-0021 / 00456 — multi-select state lives here; the tree consumes
+  // it via the SelectionConfig prop set, and BulkActionBar reads it to
+  // decide whether to render itself.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   // Filter or sort changes invalidate the page offset — page 5 of an
   // unfiltered/default-sorted set is meaningless on a filtered/resorted set.
@@ -69,6 +76,8 @@ export default function WorkItemsTree({
   return (
     <div>
       <WorkItemsPanelHeader />
+      {/* TODO(00456): wire bulk action handlers in WS3-D */}
+      <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
       <ResourceTree<WorkItem>
         roots={windowRoots}
         total={total}
@@ -82,6 +91,7 @@ export default function WorkItemsTree({
         search={{ placeholder: "Search work items…", accessor: (r) => `${r.title} vec-${r.key_num}` }}
         sort={{ key: sortKey, dir: sortDir, onChange: handleSortChange }}
         dnd={{ resourceType: "work_item" }}
+        selection={{ mode: "multi", selectedIds, onSelectionChange: setSelectedIds }}
         selectedId={selectedId}
         onSelect={onSelect}
         pageIndex={pageIndex}

@@ -241,6 +241,23 @@ type WorkItemFlowState struct {
 	CanonicalCode string `json:"canonical_code"`
 }
 
+// BulkOpResult is the wire shape returned by POST /api/work-items/bulk.
+// Successful row count + per-row failure list. The handler always returns
+// 200 even with partial failures — callers inspect Failed to learn which
+// ids were rejected.
+type BulkOpResult struct {
+	Updated int           `json:"updated"`
+	Failed  []BulkFailure `json:"failed"`
+}
+
+// BulkFailure describes one row that the bulk op refused to apply.
+// Reason is a short stable string ("forbidden" for cross-tenant or
+// non-existent ids; otherwise the underlying validation message).
+type BulkFailure struct {
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
+}
+
 // UpsertFieldValueInput holds the value to write for one field on a work item.
 type UpsertFieldValueInput struct {
 	FieldLibraryID string

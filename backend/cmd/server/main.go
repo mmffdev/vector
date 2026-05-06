@@ -742,6 +742,10 @@ func main() {
 		r.Post("/", workItemsH.Create)
 		r.Get("/summary", workItemsH.Summary)
 		r.Get("/flow-states", workItemsH.ListFlowStates)
+		// PLA-0021 / 00456 — bulk surface. MUST be registered before /{id}
+		// because chi dispatches by registration order; otherwise /bulk
+		// would be swallowed by the {id} pattern.
+		r.Post("/bulk", workItemsH.Bulk)
 		r.Get("/{id}", workItemsH.Get)
 		r.Patch("/{id}", workItemsH.Patch)
 		r.Delete("/{id}", workItemsH.Archive)
