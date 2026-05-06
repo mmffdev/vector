@@ -8,14 +8,16 @@
     "app/(user)/portfolio-model/LayersPreviewTable.tsx",
     "app/components/ArchiveMapFlyout.tsx",
     "app/components/ServiceHealthPanel.tsx",
-    "app/components/TopologyTreeFlyout.tsx"
+    "app/components/TopologyTreeFlyout.tsx",
+    "app/components/ResourceTree.tsx"
   ],
   "categories": {
     "tree_exception": [
       "app/(user)/work-items/Example2Tree.tsx",
       "app/(user)/work-items/page.tsx",
       "app/(user)/portfolio-model/LayersTable.tsx",
-      "app/(user)/portfolio-model/WizardModelCardList.tsx"
+      "app/(user)/portfolio-model/WizardModelCardList.tsx",
+      "app/components/ResourceTree.tsx"
     ],
     "provisional": [
       "app/(user)/portfolio-model/LayersPreviewTable.tsx",
