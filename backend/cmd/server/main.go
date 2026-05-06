@@ -141,6 +141,12 @@ func main() {
 	apiKeysSvc := apikeys.New(pool)
 	apiKeysH := apikeys.NewHandler(apiKeysSvc)
 
+	// Seed dev API key for local testing (story 00443).
+	// Only in development; logs the key once for curl testing.
+	if err := apikeys.SeedDevKey(ctx, pool, appEnv, os.Getenv("DEV_API_KEY")); err != nil {
+		log.Fatalf("seed dev api key: %v", err)
+	}
+
 	usersSvc := users.New(pool, auditLog, mailer)
 	usersH := users.NewHandler(usersSvc, permResolver)
 
