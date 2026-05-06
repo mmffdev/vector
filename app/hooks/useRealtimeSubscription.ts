@@ -105,7 +105,16 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
     return () => {
       cancelled = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
+      if (!ws) return;
+      // Closing during the upgrade handshake produces a noisy
+      // "WebSocket is closed before the connection is established"
+      // browser warning — common under React StrictMode's double-mount
+      // in dev. Defer the close until open if we're still connecting.
+      if (ws.readyState === WebSocket.CONNECTING) {
+        ws.addEventListener("open", () => ws?.close(1000, "cleanup"), { once: true });
+      } else if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1000, "cleanup");
+      }
     };
   }, [opts.topic]);
 }

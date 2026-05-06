@@ -376,18 +376,12 @@ export function useRegisterAddressable(
       setResolvedID(fromMap);
       return;
     }
-    if (strict) {
-      // PLA-0006 / 00263 — strict mode degraded to a warning until the
-      // build-reconcile pipeline exists for non-Dashboard routes. Without
-      // it, the snapshot is empty for /dev, /backlog, /portfolio, etc.
-      // and a hard throw crashes every page on first paint. Fall through
-      // to the runtime register POST so the page renders; the missing
-      // address gets created in page_addressables on demand.
-      // eslint-disable-next-line no-console
-      console.warn(
-        `addressable not in snapshot: ${address} — falling back to runtime register (build-reconcile pipeline pending)`,
-      );
-    }
+    // PLA-0006 / 00263 — strict mode currently no-ops the warning because
+    // the build-reconcile pipeline (PLA-0005 snapshot baker) hasn't shipped
+    // for non-Dashboard routes; without it the snapshot is empty for /dev,
+    // /backlog, /portfolio, etc. and every Panel mount logs noise. The
+    // runtime register POST below handles the miss silently. Restore the
+    // strict warn (or hard throw) once the baker is producing snapshots.
     // ParentAddress drives the backend's parent_address argument; pass
     // empty string for ViewportSlot-root descendants whose immediate
     // parent IS the slot (the backend treats the slot as the root).
