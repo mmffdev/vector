@@ -2,7 +2,7 @@
 
 Reads or creates boot files in the project memory directory.
 
-**Memory dir:** `/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/`
+**Memory dir:** `/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/`
 
 ## Syntax
 

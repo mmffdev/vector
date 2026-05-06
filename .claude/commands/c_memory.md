@@ -25,8 +25,8 @@ Run the relevant checks below, then write the report.
 ### -M — Memory
 
 ```bash
-ls ~/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/
-cat ~/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/MEMORY.md
+ls "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/"
+cat "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/MEMORY.md"
 ```
 
 **Checks:**

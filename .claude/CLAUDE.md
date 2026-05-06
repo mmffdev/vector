@@ -60,5 +60,6 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Drag-and-drop convention (`@dnd-kit`)** → [`docs/c_c_dnd.md`](../docs/c_c_dnd.md) — canonical DnD library; sortable lists/tables/tabs use `@dnd-kit/sortable`; server is order of truth, 250ms debounce, no competing libs.
 - **`<Table>` component (PLA-0015)** → [`docs/c_c_table_component.md`](../docs/c_c_table_component.md) — single sanctioned table primitive in `app/components/Table.tsx`; declarative columns/rows + opt-in expander/panel/inline-edit/pagination/filters; raw `<table>` outside this component is blocked by `lint:no-raw-table` (4 tree exceptions on allow-list).
 - **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — React surface for `.pill` family; kinds `status|count|letter|tag`, semantic tones only, derives tone from state — no user-supplied colour.
+- **Memory dir (canonical)** → [`.claude/memory/MEMORY.md`](memory/MEMORY.md) — write all auto-memory entries here; mirror to `~/.claude/projects/.../memory/` so Claude Code's auto-load matches.
 - **Commands & skills index** → [`.claude/c_tools_index.md`](c_tools_index.md) — load when user invokes a shortcut command or skill not listed above.
 
