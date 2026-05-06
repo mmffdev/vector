@@ -14,6 +14,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
+import OwnerChip from "@/app/components/OwnerChip";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
   PrimaryCellTreeLines,
@@ -45,6 +46,11 @@ export interface WorkItem {
   sprint: { id: string; alias: string } | null;
   parent_id: string | null;
   owner_id: string;
+  // PLA-0021 / 00459 — backend now joins the users row and emits
+  // `owner: {id, display_name, avatar_url}` derived from first/last name
+  // (with email fallback). null only when the join fails (deleted user).
+  // The legacy `owner_id` field is kept for writers (PATCH still posts it).
+  owner: { id: string; display_name: string; avatar_url: string | null } | null;
   created_at: string;
   updated_at: string;
   children_count: number;
@@ -85,13 +91,6 @@ export function formatPriority(raw: string | null) {
   return (
     PRIORITY_CODE[raw] ?? { code: raw.toUpperCase().slice(0, 2), mod: "p3" }
   );
-}
-
-// Owner glyph: 2-char monogram from owner_id; deterministic but cosmetic.
-// Placeholder pending Wave-4 owner-display work.
-export function ownerGlyph(ownerId: string): string {
-  const clean = ownerId.replace(/[^a-zA-Z0-9]/g, "");
-  return (clean.slice(-2) || "??").toUpperCase();
 }
 
 // Due: backend has no due date yet; offset from updated_at as a stand-in.
@@ -264,10 +263,12 @@ function PointsOwnerCell({
 }) {
   if (!canHaveManualPoints(row.item_type)) return <span>—</span>;
   if (row.rollup_points != null) {
+    // PLA-0021 / 00459 — points cell is points-only now; Owner moved to
+    // its own column and renders via <OwnerChip>. The rollup branch shows
+    // just the rolled-up number with the manual value preserved in title.
     return (
       <span title={`Rolled up. Manual: ${row.story_points ?? "—"}`}>
         {row.rollup_points}
-        {ownerGlyph(row.owner_id)}
       </span>
     );
   }
@@ -339,12 +340,24 @@ export function buildWorkItemsColumns(
     },
     {
       key: "points",
-      label: "PtsOwner",
-      width: 110,
-      minWidth: 110,
+      label: "Pts",
+      width: 70,
+      minWidth: 60,
       align: "mono",
       stopClick: true,
       render: (row) => <PointsOwnerCell row={row} onPatch={patchAndApply} />,
+    },
+    {
+      // PLA-0021 / 00459 — Owner now has its own column backed by the
+      // joined `owner` payload (display_name + future avatar_url). The
+      // legacy synthetic ownerGlyph() is gone; the column renders the
+      // shared <OwnerChip> primitive against row.owner.
+      key: "owner",
+      label: "Owner",
+      width: 130,
+      minWidth: 100,
+      cellModifier: "owner",
+      render: (row) => <OwnerChip user={row.owner ?? null} />,
     },
     {
       key: "sprint",

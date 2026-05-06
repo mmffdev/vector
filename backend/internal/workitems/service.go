@@ -152,6 +152,12 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 	// SprintRef. The join is non-archive-filtered intentionally: if a sprint
 	// is later archived, its rows still know what they used to belong to.
 	// Scan-side guards collapse a NULL join to a nil SprintRef.
+	//
+	// PLA-0021 / 00459 — LEFT JOIN users so each row carries an OwnerRef
+	// {id, display_name, avatar_url}. display_name is derived from
+	// first_name/last_name with email fallback (users table has no avatar
+	// column today — avatar_url is exposed as NULL on the wire so future
+	// avatar storage drops in without client breakage).
 	q := fmt.Sprintf(`
 		SELECT wi.id, wi.subscription_id, wi.key_num, wi.item_type, wi.title, wi.description,
 		       wi.status, coalesce(wi.flow_state_id::text, ''), coalesce(fs.name, ''), coalesce(fs.canonical_code, ''),
@@ -159,12 +165,16 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 		       s.id::text, s.name,
 		       wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
+		       u.id::text,
+		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
+		       NULL::text AS owner_avatar_url,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       %s AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
+		LEFT JOIN users u ON u.id = wi.owner_id
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d`,
@@ -293,12 +303,16 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uui
 		       s.id::text, s.name,
 		       wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
+		       u.id::text,
+		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
+		       NULL::text AS owner_avatar_url,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
+		LEFT JOIN users u ON u.id = wi.owner_id
 		WHERE wi.id = $1 AND wi.subscription_id = $2 AND wi.archived_at IS NULL`,
 		id, subscriptionID,
 	)
@@ -880,12 +894,16 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID string, paren
 		       s.id::text, s.name,
 		       wi.parent_id, wi.root_feature_id,
 		       wi.owner_id, wi.created_by, wi.created_at, wi.updated_at, wi.archived_at,
+		       u.id::text,
+		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
+		       NULL::text AS owner_avatar_url,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
 		FROM o_artefacts_execution_work_items wi
 		LEFT JOIN o_flow_tenant fs ON fs.id = wi.flow_state_id
 		LEFT JOIN sprints s ON s.id = wi.sprint_id AND s.archived_at IS NULL
+		LEFT JOIN users u ON u.id = wi.owner_id
 		WHERE wi.subscription_id = $1 AND wi.parent_id = $2 AND wi.archived_at IS NULL
 		ORDER BY coalesce(wi.sprint_position, wi.backlog_position) NULLS LAST, wi.key_num ASC`,
 		subscriptionID, parentID,
@@ -1402,6 +1420,11 @@ func scanWorkItem(row scannable) (*WorkItem, error) {
 	// Mirror the existing optional-column pattern with *string locals; if
 	// either side is non-NULL we materialise a SprintRef on the wire row.
 	var sprintRefID, sprintRefAlias *string
+	// PLA-0021 / 00459 — owner join produces (id, display_name, avatar_url).
+	// owner_id is NOT NULL on the work-items row but the JOIN may still
+	// return NULL columns if the user row was deleted out from under us;
+	// only materialise an OwnerRef when the joined id resolved.
+	var ownerRefID, ownerDisplayName, ownerAvatarURL *string
 	err := row.Scan(
 		&wi.ID, &wi.SubscriptionID, &wi.KeyNum, &wi.ItemType, &wi.Title, &wi.Description,
 		&wi.Status, &wi.FlowStateID, &wi.FlowStateName, &wi.FlowStateCode,
@@ -1409,6 +1432,7 @@ func scanWorkItem(row scannable) (*WorkItem, error) {
 		&sprintRefID, &sprintRefAlias,
 		&wi.ParentID, &wi.RootFeatureID,
 		&wi.OwnerID, &wi.CreatedBy, &wi.CreatedAt, &wi.UpdatedAt, &wi.ArchivedAt,
+		&ownerRefID, &ownerDisplayName, &ownerAvatarURL,
 		&wi.ChildrenCount, &wi.RollupPoints,
 	)
 	if err != nil {
@@ -1416,6 +1440,13 @@ func scanWorkItem(row scannable) (*WorkItem, error) {
 	}
 	if sprintRefID != nil && sprintRefAlias != nil {
 		wi.Sprint = &SprintRef{ID: *sprintRefID, Alias: *sprintRefAlias}
+	}
+	if ownerRefID != nil {
+		dn := ""
+		if ownerDisplayName != nil {
+			dn = *ownerDisplayName
+		}
+		wi.Owner = &OwnerRef{ID: *ownerRefID, DisplayName: dn, AvatarURL: ownerAvatarURL}
 	}
 	return &wi, nil
 }

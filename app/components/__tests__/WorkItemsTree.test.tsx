@@ -71,6 +71,14 @@ const FIXTURE: WorkItem[] = Array.from({ length: 5 }, (_, i) => ({
   sprint: i === 0 ? { id: "sprint-1", alias: "S-1" } : null,
   parent_id: null,
   owner_id: `user-0000${i}`,
+  // PLA-0021 / 00459 (WS4-B) — first fixture row carries a real owner ref
+  // so the Owner-cell renderer test below can find an `[data-testid=
+  // "owner-chip"]`. Remaining rows leave owner=null so the "Unassigned"
+  // branch is also exercised by the same render.
+  owner:
+    i === 0
+      ? { id: "user-1", display_name: "Alice Doe", avatar_url: null }
+      : null,
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-06T00:00:00Z",
   children_count: 0,
@@ -152,7 +160,7 @@ describe("WorkItemsTree (PLA-0021 smoke)", () => {
     ]);
   });
 
-  it("renders the 7 work-items columns and 5 fixture rows", () => {
+  it("renders the 8 work-items columns and 5 fixture rows", () => {
     const { container } = render(
       <WorkItemsTree
         selectedId={null}
@@ -162,11 +170,14 @@ describe("WorkItemsTree (PLA-0021 smoke)", () => {
     );
 
     // Headers — sort buttons render the column label as text.
+    // PLA-0021 / 00459 (WS4-B) — "PtsOwner" was split into "Pts" and a new
+    // dedicated "Owner" column rendered by <OwnerChip>.
     expect(screen.getByText("ID")).toBeTruthy();
     expect(screen.getByText("Summary")).toBeTruthy();
     expect(screen.getByText("Status")).toBeTruthy();
     expect(screen.getByText("Pri")).toBeTruthy();
-    expect(screen.getByText("PtsOwner")).toBeTruthy();
+    expect(screen.getByText("Pts")).toBeTruthy();
+    expect(screen.getByText("Owner")).toBeTruthy();
     expect(screen.getByText("Sprint")).toBeTruthy();
     expect(screen.getByText("Due")).toBeTruthy();
 
@@ -243,5 +254,34 @@ describe("WorkItemsTree (PLA-0021 smoke)", () => {
     expect(handles.length).toBe(5);
     const rankRows = container.querySelectorAll("[data-rank-row-id]");
     expect(rankRows.length).toBe(5);
+  });
+
+  // PLA-0021 / 00459 (WS4-B) — AC46: the Owner column renders <OwnerChip>
+  // (`[data-testid="owner-chip"]`) on every body row. Row 0 carries a real
+  // owner ref ("Alice Doe", avatar_url=null); rows 1..4 have owner=null and
+  // therefore render the chip's "Unassigned" branch — both branches must
+  // still surface the same testid so a parent can locate the chip.
+  it("renders an OwnerChip in every body row of the Owner column", () => {
+    const { container } = render(
+      <WorkItemsTree
+        selectedId={null}
+        onSelect={() => undefined}
+        onPatched={() => undefined}
+      />,
+    );
+
+    const ownerCells = container.querySelectorAll(
+      "tbody td.tree_accordion-dense__cell--owner",
+    );
+    expect(ownerCells.length).toBe(5);
+
+    // Every Owner cell embeds an OwnerChip (named-owner row + Unassigned).
+    for (const cell of Array.from(ownerCells)) {
+      const chip = cell.querySelector('[data-testid="owner-chip"]');
+      expect(chip).not.toBeNull();
+    }
+
+    // Row 0's chip carries the seeded display_name.
+    expect(ownerCells[0].textContent ?? "").toMatch(/Alice Doe/);
   });
 });

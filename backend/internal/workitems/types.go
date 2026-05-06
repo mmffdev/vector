@@ -50,11 +50,30 @@ type WorkItem struct {
 	ParentID       *string    `json:"parent_id"`
 	RootFeatureID  *string    `json:"root_feature_id"`
 	OwnerID        string     `json:"owner_id"`
+	Owner          *OwnerRef  `json:"owner"`
 	CreatedBy      string     `json:"created_by"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	ArchivedAt     *time.Time `json:"archived_at"`
 	ChildrenCount  int        `json:"children_count"`
+}
+
+// OwnerRef is the slim user projection embedded on each WorkItem when the
+// row's owner_id resolves to a real users row. PLA-0021 / 00459 — replaces
+// the synthetic ownerGlyph() placeholder so the wire row carries a stable
+// display name + (future) avatar URL the frontend can render directly.
+//
+// DisplayName is derived in SQL via
+//   COALESCE(NULLIF(TRIM(first_name || ' ' || last_name), ''), email)
+// so the field is always a non-empty string for any active user. AvatarURL
+// is exposed as a nullable wire field today (the users table has no avatar
+// storage column yet); when storage lands, the SELECT changes — the wire
+// shape stays stable, no client breakage. Stays nil only when the join
+// fails (deleted/missing user); writers continue to set OwnerID directly.
+type OwnerRef struct {
+	ID          string  `json:"id"`
+	DisplayName string  `json:"display_name"`
+	AvatarURL   *string `json:"avatar_url"`
 }
 
 // SprintRef is the slim sprint projection embedded on each WorkItem when
