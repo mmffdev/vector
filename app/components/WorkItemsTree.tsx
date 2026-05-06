@@ -90,6 +90,7 @@ export default function WorkItemsTree({
         loading={loadingWindow}
         filterChips={<WorkItemsFilterChips />}
         ariaLabel="Work items dense grid"
+        name="workitems"
       />
     </div>
   );

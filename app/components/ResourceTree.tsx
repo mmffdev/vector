@@ -33,6 +33,26 @@ import {
   MdExpandMore,
 } from "react-icons/md";
 import { BsArrowsCollapse, BsArrowsExpand } from "react-icons/bs";
+import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
+
+// PLA-0021 / 00446 — closed vocabulary of prop-set sub-addresses registered
+// inside every ResourceTree's address scope. Samantha resolves each one to
+// surface help / anchors / overrides scoped to that prop set.
+const PROP_SET_NAMES = [
+  "data",
+  "scaffold",
+  "features",
+  "cogmenu",
+  "colour",
+] as const;
+
+// Invisible leaf — its only job is to call useRegisterAddressable so the row
+// lands in the registry. Mounted inside ResourceTree's Provider so its parent
+// is the tree's address.
+function PropSetSubAddressable({ name }: { name: (typeof PROP_SET_NAMES)[number] }) {
+  useRegisterAddressable({ kind: "propset", name });
+  return null;
+}
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -150,6 +170,12 @@ export interface ResourceTreeProps<T> {
 
   // Accessibility label for the underlying <table>.
   ariaLabel: string;
+
+  // PLA-0021 / 00446 — addressable substrate name. When provided, the tree
+  // registers itself as samantha.<page>._tree.<name> and emits 5 prop-set
+  // sub-addresses inside its scope. Required for any tree mounted inside a
+  // <Panel>/<ViewportSlot>; optional for tests that mount the bare component.
+  name?: string;
 }
 
 // ─── Sort header icon ─────────────────────────────────────────────────────────
@@ -549,7 +575,34 @@ export function PrimaryCellExpander(props: {
 
 // ─── ResourceTree ─────────────────────────────────────────────────────────────
 
-export function ResourceTree<T>({
+// PLA-0021 / 00446 — addressable wrapper. When `name` is provided, registers
+// samantha.<parent>._tree.<name> and emits 5 prop-set sub-addresses inside its
+// scope. When `name` is absent (test mounts), the body renders bare.
+export function ResourceTree<T>(props: ResourceTreeProps<T>) {
+  if (props.name) {
+    return <ResourceTreeAddressed {...props} name={props.name} />;
+  }
+  return <ResourceTreeImpl {...props} />;
+}
+
+function ResourceTreeAddressed<T>(props: ResourceTreeProps<T> & { name: string }) {
+  const { address, addressable_id, Provider } = useRegisterAddressable({
+    kind: "tree",
+    name: props.name,
+  });
+  return (
+    <Provider>
+      <div data-addressable-id={addressable_id ?? undefined} data-address={address}>
+        {PROP_SET_NAMES.map((n) => (
+          <PropSetSubAddressable key={n} name={n} />
+        ))}
+        <ResourceTreeImpl {...props} />
+      </div>
+    </Provider>
+  );
+}
+
+function ResourceTreeImpl<T>({
   // Data
   roots,
   total,
@@ -582,7 +635,10 @@ export function ResourceTree<T>({
   filterChips,
   // a11y
   ariaLabel,
+  // Addressables (00446) — consumed by the wrapper, not the body.
+  name: _name,
 }: ResourceTreeProps<T>) {
+  void _name;
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [childMap, setChildMap] = useState<Record<string, T[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);

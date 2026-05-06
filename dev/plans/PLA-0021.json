@@ -2,13 +2,13 @@
   "id": "PLA-0021",
   "title": "ResourceTree \u2014 generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap)",
   "date_created": "2026-05-06",
-  "date_started": null,
+  "date_started": "2026-05-06",
   "date_last_updated": "2026-05-06",
   "date_finished": null,
   "scope": "<p><code>WorkItemsTree</code> is refactored into two layers: a generic <code>&lt;ResourceTree&gt;</code> primitive that accepts five prop sets (Data types, UI scaffold, Feature requirements, Cog menu, Colour overrides) and a thin <code>WorkItemsTree</code> preset wrapper that passes the work-items configuration. The five prop-set configs are registered in the addressables registry (PLA-0005) under stable addresses such as <code>samantha.work-items._tree.workitems</code>. Future adopters (PortfolioItemsTree, TopologyTree, etc.) get all 28 features for free by passing their own prop sets. The 28 features from R042 \u00a70.B are implemented in ranked order across work streams.</p>",
   "value": "<p>The current <code>WorkItemsTree</code> has 14 \u274c missing features, 4 \ud83d\udce6 stubbed features (fake sprint, owner, due-date columns), and 2 \ud83d\udea7 partial features from the R042 feature matrix \u2014 covering only inline-edit, server-sort on id only, and ad-hoc realtime. Users see synthetic data in three columns. DnD rank code exists but is parked in <code>reference/dnd_tree.tsx</code> and not wired. This plan delivers the full feature set in importance order, with ResourceTree as a reusable primitive so every future tree view inherits the complete capability stack including realtime sync, RBAC-gated columns, URL deep-linking, streaming skeletons, and mobile responsive layout \u2014 features Rally never had.</p>",
   "implementation_plan": [
-    "WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx \u2014 generic component accepting Sets 1\u20135 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry",
+    "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx \u2014 generic component accepting Sets 1\u20135 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> \u2713",
     "WS1-B: Restore DnD rank from reference/dnd_tree.tsx; wire useResourceRank + applyDrop + snapshot rollback into ResourceTree; add PATCH /api/work-items/:id/rank { before_id?, after_id? } backend handler",
     "WS2-A: Replace stub filter chips with controlled chip rows in WorkItemsTree props; thread filter state into URL via PLA-0018 nuqs params; backend: append ?type=&status=&assignee= to list query",
     "WS2-B: Promote sort to URL query param + server ORDER BY on all sortable columns; remove client-window sort branches from WorkItemsTree",
@@ -95,14 +95,14 @@
       "title": "Refactor: extract ResourceTree primitive; WorkItemsTree becomes preset wrapper",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 2,
       "title": "Register 5 prop-set configs at samantha.work-items._tree.workitems",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 3,
@@ -126,7 +126,8 @@
       "proven_by": "exports generic <ResourceTree> accepting Sets 1-5 props",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 2,
@@ -134,7 +135,8 @@
       "proven_by": "imports ResourceTree and passes work-items config (\u2264100 lines)",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 3,
@@ -142,7 +144,8 @@
       "proven_by": "rows, indent, expand, inline-edit, sort header all unchanged",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 4,
@@ -150,7 +153,8 @@
       "proven_by": "no lint or typecheck regressions",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 5,
@@ -158,7 +162,7 @@
       "proven_by": "plus 5 sub-addresses _set1.data, _set2.scaffold, _set3.features, _set4.cogmenu, _set5.colour",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -166,7 +170,7 @@
       "proven_by": "under work-items namespace",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "done": false
+      "done": true
     },
     {
       "order": 7,
@@ -174,7 +178,7 @@
       "proven_by": "no missing-from-snapshot warnings",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -243,7 +247,7 @@
     "docs/c_c_table_component.md \u2014 <Table> component (PLA-0015); ResourceTree is a separate primitive for unlimited-depth DnD trees"
   ],
   "work_item_backlog_roadmap": [
-    "WS1-A: Extract ResourceTree + register prop sets in addressables",
+    "<s>WS1-A: Extract ResourceTree + register prop sets in addressables</s> \u2713",
     "WS1-B: Restore DnD rank (reference/dnd_tree.tsx \u2192 ResourceTree)",
     "WS2-A: Filter chips controlled + URL-threaded",
     "WS2-B: Promote sort to URL + server ORDER BY all columns",
@@ -280,7 +284,7 @@
     "Sprint and Owner columns show real data \u2014 no 'S-' prefix from UUID hex, no 2-char monogram from UUID",
     "Due date column shows real dates from work_items.due_date; inline date editor saves to the column",
     "Multi-select: checking 3 rows shows BulkActionBar; bulk-archive sends POST /api/work-items/bulk and all 3 rows disappear",
-    "ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry",
+    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s>",
     "go test ./... passes; npm run build succeeds; lint:addressables passes"
   ]
 }
