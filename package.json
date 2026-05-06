@@ -13,6 +13,7 @@
     "lint:dev-css": "python3 dev/scripts/lint_dev_css.py",
     "lint:secondary-nav": "python3 dev/scripts/lint_secondary_nav.py",
     "lint:no-raw-table": "python3 dev/scripts/lint_no_raw_table.py",
+    "lint:tab-deep-link": "python3 dev/scripts/lint_tab_deep_link.py",
     "audit:dashboard": "python3 dev/scripts/audit_dashboard.py",
     "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'",
     "test": "vitest run",
