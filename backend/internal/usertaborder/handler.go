@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 type Handler struct {
@@ -27,17 +28,17 @@ type listResp struct {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	pageID := chi.URLParam(r, "pageId")
 	if pageID == "" {
-		http.Error(w, "page_id required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "page_id required")
 		return
 	}
 	rows, err := h.Svc.List(r.Context(), u.ID, u.SubscriptionID, pageID)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, listResp{PageID: pageID, Items: rows})
@@ -54,17 +55,17 @@ type putReq struct {
 func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	pageID := chi.URLParam(r, "pageId")
 	if pageID == "" {
-		http.Error(w, "page_id required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "page_id required")
 		return
 	}
 	var body putReq
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
 		return
 	}
 	if err := h.Svc.Replace(r.Context(), u.ID, u.SubscriptionID, pageID, body.Items); err != nil {
@@ -76,10 +77,10 @@ func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrPageIDTooLong),
 			errors.Is(err, ErrDuplicateTab),
 			errors.Is(err, ErrBadPositions):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		default:
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 			return
 		}
 	}
@@ -90,16 +91,16 @@ func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	pageID := chi.URLParam(r, "pageId")
 	if pageID == "" {
-		http.Error(w, "page_id required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "page_id required")
 		return
 	}
 	if err := h.Svc.Reset(r.Context(), u.ID, u.SubscriptionID, pageID); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

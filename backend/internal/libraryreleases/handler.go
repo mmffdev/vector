@@ -23,6 +23,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 )
 
@@ -94,7 +95,7 @@ type countResponse struct {
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	if h.Reconciler != nil {
@@ -105,7 +106,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	}
 	tier, err := h.subscriptionTier(r.Context(), u.SubscriptionID)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if h.Reconciler != nil {
@@ -119,7 +120,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 		r.Context(), h.LibRO, h.VectorPool, u.SubscriptionID, tier,
 	)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, countResponse{Count: n, HasBlocking: blocking, Fresh: false})
@@ -132,19 +133,19 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	tier, err := h.subscriptionTier(r.Context(), u.SubscriptionID)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	releases, err := librarydb.ListReleasesSinceAck(
 		r.Context(), h.LibRO, h.VectorPool, u.SubscriptionID, tier,
 	)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	resp := listResponse{
@@ -163,21 +164,21 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	releaseID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid release id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid release id")
 		return
 	}
 	var body ackRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid body")
 		return
 	}
 	if !librarydb.IsValidAction(body.ActionTaken) {
-		http.Error(w, "invalid action_taken", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid action_taken")
 		return
 	}
 
@@ -186,10 +187,10 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 	// posted (no cross-DB FK to enforce this in Postgres).
 	if _, err := librarydb.FindRelease(r.Context(), h.LibRO, releaseID); err != nil {
 		if errors.Is(err, librarydb.ErrReleaseNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -198,7 +199,7 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 		u.SubscriptionID, releaseID, u.ID, body.ActionTaken,
 	)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 

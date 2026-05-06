@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
@@ -58,7 +59,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad request")
 		return
 	}
 	if req.Role == "" {
@@ -71,16 +72,16 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// code for the requested target.
 	want := targetRoleCreateCode(req.Role)
 	if want == "" {
-		http.Error(w, "unknown_target_role", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "unknown_target_role")
 		return
 	}
 	set, err := h.PermResolver.PermissionsFor(r.Context(), actor.ID)
 	if err != nil {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "forbidden")
 		return
 	}
 	if _, ok := set[want]; !ok {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "forbidden")
 		return
 	}
 	// Tenant always comes from the verified session, never the payload.
@@ -88,14 +89,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, SubscriptionID: actor.SubscriptionID}, actor.Role, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrDuplicateEmail) {
-			http.Error(w, err.Error(), http.StatusConflict)
+			httperr.Write(w, r, http.StatusConflict, err.Error())
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, 201, createResp{User: u, ResetURL: link})
@@ -105,7 +106,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	out, err := h.Svc.List(r.Context(), actor.SubscriptionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, 200, out)
@@ -123,12 +124,12 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "bad id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad id")
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad request")
 		return
 	}
 	if err := h.Svc.Update(r.Context(), id, UpdateInput{
@@ -139,14 +140,14 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		Department: req.Department,
 	}, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -156,19 +157,19 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "bad id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad id")
 		return
 	}
 	if err := h.Svc.Delete(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -183,20 +184,20 @@ func (h *Handler) IssueReset(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "bad id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad id")
 		return
 	}
 	link, err := h.Svc.IssueResetLink(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Look up the email from the same row for the response payload.

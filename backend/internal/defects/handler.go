@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 type Handler struct {
@@ -33,11 +34,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.TypeID == "" || req.Name == "" || req.Severity == "" {
-		http.Error(w, "type_id, name, and severity are required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "type_id, name, and severity are required")
 		return
 	}
 	defect, err := h.Svc.Create(r.Context(), u.SubscriptionID, u.ID, CreateInput{
@@ -53,15 +54,15 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrInvalidSeverity) {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			httperr.Write(w, r, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 		if err.Error() == "name cannot be empty" || err.Error() == "invalid type_id" ||
 			err.Error() == "invalid name_owner" || err.Error() == "invalid linked_story" {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusCreated, defect)
@@ -72,16 +73,16 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	defect, err := h.Svc.Get(r.Context(), u.SubscriptionID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, defect)
@@ -120,12 +121,12 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	defect, err := h.Svc.Patch(r.Context(), u.SubscriptionID, id, PatchInput{
@@ -157,14 +158,14 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
 		if errors.Is(err, ErrInvalidSeverity) {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			httperr.Write(w, r, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, defect)
@@ -175,15 +176,15 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

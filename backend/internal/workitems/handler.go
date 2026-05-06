@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // Handler exposes the work items domain over HTTP.
@@ -63,13 +64,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	items, err := h.Svc.ListWorkItems(r.Context(), u.SubscriptionID.String(), f)
 	if err != nil {
 		log.Printf("ListWorkItems error: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	total, err := h.Svc.CountWorkItems(r.Context(), u.SubscriptionID.String(), f)
 	if err != nil {
 		log.Printf("CountWorkItems error: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
@@ -90,7 +91,7 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.Svc.SummariseWorkItems(r.Context(), u.SubscriptionID.String(), sprintID)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -101,16 +102,16 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	wi, err := h.Svc.GetWorkItem(r.Context(), u.SubscriptionID.String(), id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, wi)
@@ -121,12 +122,12 @@ func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	items, err := h.Svc.ListChildren(r.Context(), u.SubscriptionID.String(), id)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
@@ -148,7 +149,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createWorkItemReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	wi, err := h.Svc.CreateWorkItem(r.Context(), u.SubscriptionID.String(), CreateWorkItemInput{
@@ -165,10 +166,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusCreated, wi)
@@ -189,12 +190,12 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchWorkItemReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	wi, err := h.Svc.PatchWorkItem(r.Context(), u.SubscriptionID.String(), id, PatchWorkItemInput{
@@ -209,11 +210,11 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 		case errors.Is(err, ErrInvalidInput):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		default:
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		}
 		return
 	}
@@ -225,15 +226,15 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.ArchiveWorkItem(r.Context(), u.SubscriptionID.String(), id); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -246,16 +247,16 @@ func (h *Handler) ListFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	fvs, err := h.Svc.ListFieldValues(r.Context(), u.SubscriptionID.String(), id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"field_values": fvs})
@@ -274,12 +275,12 @@ func (h *Handler) UpsertFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var reqs []upsertFieldValueReq
 	if err := json.NewDecoder(r.Body).Decode(&reqs); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	subID := u.SubscriptionID.String()
@@ -294,18 +295,18 @@ func (h *Handler) UpsertFieldValues(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrNotFound), errors.Is(err, ErrFieldNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
+				httperr.Write(w, r, http.StatusNotFound, err.Error())
 			case errors.Is(err, ErrWrongValueColumn), errors.Is(err, ErrInvalidInput):
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			default:
-				http.Error(w, "internal error", http.StatusInternalServerError)
+				httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 			}
 			return
 		}
 	}
 	fvs, err := h.Svc.ListFieldValues(r.Context(), subID, id)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"field_values": fvs})
@@ -316,20 +317,20 @@ func (h *Handler) DeleteFieldValue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	fvID, err := uuid.Parse(chi.URLParam(r, "field_library_id"))
 	if err != nil {
-		http.Error(w, "invalid field_library_id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid field_library_id")
 		return
 	}
 	if err := h.Svc.DeleteFieldValue(r.Context(), u.SubscriptionID.String(), id, fvID); err != nil {
 		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrFieldNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -342,7 +343,7 @@ func (h *Handler) ListSprints(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	sprints, err := h.Svc.ListSprints(r.Context(), u.SubscriptionID.String())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": sprints})
@@ -353,16 +354,16 @@ func (h *Handler) GetSprint(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	sp, err := h.Svc.GetSprint(r.Context(), u.SubscriptionID.String(), id)
 	if err != nil {
 		if errors.Is(err, ErrSprintNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, sp)
@@ -380,7 +381,7 @@ func (h *Handler) CreateSprint(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createSprintReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	sp, err := h.Svc.CreateSprint(r.Context(), u.SubscriptionID.String(), CreateSprintInput{
@@ -392,10 +393,10 @@ func (h *Handler) CreateSprint(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusCreated, sp)
@@ -414,12 +415,12 @@ func (h *Handler) PatchSprint(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchSprintReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	sp, err := h.Svc.PatchSprint(r.Context(), u.SubscriptionID.String(), id, PatchSprintInput{
@@ -432,13 +433,13 @@ func (h *Handler) PatchSprint(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrSprintNotFound):
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 		case errors.Is(err, ErrConflict):
-			http.Error(w, err.Error(), http.StatusConflict)
+			httperr.Write(w, r, http.StatusConflict, err.Error())
 		case errors.Is(err, ErrInvalidInput):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		default:
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		}
 		return
 	}
@@ -450,15 +451,15 @@ func (h *Handler) ArchiveSprint(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.ArchiveSprint(r.Context(), u.SubscriptionID.String(), id); err != nil {
 		if errors.Is(err, ErrSprintNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -471,7 +472,7 @@ func (h *Handler) ListCustomFields(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	fields, err := h.Svc.ListCustomFields(r.Context(), u.SubscriptionID.String())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": fields})
@@ -482,16 +483,16 @@ func (h *Handler) GetCustomField(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	cf, err := h.Svc.GetCustomField(r.Context(), u.SubscriptionID.String(), id)
 	if err != nil {
 		if errors.Is(err, ErrFieldNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, cf)
@@ -510,7 +511,7 @@ func (h *Handler) CreateCustomField(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createCustomFieldReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	cf, err := h.Svc.CreateCustomField(r.Context(), u.SubscriptionID.String(), CreateCustomFieldInput{
@@ -524,11 +525,11 @@ func (h *Handler) CreateCustomField(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrConflict):
-			http.Error(w, err.Error(), http.StatusConflict)
+			httperr.Write(w, r, http.StatusConflict, err.Error())
 		case errors.Is(err, ErrInvalidInput):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		default:
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		}
 		return
 	}
@@ -546,12 +547,12 @@ func (h *Handler) PatchCustomField(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchCustomFieldReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	cf, err := h.Svc.PatchCustomField(r.Context(), u.SubscriptionID.String(), id, PatchCustomFieldInput{
@@ -561,10 +562,10 @@ func (h *Handler) PatchCustomField(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrFieldNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, cf)
@@ -575,15 +576,15 @@ func (h *Handler) ArchiveCustomField(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.ArchiveCustomField(r.Context(), u.SubscriptionID.String(), id); err != nil {
 		if errors.Is(err, ErrFieldNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -596,7 +597,7 @@ func (h *Handler) ListTemplates(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	templates, err := h.Svc.ListTemplates(r.Context(), u.SubscriptionID.String())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": templates})
@@ -607,16 +608,16 @@ func (h *Handler) GetTemplate(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	t, err := h.Svc.GetTemplate(r.Context(), u.SubscriptionID.String(), id)
 	if err != nil {
 		if errors.Is(err, ErrTemplateNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, t)
@@ -633,7 +634,7 @@ func (h *Handler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createTemplateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	t, err := h.Svc.CreateTemplate(r.Context(), u.SubscriptionID.String(), CreateTemplateInput{
@@ -645,11 +646,11 @@ func (h *Handler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrConflict):
-			http.Error(w, err.Error(), http.StatusConflict)
+			httperr.Write(w, r, http.StatusConflict, err.Error())
 		case errors.Is(err, ErrInvalidInput):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		default:
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		}
 		return
 	}
@@ -667,12 +668,12 @@ type addTemplateFieldReq struct {
 func (h *Handler) AddTemplateField(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req addTemplateFieldReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	tf, err := h.Svc.AddTemplateField(r.Context(), id, AddTemplateFieldInput{
@@ -683,10 +684,10 @@ func (h *Handler) AddTemplateField(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrConflict) {
-			http.Error(w, err.Error(), http.StatusConflict)
+			httperr.Write(w, r, http.StatusConflict, err.Error())
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusCreated, tf)
@@ -696,15 +697,15 @@ func (h *Handler) AddTemplateField(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) RemoveTemplateField(w http.ResponseWriter, r *http.Request) {
 	fieldID, err := uuid.Parse(chi.URLParam(r, "field_library_id"))
 	if err != nil {
-		http.Error(w, "invalid field_library_id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid field_library_id")
 		return
 	}
 	if err := h.Svc.RemoveTemplateField(r.Context(), fieldID); err != nil {
 		if errors.Is(err, ErrFieldNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -720,7 +721,7 @@ func (h *Handler) ListFlowStates(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	states, err := h.Svc.ListFlowStates(r.Context(), u.SubscriptionID.String())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"states": states})

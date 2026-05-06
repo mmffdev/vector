@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 type Handler struct {
@@ -25,7 +26,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	pages, err := h.Svc.ListPagesOnly(r.Context(), u.ID, u.SubscriptionID)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, listResp{Pages: pages})
@@ -36,16 +37,16 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	page, err := h.Svc.Get(r.Context(), u.ID, u.SubscriptionID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -61,7 +62,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
 		return
 	}
 	page, err := h.Svc.Create(r.Context(), u.ID, u.SubscriptionID, req.Label, req.Icon)
@@ -71,10 +72,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrLabelTooLong),
 			errors.Is(err, ErrDuplicateLabel),
 			errors.Is(err, ErrPageCap):
-			http.Error(w, "invalid request", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusCreated, page)
@@ -90,27 +91,27 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request")
 		return
 	}
 	page, err := h.Svc.Patch(r.Context(), u.ID, u.SubscriptionID, id, PatchInput{Label: req.Label, Icon: req.Icon})
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		case errors.Is(err, ErrEmptyLabel),
 			errors.Is(err, ErrLabelTooLong),
 			errors.Is(err, ErrDuplicateLabel):
-			http.Error(w, "invalid request", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid request")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -121,15 +122,15 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.Delete(r.Context(), u.ID, u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

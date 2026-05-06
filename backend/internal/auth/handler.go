@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/security"
@@ -113,7 +114,7 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *models.User) userPayl
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad request")
 		return
 	}
 	ip := clientIP(r)
@@ -131,7 +132,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusInternalServerError
 			msg = "internal error"
 		}
-		http.Error(w, msg, status)
+		httperr.Write(w, r, status, msg)
 		return
 	}
 	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
@@ -142,13 +143,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("rt")
 	if err != nil || c.Value == "" {
-		http.Error(w, "no refresh token", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "no refresh token")
 		return
 	}
 	res, err := h.Svc.Refresh(r.Context(), c.Value, clientIP(r), r.UserAgent())
 	if err != nil {
 		clearRefreshCookie(w)
-		http.Error(w, "token expired", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "token expired")
 		return
 	}
 	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
@@ -168,7 +169,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	writeJSON(w, 200, h.buildUserPayload(r.Context(), u))
@@ -182,20 +183,20 @@ type changePwdReq struct {
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	var req changePwdReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad request")
 		return
 	}
 	if err := h.Svc.ChangePassword(r.Context(), u.ID, req.Current, req.New, clientIP(r)); err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			http.Error(w, "invalid current password", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, "invalid current password")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -220,15 +221,15 @@ type resetConfirmReq struct {
 func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 	var req resetConfirmReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad request")
 		return
 	}
 	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, clientIP(r)); err != nil {
 		if errors.Is(err, ErrTokenExpired) {
-			http.Error(w, "token expired or used", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "token expired or used")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

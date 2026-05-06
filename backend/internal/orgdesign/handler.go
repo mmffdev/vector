@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // Handler exposes Service over HTTP under /api/topology. The router
@@ -134,7 +135,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createNodeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	n, err := h.Svc.CreateNode(r.Context(), CreateNodeInput{
@@ -153,7 +154,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		Position:         req.Position,
 	})
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -184,23 +185,23 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchNodeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	hasMove := req.ParentID != nil || (req.ClearRoot != nil && *req.ClearRoot)
 	hasFields := req.Name != nil || req.Description != nil || req.LabelOverride != nil ||
 		req.Icon != nil || req.Colour != nil || req.AvatarURL != nil
 	if hasMove && hasFields {
-		http.Error(w, "patch may set move OR field updates, not both", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "patch may set move OR field updates, not both")
 		return
 	}
 	if !hasMove && !hasFields {
-		http.Error(w, "patch requires at least one field", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "patch requires at least one field")
 		return
 	}
 	if hasMove {
@@ -211,7 +212,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			newParent = req.ParentID
 		}
 		if err := h.Svc.MoveNode(r.Context(), u.SubscriptionID, id, newParent); err != nil {
-			writeErr(w, err)
+			writeErr(w, r, err)
 			return
 		}
 		h.logAudit(r.Context(), audit.Entry{
@@ -234,7 +235,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		Colour:        req.Colour,
 		AvatarURL:     req.AvatarURL,
 	}); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	meta := map[string]any{}
@@ -283,11 +284,11 @@ func (h *Handler) Disconnect(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.DisconnectNode(r.Context(), u.SubscriptionID, id); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -304,7 +305,7 @@ func (h *Handler) Disconnected(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	nodes, err := h.Svc.ListDisconnected(r.Context(), u.SubscriptionID)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, nodes)
@@ -315,7 +316,7 @@ func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	levels, err := h.Svc.ListLevels(r.Context(), u.SubscriptionID)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, levels)
@@ -326,7 +327,7 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createLevelReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	l, err := h.Svc.CreateLevel(r.Context(), CreateLevelInput{
@@ -336,7 +337,7 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 		Position:       req.Position,
 	})
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -354,16 +355,16 @@ func (h *Handler) RenameLevel(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req renameLevelReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if err := h.Svc.RenameLevel(r.Context(), u.SubscriptionID, id, req.Name); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -381,7 +382,7 @@ func (h *Handler) CommitStatus(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	st, err := h.Svc.GetCommitStatus(r.Context(), u.SubscriptionID)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, st)
@@ -392,7 +393,7 @@ func (h *Handler) Commit(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	st, err := h.Svc.Commit(r.Context(), u.SubscriptionID, u.ID, string(u.Role))
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -410,7 +411,7 @@ func (h *Handler) Reset(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	count, err := h.Svc.ResetCanvas(r.Context(), u.SubscriptionID, u.ID, string(u.Role))
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -429,11 +430,11 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.ArchiveNode(r.Context(), u.SubscriptionID, id); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -457,12 +458,12 @@ func (h *Handler) Duplicate(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	n, err := h.Svc.DuplicateSubtree(r.Context(), u.SubscriptionID, id)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -483,7 +484,7 @@ func (h *Handler) BulkPosition(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req bulkPositionReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if len(req.Updates) == 0 {
@@ -501,7 +502,7 @@ func (h *Handler) BulkPosition(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := h.Svc.BulkPosition(r.Context(), u.SubscriptionID, updates); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -544,7 +545,7 @@ func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 	} else {
 		parsed, err := uuid.Parse(rootParam)
 		if err != nil {
-			http.Error(w, "invalid root id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid root id")
 			return
 		}
 		rootID = parsed
@@ -552,7 +553,7 @@ func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 
 	nodes, err := h.Svc.Subtree(r.Context(), u.SubscriptionID, rootID)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, nodes)
@@ -569,12 +570,12 @@ func (h *Handler) ArchivedDescendants(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	descendants, err := h.Svc.ArchivedDescendants(r.Context(), u.SubscriptionID, id)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, descendants)
@@ -591,7 +592,7 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req struct {
@@ -601,12 +602,12 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	// EOF so callers can send Content-Length:0.
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 			return
 		}
 	}
 	if err := h.Svc.RestoreNode(r.Context(), u.SubscriptionID, id, req.NewParentID); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -628,12 +629,12 @@ func (h *Handler) Ancestors(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	nodes, err := h.Svc.AncestorsOf(r.Context(), u.SubscriptionID, id)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, nodes)
@@ -644,17 +645,17 @@ func (h *Handler) GrantRole(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	nodeID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req grantRoleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	grantID, err := h.Svc.GrantRole(r.Context(), u.SubscriptionID, nodeID, req.UserID, req.Role, u.ID, string(u.Role), req.CanRedelegate)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -677,11 +678,11 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	grantID, err := uuid.Parse(chi.URLParam(r, "grant_id"))
 	if err != nil {
-		http.Error(w, "invalid grant_id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid grant_id")
 		return
 	}
 	if err := h.Svc.RevokeRole(r.Context(), u.SubscriptionID, grantID, u.ID); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	h.logAudit(r.Context(), audit.Entry{
@@ -698,16 +699,16 @@ func (h *Handler) ViewState(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	nodeID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req viewStateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if err := h.Svc.SetViewState(r.Context(), u.SubscriptionID, nodeID, u.ID, req.Collapsed); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -724,14 +725,14 @@ func (h *Handler) PreviewMove(w http.ResponseWriter, r *http.Request) {
 	nodeIDStr := r.URL.Query().Get("node")
 	nodeID, err := uuid.Parse(nodeIDStr)
 	if err != nil {
-		http.Error(w, "invalid node id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid node id")
 		return
 	}
 	var newParent *uuid.UUID
 	if pidStr := r.URL.Query().Get("new_parent"); pidStr != "" {
 		pid, err := uuid.Parse(pidStr)
 		if err != nil {
-			http.Error(w, "invalid new_parent id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid new_parent id")
 			return
 		}
 		newParent = &pid
@@ -756,7 +757,7 @@ func (h *Handler) PreviewMove(w http.ResponseWriter, r *http.Request) {
 			SELECT EXISTS(SELECT 1 FROM up WHERE id = $2)
 		`, *newParent, nodeID, u.SubscriptionID).Scan(&ancestor)
 		if err != nil {
-			writeErr(w, err)
+			writeErr(w, r, err)
 			return
 		}
 		if ancestor {
@@ -767,14 +768,14 @@ func (h *Handler) PreviewMove(w http.ResponseWriter, r *http.Request) {
 
 	moving, err := h.Svc.Subtree(r.Context(), u.SubscriptionID, nodeID)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	var landing []Node
 	if newParent != nil {
 		landing, err = h.Svc.AncestorsOf(r.Context(), u.SubscriptionID, *newParent)
 		if err != nil {
-			writeErr(w, err)
+			writeErr(w, r, err)
 			return
 		}
 	}
@@ -795,36 +796,36 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // writeErr maps the package's sentinel errors to HTTP statuses per the
 // contract documented at the top of service.go.
-func writeErr(w http.ResponseWriter, err error) {
+func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrNodeNotFound), errors.Is(err, ErrTenantMismatch), errors.Is(err, ErrGrantNotFound):
-		http.Error(w, "not found", http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, "not found")
 	case errors.Is(err, ErrCycleDetected):
-		http.Error(w, "move would create a cycle", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "move would create a cycle")
 	case errors.Is(err, ErrInvalidLayoutMode):
-		http.Error(w, "invalid layout_mode", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid layout_mode")
 	case errors.Is(err, ErrInvalidRole):
-		http.Error(w, "invalid role", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid role")
 	case errors.Is(err, ErrInvalidName):
-		http.Error(w, "name must be non-empty", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "name must be non-empty")
 	case errors.Is(err, ErrManualXYRequired):
-		http.Error(w, "manual layout requires manual_x and manual_y", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "manual layout requires manual_x and manual_y")
 	case errors.Is(err, ErrManualXYForbidden):
-		http.Error(w, "manual_x/manual_y only allowed in manual layout", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "manual_x/manual_y only allowed in manual layout")
 	case errors.Is(err, ErrAdminAlreadyGranted):
-		http.Error(w, "an admin grant already exists for this node", http.StatusConflict)
+		httperr.Write(w, r, http.StatusConflict, "an admin grant already exists for this node")
 	case errors.Is(err, ErrDelegationDepth):
-		http.Error(w, "delegation depth exceeded — only gadmin may grant in MVP", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "delegation depth exceeded — only gadmin may grant in MVP")
 	case errors.Is(err, ErrRedelegationDisabled):
-		http.Error(w, "can_redelegate is reserved for Phase X", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "can_redelegate is reserved for Phase X")
 	case errors.Is(err, ErrLevelNotFound):
-		http.Error(w, "level not found", http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, "level not found")
 	case errors.Is(err, ErrInvalidLevelDepth):
-		http.Error(w, "level depth must be >= 0", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "level depth must be >= 0")
 	case errors.Is(err, ErrCommitForbidden):
-		http.Error(w, "only gadmin may commit the topology working model", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "only gadmin may commit the topology working model")
 	case errors.Is(err, ErrResetForbidden):
-		http.Error(w, "only gadmin may reset the topology canvas", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "only gadmin may reset the topology canvas")
 	case errors.Is(err, ErrNotArchived):
 		// 409: client asked to restore a live node — semantic conflict,
 		// not a 400 (request was well-formed and authorised).
@@ -834,6 +835,6 @@ func writeErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrParentMissing):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "parent_missing"})
 	default:
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 	}
 }

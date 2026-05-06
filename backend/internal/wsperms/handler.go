@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 type Handler struct{ Svc *Service }
@@ -28,7 +29,7 @@ func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	var req grantReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad request")
 		return
 	}
 	p, err := h.Svc.Grant(r.Context(), GrantInput{
@@ -37,10 +38,10 @@ func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 	}, actor.SubscriptionID, actor.ID, clientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, 200, p)
@@ -50,15 +51,15 @@ func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "bad id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "bad id")
 		return
 	}
 	if err := h.Svc.Revoke(r.Context(), id, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -70,12 +71,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if uid := q.Get("user_id"); uid != "" {
 		id, err := uuid.Parse(uid)
 		if err != nil {
-			http.Error(w, "bad user_id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "bad user_id")
 			return
 		}
 		out, err := h.Svc.ListForUser(r.Context(), id, actor.SubscriptionID)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeJSON(w, 200, out)
@@ -84,22 +85,22 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if wid := q.Get("workspace_id"); wid != "" {
 		id, err := uuid.Parse(wid)
 		if err != nil {
-			http.Error(w, "bad workspace_id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "bad workspace_id")
 			return
 		}
 		out, err := h.Svc.ListForWorkspace(r.Context(), id, actor.SubscriptionID)
 		if err != nil {
 			if errors.Is(err, ErrNotFound) {
-				http.Error(w, "not found", http.StatusNotFound)
+				httperr.Write(w, r, http.StatusNotFound, "not found")
 				return
 			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httperr.Write(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeJSON(w, 200, out)
 		return
 	}
-	http.Error(w, "user_id or workspace_id required", http.StatusBadRequest)
+	httperr.Write(w, r, http.StatusBadRequest, "user_id or workspace_id required")
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

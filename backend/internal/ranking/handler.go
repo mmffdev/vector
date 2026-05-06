@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // Handler exposes the rank service over HTTP. One generic endpoint
@@ -36,19 +37,19 @@ type moveReq struct {
 func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	var body moveReq
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid json")
 		return
 	}
 
 	rowID, err := uuid.Parse(body.RowID)
 	if err != nil {
-		http.Error(w, "invalid row_id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid row_id")
 		return
 	}
 
@@ -62,7 +63,7 @@ func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 	if body.Before != nil {
 		id, err := uuid.Parse(*body.Before)
 		if err != nil {
-			http.Error(w, "invalid before id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid before id")
 			return
 		}
 		req.Before = &id
@@ -70,7 +71,7 @@ func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 	if body.After != nil {
 		id, err := uuid.Parse(*body.After)
 		if err != nil {
-			http.Error(w, "invalid after id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid after id")
 			return
 		}
 		req.After = &id
@@ -78,25 +79,25 @@ func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Svc.Move(r.Context(), req)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, result)
 }
 
-func writeError(w http.ResponseWriter, err error) {
+func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrUnknownResource), errors.Is(err, ErrInvalidArgument):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 	case errors.Is(err, ErrForbidden):
-		http.Error(w, err.Error(), http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, err.Error())
 	case errors.Is(err, ErrRowNotFound):
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrScopeMismatch):
-		http.Error(w, err.Error(), http.StatusConflict)
+		httperr.Write(w, r, http.StatusConflict, err.Error())
 	default:
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 	}
 }
 

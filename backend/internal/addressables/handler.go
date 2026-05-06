@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // Handler exposes the addressables Service over chi.
@@ -69,32 +70,32 @@ type buildReconcileResp struct {
 // CI script's log line.
 func (h *Handler) BuildReconcile(w http.ResponseWriter, r *http.Request) {
 	if h.ciToken == "" {
-		http.Error(w, "build-reconcile disabled (no CI token configured)", http.StatusServiceUnavailable)
+		httperr.Write(w, r, http.StatusServiceUnavailable, "build-reconcile disabled (no CI token configured)")
 		return
 	}
 	if r.Header.Get("X-CI-Token") != h.ciToken {
-		http.Error(w, "invalid CI token", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "invalid CI token")
 		return
 	}
 
 	var req buildReconcileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if strings.TrimSpace(req.PageRoute) == "" {
-		http.Error(w, "page_route required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "page_route required")
 		return
 	}
 	slot, err := ParseSlot(req.Slot)
 	if err != nil {
-		http.Error(w, "invalid slot", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid slot")
 		return
 	}
 
 	addresses, counts, err := h.Svc.RegisterFromBuildWithCounts(r.Context(), req.PageRoute, slot, req.Tree)
 	if err != nil {
-		writeServiceErr(w, err)
+		writeServiceErr(w, r, err)
 		return
 	}
 
@@ -131,12 +132,12 @@ type registerResp struct {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	source, err := ParseSource(req.Source)
 	if err != nil || source == SourceBuild {
-		http.Error(w, "source must be 'runtime' or 'custom_app'", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "source must be 'runtime' or 'custom_app'")
 		return
 	}
 
@@ -146,37 +147,37 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		// custom_app source requires a configured matching token.
 		if source == SourceCustomApp {
 			if h.customAppToken == "" || r.Header.Get("X-Custom-App-Token") != h.customAppToken {
-				http.Error(w, "custom-app token required in production", http.StatusForbidden)
+				httperr.Write(w, r, http.StatusForbidden, "custom-app token required in production")
 				return
 			}
 		}
 		// runtime source is unconditionally refused in production. The
 		// Service enforces this too — handler check returns 403 directly.
 		if source == SourceRuntime {
-			http.Error(w, "runtime registration refused in production", http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, "runtime registration refused in production")
 			return
 		}
 	}
 
 	slot, err := ParseSlot(req.Slot)
 	if err != nil {
-		http.Error(w, "invalid slot", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid slot")
 		return
 	}
 	if strings.TrimSpace(req.PageRoute) == "" {
-		http.Error(w, "page_route required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "page_route required")
 		return
 	}
 
 	var customAppID *uuid.UUID
 	if source == SourceCustomApp {
 		if req.CustomAppID == nil || *req.CustomAppID == "" {
-			http.Error(w, "custom_app_id required for source='custom_app'", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "custom_app_id required for source='custom_app'")
 			return
 		}
 		id, err := uuid.Parse(*req.CustomAppID)
 		if err != nil {
-			http.Error(w, "invalid custom_app_id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, "invalid custom_app_id")
 			return
 		}
 		customAppID = &id
@@ -184,7 +185,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	addr, err := h.Svc.RegisterFromRuntime(r.Context(), req.PageRoute, req.ParentAddress, slot, req.Kind, req.Name, source, customAppID)
 	if err != nil {
-		writeServiceErr(w, err)
+		writeServiceErr(w, r, err)
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	// honour the per-row helpable bit without a follow-up snapshot.
 	id, helpable, err := h.Svc.lookupRowByAddress(r.Context(), req.PageRoute, addr)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -210,12 +211,12 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Snapshot(w http.ResponseWriter, r *http.Request) {
 	route := r.URL.Query().Get("route")
 	if strings.TrimSpace(route) == "" {
-		http.Error(w, "route query param required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "route query param required")
 		return
 	}
 	out, err := h.Svc.Snapshot(r.Context(), route)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -243,7 +244,7 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "addressable_id")
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		http.Error(w, "invalid addressable id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid addressable id")
 		return
 	}
 	locale := r.URL.Query().Get("locale")
@@ -253,17 +254,17 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 
 	exists, err := h.Svc.addressableExists(r.Context(), id)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	if !exists {
-		http.Error(w, "addressable not found", http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, "addressable not found")
 		return
 	}
 
 	doc, _, err := h.Svc.HelpFor(r.Context(), id, locale)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, helpResp{
@@ -286,7 +287,7 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) PageHelpAdminList(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Svc.AdminListHelp(r.Context())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, rows)
@@ -307,21 +308,21 @@ type pageHelpPutReq struct {
 func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "addressable_id"))
 	if err != nil {
-		http.Error(w, "invalid addressable id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid addressable id")
 		return
 	}
 	var req pageHelpPutReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if err := validateHelpRichContent(req.VideoEmbeds, req.ImageURLs); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	update := HelpUpdate{
@@ -332,10 +333,10 @@ func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.Svc.UpdateHelp(r.Context(), id, req.Locale, update, u.ID); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
-			http.Error(w, "no live page_help row for addressable+locale", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "no live page_help row for addressable+locale")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"addressable_id": id.String()})
@@ -347,21 +348,21 @@ func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) PageHelpAdminDelete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "addressable_id"))
 	if err != nil {
-		http.Error(w, "invalid addressable id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid addressable id")
 		return
 	}
 	locale := r.URL.Query().Get("locale")
 	if err := h.Svc.ArchiveHelp(r.Context(), id, locale, u.ID); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
-			http.Error(w, "no live page_help row for addressable+locale", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "no live page_help row for addressable+locale")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -381,25 +382,25 @@ type helpableReq struct {
 func (h *Handler) AdminUpdateHelpable(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid addressable id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid addressable id")
 		return
 	}
 	var req helpableReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if err := h.Svc.UpdateHelpable(r.Context(), id, req.Helpable); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
-			http.Error(w, "addressable not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, "addressable not found")
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": id.String(), "helpable": req.Helpable})
@@ -457,20 +458,20 @@ func isHTTPURL(u string) bool {
 
 // writeServiceErr maps Service sentinel errors to HTTP statuses per the
 // mapping documented at the top of service.go.
-func writeServiceErr(w http.ResponseWriter, err error) {
+func writeServiceErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidViewportSlot),
 		errors.Is(err, ErrInvalidSource),
 		errors.Is(err, ErrInvalidName),
 		errors.Is(err, ErrInvalidKind):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 	case errors.Is(err, ErrParentNotFound):
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrCustomAppCollision):
-		http.Error(w, err.Error(), http.StatusConflict)
+		httperr.Write(w, r, http.StatusConflict, err.Error())
 	case errors.Is(err, ErrRuntimeRegisterInProduction):
-		http.Error(w, err.Error(), http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, err.Error())
 	default:
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 	}
 }

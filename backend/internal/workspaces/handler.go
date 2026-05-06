@@ -34,6 +34,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // Handler is the chi-mountable HTTP surface for workspaces.
@@ -89,7 +90,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	includeArchived := r.URL.Query().Get("archived") == "true"
 	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, includeArchived, u.ID)
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	if includeArchived {
@@ -113,7 +114,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	row, err := h.Svc.Create(r.Context(), CreateInput{
@@ -124,7 +125,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		ActorID:        u.ID,
 	})
 	if err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, row)
@@ -137,26 +138,26 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.Name == nil && req.Slug == nil {
-		http.Error(w, "patch requires at least one field", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "patch requires at least one field")
 		return
 	}
 	if req.Slug != nil && req.Name == nil {
 		// Reslug is not yet a service command — surface a clear 400
 		// instead of a silent no-op.
-		http.Error(w, "slug is immutable in MVP — supply name to rename", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "slug is immutable in MVP — supply name to rename")
 		return
 	}
 	if err := h.Svc.Rename(r.Context(), u.SubscriptionID, id, *req.Name, u.ID); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -168,11 +169,11 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), u.SubscriptionID, id, u.ID); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -184,11 +185,11 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.Restore(r.Context(), u.SubscriptionID, id, u.ID); err != nil {
-		writeErr(w, err)
+		writeErr(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -205,10 +206,10 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // writeErr maps the package's sentinel errors to HTTP statuses per the
 // contract on errors.go. The mapping mirrors orgdesign/handler.go's
 // writeErr so the two surfaces feel identical to a frontend client.
-func writeErr(w http.ResponseWriter, err error) {
+func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrGrantNotFound):
-		http.Error(w, "not found", http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, "not found")
 	case errors.Is(err, ErrSlugTaken):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "slug_taken"})
 	case errors.Is(err, ErrAlreadyArchived):
@@ -220,14 +221,14 @@ func writeErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrSingleAdminViolation):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "single_admin_violation"})
 	case errors.Is(err, ErrInvalidName):
-		http.Error(w, "name must be non-empty", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "name must be non-empty")
 	case errors.Is(err, ErrInvalidSlug):
-		http.Error(w, "slug must match ^[a-z0-9][a-z0-9-]*$", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "slug must match ^[a-z0-9][a-z0-9-]*$")
 	case errors.Is(err, ErrInvalidRole):
-		http.Error(w, "invalid role", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid role")
 	case errors.Is(err, ErrPermissionDenied):
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httperr.Write(w, r, http.StatusForbidden, "forbidden")
 	default:
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 	}
 }

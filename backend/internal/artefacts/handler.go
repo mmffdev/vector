@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // Handler exposes all artefact routes. Routes are mounted under
@@ -37,11 +38,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		OwnerID     string  `json:"owner_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.Title == "" || req.OwnerID == "" {
-		http.Error(w, "title and owner_id are required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "title and owner_id are required")
 		return
 	}
 	a, err := h.Svc.Create(r.Context(), artefactType(r), u.SubscriptionID, u.ID, CreateInput{
@@ -50,7 +51,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		OwnerID:     req.OwnerID,
 	})
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, a)
@@ -61,12 +62,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	a, err := h.Svc.Get(r.Context(), artefactType(r), u.SubscriptionID, id)
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
@@ -77,7 +78,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req struct {
@@ -86,7 +87,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		OwnerID     *string `json:"owner_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	a, err := h.Svc.Patch(r.Context(), artefactType(r), u.SubscriptionID, id, PatchInput{
@@ -95,7 +96,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		OwnerID:     req.OwnerID,
 	})
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
@@ -106,11 +107,11 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), artefactType(r), u.SubscriptionID, id); err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "archived"})
@@ -123,7 +124,7 @@ func (h *Handler) ListSchema(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	fields, err := h.Svc.ListSchema(r.Context(), artefactType(r), u.SubscriptionID)
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	if fields == nil {
@@ -146,11 +147,11 @@ func (h *Handler) CreateSchema(w http.ResponseWriter, r *http.Request) {
 		ConfigJSON   *string `json:"config_json,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.FieldName == "" || req.Label == "" || req.Type == "" {
-		http.Error(w, "field_name, label, and type are required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "field_name, label, and type are required")
 		return
 	}
 	f, err := h.Svc.CreateSchema(r.Context(), artefactType(r), u.SubscriptionID, CreateSchemaInput{
@@ -164,7 +165,7 @@ func (h *Handler) CreateSchema(w http.ResponseWriter, r *http.Request) {
 		ConfigJSON:   req.ConfigJSON,
 	})
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, f)
@@ -175,7 +176,7 @@ func (h *Handler) PatchSchema(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "schema_id"))
 	if err != nil {
-		http.Error(w, "invalid schema_id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid schema_id")
 		return
 	}
 	var req struct {
@@ -187,7 +188,7 @@ func (h *Handler) PatchSchema(w http.ResponseWriter, r *http.Request) {
 		ConfigJSON   *string `json:"config_json,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	f, err := h.Svc.PatchSchema(r.Context(), artefactType(r), u.SubscriptionID, id, PatchSchemaInput{
@@ -199,7 +200,7 @@ func (h *Handler) PatchSchema(w http.ResponseWriter, r *http.Request) {
 		ConfigJSON:   req.ConfigJSON,
 	})
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, f)
@@ -210,11 +211,11 @@ func (h *Handler) ArchiveSchema(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "schema_id"))
 	if err != nil {
-		http.Error(w, "invalid schema_id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid schema_id")
 		return
 	}
 	if err := h.Svc.ArchiveSchema(r.Context(), artefactType(r), u.SubscriptionID, id); err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "archived"})
@@ -227,12 +228,12 @@ func (h *Handler) ListFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	vals, err := h.Svc.ListFieldValues(r.Context(), artefactType(r), u.SubscriptionID, id)
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	if vals == nil {
@@ -246,12 +247,12 @@ func (h *Handler) WriteFieldValue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	fieldName := chi.URLParam(r, "field_name")
 	if fieldName == "" {
-		http.Error(w, "field_name required", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "field_name required")
 		return
 	}
 	var req struct {
@@ -261,7 +262,7 @@ func (h *Handler) WriteFieldValue(w http.ResponseWriter, r *http.Request) {
 		DateValue   *string `json:"date_value,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	fv, err := h.Svc.WriteFieldValue(r.Context(), artefactType(r), u.SubscriptionID, id, fieldName, WriteFieldInput{
@@ -271,7 +272,7 @@ func (h *Handler) WriteFieldValue(w http.ResponseWriter, r *http.Request) {
 		DateValue:   req.DateValue,
 	}, u.ID)
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, fv)
@@ -282,7 +283,7 @@ func (h *Handler) BulkWriteFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid id")
 		return
 	}
 	var req map[string]struct {
@@ -292,7 +293,7 @@ func (h *Handler) BulkWriteFieldValues(w http.ResponseWriter, r *http.Request) {
 		DateValue   *string `json:"date_value,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	inputs := make(map[string]WriteFieldInput, len(req))
@@ -306,7 +307,7 @@ func (h *Handler) BulkWriteFieldValues(w http.ResponseWriter, r *http.Request) {
 	}
 	results, err := h.Svc.BulkWriteFieldValues(r.Context(), artefactType(r), u.SubscriptionID, id, inputs, u.ID)
 	if err != nil {
-		h.handleErr(w, err)
+		h.handleErr(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, results)
@@ -314,21 +315,20 @@ func (h *Handler) BulkWriteFieldValues(w http.ResponseWriter, r *http.Request) {
 
 // ── Error mapping ─────────────────────────────────────────────────────
 
-func (h *Handler) handleErr(w http.ResponseWriter, err error) {
+func (h *Handler) handleErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrSchemaNotFound):
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httperr.Write(w, r, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrInvalidType), errors.Is(err, ErrInvalidKind):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 	case errors.Is(err, ErrTypeConflict):
-		http.Error(w, err.Error(), http.StatusConflict)
+		httperr.Write(w, r, http.StatusConflict, err.Error())
 	default:
 		if err.Error() == "title cannot be empty" || err.Error() == "invalid owner_id" ||
 			err.Error() == "field_name cannot be empty" || err.Error() == "invalid artefact type" {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 	}
 }
-

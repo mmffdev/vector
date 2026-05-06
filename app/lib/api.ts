@@ -23,13 +23,25 @@ export function setRefreshCallback(fn: (() => Promise<void>) | null) {
   _refreshCallback = fn;
 }
 
+export type ApiViolation = { field: string; message: string };
+
+// RFC 9457 Problem Details fields surfaced from error responses.
 export class ApiError extends Error {
   status: number;
   body: unknown;
+  title?: string;
+  detail?: string;
+  violations?: ApiViolation[];
   constructor(status: number, body: unknown, message: string) {
     super(message);
     this.status = status;
     this.body = body;
+    if (body && typeof body === "object") {
+      const p = body as Record<string, unknown>;
+      if (typeof p.title === "string") this.title = p.title;
+      if (typeof p.detail === "string") this.detail = p.detail;
+      if (Array.isArray(p.violations)) this.violations = p.violations as ApiViolation[];
+    }
   }
 }
 
@@ -81,7 +93,11 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, body, typeof body === "string" ? body : `HTTP ${res.status}`);
+    const message =
+      (body && typeof body === "object" && typeof (body as Record<string, unknown>).detail === "string")
+        ? (body as Record<string, unknown>).detail as string
+        : typeof body === "string" ? body : `HTTP ${res.status}`;
+    throw new ApiError(res.status, body, message);
   }
   return body as T;
 }

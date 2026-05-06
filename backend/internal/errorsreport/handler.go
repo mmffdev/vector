@@ -45,6 +45,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 )
 
 // MaxContextBytes caps the encoded JSON size of the context payload.
@@ -79,24 +80,24 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
 		// RequireAuth should have rejected this already; defensive guard.
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	var req reportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid_request_body")
+		httperr.Write(w, r, http.StatusBadRequest, "invalid_request_body")
 		return
 	}
 	if req.Code == "" {
-		writeJSONError(w, http.StatusBadRequest, "missing_code")
+		httperr.Write(w, r, http.StatusBadRequest, "missing_code")
 		return
 	}
 	// Reject oversize context payloads up front. The 4 KiB cap is
 	// documented on the column; enforce it here so the table can't be
 	// bloated by a single misbehaving caller.
 	if len(req.Context) > MaxContextBytes {
-		writeJSONError(w, http.StatusBadRequest, "context_too_large")
+		httperr.Write(w, r, http.StatusBadRequest, "context_too_large")
 		return
 	}
 
@@ -108,10 +109,10 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	// trying to prevent. Revisit if profiling shows this in the
 	// hot path (TD-LIB-007 already tracks the cross-DB FK gap).
 	if ok, err := h.codeExists(r.Context(), req.Code); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	} else if !ok {
-		writeJSONError(w, http.StatusBadRequest, "unknown_error_code")
+		httperr.Write(w, r, http.StatusBadRequest, "unknown_error_code")
 		return
 	}
 
@@ -133,7 +134,7 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 		u.SubscriptionID, u.ID, req.Code, ctxPayload, nullIfEmpty(requestID),
 	)
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		httperr.Write(w, r, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -164,10 +165,4 @@ func nullIfEmpty(s string) any {
 		return nil
 	}
 	return s
-}
-
-func writeJSONError(w http.ResponseWriter, status int, code string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
 }
