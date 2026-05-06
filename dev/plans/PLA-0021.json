@@ -173,6 +173,27 @@
       "story_id": "00456",
       "card_url": "http://localhost:3333/cards/1769230241441515024",
       "status": "done"
+    },
+    {
+      "order": 13,
+      "title": "WS4-A: real sprints join + Sprint column (replace sprintAlias FAKE)",
+      "story_id": "00458",
+      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "status": "todo"
+    },
+    {
+      "order": 14,
+      "title": "WS4-B: real users join + OwnerChip (replace ownerGlyph FAKE)",
+      "story_id": "00459",
+      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "status": "todo"
+    },
+    {
+      "order": 15,
+      "title": "WS4-C: due_date column migration + inline date editor",
+      "story_id": "00460",
+      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "status": "todo"
     }
   ],
   "acceptance_criteria": [
@@ -535,6 +556,78 @@
       "card_url": "http://localhost:3333/cards/1769230241441515024",
       "done": true,
       "tested": true
+    },
+    {
+      "order": 41,
+      "criterion": "Go test: GET /api/work-items?limit=5 against a fixture where 4 rows have sprint_id pointing at a real sprints row returns each row with sprint:{id, alias} matching the seeded sprint, and the 5th row with sprint_id=null returns sprint:null.",
+      "proven_by": "Go test in backend/internal/workitems/handler_sprint_test.go (or similar) seeding 4 work-items with real sprint_id and 1 with sprint_id=null, asserting JSON shape on response.",
+      "story_id": "00458",
+      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "done": false
+    },
+    {
+      "order": 42,
+      "criterion": "Vitest: WorkItemsTree mounts with a fixture row whose sprint={id,alias:'S-1'} and the rendered Sprint cell text matches /S-1/; a row with sprint=null renders the em-dash placeholder '—'.",
+      "proven_by": "Vitest in app/components/__tests__/WorkItemsTree.test.tsx asserting cell text via @testing-library/react.",
+      "story_id": "00458",
+      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "done": false
+    },
+    {
+      "order": 43,
+      "criterion": "Lint: after the change, `grep -R sprintAlias app` returns 0 occurrences.",
+      "proven_by": "grep verification in CI or post-commit; the synthetic helper is removed from the repo.",
+      "story_id": "00458",
+      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "done": false
+    },
+    {
+      "order": 44,
+      "criterion": "Go test: GET /api/work-items?limit=5 against a fixture where 4 rows have owner_id pointing at a real users row returns each row with owner:{id,display_name,avatar_url} matching the seeded user, and the 5th row with owner_id=null returns owner:null.",
+      "proven_by": "Go test in backend/internal/workitems/handler_owner_test.go seeding 4 work-items with real owner_id and 1 with null, asserting JSON shape.",
+      "story_id": "00459",
+      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "done": false
+    },
+    {
+      "order": 45,
+      "criterion": "Vitest: <OwnerChip user={...}/> renders the user's display_name text and an <img> with the avatar_url when supplied; with user={null} renders 'Unassigned' and no <img>.",
+      "proven_by": "Vitest in app/components/__tests__/OwnerChip.test.tsx covering both branches.",
+      "story_id": "00459",
+      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "done": false
+    },
+    {
+      "order": 46,
+      "criterion": "Vitest: WorkItemsTree mounts with a fixture row containing a non-null owner and the row's Owner cell contains [data-testid='owner-chip'].",
+      "proven_by": "Vitest WorkItemsTree integration assertion via querySelector.",
+      "story_id": "00459",
+      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "done": false
+    },
+    {
+      "order": 47,
+      "criterion": "Go test: After applying the new migration, PATCH /api/work-items/{id} body {due_date:'2026-06-15'} returns 200, and GET /api/work-items/{id} returns due_date:'2026-06-15'. PATCH {due_date:null} clears it.",
+      "proven_by": "Go test in backend/internal/workitems/handler_due_date_test.go covering set + clear.",
+      "story_id": "00460",
+      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "done": false
+    },
+    {
+      "order": 48,
+      "criterion": "Migration runner: `go run ./backend/cmd/migrate -dry-run -db vector` lists the new forward migration; running forward then reverse leaves schema unchanged.",
+      "proven_by": "Manual run on dev DB; idempotent forward+reverse migration in db/schema/NNN_add_work_items_due_date.sql + db/schema/down/NNN_*.sql.",
+      "story_id": "00460",
+      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "done": false
+    },
+    {
+      "order": 49,
+      "criterion": "Vitest: WorkItemsTree mounts a fixture row, double-click on the Due cell opens an <input type='date'>, typing a new value and pressing Enter calls the patch fetcher with {due_date:'<iso>'}. Esc closes without commit.",
+      "proven_by": "Vitest in app/components/__tests__/WorkItemsTree.dueDate.test.tsx.",
+      "story_id": "00460",
+      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "done": false
     }
   ],
   "risks": [
