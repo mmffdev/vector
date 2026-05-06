@@ -16,7 +16,7 @@
     "<s>WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree</s> ✓",
     "<s>WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission</s>",
     "<s>WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column</s> ✓",
-    "WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name",
+    "<s>WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name</s> ✓",
     "WS4-C: Migration — add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher",
     "WS5-A: Build <ColumnPicker> flyout; persist visibility map to user_preferences table per { pageId, slot }; driven by ResourceTree Set 2 columns[] config",
     "WS5-B: Column locking — add { key, locked: 'left' } column flag; render with position: sticky on locked cells; ResourceTree Set 2 prop",
@@ -186,7 +186,7 @@
       "title": "WS4-B: real users join + OwnerChip (replace ownerGlyph FAKE)",
       "story_id": "00459",
       "card_url": "http://localhost:3333/cards/1769270716466726518",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 15,
@@ -587,10 +587,11 @@
     {
       "order": 44,
       "criterion": "Go test: GET /api/work-items?limit=5 against a fixture where 4 rows have owner_id pointing at a real users row returns each row with owner:{id,display_name,avatar_url} matching the seeded user, and the 5th row with owner_id=null returns owner:null.",
-      "proven_by": "Go test in backend/internal/workitems/handler_owner_test.go seeding 4 work-items with real owner_id and 1 with null, asserting JSON shape.",
+      "proven_by": "Go test in backend/internal/workitems/handler_owner_test.go seeding 4 work-items with real owner_id and 1 with null, asserting JSON shape. NOTE: owner_id is NOT NULL on work_items (schema 063) — test seeds 4 rows w/ userA + 1 row w/ userB instead of NULL; per-row JOIN resolution still proven.",
       "story_id": "00459",
       "card_url": "http://localhost:3333/cards/1769270716466726518",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 45,
@@ -598,7 +599,8 @@
       "proven_by": "Vitest in app/components/__tests__/OwnerChip.test.tsx covering both branches.",
       "story_id": "00459",
       "card_url": "http://localhost:3333/cards/1769270716466726518",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 46,
@@ -606,7 +608,8 @@
       "proven_by": "Vitest WorkItemsTree integration assertion via querySelector.",
       "story_id": "00459",
       "card_url": "http://localhost:3333/cards/1769270716466726518",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 47,
