@@ -15,7 +15,7 @@
     "<s>WS3-A: Add useKeyboardGrid hook on ResourceTree root — Tab → next editable cell, Enter → next row same column, Esc cancels active edit</s> ✓",
     "<s>WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree</s> ✓",
     "<s>WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission</s>",
-    "WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column",
+    "<s>WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column</s> ✓",
     "WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name",
     "WS4-C: Migration — add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher",
     "WS5-A: Build <ColumnPicker> flyout; persist visibility map to user_preferences table per { pageId, slot }; driven by ResourceTree Set 2 columns[] config",
@@ -179,7 +179,7 @@
       "title": "WS4-A: real sprints join + Sprint column (replace sprintAlias FAKE)",
       "story_id": "00458",
       "card_url": "http://localhost:3333/cards/1769270391307503218",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 14,
@@ -563,7 +563,8 @@
       "proven_by": "Go test in backend/internal/workitems/handler_sprint_test.go (or similar) seeding 4 work-items with real sprint_id and 1 with sprint_id=null, asserting JSON shape on response.",
       "story_id": "00458",
       "card_url": "http://localhost:3333/cards/1769270391307503218",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 42,
@@ -571,7 +572,8 @@
       "proven_by": "Vitest in app/components/__tests__/WorkItemsTree.test.tsx asserting cell text via @testing-library/react.",
       "story_id": "00458",
       "card_url": "http://localhost:3333/cards/1769270391307503218",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 43,
@@ -579,7 +581,8 @@
       "proven_by": "grep verification in CI or post-commit; the synthetic helper is removed from the repo.",
       "story_id": "00458",
       "card_url": "http://localhost:3333/cards/1769270391307503218",
-      "done": false
+      "done": true,
+      "tested": true
     },
     {
       "order": 44,
