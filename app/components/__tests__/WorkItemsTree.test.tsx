@@ -181,4 +181,22 @@ describe("WorkItemsTree (PLA-0021 smoke)", () => {
     );
     expect(search).not.toBeNull();
   });
+
+  // PLA-0021 / 00449 — DnD AC: tree mounts without throwing when the rank
+  // hook wires up, and every fixture row exposes a draggable handle cell
+  // (so a drag can start). The DOM contract for `useResourceRank` is the
+  // `data-rank-row-id` attribute on each row + a `.drag-handle-cell` <td>.
+  it("renders a drag-handle cell on each row when DnD is enabled", () => {
+    const { container } = render(
+      <WorkItemsTree
+        selectedId={null}
+        onSelect={() => undefined}
+        onPatched={() => undefined}
+      />,
+    );
+    const handles = container.querySelectorAll(".drag-handle-cell");
+    expect(handles.length).toBe(5);
+    const rankRows = container.querySelectorAll("[data-rank-row-id]");
+    expect(rankRows.length).toBe(5);
+  });
 });

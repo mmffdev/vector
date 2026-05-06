@@ -34,6 +34,8 @@ import {
 } from "react-icons/md";
 import { BsArrowsCollapse, BsArrowsExpand } from "react-icons/bs";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
+import { useResourceRank } from "@/app/hooks/useResourceRank";
+import DragHandleColumn from "@/app/components/DragHandleColumn";
 
 // PLA-0021 / 00446 — closed vocabulary of prop-set sub-addresses registered
 // inside every ResourceTree's address scope. Samantha resolves each one to
@@ -110,6 +112,16 @@ export interface SortConfig {
   onChange: (key: string | null, dir: "asc" | "desc") => void;
 }
 
+// PLA-0021 / 00449 — DnD rank. When provided, the tree paints a leading
+// drag-handle column, applies optimistic local reorder on drop, posts to
+// `/api/rank/move` via useResourceRank, and rolls back on a server reject.
+// Drops within `roots` reorder the loaded root window; drops within an
+// expanded parent's children reorder that parent's child array.
+export interface DnDConfig {
+  /** Resource type id sent on the rank POST (e.g. "work_item"). */
+  resourceType: string;
+}
+
 // Set 4 — CogMenu. Type only; not wired in this card.
 export interface MenuItem {
   key: string;
@@ -145,6 +157,7 @@ export interface ResourceTreeProps<T> {
   pagination?: PaginationConfig;
   search?: SearchConfig<T>;
   sort?: SortConfig;
+  dnd?: DnDConfig;
   expandAllConcurrency?: number;
 
   // ── Set 4: CogMenu (type-only this card) ──
@@ -618,6 +631,7 @@ function ResourceTreeImpl<T>({
   pagination,
   search,
   sort,
+  dnd,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
   // (cogMenu / patch / tone are accepted to keep the surface contract; column
@@ -644,15 +658,134 @@ function ResourceTreeImpl<T>({
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // ── DnD rank (opt-in via `dnd` prop) ─────────────────────────────────────
+  // Parent owns `roots`. While a drop is in flight we shadow it with a local
+  // override so the user sees the new order before the server confirms; on
+  // any change to the upstream `roots` (refetch after reconcile) we drop the
+  // shadow so the server's truth takes over.
+  const [rootsOverride, setRootsOverride] = useState<T[] | null>(null);
+  useEffect(() => {
+    setRootsOverride(null);
+  }, [roots]);
+
+  const reorderSnapshot = useRef<
+    | { kind: "roots"; prev: T[] }
+    | { kind: "child"; parentId: string; prev: T[] }
+    | null
+  >(null);
+
+  const applyDrop = useCallback(
+    (moverID: string, pos: "above" | "below", targetID: string) => {
+      if (moverID === targetID) return;
+      const reorderList = (list: T[]): T[] | null => {
+        const fromIdx = list.findIndex((r) => getId(r) === moverID);
+        const toIdx = list.findIndex((r) => getId(r) === targetID);
+        if (fromIdx < 0 || toIdx < 0) return null;
+        const next = list.slice();
+        const [moved] = next.splice(fromIdx, 1);
+        const adjustedTargetIdx = fromIdx < toIdx ? toIdx - 1 : toIdx;
+        const insertAt =
+          pos === "above" ? adjustedTargetIdx : adjustedTargetIdx + 1;
+        next.splice(insertAt, 0, moved);
+        return next;
+      };
+      // Roots first.
+      const sourceRoots = rootsOverride ?? roots;
+      const rootsNext = reorderList(sourceRoots);
+      if (rootsNext) {
+        reorderSnapshot.current = { kind: "roots", prev: sourceRoots };
+        setRootsOverride(rootsNext);
+        return;
+      }
+      // Otherwise scan child arrays for the parent that owns both ids.
+      for (const [parentId, kids] of Object.entries(childMap)) {
+        const next = reorderList(kids);
+        if (next) {
+          reorderSnapshot.current = { kind: "child", parentId, prev: kids };
+          setChildMap((prev) => ({ ...prev, [parentId]: next }));
+          return;
+        }
+      }
+    },
+    [roots, rootsOverride, childMap, getId],
+  );
+
+  const reconcile = useCallback(() => {
+    reorderSnapshot.current = null;
+  }, []);
+
+  const rollback = useCallback(() => {
+    const snap = reorderSnapshot.current;
+    if (!snap) return;
+    if (snap.kind === "roots") {
+      setRootsOverride(snap.prev);
+    } else {
+      setChildMap((prev) => ({ ...prev, [snap.parentId]: snap.prev }));
+    }
+    reorderSnapshot.current = null;
+  }, []);
+
+  const getDescendants = useCallback(
+    (id: string): string[] => {
+      const out: string[] = [];
+      const walk = (parentId: string) => {
+        const kids = childMap[parentId] ?? [];
+        for (const k of kids) {
+          const cid = getId(k);
+          out.push(cid);
+          walk(cid);
+        }
+      };
+      walk(id);
+      return out;
+    },
+    [childMap, getId],
+  );
+
+  const rank = useResourceRank({
+    resourceType: dnd?.resourceType ?? "",
+    onMoved: reconcile,
+    onError: rollback,
+    getDescendants,
+  });
+
+  // The hook's built-in onDrop only POSTs. Wrap it to apply the local
+  // mutation first so the row visibly snaps before the server confirms.
+  const composeRowProps = useCallback(
+    (id: string) => {
+      const base = rank.rowProps(id);
+      const baseOnDrop = base.onDrop;
+      return {
+        ...base,
+        onDrop: (e: React.DragEvent) => {
+          const moverId = rank.draggingId;
+          const target = rank.dropTarget;
+          if (moverId && target && moverId !== target.id) {
+            applyDrop(moverId, target.pos, target.id);
+          }
+          baseOnDrop?.(e);
+        },
+      };
+    },
+    [rank, applyDrop],
+  );
+
   // ── Column resize ────────────────────────────────────────────────────────
-  const fixedWidths = useMemo<Array<number | null>>(
-    () => columns.map((c) => (c.width === undefined ? 100 : c.width)),
-    [columns],
-  );
-  const minWidthsArr = useMemo<number[]>(
-    () => columns.map((c) => c.minWidth ?? 40),
-    [columns],
-  );
+  // When DnD is enabled we prepend a fixed-width drag-handle column at index 0
+  // so colgroup / thead / tbody all share the same column count, and so the
+  // resize maths line up with the rendered DOM columns.
+  const DRAG_COL_WIDTH = 22;
+  const dndOffset = dnd ? 1 : 0;
+  const primaryColIdx = dndOffset;
+
+  const fixedWidths = useMemo<Array<number | null>>(() => {
+    const userWidths = columns.map((c) => (c.width === undefined ? 100 : c.width));
+    return dnd ? [DRAG_COL_WIDTH, ...userWidths] : userWidths;
+  }, [columns, dnd]);
+  const minWidthsArr = useMemo<number[]>(() => {
+    const userMins = columns.map((c) => c.minWidth ?? 40);
+    return dnd ? [DRAG_COL_WIDTH, ...userMins] : userMins;
+  }, [columns, dnd]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -790,10 +923,12 @@ function ResourceTreeImpl<T>({
   // ── Filter / sort the loaded window ──────────────────────────────────────
 
   // Defensive identity in case the server ever includes children in `roots`.
-  const rootsOnly = useMemo(
-    () => roots.filter((r) => !getParentId(r)),
-    [roots, getParentId],
-  );
+  // When DnD has shadowed the order locally (rootsOverride), use that so the
+  // optimistic apply paints before the next refetch catches up.
+  const rootsOnly = useMemo(() => {
+    const src = rootsOverride ?? roots;
+    return src.filter((r) => !getParentId(r));
+  }, [roots, rootsOverride, getParentId]);
 
   const filteredRoots = useMemo(() => {
     if (!search) return rootsOnly;
@@ -859,20 +994,33 @@ function ResourceTreeImpl<T>({
         toggle: () => void toggle(item),
       };
 
+      const dndProps = dnd ? composeRowProps(id) : null;
+      const baseRowClass =
+        "tree_accordion-dense__row" +
+        (depth === 0
+          ? " tree_accordion-dense__row--epic"
+          : " tree_accordion-dense__row--child") +
+        (selectedId === id ? " tree_accordion-dense__row--selected" : "");
+      const rowClass = dndProps?.className
+        ? `${baseRowClass} ${dndProps.className}`
+        : baseRowClass;
+
       return (
         <React.Fragment key={id}>
           <tr
-            className={
-              "tree_accordion-dense__row" +
-              (depth === 0
-                ? " tree_accordion-dense__row--epic"
-                : " tree_accordion-dense__row--child") +
-              (selectedId === id
-                ? " tree_accordion-dense__row--selected"
-                : "")
-            }
+            className={rowClass}
+            data-rank-row-id={dndProps?.["data-rank-row-id"]}
+            onDragOver={dndProps?.onDragOver}
+            onDragLeave={dndProps?.onDragLeave}
+            onDrop={dndProps?.onDrop}
             onClick={() => onSelect?.(item)}
           >
+            {dnd && (
+              <DragHandleColumn
+                {...rank.handleProps(id)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             {columns.map((col) => {
               const cellClass =
                 "tree_accordion-dense__cell" +
@@ -901,7 +1049,7 @@ function ResourceTreeImpl<T>({
             <tr>
               <td
                 className="tree_accordion-dense__cell"
-                colSpan={columns.length}
+                colSpan={columns.length + dndOffset}
                 style={{
                   paddingLeft: 12 + depth * indentStep + 32,
                   color: "var(--ink-subtle)",
@@ -982,7 +1130,17 @@ function ResourceTreeImpl<T>({
           </colgroup>
           <thead className="tree_accordion-dense__head">
             <tr>
-              {columns.map((col, ci) => {
+              {dnd && (
+                <th
+                  key="__drag"
+                  className="tree_accordion-dense__th tree_accordion-dense__th--drag"
+                  aria-hidden="true"
+                />
+              )}
+              {columns.map((col, userCi) => {
+                // Effective column index in the rendered DOM (drag col occupies 0
+                // when dnd is on, so user columns shift by dndOffset).
+                const ci = userCi + dndOffset;
                 const thClass =
                   "tree_accordion-dense__th" +
                   (col.align === "mono"
@@ -990,12 +1148,12 @@ function ResourceTreeImpl<T>({
                     : "");
                 const sortActive = sort?.key === col.key;
                 const sortDir = sort?.dir ?? "asc";
-                if (ci === 0) {
+                if (ci === primaryColIdx) {
                   return (
                     <th
                       key={col.key}
                       className={thClass}
-                      onDoubleClick={() => resetColumn(0)}
+                      onDoubleClick={() => resetColumn(ci)}
                       title="Double-click to reset column width"
                     >
                       <span className="tree_accordion-dense__th-id">

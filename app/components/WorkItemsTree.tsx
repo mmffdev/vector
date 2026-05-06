@@ -81,6 +81,7 @@ export default function WorkItemsTree({
         pagination={{ pageSize, options: [25, 50, 100] }}
         search={{ placeholder: "Search work items…", accessor: (r) => `${r.title} vec-${r.key_num}` }}
         sort={{ key: sortKey, dir: sortDir, onChange: handleSortChange }}
+        dnd={{ resourceType: "work_item" }}
         selectedId={selectedId}
         onSelect={onSelect}
         pageIndex={pageIndex}
