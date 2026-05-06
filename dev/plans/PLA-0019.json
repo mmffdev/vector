@@ -4,7 +4,7 @@
   "date_created": "2026-05-06",
   "date_started": "2026-05-06",
   "date_last_updated": "2026-05-06",
-  "date_finished": null,
+  "date_finished": "2026-05-06",
   "scope": "<p>Five foundational stories that establish the external developer API surface for the Samantha platform: an OpenAPI 3.1 spec covering all current REST endpoints, URL versioning via <code>/v1/</code> path prefix, RFC 9457 Problem Details error format across all Go handlers, API key management (Postgres table + Go middleware + issuance/revoke endpoints), and runtime binding of the <code>samantha.portfolio.fields.*</code> SDK surface in <code>app/lib/samantha.ts</code>.</p>",
   "value": "<p>Samantha has no external developer API surface today \u2014 no machine-readable spec, no versioning contract, no third-party auth pathway, and an empty SDK stub. These five stories collectively unlock: Scalar documentation portal (fed from OpenAPI spec), SDK generation via Speakeasy or OpenAPI Generator, controlled breaking-change management via URL versioning, programmatic access for CI pipelines and integrations without a user JWT session, and the Phase 1 custom fields SDK for custom app developers. All five are zero-migration-cost changes \u2014 no external consumers exist yet, so this is the lowest-friction moment to act.</p>",
   "implementation_plan": [
@@ -40,7 +40,7 @@
       "title": "Write OpenAPI 3.1 spec for all Samantha REST endpoints",
       "story_id": "00440",
       "card_url": "http://localhost:3333/cards/1768715464445265079",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 2,
@@ -61,14 +61,14 @@
       "title": "API key management \u2014 schema, middleware, and key issuance",
       "story_id": "00443",
       "card_url": "http://localhost:3333/cards/1768715466039100605",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 5,
       "title": "Wire samantha.portfolio.fields.* SDK runtime bindings",
       "story_id": "00444",
       "card_url": "http://localhost:3333/cards/1768715466592748735",
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
