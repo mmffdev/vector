@@ -168,6 +168,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID string, f Li
 		       u.id::text,
 		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
 		       NULL::text AS owner_avatar_url,
+		       wi.due_date::text,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       %s AS rollup_points
@@ -306,6 +307,7 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID string, id uui
 		       u.id::text,
 		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
 		       NULL::text AS owner_avatar_url,
+		       wi.due_date::text,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
@@ -568,6 +570,23 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID string, id u
 			args = append(args, nil)
 		} else {
 			args = append(args, *in.SprintID)
+		}
+		n++
+	}
+	if in.DueDate != nil {
+		// PLA-0021 / 00460 (WS4-C) — three-state contract: nil = no
+		// change; "" = clear to NULL; non-empty = parse YYYY-MM-DD and
+		// write a real DATE. Mirrors the SprintID convention immediately
+		// above so the patch shape is uniform across nullable scalars.
+		sets = append(sets, fmt.Sprintf("due_date = $%d", n))
+		if *in.DueDate == "" {
+			args = append(args, nil)
+		} else {
+			parsed, err := time.Parse("2006-01-02", *in.DueDate)
+			if err != nil {
+				return nil, fmt.Errorf("%w: due_date must be YYYY-MM-DD", ErrInvalidInput)
+			}
+			args = append(args, parsed)
 		}
 		n++
 	}
@@ -897,6 +916,7 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID string, paren
 		       u.id::text,
 		       COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email) AS owner_display_name,
 		       NULL::text AS owner_avatar_url,
+		       wi.due_date::text,
 		       (SELECT COUNT(*) FROM o_artefacts_execution_work_items c
 		        WHERE c.parent_id = wi.id AND c.archived_at IS NULL) AS children_count,
 		       `+rollupPointsExpr+` AS rollup_points
@@ -1433,6 +1453,7 @@ func scanWorkItem(row scannable) (*WorkItem, error) {
 		&wi.ParentID, &wi.RootFeatureID,
 		&wi.OwnerID, &wi.CreatedBy, &wi.CreatedAt, &wi.UpdatedAt, &wi.ArchivedAt,
 		&ownerRefID, &ownerDisplayName, &ownerAvatarURL,
+		&wi.DueDate,
 		&wi.ChildrenCount, &wi.RollupPoints,
 	)
 	if err != nil {

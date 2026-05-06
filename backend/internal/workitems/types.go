@@ -51,6 +51,12 @@ type WorkItem struct {
 	RootFeatureID  *string    `json:"root_feature_id"`
 	OwnerID        string     `json:"owner_id"`
 	Owner          *OwnerRef  `json:"owner"`
+	// PLA-0021 / 00460 (WS4-C) — DueDate is the wire form of the new
+	// nullable due_date column on o_artefacts_execution_work_items. The
+	// SELECT casts to ::text so we read YYYY-MM-DD without paying for
+	// time.Time/RFC-3339 round-trip. Nil ⇒ JSON `null` (no `omitempty`)
+	// so absent vs cleared can both render as the em-dash placeholder.
+	DueDate        *string    `json:"due_date"`
 	CreatedBy      string     `json:"created_by"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
@@ -114,6 +120,10 @@ type CreateWorkItemInput struct {
 }
 
 // PatchWorkItemInput holds optional fields for partial update.
+//
+// PLA-0021 / 00460 (WS4-C) — DueDate uses the same three-state convention
+// as SprintID: nil ⇒ field absent (no change); non-nil empty string ⇒
+// clear to NULL; non-nil non-empty ⇒ parsed as YYYY-MM-DD and written.
 type PatchWorkItemInput struct {
 	Title       *string
 	Description *string
@@ -122,6 +132,7 @@ type PatchWorkItemInput struct {
 	Priority    *string
 	StoryPoints *int
 	SprintID    *string
+	DueDate     *string
 }
 
 // ListWorkItemsFilter holds query parameters for the list endpoint.

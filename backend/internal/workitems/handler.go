@@ -179,14 +179,30 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, wi)
 }
 
+// patchWorkItemReq is the wire shape for PATCH /api/work-items/{id}.
+//
+// PLA-0021 / 00460 (WS4-C) — DueDate has three meaningful client states
+// because it's nullable on the server. We use json.RawMessage so we can
+// tell `field absent` apart from `"due_date":null` — *string decoding
+// would collapse both into the same nil pointer. The wire contract is:
+//
+//	field absent              → no change
+//	"due_date":null           → clear to NULL
+//	"due_date":""             → clear to NULL (treated identically)
+//	"due_date":"YYYY-MM-DD"   → set to that date
+//
+// The handler converts RawMessage → service-level *string sentinel:
+// nil pointer means "field absent / no change"; a non-nil pointer to
+// the empty string means "clear"; otherwise the parsed date string.
 type patchWorkItemReq struct {
-	Title       *string `json:"title,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Status      *string `json:"status,omitempty"`
-	FlowStateID *string `json:"flow_state_id,omitempty"`
-	Priority    *string `json:"priority,omitempty"`
-	StoryPoints *int    `json:"story_points,omitempty"`
-	SprintID    *string `json:"sprint_id,omitempty"`
+	Title       *string         `json:"title,omitempty"`
+	Description *string         `json:"description,omitempty"`
+	Status      *string         `json:"status,omitempty"`
+	FlowStateID *string         `json:"flow_state_id,omitempty"`
+	Priority    *string         `json:"priority,omitempty"`
+	StoryPoints *int            `json:"story_points,omitempty"`
+	SprintID    *string         `json:"sprint_id,omitempty"`
+	DueDate     json.RawMessage `json:"due_date,omitempty"`
 }
 
 // PATCH /api/work-items/{id}
@@ -202,6 +218,30 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
+
+	// PLA-0021 / 00460 (WS4-C) — collapse the json.RawMessage three-state
+	// (absent | null | "" | "YYYY-MM-DD") down to the service sentinel
+	// (*string nil = no change, "" = clear, non-empty = set). We trim
+	// whitespace before checking for null/empty so `"due_date": null` and
+	// `"due_date":""` both reach the service as a non-nil empty string.
+	var dueDate *string
+	if len(req.DueDate) > 0 {
+		raw := string(req.DueDate)
+		// json.RawMessage may be `null` (4 bytes, no quotes) or a quoted
+		// string. Normalise both clear paths to the empty-string sentinel.
+		if raw == "null" || raw == `""` {
+			empty := ""
+			dueDate = &empty
+		} else {
+			var s string
+			if err := json.Unmarshal(req.DueDate, &s); err != nil {
+				httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+				return
+			}
+			dueDate = &s
+		}
+	}
+
 	wi, err := h.Svc.PatchWorkItem(r.Context(), u.SubscriptionID.String(), id, PatchWorkItemInput{
 		Title:       req.Title,
 		Description: req.Description,
@@ -210,6 +250,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		Priority:    req.Priority,
 		StoryPoints: req.StoryPoints,
 		SprintID:    req.SprintID,
+		DueDate:     dueDate,
 	})
 	if err != nil {
 		switch {

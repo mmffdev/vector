@@ -79,6 +79,11 @@ const FIXTURE: WorkItem[] = Array.from({ length: 5 }, (_, i) => ({
     i === 0
       ? { id: "user-1", display_name: "Alice Doe", avatar_url: null }
       : null,
+  // PLA-0021 / 00460 (WS4-C) — first fixture row carries a real
+  // YYYY-MM-DD due_date so the Due-cell renderer test below can find a
+  // formatted "Mon DD" trigger. Remaining rows leave due_date=null so
+  // the em-dash placeholder branch is also exercised by the same render.
+  due_date: i === 0 ? "2026-07-01" : null,
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-06T00:00:00Z",
   children_count: 0,
@@ -283,5 +288,34 @@ describe("WorkItemsTree (PLA-0021 smoke)", () => {
 
     // Row 0's chip carries the seeded display_name.
     expect(ownerCells[0].textContent ?? "").toMatch(/Alice Doe/);
+  });
+
+  // PLA-0021 / 00460 (WS4-C) — Due column renders the new inline date
+  // editor backed by the joined `due_date` column. Row 0 has a real
+  // 2026-07-01 due_date and must surface the formatted "Jul 1" trigger
+  // text; rows 1..4 have due_date=null and must render the em-dash. The
+  // same `cellModifier:"due"` pattern Sprint/Owner use exposes a stable
+  // `tree_accordion-dense__cell--due` class on each <td>.
+  it("renders the formatted due date for due-bearing rows and em-dash for null", () => {
+    const { container } = render(
+      <WorkItemsTree
+        selectedId={null}
+        onSelect={() => undefined}
+        onPatched={() => undefined}
+      />,
+    );
+
+    const dueCells = container.querySelectorAll(
+      "tbody td.tree_accordion-dense__cell--due",
+    );
+    expect(dueCells.length).toBe(5);
+
+    // Row 0 — seeded due_date 2026-07-01 → "Jul 1" via formatDueDate.
+    expect(dueCells[0].textContent ?? "").toMatch(/Jul 1/);
+
+    // Rows 1..4 — due_date null → em-dash.
+    for (let i = 1; i < 5; i++) {
+      expect(dueCells[i].textContent ?? "").toBe("—");
+    }
   });
 });

@@ -51,6 +51,12 @@ export interface WorkItem {
   // (with email fallback). null only when the join fails (deleted user).
   // The legacy `owner_id` field is kept for writers (PATCH still posts it).
   owner: { id: string; display_name: string; avatar_url: string | null } | null;
+  // PLA-0021 / 00460 (WS4-C) — real per-row due date from
+  // o_artefacts_execution_work_items.due_date. Wire shape is YYYY-MM-DD
+  // (Postgres ::text cast). null when unset; the inline date editor in
+  // the Due column posts "" or null to clear, and a parsed YYYY-MM-DD
+  // string to set. Replaces the previous synthetic dueLabel(updated_at).
+  due_date: string | null;
   created_at: string;
   updated_at: string;
   children_count: number;
@@ -93,11 +99,17 @@ export function formatPriority(raw: string | null) {
   );
 }
 
-// Due: backend has no due date yet; offset from updated_at as a stand-in.
-export function dueLabel(updated_at: string): string {
-  const d = new Date(updated_at);
+// PLA-0021 / 00460 (WS4-C) — Due column display helper. The backend now
+// emits a real YYYY-MM-DD date in `due_date`; we just reformat to the
+// short "Mon DD" form for the dense grid. Returns "—" when null/invalid
+// so the placeholder matches every other empty column in the row.
+export function formatDueDate(due_date: string | null | undefined): string {
+  if (!due_date) return "—";
+  // Parse as a local-tz date by appending T00:00 — bare YYYY-MM-DD is
+  // interpreted as UTC midnight by Date(), which on negative-offset
+  // timezones rolls back to the previous day in the rendered output.
+  const d = new Date(due_date + "T00:00");
   if (Number.isNaN(d.getTime())) return "—";
-  d.setDate(d.getDate() + 7);
   const m = d.toLocaleString("en-US", { month: "short" });
   return `${m} ${d.getDate()}`;
 }
@@ -132,7 +144,18 @@ export function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkIte
       case "priority": cmp = (PRIORITY_ORDER[a.priority ?? ""] ?? 99) - (PRIORITY_ORDER[b.priority ?? ""] ?? 99); break;
       case "points":   cmp = ((a.rollup_points ?? a.story_points ?? -1)) - ((b.rollup_points ?? b.story_points ?? -1)); break;
       case "sprint":   cmp = (a.sprint_id ?? "").localeCompare(b.sprint_id ?? ""); break;
-      case "due":      cmp = (a.updated_at ?? "").localeCompare(b.updated_at ?? ""); break;
+      // PLA-0021 / 00460 (WS4-C) — sort by the real due_date now. Empty
+      // (null) values sort last in both directions; localeCompare on
+      // YYYY-MM-DD is a correct calendar comparison without parsing.
+      case "due": {
+        const av = a.due_date ?? "";
+        const bv = b.due_date ?? "";
+        if (av === "" && bv === "") cmp = 0;
+        else if (av === "") cmp = 1;
+        else if (bv === "") cmp = -1;
+        else cmp = av.localeCompare(bv);
+        break;
+      }
     }
     return asc ? cmp : -cmp;
   });
@@ -294,6 +317,58 @@ function PointsOwnerCell({
   );
 }
 
+// PLA-0021 / 00460 (WS4-C) — Click-to-edit due-date cell. Mirrors the
+// InlineDateField pattern in WorkItemDetailPanel: display shows the
+// "Mon DD" formatted date as a clickable trigger; click swaps to a
+// focused <input type="date"> that commits on change/blur. Empty input
+// is sent as the empty-string clear-sentinel (server treats "" and null
+// identically — see patchWorkItemReq doc-comment in handler.go).
+function DueCell({
+  row,
+  onPatch,
+}: {
+  row: WorkItem;
+  onPatch: (id: string, body: Record<string, unknown>) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="date"
+        className="form__input form__input--sm"
+        defaultValue={row.due_date ?? ""}
+        aria-label="Work item due date"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onBlur={(e) => {
+          const next = e.target.value;
+          setEditing(false);
+          // Empty → clear ("" sentinel); same value → no-op; valid → set.
+          if (next === (row.due_date ?? "")) return;
+          onPatch(row.id, { due_date: next === "" ? null : next });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setEditing(false);
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      className="inline-edit-trigger"
+      title="Click to edit due date"
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
+    >
+      {formatDueDate(row.due_date)}
+    </span>
+  );
+}
+
 // ─── Column factory ───────────────────────────────────────────────────────────
 
 export function buildWorkItemsColumns(
@@ -369,12 +444,17 @@ export function buildWorkItemsColumns(
       render: (row) => <>{row.sprint?.alias ?? "—"}</>,
     },
     {
+      // PLA-0021 / 00460 (WS4-C) — Due is now an inline date editor backed
+      // by the real due_date column. stopClick prevents the row-select
+      // click from firing when the user clicks the date trigger or input.
       key: "due",
       label: "Due",
-      width: 80,
-      minWidth: 70,
+      width: 100,
+      minWidth: 80,
       align: "mono",
-      render: (row) => <>{dueLabel(row.updated_at)}</>,
+      cellModifier: "due",
+      stopClick: true,
+      render: (row) => <DueCell row={row} onPatch={patchAndApply} />,
     },
   ];
 }
