@@ -30,6 +30,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/defects"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
+	"github.com/mmffdev/vector-backend/internal/fields"
 	"github.com/mmffdev/vector-backend/internal/flows"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
@@ -199,11 +200,14 @@ func main() {
 	userTabOrderH := usertaborder.NewHandler(userTabOrderSvc)
 
 	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
-	portfolioAdoptionStateH := portfoliomodels.NewAdoptionStateHandler(pool)
 	// vaPool is wired below; nil = legacy-only adoption path. The
 	// orchestrator skips PLA-0026 dual-writes when nil.
 	// Constructed AFTER the vaPool block so the handler picks up the
 	// pool when VECTOR_ARTEFACTS_DB_URL is set.
+	// PLA-0026 / Story 00501 (B12): adoption-state handler ALSO waits
+	// for vaPool — it now reads master_record_portfolio + artefact_types
+	// from vector_artefacts and degrades to notStarted when vaPool is nil.
+	var portfolioAdoptionStateH *portfoliomodels.AdoptionStateHandler
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
 	var portfolioAdoptStreamH *portfoliomodels.AdoptStreamHandler
 	devResetH := portfoliomodels.NewDevResetHandler(pool)
@@ -301,6 +305,12 @@ func main() {
 				}
 				log.Printf("vector_artefacts pool connected: %s", maskedURL)
 				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(vaPool, pool))
+				// PLA-0026 / story 00502 (B13): attach the VA pool to the
+				// workspaces service so DELETE /api/workspaces/{id} can
+				// scan vector_artefacts for orphan rows BEFORE deletion.
+				// Without this attach, workspacesSvc.CheckCrossDBOrphans
+				// is a documented no-op (guard disabled).
+				workspacesSvc.WithVAPool(vaPool)
 				bootstatus.Set("vector_artefacts_db", true, "")
 			}
 		}
@@ -321,6 +331,32 @@ func main() {
 	}
 	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool, masterRecordSvc)
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
+
+	// PLA-0026 / Story 00501 (B12): adoption-state reads from the new
+	// substrate (master_record_portfolio + artefact_types) via vaPool.
+	// vectorPool is still required to resolve subscription_id →
+	// workspace_id; vaPool may be nil (handler returns notStarted).
+	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
+
+	// PLA-0026 / Story 00498 (B9): read surface for the persistent
+	// portfolio model record. BundleView reads model_name +
+	// model_description from here so the frontend never touches
+	// mmff_library at runtime.
+	portfolioMasterRecordH := portfolio.NewHandler(masterRecordSvc, pool)
+
+	// PLA-0026 / Story 00500 (B11): GET /api/workspace/{id}/fields —
+	// returns the admitted field set for one workspace, computed by
+	// the same admit/deny rules the per-field resolver uses (R047 §5).
+	// vectorPool is required (membership + tenancy lookups); vaPool
+	// may be nil — in that case the handler returns an empty fields
+	// slice after the auth gate succeeds (mirrors v2 work-items).
+	fieldsH := fields.NewHandler(pool, vaPool)
+
+	// PLA-0026 / Story 00499 (B10): workspace-scoped successor to the
+	// legacy GET /api/subscription/layers. Reads strategy artefact_types
+	// from vector_artefacts; legacy handler stays live until F3 (per
+	// R047 §9). vaPool may be nil — handler returns 503 in that case.
+	workspaceLayersH := portfoliomodels.NewWorkspaceLayersHandler(pool, vaPool)
 
 	flowsSvc := flows.New(pool)
 	flowsH := flows.NewHandler(flowsSvc)
@@ -705,6 +741,35 @@ func main() {
 			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
 	})
 
+	// ---- /api/portfolio (master_record_portfolio) ----
+	// PLA-0026 / Story 00498 (B9): per-workspace read surface for the
+	// persistent portfolio model record. Reads ONLY vector_artefacts —
+	// no live mmff_library look-ups happen here. Auth is enforced at
+	// the group; per-workspace membership is checked inside the handler.
+	r.Route("/api/portfolio", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		portfolioMasterRecordH.Mount(r)
+	})
+
+	// ---- /api/workspace/{id}/portfolio (PLA-0026 / Story 00499 / B10) ----
+	// Workspace-scoped successor to GET /api/subscription/layers. Reads
+	// strategy artefact_types from vector_artefacts. The legacy endpoint
+	// stays live until F3 frontend cutover (R047 §9). Auth + tenant +
+	// workspace-membership enforcement happens INSIDE the handler so we
+	// can return 404 for cross-tenant probes (leak-resistant) while
+	// returning 403 for in-tenant non-members.
+	r.Route("/api/workspace/{id}/portfolio", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+
+		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
+	})
+
 	// ---- /api/library/releases ----
 	// Release-notification channel (Phase 3, plan §12). Gadmin-only:
 	// only the subscription's group admin acknowledges releases on
@@ -974,6 +1039,17 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		workspacesH.Mount(r)
+	})
+
+	// ---- /api/workspace/{id}/fields (PLA-0026 / Story 00500, B11) ----
+	// Returns the admitted field set for one workspace. Auth + fresh-
+	// password gates at the router edge; per-row tenancy + membership
+	// gating happens inside the handler (404 / 403 / 200).
+	r.Route("/api/workspace/{id}/fields", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Get("/", fieldsH.List)
 	})
 
 	// ---- /api/tenant-settings (master_record_tenant) ----
