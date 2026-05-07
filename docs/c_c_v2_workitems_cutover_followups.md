@@ -2,7 +2,7 @@
 
 **Plan:** PLA-0023
 **Status:** in progress (filled as cutover stories land)
-**Last updated:** 2026-05-07
+**Last updated:** 2026-05-07 (00474: WORK_ITEMS_V2=true enabled in dev)
 
 ## Why this exists
 
@@ -18,7 +18,7 @@ condition; when the trigger fires, the item gets storified and addressed.
 | EAV custom-field reads not wired into v2 list | cutover scope is the production wire shape only; custom fields are a separate surface | when first custom-field consumer migrates | _pending fill_ | open |
 | ranking NOTIFY trigger not re-attached to `vector_artefacts.artefacts` | live drag-and-drop currently fires on `obj_work_items`; v2 list has no NOTIFY emitter yet | when WORK_ITEMS_V2=true on dev and DnD breaks | _pending fill_ | open |
 | `entityrefs` vocabulary missing 'artefact_work' / 'artefact_strategy' entries | cross-DB FK pattern needs new entityrefs codes for the new substrate | when first feature lands that needs cross-DB references to artefacts | _pending fill_ | open |
-| `obj_work_items` + per-type sibling tables not dropped | keep them live for 7+ days post-cutover for safe rollback; drop is a separate plan | 7 days post WORK_ITEMS_V2=true on dev with zero rollback | _pending fill_ | open |
+| `obj_work_items` + per-type sibling tables not dropped | keep them live for 7+ days post-cutover for safe rollback; drop is a separate plan | 7 days post WORK_ITEMS_V2=true on dev with zero rollback — **TRIGGER ACTIVE: flag enabled 2026-05-07** | _pending fill_ | open — drop eligible 2026-05-14 |
 | templates UX surface unbuilt for v2 | templates are write-side; cutover is read-only | when write-side cutover plan is drafted | _pending fill_ | open |
 | `key_num` per-type renumbering deferred | cutover preserves WI-NN public IDs; per-type prefixed numbering is a UX improvement, not a parity bug | when product wants visible-by-type IDs | _pending fill_ | open |
 | `created_by_user_id` nullability loosening (S3 debt) | v2 schema allows null; v1 wire emits `coalesce(...,'')` | if any consumer hits the empty string path | _pending fill_ | open |
