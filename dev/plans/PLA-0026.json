@@ -155,35 +155,35 @@
       "title": "B3: Adoption saga step 2 rewrite: write artefact_types scope=strategy",
       "story_id": "00492",
       "card_url": "http://localhost:3333/cards/1769517060146070670",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 18,
       "title": "B4: Adoption saga steps 3+4 rewrite: write flows + flow_transitions",
       "story_id": "00493",
       "card_url": "http://localhost:3333/cards/1769517064399094934",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 19,
       "title": "B5: Adoption saga step 5 rewrite: write artefact_types scope=work with parent chain",
       "story_id": "00494",
       "card_url": "http://localhost:3333/cards/1769517068626953374",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 20,
       "title": "B6: Adoption saga step 7 finalize: upsert master_record_portfolio",
       "story_id": "00495",
       "card_url": "http://localhost:3333/cards/1769517072921920678",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 21,
       "title": "B7: Adoption saga SSE progress events refitted for new step targets",
       "story_id": "00496",
       "card_url": "http://localhost:3333/cards/1769517077292385454",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 22,
@@ -246,14 +246,14 @@
       "title": "T5: Integration test: scope resolver admit/deny matrix",
       "story_id": "00505",
       "card_url": "http://localhost:3333/cards/1769517117440263414",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 31,
       "title": "T6: Canary nightly test: cross-DB workspace_id integrity",
       "story_id": "00506",
       "card_url": "http://localhost:3333/cards/1769517121651344638",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 32,
@@ -295,7 +295,7 @@
       "title": "T7: Lint rule lint:portfolio-library-read",
       "story_id": "00512",
       "card_url": "http://localhost:3333/cards/1769517147186267438",
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
@@ -433,7 +433,7 @@
       "proven_by": "saga commit + idempotency test",
       "story_id": "00492",
       "card_url": "http://localhost:3333/cards/1769517060146070670",
-      "done": false
+      "done": true
     },
     {
       "order": 18,
@@ -441,7 +441,7 @@
       "proven_by": "saga commit + idempotency test",
       "story_id": "00493",
       "card_url": "http://localhost:3333/cards/1769517064399094934",
-      "done": false
+      "done": true
     },
     {
       "order": 19,
@@ -449,7 +449,7 @@
       "proven_by": "saga commit + idempotency test",
       "story_id": "00494",
       "card_url": "http://localhost:3333/cards/1769517068626953374",
-      "done": false
+      "done": true
     },
     {
       "order": 20,
@@ -457,7 +457,7 @@
       "proven_by": "saga commit + transactional test",
       "story_id": "00495",
       "card_url": "http://localhost:3333/cards/1769517072921920678",
-      "done": false
+      "done": true
     },
     {
       "order": 21,
@@ -465,7 +465,7 @@
       "proven_by": "saga commit + frontend test",
       "story_id": "00496",
       "card_url": "http://localhost:3333/cards/1769517077292385454",
-      "done": false
+      "done": true
     },
     {
       "order": 22,
@@ -537,7 +537,7 @@
       "proven_by": "parameterised test green",
       "story_id": "00505",
       "card_url": "http://localhost:3333/cards/1769517117440263414",
-      "done": false
+      "done": true
     },
     {
       "order": 31,
@@ -545,7 +545,7 @@
       "proven_by": "scheduled job + alert wiring",
       "story_id": "00506",
       "card_url": "http://localhost:3333/cards/1769517121651344638",
-      "done": false
+      "done": true
     },
     {
       "order": 32,
@@ -593,7 +593,7 @@
       "proven_by": "lint script + npm-run pass",
       "story_id": "00512",
       "card_url": "http://localhost:3333/cards/1769517147186267438",
-      "done": false
+      "done": true
     }
   ],
   "risks": [
