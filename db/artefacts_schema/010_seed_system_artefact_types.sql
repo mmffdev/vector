@@ -100,4 +100,8 @@ COMMENT ON FUNCTION seed_system_artefact_types(UUID) IS
     'subscription. Called by the app when a new subscription is provisioned. '
     'Strategy types arrive separately via portfolio-model adoption.';
 
+-- Run the seed for the PoC subscription right now so fresh installs have data.
+-- Mirrors the pattern in 011_seed_system_strategy_types.sql.
+SELECT seed_system_artefact_types('00000000-0000-0000-0000-000000000001'::uuid);
+
 COMMIT;

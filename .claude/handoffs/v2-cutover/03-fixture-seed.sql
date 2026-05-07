@@ -1,0 +1,2 @@
+-- Promoted to db/artefacts_schema/seed/01_work_items_fixture.sql (PLA-0023 / 00463).
+-- This file is a tombstone. Edit the canonical copy at that path.

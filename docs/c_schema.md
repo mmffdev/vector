@@ -6,6 +6,27 @@
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
+---
+
+## `vector_artefacts` database (PoC cutover target)
+
+Migration files at `db/artefacts_schema/NNN_*.sql`; runner: `go run ./backend/cmd/migrate -db vector_artefacts`.
+
+| Table | Purpose |
+|---|---|
+| `artefact_types` | Per-subscription catalogue of artefact types (scope + prefix + flow). |
+| `flows` / `flow_states` / `flow_transitions` | Workflow definitions for artefact types. |
+| `artefacts` | Single storage table for all tracked records — work items and strategy items; `artefact_type_id` discriminates. |
+| `artefacts.priority` | `TEXT NULL` — CHECK `IN ('critical','high','medium','low')`; matches `mmff_vector.obj_work_items` constraint. Added migration 012. |
+| `artefacts.story_points` | `INTEGER NULL` — CHECK `>= 0`; sprint-estimation field. Added migration 012. |
+| `artefacts.due_date` | `DATE NULL` — target completion date. Added migration 012. |
+| `artefacts.sprint_id` | `UUID NULL` — FK → `sprints.id ON DELETE SET NULL`; hard FK added migration 013. |
+| `sprints` | Workspace iteration container (`subscription_id`, `workspace_id`, `name`, `status`, `start_date`/`end_date`, `archived_at`). Added migration 013. |
+| `field_library` / `artefact_type_fields` / `artefact_field_values` | Jira-style flexible-field surface for type-specific attributes. |
+| `strategy_layers_adopted` | Records which library strategy layers a subscription has adopted. |
+
+---
+
 ## Phase 1+2 cleanup (migrations 122–123) — 2026-05-07
 
 **Migration 122 dropped 11 orphan tables** (CASCADE; zero callers verified prior):
