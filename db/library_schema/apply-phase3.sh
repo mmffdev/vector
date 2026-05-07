@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # apply-phase3.sh — Apply Phase 3 mmff_library release-channel schema
-# against the dev cluster via the SSH tunnel at localhost:5434.
+# against the dev cluster via the SSH tunnel on the resolved dev DB port
+# (see resolve-dev-db-port.sh).
 #
 # Phase 3 ships:
 #   006_release_channel.sql           → mmff_library (release tables)
@@ -23,13 +24,22 @@ set -euo pipefail
 # --- locate repo paths ------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-ENV_FILE="${REPO_ROOT}/backend/.env.local"
+# Prefer .env.dev (canonical), fall back to .env.local.
+ENV_FILE="${REPO_ROOT}/backend/.env.dev"
+[[ -f "${ENV_FILE}" ]] || ENV_FILE="${REPO_ROOT}/backend/.env.local"
 LIB_SQL_DIR="${SCRIPT_DIR}"
 LIB_SEED_DIR="${SCRIPT_DIR}/seed"
 VECTOR_SQL_DIR="${REPO_ROOT}/db/schema"
 
+# Single source of truth for the dev tunnel port. Sets DEV_DB_PORT and
+# DEV_DB_PORT_SOURCE.
+# shellcheck source=../../dev/scripts/resolve-dev-db-port.sh
+. "${REPO_ROOT}/dev/scripts/resolve-dev-db-port.sh"
+resolve_dev_db_port
+
 DB_HOST="localhost"
-DB_PORT="5434"
+DB_PORT="${DEV_DB_PORT}"
+echo "[info] dev DB port: ${DB_PORT} (source: ${DEV_DB_PORT_SOURCE})"
 ADMIN_USER="mmff_dev"
 LIB_DB="mmff_library"
 VECTOR_DB="mmff_vector"

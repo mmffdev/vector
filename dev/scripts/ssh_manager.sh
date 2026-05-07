@@ -19,14 +19,25 @@
 
 set -u  # no unset vars; we handle errors explicitly per-step
 
+# NB: this directory layout resolves to <repo>/dev — kept as-is for any callers
+# that already rely on it. RESOLVED_REPO_ROOT below points at the actual repo.
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+RESOLVED_REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SERVER_HOST="mmffdev.com"
 SERVER_USER="root"
-TUNNEL_PORT=5434
+# Tunnel port resolved from backend/.env.dev (or .env.local fallback) so this
+# script and the Go backend can never drift apart. Override with
+# DEV_DB_PORT_OVERRIDE=<port> for one-off experiments.
+# shellcheck source=./resolve-dev-db-port.sh
+. "$RESOLVED_REPO_ROOT/dev/scripts/resolve-dev-db-port.sh"
+resolve_dev_db_port
+TUNNEL_PORT="${DEV_DB_PORT}"
 REMOTE_PG_PORT=5432
 SSH_CONFIG="$HOME/.ssh/config"
 SSH_KEY="$HOME/.ssh/id_ed25519"
-ENV_LOCAL="$REPO_ROOT/backend/.env.local"
+# Canonical dev env file (.env.dev); .env.local is a dev-locked alias.
+ENV_LOCAL="$RESOLVED_REPO_ROOT/backend/.env.dev"
+[[ -f "$ENV_LOCAL" ]] || ENV_LOCAL="$RESOLVED_REPO_ROOT/backend/.env.local"
 DB_PASSWORD_DEFAULT='9&cr39&19&11Ctcr'
 
 # ---------- helpers ----------

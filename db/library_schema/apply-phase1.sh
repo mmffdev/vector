@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # apply-phase1.sh — Apply Phase 1 mmff_library scaffold against the dev cluster
-# via the SSH tunnel at localhost:5434.
+# via the SSH tunnel on the resolved dev DB port (see resolve-dev-db-port.sh).
 #
 # Usage:
 #   ./apply-phase1.sh           # apply
@@ -14,12 +14,21 @@ set -euo pipefail
 # --- locate repo paths ------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-ENV_FILE="${REPO_ROOT}/backend/.env.local"
+# Prefer .env.dev (canonical), fall back to .env.local.
+ENV_FILE="${REPO_ROOT}/backend/.env.dev"
+[[ -f "${ENV_FILE}" ]] || ENV_FILE="${REPO_ROOT}/backend/.env.local"
 SQL_DIR="${SCRIPT_DIR}"
 SEED_DIR="${SCRIPT_DIR}/seed"
 
+# Single source of truth for the dev tunnel port. Sets DEV_DB_PORT and
+# DEV_DB_PORT_SOURCE.
+# shellcheck source=../../dev/scripts/resolve-dev-db-port.sh
+. "${REPO_ROOT}/dev/scripts/resolve-dev-db-port.sh"
+resolve_dev_db_port
+
 DB_HOST="localhost"
-DB_PORT="5434"
+DB_PORT="${DEV_DB_PORT}"
+echo "[info] dev DB port: ${DB_PORT} (source: ${DEV_DB_PORT_SOURCE})"
 ADMIN_USER="mmff_dev"
 LIB_DB="mmff_library"
 LIB_ADMIN_USER="mmff_library_admin"

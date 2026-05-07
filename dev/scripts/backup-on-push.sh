@@ -18,13 +18,21 @@ cd "$PROJECT_ROOT" 2>/dev/null || exit 0
 BACKUP_DIR="$PROJECT_ROOT/local-assets/backups"
 LOG_FILE="$BACKUP_DIR/backup-log.jsonl"
 SKIP_LOG="$BACKUP_DIR/skip-warnings.log"
+DIAG_LOG_DIR="$PROJECT_ROOT/dev/logs"
+DIAG_LOG="$DIAG_LOG_DIR/backup-on-push.log"
 NO_BACKUP_SENTINEL="$PROJECT_ROOT/.claude/no-push-backup"
 PG_DUMP="/opt/homebrew/opt/libpq/bin/pg_dump"
 DEDUPE_WINDOW_SECONDS=600
 RETENTION_COUNT=20
 RETENTION_DAYS=30
 
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$BACKUP_DIR" "$DIAG_LOG_DIR"
+
+# Single source of truth for the dev tunnel port (env-file → probe → default).
+# Sets DEV_DB_PORT and DEV_DB_PORT_SOURCE.
+# shellcheck source=./resolve-dev-db-port.sh
+. "$PROJECT_ROOT/dev/scripts/resolve-dev-db-port.sh"
+resolve_dev_db_port
 
 CHANNEL=""
 SHA_ARG=""
@@ -58,7 +66,41 @@ log_entry() {
 emit_skip_banner() {
   local reason="$1"
   printf '\033[31m⚠ backup-on-push SKIPPED: %s. Run `<backupsql>` manually to recover.\033[0m\n' "$reason" >&2
+  printf '\033[31m   resolved port: %s (source: %s) — see dev/logs/backup-on-push.log for full diagnostics\033[0m\n' \
+    "${DEV_DB_PORT:-?}" "${DEV_DB_PORT_SOURCE:-?}" >&2
   printf '%s\t%s\t%s\n' "$(now_iso)" "$CHANNEL" "$reason" >> "$SKIP_LOG"
+}
+
+# write_diag_log — append a multi-line diagnostic block to dev/logs/backup-on-push.log.
+# Captures everything Claude or the user needs to root-cause a skip without rerunning.
+# Args: $1 reason  $2 sha
+write_diag_log() {
+  local reason="$1" sha="$2"
+  {
+    printf '======== %s ========\n' "$(now_iso)"
+    printf 'channel:        %s\n' "$CHANNEL"
+    printf 'reason:         %s\n' "$reason"
+    printf 'sha:            %s\n' "$sha"
+    printf 'resolved port:  %s\n' "${DEV_DB_PORT:-?}"
+    printf 'port source:    %s\n' "${DEV_DB_PORT_SOURCE:-?}"
+    printf '\n-- LISTEN sockets on 5430-5439 --\n'
+    if command -v lsof >/dev/null 2>&1; then
+      lsof -nP -iTCP:5430-5439 -sTCP:LISTEN 2>/dev/null || printf '(none)\n'
+    else
+      printf '(lsof unavailable)\n'
+    fi
+    printf '\n-- ssh tunnel processes (-L flag or known dev aliases) --\n'
+    {
+      ps -A -o pid,command 2>/dev/null \
+        | grep -E '(^|[[:space:]])ssh([[:space:]]|$).*(-L|vector-dev-pg|mmffdev-pg)' \
+        | grep -v grep
+    } || printf '(none)\n'
+    printf '\n-- ACTIVE BACKEND ENV marker (.claude/CLAUDE.md) --\n'
+    grep -E '^> \*\*ACTIVE BACKEND ENV' "$PROJECT_ROOT/.claude/CLAUDE.md" 2>/dev/null \
+      | head -n 1 \
+      || printf '(marker line not found)\n'
+    printf '\n'
+  } >> "$DIAG_LOG" 2>/dev/null || true
 }
 
 # -- Resolve SHA ------------------------------------------------------------
@@ -117,33 +159,63 @@ if [[ -f "$LOG_FILE" ]]; then
 fi
 
 # -- Tunnel check -----------------------------------------------------------
-if ! nc -z localhost 5434 2>/dev/null; then
-  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "tunnel_down: localhost:5434"
-  emit_skip_banner "SSH tunnel down (localhost:5434 unreachable)"
+# DEV_DB_PORT and DEV_DB_PORT_SOURCE were set by resolve_dev_db_port at the top.
+DB_PORT="$DEV_DB_PORT"
+
+# -- Dry-run path -----------------------------------------------------------
+# BACKUP_DRY_RUN=1 → resolve everything, print the plan, exit 0 without dumping.
+if [[ "${BACKUP_DRY_RUN:-0}" == "1" ]]; then
+  printf 'backup-on-push: DRY RUN\n'
+  printf '  channel:        %s\n' "$CHANNEL"
+  printf '  sha:            %s (label=%s)\n' "$SHA" "$LABEL"
+  printf '  resolved port:  %s\n' "$DB_PORT"
+  printf '  port source:    %s\n' "$DEV_DB_PORT_SOURCE"
+  if nc -z localhost "$DB_PORT" 2>/dev/null; then
+    printf '  tunnel check:   OK (something LISTENing on %s)\n' "$DB_PORT"
+  else
+    printf '  tunnel check:   FAIL (nothing LISTENing on %s)\n' "$DB_PORT"
+  fi
+  printf '  diag log:       %s\n' "$DIAG_LOG"
+  exit 0
+fi
+
+if ! nc -z localhost "$DB_PORT" 2>/dev/null; then
+  reason="tunnel_down: localhost:$DB_PORT (source=$DEV_DB_PORT_SOURCE)"
+  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
+  write_diag_log "$reason" "$SHA"
+  emit_skip_banner "SSH tunnel down (localhost:$DB_PORT unreachable)"
   exit 0
 fi
 
 # -- Credentials ------------------------------------------------------------
-ENV_FILE="$PROJECT_ROOT/backend/.env.local"
-if [[ ! -f "$ENV_FILE" ]]; then
-  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "env_missing: backend/.env.local"
-  emit_skip_banner "backend/.env.local missing"
+# Prefer .env.dev (the canonical pinned-to-dev file); fall back to .env.local.
+ENV_FILE=""
+for cand in "$PROJECT_ROOT/backend/.env.dev" "$PROJECT_ROOT/backend/.env.local"; do
+  if [[ -f "$cand" ]]; then ENV_FILE="$cand"; break; fi
+done
+if [[ -z "$ENV_FILE" ]]; then
+  reason="env_missing: backend/.env.dev and backend/.env.local both missing"
+  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
+  write_diag_log "$reason" "$SHA"
+  emit_skip_banner "backend/.env.dev and backend/.env.local both missing"
   exit 0
 fi
 PW=$(grep '^DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
-DB_PORT=$(grep '^DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'" ' ')
-DB_PORT="${DB_PORT:-5434}"
 LIB_PW=$(grep '^LIBRARY_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
 LIB_PORT=$(grep '^LIBRARY_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'" ' ')
 LIB_PORT="${LIB_PORT:-$DB_PORT}"
 if [[ -z "$PW" ]]; then
-  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "env_missing: DB_PASSWORD not set"
-  emit_skip_banner "DB_PASSWORD not found in backend/.env.local"
+  reason="env_missing: DB_PASSWORD not set in $(basename "$ENV_FILE")"
+  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
+  write_diag_log "$reason" "$SHA"
+  emit_skip_banner "DB_PASSWORD not found in $(basename "$ENV_FILE")"
   exit 0
 fi
 
 if [[ ! -x "$PG_DUMP" ]]; then
-  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "pg_dump_missing: $PG_DUMP"
+  reason="pg_dump_missing: $PG_DUMP"
+  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
+  write_diag_log "$reason" "$SHA"
   emit_skip_banner "pg_dump not found at $PG_DUMP (install libpq)"
   exit 0
 fi
@@ -159,7 +231,9 @@ if ! PGPASSWORD="$PW" "$PG_DUMP" \
     > "$OUT" 2> "$OUT.err"; then
   ERR_TAIL=$(tail -c 300 "$OUT.err" 2>/dev/null | tr '\n' ' ')
   rm -f "$OUT" "$OUT.err"
-  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "pg_dump_failed: $ERR_TAIL"
+  reason="pg_dump_failed: $ERR_TAIL"
+  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
+  write_diag_log "$reason" "$SHA"
   emit_skip_banner "pg_dump failed: $ERR_TAIL"
   exit 0
 fi
@@ -183,7 +257,9 @@ if [[ -n "$LIB_PW" ]]; then
       > "$OUT_LIB" 2> "$OUT_LIB.err"; then
     ERR_TAIL=$(tail -c 300 "$OUT_LIB.err" 2>/dev/null | tr '\n' ' ')
     rm -f "$OUT_LIB" "$OUT_LIB.err"
-    log_entry "skipped" "$SHA" "${LABEL}_library" "" 0 0 "pg_dump_failed (library): $ERR_TAIL"
+    reason="pg_dump_failed (library): $ERR_TAIL"
+    log_entry "skipped" "$SHA" "${LABEL}_library" "" 0 0 "$reason"
+    write_diag_log "$reason" "$SHA"
     emit_skip_banner "pg_dump mmff_library failed: $ERR_TAIL"
   else
     rm -f "$OUT_LIB.err"
