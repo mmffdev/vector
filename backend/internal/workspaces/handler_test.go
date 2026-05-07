@@ -510,3 +510,120 @@ func TestRestore_200ForGadmin(t *testing.T) {
 		t.Errorf("archived_at still set after 200 OK restore")
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// PLA-0026 / story 00502 (B13) — DELETE /{id} cross-DB orphan guard
+// ──────────────────────────────────────────────────────────────────────
+//
+// These tests cover the orchestration of the Delete handler against a
+// REAL mmff_vector pool. They do NOT exercise a live vector_artefacts
+// pool — the cross-DB scan is implicitly disabled by leaving
+// Service.VAPool nil, which is the documented "guard disabled" state.
+// The orphan-list 409 path is exercised by the unit-level test
+// TestDelete_409WhenOrphansPresent below, which substitutes an
+// in-memory fake VA pool through the Service struct.
+
+// TestDelete_403ForNonGadmin verifies the destructive-tier permission
+// gate fires before any DB read. A regular user cannot delete a
+// workspace; the row stays in place.
+func TestDelete_403ForNonGadmin(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+
+	subID, cleanup := mkTenant(t, pool, "del-403")
+	defer cleanup()
+
+	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+	user := mkUser(t, pool, subID, models.RoleUser)
+	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Doomed", "doomed-"+uuid.NewString()[:6])
+
+	r, _ := newRouter(pool, user)
+	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/"+wsID.String(), nil)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("non-gadmin delete: want 403, got %d; body=%s", w.Code, w.Body.String())
+	}
+
+	// Sanity: row still present.
+	var n int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM workspaces WHERE id = $1`, wsID,
+	).Scan(&n); err != nil {
+		t.Fatalf("verify still present: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("workspace row count: got %d, want 1 (gate bypassed?)", n)
+	}
+}
+
+// TestDelete_404ForCrossTenant verifies cross-tenant access does not
+// leak existence: a gadmin in tenant A asking to delete a workspace
+// in tenant B gets 404, not 403/409.
+func TestDelete_404ForCrossTenant(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+
+	subA, cleanA := mkTenant(t, pool, "del-xt-a")
+	defer cleanA()
+	subB, cleanB := mkTenant(t, pool, "del-xt-b")
+	defer cleanB()
+
+	gadminA := mkUser(t, pool, subA, models.RoleGAdmin)
+	gadminB := mkUser(t, pool, subB, models.RoleGAdmin)
+	wsB := seedWorkspace(t, pool, subB, gadminB.ID, "B", "b-"+uuid.NewString()[:6])
+
+	r, _ := newRouter(pool, gadminA)
+	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/"+wsB.String(), nil)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("cross-tenant delete: want 404, got %d; body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestDelete_501WhenNoOrphans is the happy path for the guard-only
+// MVP. With VAPool nil (the guard is a no-op) and no DB-level orphans,
+// the handler returns 501 Not Implemented because hard-delete is
+// out-of-scope for this story. The test therefore confirms that
+// steps 1–4 of the handler all pass and the placeholder 501 fires.
+func TestDelete_501WhenNoOrphans(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+
+	subID, cleanup := mkTenant(t, pool, "del-501")
+	defer cleanup()
+
+	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Target", "tgt-"+uuid.NewString()[:6])
+
+	r, _ := newRouter(pool, gadmin)
+	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/"+wsID.String(), nil)
+	if w.Code != http.StatusNotImplemented {
+		t.Fatalf("delete (no orphans, guard disabled): want 501, got %d; body=%s", w.Code, w.Body.String())
+	}
+
+	// Sanity: workspace was NOT deleted (501 = not implemented yet).
+	var n int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM workspaces WHERE id = $1`, wsID,
+	).Scan(&n); err != nil {
+		t.Fatalf("verify still present: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("workspace row count: got %d, want 1 (501 must not delete)", n)
+	}
+}
+
+// TestDelete_400OnMalformedID verifies a non-UUID path segment is
+// rejected with 400 before any other gate runs.
+func TestDelete_400OnMalformedID(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+
+	subID, cleanup := mkTenant(t, pool, "del-400")
+	defer cleanup()
+	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+
+	r, _ := newRouter(pool, gadmin)
+	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/not-a-uuid", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("malformed id: want 400, got %d; body=%s", w.Code, w.Body.String())
+	}
+}

@@ -107,16 +107,41 @@ type PermissionResolver interface {
 // by every mutation method to enforce the workspace.* gate matrix
 // from migration 100; nil disables the gate (used by tests and the
 // migration-time bootstrap path).
+//
+// VAPool is the optional pgxpool against the vector_artefacts DB
+// (PLA-0026 / story 00502). When non-nil it is used by
+// CheckCrossDBOrphans to scan every VA table that carries
+// workspace_id BEFORE a workspace is deleted: if any row references
+// the workspace, the deletion is refused with a 409 listing the
+// offending tables. When nil (no VECTOR_ARTEFACTS_DB_URL configured,
+// or unit tests) the scan is a no-op — the cross-DB guard is
+// disabled by definition. Reads are not gated on this field.
 type Service struct {
-	Pool  *pgxpool.Pool
-	Audit *audit.Logger
-	Perms PermissionResolver
+	Pool   *pgxpool.Pool
+	Audit  *audit.Logger
+	Perms  PermissionResolver
+	VAPool *pgxpool.Pool
 }
 
 // New constructs a Service. Audit and Perms may be nil in tests; the
 // production wiring (cmd/main.go) MUST pass non-nil values for both.
+// VAPool is set separately via WithVAPool — see service.go for the
+// rationale (optional cross-DB pool, present only when the cutover
+// DB is configured).
 func New(pool *pgxpool.Pool, a *audit.Logger, p PermissionResolver) *Service {
 	return &Service{Pool: pool, Audit: a, Perms: p}
+}
+
+// WithVAPool attaches an optional vector_artefacts pgxpool to the
+// service. Returns the receiver so callers can chain the call at
+// construction time (e.g. workspaces.New(...).WithVAPool(vaPool)).
+// Passing nil is allowed and is the documented "guard disabled"
+// state — CheckCrossDBOrphans will short-circuit with an empty
+// report and the workspace-deletion code path becomes unguarded.
+// PLA-0026 / story 00502 (B13).
+func (s *Service) WithVAPool(p *pgxpool.Pool) *Service {
+	s.VAPool = p
+	return s
 }
 
 // requirePermission is the single permission gate used by every

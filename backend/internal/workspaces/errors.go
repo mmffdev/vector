@@ -20,6 +20,8 @@ import "errors"
 //	ErrGrantNotFound           → 404 (revoke/list on missing grant)
 //	ErrInvalidRole             → 400 (closed-vocab CHECK)
 //	ErrNotArchived             → 409 (Restore on a live workspace)
+//	ErrCrossDBOrphans          → 409 (Delete blocked: vector_artefacts
+//	                                  still references the workspace)
 var (
 	ErrNotFound              = errors.New("workspaces: workspace not found")
 	ErrSlugTaken             = errors.New("workspaces: slug already in use for this subscription")
@@ -32,4 +34,5 @@ var (
 	ErrCannotArchiveLastLive = errors.New("workspaces: cannot archive the last live workspace in a subscription")
 	ErrGrantNotFound         = errors.New("workspaces: workspace role grant not found")
 	ErrInvalidRole           = errors.New("workspaces: invalid role")
+	ErrCrossDBOrphans        = errors.New("workspaces: vector_artefacts still references this workspace")
 )

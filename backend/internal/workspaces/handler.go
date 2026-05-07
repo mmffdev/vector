@@ -16,6 +16,7 @@ package workspaces
 //	PATCH  /api/workspaces/{id}           → Rename                         00380 AC
 //	POST   /api/workspaces/{id}/archive   → Archive                        AC3
 //	POST   /api/workspaces/{id}/restore   → Restore                        00381 AC
+//	DELETE /api/workspaces/{id}           → Delete (cross-DB guard)        PLA-0026 / 00502
 //
 // Reads are not audited; writes are (audit rows are emitted by the
 // service so they sit inside the same transaction as the mutation).
@@ -36,6 +37,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
 // Handler is the chi-mountable HTTP surface for workspaces.
@@ -56,6 +58,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Patch("/{id}", h.Patch)
 	r.Post("/{id}/archive", h.Archive)
 	r.Post("/{id}/restore", h.Restore)
+	r.Delete("/{id}", h.Delete)
 }
 
 // ─── request shapes ────────────────────────────────────────────────────
@@ -196,12 +199,117 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// DELETE /api/workspaces/{id} — PLA-0026 / story 00502 (B13).
+//
+// This handler is the workspace-deletion entry point and the host of
+// the cross-DB orphan guard required by R047 §12.1. It performs the
+// following sequence, in order; a 4xx response on any step
+// short-circuits before any mutation:
+//
+//  1. Parse the workspace id from the URL; 400 on a malformed UUID.
+//  2. Permission gate. Workspace deletion is privileged: caller must
+//     hold workspace.archive (the destructive-tier permission seeded
+//     by migration 100). Non-holders → 403.
+//  3. Existence + tenant-scope check. Cross-tenant access returns
+//     404 (no existence leak). Use of Get keeps the loadWorkspace
+//     SELECT… FOR UPDATE semantics out of the read path here.
+//  4. Cross-DB orphan scan against vector_artefacts. If any LIVE row
+//     in any VA table references this workspace, refuse with 409
+//     Conflict and emit the orphan list in the response body so an
+//     operator can see exactly what needs cleanup. The scan is
+//     read-only and idempotent. When VAPool is nil the scan is a
+//     documented no-op.
+//  5. Hard delete is OUT OF SCOPE for this story (R047 §12.1 covers
+//     only the guard). The handler returns 501 Not Implemented with
+//     a clear detail string instead of mutating mmff_vector.workspaces.
+//     A future story (PLA-0026 follow-up) will add the actual delete
+//     statement once the cleanup invariants for workspace_roles and
+//     org_nodes are agreed.
+//
+// Auth/permission rationale: there is currently no `workspace.delete`
+// permission code in the catalogue (catalogue.go lists only create /
+// rename / archive / restore / view_archived). Rather than introduce
+// a new code that requires a migration, this handler reuses
+// `workspace.archive` — the same destructive-tier gate that the
+// Archive endpoint uses. In MVP only the gadmin role grid carries
+// that code; padmin/user → 403, matching the "tenant admin OR
+// padmin/gadmin" expectation in the story.
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		return
+	}
+
+	// 2. Permission gate. Reuse workspace.archive (gadmin tier in MVP).
+	if err := h.Svc.requirePermission(r.Context(), u.ID, permissions.WorkspaceArchive); err != nil {
+		writeErr(w, r, err)
+		return
+	}
+
+	// 3. Existence + tenant-scope check. Cross-tenant → 404.
+	if _, err := h.Svc.Get(r.Context(), u.SubscriptionID, id); err != nil {
+		writeErr(w, r, err)
+		return
+	}
+
+	// 4. Cross-DB orphan scan. 409 Conflict + orphan list when any
+	// live row in vector_artefacts references this workspace.
+	orphans, err := h.Svc.CheckCrossDBOrphans(r.Context(), id)
+	if err != nil {
+		writeErr(w, r, err)
+		return
+	}
+	if len(orphans) > 0 {
+		writeOrphans409(w, r, orphans)
+		return
+	}
+
+	// 5. Hard delete out of scope. Document via 501 so the route is
+	// still wired for the guard (steps 1–4) but mutation is deferred
+	// to a follow-up story.
+	httperr.Write(w, r, http.StatusNotImplemented,
+		"workspace hard-delete is not yet implemented; cross-DB orphan guard is wired (PLA-0026/00502) — use POST /archive in the meantime")
+}
+
+
 // ─── helpers ────────────────────────────────────────────────────────────
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// writeOrphans409 emits the PLA-0026 / story 00502 cross-DB orphan
+// 409 body. Shape mirrors RFC 9457 (httperr.Problem) plus an extra
+// `orphans` field listing every vector_artefacts table that still
+// references the workspace under inspection. Tables with zero rows
+// are omitted by CheckCrossDBOrphans before this helper is called.
+//
+// We can't reuse httperr.Write here because Problem doesn't carry an
+// open extension slot; the AC explicitly requires the orphan list in
+// the response body so an operator can see what to clean up.
+func writeOrphans409(w http.ResponseWriter, r *http.Request, orphans []OrphanReport) {
+	body := struct {
+		Type     string         `json:"type"`
+		Title    string         `json:"title"`
+		Status   int            `json:"status"`
+		Detail   string         `json:"detail"`
+		Instance string         `json:"instance"`
+		Orphans  []OrphanReport `json:"orphans"`
+	}{
+		Type:     "about:blank",
+		Title:    http.StatusText(http.StatusConflict),
+		Status:   http.StatusConflict,
+		Detail:   "workspace has live references in vector_artefacts; clean up before deletion",
+		Instance: r.URL.Path,
+		Orphans:  orphans,
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(body)
 }
 
 // writeErr maps the package's sentinel errors to HTTP statuses per the
@@ -217,6 +325,13 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "already_archived"})
 	case errors.Is(err, ErrNotArchived):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "not_archived"})
+	case errors.Is(err, ErrCrossDBOrphans):
+		// Defensive mapping. The Delete handler emits the rich
+		// orphan-list body via writeOrphans409 directly and never
+		// surfaces this sentinel; this branch exists so that any
+		// future caller that returns ErrCrossDBOrphans from a
+		// service method gets a stable 409 instead of a 500.
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "cross_db_orphans"})
 	case errors.Is(err, ErrCannotArchiveLastLive):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "cannot_archive_last_live"})
 	case errors.Is(err, ErrSingleAdminViolation):

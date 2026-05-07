@@ -276,6 +276,70 @@ func TestCreateDefault_UsesCanonicalSlug(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// CheckCrossDBOrphans — PLA-0026 / story 00502 (B13)
+// ──────────────────────────────────────────────────────────────────
+
+// TestCheckCrossDBOrphans_NoVAPoolIsNoOp verifies the documented
+// "guard disabled" path: when VAPool is nil (no VECTOR_ARTEFACTS_DB_URL
+// configured) the scan returns (nil, nil) without any DB access. The
+// caller is responsible for documenting that the deletion path is
+// unguarded in that mode.
+func TestCheckCrossDBOrphans_NoVAPoolIsNoOp(t *testing.T) {
+	s := &Service{} // VAPool nil; Pool nil — must not be touched
+	out, err := s.CheckCrossDBOrphans(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("nil VAPool: want nil error, got %v", err)
+	}
+	if len(out) != 0 {
+		t.Errorf("nil VAPool: want empty slice, got %d entries: %+v", len(out), out)
+	}
+}
+
+// TestVAWorkspaceTables_MatchesCanary locks the table list against
+// drift from the cross-DB canary in
+// internal/portfoliomodels/cross_db_canary_test.go. If a new table is
+// added to vector_artefacts that carries workspace_id, both lists
+// must be updated together — this test does not import the canary's
+// list directly (the test files live in different packages and the
+// canary is _test.go-only) but pins the table names + archived_at
+// flags so a divergence is caught at unit-test time.
+func TestVAWorkspaceTables_MatchesCanary(t *testing.T) {
+	type entry struct {
+		name          string
+		hasArchivedAt bool
+	}
+	want := []entry{
+		{"artefact_types", true},
+		{"artefact_workspace_fields", false},
+		{"artefacts", true},
+		{"master_record_portfolio", false},
+		{"sprints", true},
+	}
+	if len(vaWorkspaceTables) != len(want) {
+		t.Fatalf("table count drift: got %d, canary lists %d", len(vaWorkspaceTables), len(want))
+	}
+	for i, w := range want {
+		got := vaWorkspaceTables[i]
+		if got.name != w.name || got.hasArchivedAt != w.hasArchivedAt {
+			t.Errorf("entry %d: got {%s,%v}, want {%s,%v}", i, got.name, got.hasArchivedAt, w.name, w.hasArchivedAt)
+		}
+	}
+}
+
+// TestWithVAPool_AttachesPool verifies the fluent setter mutates the
+// receiver. nil-pool round-trip is allowed (guard-disabled state) and
+// the setter must accept it without panicking.
+func TestWithVAPool_AttachesPool(t *testing.T) {
+	s := &Service{}
+	if got := s.WithVAPool(nil); got != s {
+		t.Errorf("WithVAPool should return the receiver for chaining")
+	}
+	if s.VAPool != nil {
+		t.Errorf("WithVAPool(nil) should leave VAPool nil")
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Slug regex — locks in the workspaces.slug CHECK constraint
 // ──────────────────────────────────────────────────────────────────
 
