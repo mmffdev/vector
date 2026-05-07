@@ -148,7 +148,7 @@
       "title": "B2: Field scope resolver \u2014 admit/deny against scope + workspace whitelist",
       "story_id": "00491",
       "card_url": "http://localhost:3333/cards/1769517055859491974",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 17,
@@ -425,7 +425,7 @@
       "proven_by": "package commit + test output",
       "story_id": "00491",
       "card_url": "http://localhost:3333/cards/1769517055859491974",
-      "done": false
+      "done": true
     },
     {
       "order": 17,
