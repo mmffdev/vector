@@ -205,6 +205,228 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	return items, total, nil
 }
 
+// GetWorkItem returns a single work item by ID enforcing subscription isolation.
+// Returns ErrNotFound when the row does not exist or belongs to another tenant.
+func (s *Service) GetWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID) (*WorkItem, error) {
+	if s.vectorArtefactsPool == nil {
+		return nil, ErrNotFound
+	}
+	row := s.vectorArtefactsPool.QueryRow(ctx, `
+		WITH `+rollupCTE+`
+		SELECT
+			a.id::text,
+			a.subscription_id::text,
+			a.number                        AS key_num,
+			lower(at.name)                  AS item_type,
+			a.title,
+			a.description,
+			''                              AS status,
+			COALESCE(fs.id::text, '')        AS flow_state_id,
+			COALESCE(fs.name, '')            AS flow_state_name,
+			CASE fs.kind
+				WHEN 'todo'        THEN 'backlog'
+				WHEN 'in_progress' THEN 'doing'
+				WHEN 'done'        THEN 'completed'
+				WHEN 'cancelled'   THEN 'cancelled'
+				ELSE                    'backlog'
+			END                             AS flow_state_code,
+			a.priority,
+			a.story_points,
+			a.sprint_id::text,
+			NULL::text                      AS sprint_ref_id,
+			NULL::text                      AS sprint_ref_alias,
+			a.parent_artefact_id::text      AS parent_id,
+			NULL::text                      AS root_feature_id,
+			COALESCE(a.owned_by_user_id::text, '') AS owner_id,
+			NULL::text                      AS owner_ref_id,
+			NULL::text                      AS owner_display_name,
+			NULL::text                      AS owner_avatar_url,
+			a.due_date::text,
+			COALESCE(a.created_by_user_id::text, '') AS created_by,
+			a.created_at,
+			a.updated_at,
+			a.archived_at,
+			(SELECT count(*) FROM artefacts child
+			 WHERE child.parent_artefact_id = a.id
+			   AND child.archived_at IS NULL)        AS children_count,
+			COALESCE(rp.rollup_points, a.story_points) AS rollup_points
+		FROM artefacts a
+		JOIN artefact_types at ON at.id = a.artefact_type_id
+		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN rollup_points rp ON rp.id = a.id
+		WHERE a.id = $2
+		  AND a.subscription_id = $1
+		  AND a.archived_at IS NULL
+		  AND at.scope = 'work'`,
+		subscriptionID, id,
+	)
+	wi, err := scanWorkItemRow(row)
+	if err == pgx.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	items := []WorkItem{*wi}
+	if err := s.decorateOwners(ctx, items); err != nil {
+		return nil, err
+	}
+	wi = &items[0]
+	return wi, nil
+}
+
+// ListChildren returns direct children of parentID scoped to the subscription.
+func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, parentID uuid.UUID) ([]WorkItem, error) {
+	if s.vectorArtefactsPool == nil {
+		return []WorkItem{}, nil
+	}
+	rows, err := s.vectorArtefactsPool.Query(ctx, `
+		WITH `+rollupCTE+`
+		SELECT
+			a.id::text,
+			a.subscription_id::text,
+			a.number                        AS key_num,
+			lower(at.name)                  AS item_type,
+			a.title,
+			a.description,
+			''                              AS status,
+			COALESCE(fs.id::text, '')        AS flow_state_id,
+			COALESCE(fs.name, '')            AS flow_state_name,
+			CASE fs.kind
+				WHEN 'todo'        THEN 'backlog'
+				WHEN 'in_progress' THEN 'doing'
+				WHEN 'done'        THEN 'completed'
+				WHEN 'cancelled'   THEN 'cancelled'
+				ELSE                    'backlog'
+			END                             AS flow_state_code,
+			a.priority,
+			a.story_points,
+			a.sprint_id::text,
+			NULL::text                      AS sprint_ref_id,
+			NULL::text                      AS sprint_ref_alias,
+			a.parent_artefact_id::text      AS parent_id,
+			NULL::text                      AS root_feature_id,
+			COALESCE(a.owned_by_user_id::text, '') AS owner_id,
+			NULL::text                      AS owner_ref_id,
+			NULL::text                      AS owner_display_name,
+			NULL::text                      AS owner_avatar_url,
+			a.due_date::text,
+			COALESCE(a.created_by_user_id::text, '') AS created_by,
+			a.created_at,
+			a.updated_at,
+			a.archived_at,
+			(SELECT count(*) FROM artefacts child
+			 WHERE child.parent_artefact_id = a.id
+			   AND child.archived_at IS NULL)        AS children_count,
+			COALESCE(rp.rollup_points, a.story_points) AS rollup_points
+		FROM artefacts a
+		JOIN artefact_types at ON at.id = a.artefact_type_id
+		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN rollup_points rp ON rp.id = a.id
+		WHERE a.subscription_id = $1
+		  AND a.parent_artefact_id = $2
+		  AND a.archived_at IS NULL
+		  AND at.scope = 'work'
+		ORDER BY a.position ASC, a.number ASC`,
+		subscriptionID, parentID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items, err := scanWorkItemRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.decorateOwners(ctx, items); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// SummariseWorkItems returns counts for the Page Summary Header strip.
+// Optional sprintID narrows counts to items in that sprint.
+func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UUID, sprintID *string) (WorkItemsSummary, error) {
+	if s.vectorArtefactsPool == nil {
+		return WorkItemsSummary{}, nil
+	}
+	args := []any{subscriptionID}
+	conds := []string{
+		"a.subscription_id = $1",
+		"a.archived_at IS NULL",
+		"at.scope = 'work'",
+	}
+	n := 2
+	if sprintID != nil && *sprintID != "" {
+		conds = append(conds, fmt.Sprintf("a.sprint_id = $%d::uuid", n))
+		args = append(args, *sprintID)
+		n++
+	}
+	_ = n
+	q := fmt.Sprintf(`
+		SELECT
+			COUNT(*)                                               AS total,
+			COUNT(*) FILTER (WHERE lower(at.name) = 'epic')        AS epics,
+			COUNT(*) FILTER (WHERE lower(at.name) = 'story')       AS stories,
+			COUNT(*) FILTER (WHERE lower(at.name) = 'task')        AS tasks,
+			COUNT(*) FILTER (WHERE lower(at.name) = 'defect')      AS defects,
+			COUNT(*) FILTER (
+				WHERE (fs.kind = 'todo' OR fs.id IS NULL)
+				  AND a.updated_at < NOW() - INTERVAL '14 days'
+			) AS blocked
+		FROM artefacts a
+		JOIN artefact_types at ON at.id = a.artefact_type_id
+		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		WHERE %s`,
+		strings.Join(conds, " AND "),
+	)
+	var out WorkItemsSummary
+	if err := s.vectorArtefactsPool.QueryRow(ctx, q, args...).Scan(
+		&out.Total, &out.Epics, &out.Stories, &out.Tasks, &out.Defects, &out.Blocked,
+	); err != nil {
+		return WorkItemsSummary{}, err
+	}
+	return out, nil
+}
+
+// ListFlowStates returns the flow states for the work artefact type belonging
+// to the subscription. Queries flow_states via the default flow for the
+// first work-scoped artefact_type owned by this subscription.
+func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) ([]WorkItemFlowState, error) {
+	if s.vectorArtefactsPool == nil {
+		return []WorkItemFlowState{}, nil
+	}
+	rows, err := s.vectorArtefactsPool.Query(ctx, `
+		SELECT fs.id, fs.sort_order, fs.name, fs.kind
+		FROM flow_states fs
+		JOIN flows f ON f.id = fs.flow_id
+		JOIN artefact_types at ON at.id = f.artefact_type_id
+		WHERE at.subscription_id = $1
+		  AND at.scope = 'work'
+		  AND f.is_default = TRUE
+		  AND f.archived_at IS NULL
+		  AND fs.archived_at IS NULL
+		ORDER BY fs.sort_order ASC`,
+		subscriptionID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var states []WorkItemFlowState
+	for rows.Next() {
+		var st WorkItemFlowState
+		if err := rows.Scan(&st.ID, &st.Position, &st.Name, &st.CanonicalCode); err != nil {
+			return nil, err
+		}
+		states = append(states, st)
+	}
+	if states == nil {
+		states = []WorkItemFlowState{}
+	}
+	return states, rows.Err()
+}
+
 // decorateOwners fetches display names for all unique owner UUIDs in items
 // from mmff_vector.users (mainPool) and populates wi.Owner on each row.
 // Skipped silently when mainPool is nil or no items have an owner set.

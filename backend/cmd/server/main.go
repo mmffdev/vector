@@ -809,6 +809,10 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", workItemsV2H.List)
+			r.Get("/summary", workItemsV2H.Summary)
+			r.Get("/flow-states", workItemsV2H.ListFlowStates)
+			r.Get("/{id}", workItemsV2H.Get)
+			r.Get("/{id}/children", workItemsV2H.ListChildren)
 		})
 	} else {
 		r.Get("/api/v2/work-items", func(w http.ResponseWriter, r *http.Request) {

@@ -2,9 +2,12 @@ package workitemsv2
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
@@ -78,4 +81,71 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(listResponse{Items: items, Total: total})
+}
+
+// Get handles GET /api/v2/work-items/{id}.
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+		return
+	}
+	wi, err := h.svc.GetWorkItem(r.Context(), subID, id)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(wi)
+}
+
+// ListChildren handles GET /api/v2/work-items/{id}/children.
+func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+		return
+	}
+	items, err := h.svc.ListChildren(r.Context(), subID, id)
+	if err != nil {
+		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+}
+
+// Summary handles GET /api/v2/work-items/summary.
+func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	var sprintID *string
+	if v := r.URL.Query().Get("sprint_id"); v != "" {
+		sprintID = &v
+	}
+	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID)
+	if err != nil {
+		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+// ListFlowStates handles GET /api/v2/work-items/flow-states.
+func (h *Handler) ListFlowStates(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	states, err := h.svc.ListFlowStates(r.Context(), subID)
+	if err != nil {
+		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"states": states})
 }

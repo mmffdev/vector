@@ -304,6 +304,16 @@ type BulkFailure struct {
 	Reason string `json:"reason"`
 }
 
+// WorkItemsSummary is the wire shape for GET /api/v2/work-items/summary.
+type WorkItemsSummary struct {
+	Total   int `json:"total"`
+	Epics   int `json:"epics"`
+	Stories int `json:"stories"`
+	Tasks   int `json:"tasks"`
+	Defects int `json:"defects"`
+	Blocked int `json:"blocked"`
+}
+
 // UpsertFieldValueInput holds the value to write for one field on a work item.
 type UpsertFieldValueInput struct {
 	FieldLibraryID string
