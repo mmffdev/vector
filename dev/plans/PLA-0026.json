@@ -57,7 +57,7 @@
       "title": "M3: Create artefact_workspace_fields whitelist join table",
       "story_id": "00478",
       "card_url": "http://localhost:3333/cards/1769516998498190366",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 4,
@@ -321,7 +321,7 @@
       "proven_by": "migration commit + schema_migrations row",
       "story_id": "00478",
       "card_url": "http://localhost:3333/cards/1769516998498190366",
-      "done": false
+      "done": true
     },
     {
       "order": 4,
