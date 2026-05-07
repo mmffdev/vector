@@ -232,7 +232,7 @@
       "title": "T3: Integration test: adoption saga writes only to vector_artefacts",
       "story_id": "00503",
       "card_url": "http://localhost:3333/cards/1769517108607059174",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 29,
@@ -521,7 +521,7 @@
       "proven_by": "integration test green",
       "story_id": "00503",
       "card_url": "http://localhost:3333/cards/1769517108607059174",
-      "done": false
+      "done": true
     },
     {
       "order": 29,
