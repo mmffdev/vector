@@ -1,7 +1,37 @@
 "use client";
 
-import { useState } from "react";
+// Organization settings page — single-record editor for master_record_tenant.
+// Backend: backend/internal/tenantsettings (PATCH validates server-side
+// and returns 422 with violations[] on failure). Wire shape lives in
+// app/lib/tenantSettingsApi.ts.
+//
+// UX contract:
+//   • Form state is seeded from the server on mount; every field is
+//     controlled, including ones that previously used `defaultValue`.
+//   • tenant_id is a static identifier — rendered disabled with a
+//     hint so users know not to ask support to "change" it.
+//   • Each field tracks its dirty state by comparison against the
+//     last-saved snapshot. The UnsavedChangesBar appears the moment
+//     anything diverges; clicking Discard reverts to the snapshot,
+//     clicking Accept PATCHes only the changed keys.
+//   • Server-side validation errors land as ApiError.violations and
+//     are rendered inline beneath the offending field. Client-side
+//     mirrors the same rules so users get immediate feedback.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ToggleBtn from "@/app/components/ToggleBtn";
+import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { ApiError } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
+import {
+  tenantSettingsApi,
+  type DayCode,
+  type RankMethod,
+  type TenantSettings,
+  type TenantSettingsPatch,
+  type WeekStart,
+} from "@/app/lib/tenantSettingsApi";
 
 const REGIONS: Array<{ group: string; options: Array<{ value: string; label: string }> }> = [
   {
@@ -52,39 +82,6 @@ const REGIONS: Array<{ group: string; options: Array<{ value: string; label: str
   },
 ];
 
-function detectRegion(): string {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz.startsWith("America/")) {
-      const east = ["America/New_York","America/Detroit","America/Indiana","America/Kentucky","America/Toronto","America/Montreal","America/Nassau","America/Havana","America/Port-au-Prince","America/Jamaica"];
-      const sao  = ["America/Sao_Paulo","America/Fortaleza","America/Recife","America/Belem","America/Manaus","America/Cuiaba","America/Maceio","America/Buenos_Aires","America/Argentina","America/Lima","America/Bogota","America/Caracas","America/La_Paz","America/Santiago","America/Montevideo","America/Asuncion","America/Guayaquil","America/Cayenne","America/Paramaribo","America/Guyana"];
-      if (sao.some(z => tz === z || tz.startsWith(z))) return "sae1";
-      if (east.some(z => tz === z || tz.startsWith(z))) return "use1";
-      if (tz === "America/Vancouver" || tz === "America/Los_Angeles") return "usw2";
-      if (tz.startsWith("America/")) return "use1";
-    }
-    if (tz.startsWith("Europe/")) {
-      if (["Europe/London","Europe/Dublin","Europe/Guernsey","Europe/Jersey","Europe/Isle_of_Man"].includes(tz)) return "euw2";
-      if (["Europe/Paris","Europe/Brussels","Europe/Amsterdam","Europe/Luxembourg"].includes(tz)) return "euw3";
-      if (["Europe/Berlin","Europe/Vienna","Europe/Zurich","Europe/Prague","Europe/Warsaw","Europe/Budapest","Europe/Bratislava","Europe/Bucharest","Europe/Belgrade","Europe/Zagreb","Europe/Ljubljana","Europe/Sarajevo","Europe/Skopje","Europe/Tirane"].includes(tz)) return "euc1";
-      if (["Europe/Stockholm","Europe/Helsinki","Europe/Oslo","Europe/Copenhagen","Europe/Riga","Europe/Tallinn","Europe/Vilnius"].includes(tz)) return "eun1";
-      return "euw1";
-    }
-    if (tz.startsWith("Asia/")) {
-      if (["Asia/Tokyo","Asia/Sapporo"].includes(tz)) return "apne1";
-      if (tz === "Asia/Seoul") return "apne2";
-      if (["Asia/Singapore","Asia/Kuala_Lumpur"].includes(tz)) return "apse1";
-      if (["Asia/Hong_Kong","Asia/Macau"].includes(tz)) return "ape1";
-      if (["Asia/Kolkata","Asia/Calcutta","Asia/Colombo","Asia/Dhaka"].includes(tz)) return "aps1";
-      if (["Asia/Dubai","Asia/Muscat","Asia/Riyadh","Asia/Kuwait","Asia/Qatar","Asia/Bahrain"].includes(tz)) return "mes1";
-      return "apse1";
-    }
-    if (tz.startsWith("Australia/") || tz.startsWith("Pacific/")) return "apse2";
-    if (tz.startsWith("Africa/")) return "afs1";
-  } catch { /* fall through */ }
-  return "use1";
-}
-
 const TIMEZONES = [
   { value: "Pacific/Pago_Pago",              label: "(UTC−11:00) Samoa" },
   { value: "Pacific/Honolulu",               label: "(UTC−10:00) Hawaii" },
@@ -134,22 +131,6 @@ const TIMEZONES = [
   { value: "Pacific/Apia",                   label: "(UTC+13:00) Samoa (Apia)" },
 ];
 
-function detectTimezone(): string {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (TIMEZONES.some(t => t.value === tz)) return tz;
-    if (tz.startsWith("America/Indiana") || tz.startsWith("America/Kentucky")) return "America/New_York";
-    if (tz.startsWith("America/North_Dakota")) return "America/Chicago";
-    if (tz === "America/Montevideo" || tz === "America/Fortaleza") return "America/Sao_Paulo";
-    if (tz === "Europe/Dublin" || tz === "Europe/Lisbon") return "Europe/London";
-    if (["Europe/Warsaw","Europe/Vienna","Europe/Prague","Europe/Budapest"].includes(tz)) return "Europe/Berlin";
-    if (tz === "Asia/Seoul" || tz === "Asia/Sapporo") return "Asia/Tokyo";
-    if (tz === "Asia/Calcutta") return "Asia/Kolkata";
-    if (tz.startsWith("Australia/")) return "Australia/Sydney";
-  } catch { /* fall through */ }
-  return "Europe/London";
-}
-
 const DATE_FORMATS = [
   { value: "DD/MM/YYYY",   label: "DD/MM/YYYY  (e.g. 29/04/2026)" },
   { value: "MM/DD/YYYY",   label: "MM/DD/YYYY  (e.g. 04/29/2026)" },
@@ -166,9 +147,7 @@ const DATETIME_FORMATS = [
   { value: "D MMM YYYY, HH:mm",  label: "D MMM YYYY, HH:mm  (e.g. 29 Apr 2026, 14:30)" },
 ];
 
-type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-
-const WEEKDAYS: Array<{ key: DayKey; label: string }> = [
+const WEEKDAYS: Array<{ key: DayCode; label: string }> = [
   { key: "mon", label: "Mon" },
   { key: "tue", label: "Tue" },
   { key: "wed", label: "Wed" },
@@ -178,14 +157,97 @@ const WEEKDAYS: Array<{ key: DayKey; label: string }> = [
   { key: "sun", label: "Sun" },
 ];
 
+// Fields the form actually edits. Keep this in sync with TenantSettingsPatch.
+type FormState = {
+  tenant_name: string;
+  tenant_description: string;
+  tenant_data_region: string;
+  tenant_timezone: string;
+  tenant_date_format: string;
+  tenant_datetime_format: string;
+  tenant_workdays: Set<DayCode>;
+  tenant_week_start: WeekStart;
+  tenant_rank_method: RankMethod;
+  tenant_build_changeset_tracking: boolean;
+  tenant_notes: string;
+  tenant_primary_contact_email: string;
+};
+
+function fromServer(row: TenantSettings): FormState {
+  return {
+    tenant_name: row.tenant_name,
+    tenant_description: row.tenant_description ?? "",
+    tenant_data_region: row.tenant_data_region,
+    tenant_timezone: row.tenant_timezone,
+    tenant_date_format: row.tenant_date_format,
+    tenant_datetime_format: row.tenant_datetime_format,
+    tenant_workdays: new Set<DayCode>(row.tenant_workdays),
+    tenant_week_start: row.tenant_week_start,
+    tenant_rank_method: row.tenant_rank_method,
+    tenant_build_changeset_tracking: row.tenant_build_changeset_tracking,
+    tenant_notes: row.tenant_notes ?? "",
+    tenant_primary_contact_email: row.tenant_primary_contact_email ?? "",
+  };
+}
+
+// Build a minimal PATCH body containing only the keys that diverge
+// from the original server snapshot. Sets are compared by membership;
+// a nullable text that the user has cleared is sent as null so the
+// server stores NULL rather than an empty string.
+function diffPatch(orig: FormState, cur: FormState): TenantSettingsPatch {
+  const out: TenantSettingsPatch = {};
+  if (cur.tenant_name !== orig.tenant_name) out.tenant_name = cur.tenant_name;
+  if (cur.tenant_description !== orig.tenant_description) out.tenant_description = cur.tenant_description === "" ? null : cur.tenant_description;
+  if (cur.tenant_data_region !== orig.tenant_data_region) out.tenant_data_region = cur.tenant_data_region;
+  if (cur.tenant_timezone !== orig.tenant_timezone) out.tenant_timezone = cur.tenant_timezone;
+  if (cur.tenant_date_format !== orig.tenant_date_format) out.tenant_date_format = cur.tenant_date_format;
+  if (cur.tenant_datetime_format !== orig.tenant_datetime_format) out.tenant_datetime_format = cur.tenant_datetime_format;
+  if (!sameSet(orig.tenant_workdays, cur.tenant_workdays)) out.tenant_workdays = sortedDays(cur.tenant_workdays);
+  if (cur.tenant_week_start !== orig.tenant_week_start) out.tenant_week_start = cur.tenant_week_start;
+  if (cur.tenant_rank_method !== orig.tenant_rank_method) out.tenant_rank_method = cur.tenant_rank_method;
+  if (cur.tenant_build_changeset_tracking !== orig.tenant_build_changeset_tracking) out.tenant_build_changeset_tracking = cur.tenant_build_changeset_tracking;
+  if (cur.tenant_notes !== orig.tenant_notes) out.tenant_notes = cur.tenant_notes === "" ? null : cur.tenant_notes;
+  if (cur.tenant_primary_contact_email !== orig.tenant_primary_contact_email) out.tenant_primary_contact_email = cur.tenant_primary_contact_email === "" ? null : cur.tenant_primary_contact_email;
+  return out;
+}
+
+function sameSet<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
+
+function sortedDays(s: Set<DayCode>): DayCode[] {
+  const order: DayCode[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  return order.filter((d) => s.has(d));
+}
+
+// Mirror of backend validation. Keys match the server field names so
+// violations[] from a 422 can merge into the same error map.
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function validateClient(s: FormState): Record<string, string> {
+  const e: Record<string, string> = {};
+  const name = s.tenant_name.trim();
+  if (name.length === 0) e.tenant_name = "Tenant name is required.";
+  else if (name.length > 128) e.tenant_name = "Tenant name must be 128 characters or fewer.";
+  if (s.tenant_description.length > 2000) e.tenant_description = "Description must be 2000 characters or fewer.";
+  if (s.tenant_notes.length > 4000) e.tenant_notes = "Notes must be 4000 characters or fewer.";
+  if (s.tenant_primary_contact_email.trim() !== "" && !EMAIL_RE.test(s.tenant_primary_contact_email.trim())) {
+    e.tenant_primary_contact_email = "Enter a valid email address.";
+  }
+  if (s.tenant_workdays.size === 0) e.tenant_workdays = "Select at least one workday.";
+  return e;
+}
+
 function WorkdaysPicker({
   value,
   onChange,
 }: {
-  value: Set<DayKey>;
-  onChange: (next: Set<DayKey>) => void;
+  value: Set<DayCode>;
+  onChange: (next: Set<DayCode>) => void;
 }) {
-  function toggle(day: DayKey) {
+  function toggle(day: DayCode) {
     const next = new Set(value);
     if (next.has(day)) next.delete(day);
     else next.add(day);
@@ -209,18 +271,20 @@ function WorkdaysPicker({
 }
 
 function FeatureToggle({
+  field,
   label,
   hint,
   value,
   onChange,
 }: {
+  field: string;
   label: string;
   hint: string;
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="feature-toggle">
+    <div className="feature-toggle" data-field={field}>
       <div className="feature-toggle__text">
         <span className="feature-toggle__label">{label}</span>
         <span className="feature-toggle__hint">{hint}</span>
@@ -231,19 +295,111 @@ function FeatureToggle({
 }
 
 export default function OrganizationPage() {
-  const [region, setRegion]                         = useState<string>(() => detectRegion());
-  const [regionAutoDetected, setRegionAutoDetected] = useState(true);
-  const [timezone, setTimezone]                     = useState<string>(() => detectTimezone());
-  const [dateFormat, setDateFormat]                 = useState("DD/MM/YYYY");
-  const [datetimeFormat, setDatetimeFormat]         = useState("DD/MM/YYYY HH:mm");
-  const [workdays, setWorkdays]                     = useState<Set<DayKey>>(() => new Set<DayKey>(["mon","tue","wed","thu","fri"]));
-  const [weekStart, setWeekStart]                   = useState<"mon" | "sun">("mon");
-  const [projectAccess, setProjectAccess]           = useState("no_access");
-  const [buildChangeset, setBuildChangeset]         = useState(false);
-  const [autoUnblock, setAutoUnblock]               = useState(true);
-  const [timeTracker, setTimeTracker]               = useState(false);
-  const [rankMethod, setRankMethod]                 = useState<"manual" | "dragdrop">("dragdrop");
-  const [notes, setNotes]                           = useState("");
+  const { user } = useAuth();
+  const [original, setOriginal] = useState<FormState | null>(null);
+  const [form, setForm] = useState<FormState | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  // Reflects the row's tenant_id from the server; falls back to
+  // the auth context subscription_id if the fetch hasn't completed yet.
+  const subscriptionId = useRef<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const row = await tenantSettingsApi.get();
+      subscriptionId.current = row.tenant_id;
+      const seeded = fromServer(row);
+      setOriginal(seeded);
+      setForm(cloneState(seeded));
+      setErrors({});
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Failed to load settings.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const dirty = useMemo(() => {
+    if (!original || !form) return false;
+    return Object.keys(diffPatch(original, form)).length > 0;
+  }, [original, form]);
+
+  const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
+    setErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key as string];
+      return next;
+    });
+  }, []);
+
+  const onAccept = useCallback(async () => {
+    if (!original || !form) return;
+    const localErrors = validateClient(form);
+    if (Object.keys(localErrors).length > 0) {
+      setErrors(localErrors);
+      notify.error("Please fix the highlighted fields before saving.");
+      return;
+    }
+    const patch = diffPatch(original, form);
+    if (Object.keys(patch).length === 0) return;
+    setSaving(true);
+    try {
+      const fresh = await tenantSettingsApi.patch(patch);
+      const seeded = fromServer(fresh);
+      setOriginal(seeded);
+      setForm(cloneState(seeded));
+      setErrors({});
+      notify.success("Tenant settings saved.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 422 && err.violations) {
+        const mapped: Record<string, string> = {};
+        for (const v of err.violations) mapped[v.field] = v.message;
+        setErrors(mapped);
+        notify.error("Some fields failed validation. Please review and resave.");
+      } else {
+        notify.apiError(err, "Failed to save tenant settings.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [original, form]);
+
+  const onDiscard = useCallback(() => {
+    if (!original) return;
+    setForm(cloneState(original));
+    setErrors({});
+  }, [original]);
+
+  if (loading) {
+    return (
+      <div className="settings-panel">
+        <p className="form__hint">Loading tenant settings…</p>
+      </div>
+    );
+  }
+
+  if (loadError || !form || !original) {
+    return (
+      <div className="settings-panel">
+        <p className="form__error">{loadError ?? "Could not load tenant settings."}</p>
+        <div className="form__actions">
+          <button type="button" className="btn btn--ghost" onClick={load}>Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  const subId = subscriptionId.current ?? user?.subscription_id ?? "";
 
   return (
     <div className="settings-panel">
@@ -254,43 +410,54 @@ export default function OrganizationPage() {
 
       {/* ── Identity ─────────────────────────────────────────── */}
       <h3 className="eyebrow">Identity</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
+      <div className="form">
         <div className="form__row">
-          <label className="form__label">
-            Workspace name
-            <input type="text" className="form__input" defaultValue="MMFF Standard" />
+          <label className="form__label" htmlFor="tenant_name">
+            Tenant name
+            <input
+              type="text"
+              id="tenant_name"
+              name="tenant_name"
+              className={`form__input${errors.tenant_name ? " has-error" : ""}`}
+              value={form.tenant_name}
+              maxLength={128}
+              onChange={(e) => update("tenant_name", e.target.value)}
+            />
+            {errors.tenant_name && <span className="form__error">{errors.tenant_name}</span>}
           </label>
         </div>
         <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_description">
             Description
-            <textarea className="form__input form__textarea" rows={3} placeholder="A brief description of this workspace and its purpose." />
+            <textarea
+              id="tenant_description"
+              name="tenant_description"
+              className={`form__input form__textarea${errors.tenant_description ? " has-error" : ""}`}
+              rows={3}
+              value={form.tenant_description}
+              maxLength={2000}
+              onChange={(e) => update("tenant_description", e.target.value)}
+              placeholder="A brief description of this tenant and its purpose."
+            />
+            {errors.tenant_description && <span className="form__error">{errors.tenant_description}</span>}
           </label>
         </div>
         <div className="form__row">
-          <label className="form__label">
-            Owner
-            <select className="form__select" defaultValue="">
-              <option value="" disabled>Select owner…</option>
-              <option value="self">Me (current user)</option>
-            </select>
-            <span className="form__hint">The user responsible for this workspace.</span>
+          <label className="form__label" htmlFor="tenant_id">
+            Tenant ID
+            <input type="text" id="tenant_id" name="tenant_id" className="form__input t-mono" value={subId} disabled readOnly />
+            <span className="form__hint">Static identifier for this tenant — reference this when contacting support. Cannot be edited.</span>
           </label>
         </div>
         <div className="form__row">
-          <label className="form__label">
-            Subscription ID
-            <input type="text" className="form__input t-mono" value="sub_01HXKP9QV4ZK2N7M3BC5YJ8DRA" disabled />
-            <span className="form__hint">Reference this when contacting support.</span>
-          </label>
-        </div>
-        <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_data_region">
             Data region
             <select
-              className="form__select"
-              value={region}
-              onChange={(e) => { setRegion(e.target.value); setRegionAutoDetected(false); }}
+              id="tenant_data_region"
+              name="tenant_data_region"
+              className={`form__select${errors.tenant_data_region ? " has-error" : ""}`}
+              value={form.tenant_data_region}
+              onChange={(e) => update("tenant_data_region", e.target.value)}
             >
               {REGIONS.map((g) => (
                 <optgroup key={g.group} label={g.group}>
@@ -300,191 +467,194 @@ export default function OrganizationPage() {
                 </optgroup>
               ))}
             </select>
-            {regionAutoDetected && (
-              <span className="form__hint">Auto-detected from your browser timezone.</span>
-            )}
+            {errors.tenant_data_region && <span className="form__error">{errors.tenant_data_region}</span>}
           </label>
         </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save identity</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Time & Dates ──────────────────────────────────────── */}
       <h3 className="eyebrow">Time &amp; Dates</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
+      <div className="form">
         <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_timezone">
             Time zone
-            <select className="form__select" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+            <select
+              id="tenant_timezone"
+              name="tenant_timezone"
+              className={`form__select${errors.tenant_timezone ? " has-error" : ""}`}
+              value={form.tenant_timezone}
+              onChange={(e) => update("tenant_timezone", e.target.value)}
+            >
               {TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>{tz.label}</option>
               ))}
             </select>
+            {errors.tenant_timezone && <span className="form__error">{errors.tenant_timezone}</span>}
             <span className="form__hint">Dates represent fixed points in time for distributed team consistency.</span>
           </label>
         </div>
         <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_date_format">
             Date format
-            <select className="form__select" value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
+            <select
+              id="tenant_date_format"
+              name="tenant_date_format"
+              className={`form__select${errors.tenant_date_format ? " has-error" : ""}`}
+              value={form.tenant_date_format}
+              onChange={(e) => update("tenant_date_format", e.target.value)}
+            >
               {DATE_FORMATS.map((f) => (
                 <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
+            {errors.tenant_date_format && <span className="form__error">{errors.tenant_date_format}</span>}
           </label>
         </div>
         <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_datetime_format">
             Date &amp; time format
-            <select className="form__select" value={datetimeFormat} onChange={(e) => setDatetimeFormat(e.target.value)}>
+            <select
+              id="tenant_datetime_format"
+              name="tenant_datetime_format"
+              className={`form__select${errors.tenant_datetime_format ? " has-error" : ""}`}
+              value={form.tenant_datetime_format}
+              onChange={(e) => update("tenant_datetime_format", e.target.value)}
+            >
               {DATETIME_FORMATS.map((f) => (
                 <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
+            {errors.tenant_datetime_format && <span className="form__error">{errors.tenant_datetime_format}</span>}
           </label>
         </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save time &amp; dates</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Workdays ─────────────────────────────────────────── */}
       <h3 className="eyebrow">Workdays</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
-        <div className="form__row">
+      <div className="form">
+        <div className="form__row" data-field="tenant_workdays">
           <label className="form__label">Active workdays</label>
-          <WorkdaysPicker value={workdays} onChange={setWorkdays} />
-          <span className="form__hint">
-            {workdays.size === 0
-              ? "No workdays selected — at least one day is required."
-              : `${workdays.size} day${workdays.size === 1 ? "" : "s"} per week.`}
-          </span>
+          <WorkdaysPicker value={form.tenant_workdays} onChange={(next) => update("tenant_workdays", next)} />
+          {errors.tenant_workdays
+            ? <span className="form__error">{errors.tenant_workdays}</span>
+            : <span className="form__hint">
+                {form.tenant_workdays.size === 0
+                  ? "No workdays selected — at least one day is required."
+                  : `${form.tenant_workdays.size} day${form.tenant_workdays.size === 1 ? "" : "s"} per week.`}
+              </span>
+          }
         </div>
         <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_week_start">
             Week starts on
-            <select className="form__select" value={weekStart} onChange={(e) => setWeekStart(e.target.value as "mon" | "sun")}>
+            <select
+              id="tenant_week_start"
+              name="tenant_week_start"
+              className={`form__select${errors.tenant_week_start ? " has-error" : ""}`}
+              value={form.tenant_week_start}
+              onChange={(e) => update("tenant_week_start", e.target.value as WeekStart)}
+            >
               <option value="mon">Monday</option>
               <option value="sun">Sunday</option>
             </select>
+            {errors.tenant_week_start && <span className="form__error">{errors.tenant_week_start}</span>}
           </label>
         </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save workdays</button>
-        </div>
-      </form>
-
-      {/* ── Project defaults ─────────────────────────────────── */}
-      <h3 className="eyebrow">Project defaults</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
-        <div className="form__row">
-          <label className="form__label">
-            Default access for new users
-            <select className="form__select" value={projectAccess} onChange={(e) => setProjectAccess(e.target.value)}>
-              <option value="no_access">No Access</option>
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
-            </select>
-            <span className="form__hint">What new workspace members can do before being explicitly assigned to a project.</span>
-          </label>
-        </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save defaults</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Planning ─────────────────────────────────────────── */}
       <h3 className="eyebrow">Planning</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
-        <div className="form__row">
+      <div className="form">
+        <div className="form__row" data-field="tenant_rank_method">
           <label className="form__label">Ranking method</label>
           <ToggleBtn
-            value={rankMethod === "dragdrop"}
-            onChange={(v) => setRankMethod(v ? "dragdrop" : "manual")}
+            value={form.tenant_rank_method === "dragdrop"}
+            onChange={(v) => update("tenant_rank_method", v ? "dragdrop" : "manual")}
             labels={["Manual ranking", "Drag & drop ranking"]}
           />
           <span className="form__hint">
-            {rankMethod === "manual"
+            {form.tenant_rank_method === "manual"
               ? "Users enter a numeric rank to set relative priority on backlog items."
               : "Users drag items on backlog and board views to establish priority."}
           </span>
         </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save planning</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Features ─────────────────────────────────────────── */}
       <h3 className="eyebrow">Features</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
+      <div className="form">
         <FeatureToggle
-          label="Build &amp; changeset tracking"
+          field="tenant_build_changeset_tracking"
+          label="Build & changeset tracking"
           hint="Allows connectors (e.g. GitHub) to associate commits and build runs with work items."
-          value={buildChangeset}
-          onChange={setBuildChangeset}
+          value={form.tenant_build_changeset_tracking}
+          onChange={(v) => update("tenant_build_changeset_tracking", v)}
         />
-        <FeatureToggle
-          label="Automatically unblock portfolio items"
-          hint="When a portfolio item's state is updated, any blocking flags are cleared automatically."
-          value={autoUnblock}
-          onChange={setAutoUnblock}
-        />
-        <FeatureToggle
-          label="Time Tracker"
-          hint="Enables timesheets and time reporting across the workspace."
-          value={timeTracker}
-          onChange={setTimeTracker}
-        />
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save features</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Notes ────────────────────────────────────────────── */}
       <h3 className="eyebrow">Notes</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
+      <div className="form">
         <div className="form__row">
-          <label className="form__label">
-            Workspace notes
+          <label className="form__label" htmlFor="tenant_notes">
+            Tenant notes
             <textarea
-              className="form__input form__textarea"
+              id="tenant_notes"
+              name="tenant_notes"
+              className={`form__input form__textarea${errors.tenant_notes ? " has-error" : ""}`}
               rows={5}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Internal notes, links, or context about this workspace."
+              value={form.tenant_notes}
+              maxLength={4000}
+              onChange={(e) => update("tenant_notes", e.target.value)}
+              placeholder="Internal notes, links, or context about this tenant."
             />
+            {errors.tenant_notes && <span className="form__error">{errors.tenant_notes}</span>}
           </label>
         </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save notes</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Support contact ──────────────────────────────────── */}
       <h3 className="eyebrow">Support contact</h3>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
+      <div className="form">
         <div className="form__row">
-          <label className="form__label">
+          <label className="form__label" htmlFor="tenant_primary_contact_email">
             Primary contact email
-            <input type="email" className="form__input" defaultValue="" placeholder="ops@example.com" />
+            <input
+              type="email"
+              id="tenant_primary_contact_email"
+              name="tenant_primary_contact_email"
+              className={`form__input${errors.tenant_primary_contact_email ? " has-error" : ""}`}
+              value={form.tenant_primary_contact_email}
+              onChange={(e) => update("tenant_primary_contact_email", e.target.value)}
+              placeholder="ops@example.com"
+            />
+            {errors.tenant_primary_contact_email && <span className="form__error">{errors.tenant_primary_contact_email}</span>}
             <span className="form__hint">Where MMFF support and incident notifications are sent.</span>
           </label>
         </div>
-        <div className="form__actions">
-          <button type="submit" className="btn btn--primary">Save contact</button>
-        </div>
-      </form>
+      </div>
 
       {/* ── Danger zone ──────────────────────────────────────── */}
       <h3 className="eyebrow">Danger zone</h3>
       <div className="danger-zone">
         <div>
-          <p className="danger-zone__title">Archive workspace</p>
+          <p className="danger-zone__title">Archive tenant</p>
           <p className="danger-zone__desc">Removes user access and freezes content. Requires platform-admin confirmation.</p>
         </div>
         <button type="button" className="btn btn--danger" disabled>Archive…</button>
       </div>
+
+      <UnsavedChangesBar
+        dirty={dirty}
+        saving={saving}
+        message="You have unsaved changes to your tenant settings."
+        onAccept={onAccept}
+        onDiscard={onDiscard}
+      />
     </div>
   );
+}
+
+function cloneState(s: FormState): FormState {
+  return { ...s, tenant_workdays: new Set(s.tenant_workdays) };
 }

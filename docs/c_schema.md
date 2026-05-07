@@ -90,6 +90,7 @@ These rules are the contract; every query/handler/migration honours them.
 | Domain | Tables |
 |---|---|
 | Subscription & auth | `subscriptions`, `users`, `sessions`, `password_resets`, `api_keys` |
+| Tenant settings | `master_record_tenant` |
 | Topology — workspaces tier (PLA-0006) | `workspaces`, `workspace_roles`, `org_nodes`, `org_node_roles`, `org_node_view_state`, `org_levels` |
 | Roles & permissions (PLA-0007) | `roles`, `permissions`, `role_permissions` |
 | ACL (legacy) | `user_workspace_permissions` |
@@ -136,6 +137,32 @@ The root of multi-subscription isolation. Every business row pivots off a `subsc
 | `tier`* | text | no | `'pro'` | CHECK in (`free`,`pro`,`enterprise`); drives `mmff_library` entitlements |
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
+
+### `master_record_tenant`
+
+One row per subscription holding the canonical tenant identity, time/date conventions, planning defaults, and feature flags surfaced by `/workspace-settings/organization`. Auto-seeded by an AFTER INSERT trigger on `subscriptions`. Sole writer: [`backend/internal/tenantsettings.Service`](../backend/internal/tenantsettings/service.go). Migrations 126 (create) → 127 (rename business cols `tenant_*`) → 128 (rename audit cols `tenant_*` + rebuild touch trigger).
+
+| Column | Type | Nullable | Default | Notes |
+|---|---|---|---|---|
+| `tenant_id`* | uuid | no | — | pk; → `subscriptions.id` (CASCADE) |
+| `tenant_name`* | text | no | `'New workspace'` | ≤128 chars |
+| `tenant_description` | text | yes | — | ≤2000 chars |
+| `tenant_owner_user_id` | uuid | yes | — | → `users.id` (SET NULL) |
+| `tenant_data_region`* | text | no | `'use1'` | CHECK against region whitelist |
+| `tenant_timezone`* | text | no | `'Europe/London'` | IANA zone |
+| `tenant_date_format`* | text | no | `'DD/MM/YYYY'` | CHECK against format whitelist |
+| `tenant_datetime_format`* | text | no | `'DD/MM/YYYY HH:mm'` | CHECK against format whitelist |
+| `tenant_workdays`* | text[] | no | `{mon,tue,wed,thu,fri}` | non-empty subset of `{mon..sun}` |
+| `tenant_week_start`* | text | no | `'mon'` | `mon` or `sun` |
+| `tenant_rank_method`* | text | no | `'dragdrop'` | `manual` or `dragdrop` |
+| `tenant_build_changeset_tracking`* | bool | no | `false` | |
+| `tenant_notes` | text | yes | — | ≤4000 chars |
+| `tenant_primary_contact_email` | text | yes | — | CHECK email shape |
+| `tenant_created_at`* | timestamptz | no | `now()` | |
+| `tenant_updated_at`* | timestamptz | no | `now()` | trigger-maintained by `fn_master_record_tenant_touch_updated_at` |
+| `tenant_archived_at` | timestamptz | yes | — | soft-archive marker |
+
+Indexes: `idx_master_record_tenant_tenant_archived_at`, `idx_master_record_tenant_tenant_owner_user_id`.
 
 ### `users`
 
