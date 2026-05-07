@@ -1,17 +1,45 @@
 // Adoption-state endpoint — GET /api/portfolio-models/adoption-state
 //
-// Padmin-only read of the caller's subscription_portfolio_model_state
-// row. Returns the live adoption (status='completed', archived_at NULL)
-// for the caller's subscription, or {adopted: false} when no such row
-// exists. In-flight saga rows (pending / in_progress / failed /
-// rolled_back) are deliberately treated as "not yet adopted" — the UI
-// only flips its banner when the saga has fully landed.
+// PLA-0026 / Story 00501 (B12): rewritten to read from the
+// vector_artefacts substrate (master_record_portfolio + artefact_types)
+// instead of the legacy mmff_vector mirror (subscription_portfolio_model_state
+// + obj_strategy_types_layers).
 //
-// The table lives in mmff_vector (not the library DB), so this handler
-// holds its own *pgxpool.Pool against the vector cluster — separate
-// from the Phase 3 library-RO Handler in handler.go to keep Phase 3
-// wiring untouched and avoid merge collisions with the parallel
-// portfolio-models list handler.
+// The legacy mirror tables stay alive for now — other callers still
+// read them — but the saga's master-of-truth for "is a portfolio model
+// adopted?" is master_record_portfolio (B6 finalize step), so this
+// handler must read the same source the saga writes.
+//
+// Status logic (substrate-driven):
+//
+//   notStarted: master_record_portfolio has NO row for this workspace_id
+//               AND artefact_types has NO scope='strategy' rows for this
+//               workspace_id.
+//
+//   inProgress: artefact_types HAS scope='strategy' rows for this
+//               workspace_id BUT master_record_portfolio has NO row.
+//               (Saga partway through; B6 finalize hasn't run.)
+//
+//   adopted:    master_record_portfolio HAS a row for this workspace_id.
+//
+// The route stays /api/portfolio-models/adoption-state (subscription-
+// scoped, no path param) for wire compatibility — the frontend will not
+// change as part of this story. We resolve workspace_id from the
+// caller's subscription via mmff_vector.workspaces, matching the
+// adoption-saga's resolveWorkspaceID() convention.
+//
+// Response shape: backward-compatible. The legacy `adopted` boolean is
+// preserved (true iff status='adopted'); status, model_id, adopted_at,
+// adopted_by_user_id are emitted alongside it. Optional fields are
+// omitted when adopted=false.
+//
+// Pool wiring:
+//   - vectorPool (mmff_vector) — used to resolve subscription_id →
+//     workspace_id. Always required.
+//   - vaPool (vector_artefacts) — used to read master_record_portfolio
+//     and artefact_types. May be nil when VECTOR_ARTEFACTS_DB_URL is
+//     unset; in that case the handler returns status='notStarted' for
+//     backward compatibility (no environment regresses to a 5xx).
 package portfoliomodels
 
 import (
@@ -26,36 +54,49 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
-// AdoptionStateHandler reads subscription_portfolio_model_state from
-// the mmff_vector pool. Padmin-equivalent gating happens at the router
-// layer (RequirePermission(PortfolioList) — PLA-0007).
+// AdoptionStateHandler reads adoption status from the new substrate.
+// VectorPool resolves subscription → workspace; VAPool reads
+// master_record_portfolio + artefact_types in vector_artefacts. VAPool
+// may be nil; the handler degrades to notStarted in that case.
 type AdoptionStateHandler struct {
 	VectorPool *pgxpool.Pool
+	VAPool     *pgxpool.Pool
 }
 
-func NewAdoptionStateHandler(vectorPool *pgxpool.Pool) *AdoptionStateHandler {
-	return &AdoptionStateHandler{VectorPool: vectorPool}
+// NewAdoptionStateHandler constructs the handler with both pools.
+// Pass nil for vaPool to disable VA reads (handler returns notStarted).
+func NewAdoptionStateHandler(vectorPool *pgxpool.Pool, vaPool *pgxpool.Pool) *AdoptionStateHandler {
+	return &AdoptionStateHandler{VectorPool: vectorPool, VAPool: vaPool}
 }
+
+// Adoption status tri-state. Wire values are the JSON strings.
+const (
+	statusNotStarted = "notStarted"
+	statusInProgress = "inProgress"
+	statusAdopted    = "adopted"
+)
 
 // adoptionStateDTO is the wire shape of GET /api/portfolio-models/adoption-state.
 //
-// `adopted` is always emitted; the other fields are emitted only when
-// `adopted` is true (omitempty + pointer types). When the subscription
-// has no completed adoption row, the response is the single-key shape
-// `{"adopted": false}`.
+// `status` is the new tri-state field (notStarted | inProgress | adopted).
+// `adopted` (legacy boolean) is preserved for wire compatibility — the
+// frontend in this story does not change. `adopted == (status ==
+// "adopted")`. The model/time/user fields are emitted only when
+// adopted is true.
 type adoptionStateDTO struct {
-	Adopted          bool       `json:"adopted"`
-	ModelID          *uuid.UUID `json:"model_id,omitempty"`
-	AdoptedAt        *time.Time `json:"adopted_at,omitempty"`
-	AdoptedByUserID  *uuid.UUID `json:"adopted_by_user_id,omitempty"`
+	Status          string     `json:"status"`
+	Adopted         bool       `json:"adopted"`
+	ModelID         *uuid.UUID `json:"model_id,omitempty"`
+	AdoptedAt       *time.Time `json:"adopted_at,omitempty"`
+	AdoptedByUserID *uuid.UUID `json:"adopted_by_user_id,omitempty"`
 }
 
 // GetAdoptionState — GET /api/portfolio-models/adoption-state
 //
-// Returns the caller's subscription's live adoption record. "Live" =
-// status='completed' AND archived_at IS NULL. The partial unique index
-// on subscription_portfolio_model_state guarantees at most one such row
-// per subscription; we still LIMIT 1 defensively.
+// Returns the caller's subscription's adoption status computed from the
+// new substrate. Always 200 for an authenticated caller — no spurious
+// 404s post-reset, since "no rows yet" is a legitimate notStarted
+// state, not a missing resource.
 func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
@@ -63,23 +104,28 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	var (
-		modelID         uuid.UUID
-		adoptedAt       time.Time
-		adoptedByUserID uuid.UUID
-	)
+	// Resolve workspace_id for this subscription. Mirrors the
+	// adoption-saga's resolveWorkspaceID() convention (lowest-id live
+	// workspace). Multi-workspace subscriptions are out of scope for
+	// the cutover — adoption is per-tenant today.
+	var workspaceID uuid.UUID
 	err := h.VectorPool.QueryRow(r.Context(), `
-		SELECT adopted_model_id, adopted_at, adopted_by_user_id
-		  FROM subscription_portfolio_model_state
+		SELECT id
+		  FROM workspaces
 		 WHERE subscription_id = $1
-		   AND status = 'completed'
 		   AND archived_at IS NULL
+		 ORDER BY id
 		 LIMIT 1`,
 		u.SubscriptionID,
-	).Scan(&modelID, &adoptedAt, &adoptedByUserID)
-
+	).Scan(&workspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		writeJSON(w, http.StatusOK, adoptionStateDTO{Adopted: false})
+		// No workspace for this subscription — there is nothing to adopt
+		// against yet. Treat as notStarted rather than 404 so the UI
+		// surfaces a clean empty state.
+		writeJSON(w, http.StatusOK, adoptionStateDTO{
+			Status:  statusNotStarted,
+			Adopted: false,
+		})
 		return
 	}
 	if err != nil {
@@ -87,10 +133,73 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	writeJSON(w, http.StatusOK, adoptionStateDTO{
-		Adopted:         true,
-		ModelID:         &modelID,
-		AdoptedAt:       &adoptedAt,
-		AdoptedByUserID: &adoptedByUserID,
-	})
+	// VA pool optional — without it we cannot inspect the new substrate.
+	// Return notStarted to keep the endpoint working in environments
+	// without VECTOR_ARTEFACTS_DB_URL (matches the v2 work-items pattern).
+	if h.VAPool == nil {
+		writeJSON(w, http.StatusOK, adoptionStateDTO{
+			Status:  statusNotStarted,
+			Adopted: false,
+		})
+		return
+	}
+
+	// Single-statement substrate check:
+	//   - master_record_portfolio row presence → adopted
+	//   - artefact_types scope='strategy' presence → inProgress
+	//   - neither → notStarted
+	// LEFT JOIN gives us the master-record fields when present and
+	// NULLs when not; the EXISTS sub-select gives us a cheap "any
+	// strategy types?" boolean.
+	var (
+		hasMaster       bool
+		hasStrategyType bool
+		modelID         *uuid.UUID
+		adoptedAt       *time.Time
+		adoptedByUserID *uuid.UUID
+	)
+	err = h.VAPool.QueryRow(r.Context(), `
+		SELECT
+			(mrp.workspace_id IS NOT NULL) AS has_master,
+			EXISTS (
+				SELECT 1
+				  FROM artefact_types at
+				 WHERE at.workspace_id = $1
+				   AND at.scope = 'strategy'
+				   AND at.archived_at IS NULL
+			) AS has_strategy_type,
+			mrp.model_id,
+			mrp.adopted_at,
+			mrp.adopted_by_user_id
+		  FROM (SELECT $1::uuid AS workspace_id) k
+		  LEFT JOIN master_record_portfolio mrp
+		    ON mrp.workspace_id = k.workspace_id
+		   AND mrp.archived_at IS NULL`,
+		workspaceID,
+	).Scan(&hasMaster, &hasStrategyType, &modelID, &adoptedAt, &adoptedByUserID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	switch {
+	case hasMaster:
+		writeJSON(w, http.StatusOK, adoptionStateDTO{
+			Status:          statusAdopted,
+			Adopted:         true,
+			ModelID:         modelID,
+			AdoptedAt:       adoptedAt,
+			AdoptedByUserID: adoptedByUserID,
+		})
+	case hasStrategyType:
+		writeJSON(w, http.StatusOK, adoptionStateDTO{
+			Status:  statusInProgress,
+			Adopted: false,
+		})
+	default:
+		writeJSON(w, http.StatusOK, adoptionStateDTO{
+			Status:  statusNotStarted,
+			Adopted: false,
+		})
+	}
 }
