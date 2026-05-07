@@ -5,18 +5,18 @@
   "date_started": "2026-05-07",
   "date_last_updated": "2026-05-07",
   "date_finished": null,
-  "scope": "<p>Cut the portfolio-adoption pipeline over from the legacy <code>mmff_vector.obj_*</code> tables to the per-workspace <code>vector_artefacts</code> substrate. The cutover introduces an explicit scope discriminator on the renamed <code>artefact_field_library</code> table (<code>global</code> / <code>tenant</code> / <code>workspace</code>), a deny-by-default <code>artefact_workspace_fields</code> whitelist, and a <code>master_record_portfolio</code> row per adopted workspace so that BundleView and the adoption-state handler stop reading from <code>mmff_library</code> at request time.</p><p>The adoption saga is rewritten to write strategy + work types into <code>artefact_types</code> (scope = strategy or work, with <code>library_layer_id</code>/<code>library_layer_tag</code> provenance), workflows + transitions into <code>flows</code> + <code>flow_transitions</code>, and the model prose into <code>master_record_portfolio</code>. Re-adoption preserves the <code>parent_artefact_id NOT NULL</code> invariant by inserting a placeholder strategy artefact before deleting old strategy rows, then repointing orphaned work artefacts onto the placeholder.</p><p>Sanitisation of the legacy <code>obj_*</code> + <code>subscription_*</code> tables is gradual per CLAUDE.md hard rule: each drop is its own follow-up PR triggered by 7 days of zero observed reads after its replacement ships. The five sanitisation cards (S1–S5) are filed on the same plan but tracked as deferred.</p>",
+  "scope": "<p>Cut the portfolio-adoption pipeline over from the legacy <code>mmff_vector.obj_*</code> tables to the per-workspace <code>vector_artefacts</code> substrate. The cutover introduces an explicit scope discriminator on the renamed <code>artefact_field_library</code> table (<code>global</code> / <code>tenant</code> / <code>workspace</code>), a deny-by-default <code>artefact_workspace_fields</code> whitelist, and a <code>master_record_portfolio</code> row per adopted workspace so that BundleView and the adoption-state handler stop reading from <code>mmff_library</code> at request time.</p><p>The adoption saga is rewritten to write strategy + work types into <code>artefact_types</code> (scope = strategy or work, with <code>library_layer_id</code>/<code>library_layer_tag</code> provenance), workflows + transitions into <code>flows</code> + <code>flow_transitions</code>, and the model prose into <code>master_record_portfolio</code>. Re-adoption preserves the <code>parent_artefact_id NOT NULL</code> invariant by inserting a placeholder strategy artefact before deleting old strategy rows, then repointing orphaned work artefacts onto the placeholder.</p><p>Sanitisation of the legacy <code>obj_*</code> + <code>subscription_*</code> tables is gradual per CLAUDE.md hard rule: each drop is its own follow-up PR triggered by 7 days of zero observed reads after its replacement ships. The five sanitisation cards (S1\u2013S5) are filed on the same plan but tracked as deferred.</p>",
   "value": "<p>Closes the residual cross-DB read coupling between tenant pages and <code>mmff_library</code> (BundleView, layer list, field schema, adoption-state) and provides a clean per-workspace scoping substrate for portfolio metadata. Removes the post-reset 404 on the adoption-state endpoint observed today, fixes the animation hang on adoption stream, and gives the team a stable foundation to retire <code>obj_strategy_types_layers</code>, <code>subscription_artifacts</code>, <code>subscription_workflows</code> + transitions, and <code>strategy_layers_adopted</code> in subsequent gradual drops.</p>",
   "implementation_plan": [
-    "Phase 1 — Migrations (M1-M7): audit, rename + scope, whitelist join, artefact_types extension, master_record_portfolio create, backfill + parity (T1), drop strategy_layers_adopted.",
-    "Phase 2 — Backend service + saga rewrites (B1-B8): MasterRecordService, scope resolver, saga steps 2/3+4/5/7, SSE refit, re-adoption flow.",
-    "Phase 3 — Backend handlers (B9-B13): GET /api/portfolio/master_record, /api/workspace/:id/portfolio/layers, /api/workspace/:id/fields, /api/portfolio/adoption-state rewrite, workspace deletion hook (deferred).",
-    "Phase 4 — Frontend cutover (F1-F5): BundleView swap, adoption-stream assertion test, layer-list URL swap, field-schema URL swap, re-adoption placeholder UX.",
-    "Phase 5 — Tests + lint (T1-T7 already woven through earlier phases; T7 standalone lint rule lands with F1+F4).",
-    "Phase 6 — Sanitisation drops (S1-S5): filed but deferred per gradual-sanitisation rule; each drop is its own follow-up PR after replacement ships."
+    "Phase 1 \u2014 Migrations (M1-M7): audit, rename + scope, whitelist join, artefact_types extension, master_record_portfolio create, backfill + parity (T1), drop strategy_layers_adopted.",
+    "Phase 2 \u2014 Backend service + saga rewrites (B1-B8): MasterRecordService, scope resolver, saga steps 2/3+4/5/7, SSE refit, re-adoption flow.",
+    "Phase 3 \u2014 Backend handlers (B9-B13): GET /api/portfolio/master_record, /api/workspace/:id/portfolio/layers, /api/workspace/:id/fields, /api/portfolio/adoption-state rewrite, workspace deletion hook (deferred).",
+    "Phase 4 \u2014 Frontend cutover (F1-F5): BundleView swap, adoption-stream assertion test, layer-list URL swap, field-schema URL swap, re-adoption placeholder UX.",
+    "Phase 5 \u2014 Tests + lint (T1-T7 already woven through earlier phases; T7 standalone lint rule lands with F1+F4).",
+    "Phase 6 \u2014 Sanitisation drops (S1-S5): filed but deferred per gradual-sanitisation rule; each drop is its own follow-up PR after replacement ships."
   ],
   "areas_impacted": [
-    "SQL: rename field_library → artefact_field_library, add scope column, create artefact_workspace_fields, extend artefact_types, create master_record_portfolio + trigger, backfill currently-adopted workspaces, drop legacy obj_/subscription_ tables in follow-ups",
+    "SQL: rename field_library \u2192 artefact_field_library, add scope column, create artefact_workspace_fields, extend artefact_types, create master_record_portfolio + trigger, backfill currently-adopted workspaces, drop legacy obj_/subscription_ tables in follow-ups",
     "API: portfolio.MasterRecordService package, scope resolver, adoption saga rewrite, 5 new/rewritten handlers, integration tests for saga + re-adoption + scope matrix + cross-DB canary",
     "UI: BundleView + layer list + field schema URL cutover, adoption-stream assertion test, re-adoption placeholder UX, lint:portfolio-library-read",
     "DEV: lint:portfolio-library-read script + exemption ledger, c_c_v2_workitems_cutover_followups.md sanitisation register entries",
@@ -28,8 +28,8 @@
     "artefact_types extended with workspace_id NOT NULL + library_layer_id + library_layer_tag",
     "master_record_portfolio table per adopted workspace + touch trigger",
     "portfolio.MasterRecordService Go package as sole writer boundary",
-    "Server-side scope resolver (workspace_id, field_id) → admit/deny",
-    "Adoption saga rewrite — writes strategy + work types + flows + master_record_portfolio in vector_artefacts",
+    "Server-side scope resolver (workspace_id, field_id) \u2192 admit/deny",
+    "Adoption saga rewrite \u2014 writes strategy + work types + flows + master_record_portfolio in vector_artefacts",
     "Re-adoption placeholder pattern preserving parent_artefact_id NOT NULL",
     "5 new/rewritten REST handlers under /api/portfolio + /api/workspace",
     "Integration tests: saga end-to-end, re-adoption, scope matrix, cross-DB canary",
@@ -50,7 +50,7 @@
       "title": "M2: Rename field_library to artefact_field_library and add scope discriminator",
       "story_id": "00477",
       "card_url": "http://localhost:3333/cards/1769516994043839510",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 3,
@@ -138,14 +138,14 @@
     },
     {
       "order": 15,
-      "title": "B1: portfolio.MasterRecordService — CRUD on master_record_portfolio",
+      "title": "B1: portfolio.MasterRecordService \u2014 CRUD on master_record_portfolio",
       "story_id": "00490",
       "card_url": "http://localhost:3333/cards/1769517051581301886",
       "status": "todo"
     },
     {
       "order": 16,
-      "title": "B2: Field scope resolver — admit/deny against scope + workspace whitelist",
+      "title": "B2: Field scope resolver \u2014 admit/deny against scope + workspace whitelist",
       "story_id": "00491",
       "card_url": "http://localhost:3333/cards/1769517055859491974",
       "status": "todo"
@@ -313,7 +313,7 @@
       "proven_by": "migration commit + DOWN script",
       "story_id": "00477",
       "card_url": "http://localhost:3333/cards/1769516994043839510",
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -631,42 +631,42 @@
   "references": [
     {
       "kind": "internal",
-      "label": "R047 — DATABASE Schema research paper (full design)",
+      "label": "R047 \u2014 DATABASE Schema research paper (full design)",
       "href": "dev/research/R047.json"
     },
     {
       "kind": "internal",
-      "label": "docs/c_c_vector_artefacts_backfill.md — companion production cutover plan",
+      "label": "docs/c_c_vector_artefacts_backfill.md \u2014 companion production cutover plan",
       "href": "docs/c_c_vector_artefacts_backfill.md"
     },
     {
       "kind": "internal",
-      "label": "docs/c_c_v2_workitems_cutover_followups.md — sanitisation register",
+      "label": "docs/c_c_v2_workitems_cutover_followups.md \u2014 sanitisation register",
       "href": "docs/c_c_v2_workitems_cutover_followups.md"
     },
     {
       "kind": "internal",
-      "label": "PLA-0023 — Vector Artefacts Cutover (predecessor)",
+      "label": "PLA-0023 \u2014 Vector Artefacts Cutover (predecessor)",
       "href": "dev/plans/PLA-0023.json"
     },
     {
       "kind": "internal",
-      "label": "PLA-0025 — Work-Items Full v2 Cutover (sibling)",
+      "label": "PLA-0025 \u2014 Work-Items Full v2 Cutover (sibling)",
       "href": "dev/plans/PLA-0025.json"
     },
     {
       "kind": "internal",
-      "label": "PLA-0024 — Subscriptions → master_record_tenant (pattern source for master_record_portfolio)",
+      "label": "PLA-0024 \u2014 Subscriptions \u2192 master_record_tenant (pattern source for master_record_portfolio)",
       "href": "dev/plans/PLA-0024.json"
     },
     {
       "kind": "internal",
-      "label": "MEMORY: feedback_gradual_db_sanitisation — drop one at a time as last reader migrates",
+      "label": "MEMORY: feedback_gradual_db_sanitisation \u2014 drop one at a time as last reader migrates",
       "href": ".claude/memory/feedback_gradual_db_sanitisation.md"
     },
     {
       "kind": "internal",
-      "label": "MEMORY: feedback_table_naming_prefixes — domain prefix mandatory",
+      "label": "MEMORY: feedback_table_naming_prefixes \u2014 domain prefix mandatory",
       "href": ".claude/memory/feedback_table_naming_prefixes.md"
     }
   ]

@@ -834,7 +834,7 @@ func (s *Service) ListFieldValues(ctx context.Context, subscriptionID uuid.UUID,
 		       fl.name, fl.label, fl.field_type, fl.options_json,
 		       fv.string_value, fv.number_value::text, fv.text_value, fv.date_value::text
 		FROM artefact_field_values fv
-		JOIN field_library fl ON fl.id = fv.field_library_id
+		JOIN artefact_field_library fl ON fl.id = fv.field_library_id
 		WHERE fv.artefact_id = $1
 		ORDER BY fl.name ASC`,
 		artefactID,
@@ -874,7 +874,7 @@ func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID uuid.UUID
 	}
 	var fieldType string
 	err = s.vectorArtefactsPool.QueryRow(ctx,
-		`SELECT field_type FROM field_library WHERE id = $1 AND subscription_id = $2`,
+		`SELECT field_type FROM artefact_field_library WHERE id = $1 AND subscription_id = $2`,
 		fieldID, subscriptionID,
 	).Scan(&fieldType)
 	if errors.Is(err, pgx.ErrNoRows) {
