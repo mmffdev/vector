@@ -11,6 +11,12 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
+// jsonErrBody safely marshals an error message into a {"error":"..."} JSON body.
+func jsonErrBody(err error) []byte {
+	msg, _ := json.Marshal(err.Error())
+	return append([]byte(`{"error":`), append(msg, '}')...)
+}
+
 // Handler exposes the v2 work-items domain over HTTP.
 type Handler struct {
 	svc *Service
@@ -194,7 +200,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+			_, _ = w.Write(jsonErrBody(err))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -265,7 +271,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(`{"error":"not found"}`))
 		case errors.Is(err, ErrInvalidInput):
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+			_, _ = w.Write(jsonErrBody(err))
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(`{"error":"internal"}`))
@@ -280,16 +286,19 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
 	if err := h.svc.ArchiveWorkItem(r.Context(), u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"error":"not found"}`))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
@@ -317,7 +326,7 @@ func (h *Handler) Bulk(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+			_, _ = w.Write(jsonErrBody(err))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -364,12 +373,14 @@ func (h *Handler) UpsertFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
 	var req upsertFieldValueReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid body"}`))
 		return
@@ -382,10 +393,12 @@ func (h *Handler) UpsertFieldValues(w http.ResponseWriter, r *http.Request) {
 		DateValue:      req.DateValue,
 	}); err != nil {
 		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrInvalidInput) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+			_, _ = w.Write(jsonErrBody(err))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
@@ -398,22 +411,26 @@ func (h *Handler) DeleteFieldValue(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
 	fvID, err := uuid.Parse(chi.URLParam(r, "field_library_id"))
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid field_library_id"}`))
 		return
 	}
 	if err := h.svc.DeleteFieldValue(r.Context(), u.SubscriptionID, id, fvID); err != nil {
 		if errors.Is(err, ErrFieldNotFound) || errors.Is(err, ErrNotFound) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"error":"not found"}`))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return

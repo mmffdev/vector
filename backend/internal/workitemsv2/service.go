@@ -895,7 +895,7 @@ func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID uuid.UUID
 			text_value   = EXCLUDED.text_value,
 			date_value   = EXCLUDED.date_value,
 			updated_at   = now()`,
-		artefactID, in.FieldLibraryID,
+		artefactID, fieldID,
 		in.StringValue, in.NumberValue, in.TextValue, in.DateValue,
 	)
 	return err
