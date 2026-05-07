@@ -1,6 +1,6 @@
 # `<TimeboxManager>` — reusable time-boxed container surface
 
-> **Status: design intent, not yet built.** This leaf captures the contract before any component or service exists. First consumer is **Sprints** (Planning → Sprints sub-tab); next likely consumer is **Releases**. Storage already in place for sprints: [`db/artefacts_schema/025_timebox_sprints.sql`](../db/artefacts_schema/025_timebox_sprints.sql).
+> **Status: built — PLA-0027 complete.** Go service `internal/timeboxsprints`, REST surface `/api/v2/timeboxes/sprints`, `app/components/TimeboxManager.tsx`, `app/components/timebox/kinds.ts`, and `app/(user)/planning/sprints/page.tsx` all shipped. Page registry row in `mmff_vector` (migration 129). First consumer is **Sprints** (Planning → Sprints); next likely consumer is **Releases**. Storage: [`db/artefacts_schema/025_timebox_sprints.sql`](../db/artefacts_schema/025_timebox_sprints.sql).
 
 `<TimeboxManager>` will be a single React component in `app/components/TimeboxManager.tsx` that drives every time-boxed container surface in the product (sprints, releases, future kinds). The same component renders the list/grid view, the bulk-create form, and the per-row form. Behaviour and storage are switched by a single `kind` prop.
 

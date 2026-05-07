@@ -52,6 +52,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
+	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/workitems"
 	"github.com/mmffdev/vector-backend/internal/workitemsv2"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -358,6 +359,13 @@ func main() {
 	// R047 §9). vaPool may be nil — handler returns 503 in that case.
 	workspaceLayersH := portfoliomodels.NewWorkspaceLayersHandler(pool, vaPool)
 
+	// PLA-0027 / Story 00514: timebox sprints REST handler.
+	// Uses the same vaPool as v2 work-items; gracefully degrades when nil.
+	var sprintH *timeboxsprints.Handler
+	if vaPool != nil {
+		sprintH = timeboxsprints.NewHandler(timeboxsprints.NewService(vaPool))
+	}
+
 	flowsSvc := flows.New(pool)
 	flowsH := flows.NewHandler(flowsSvc)
 
@@ -416,7 +424,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{os.Getenv("FRONTEND_ORIGIN")},
+		AllowedOrigins:   strings.Split(os.Getenv("FRONTEND_ORIGIN"), ","),
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
@@ -911,6 +919,30 @@ func main() {
 	} else {
 		r.Get("/api/v2/work-items", func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
+		})
+	}
+
+	// ---- /api/v2/timeboxes/sprints (PLA-0027 / 00514) ----
+	if sprintH != nil {
+		r.Route("/api/v2/timeboxes/sprints", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+
+			r.Get("/", sprintH.List)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/", sprintH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/bulk-create", sprintH.BulkCreate)
+			r.Get("/{id}", sprintH.Get)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Put("/{id}", sprintH.Update)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Delete("/{id}", sprintH.Delete)
+		})
+	} else {
+		r.Get("/api/v2/timeboxes/sprints", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "timebox sprints not enabled", http.StatusServiceUnavailable)
 		})
 	}
 
