@@ -7,6 +7,8 @@ import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
 import { api } from "@/app/lib/api";
+import { getWorkspaceFields } from "@/app/lib/fieldsApi";
+import { workspacesApi } from "@/app/lib/workspacesApi";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
@@ -47,8 +49,33 @@ export default function DevPage() {
   const [resetConfirm, setResetConfirm] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [fieldsProbe, setFieldsProbe] = useState<{ ok: boolean; message: string } | null>(null);
+  const [fieldsProbeLoading, setFieldsProbeLoading] = useState(false);
 
   const cancelReset = () => { setResetConfirm(false); setResetConfirmText(""); };
+
+  // PLA-0026 / Story 00510 (F4) — smoke probe for GET
+  // /api/workspace/{id}/fields. Picks the first live workspace in the
+  // caller's tenant, calls getWorkspaceFields, reports the row count.
+  // Diagnostic only; no consumer wiring yet.
+  const probeWorkspaceFields = async () => {
+    setFieldsProbeLoading(true);
+    setFieldsProbe(null);
+    try {
+      const workspaces = await workspacesApi.list();
+      if (workspaces.length === 0) {
+        setFieldsProbe({ ok: false, message: "No workspaces in tenant — cannot probe." });
+        return;
+      }
+      const ws = workspaces[0];
+      const fields = await getWorkspaceFields(ws.id);
+      setFieldsProbe({ ok: true, message: `${fields.length} field(s) admitted for workspace "${ws.name}".` });
+    } catch (error: any) {
+      setFieldsProbe({ ok: false, message: error?.message || "Probe failed." });
+    } finally {
+      setFieldsProbeLoading(false);
+    }
+  };
 
   const copyCommand = () => {
     navigator.clipboard.writeText("bash dev/scripts/ssh_manager.sh");
@@ -211,6 +238,28 @@ export default function DevPage() {
           {resetResult && (
             <div className={`dev-alert dev-alert--${resetResult.success ? "success" : "error"}`}>
               {resetResult.message}
+            </div>
+          )}
+        </Panel>
+
+        <Panel name="dev_field_schema_probe" title="Field schema probe">
+          <p className="dev-p">
+            Calls <code>GET /api/workspace/{"{id}"}/fields</code> for the first workspace in
+            your tenant and reports the admitted-field count. Verifies the F4 client
+            wiring for PLA-0026.
+          </p>
+          <div className="dev-btn-group">
+            <button
+              onClick={probeWorkspaceFields}
+              disabled={fieldsProbeLoading}
+              className="dev-btn dev-btn--primary"
+            >
+              {fieldsProbeLoading ? "Probing..." : "Probe field schema"}
+            </button>
+          </div>
+          {fieldsProbe && (
+            <div className={`dev-alert dev-alert--${fieldsProbe.ok ? "success" : "error"}`}>
+              {fieldsProbe.message}
             </div>
           )}
         </Panel>
