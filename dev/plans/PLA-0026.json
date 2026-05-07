@@ -239,7 +239,7 @@
       "title": "T4: Integration test: re-adoption preserves parent_artefact_id NOT NULL",
       "story_id": "00504",
       "card_url": "http://localhost:3333/cards/1769517112969135342",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 30,
@@ -529,7 +529,7 @@
       "proven_by": "integration test green",
       "story_id": "00504",
       "card_url": "http://localhost:3333/cards/1769517112969135342",
-      "done": false
+      "done": true
     },
     {
       "order": 30,
