@@ -202,7 +202,7 @@ if [[ -z "$ENV_FILE" ]]; then
 fi
 PW=$(grep '^DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
 LIB_PW=$(grep '^LIBRARY_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
-LIB_PORT=$(grep '^LIBRARY_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'" ' ')
+LIB_PORT=$(grep '^LIBRARY_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'' | tr -d '[:space:]')
 LIB_PORT="${LIB_PORT:-$DB_PORT}"
 if [[ -z "$PW" ]]; then
   reason="env_missing: DB_PASSWORD not set in $(basename "$ENV_FILE")"
