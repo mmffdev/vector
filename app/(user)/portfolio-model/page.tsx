@@ -37,6 +37,7 @@ import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api, ApiError } from "@/app/lib/api";
 import { useHintOnce } from "@/app/lib/hints";
+import { workspacesApi } from "@/app/lib/workspacesApi";
 import WizardModelCardList from "./WizardModelCardList";
 import AdoptionOverlay, {
   type AdoptionDoneEvent,
@@ -97,6 +98,24 @@ interface BundleDTO {
   transitions: TransitionDTO[];
   artifacts: ArtifactDTO[];
   terminology: TerminologyDTO[];
+}
+
+// PLA-0026 / Story 00507 (F1) — wire shape of GET /api/portfolio/master_record.
+// Backend reads the persistent portfolio model record from
+// vector_artefacts.master_record_portfolio. model_name + model_description
+// are the prose copied at adoption time and are the ONLY runtime read of
+// adopted-model identity — the legacy mmff_library bundle is never used
+// as a display source after adoption (see backend handler comment).
+interface MasterRecordDTO {
+  workspace_id: string;
+  model_id: string | null;
+  model_name: string;
+  model_description: string | null;
+  adopted_at: string;
+  adopted_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
 }
 
 // Wire shape of GET /api/portfolio-models/adoption-state. The endpoint
@@ -171,16 +190,53 @@ export default function PortfolioModelPage() {
   // Step 3 — fetch the bundle preview when adopted. Kept as a separate
   // effect so re-rendering the preview after onDone doesn't re-fetch
   // the adoption-state row.
+  //
+  // PLA-0026 / Story 00507 (F1): the legacy /api/portfolio-models/:id
+  // call (mmff_library bundle read) is replaced by a vector_artefacts
+  // master_record_portfolio read keyed on workspace_id. The library is
+  // never a runtime display source after adoption — model_name and
+  // model_description were copied into master_record_portfolio at
+  // adoption time. layers/workflows/transitions/artifacts/terminology
+  // are re-derived from artefact_types (F3 swap) and are not part of
+  // BundleView's master-record-driven render.
   useEffect(() => {
     if (view.kind !== "adopted") return;
-    const adoptedModelId = view.modelId;
     let cancelled = false;
     (async () => {
       try {
-        const bundle = await api<BundleDTO>(
-          `/api/portfolio-models/${adoptedModelId}`
+        // Resolve the caller's live workspace. The frontend has no
+        // shared current-workspace context yet (S3 deferred — see PLA-
+        // 0026 follow-ups); per the per-tenant cutover, padmins have
+        // exactly one live workspace today, so first-row is correct.
+        const workspaces = await workspacesApi.list();
+        if (cancelled) return;
+        if (workspaces.length === 0) {
+          setView({ kind: "missing-bundle" });
+          return;
+        }
+        const workspaceId = workspaces[0].id;
+
+        const mr = await api<MasterRecordDTO>(
+          `/api/portfolio/master_record?workspace_id=${encodeURIComponent(workspaceId)}`,
         );
         if (cancelled) return;
+
+        // BundleView only renders model.name + model.description; the
+        // remaining BundleDTO fields are placeholders for type-shape
+        // compatibility (LayersPreviewTable reads from a separate
+        // /api/subscription/layers fetch — F3 swaps that next).
+        const bundle: BundleDTO = {
+          model: {
+            id: mr.model_id ?? "",
+            name: mr.model_name,
+            description: mr.model_description,
+          },
+          layers: [],
+          workflows: [],
+          transitions: [],
+          artifacts: [],
+          terminology: [],
+        };
         setView({ kind: "preview", bundle });
       } catch (e) {
         if (cancelled) return;
