@@ -41,6 +41,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/wsperms"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
+	"github.com/mmffdev/vector-backend/internal/portfolio"
 	"github.com/mmffdev/vector-backend/internal/portfolioitems"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
 	"github.com/mmffdev/vector-backend/internal/ranking"
@@ -310,7 +311,15 @@ func main() {
 
 	// Portfolio adopt handler — wired AFTER vaPool so PLA-0026 dual-
 	// writes target vector_artefacts when the pool is available.
-	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool)
+	// PLA-0026 / Story 00495 (B6): master-record-portfolio service is
+	// constructed only when vaPool is live; the saga's finalize step
+	// is a no-op when masterRecordSvc is nil (orphan-sub fixtures and
+	// VA-disabled environments).
+	var masterRecordSvc *portfolio.Service
+	if vaPool != nil {
+		masterRecordSvc = portfolio.NewService(vaPool)
+	}
+	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool, masterRecordSvc)
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 
 	flowsSvc := flows.New(pool)

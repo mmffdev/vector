@@ -62,6 +62,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
+	"github.com/mmffdev/vector-backend/internal/portfolio"
 )
 
 // Adoption error codes — must match the seed in
@@ -145,12 +146,23 @@ type Orchestrator struct {
 	// exactly like the pre-PLA-0026 path. Lets dev/staging configs
 	// run without the artefacts DB while production cuts over.
 	VAPool *pgxpool.Pool
+	// MasterRecordSvc is the sole-writer for master_record_portfolio
+	// (PLA-0026 B6). Optional — when nil the saga skips the finalize-
+	// step master_record upsert. Pair with VAPool: a non-nil VAPool
+	// without a MasterRecordSvc will still run B3–B5 but skip B6.
+	MasterRecordSvc *portfolio.Service
 }
 
 // NewOrchestrator builds the adopt orchestrator. Pass nil for vaPool
-// to disable the PLA-0026 dual-writes (legacy-only behaviour).
-func NewOrchestrator(libRO, vectorPool, vaPool *pgxpool.Pool) *Orchestrator {
-	return &Orchestrator{LibRO: libRO, VectorPool: vectorPool, VAPool: vaPool}
+// (and/or masterRecordSvc) to disable the PLA-0026 dual-writes
+// (legacy-only behaviour).
+func NewOrchestrator(libRO, vectorPool, vaPool *pgxpool.Pool, masterRecordSvc *portfolio.Service) *Orchestrator {
+	return &Orchestrator{
+		LibRO:           libRO,
+		VectorPool:      vectorPool,
+		VAPool:          vaPool,
+		MasterRecordSvc: masterRecordSvc,
+	}
 }
 
 // AdoptOptions lets 00010's sim harness inject a synthetic failure on a
@@ -342,6 +354,15 @@ func (o *Orchestrator) Adopt(
 		stepLayers: func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeStrategyArtefactTypes(ctx, vaTx, subscriptionID, workspaceID, bundle)
 		},
+		stepWorkflows: func(ctx context.Context, vaTx pgx.Tx) error {
+			return writeFlowsAndStates(ctx, vaTx, subscriptionID, workspaceID, bundle)
+		},
+		stepTransitions: func(ctx context.Context, vaTx pgx.Tx) error {
+			return writeFlowTransitions(ctx, vaTx, subscriptionID, workspaceID, bundle)
+		},
+		stepArtifacts: func(ctx context.Context, vaTx pgx.Tx) error {
+			return writeWorkArtefactTypes(ctx, vaTx, subscriptionID, workspaceID)
+		},
 	}
 
 	for i, step := range mirrorSteps {
@@ -382,6 +403,20 @@ func (o *Orchestrator) Adopt(
 		err := errSimInjected{step: stepFinalize}
 		hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
 		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+	}
+
+	// PLA-0026 / Story 00495 (B6): upsert master_record_portfolio for
+	// this workspace BEFORE markCompleted. The master-record service
+	// writes against the VA pool directly (idempotent on workspace_id
+	// PK), so a saga retry converges to the same row. No-op when
+	// VAPool / MasterRecordSvc / workspaceID are absent (orphan-sub
+	// fixtures + tests that exercise only the legacy mirror path).
+	if o.VAPool != nil && o.MasterRecordSvc != nil && workspaceID != uuid.Nil {
+		if err := writeMasterRecordPortfolio(ctx, nil, o.MasterRecordSvc,
+			workspaceID, modelID, userID, bundle); err != nil {
+			hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
+			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+		}
 	}
 
 	adoptedAt, err := o.markCompleted(ctx, stateID, userID)
@@ -1003,8 +1038,8 @@ type AdoptHandler struct {
 	Orchestrator *Orchestrator
 }
 
-func NewAdoptHandler(libRO, vectorPool, vaPool *pgxpool.Pool) *AdoptHandler {
-	return &AdoptHandler{Orchestrator: NewOrchestrator(libRO, vectorPool, vaPool)}
+func NewAdoptHandler(libRO, vectorPool, vaPool *pgxpool.Pool, masterRecordSvc *portfolio.Service) *AdoptHandler {
+	return &AdoptHandler{Orchestrator: NewOrchestrator(libRO, vectorPool, vaPool, masterRecordSvc)}
 }
 
 // Adopt — POST /api/portfolio-models/{id}/adopt
