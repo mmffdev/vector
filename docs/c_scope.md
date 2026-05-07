@@ -29,6 +29,7 @@ _(none)_
 
 | Feature | Area | Stories | Completed |
 |---|---|---|---|
+| v2 work-items full cutover — all 12 endpoints + frontend switch (PLA-0025) | API / SQL / ITM / UI | — | 2026-05-07 |
 | v2 work-items endpoint — vector_artefacts cutover (dev, PLA-0023) | API / SQL / ITM | 00461–00475 | 2026-05-07 |
 | Portfolio templates (replace portfolio_models + layers) | POR / SQL | 00156–00174 | 2026-04-30 |
 | Vector Design System rebrand | UI | 00108–00123 | 2026-04-27 |

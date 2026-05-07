@@ -1,0 +1,58 @@
+{
+  "id": "PLA-0025",
+  "title": "Work-Items Full v2 Cutover — all 12 v2 REST endpoints against vector_artefacts",
+  "date_created": "2026-05-07",
+  "date_started": "2026-05-07",
+  "date_last_updated": "2026-05-07",
+  "date_finished": "2026-05-07",
+  "scope": "<p>Implement all 11 missing v2 work-items endpoints against the <code>vector_artefacts</code> database and switch the frontend to use them. Six-task rollout: <strong>Task 1</strong> adds the <code>artefact_number_sequence</code> table (migration 016) for atomic number allocation on Create; <strong>Task 2</strong> adds v2 read endpoints (Get, ListChildren, Summary, FlowStates) to the Go service and handler; <strong>Task 3</strong> adds v2 write service methods (CreateWorkItem, PatchWorkItem, ArchiveWorkItem, BulkOps); <strong>Task 4</strong> adds write handlers, field-value handlers (List, Upsert, Delete), and registers all 12 routes in main.go; <strong>Task 5</strong> switches the frontend from <code>/api/work-items</code> to <code>/api/v2/work-items</code> across four files; <strong>Task 6</strong> closes out plan docs.</p>",
+  "value": "<p>PLA-0023 only wired the read-list endpoint (<code>GET /api/v2/work-items</code>). PLA-0025 completes the v2 surface so every work-items operation the frontend needs — create, patch, archive, bulk-ops, field values, flow states — is served from <code>vector_artefacts</code>, not the legacy <code>mmff_vector.obj_*</code> tables. After this plan the frontend is fully on v2 and the v1 obj_work_items path is an unused fallback ready for drop.</p>",
+  "implementation_plan": [
+    "Task 1 — Migration 016: artefact_number_sequence table for atomic per-(subscription, artefact_type) number allocation.",
+    "Task 2 — v2 read service methods + handlers: GetWorkItem, ListChildren, SummariseWorkItems, ListFlowStates; routes GET /{id}, GET /summary, GET /flow-states, GET /{id}/children.",
+    "Task 3 — v2 write service methods: CreateWorkItem (with number allocation + workspace resolution), PatchWorkItem (dynamic SET builder), ArchiveWorkItem (soft delete), BulkOps (per-row partial-failure transaction).",
+    "Task 4 — v2 write handlers + field-value service + handlers + routes: POST /, PATCH /{id}, DELETE /{id}, POST /bulk, GET+PUT+DELETE /{id}/field-values.",
+    "Task 5 — Frontend switch: replace /api/work-items with /api/v2/work-items across work-items-tree-config.tsx, WorkItemDetailPanel.tsx, useWorkItemFlowStates.ts, and work-items/page.tsx.",
+    "Task 6 — Plan housekeeping: PLA-0025.json, c_plan_index.md, c_scope.md."
+  ],
+  "areas_impacted": [
+    "Database (vector_artefacts): migration 016 adds artefact_number_sequence table.",
+    "Backend (Go, modified): backend/internal/workitemsv2/service.go — 9 new service methods; backend/internal/workitemsv2/handler.go — 11 new HTTP handlers + jsonErrBody helper; backend/cmd/server/main.go — v2 route block expanded from 5 to 12 routes.",
+    "Frontend: app/components/work-items-tree-config.tsx, app/components/WorkItemDetailPanel.tsx, app/components/useWorkItemFlowStates.ts, app/(user)/work-items/page.tsx — all /api/work-items URLs replaced with /api/v2/work-items."
+  ],
+  "feature_list": [
+    "migration 016 — artefact_number_sequence for atomic number allocation",
+    "GET /api/v2/work-items/{id} — single item lookup",
+    "GET /api/v2/work-items/{id}/children — direct children list",
+    "GET /api/v2/work-items/summary — count strip (total/epics/stories/tasks/defects/blocked)",
+    "GET /api/v2/work-items/flow-states — flow state list for work type",
+    "POST /api/v2/work-items — create work item",
+    "PATCH /api/v2/work-items/{id} — partial update",
+    "DELETE /api/v2/work-items/{id} — soft archive",
+    "POST /api/v2/work-items/bulk — bulk op (set_priority/set_owner/archive/set_flow_state)",
+    "GET /api/v2/work-items/{id}/field-values — list custom field values",
+    "PUT /api/v2/work-items/{id}/field-values — upsert one field value",
+    "DELETE /api/v2/work-items/{id}/field-values/{field_library_id} — delete field value",
+    "Frontend fully switched to v2 endpoints (9 URL replacements across 4 files)"
+  ],
+  "work_item_backlog": [],
+  "acceptance_criteria": [],
+  "risks": [],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "PLA-0023 — Vector Artefacts Cutover (predecessor)",
+      "href": "dev/plans/PLA-0023.json"
+    },
+    {
+      "kind": "internal",
+      "label": "backend/internal/workitemsv2/ — v2 service, handler, types",
+      "href": "backend/internal/workitemsv2/"
+    },
+    {
+      "kind": "internal",
+      "label": "db/artefacts_schema/016_artefact_number_sequence.sql",
+      "href": "db/artefacts_schema/016_artefact_number_sequence.sql"
+    }
+  ]
+}

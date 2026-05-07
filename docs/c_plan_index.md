@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0023`
+**Last issued:** `PLA-0025`
 
 ## Format
 
@@ -44,6 +44,8 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0021` | ResourceTree — generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap) | 2026-05-06 | active |
 | `PLA-0022` | Auth bootstrap dedup — share AuthProvider.refresh() in-flight promise to prevent tab-duplicate logout | 2026-05-06 | active |
 | `PLA-0023` | Vector Artefacts Cutover — move work-items + artefacts from `mmff_vector` to dedicated `vector_artefacts` DB | 2026-05-07 | complete (2026-05-07; dev cutover done, prod pending) |
+| `PLA-0024` | Subscriptions → master_record_tenant table rename + organisation settings | 2026-05-07 | active |
+| `PLA-0025` | Work-Items Full v2 Cutover — all 12 v2 endpoints against vector_artefacts | 2026-05-07 | complete |
 
 ## Deletion log
 
