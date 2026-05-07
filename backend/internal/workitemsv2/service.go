@@ -2,6 +2,7 @@ package workitemsv2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -514,7 +515,9 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		ORDER BY created_at ASC LIMIT 1`,
 		subscriptionID,
 	).Scan(&workspaceID)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("resolve workspace: %w", err)
+	} else if errors.Is(err, pgx.ErrNoRows) {
 		// Fall back to subscription_id as workspace_id sentinel (matches ETL).
 		workspaceID = subscriptionID
 	}
@@ -522,11 +525,17 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	var newID uuid.UUID
 	ownerID := uuid.Nil
 	if in.OwnerID != "" {
-		ownerID, _ = uuid.Parse(in.OwnerID)
+		ownerID, err = uuid.Parse(in.OwnerID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid owner_id UUID", ErrInvalidInput)
+		}
 	}
 	createdBy := uuid.Nil
 	if in.CreatedBy != "" {
-		createdBy, _ = uuid.Parse(in.CreatedBy)
+		createdBy, err = uuid.Parse(in.CreatedBy)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid created_by UUID", ErrInvalidInput)
+		}
 	}
 
 	var parentID *uuid.UUID
@@ -775,25 +784,25 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 				continue
 			}
 			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET priority=$1, updated_at=now() WHERE id=$2::uuid`,
-				val, row.id)
+				`UPDATE artefacts SET priority=$1, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`,
+				val, row.id, subscriptionID)
 		case "set_owner":
 			ownerID, _ := payload["owner_id"].(string)
 			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET owned_by_user_id=$1::uuid, updated_at=now() WHERE id=$2::uuid`,
-				ownerID, row.id)
+				`UPDATE artefacts SET owned_by_user_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`,
+				ownerID, row.id, subscriptionID)
 		case "archive":
 			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET archived_at=now(), updated_at=now() WHERE id=$1::uuid`,
-				row.id)
+				`UPDATE artefacts SET archived_at=now(), updated_at=now() WHERE id=$1::uuid AND subscription_id=$2`,
+				row.id, subscriptionID)
 		case "set_flow_state", "set_status":
 			fsID, _ := payload["flow_state_id"].(string)
 			if fsID == "" {
 				fsID, _ = payload["status"].(string)
 			}
 			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET flow_state_id=$1::uuid, updated_at=now() WHERE id=$2::uuid`,
-				fsID, row.id)
+				`UPDATE artefacts SET flow_state_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`,
+				fsID, row.id, subscriptionID)
 		}
 		if execErr != nil {
 			result.Failed = append(result.Failed, BulkFailure{ID: row.id, Reason: execErr.Error()})
