@@ -67,7 +67,7 @@ func TestAdoptStream_HappyPath(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	orch := NewOrchestrator(libRO, vec, nil)
+	orch := NewOrchestrator(libRO, vec, nil, nil)
 	// 1s heartbeat: short enough to fire once during a slow saga, but
 	// the happy path usually finishes faster than that — the test
 	// tolerates 0..N heartbeat lines in the stream.
@@ -157,7 +157,7 @@ func TestAdoptStream_IdempotentCompleted(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	orch := NewOrchestrator(libRO, vec, nil)
+	orch := NewOrchestrator(libRO, vec, nil, nil)
 	// Run the real saga first so the state row is completed.
 	_, err := orch.Adopt(ctx, user.SubscriptionID, user.ID, modelID, "seed-run", AdoptOptions{})
 	if err != nil {
@@ -237,7 +237,7 @@ func TestAdoptStream_FailPath_AdapterOnly(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	orch := NewOrchestrator(libRO, vec, nil)
+	orch := NewOrchestrator(libRO, vec, nil, nil)
 
 	// Drive Adopt directly with FailAtStep=layers, capturing every
 	// {Phase:end} event our SSE hook would have queued.

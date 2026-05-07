@@ -244,10 +244,26 @@ func (h *AdoptStreamHandler) Stream(w http.ResponseWriter, r *http.Request) {
 // step `status:"ok"`. On a failed step we surface the ADOPT_* code so
 // the UI can pick a user-message before the explicit `fail`
 // terminator arrives.
+//
+// PLA-0026 (B7) — every step event now ALSO carries:
+//
+//   - `substrate` — machine-readable name of the vector_artefacts
+//     target the step writes to (e.g. "flow_transitions"). Frontend
+//     handlers can key off this to render substrate-aware progress
+//     copy. The legacy `name` slug (validate/layers/…) is preserved
+//     unchanged so existing handler keys keep working.
+//   - `message`  — human-readable per-step status line referencing the
+//     new substrate. Frontend may use it directly or ignore it in
+//     favour of its own copy table.
+//
+// The added fields are purely additive — clients that ignore them
+// continue to work against the old contract.
 func writeStepEvent(w http.ResponseWriter, flusher http.Flusher, msg streamMsg) {
 	payload := map[string]any{
-		"index": msg.index,
-		"name":  msg.name,
+		"index":     msg.index,
+		"name":      msg.name,
+		"substrate": stepSubstrate(msg.name),
+		"message":   stepMessage(msg.name),
 	}
 	if msg.stepErr != nil {
 		payload["status"] = "fail"
@@ -258,6 +274,69 @@ func writeStepEvent(w http.ResponseWriter, flusher http.Flusher, msg streamMsg) 
 	body, _ := json.Marshal(payload)
 	fmt.Fprintf(w, "event: step\ndata: %s\n\n", body)
 	flusher.Flush()
+}
+
+// stepSubstrate maps a saga step slug to the vector_artefacts substrate
+// (target table or table-pair) the step writes. Returned string is
+// machine-readable and stable; the frontend can treat it as an opaque
+// key. PLA-0026 (B7).
+//
+// Mapping rationale:
+//
+//   - validate     → "library_snapshot"            (REPEATABLE READ open)
+//   - layers       → "artefact_types/strategy"     (strategy hierarchy)
+//   - workflows    → "flows + flow_states"         (flow header + states)
+//   - transitions  → "flow_transitions"            (state→state edges)
+//   - artifacts    → "artefact_types/work"         (work-item leaf types)
+//   - terminology  → "legacy/subscription_terminology" (no VA equivalent yet)
+//   - finalize     → "master_record_portfolio"     (portfolio-adoption row)
+//
+// Unknown step names fall through to "" — callers receive an empty
+// substrate field rather than a misleading guess.
+func stepSubstrate(stepName string) string {
+	switch stepName {
+	case stepValidate:
+		return "library_snapshot"
+	case stepLayers:
+		return "artefact_types/strategy"
+	case stepWorkflows:
+		return "flows + flow_states"
+	case stepTransitions:
+		return "flow_transitions"
+	case stepArtifacts:
+		return "artefact_types/work"
+	case stepTerminology:
+		return "legacy/subscription_terminology"
+	case stepFinalize:
+		return "master_record_portfolio"
+	default:
+		return ""
+	}
+}
+
+// stepMessage returns a human-readable status line for the given step.
+// Copy is intentionally substrate-aware ("Writing strategy artefact
+// types…") so the message column in any UI render matches the
+// machine-readable substrate field. Frontend may override.
+func stepMessage(stepName string) string {
+	switch stepName {
+	case stepValidate:
+		return "Validating library snapshot…"
+	case stepLayers:
+		return "Writing strategy artefact types…"
+	case stepWorkflows:
+		return "Writing flows and flow states…"
+	case stepTransitions:
+		return "Writing flow transitions…"
+	case stepArtifacts:
+		return "Writing work artefact types…"
+	case stepTerminology:
+		return "Writing terminology (legacy)…"
+	case stepFinalize:
+		return "Finalising portfolio adoption…"
+	default:
+		return ""
+	}
 }
 
 // writeTerminator emits the final `done` (success) or `fail` (error)
