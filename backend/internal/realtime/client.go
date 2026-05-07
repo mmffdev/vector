@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 
 	"github.com/coder/websocket"
@@ -49,7 +51,18 @@ const (
 // a valid user. The connection is bound to that user's
 // SubscriptionID; topic strings are validated against it before
 // every Subscribe so a client cannot listen on another tenant.
+//
+// Origin: PLA-0010 / story 00354. The previous version set
+// AcceptOptions.InsecureSkipVerify=true with a comment claiming chi
+// CORS already validated Origin upstream — that was wrong. chi's
+// cors.Handler only sets response headers and handles preflight; it
+// does NOT reject WebSocket Upgrade requests with foreign Origins, so
+// any third-party page could open an authenticated WS to this server
+// (CSWSH). We now populate OriginPatterns from FRONTEND_ORIGIN — the
+// same env that gates HTTP CORS — so coder/websocket performs the
+// Origin host check itself.
 func ServeWS(hub *Hub) http.HandlerFunc {
+	originPatterns := wsOriginPatterns()
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := auth.UserFromCtx(r.Context())
 		if u == nil {
@@ -58,7 +71,7 @@ func ServeWS(hub *Hub) http.HandlerFunc {
 		}
 
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			InsecureSkipVerify: true, // origin is checked by chi CORS upstream
+			OriginPatterns: originPatterns,
 		})
 		if err != nil {
 			return
@@ -153,6 +166,25 @@ func splitN(s string, sep byte, n int) []string {
 	}
 	out = append(out, s[start:])
 	return out
+}
+
+// wsOriginPatterns returns the host patterns coder/websocket honours
+// as authorized Origin values. We reuse FRONTEND_ORIGIN — the same env
+// that drives HTTP CORS in main.go — so the WS surface and the HTTP
+// surface stay aligned. The library matches against the Origin
+// header's host (port stripped) using glob patterns; an empty slice
+// means same-origin only, which is the secure fallback when
+// FRONTEND_ORIGIN is unset or unparseable.
+func wsOriginPatterns() []string {
+	raw := os.Getenv("FRONTEND_ORIGIN")
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Hostname() == "" {
+		return nil
+	}
+	return []string{u.Hostname()}
 }
 
 // Errors used by tests.
