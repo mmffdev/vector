@@ -1,4 +1,5 @@
-// cmd/migrate runs ordered SQL migrations against mmff_vector and mmff_library.
+// cmd/migrate runs ordered SQL migrations against mmff_vector, mmff_library,
+// and vector_artefacts.
 //
 // Usage (from repo root):
 //
@@ -7,14 +8,15 @@
 // Flags:
 //
 //	-dry-run   print which migrations would run; make no changes
-//	-db        which database to migrate: "vector", "library", or "both" (default "both")
+//	-db        which database to migrate: "vector", "library", "vector_artefacts", or "both" (default "both")
 //	-dir       repo root directory (default: auto-detected from executable path)
 //	-env       path to .env file (default: backend/.env.local)
 //
 // SQL files are read from:
 //
-//	<dir>/db/schema/          → mmff_vector
-//	<dir>/db/library_schema/  → mmff_library
+//	<dir>/db/schema/            → mmff_vector
+//	<dir>/db/library_schema/    → mmff_library
+//	<dir>/db/artefacts_schema/  → vector_artefacts
 //
 // Each database gets a schema_migrations table on first run that records which
 // files have been applied. Files already in that table are skipped.
@@ -43,7 +45,7 @@ import (
 
 func main() {
 	dryRun := flag.Bool("dry-run", false, "print pending migrations without applying them")
-	which := flag.String("db", "both", `which DB to migrate: "vector", "library", or "both"`)
+	which := flag.String("db", "both", `which DB to migrate: "vector", "library", "vector_artefacts", or "both"`)
 	repoDir := flag.String("dir", "", "repo root (default: auto-detected)")
 	envFile := flag.String("env", "", "path to .env file (default: <dir>/backend/.env.local)")
 	flag.Parse()
@@ -68,11 +70,14 @@ func main() {
 		must(migrateVector(ctx, root, *dryRun))
 	case "library":
 		must(migrateLibrary(ctx, root, *dryRun))
+	case "vector_artefacts":
+		must(migrateVectorArtefacts(ctx, root, *dryRun))
 	case "both":
 		must(migrateVector(ctx, root, *dryRun))
 		must(migrateLibrary(ctx, root, *dryRun))
+		must(migrateVectorArtefacts(ctx, root, *dryRun))
 	default:
-		log.Fatalf("-db must be vector, library, or both; got %q", *which)
+		log.Fatalf("-db must be vector, library, vector_artefacts, or both; got %q", *which)
 	}
 }
 
@@ -125,6 +130,27 @@ func migrateLibrary(ctx context.Context, root string, dryRun bool) error {
 
 	dir := filepath.Join(root, "db", "library_schema")
 	return runMigrations(ctx, pool, "library", dir, dryRun)
+}
+
+// ── vector_artefacts ──────────────────────────────────────────────────────────
+
+func migrateVectorArtefacts(ctx context.Context, root string, dryRun bool) error {
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=mmff_migrate_vector_artefacts",
+		envOr("VA_DB_HOST", "localhost"),
+		envOr("VA_DB_PORT", "5435"),
+		secrets.Get("VA_DB_USER"),
+		secrets.Get("VA_DB_PASSWORD"),
+		envOr("VA_DB_NAME", "vector_artefacts"),
+	)
+	pool, err := openPool(ctx, dsn, "vector_artefacts")
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	dir := filepath.Join(root, "db", "artefacts_schema")
+	return runMigrations(ctx, pool, "vector_artefacts", dir, dryRun)
 }
 
 // ── core runner ───────────────────────────────────────────────────────────────

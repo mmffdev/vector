@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/addressables"
@@ -50,6 +51,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/workitems"
+	"github.com/mmffdev/vector-backend/internal/workitemsv2"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
@@ -258,6 +260,45 @@ func main() {
 
 	workItemsSvc := workitems.New(pool)
 	workItemsH := workitems.NewHandler(workItemsSvc)
+
+	// v2 work-items pool — reads from vector_artefacts (PLA-0023 / 00464).
+	// VECTOR_ARTEFACTS_DB_URL is optional; absent = v2 route returns empty
+	// pages until the cutover pool is provisioned (flag gate lands in 00471).
+	var workItemsV2H *workitemsv2.Handler
+	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
+		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
+		if vaErr != nil {
+			log.Printf("⚠ vector_artefacts pool config error — v2 work-items will return empty: %v", vaErr)
+			workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+		} else {
+			vaCfg.MinConns = 2
+			vaCfg.MaxConnIdleTime = 5 * time.Minute
+			vaPool, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
+			if vaErr != nil {
+				log.Printf("⚠ vector_artefacts pool connect failed — v2 work-items will return empty: %v", vaErr)
+				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+			} else if vaErr = vaPool.Ping(ctx); vaErr != nil {
+				log.Printf("⚠ vector_artefacts pool ping failed — v2 work-items will return empty: %v", vaErr)
+				vaPool.Close()
+				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+			} else {
+				defer vaPool.Close()
+				// Mask password in log: strip :password@ from the URL.
+				maskedURL := vaURL
+				if i := strings.Index(vaURL, "@"); i > 0 {
+					if j := strings.LastIndex(vaURL[:i], ":"); j > 0 {
+						maskedURL = vaURL[:j+1] + "***" + vaURL[i:]
+					}
+				}
+				log.Printf("vector_artefacts pool connected: %s", maskedURL)
+				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(vaPool, pool))
+				bootstatus.Set("vector_artefacts_db", true, "")
+			}
+		}
+	} else {
+		log.Printf("⚠ VECTOR_ARTEFACTS_DB_URL unset — v2 work-items will return empty pages")
+		workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+	}
 
 	flowsSvc := flows.New(pool)
 	flowsH := flows.NewHandler(flowsSvc)
@@ -760,6 +801,11 @@ func main() {
 		r.Put("/{id}/field-values", workItemsH.UpsertFieldValues)
 		r.Delete("/{id}/field-values/{field_library_id}", workItemsH.DeleteFieldValue)
 	})
+
+	// ---- /api/v2/work-items (PLA-0023 / 00464) ----
+	// Unauthenticated in this story; auth + rate-limit middleware land in 00469.
+	// Pool may be nil (VECTOR_ARTEFACTS_DB_URL unset) — service returns empty pages.
+	r.Get("/api/v2/work-items", workItemsV2H.List)
 
 	// ---- /api/sprints ----
 	r.Route("/api/sprints", func(r chi.Router) {
