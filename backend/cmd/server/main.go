@@ -802,10 +802,19 @@ func main() {
 		r.Delete("/{id}/field-values/{field_library_id}", workItemsH.DeleteFieldValue)
 	})
 
-	// ---- /api/v2/work-items (PLA-0023 / 00464) ----
-	// Unauthenticated in this story; auth + rate-limit middleware land in 00469.
-	// Pool may be nil (VECTOR_ARTEFACTS_DB_URL unset) — service returns empty pages.
-	r.Get("/api/v2/work-items", workItemsV2H.List)
+	// ---- /api/v2/work-items (PLA-0023 / 00469 + 00471) ----
+	if os.Getenv("WORK_ITEMS_V2") == "true" {
+		r.Route("/api/v2/work-items", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/", workItemsV2H.List)
+		})
+	} else {
+		r.Get("/api/v2/work-items", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
+		})
+	}
 
 	// ---- /api/sprints ----
 	r.Route("/api/sprints", func(r chi.Router) {

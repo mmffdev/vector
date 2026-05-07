@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/google/uuid"
+	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
 // Handler exposes the v2 work-items domain over HTTP.
@@ -26,21 +26,12 @@ type listResponse struct {
 }
 
 // List handles GET /api/v2/work-items.
-// Subscription ID is read from the ?subscription_id= query param until
-// auth middleware lands in story 00469. An absent or invalid param
-// returns an empty page rather than an error, matching the nil-pool
-// behaviour.
+// Requires auth middleware (wired in story 00469); reads subscription_id
+// from the JWT context via auth.UserFromCtx.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	subIDStr := r.URL.Query().Get("subscription_id")
-	subID, parseErr := uuid.Parse(subIDStr)
-	if parseErr != nil {
-		// No valid subscription_id — return empty page (pre-auth stub contract).
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(listResponse{Items: []WorkItem{}, Total: 0})
-		return
-	}
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
 
 	q := r.URL.Query()
 	f := Filters{Limit: 50}
