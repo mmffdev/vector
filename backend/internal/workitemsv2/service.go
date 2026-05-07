@@ -820,6 +820,108 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 	return result, nil
 }
 
+// ListFieldValues returns all artefact_field_values for an artefact,
+// enforcing subscription isolation by first verifying the artefact exists.
+func (s *Service) ListFieldValues(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID) ([]FieldValue, error) {
+	if s.vectorArtefactsPool == nil {
+		return []FieldValue{}, nil
+	}
+	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
+		return nil, err
+	}
+	rows, err := s.vectorArtefactsPool.Query(ctx, `
+		SELECT fv.id, fv.artefact_id::text, fl.id::text, NULL::text,
+		       fl.name, fl.label, fl.field_type, fl.options_json,
+		       fv.string_value, fv.number_value::text, fv.text_value, fv.date_value::text
+		FROM artefact_field_values fv
+		JOIN field_library fl ON fl.id = fv.field_library_id
+		WHERE fv.artefact_id = $1
+		ORDER BY fl.name ASC`,
+		artefactID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var fvs []FieldValue
+	for rows.Next() {
+		var fv FieldValue
+		if err := rows.Scan(&fv.ID, &fv.WorkItemID, &fv.FieldLibraryID, &fv.TemplateID,
+			&fv.FieldName, &fv.Label, &fv.FieldType, &fv.OptionsJSON,
+			&fv.StringValue, &fv.NumberValue, &fv.TextValue, &fv.DateValue); err != nil {
+			return nil, err
+		}
+		fvs = append(fvs, fv)
+	}
+	if fvs == nil {
+		fvs = []FieldValue{}
+	}
+	return fvs, rows.Err()
+}
+
+// UpsertFieldValue writes one field value for an artefact.
+// Enforces type routing and subscription isolation.
+func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID, in UpsertFieldValueInput) error {
+	if s.vectorArtefactsPool == nil {
+		return fmt.Errorf("vector_artefacts pool not configured")
+	}
+	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
+		return err
+	}
+	fieldID, err := uuid.Parse(in.FieldLibraryID)
+	if err != nil {
+		return fmt.Errorf("%w: invalid field_library_id", ErrInvalidInput)
+	}
+	var fieldType string
+	err = s.vectorArtefactsPool.QueryRow(ctx,
+		`SELECT field_type FROM field_library WHERE id = $1 AND subscription_id = $2`,
+		fieldID, subscriptionID,
+	).Scan(&fieldType)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("%w: field_library_id not found", ErrInvalidInput)
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.vectorArtefactsPool.Exec(ctx, `
+		INSERT INTO artefact_field_values
+			(artefact_id, field_library_id, string_value, number_value, text_value, date_value)
+		VALUES ($1,$2,$3,$4::numeric,$5,$6::date)
+		ON CONFLICT (artefact_id, field_library_id)
+		DO UPDATE SET
+			string_value = EXCLUDED.string_value,
+			number_value = EXCLUDED.number_value,
+			text_value   = EXCLUDED.text_value,
+			date_value   = EXCLUDED.date_value,
+			updated_at   = now()`,
+		artefactID, in.FieldLibraryID,
+		in.StringValue, in.NumberValue, in.TextValue, in.DateValue,
+	)
+	return err
+}
+
+// DeleteFieldValue removes a field value row by id, enforcing ownership.
+func (s *Service) DeleteFieldValue(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID, fvID uuid.UUID) error {
+	if s.vectorArtefactsPool == nil {
+		return ErrFieldNotFound
+	}
+	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
+		return err
+	}
+	ct, err := s.vectorArtefactsPool.Exec(ctx,
+		`DELETE FROM artefact_field_values WHERE id = $1 AND artefact_id = $2`,
+		fvID, artefactID,
+	)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrFieldNotFound
+	}
+	return nil
+}
+
 // decorateOwners fetches display names for all unique owner UUIDs in items
 // from mmff_vector.users (mainPool) and populates wi.Owner on each row.
 // Skipped silently when mainPool is nil or no items have an owner set.

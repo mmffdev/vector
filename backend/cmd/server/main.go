@@ -809,10 +809,17 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", workItemsV2H.List)
+			r.Post("/", workItemsV2H.Create)
+			r.Post("/bulk", workItemsV2H.Bulk)
 			r.Get("/summary", workItemsV2H.Summary)
 			r.Get("/flow-states", workItemsV2H.ListFlowStates)
 			r.Get("/{id}", workItemsV2H.Get)
+			r.Patch("/{id}", workItemsV2H.Patch)
+			r.Delete("/{id}", workItemsV2H.Archive)
 			r.Get("/{id}/children", workItemsV2H.ListChildren)
+			r.Get("/{id}/field-values", workItemsV2H.ListFieldValues)
+			r.Put("/{id}/field-values", workItemsV2H.UpsertFieldValues)
+			r.Delete("/{id}/field-values/{field_library_id}", workItemsV2H.DeleteFieldValue)
 		})
 	} else {
 		r.Get("/api/v2/work-items", func(w http.ResponseWriter, r *http.Request) {
