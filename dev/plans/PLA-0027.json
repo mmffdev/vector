@@ -1,0 +1,307 @@
+{
+  "id": "PLA-0027",
+  "title": "Sprints — Timebox Management System",
+  "date_created": "2026-05-07",
+  "date_started": null,
+  "date_last_updated": "2026-05-07",
+  "date_finished": null,
+  "scope": "<p>Full-stack implementation of the Sprints feature as the first timebox kind in the <code>TimeboxManager</code> architecture. Covers the Go service layer (<code>internal/timeboxsprints</code> as sole writer), REST API endpoints under <code>/api/v2/timeboxes/sprints</code>, page registry + navigation wiring for <code>/planning/sprints</code>, the reusable <code>&lt;TimeboxManager&gt;</code> React component with sprint-specific date validation, Samantha SDK <code>_timebox</code> 3-level addressing substrate, and documentation finalisation.</p><p>The DB layer (migration 025: <code>timebox_sprints</code> table with EXCLUDE constraint on overlapping sprint ranges per workspace+org_node) was shipped in commit 26e861a and is complete. All API endpoints are built on the v2 pattern (<code>/api/v2/</code> prefix, RFC 9457 error format, <code>messages.*</code> constants).</p>",
+  "value": "<p>Gives product owners (padmin) a dedicated surface to create and manage sprint cycles for their teams. Sprint cycles are the core planning primitive for work-item scheduling — they unlock future features like sprint burndown charts, velocity tracking, and capacity planning. The <code>TimeboxManager</code> component is designed as a reusable primitive so that future timebox kinds (releases, iterations) require only a registry entry + migration rather than a new component.</p>",
+  "implementation_plan": [
+    "Step 1 (00513): Implement `internal/timeboxsprints` Go service — CRUD operations, org_node validation, adjacency enforcement (B.start = A.end + 1 day), non-overlap check, and bulk-create transaction.",
+    "Step 2 (00514): Expose `/api/v2/timeboxes/sprints` REST endpoints — GET list, GET by ID, POST create, PUT update, DELETE archive, POST bulk-create — with RFC 9457 error format and padmin permission gates.",
+    "Step 3 (00515): Write integration tests for service (adjacency, non-overlap, bulk-create rollback) and handler (all 5 endpoints, coverage >= 80% on service package).",
+    "Step 4 (00516): Add `pages` row in mmff_vector migration for `planning/sprints` route — Planning nav group, label 'Sprints', padmin visibility; wire secondary nav deep-link.",
+    "Step 5 (00517): Create `app/(app)/planning/sprints/page.tsx` — PageShell wrapper, role gate (padmin create/manage, user read-only TBD), mounts TimeboxManager.",
+    "Step 6 (00518): Implement `app/components/TimeboxManager.tsx` + `app/components/timebox/kinds.ts` — sprint list table, create/edit/delete forms with date adjacency validation, Badge status, notify.* feedback, catalog CSS.",
+    "Step 7 (00519): Register `_timebox` addressing substrate with addressables.Service — 3 levels: cross-kind list, sprint collection, named row. Verify lint:addressables passes.",
+    "Step 8 (00520): Update `docs/c_schema.md` (timebox_sprints row) and `docs/c_c_timebox_manager.md` (resolve all TBD items with implementation decisions)."
+  ],
+  "areas_impacted": [
+    "API: `internal/timeboxsprints` Go service + 5 REST handler functions under /api/v2/timeboxes/sprints; integration tests",
+    "SQL: timebox_sprints table (migration 025 complete); page registry row in mmff_vector (new migration required for 00516)",
+    "UI: `/planning/sprints` Next.js route, `<TimeboxManager>` component, `timebox/kinds.ts` registry, Badge status rendering",
+    "DEV: Samantha `_timebox` 3-level addressing, lint:addressables compliance, docs update"
+  ],
+  "feature_list": [
+    "internal/timeboxsprints Go service — sole writer for timebox_sprints table",
+    "Adjacency enforcement: B.start_date must equal A.end_date + 1 day",
+    "Non-overlap enforcement: DB EXCLUDE constraint on (workspace_id, org_node_id, daterange)",
+    "Bulk-create transaction: N sprints atomically or full rollback",
+    "REST endpoints: GET list, GET by ID, POST create, PUT update, DELETE archive (5 endpoints)",
+    "POST /api/v2/timeboxes/sprints/bulk-create endpoint",
+    "RFC 9457 error format with violations array for 422 responses",
+    "Page registry row: planning/sprints — Planning nav group, padmin visibility",
+    "Secondary nav deep-link: /planning/sprints resolves as a real URL segment",
+    "/planning/sprints frontend route with padmin/user role gate",
+    "<TimeboxManager kind='sprint'> component with create/edit/delete forms",
+    "Date picker adjacency constraint in create form",
+    "Sprint lifecycle Badge (planned/active/completed)",
+    "notify.* success/error feedback on all mutations",
+    "timebox/kinds.ts registry — adding a new kind requires only a registry row",
+    "Samantha _timebox addressing (3 levels: cross-kind / collection / named row)",
+    "Integration tests: adjacency, non-overlap, bulk-create rollback, all 5 endpoints"
+  ],
+  "features_extended": [
+    "<strong>TimeboxManager design doc</strong> (docs/c_c_timebox_manager.md) — written as design doc in 26e861a; finalised with implementation decisions in 00520",
+    "<strong>work-items sprint join</strong> (00458) — currently reads sprint_id FK; will resolve to timebox_sprints row via v2 API in a future follow-up"
+  ],
+  "features_removed": [],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Backend: Implement `timeboxsprints` Go service (CRUD + validation)",
+      "story_id": "00513",
+      "card_url": "http://localhost:3333/cards/1769632316088387202",
+      "status": "todo"
+    },
+    {
+      "order": 2,
+      "title": "Backend: Implement `/api/v2/timeboxes/sprints` REST endpoints",
+      "story_id": "00514",
+      "card_url": "http://localhost:3333/cards/1769632317313123972",
+      "status": "todo"
+    },
+    {
+      "order": 3,
+      "title": "Backend: Integration tests for sprints service and API endpoints",
+      "story_id": "00515",
+      "card_url": "http://localhost:3333/cards/1769632318185539206",
+      "status": "todo"
+    },
+    {
+      "order": 4,
+      "title": "DB + Nav: Add `planning/sprints` page registry row and navigation wiring",
+      "story_id": "00516",
+      "card_url": "http://localhost:3333/cards/1769632319057954440",
+      "status": "todo"
+    },
+    {
+      "order": 5,
+      "title": "Frontend: Create `/planning/sprints` route with role gate",
+      "story_id": "00517",
+      "card_url": "http://localhost:3333/cards/1769632319888426634",
+      "status": "todo"
+    },
+    {
+      "order": 6,
+      "title": "Frontend: TimeboxManager component — sprints integration with date validation",
+      "story_id": "00518",
+      "card_url": "http://localhost:3333/cards/1769632320727287436",
+      "status": "todo"
+    },
+    {
+      "order": 7,
+      "title": "Frontend: Register Samantha `_timebox` addressing substrate (3 levels)",
+      "story_id": "00519",
+      "card_url": "http://localhost:3333/cards/1769632321633257102",
+      "status": "todo"
+    },
+    {
+      "order": 8,
+      "title": "Docs: Update `c_schema.md` and `c_c_timebox_manager.md` with finalized sprint implementation",
+      "story_id": "00520",
+      "card_url": "http://localhost:3333/cards/1769632322564392592",
+      "status": "todo"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "service.Create() rejects create if workspace+org_node has overlapping sprint (EXCLUDE fires)",
+      "proven_by": "service.Create() returns error when dates overlap",
+      "story_id": "00513",
+      "card_url": "http://localhost:3333/cards/1769632316088387202",
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "service.BulkCreate() rolls back all sprints if any row fails",
+      "proven_by": "service.BulkCreate() transaction is atomic",
+      "story_id": "00513",
+      "card_url": "http://localhost:3333/cards/1769632316088387202",
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "service.adjacencyCheck() returns error if B.start_date != A.end_date + 1 day",
+      "proven_by": "adjacency rule enforced at service layer",
+      "story_id": "00513",
+      "card_url": "http://localhost:3333/cards/1769632316088387202",
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "service.List() returns non-archived sprints ordered by sprint_date_start ASC",
+      "proven_by": "list response is ordered and excludes archived rows",
+      "story_id": "00513",
+      "card_url": "http://localhost:3333/cards/1769632316088387202",
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "GET /api/v2/timeboxes/sprints returns {sprints:[...], count:N} for caller's workspace",
+      "proven_by": "list endpoint responds with correct shape and scope",
+      "story_id": "00514",
+      "card_url": "http://localhost:3333/cards/1769632317313123972",
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "POST /api/v2/timeboxes/sprints returns 422 with violations array on date overlap",
+      "proven_by": "RFC 9457 violations array present in error response",
+      "story_id": "00514",
+      "card_url": "http://localhost:3333/cards/1769632317313123972",
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "DELETE /api/v2/timeboxes/sprints/{id} returns 409 if sprint is active or completed",
+      "proven_by": "lifecycle guard enforced at handler level",
+      "story_id": "00514",
+      "card_url": "http://localhost:3333/cards/1769632317313123972",
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "PUT/POST/DELETE return 403 for non-padmin callers",
+      "proven_by": "permission gate enforced on mutation endpoints",
+      "story_id": "00514",
+      "card_url": "http://localhost:3333/cards/1769632317313123972",
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "TestBulkCreateRollback verifies partial batch failure leaves DB unchanged",
+      "proven_by": "integration test: bulk-create rollback",
+      "story_id": "00515",
+      "card_url": "http://localhost:3333/cards/1769632318185539206",
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "go test ./internal/timeboxsprints/... passes with coverage >= 80%",
+      "proven_by": "test suite passes at target coverage threshold",
+      "story_id": "00515",
+      "card_url": "http://localhost:3333/cards/1769632318185539206",
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "pages row exists for planning/sprints with Planning nav group, padmin visibility",
+      "proven_by": "DB migration applied; nav shows Sprints link for padmin",
+      "story_id": "00516",
+      "card_url": "http://localhost:3333/cards/1769632319057954440",
+      "done": false
+    },
+    {
+      "order": 12,
+      "criterion": "Navigating directly to /planning/sprints resolves the page; refresh does not break nav",
+      "proven_by": "deep-link contract per c_c_secondary_nav_deeplink.md",
+      "story_id": "00516",
+      "card_url": "http://localhost:3333/cards/1769632319057954440",
+      "done": false
+    },
+    {
+      "order": 13,
+      "criterion": "GET /planning/sprints renders page with title Sprints; no 404 or hydration error",
+      "proven_by": "route resolves for padmin session",
+      "story_id": "00517",
+      "card_url": "http://localhost:3333/cards/1769632319888426634",
+      "done": false
+    },
+    {
+      "order": 14,
+      "criterion": "Non-padmin sees read-only view or redirects to dashboard",
+      "proven_by": "role gate enforced on page render",
+      "story_id": "00517",
+      "card_url": "http://localhost:3333/cards/1769632319888426634",
+      "done": false
+    },
+    {
+      "order": 15,
+      "criterion": "TIMEBOX_KINDS.sprint entry exists in kinds.ts with correct table name and endpoint mapping",
+      "proven_by": "registry-driven architecture; adding a kind requires only a new row",
+      "story_id": "00518",
+      "card_url": "http://localhost:3333/cards/1769632320727287436",
+      "done": false
+    },
+    {
+      "order": 16,
+      "criterion": "Create form constrains start_date to last_sprint.end_date + 1 day",
+      "proven_by": "date picker adjacency rule enforced in UI",
+      "story_id": "00518",
+      "card_url": "http://localhost:3333/cards/1769632320727287436",
+      "done": false
+    },
+    {
+      "order": 17,
+      "criterion": "Component compiles clean; no inline style={}; no bespoke CSS classes outside catalog",
+      "proven_by": "npm run build succeeds; css-guide.md compliance",
+      "story_id": "00518",
+      "card_url": "http://localhost:3333/cards/1769632320727287436",
+      "done": false
+    },
+    {
+      "order": 18,
+      "criterion": "samantha._timebox.sprint resolves to sprint collection; .list() returns same data as GET /api/v2/timeboxes/sprints",
+      "proven_by": "Samantha kind-level address functional",
+      "story_id": "00519",
+      "card_url": "http://localhost:3333/cards/1769632321633257102",
+      "done": false
+    },
+    {
+      "order": 19,
+      "criterion": "npm run lint:addressables passes with new _timebox registrations",
+      "proven_by": "lint:addressables CI gate passes",
+      "story_id": "00519",
+      "card_url": "http://localhost:3333/cards/1769632321633257102",
+      "done": false
+    },
+    {
+      "order": 20,
+      "criterion": "c_schema.md timebox_sprints row exists with correct DB, column summary, FK references",
+      "proven_by": "schema doc updated post-implementation",
+      "story_id": "00520",
+      "card_url": "http://localhost:3333/cards/1769632322564392592",
+      "done": false
+    },
+    {
+      "order": 21,
+      "criterion": "No TODO or TBD markers remain in updated sections of c_c_timebox_manager.md",
+      "proven_by": "design doc finalised with implementation decisions",
+      "story_id": "00520",
+      "card_url": "http://localhost:3333/cards/1769632322564392592",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "Timezone handling in sprint date boundaries — DATE columns in Postgres are timezone-naive; if the frontend sends ISO 8601 timestamps rather than bare dates, the adjacency check can fail by one day.",
+      "mitigation": "Enforce date-only (YYYY-MM-DD) in request validation at handler level; document in API contract."
+    },
+    {
+      "impact": 2,
+      "risk": "Race condition on concurrent sprint creation — two padmin sessions creating sprints simultaneously could bypass the adjacency check before the EXCLUDE constraint fires.",
+      "mitigation": "DB EXCLUDE constraint is the authoritative guard; service-level adjacency check is advisory (UX feedback). Document that EXCLUDE is the source of truth."
+    },
+    {
+      "impact": 1,
+      "risk": "User read-only access TBD — role gate currently uses padmin only; if product requires users to see sprints, a permission code and gate change is needed.",
+      "mitigation": "Scaffolded as TBD; document the TODO in 00517 description. Follow-up story when product requirement is confirmed."
+    },
+    {
+      "impact": 1,
+      "risk": "Samantha _timebox addressing complexity — cross-kind address requires listing all timebox kinds; if kinds.ts registry grows, the cross-kind resolver must be kept in sync.",
+      "mitigation": "kinds.ts is the single registry; cross-kind resolver reads it at runtime."
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "handover1.md — Sprints/TimeboxManager scoping session", "href": "handover1.md" },
+    { "kind": "internal", "label": "docs/c_c_timebox_manager.md — TimeboxManager design doc", "href": "docs/c_c_timebox_manager.md" },
+    { "kind": "internal", "label": "db/artefacts_schema/025_timebox_sprints.sql — migration 025", "href": "db/artefacts_schema/025_timebox_sprints.sql" },
+    { "kind": "internal", "label": "docs/c_c_secondary_nav_deeplink.md — secondary nav contract", "href": "docs/c_c_secondary_nav_deeplink.md" },
+    { "kind": "internal", "label": "docs/c_c_addressables.md — Samantha addressing substrate", "href": "docs/c_c_addressables.md" }
+  ]
+}
