@@ -75,7 +75,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.svc.ListWorkItems(r.Context(), subID, f)
 	if err != nil {
-		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
 
@@ -90,16 +91,19 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
 	wi, err := h.svc.GetWorkItem(r.Context(), subID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"not found"}`))
 			return
 		}
-		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
 	_ = json.NewEncoder(w).Encode(wi)
@@ -111,12 +115,14 @@ func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 	subID := auth.UserFromCtx(r.Context()).SubscriptionID
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
 	items, err := h.svc.ListChildren(r.Context(), subID, id)
 	if err != nil {
-		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
@@ -132,7 +138,8 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID)
 	if err != nil {
-		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
 	_ = json.NewEncoder(w).Encode(out)
@@ -144,7 +151,8 @@ func (h *Handler) ListFlowStates(w http.ResponseWriter, r *http.Request) {
 	subID := auth.UserFromCtx(r.Context()).SubscriptionID
 	states, err := h.svc.ListFlowStates(r.Context(), subID)
 	if err != nil {
-		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"states": states})

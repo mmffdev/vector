@@ -400,9 +400,17 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) 
 		SELECT fs.id, fs.sort_order, fs.name, fs.kind
 		FROM flow_states fs
 		JOIN flows f ON f.id = fs.flow_id
-		JOIN artefact_types at ON at.id = f.artefact_type_id
-		WHERE at.subscription_id = $1
-		  AND at.scope = 'work'
+		WHERE f.artefact_type_id = (
+			SELECT at.id FROM artefact_types at
+			JOIN flows f2 ON f2.artefact_type_id = at.id
+			WHERE at.subscription_id = $1
+			  AND at.scope = 'work'
+			  AND f2.is_default = TRUE
+			  AND f2.archived_at IS NULL
+			  AND at.archived_at IS NULL
+			ORDER BY at.created_at ASC
+			LIMIT 1
+		)
 		  AND f.is_default = TRUE
 		  AND f.archived_at IS NULL
 		  AND fs.archived_at IS NULL
