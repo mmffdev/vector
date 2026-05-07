@@ -1,103 +1,95 @@
-# Handover 1 — Sprints / TimeboxManager scoping session
+# Handover — PLA-0027 Sprints Timebox complete
 **Date:** 2026-05-07  
 **Branch:** main  
-**Last commit:** dc01be5 — PLA-0026/00504 saga integration test
+**Last commit:** f2b1640 — chore: misc session changes  
+**Story index last issued:** `00520`  
+**Branch is clean — everything committed and pushed.**
 
 ---
 
-## What we did this session
+## What was done this session
 
-### 1. Migration 025 — `timebox_sprints` (vector_artefacts DB)
+### PLA-0027 — Sprints Timebox System (all 8 stories complete)
 
-**Files:**
-- `db/artefacts_schema/025_timebox_sprints.sql` ← **new, untracked**
-- `db/artefacts_schema/down/025_timebox_sprints_DOWN.sql` ← **new, untracked**
-- `docs/c_schema.md` ← **modified** (sprints row updated)
+#### Backend — `backend/internal/timeboxsprints/`
+- `types.go` — `Sprint` struct, `CreateSprintInput` (with `SprintVelocity *int`), `UpdateSprintInput`, `ListFilters`
+- `service.go` — `Create`, `BulkCreate`, `Update`, `Delete`, `List`; overlap guard via DB EXCLUDE constraint; adjacency enforcement; `validateCreateInput`
+- `handler.go` — REST handlers for all CRUD + `BulkCreate`; `BulkCreate` body struct includes `sprint_velocity *int` wired through to service
+- `service_test.go` — 13+ targeted tests, coverage ≥80.4%
+- Wired in `backend/cmd/server/main.go` when `vaPool != nil`; fallback 503 when vaPool is nil
 
-**What it does:**
-- Drops the minimal `sprints` table (from migration 013).
-- Creates `timebox_sprints` with the full Sprint Setup column set — all columns are `sprint_*` prefixed per the brief:
-  - Identity: `id`, `subscription_id`, `workspace_id`, `org_node_id` (nullable soft-UUID; writer service validates team-level)
-  - Form fields: `sprint_name`, `sprint_suffix`, `sprint_owner`, `sprint_cadence_days`, `sprint_date_start`, `sprint_date_end`
-  - Rolled-up metrics: `sprint_scope`, `sprint_velocity`, `sprint_estimate` (default 0)
-  - Creep counters: `sprint_creep_by_count`, `sprint_creep_by_estimate` (default 0; populated post-start)
-  - Lifecycle: `status` (planned/active/completed), `sprint_date_added`, `sprint_date_updated`, `archived_at`
-- Renames `artefacts.sprint_id` → `artefacts.timebox_sprint_id` and repoints FK at the new table.
-- Adds `btree_gist` extension + EXCLUDE constraint on `(workspace_id, org_node_id, daterange(start, end, '[]'))` — DB rejects overlapping live sprints in the same team.
+#### Database — `db/schema/`
+- `129_sprints_page.sql` — registers `planning/sprints` page in `mmff_vector`; grants `user` + `padmin` roles; backfills `user_nav_prefs`
+- `130_sprints_page_gadmin.sql` — extends page_roles + nav backfill to `gadmin` (requested mid-session)
+- Both migrations applied to dev DB
 
-**Not yet applied to dev DB.** Run when ready:
-```bash
-psql -U mmff_dev -d vector_artefacts -f db/artefacts_schema/025_timebox_sprints.sql
+#### Frontend
+- `app/components/timebox/kinds.ts` — `TIMEBOX_KINDS` registry; sprint entry with `apiBase: "/api/v2/timeboxes/sprints"`, `namePrefix: "Sprint"`, `bindsToTeam`, `enforcesNonOverlap`, `tracksCreep`
+- `app/components/TimeboxManager.tsx` — single component switched by `kind` prop:
+  - **List view**: `<Table>` with columns: Name (shows suffix in muted parens if present), Start, End, Cadence, Status (pill), Scope, Velocity
+  - **Create view**: "Create Sprints" button in panel title opens bulk-create form:
+    - "Number of Sprints" counter (1–52) generates N rows instantly
+    - Uses `<Table kind="custom">` columns — Name is a static label (not editable), Suffix optional, Start (row 0 editable, rows 1+ locked/cascaded), Cadence, End (derived), Velocity (integer, optional)
+    - Date arithmetic uses `Date.UTC` — 14-day sprint from May 7 → May 20, next starts May 21 (timezone-safe)
+    - POSTs to `/api/v2/timeboxes/sprints/bulk-create?workspace_id=...`
+  - Outer wrapper registers `useRegisterAddressable({ kind: "timebox", name: kind })` for Samantha `_timebox` substrate
+- `app/(user)/planning/sprints/page.tsx` — route `/planning/sprints`; uses `useAuth()` for `workspaceId`
+
+#### Docs
+- `docs/c_c_timebox_manager.md` — status updated to "built — PLA-0027 complete"
+- `docs/c_schema.md` — `timebox_sprints` sole-writer note updated
+
+---
+
+## Bugs fixed during session
+
+1. **vaPool nil → "timebox sprints not enabled" toast** — backend was started with `BACKEND_ENV=dev` which loads `.env.dev`; that file lacks `VECTOR_ARTEFACTS_DB_URL`. Fix: always start backend without `BACKEND_ENV` set (loads `.env.local`). Restarted backend, vaPool now connects.
+
+2. **Date arithmetic off-by-one** — `new Date(dateStr + "T00:00:00").toISOString()` was shifting dates in certain timezones. Fixed to `Date.UTC(y, m-1, d+n)`.
+
+3. **React duplicate key error** — `<Table>` uses `col.key` as React key. Two columns had `key: "sprint_suffix"` and two had `key: "sprint_date_start"`. Fixed all six bulk-create columns to unique keys: `_idx`, `sprint_suffix`, `sprint_date_start`, `sprint_cadence_days`, `sprint_date_end`, `sprint_velocity`.
+
+4. **`sprint_velocity` not persisting** — the `BulkCreate` handler body struct was missing `SprintVelocity`, `CreateSprintInput` didn't have the field, and the INSERT queries didn't include `sprint_velocity`. Fixed all three layers (types.go, service.go ×2 queries, handler.go).
+
+---
+
+## Commits this session
+
+```
+f2b1640 chore: misc session changes — auth, workitemsv2, dev panels, portfolio
+e105fd4 feat(PLA-0027): sprints timebox — full E2E implementation
+fd1de12 feat(PLA-0027): create Sprints plan + allocate stories 00513–00520
+f31e356 feat(WS2-B): migrate library-releases to notify.* toast system
 ```
 
 ---
 
-### 2. Design doc — `<TimeboxManager>` component
+## Known gaps / what's next
 
-**Files:**
-- `docs/c_c_timebox_manager.md` ← **new, untracked**
-- `.claude/CLAUDE.md` ← **modified** (pointer line added)
+1. **Sprints list — no edit or delete UI.** The `Update` and `Delete` service methods exist and are tested but there are no frontend controls to invoke them. Likely needs an expander row or row action menu.
 
-**Key decisions locked in:**
-- Single reusable component `app/components/TimeboxManager.tsx` — drives sprints, releases, future timebox kinds.
-- **Table-per-kind** storage (not a unified table with discriminator). Each kind owns its schema, lifecycle, and Go service.
-- Kind→table registry in `app/components/timebox/kinds.ts` (shared TS const; component and callers both import it). Adding a kind = add a registry row + migration + Go service; component not touched.
-- `kind` prop (lowercase) — matches project's `_kind` discriminator vocabulary. Not `type`.
-- **Samantha SDK — 3-level addressing:**
-  - `samantha._timebox` — all timeboxes the caller can see (cross-kind)
-  - `samantha._timebox.<kind>` — collection for one kind, e.g. `samantha._timebox.sprint`
-  - `samantha._timebox.<kind>.<name>` — single row, e.g. `samantha._timebox.sprint.sprint-0001`
+2. **Sprints list — no active sprint highlight.** The DB `status` column is computed (`planned` / `active` / `completed`) and returned in the list response, but the active sprint isn't visually distinguished beyond the status pill.
+
+3. **`orgNodeId` not passed to TimeboxManager.** Sprints are supposed to bind to a team-level org node (`bindsToTeam: true` in kinds.ts). The Sprints page currently passes no `orgNodeId`, so all sprints are workspace-scoped only. A team picker or topology-derived node ID needs to be wired in.
+
+4. **Per-row cadence override cascade is incomplete.** When the user edits cadence on row N (N > 0), the cascade doesn't re-run for rows N+1 onwards — only row 0's cadence change triggers a full cascade. Acceptable for now but worth fixing.
+
+5. **PLA-0020 (E2E Human-Friendly Feedback):** WS1-B (batch-update remaining `httperr.Write` call sites to `messages.*`) and WS2-B (migrate per-component error `useState` → `notify.apiError()`) were in-progress before this session. Check `dev/plans/PLA-0020.json` for status.
+
+6. **workitemsv2 tests** (`backend/internal/workitemsv2/handler_test.go` + `service_test.go`) — committed in `f2b1640` but not verified to pass. Run `cd backend && go test ./internal/workitemsv2/...` to confirm.
 
 ---
 
-## What is NOT done yet — pick up from here
+## Key facts for next agent
 
-In priority order:
-
-### A. Apply migration 025 to dev DB
-```bash
-psql -U mmff_dev -d vector_artefacts -f db/artefacts_schema/025_timebox_sprints.sql
-```
-Remember to backfill `schema_migrations` if applied via raw psql (per project push-often rule).
-
-### B. Commit the session's files
-Uncommitted new/modified files from this session:
-- `db/artefacts_schema/025_timebox_sprints.sql`
-- `db/artefacts_schema/down/025_timebox_sprints_DOWN.sql`
-- `docs/c_c_timebox_manager.md`
-- `docs/c_schema.md`
-- `.claude/CLAUDE.md`
-
-### C. Create a PLA-NNNN for Sprints feature
-Use `<stories>` to decompose across **all layers** before any code:
-1. **DB** — 025 migration (done), future: `timebox_releases`
-2. **Go service** — `internal/timeboxsprints` (sole writer; team-level org_node validation; adjacency enforcement: B.start = A.end + 1; bulk-create transaction)
-3. **REST surface** — `/api/v2/timeboxes/sprints` CRUD + bulk-create endpoint
-4. **Page registry** — `mmff_vector` migration: `pages` row for `planning/sprints`, Planning tag, nested default
-5. **Samantha** — register `_timebox` substrate (3 levels) per [c_c_addressables.md](docs/c_c_addressables.md)
-6. **Frontend route** — `app/(app)/planning/sprints/page.tsx`
-7. **Component** — `app/components/TimeboxManager.tsx` + `app/components/timebox/kinds.ts`
-8. **Tests** — Go service unit tests (adjacency, non-overlap, bulk-create); integration test
-
-### D. Page placement contract (when page registry row lands)
-- URL: `/planning/sprints`
-- Default: nested under Planning nav group (sub-tab in secondary nav)
-- Deep-link: even if user promotes to L1 nav, link opens `/planning/sprints` per [c_c_secondary_nav_deeplink.md](docs/c_c_secondary_nav_deeplink.md)
-- Visible to: `padmin` (product owners create/manage sprints); `user` read-only view TBD
-- Pattern: same deep-link contract as Work Items, Topology — see [c_page-structure.md](docs/c_page-structure.md)
-
----
-
-## Reference docs written this session
-
-| Doc | Purpose |
-|---|---|
-| [`docs/c_c_timebox_manager.md`](docs/c_c_timebox_manager.md) | Full component contract, prop surface, kind registry, Samantha addressing, sprint-specific rules, not-yet-built checklist |
-| [`db/artefacts_schema/025_timebox_sprints.sql`](db/artefacts_schema/025_timebox_sprints.sql) | Migration — full timebox_sprints schema |
-| [`db/artefacts_schema/down/025_timebox_sprints_DOWN.sql`](db/artefacts_schema/down/025_timebox_sprints_DOWN.sql) | Rollback migration |
-
----
-
-## Active plan context
-
-PLA-0026 is still in-flight (adopt saga / vector_artefacts cutover). The Sprints work is a **new PLA** — do not fold sprint stories into PLA-0026. Create a fresh plan via `<stories>` decomposition when ready to build.
+- **Backend start:** `go run ./cmd/server` from `backend/` — NO `BACKEND_ENV` env var, loads `.env.local` which has `VECTOR_ARTEFACTS_DB_URL`. Health at `:5100/healthz`.
+- **SSH tunnel required:** `ssh -fN vector-dev-pg` forwards `localhost:5435` → `vector_artefacts` DB. Must be up before starting backend or `sprintH == nil` → sprints return 503.
+- **Frontend:** Next.js on `:5101` (not `:3000`)
+- **API:** `api()` helper → `http://localhost:5100/v1`
+- **Two DB arch:** `mmff_vector` (main tenant data) + `vector_artefacts` (artefact/sprints cutover DB on port 5435)
+- **Migration tool:** `go run ./backend/cmd/migrate [-dry-run] [-db vector|artefacts|library|both]`
+- **Test accounts:** `gadmin@mmffdev.com` / `password`, `padmin@mmffdev.com` / `password`, `user@mmffdev.com` / `password`
+- **Planka helper:** `./.claude/bin/planka` — sole entry point for board reads/writes
+- **Planka list IDs:** Backlog=1760700028730475544, To Do=1760700252018443289, Doing=1760700299682513946, Completed=1760700351842878491
+- **Table component column keys must be unique** — `col.key` is used as the React key in `<Table>`
+- **Sprints bulk-create API:** `POST /api/v2/timeboxes/sprints/bulk-create?workspace_id=<id>` with body `{ sprints: [{ sprint_name, sprint_suffix?, sprint_cadence_days, sprint_date_start, sprint_date_end, sprint_velocity?, org_node_id? }] }`

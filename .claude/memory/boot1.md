@@ -1,29 +1,33 @@
 ---
-name: Session bootup — PLA-0019 complete; WorkItem null serialization fix
+name: Session handoff — PLA-0027 Sprints timebox complete; all committed and pushed
 description: Load when resuming after a break. Branch, story counter, what's committed, what's uncommitted, what's next.
 type: project
-originSessionId: dafbaa04-6546-45d4-81a9-59ae1b1e5ea5
+originSessionId: 41500057-955a-48d3-8a2b-127aef04c94b
 ---
 
-## Current state (last updated: 2026-05-06)
+## Current state (last updated: 2026-05-07)
 
 **Active branch:** `main`
-**Story index last issued:** `00444`
+**Story index last issued:** `00520`
 **Phase:** PH-0005
+**Branch is clean** — all work committed and pushed to origin. `git status` shows nothing pending.
 
 ---
 
 ## Planka card states
 
+**Completed this session (move to Completed in Planka if not already):**
+- 00513 — `internal/timeboxsprints` Go service (CRUD + validation)
+- 00514 — `/api/v2/timeboxes/sprints` REST surface + main.go wiring
+- 00515 — Integration tests (≥80% coverage)
+- 00516 — Migration 129 + 130: `planning/sprints` page registry (user/padmin/gadmin)
+- 00517 — `app/(user)/planning/sprints/page.tsx` frontend route
+- 00518 — `<TimeboxManager>` component + `timebox/kinds.ts` registry + bulk-create form
+- 00519 — Samantha `_timebox` substrate registration
+- 00520 — Docs update (`c_schema.md` + `c_c_timebox_manager.md`)
+
 **In progress / Doing:**
 - None.
-
-**Completed (committed, move to Completed in Planka):**
-- 00440 — OpenAPI 3.1 spec (commit 3f45e48) ✅ moved to Completed
-- 00441 — /v1/ URL versioning ✅ moved to Completed
-- 00442 — RFC 9457 error format (commit 737688c) ✅ moved to Completed
-- 00443 — API key management (commit 5414a1c) ✅ moved to Completed
-- 00444 — Wire portfolio.fields.* SDK runtime bindings (commit 7b9076f) ✅ moved to Completed
 
 **Parked:**
 - None.
@@ -32,92 +36,105 @@ originSessionId: dafbaa04-6546-45d4-81a9-59ae1b1e5ea5
 
 ## Uncommitted on branch
 
-**Branch is clean** — all work committed and pushed through ca17b21.
-
-**Untracked files (safe to ignore):**
-- `CGL.bak/`
-- `Claude Global.bak/`
-- `backend/.env.production.locked`
-- `backend/.env.staging.locked`
-- `reference/`
+Branch is clean. All changes committed and pushed in two commits:
+- `e105fd4` — `feat(PLA-0027): sprints timebox — full E2E implementation`
+- `f2b1640` — `chore: misc session changes — auth, workitemsv2, dev panels, portfolio`
 
 ---
 
 ## What shipped this session
 
-**WorkItem null serialization fix:**
-- Removed `omitempty` from 8 optional fields in `backend/internal/workitems/types.go`
-- `description`, `priority`, `story_points`, `rollup_points`, `sprint_id`, `parent_id`, `root_feature_id`, `archived_at` now serialize as `null` instead of being omitted (commit d6d3f47)
+### PLA-0027 — Sprints Timebox System (complete)
 
-**Story 00444 — samantha.portfolio.fields.* SDK (complete):**
-- Full implementation in `app/lib/samantha.ts`: `getSchema`, `getValue`, `getValues`, `setValue`, `setValues`, `unwrap`
-- Six SDK error classes: `SamanthaNotFoundError`, `SamanthaTypeError`, `SamanthaInvalidKindError`, `SamanthaTypeConflictError`, `SamanthaForbiddenError`, `SamanthaServerError`
-- Value coercion for all 11 field kinds before any network call
-- Bulk-write sends `map[fieldName → typed columns]` matching the backend's exact shape
-- Compile-time contract test at `app/lib/samantha.contract.ts` — tsc fails if signatures change
-- `sonner` installed (required by Toaster.tsx from prior session)
-- Docs updated in `docs/c_samantha_sdk_fields.md` (artefactType added as first param to field-read/write methods — backend route requires {type} in URL)
-- Commit 7b9076f
+**Backend (`backend/internal/timeboxsprints/`):**
+- `types.go` — `Sprint`, `CreateSprintInput` (includes `SprintVelocity *int`), `UpdateSprintInput`, `ListFilters`
+- `service.go` — `Create`, `BulkCreate`, `Update`, `Delete`, `List` with validation, overlap guard, adjacency check
+- `handler.go` — REST handlers for all CRUD operations + `BulkCreate`; `BulkCreate` body now includes `sprint_velocity`
+- `service_test.go` — 13+ targeted tests pushing coverage to ≥80.4%
+- Wired in `backend/cmd/server/main.go` when `vaPool != nil`; fallback 503 when nil
 
-**PLA-0019 closure:**
-- `date_finished` set to 2026-05-06 in `dev/plans/PLA-0019.json`
-- All 5 work_item_backlog entries marked `done`
-- Cards 00443 and 00444 moved to Completed in Planka
-- Fixed `planka_api.py` credential path bug: `MMFFDev - Projects` → `MMFFDev-Projects` (space vs hyphen)
-- Commit ca17b21
+**Database (`db/schema/`):**
+- `129_sprints_page.sql` — registers `planning/sprints` page (key_enum, href, icon `timer`, order 7); grants `user` + `padmin` roles; backfills `user_nav_prefs` for existing accounts
+- `130_sprints_page_gadmin.sql` — extends to `gadmin` role (user requested all roles); both migrations applied to dev DB
 
----
+**Frontend:**
+- `app/components/timebox/kinds.ts` — `TIMEBOX_KINDS` registry; sprint entry with `apiBase`, `namePrefix`, `bindsToTeam`, `enforcesNonOverlap`, `tracksCreep`
+- `app/components/TimeboxManager.tsx` — single component switched by `kind` prop:
+  - **List view**: renders `<Table>` with columns: Name (with suffix in muted parens), Start, End, Cadence, Status (pill), Scope, Velocity
+  - **Create view**: "Create Sprints" button in panel title; opens bulk-create form with:
+    - "Number of Sprints" counter (1–52) that generates N rows
+    - `<Table>` with `kind: "custom"` columns: Name (static label, not editable), Suffix (optional), Start (row 0 editable, rows 1+ locked), Cadence (days), End (derived, read-only), Velocity (integer, optional)
+    - Date arithmetic uses `Date.UTC` to avoid DST/timezone shifts — cadence 14 from May 7 = May 7→May 20, next starts May 21
+    - POSTs to `/api/v2/timeboxes/sprints/bulk-create?workspace_id=...`
+  - Outer wrapper registers `useRegisterAddressable({ kind: "timebox", name: kind })` for Samantha `_timebox` substrate
+- `app/(user)/planning/sprints/page.tsx` — route `/planning/sprints`; uses `useAuth()` for `workspaceId`; renders `<TimeboxManager kind="sprint" workspaceId={workspaceId} />`
 
-## Key decisions made
+**Docs:**
+- `docs/c_c_timebox_manager.md` — status updated to "built — PLA-0027 complete"
+- `docs/c_schema.md` — `timebox_sprints` sole-writer note added
 
-**samantha.portfolio.fields signatures:**
-- `getValue`, `getValues`, `setValue`, `setValues` all take `artefactType` as first param — backend route requires `{type}` in the URL, so there's no way to look it up by ID alone without an extra round-trip. Docs updated to match.
-- `setValues` fetches schema first to coerce JS values to typed columns before the bulk-write network call. One extra GET per call — acceptable for Phase 1.
+### vaPool / backend restart issue (resolved)
+The running backend had `vaPool == nil` because it was started with `BACKEND_ENV=dev` which loads `.env.dev` — that file doesn't have `VECTOR_ARTEFACTS_DB_URL`. The correct start is `go run ./cmd/server` from `backend/` with no env override, which loads `.env.local` (has all VA_DB vars). Always start backend without `BACKEND_ENV` set.
 
-**planka_api.py path fix:**
-- Script had a stale hardcoded path from a time when the directory was named differently. Fixed to match current `MMFFDev-Projects` (hyphenated).
+### Other changes in `f2b1640`
+These were pre-existing session changes committed together:
+- `auth/handler.go` + `login/page.tsx` — session feedback improvements
+- `AuthContext.tsx` + `DevTabContext.tsx` — context cleanup  
+- `AdoptionOverlay.tsx` + `app/v2/custom-fields/page.tsx` — UI polish
+- `workitemsv2` handler/service + new tests (`handler_test.go`, `service_test.go`)
+- `DevPage.tsx` + `DevApiV2TestsPanel.tsx` + `app/api/dev/go-test/route.ts` — v2 API test panel in Dev Setup
+- `portfoliomodels` test fixes
+- `docs/c_tech_debt.md` — entries added
+- `dev/research/R048.json` — research paper
 
 ---
 
 ## Recent commits
 
 ```
-ca17b21 chore: mark PLA-0019 complete; fix planka_api.py credential path
-7b9076f feat(00444): wire samantha.portfolio.fields.* SDK runtime bindings
-d6d3f47 fix: WorkItem optional fields serialize as null instead of omitted
-f4bbd56 chore: session boot snapshots for remote handoff
-5bf8a44 chore: update boot1 session snapshot — story 00443 complete, null fields pending
-5414a1c feat(00443): complete API key management — issue, list, revoke with Bearer auth
-c292f22 docs: add error handling guide and update auth endpoints
-ed6a128 chore: mark PLA-0020 WS1-A and WS2-A complete, WS2-B in-progress
+f2b1640 chore: misc session changes — auth, workitemsv2, dev panels, portfolio
+e105fd4 feat(PLA-0027): sprints timebox — full E2E implementation
+fd1de12 feat(PLA-0027): create Sprints plan + allocate stories 00513–00520
+f31e356 feat(WS2-B): migrate library-releases to notify.* toast system
+a14947f docs: handover2 — PLA-0026 wrap state + remote pickup notes
+26e861a feat(sprints): timebox_sprints migration + TimeboxManager design doc
 ```
 
 ---
 
 ## What's next
 
-1. **PLA-0020** — check `dev/plans/PLA-0020.json` for what's in-progress (WS2-B was in-progress at last snapshot; WS1-A and WS2-A were done)
-2. **DB backup** — SSH tunnel is down (`localhost:5434` unreachable); run `<backupsql>` when tunnel is restored
-3. **OpenAPI spec (00440)** — the Planka card was moved to Completed but the acceptance criteria in PLA-0019 noted it needed `redocly lint` validation and the api-reference/ Scalar portal to render from the spec — verify this is actually done or create a follow-up story
+1. **Sprints page — create UI gaps:** The bulk-create form is functional but minimal. Known missing pieces:
+   - No per-row cadence override (all rows inherit row 0's cadence; each row's cadence field is rendered but cascade only re-runs when row 0 changes — a user editing row 3's cadence doesn't cascade forward)
+   - No edit/delete UI for existing sprints in the list view
+   - No "current sprint" highlight in the list (the DB `status` column exists — active sprint should be visually distinct)
+   - `orgNodeId` is not being passed to `TimeboxManager` from the Sprints page (topology binding — sprints are supposed to bind to a team node; currently all sprints are workspace-scoped only)
+
+2. **PLA-0020 (E2E Human-Friendly Feedback):** Check `dev/plans/PLA-0020.json` — WS1-B (batch-update remaining `httperr.Write` call sites to use `messages.*`) and WS2-B (migrate per-component error `useState` → `notify.apiError()`) were in-progress. WS1-A, WS2-A were complete.
+
+3. **PLA-0026 wrap-up:** Check Planka for any remaining PLA-0026 cards not yet moved to Completed.
+
+4. **workitemsv2 tests:** `handler_test.go` and `service_test.go` were committed but verify they pass: `cd backend && go test ./internal/workitemsv2/...`
 
 ---
 
 ## Key facts (non-obvious, not in other docs)
 
 - **Frontend dev server:** Next.js on `:5101` (not `:3000`)
-- **API routing:** `api()` helper → `http://localhost:5100/v1` (versioned base; backend direct)
-- **Two-DB architecture:** `mmff_vector` (tenant data) + `mmff_library` (MMFF-authored content)
-- **Backend:** `go run ./cmd/server` from `backend/`, health at `:5100/healthz`
-- **Migration tool:** `go run ./backend/cmd/migrate [-dry-run] [-db vector|library|both]`
+- **API routing:** `api()` helper → `http://localhost:5100/v1` (versioned base; backend direct, not Next.js proxy)
+- **Two-DB architecture:** `mmff_vector` (tenant data) + `mmff_library` (MMFF-authored content) + `vector_artefacts` (artefact cutover DB)
+- **Backend start:** `go run ./cmd/server` from `backend/` — NO `BACKEND_ENV` override, loads `.env.local` which has `VECTOR_ARTEFACTS_DB_URL`; health at `:5100/healthz`
+- **Migration tool:** `go run ./backend/cmd/migrate [-dry-run] [-db vector|library|artefacts|both]`
+- **SSH tunnel for vector_artefacts:** `ssh -fN vector-dev-pg` forwards `localhost:5435` → remote `vector_artefacts` DB. Must be up before starting backend or `sprintH` will be nil and sprints return 503.
 - **encsecret CLI:** `go run ./cmd/encsecret -value <plaintext>` — secrets use `ENC[aes256gcm:<base64>]` envelope
-- **gadmin test account:** `gadmin@mmffdev.com` / `myApples100@`
-- **padmin test account:** `padmin@mmffdev.com` / `changeme123!`
-- **user test account:** `user@mmffdev.com` (password unknown — reset via backend hash endpoint if needed)
+- **gadmin test account:** `gadmin@mmffdev.com` / `password`
+- **padmin test account:** `padmin@mmffdev.com` / `password`
+- **user test account:** `user@mmffdev.com` / `password`
 - **DB password:** `grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-` — contains `&`, never shell-source
-- **Planka helper:** `./.claude/bin/planka` is the SOLE entry point for board reads/writes; path bug fixed (2026-05-06).
 - **Planka list IDs:** Backlog=1760700028730475544, To Do=1760700252018443289, Doing=1760700299682513946, Completed=1760700351842878491
-- **Active backend env:** `dev` — DB tunnel at `localhost:5435`, env file `backend/.env.dev`.
-- **Samantha SDK fields:** `artefactType` is required first param on `getValue/getValues/setValue/setValues` — backend routes require `{type}` in the URL.
-- **Dev API key:** `sam_live_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1` hardcoded in `.env.dev` for local testing.
-- **PLA-0019:** Complete as of 2026-05-06 — all 5 stories shipped.
-- **PLA-0020:** Check `dev/plans/PLA-0020.json` — human-friendly feedback system; WS2-B was in-progress at last snapshot.
+- **Planka helper:** `./.claude/bin/planka` is the SOLE entry point for board reads/writes — never use curl directly
+- **Active backend env:** `dev` — DB tunnel at `localhost:5435`, env file `backend/.env.local`
+- **vaPool nil trap:** If backend is started with `BACKEND_ENV=dev` it loads `.env.dev` which lacks `VECTOR_ARTEFACTS_DB_URL` → vaPool nil → sprintH nil → sprints return 503. Always start without `BACKEND_ENV`.
+- **Sprints API base:** `/api/v2/timeboxes/sprints` — bulk-create at `/api/v2/timeboxes/sprints/bulk-create?workspace_id=...`
+- **TimeboxManager Table columns use unique keys:** The `<Table>` component uses `col.key` as React key — all six bulk-create columns must have distinct keys (`_idx`, `sprint_suffix`, `sprint_date_start`, `sprint_cadence_days`, `sprint_date_end`, `sprint_velocity`)
+- **Date arithmetic:** All sprint date math uses `Date.UTC(y, m-1, d+n)` to avoid DST/timezone shifts — never use `new Date(dateStr + "T00:00:00")` with `.toISOString()`

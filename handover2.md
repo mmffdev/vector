@@ -1,127 +1,110 @@
-# Handover 2 — PLA-0026 wrap state
+# Handover 2 — WorkItemsTree wired to vector_artefacts
 
 **Date:** 2026-05-07
-**Branch:** main (57+ commits ahead of origin/main as of last check; verify `git status` after pull)
-**Last commit:** `dc01be5 test(PLA-0026/00504 T4): saga-level integration test — re-adoption preserves parent_artefact_id NOT NULL`
+**Branch:** main
+**Last commit:** `f31e356 feat(WS2-B): migrate library-releases to notify.* toast system`
 
-## TL;DR
+---
 
-PLA-0026 (Per-Workspace Portfolio Adoption Cutover to vector_artefacts, 37 stories) **active execution is complete**. All B/F/M/T-series cards are in Planka **Completed**. Nine cards remain in **To Do** as deferred sanitisation/audit drops gated on 7-day deployment soaks — not actionable until those soaks elapse.
+## What this session fixed
 
-## What just shipped (this session)
+### Problem
 
-**T4 / Story 00504 — re-adoption parent invariant test**
+WorkItemsTree on the Work Items page showed 0 rows despite the summary header correctly showing 15 items. The tree has been broken since the `sprint_id` → `timebox_sprint_id` column rename landed in the `artefacts` table.
 
-- File: [`backend/internal/portfoliomodels/adopt_readopt_saga_test.go`](backend/internal/portfoliomodels/adopt_readopt_saga_test.go)
-- Saga-level integration test: across two `Adopt()` cycles with different models (aa01 → bb01), a tracer work artefact parented under a cycle-1 strategy artefact must end up repointed (not orphaned) onto the placeholder artefact after cycle 2.
-- Two consecutive PASS runs on dev DB (3.41s, 3.64s).
-- Committed in `dc01be5`.
+### Root causes (two, both fixed)
 
-**Lifecycle hygiene completed:**
+**1. `backend/.env.dev` was missing two env vars**
 
-- `dev/research/R047.json` — both T4 rows (§13.8 prose row + `<tr id="track-T4">` story-mapped row) struck and marked `<strong>done</strong>`.
-- `dev/plans/PLA-0026.json` — work_item_backlog order 29 → `done`; acceptance_criteria order 29 → `done: true`. `date_last_updated` already `"2026-05-07"`.
-- Planka card `1769517112969135342` already in Completed list.
+The backend loads `backend/.env.dev` when `BACKEND_ENV=dev`. This file was missing:
 
-## Remaining PLA-0026 work — all deferred, all gated
-
-Nine cards in Planka **To Do** waiting on time-based triggers. Do **not** start these until the trigger condition is met (gradual-DB-sanitisation rule):
-
-| Story | Title | Gate |
-|---|---|---|
-| 00482 | Drop `strategy_layers_adopted` | B5 deployed ≥1 day |
-| 00483 | Migration parity test (T1) | post-M6 |
-| 00484 | Pre-migration audit assertion (T2) | gate for M2 |
-| 00485 | Drop `obj_strategy_types_layers` (S1) | B3 deployed 7 days zero reads |
-| 00486 | Drop `subscription_workflows` + transitions (S2) | B4 deployed 7 days |
-| 00487 | Drop `subscription_artifacts` (S3) | B5 deployed 7 days |
-| 00488 | Drop `strategy_layers_adopted` register row (S4) | M7 lands |
-| 00489 | Drop `subscription_terminology` (S5) | terminology design lands |
-
-Tracking lives in [`docs/c_c_v2_workitems_cutover_followups.md`](docs/c_c_v2_workitems_cutover_followups.md) and [`dev/plans/PLA-0026.json`](dev/plans/PLA-0026.json).
-
-## Standing tech-debt observations (not yet carded)
-
-Picked up while wrapping T4 — surface when next touched, but no card cut yet:
-
-1. **`workspace` (singular) vs `workspaces` (plural) tables coexist in `mmff_vector`.** `resolveWorkspaceID` (adopt.go:475–493) queries `workspaces`. T3 was written against `workspace`. Both have rows for the seeded padmin subscription. Naming/schema inconsistency worth a register row.
-2. **Cross-workspace `artefact_types` FK drift in dev DB.** `artefacts` rows in workspace `00000000-0000-0000-0000-000000000002` reference `artefact_types` in workspace `a4df2e21-...`. Forced T4 cleanup to skip type-wipes; instead per-run randomized prefixes avoid `artefact_types_prefix_unique_live` collisions. Production-side this likely doesn't apply, but dev-DB sanity is owed.
-3. **`artefact_types_prefix_unique_live` is global, not workspace-scoped.** If you ever need workspace-scoped prefix uniqueness, that's a constraint rewrite.
-
-These are observations — none warrant blocking work. Surface when adjacent code is touched.
-
-## Pre-existing tech-debt items still open
-
-- **S2 (F2)** — lockstep duplication between `dispatchFrame` and `handleFrame` in `AdoptionOverlay`.
-- **S3 (F4 + F1)** — shared `WorkspaceContext` provider; fold when 3+ consumers.
-- **F1 follow-up** — B12 card-vs-route name mismatch.
-- **B13 follow-up** — workspace hard-delete still 501; new `workspace.delete` permission code deferred.
-- **T6 follow-up** — 12 dev-data orphan workspace_ids cleanup.
-
-## Working state on disk (uncommitted)
-
-`git status` will show a long list of **unrelated** modified/deleted files predating PLA-0026 work — do NOT clean these up without the user's explicit go-ahead (HARD RULE: never wipe uncommitted). Notable buckets:
-
-- `.claude/` memory and command renames (boot files removed; new feedback memories present).
-- `MMFF Vector Launcher/` Swift updates.
-- `corp-ident/`, `examples/`, `local-assets/launcher/` moved under `MMFFDev - Vector Assets/` (Untracked side; deletes on the original side).
-- `db/artefacts_schema/025_timebox_sprints.sql` + DOWN — untracked, related to TimeboxManager.
-- `dev/research/R045.json`, `R046.json` — untracked research drafts.
-- `docs/c_c_timebox_manager.md` — untracked.
-- `backend/.env.production.locked`, `backend/.env.staging.locked` — untracked, env-pin sentinels.
-
-If you need to push only PLA-0026 work, the staged commits are already clean (the working-tree clutter above is **not** in any commit since this session opened).
-
-## How to resume on the remote machine
-
-```bash
-# 1. Pull
-cd "<vector repo>"
-git pull origin main
-
-# 2. Sanity check
-git log --oneline -5
-# expect: dc01be5 test(PLA-0026/00504 T4): ...
-
-# 3. Verify PLA-0026 plan state
-python3 -c "
-import json
-d = json.load(open('dev/plans/PLA-0026.json'))
-todo = [w for w in d['work_item_backlog'] if w.get('status') != 'done']
-ac_todo = [a for a in d['acceptance_criteria'] if not a.get('done')]
-print(f'work_item_backlog todo: {len(todo)}')
-print(f'acceptance_criteria todo: {len(ac_todo)}')
-print('expected: 8 work_items, 9 AC — all deferred drops/audits')
-"
-
-# 4. Confirm board state (optional — needs Planka tunnel on :3333)
-./.claude/bin/planka board 2>/dev/null | grep -E "^id=.*(00482|00483|00484|00485|00486|00487|00488|00489) " | head
-# expect: all in listId for "To Do"
+```env
+VECTOR_ARTEFACTS_DB_URL=host=localhost port=5435 user=mmff_dev password=68H9m2ncJJeKGvwKqQ3zMVzLjF0o4LPi dbname=vector_artefacts sslmode=disable
+WORK_ITEMS_V2=true
 ```
 
-## Active backend pin
+Both have now been added (lines 34–35 of `backend/.env.dev`). Without `VECTOR_ARTEFACTS_DB_URL`, `vaPool` stays nil and the service returns empty slices silently. Without `WORK_ITEMS_V2=true`, the route isn't registered.
 
-- **`BACKEND_ENV=dev`** (HARD RULE — pinned). Tunnel `localhost:5435` → dev VPS Postgres. Env file: `backend/.env.dev`. Do not switch without typed user request.
-- Planka tunnel: `localhost:3333`.
+**2. `workitemsv2/service.go` — SQL column name mismatch**
+
+The `artefacts` table column was renamed from `sprint_id` → `timebox_sprint_id` by an earlier migration (`db/artefacts_schema/025_timebox_sprints.sql`), but the Go service SQL strings were never updated. All SELECT queries referencing `a.sprint_id::text` returned a 500 from Postgres ("column does not exist").
+
+Fixed in `backend/internal/workitemsv2/service.go`:
+
+- `a.sprint_id::text` → `a.timebox_sprint_id::text` in all three SELECT queries (ListWorkItems, GetWorkItem, ListChildren)
+- `a.sprint_id = $N::uuid` → `a.timebox_sprint_id = $N::uuid` in WHERE filters (ListWorkItems filter, SummariseWorkItems sprint filter)
+- `sprint_id = NULL` / `sprint_id = $N::uuid` → `timebox_sprint_id` in PatchWorkItem SET clause
+- `sprint_id` → `timebox_sprint_id` in INSERT column list (CreateWorkItem)
+- `a.sprint_id %s NULLS LAST` → `a.timebox_sprint_id %s NULLS LAST` in buildOrderBy sort
+
+**Verification after restart:**
+
+```text
+GET /v1/api/v2/work-items → 200, 3 root epics returned (correct)
+GET /v1/api/v2/work-items/summary → 200, {total:15, epics:3, stories:6, tasks:4, defects:2}
+```
+
+The tree in the browser will now show 3 expandable epics with their children loading on expand.
+
+---
+
+## Dev seed data in vector_artefacts
+
+The fixture `db/artefacts_schema/seed/01_work_items_fixture.sql` is applied. It contains:
+
+- **3 Epics**, **6 Stories**, **4 Tasks**, **2 Defects**
+- All for `subscription_id = 00000000-0000-0000-0000-000000000001`
+- `workspace_id = 20000000-0000-0000-0000-000000000001` (fixture-only UUID)
+- 3 archived rows were deleted before seed to clear a duplicate-key block: `DELETE FROM artefacts WHERE archived_at IS NOT NULL AND subscription_id = '00000000-0000-0000-0000-000000000001'`
+
+---
+
+## Active backend state
+
+- **`BACKEND_ENV=dev`** — pinned, do not change
+- SSH tunnel `localhost:5435` → dev VPS Postgres (both `mmff_vector` and `vector_artefacts` via same tunnel port)
+- Backend process: `BACKEND_ENV=dev go run ./cmd/server/.` in `backend/`
+- Logs show: `vector_artefacts pool connected` on start
+
+To restart after a crash:
+
+```bash
+cd backend
+BACKEND_ENV=dev go run ./cmd/server/. &
+# watch for: "vector_artefacts pool connected"
+curl http://localhost:5100/healthz
+```
+
+---
+
+## Files changed this session
+
+| File | Change |
+| --- | --- |
+| `backend/.env.dev` | Added `VECTOR_ARTEFACTS_DB_URL` + `WORK_ITEMS_V2=true` |
+| `backend/internal/workitemsv2/service.go` | All `sprint_id` SQL column refs → `timebox_sprint_id` (7 sites) |
+
+Neither change is committed yet.
+
+---
+
+## Remaining known issues (pre-existing, not touched this session)
+
+- **`workitemsv2` test suite** — `sprint_id` → `timebox_sprint_id` rename is also broken in the test fixtures/queries. User declined to fix in this session ("no"). Fix when the test suite is next run.
+- **cross_db_canary_test.go** — `{"timebox_sprints", true}` is commented out. Once migration 025 is confirmed applied and canary is re-run, uncomment the line.
+- **PLA-0026 deferred drops** (00485–00489) — gated on 7-day deployment soaks, not actionable yet. See prior handover notes.
+- **TD-FE-002** — WorkspaceContext pattern (S3), trigger at 3rd production consumer.
+
+---
 
 ## Next concrete unit of work
 
-Nothing actionable in PLA-0026 right now. Either:
+Work Items tree is now functional. Candidate next tasks:
 
-1. **Wait** — soaks elapse, then knock off 00485 → 00489 in order as their gates clear. Each is a single migration drop + plan flip.
-2. **Move to next plan** — check [`docs/c_plan_index.md`](docs/c_plan_index.md) for the next active PLA. PLA-0024 (subscriptions cutover to `master_record_tenant`) was the most recent one before PLA-0026.
-3. **Tech-debt cleanup** — pick from the open list above; F2 (`dispatchFrame`/`handleFrame` lockstep) is the most concrete.
-
-## Files of interest
-
-- [`backend/internal/portfoliomodels/adopt.go`](backend/internal/portfoliomodels/adopt.go) — orchestrator, `resolveWorkspaceID`, isReadoption gate (line 244)
-- [`backend/internal/portfoliomodels/adopt_readopt.go`](backend/internal/portfoliomodels/adopt_readopt.go) — `runReadoption` placeholder + repoint logic
-- [`backend/internal/portfoliomodels/adopt_readopt_saga_test.go`](backend/internal/portfoliomodels/adopt_readopt_saga_test.go) — T4 (this session)
-- [`backend/internal/portfoliomodels/adopt_va_only_test.go`](backend/internal/portfoliomodels/adopt_va_only_test.go) — T3 (prior session)
-- [`backend/internal/portfoliomodels/handler_workspace_layers.go`](backend/internal/portfoliomodels/handler_workspace_layers.go) — B10 cutover endpoint
-- [`app/(user)/portfolio-model/LayersPreviewTable.tsx`](app/(user)/portfolio-model/LayersPreviewTable.tsx) — F5 placeholder badge surface
-- [`dev/plans/PLA-0026.json`](dev/plans/PLA-0026.json) — plan source of truth
-- [`dev/research/R047.json`](dev/research/R047.json) — design reference
+1. **Test the tree in the browser** — verify epics expand to show stories/tasks, inline edits work (title, due date, status pill).
+2. **Fix the test suite** — update `workitemsv2/*_test.go` `sprint_id` → `timebox_sprint_id` (user declined this session but it will break `go test`).
+3. **Check PLA-0027 plan status** — 8 stories marked `todo` in `dev/plans/PLA-0027.json` despite most code shipped; flip statuses to reflect reality.
+4. **Move to next feature** — check `docs/c_plan_index.md`.
 
 ---
 
