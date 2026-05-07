@@ -218,14 +218,14 @@
       "title": "B12: Handler GET /api/portfolio/adoption-state/:workspaceId rewrite",
       "story_id": "00501",
       "card_url": "http://localhost:3333/cards/1769517098817553622",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 27,
       "title": "B13: Workspace deletion hook: scan vector_artefacts for orphans and reject",
       "story_id": "00502",
       "card_url": "http://localhost:3333/cards/1769517103154463966",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 28,
@@ -505,7 +505,7 @@
       "proven_by": "handler commit + integration test",
       "story_id": "00501",
       "card_url": "http://localhost:3333/cards/1769517098817553622",
-      "done": false
+      "done": true
     },
     {
       "order": 27,
@@ -513,7 +513,7 @@
       "proven_by": "handler commit + integration test (deferred)",
       "story_id": "00502",
       "card_url": "http://localhost:3333/cards/1769517103154463966",
-      "done": false
+      "done": true
     },
     {
       "order": 28,
