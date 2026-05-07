@@ -64,21 +64,21 @@
       "title": "M4: Extend artefact_types with workspace_id, library_layer_id, library_layer_tag",
       "story_id": "00479",
       "card_url": "http://localhost:3333/cards/1769517003002872870",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 5,
       "title": "M5: Create master_record_portfolio table with touch trigger",
       "story_id": "00480",
       "card_url": "http://localhost:3333/cards/1769517007331394606",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 6,
       "title": "M6: Backfill master_record_portfolio for currently-adopted workspaces",
       "story_id": "00481",
       "card_url": "http://localhost:3333/cards/1769517011559253046",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 7,
@@ -141,7 +141,7 @@
       "title": "B1: portfolio.MasterRecordService \u2014 CRUD on master_record_portfolio",
       "story_id": "00490",
       "card_url": "http://localhost:3333/cards/1769517051581301886",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 16,
@@ -329,7 +329,7 @@
       "proven_by": "migration commit + parity check",
       "story_id": "00479",
       "card_url": "http://localhost:3333/cards/1769517003002872870",
-      "done": false
+      "done": true
     },
     {
       "order": 5,
@@ -337,7 +337,7 @@
       "proven_by": "migration commit + DOWN script",
       "story_id": "00480",
       "card_url": "http://localhost:3333/cards/1769517007331394606",
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -345,7 +345,7 @@
       "proven_by": "migration log + T1 assertion",
       "story_id": "00481",
       "card_url": "http://localhost:3333/cards/1769517011559253046",
-      "done": false
+      "done": true
     },
     {
       "order": 7,
@@ -417,7 +417,7 @@
       "proven_by": "package commit + lint output",
       "story_id": "00490",
       "card_url": "http://localhost:3333/cards/1769517051581301886",
-      "done": false
+      "done": true
     },
     {
       "order": 16,
