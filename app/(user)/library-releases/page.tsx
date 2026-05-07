@@ -18,7 +18,8 @@ import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { api, ApiError } from "@/app/lib/api";
+import { api } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 
 type Severity = "info" | "action" | "breaking";
 
@@ -76,11 +77,8 @@ export default function LibraryReleasesPage() {
       const data = await api<ListResponse>("/api/library/releases");
       setState({ kind: "ready", releases: data.releases });
     } catch (e) {
-      const msg =
-        e instanceof ApiError
-          ? `Error ${e.status}: ${typeof e.body === "string" ? e.body : "request failed"}`
-          : "Failed to load releases";
-      setState({ kind: "error", message: msg });
+      notify.apiError(e, "Failed to load releases");
+      setState({ kind: "error", message: "Failed to load releases" });
     }
   }
 
@@ -91,6 +89,7 @@ export default function LibraryReleasesPage() {
         method: "POST",
         body: JSON.stringify({ action_taken: actionKey }),
       });
+      notify.success("Release acknowledged.");
       // Drop the acked release from the list locally — avoids the round trip.
       if (state.kind === "ready") {
         setState({
@@ -99,12 +98,7 @@ export default function LibraryReleasesPage() {
         });
       }
     } catch (e) {
-      const msg =
-        e instanceof ApiError
-          ? `Error ${e.status}: ${typeof e.body === "string" ? e.body : "ack failed"}`
-          : "Acknowledgement failed";
-      // Surface the error inline so the user sees what happened.
-      alert(msg);
+      notify.apiError(e, "Failed to acknowledge release");
     } finally {
       setAcking(null);
     }
