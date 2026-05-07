@@ -275,6 +275,112 @@ func TestUpdate_PadminCanDeactivateUser(t *testing.T) {
 }
 
 // ----------------------------------------------------------------
+// PLA-0010 / story 00367 — role change revokes active sessions
+// ----------------------------------------------------------------
+
+// insertSession seeds a non-revoked sessions row for the given user.
+// Token hash is unique per call so tenant cleanup ordering is safe.
+func insertSession(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) {
+	t.Helper()
+	hash := uuid.NewString()
+	_, err := pool.Exec(context.Background(), `
+		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+		VALUES ($1, $2, NOW() + INTERVAL '1 hour', '127.0.0.1', 'test')`,
+		userID, hash,
+	)
+	if err != nil {
+		t.Fatalf("insert session: %v", err)
+	}
+}
+
+func sessionRevoked(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) bool {
+	t.Helper()
+	var revoked bool
+	if err := pool.QueryRow(context.Background(),
+		`SELECT revoked FROM sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+		userID,
+	).Scan(&revoked); err != nil {
+		t.Fatalf("read session.revoked: %v", err)
+	}
+	return revoked
+}
+
+func TestUpdate_RoleChange_RevokesSessions(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	subscriptionID, cleanup := mkTenant(t, pool, "upd-role-revoke")
+	defer cleanup()
+
+	svc := newSvc(pool)
+	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	insertSession(t, pool, target)
+
+	padmin := models.RolePAdmin
+	if err := svc.Update(context.Background(), target,
+		UpdateInput{Role: &padmin},
+		models.RoleGAdmin, subscriptionID, actor, "",
+	); err != nil {
+		t.Fatalf("gadmin promote user→padmin: %v", err)
+	}
+
+	if !sessionRevoked(t, pool, target) {
+		t.Fatal("expected session.revoked = TRUE after role change, got FALSE")
+	}
+}
+
+func TestUpdate_NoRoleChange_DoesNotRevokeSessions(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	subscriptionID, cleanup := mkTenant(t, pool, "upd-no-revoke")
+	defer cleanup()
+
+	svc := newSvc(pool)
+	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	insertSession(t, pool, target)
+
+	active := true
+	if err := svc.Update(context.Background(), target,
+		UpdateInput{IsActive: &active},
+		models.RoleGAdmin, subscriptionID, actor, "",
+	); err != nil {
+		t.Fatalf("gadmin update IsActive: %v", err)
+	}
+
+	if sessionRevoked(t, pool, target) {
+		t.Fatal("expected session.revoked = FALSE when role unchanged, got TRUE")
+	}
+}
+
+// Same role assigned again — the role string equals the loaded targetRole,
+// so we should NOT revoke (defensive: a no-op update must not nuke
+// sessions and force re-login).
+func TestUpdate_SameRole_DoesNotRevokeSessions(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	subscriptionID, cleanup := mkTenant(t, pool, "upd-same-role")
+	defer cleanup()
+
+	svc := newSvc(pool)
+	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	insertSession(t, pool, target)
+
+	user := models.RoleUser
+	if err := svc.Update(context.Background(), target,
+		UpdateInput{Role: &user},
+		models.RoleGAdmin, subscriptionID, actor, "",
+	); err != nil {
+		t.Fatalf("gadmin reassign user→user: %v", err)
+	}
+
+	if sessionRevoked(t, pool, target) {
+		t.Fatal("expected session.revoked = FALSE when same role assigned, got TRUE")
+	}
+}
+
+// ----------------------------------------------------------------
 // FindByID — tenant scoping
 // ----------------------------------------------------------------
 

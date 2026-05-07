@@ -230,11 +230,36 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	if len(sets) == 0 {
 		return nil
 	}
-	args = append(args, id)
-	_, err = s.Pool.Exec(ctx,
-		"UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = $"+itoa(i), args...,
-	)
+
+	// PLA-0010 / story 00367 — role change must revoke active sessions in
+	// the same transaction as the role write, so a downgraded user cannot
+	// keep using their old elevated token until expiry. We compare against
+	// targetRole loaded above; assigning the same role is a no-op.
+	roleChanged := in.Role != nil && *in.Role != targetRole
+
+	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	args = append(args, id)
+	if _, err := tx.Exec(ctx,
+		"UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = $"+itoa(i), args...,
+	); err != nil {
+		return err
+	}
+
+	if roleChanged {
+		if _, err := tx.Exec(ctx,
+			`UPDATE sessions SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
+			id,
+		); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 
@@ -247,6 +272,17 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		Resource: strPtr("user"), ResourceID: strPtr(id.String()),
 		IPAddress: nilIfEmpty(ip),
 	})
+	if roleChanged {
+		s.Audit.Log(ctx, audit.Entry{
+			UserID: &actor, Action: "user.role_changed",
+			Resource: strPtr("user"), ResourceID: strPtr(id.String()),
+			Metadata: map[string]any{
+				"from": string(targetRole),
+				"to":   string(*in.Role),
+			},
+			IPAddress: nilIfEmpty(ip),
+		})
+	}
 	return nil
 }
 
