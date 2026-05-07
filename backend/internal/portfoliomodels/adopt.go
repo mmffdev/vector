@@ -201,6 +201,13 @@ func (o *Orchestrator) Adopt(
 		hook = func(context.Context, StepEvent) {}
 	}
 
+	// PLA-0026 / 00497 (B8): set when the existing-state check below
+	// detects a completed adoption to a *different* model. Drives the
+	// re-adoption pre-step that inserts the placeholder strategy
+	// artefact and repoints orphaned work artefacts before the
+	// strategy writer mints the new chain.
+	isReadoption := false
+
 	// ── Idempotency check (BEFORE opening any tx) ────────────────
 	// Migration 026's partial unique index keeps at most one
 	// non-terminal (pending|in_progress|completed) row per
@@ -223,10 +230,19 @@ func (o *Orchestrator) Adopt(
 					AdoptedAt: existingState.AdoptedAt,
 				}, nil
 			}
-			// Different model already adopted → conflict. The Phase
-			// 4 plan (§11) covers re-adoption via three-way merge,
-			// which is out of scope for this card.
-			return nil, errAlreadyAdopted{currentModel: existingState.ModelID}
+			// Different model adopted → re-adoption (PLA-0026 / 00497).
+			// The placeholder-insert + repoint-orphans flow in
+			// runReadoption (adopt_readopt.go) preserves the
+			// invariant that work artefacts always have a non-NULL
+			// parent. We archive the OLD completed state row so the
+			// partial unique index admits a fresh in_progress row for
+			// the new model, and flag the saga so the VA pre-step
+			// dispatches runReadoption before the strategy writer.
+			if err := o.archiveCompletedStateForReadoption(ctx, existingState.ID); err != nil {
+				return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
+			}
+			isReadoption = true
+			existingState = nil // treat as a clean slate; insertPendingState below mints a new row
 		case "in_progress", "pending":
 			// Another saga attempt is mid-flight. Per partial unique
 			// index, this should be impossible to race; treat as a
@@ -352,6 +368,18 @@ func (o *Orchestrator) Adopt(
 	// nil or workspaceID is uuid.Nil (orphan-sub fixtures).
 	vaSteps := map[string]func(ctx context.Context, vaTx pgx.Tx) error{
 		stepLayers: func(ctx context.Context, vaTx pgx.Tx) error {
+			// PLA-0026 / 00497 (B8): re-adoption pre-step. Before
+			// minting the new strategy chain, insert the placeholder
+			// type + artefact, repoint orphan work artefacts, delete
+			// old strategy artefacts, and archive old strategy types.
+			// Runs in the same vaTx as the strategy writer so the
+			// transition is atomic — a partial failure rolls the
+			// whole pre-step + writer back together.
+			if isReadoption {
+				if _, _, err := runReadoption(ctx, vaTx, subscriptionID, workspaceID, userID); err != nil {
+					return err
+				}
+			}
 			return writeStrategyArtefactTypes(ctx, vaTx, subscriptionID, workspaceID, bundle)
 		},
 		stepWorkflows: func(ctx context.Context, vaTx pgx.Tx) error {
@@ -553,6 +581,27 @@ func (o *Orchestrator) insertPendingState(
 		return uuid.UUID{}, fmt.Errorf("insert state row: %w", err)
 	}
 	return id, nil
+}
+
+// archiveCompletedStateForReadoption soft-archives a previously-
+// completed state row when the operator picks a different model
+// (PLA-0026 / 00497). Same shape as archiveStaleFailedRow: the partial
+// unique index keys on (subscription_id, archived_at IS NULL), so
+// flipping archived_at to NOW() admits a fresh in_progress row for the
+// new model. The historical row stays for audit.
+func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, stateID uuid.UUID) error {
+	_, err := o.VectorPool.Exec(ctx, `
+		UPDATE subscription_portfolio_model_state
+		   SET archived_at = NOW()
+		 WHERE id = $1
+		   AND status = 'completed'
+		   AND archived_at IS NULL`,
+		stateID,
+	)
+	if err != nil {
+		return fmt.Errorf("archive completed state for re-adoption: %w", err)
+	}
+	return nil
 }
 
 // archiveStaleFailedRow soft-archives a failed row for a *different*
