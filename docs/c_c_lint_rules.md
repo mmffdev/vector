@@ -16,6 +16,7 @@ All lints share the same shape:
 | `lint:writer-boundary` | `dev/scripts/lint_writer_boundary.py` | `writer_boundary_exempt.json` | writes to `roles` / `permissions` / `role_permissions` route through `internal/roles/` only; `page_addressables` writes route through `internal/addressables/` only |
 | `lint:dev-css` | `dev/scripts/lint_dev_css.py` | _(no registry — hard gate)_ | zero `dev-*` / `dui-*` selectors in `app/globals.css`; zero imports of `app/globals.css` from anywhere under `dev/` (PLA-0013) |
 | `lint:secondary-nav` | `dev/scripts/lint_secondary_nav.py` | `secondary_nav_exempt.json` | every `<SecondaryNavigation reorderable …>` carries a `pageId="…"` so per-user tab order can persist (PLA-0014 / 00420) |
+| `lint:portfolio-library-read` | `dev/scripts/lint_portfolio_library_read.py` | `lint_portfolio_library_read_exemptions.json` | tenant-side code MUST NOT read `/api/library/`, `/api/portfolio-templates/`, or `mmff_library` outside the adoption saga + library admin surface — post-cutover invariant: tenant runtime reads `vector_artefacts` only, library is consulted once at adoption (PLA-0026 / 00512) |
 
 ---
 

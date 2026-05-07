@@ -1,0 +1,4 @@
+{
+  "description": "Per-file exemption list for lint:portfolio-library-read (PLA-0026 / Story 00512). The post-cutover invariant is: tenant runtime reads tenant artefacts from vector_artefacts only; the library (mmff_library) is consulted at adoption time inside the saga and never again. Forbidden patterns are tenant-side references to '/api/library/', '/api/portfolio-templates/', or 'mmff_library' in connection strings. Default-exempt dirs cover the saga and library admin surface (see lint_portfolio_library_read.py header). This ledger is the only escape valve for legitimate exceptions outside those default-exempt areas \u2014 every entry needs a justification and a follow-up plan to refactor away. The ledger is a one-way ratchet that only ever shrinks; once empty, treat it as a hard architectural invariant.",
+  "exempt_paths": []
+}
