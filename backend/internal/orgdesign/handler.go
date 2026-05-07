@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -14,6 +12,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/security"
 )
 
 // Handler exposes Service over HTTP under /api/topology. The router
@@ -52,21 +51,6 @@ func ipPtr(s string) *string {
 		return nil
 	}
 	return &s
-}
-
-// clientIP mirrors backend/internal/auth/handler.go's helper.
-func clientIP(r *http.Request) string {
-	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-		if i := strings.Index(xf, ","); i >= 0 {
-			return strings.TrimSpace(xf[:i])
-		}
-		return xf
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 // ─── request/response shapes ───────────────────────────────────────────
@@ -162,7 +146,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.node.created",
 		Resource: strPtr("org_node"), ResourceID: strPtr(n.ID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata: map[string]any{
 			"name":        n.Name,
 			"parent_id":   n.ParentID,
@@ -220,7 +204,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 			Action: "topology.node.moved",
 			Resource: strPtr("org_node"), ResourceID: strPtr(id.String()),
-			IPAddress: ipPtr(clientIP(r)),
+			IPAddress: ipPtr(security.ClientIP(r)),
 			Metadata:  map[string]any{"new_parent_id": newParent},
 		})
 		w.WriteHeader(http.StatusNoContent)
@@ -274,7 +258,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: action,
 		Resource: strPtr("org_node"), ResourceID: strPtr(id.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata:  meta,
 	})
 	w.WriteHeader(http.StatusNoContent)
@@ -296,7 +280,7 @@ func (h *Handler) Disconnect(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.node.disconnected",
 		Resource: strPtr("org_node"), ResourceID: strPtr(id.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 	})
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -345,7 +329,7 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.level.created",
 		Resource: strPtr("org_level"), ResourceID: strPtr(l.ID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata:  map[string]any{"depth": l.Depth, "name": l.Name},
 	})
 	writeJSON(w, http.StatusCreated, l)
@@ -372,7 +356,7 @@ func (h *Handler) RenameLevel(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.level.renamed",
 		Resource: strPtr("org_level"), ResourceID: strPtr(id.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata:  map[string]any{"new_name": req.Name},
 	})
 	w.WriteHeader(http.StatusNoContent)
@@ -402,7 +386,7 @@ func (h *Handler) Commit(w http.ResponseWriter, r *http.Request) {
 		Action:    "topology.committed",
 		Resource:  strPtr("subscription"),
 		ResourceID: strPtr(u.SubscriptionID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 	})
 	writeJSON(w, http.StatusOK, st)
 }
@@ -420,7 +404,7 @@ func (h *Handler) Reset(w http.ResponseWriter, r *http.Request) {
 		Action:    "topology.reset",
 		Resource:  strPtr("subscription"),
 		ResourceID: strPtr(u.SubscriptionID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata:  map[string]any{"archived_count": count},
 	})
 	writeJSON(w, http.StatusOK, map[string]int{"archived_count": count})
@@ -442,7 +426,7 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.node.archived",
 		Resource: strPtr("org_node"), ResourceID: strPtr(id.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 	})
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -471,7 +455,7 @@ func (h *Handler) Duplicate(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.node.duplicated",
 		Resource: strPtr("org_node"), ResourceID: strPtr(n.ID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata: map[string]any{
 			"source_id": id.String(),
 			"name":      n.Name,
@@ -510,7 +494,7 @@ func (h *Handler) BulkPosition(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action:    "topology.node.bulk_position",
 		Resource:  strPtr("org_node"),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata:  map[string]any{"count": len(updates)},
 	})
 	w.WriteHeader(http.StatusNoContent)
@@ -617,7 +601,7 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 		Action:     "topology.node.restored",
 		Resource:   strPtr("org_node"),
 		ResourceID: strPtr(id.String()),
-		IPAddress:  ipPtr(clientIP(r)),
+		IPAddress:  ipPtr(security.ClientIP(r)),
 		Metadata: map[string]any{
 			"new_parent_id": req.NewParentID,
 		},
@@ -663,7 +647,7 @@ func (h *Handler) GrantRole(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.role.granted",
 		Resource: strPtr("org_node_role"), ResourceID: strPtr(grantID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 		Metadata: map[string]any{
 			"node_id":        nodeID,
 			"grantee_id":     req.UserID,
@@ -690,7 +674,7 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
 		Action: "topology.role.revoked",
 		Resource: strPtr("org_node_role"), ResourceID: strPtr(grantID.String()),
-		IPAddress: ipPtr(clientIP(r)),
+		IPAddress: ipPtr(security.ClientIP(r)),
 	})
 	w.WriteHeader(http.StatusNoContent)
 }

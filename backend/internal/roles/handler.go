@@ -12,9 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -22,6 +20,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/security"
 )
 
 // Handler fronts Service for the chi router. PermResolver + Pool are
@@ -142,7 +141,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	row, err := h.Svc.Create(r.Context(), CreateInput{
 		Code: req.Code, Label: req.Label, Description: req.Description,
 		Rank: req.Rank, IsExternal: req.IsExternal,
-	}, actor.SubscriptionID, actor.ID, clientIP(r))
+	}, actor.SubscriptionID, actor.ID, security.ClientIP(r))
 	if err != nil {
 		writeErrFromService(w, err)
 		return
@@ -175,7 +174,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := h.Svc.Update(r.Context(), id, UpdateInput{
 		Label: req.Label, Description: req.Description, Rank: req.Rank,
-	}, actor.SubscriptionID, actor.ID, clientIP(r))
+	}, actor.SubscriptionID, actor.ID, security.ClientIP(r))
 	if err != nil {
 		writeErrFromService(w, err)
 		return
@@ -195,7 +194,7 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "bad_id")
 		return
 	}
-	if err := h.Svc.Archive(r.Context(), id, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Archive(r.Context(), id, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		writeErrFromService(w, err)
 		return
 	}
@@ -263,7 +262,7 @@ func (h *Handler) AssignPermissions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Svc.AssignPermissions(r.Context(), id, req.PermissionIDs,
-		actor.SubscriptionID, actor.ID, actorPermIDs, clientIP(r)); err != nil {
+		actor.SubscriptionID, actor.ID, actorPermIDs, security.ClientIP(r)); err != nil {
 		writeErrFromService(w, err)
 		return
 	}
@@ -291,7 +290,7 @@ func (h *Handler) RevokePermissions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Svc.RevokePermissions(r.Context(), id, req.PermissionIDs,
-		actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+		actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		writeErrFromService(w, err)
 		return
 	}
@@ -366,16 +365,3 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func clientIP(r *http.Request) string {
-	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-		if i := strings.Index(xf, ","); i >= 0 {
-			return strings.TrimSpace(xf[:i])
-		}
-		return xf
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}

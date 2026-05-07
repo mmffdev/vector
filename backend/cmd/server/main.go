@@ -287,7 +287,11 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	// PLA-0010 / story 00348 — chi's middleware.RealIP rewrites
+	// r.RemoteAddr from X-Forwarded-For unconditionally, which makes
+	// every downstream consumer trust a header any client can forge.
+	// Removed; security.ClientIP is the sole, CIDR-gated point that
+	// honours XFF. See backend/internal/security/clientip.go.
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{

@@ -3,15 +3,14 @@ package wsperms
 import (
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/security"
 )
 
 type Handler struct{ Svc *Service }
@@ -36,7 +35,7 @@ func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 	p, err := h.Svc.Grant(r.Context(), GrantInput{
 		UserID: req.UserID, WorkspaceID: req.WorkspaceID,
 		CanView: req.CanView, CanEdit: req.CanEdit, CanAdmin: req.CanAdmin,
-	}, actor.SubscriptionID, actor.ID, clientIP(r))
+	}, actor.SubscriptionID, actor.ID, security.ClientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
@@ -55,7 +54,7 @@ func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
-	if err := h.Svc.Revoke(r.Context(), id, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Revoke(r.Context(), id, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
@@ -108,18 +107,4 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-func clientIP(r *http.Request) string {
-	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-		if i := strings.Index(xf, ","); i >= 0 {
-			return strings.TrimSpace(xf[:i])
-		}
-		return xf
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }

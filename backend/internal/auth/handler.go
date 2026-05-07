@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -118,7 +117,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
-	ip := clientIP(r)
+	ip := security.ClientIP(r)
 	res, err := h.Svc.Login(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), req.Password, ip, r.UserAgent())
 	if err != nil {
 		status := http.StatusUnauthorized
@@ -147,7 +146,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
 		return
 	}
-	res, err := h.Svc.Refresh(r.Context(), c.Value, clientIP(r), r.UserAgent())
+	res, err := h.Svc.Refresh(r.Context(), c.Value, security.ClientIP(r), r.UserAgent())
 	if err != nil {
 		clearRefreshCookie(w)
 		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
@@ -160,7 +159,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("rt"); err == nil {
-		_ = h.Svc.Logout(r.Context(), c.Value, clientIP(r))
+		_ = h.Svc.Logout(r.Context(), c.Value, security.ClientIP(r))
 	}
 	clearRefreshCookie(w)
 	security.ClearCSRFCookie(w)
@@ -192,7 +191,7 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
-	if err := h.Svc.ChangePassword(r.Context(), u.ID, req.Current, req.New, clientIP(r)); err != nil {
+	if err := h.Svc.ChangePassword(r.Context(), u.ID, req.Current, req.New, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
 			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthInvalidCurrentPassword)
 			return
@@ -210,7 +209,7 @@ type resetReq struct {
 func (h *Handler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req resetReq
 	_ = json.NewDecoder(r.Body).Decode(&req)
-	_ = h.Svc.RequestPasswordReset(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), clientIP(r))
+	_ = h.Svc.RequestPasswordReset(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), security.ClientIP(r))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -225,7 +224,7 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
-	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, clientIP(r)); err != nil {
+	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrTokenExpired) {
 			httperr.Write(w, r, http.StatusBadRequest, messages.AuthTokenExpired)
 			return
@@ -276,16 +275,3 @@ func clearRefreshCookie(w http.ResponseWriter) {
 	})
 }
 
-func clientIP(r *http.Request) string {
-	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-		if i := strings.Index(xf, ","); i >= 0 {
-			return strings.TrimSpace(xf[:i])
-		}
-		return xf
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}

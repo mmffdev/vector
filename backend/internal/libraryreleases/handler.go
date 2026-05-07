@@ -26,6 +26,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
+	"github.com/mmffdev/vector-backend/internal/security"
 )
 
 // Handler holds the two pools needed for the cross-DB workflow:
@@ -212,7 +213,7 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 	// Audit only when a new ack lands — re-acks are no-ops and would
 	// otherwise spam the audit log on every page reload.
 	if created && h.Audit != nil {
-		ip := clientIP(r)
+		ip := security.ClientIP(r)
 		resourceID := releaseID.String()
 		resource := "library_release"
 		userID := u.ID
@@ -251,19 +252,6 @@ func (h *Handler) subscriptionTier(ctx context.Context, subID uuid.UUID) (string
 		return "", fmt.Errorf("libraryreleases: load tier: %w", err)
 	}
 	return tier, nil
-}
-
-// clientIP extracts the best-known caller IP. RealIP middleware has
-// already normalised X-Forwarded-For into RemoteAddr.
-func clientIP(r *http.Request) string {
-	host := r.RemoteAddr
-	// Strip port if present.
-	for i := len(host) - 1; i >= 0; i-- {
-		if host[i] == ':' {
-			return host[:i]
-		}
-	}
-	return host
 }
 
 func toReleaseDTO(r librarydb.Release) releaseDTO {

@@ -3,9 +3,7 @@ package users
 import (
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -14,6 +12,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/security"
 )
 
 type Handler struct {
@@ -87,7 +86,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	// Tenant always comes from the verified session, never the payload.
 	// See c_security.md#input-comes-from-the-session-not-the-payload.
-	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, SubscriptionID: actor.SubscriptionID}, actor.Role, actor.ID, clientIP(r))
+	u, link, err := h.Svc.Create(r.Context(), CreateInput{Email: req.Email, Role: req.Role, SubscriptionID: actor.SubscriptionID}, actor.Role, actor.ID, security.ClientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrDuplicateEmail) {
 			httperr.Write(w, r, http.StatusConflict, err.Error())
@@ -139,7 +138,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		FirstName:  req.FirstName,
 		LastName:   req.LastName,
 		Department: req.Department,
-	}, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+	}, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
@@ -161,7 +160,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
-	if err := h.Svc.Delete(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r)); err != nil {
+	if err := h.Svc.Delete(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
@@ -188,7 +187,7 @@ func (h *Handler) IssueReset(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
-	link, err := h.Svc.IssueResetLink(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, clientIP(r))
+	link, err := h.Svc.IssueResetLink(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
@@ -211,18 +210,4 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-func clientIP(r *http.Request) string {
-	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-		if i := strings.Index(xf, ","); i >= 0 {
-			return strings.TrimSpace(xf[:i])
-		}
-		return xf
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
