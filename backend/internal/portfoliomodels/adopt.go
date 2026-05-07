@@ -140,11 +140,17 @@ type AdoptionResult struct {
 type Orchestrator struct {
 	LibRO      *pgxpool.Pool
 	VectorPool *pgxpool.Pool
+	// VAPool is the vector_artefacts pool. Optional — when nil the
+	// saga skips every dual-write into vector_artefacts and behaves
+	// exactly like the pre-PLA-0026 path. Lets dev/staging configs
+	// run without the artefacts DB while production cuts over.
+	VAPool *pgxpool.Pool
 }
 
-// NewOrchestrator builds the adopt orchestrator.
-func NewOrchestrator(libRO, vectorPool *pgxpool.Pool) *Orchestrator {
-	return &Orchestrator{LibRO: libRO, VectorPool: vectorPool}
+// NewOrchestrator builds the adopt orchestrator. Pass nil for vaPool
+// to disable the PLA-0026 dual-writes (legacy-only behaviour).
+func NewOrchestrator(libRO, vectorPool, vaPool *pgxpool.Pool) *Orchestrator {
+	return &Orchestrator{LibRO: libRO, VectorPool: vectorPool, VAPool: vaPool}
 }
 
 // AdoptOptions lets 00010's sim harness inject a synthetic failure on a
@@ -290,6 +296,18 @@ func (o *Orchestrator) Adopt(
 
 	hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end"})
 
+	// Resolve workspaceID for the PLA-0026 dual-writes. Orphan-sub
+	// fixtures (Bulk Cross-Tenant Test, etc.) have no workspace row;
+	// they fall through with uuid.Nil and the va-step dispatcher
+	// silently skips, matching M4's "ws_id = sub_id" backfill in
+	// migration 019 only after the workspace exists. We do NOT
+	// surface "no workspace" as an error — adoption against an
+	// orphan-sub still succeeds via the legacy mirror path.
+	workspaceID, err := o.resolveWorkspaceID(ctx, subscriptionID)
+	if err != nil {
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
+	}
+
 	// ── Steps 2..6: mirror writes, each in its own tenant tx ────
 	libVersion := bundle.Model.Version
 	mirrorSteps := []struct {
@@ -313,6 +331,19 @@ func (o *Orchestrator) Adopt(
 		}},
 	}
 
+	// Per-step VA writers (PLA-0026). Each writer runs in its OWN
+	// vector_artefacts tenant tx, AFTER the legacy mirror tx commits.
+	// A nil entry (or no entry) means "no VA write for this step yet"
+	// — subagents fill these in for B4 (flows/transitions),
+	// B5 (work-scope artefact_types), B6 (master_record_portfolio
+	// upsert in stepFinalize). The dispatcher is no-op when VAPool is
+	// nil or workspaceID is uuid.Nil (orphan-sub fixtures).
+	vaSteps := map[string]func(ctx context.Context, vaTx pgx.Tx) error{
+		stepLayers: func(ctx context.Context, vaTx pgx.Tx) error {
+			return writeStrategyArtefactTypes(ctx, vaTx, subscriptionID, workspaceID, bundle)
+		},
+	}
+
 	for i, step := range mirrorSteps {
 		idx := i + 1 // stepValidate is index 0
 
@@ -327,6 +358,17 @@ func (o *Orchestrator) Adopt(
 		if err := o.runMirrorStep(ctx, step.fn); err != nil {
 			hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
 			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
+		}
+
+		// PLA-0026 dual-write: after the legacy mirror commits, run
+		// the corresponding VA writer in its own tx. On VA failure,
+		// fail the saga — retry semantics are safe (both sides are
+		// idempotent on natural keys).
+		if vaFn, ok := vaSteps[step.name]; ok && o.VAPool != nil && workspaceID != uuid.Nil {
+			if err := o.runVAStep(ctx, vaFn); err != nil {
+				hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
+				return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
+			}
 		}
 
 		hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end"})
@@ -355,6 +397,54 @@ func (o *Orchestrator) Adopt(
 		Status:    "completed",
 		AdoptedAt: adoptedAt,
 	}, nil
+}
+
+// resolveWorkspaceID returns the workspace_id for a subscription, or
+// uuid.Nil when none exists (orphan-sub fixtures). The PLA-0026 VA
+// writes use this to address artefact_types per workspace; the legacy
+// mirror path is unaffected.
+//
+// We pick the lowest-id live workspace deterministically. Multi-
+// workspace subscriptions are out of scope for the cutover — adoption
+// is per-tenant today, and the saga writes ONE strategy hierarchy per
+// subscription. The first-workspace pick matches migration 019's
+// fdw_workspaces backfill convention.
+func (o *Orchestrator) resolveWorkspaceID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	var ws uuid.UUID
+	err := o.VectorPool.QueryRow(ctx, `
+		SELECT id
+		  FROM workspaces
+		 WHERE subscription_id = $1
+		   AND archived_at IS NULL
+		 ORDER BY id
+		 LIMIT 1`,
+		subscriptionID,
+	).Scan(&ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, nil
+	}
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("resolve workspace_id: %w", err)
+	}
+	return ws, nil
+}
+
+// runVAStep wraps one vector_artefacts write in a fresh SERIALIZABLE
+// tx on VAPool. Mirrors runMirrorStep's contract — commit on success,
+// rollback on failure. Caller has already verified VAPool != nil.
+func (o *Orchestrator) runVAStep(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
+	tx, err := o.VAPool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return fmt.Errorf("begin va tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit va tx: %w", err)
+	}
+	return nil
 }
 
 // runMirrorStep wraps one mirror-table write in a fresh SERIALIZABLE
@@ -913,8 +1003,8 @@ type AdoptHandler struct {
 	Orchestrator *Orchestrator
 }
 
-func NewAdoptHandler(libRO, vectorPool *pgxpool.Pool) *AdoptHandler {
-	return &AdoptHandler{Orchestrator: NewOrchestrator(libRO, vectorPool)}
+func NewAdoptHandler(libRO, vectorPool, vaPool *pgxpool.Pool) *AdoptHandler {
+	return &AdoptHandler{Orchestrator: NewOrchestrator(libRO, vectorPool, vaPool)}
 }
 
 // Adopt — POST /api/portfolio-models/{id}/adopt

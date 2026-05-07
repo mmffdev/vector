@@ -47,7 +47,7 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	o := NewOrchestrator(libRO, vec)
+	o := NewOrchestrator(libRO, vec, nil)
 	res, err := o.Adopt(ctx, user.SubscriptionID, user.ID, modelID, "test-req-happy", AdoptOptions{})
 	if err != nil {
 		t.Fatalf("Adopt: %v", err)
@@ -89,7 +89,7 @@ func TestOrchestrator_FailAtLayers(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	o := NewOrchestrator(libRO, vec)
+	o := NewOrchestrator(libRO, vec, nil)
 	_, err := o.Adopt(ctx, user.SubscriptionID, user.ID, modelID, "test-req-fail",
 		AdoptOptions{FailAtStep: stepLayers})
 	if err == nil {
@@ -152,7 +152,7 @@ func TestOrchestrator_RetryResume(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	o := NewOrchestrator(libRO, vec)
+	o := NewOrchestrator(libRO, vec, nil)
 
 	// Attempt 1: fail at layers.
 	if _, err := o.Adopt(ctx, user.SubscriptionID, user.ID, modelID, "test-req-resume-1",

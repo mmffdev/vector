@@ -199,8 +199,12 @@ func main() {
 
 	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
 	portfolioAdoptionStateH := portfoliomodels.NewAdoptionStateHandler(pool)
-	portfolioAdoptH := portfoliomodels.NewAdoptHandler(libPools.RO, pool)
-	portfolioAdoptStreamH := portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
+	// vaPool is wired below; nil = legacy-only adoption path. The
+	// orchestrator skips PLA-0026 dual-writes when nil.
+	// Constructed AFTER the vaPool block so the handler picks up the
+	// pool when VECTOR_ARTEFACTS_DB_URL is set.
+	var portfolioAdoptH *portfoliomodels.AdoptHandler
+	var portfolioAdoptStreamH *portfoliomodels.AdoptStreamHandler
 	devResetH := portfoliomodels.NewDevResetHandler(pool)
 	layersBatchH := portfoliomodels.NewLayersBatchHandler(pool)
 
@@ -261,9 +265,12 @@ func main() {
 	workItemsSvc := workitems.New(pool)
 	workItemsH := workitems.NewHandler(workItemsSvc)
 
-	// v2 work-items pool — reads from vector_artefacts (PLA-0023 / 00464).
-	// VECTOR_ARTEFACTS_DB_URL is optional; absent = v2 route returns empty
-	// pages until the cutover pool is provisioned (flag gate lands in 00471).
+	// vector_artefacts pool — reads/writes the cutover DB. Shared by
+	// v2 work-items (PLA-0023) AND portfolio adoption dual-writes
+	// (PLA-0026). VECTOR_ARTEFACTS_DB_URL is optional; absent = v2
+	// route returns empty pages AND adoption falls back to legacy-only
+	// (no PLA-0026 dual-writes).
+	var vaPool *pgxpool.Pool
 	var workItemsV2H *workitemsv2.Handler
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
@@ -273,15 +280,16 @@ func main() {
 		} else {
 			vaCfg.MinConns = 2
 			vaCfg.MaxConnIdleTime = 5 * time.Minute
-			vaPool, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
+			p, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
 			if vaErr != nil {
 				log.Printf("⚠ vector_artefacts pool connect failed — v2 work-items will return empty: %v", vaErr)
 				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
-			} else if vaErr = vaPool.Ping(ctx); vaErr != nil {
+			} else if vaErr = p.Ping(ctx); vaErr != nil {
 				log.Printf("⚠ vector_artefacts pool ping failed — v2 work-items will return empty: %v", vaErr)
-				vaPool.Close()
+				p.Close()
 				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
 			} else {
+				vaPool = p
 				defer vaPool.Close()
 				// Mask password in log: strip :password@ from the URL.
 				maskedURL := vaURL
@@ -299,6 +307,11 @@ func main() {
 		log.Printf("⚠ VECTOR_ARTEFACTS_DB_URL unset — v2 work-items will return empty pages")
 		workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
 	}
+
+	// Portfolio adopt handler — wired AFTER vaPool so PLA-0026 dual-
+	// writes target vector_artefacts when the pool is available.
+	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool)
+	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 
 	flowsSvc := flows.New(pool)
 	flowsH := flows.NewHandler(flowsSvc)
