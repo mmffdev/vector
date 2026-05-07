@@ -143,7 +143,26 @@ func migrateVectorArtefacts(ctx context.Context, root string, dryRun bool) error
 		secrets.Get("VA_DB_PASSWORD"),
 		envOr("VA_DB_NAME", "vector_artefacts"),
 	)
-	pool, err := openPool(ctx, dsn, "vector_artefacts")
+
+	// The FDW migration (015_backfill_work_items.sql) reads the source DB
+	// password via current_setting('app.fdw_source_password') so that no
+	// plaintext credential is committed to the SQL file. Inject it here via
+	// AfterConnect so it is set on every connection the pool hands out.
+	fdwPw := secrets.Get("DB_PASSWORD")
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return fmt.Errorf("pgxpool.ParseConfig [vector_artefacts]: %w", err)
+	}
+	if fdwPw != "" {
+		escaped := strings.ReplaceAll(fdwPw, "'", "''")
+		setGUC := fmt.Sprintf("SET app.fdw_source_password = '%s'", escaped)
+		cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+			_, err := conn.Exec(ctx, setGUC)
+			return err
+		}
+	}
+
+	pool, err := openPoolFromConfig(ctx, cfg, "vector_artefacts")
 	if err != nil {
 		return err
 	}
@@ -282,6 +301,18 @@ func openPool(ctx context.Context, dsn, label string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.New [%s]: %w", label, err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("db ping [%s]: %w", label, err)
+	}
+	return pool, nil
+}
+
+func openPoolFromConfig(ctx context.Context, cfg *pgxpool.Config, label string) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("pgxpool.NewWithConfig [%s]: %w", label, err)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
