@@ -80,6 +80,7 @@ type workspaceLayerDTO struct {
 	HelpMD          *string    `json:"help_md"`
 	AllowsChildren  bool       `json:"allows_children"`
 	IsLeaf          bool       `json:"is_leaf"`
+	IsPlaceholder   bool       `json:"is_placeholder"`
 	ArchivedAt      *time.Time `json:"archived_at"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
@@ -149,6 +150,7 @@ func (h *WorkspaceLayersHandler) GetWorkspaceLayers(w http.ResponseWriter, r *ht
 		       name, prefix, sort_order,
 		       parent_type_id,
 		       description, allows_children,
+		       is_placeholder,
 		       archived_at, created_at, updated_at
 		  FROM artefact_types
 		 WHERE workspace_id = $1
@@ -174,6 +176,7 @@ func (h *WorkspaceLayersHandler) GetWorkspaceLayers(w http.ResponseWriter, r *ht
 			&d.Name, &d.Tag, &d.SortOrder,
 			&d.ParentLayerID,
 			&d.DescriptionMD, &d.AllowsChildren,
+			&d.IsPlaceholder,
 			&d.ArchivedAt, &d.CreatedAt, &d.UpdatedAt,
 		); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)

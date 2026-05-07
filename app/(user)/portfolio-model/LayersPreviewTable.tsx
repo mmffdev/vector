@@ -126,14 +126,32 @@ export default function LayersPreviewTable({
             </td>
           </tr>
           {displayLayers.map((layer, index) => (
-            <tr key={layer.id} className="tree_accordion-dense__row">
+            <tr
+              key={layer.id}
+              className={
+                layer.is_placeholder
+                  ? "tree_accordion-dense__row is-placeholder"
+                  : "tree_accordion-dense__row"
+              }
+            >
               <td className="tree_accordion-dense__cell tree_accordion-dense__cell--numeric tree_accordion-dense__cell--mono">
                 {displayLayers.length - index + fixedOffset}
               </td>
               <td className="tree_accordion-dense__cell tree_accordion-dense__cell--mono">
                 {renderTag(layer)}
               </td>
-              <td className="tree_accordion-dense__cell">{renderName(layer)}</td>
+              <td className="tree_accordion-dense__cell">
+                {layer.is_placeholder ? (
+                  <>
+                    {renderName(layer)}{" "}
+                    <span className="pill pill--warning" aria-label="Pending re-classification">
+                      Pending re-classification
+                    </span>
+                  </>
+                ) : (
+                  renderName(layer)
+                )}
+              </td>
               <td className="tree_accordion-dense__cell">{renderDesc(layer)}</td>
             </tr>
           ))}

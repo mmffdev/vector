@@ -260,35 +260,35 @@
       "title": "F1: BundleView: switch model description read to /api/portfolio/master_record",
       "story_id": "00507",
       "card_url": "http://localhost:3333/cards/1769517125468161286",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 33,
       "title": "F2: Adoption stream: assertion test for SSE event handling against rewritten saga",
       "story_id": "00508",
       "card_url": "http://localhost:3333/cards/1769517129746351374",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 34,
       "title": "F3: Layer list: swap /api/subscription/layers to /api/workspace/:id/portfolio/layers",
       "story_id": "00509",
       "card_url": "http://localhost:3333/cards/1769517134175536406",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 35,
       "title": "F4: Field schema consumer: switch to /api/workspace/:id/fields",
       "story_id": "00510",
       "card_url": "http://localhost:3333/cards/1769517138487280926",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 36,
       "title": "F5: Re-adoption UX: surface placeholder strategy artefact as Pending re-classification bucket",
       "story_id": "00511",
       "card_url": "http://localhost:3333/cards/1769517142832579878",
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 37,
@@ -553,7 +553,7 @@
       "proven_by": "frontend commit + lint output",
       "story_id": "00507",
       "card_url": "http://localhost:3333/cards/1769517125468161286",
-      "done": false
+      "done": true
     },
     {
       "order": 33,
@@ -561,7 +561,7 @@
       "proven_by": "vitest assertion green",
       "story_id": "00508",
       "card_url": "http://localhost:3333/cards/1769517129746351374",
-      "done": false
+      "done": true
     },
     {
       "order": 34,
@@ -569,7 +569,7 @@
       "proven_by": "frontend commit + grep verification",
       "story_id": "00509",
       "card_url": "http://localhost:3333/cards/1769517134175536406",
-      "done": false
+      "done": true
     },
     {
       "order": 35,
@@ -577,7 +577,7 @@
       "proven_by": "frontend commit + grep verification",
       "story_id": "00510",
       "card_url": "http://localhost:3333/cards/1769517138487280926",
-      "done": false
+      "done": true
     },
     {
       "order": 36,
@@ -585,7 +585,7 @@
       "proven_by": "frontend commit + visual smoke (deferred)",
       "story_id": "00511",
       "card_url": "http://localhost:3333/cards/1769517142832579878",
-      "done": false
+      "done": true
     },
     {
       "order": 37,

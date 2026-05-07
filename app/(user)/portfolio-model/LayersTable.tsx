@@ -39,6 +39,7 @@ export interface LayerDTO {
   tag: string;
   sort_order: number;
   description_md: string | null;
+  is_placeholder?: boolean;
 }
 
 type EditField = "name" | "tag" | "description_md";
