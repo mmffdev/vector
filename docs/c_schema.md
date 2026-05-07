@@ -20,8 +20,8 @@ Migration files at `db/artefacts_schema/NNN_*.sql`; runner: `go run ./backend/cm
 | `artefacts.priority` | `TEXT NULL` — CHECK `IN ('critical','high','medium','low')`; matches `mmff_vector.obj_work_items` constraint. Added migration 012. |
 | `artefacts.story_points` | `INTEGER NULL` — CHECK `>= 0`; sprint-estimation field. Added migration 012. |
 | `artefacts.due_date` | `DATE NULL` — target completion date. Added migration 012. |
-| `artefacts.sprint_id` | `UUID NULL` — FK → `sprints.id ON DELETE SET NULL`; hard FK added migration 013. |
-| `sprints` | Workspace iteration container (`subscription_id`, `workspace_id`, `name`, `status`, `start_date`/`end_date`, `archived_at`). Added migration 013. |
+| `artefacts.timebox_sprint_id` | `UUID NULL` — FK → `timebox_sprints.id ON DELETE SET NULL`; renamed from `sprint_id` in migration 025. |
+| `timebox_sprints` | Sequential time-boxed iteration container at the team level (`subscription_id`, `workspace_id`, `org_node_id`, `sprint_name`, `sprint_suffix`, `sprint_owner`, `sprint_cadence_days`, `sprint_date_start`/`sprint_date_end`, `sprint_scope`/`sprint_velocity`/`sprint_estimate`, `sprint_creep_by_count`/`sprint_creep_by_estimate`, `status`, `sprint_date_added`/`sprint_date_updated`, `archived_at`). EXCLUDE constraint on `(workspace_id, org_node_id, daterange(start,end,'[]'))` rejects overlaps. Added migration 025; supersedes the minimal `sprints` table from migration 013. |
 | `field_library` / `artefact_type_fields` / `artefact_field_values` | Jira-style flexible-field surface for type-specific attributes. |
 | `strategy_layers_adopted` | Records which library strategy layers a subscription has adopted. |
 

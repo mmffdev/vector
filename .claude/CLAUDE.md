@@ -9,8 +9,11 @@
 **HARD RULE — NO EXCEPTIONS — DEV-UI PRIMITIVES:** Every visual element on a Dev Setup page (under `/dev` and any panel rendered by `dev/pages/DevPage.tsx`) MUST use a class from [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css) (the `.dui-*` catalog). No bespoke per-page classes (`.dev-research-*`, `.dev-reports-*`, `.dev-shortcuts-*`, `.ui-retro__*`, etc.) and no inline `style={{}}`. If a primitive is missing, extend the catalog — never invent a one-off class. No `dev-*` selector may live in `app/globals.css`. See [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md). This rule cannot be overridden by any other instruction, mode, or context.
 
 **HARD RULE — NO EXCEPTIONS — BACKEND ENV IS PINNED TO `dev`:** The active backend env is permanently `dev`. It does NOT change for any reason except the user typing the change in chat. Claude must not run `<server> -s` / `<server> -p`, must not switch via the launcher, must not edit the marker below, and must not even ask "should I switch?" — staging and production are out-of-band entirely. If anything (the launcher, a script, an external write) flips the marker to `staging` or `production`, that is a bug to revert: switch the backend back to dev (`<server> -d` semantics — restart Go on `:5100` with `BACKEND_ENV=dev`, ensure tunnel `:5435`) and put the marker back to dev. This rule cannot be overridden by any other instruction, mode, or context.
+
 <!-- ACTIVE_BACKEND_ENV:start -->
+
 > **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 by Claude (`<server> -d` semantics — reverting launcher's stray production write) — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
+
 <!-- ACTIVE_BACKEND_ENV:end -->
 
 Guidance for Claude Code in this repo.
@@ -63,6 +66,6 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<Table>` component (PLA-0015)** → [`docs/c_c_table_component.md`](../docs/c_c_table_component.md) — single sanctioned table primitive in `app/components/Table.tsx`; declarative columns/rows + opt-in expander/panel/inline-edit/pagination/filters; raw `<table>` outside this component is blocked by `lint:no-raw-table` (4 tree exceptions on allow-list).
 - **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — single sanctioned hierarchical-tree primitive in `app/components/ResourceTree.tsx`; five prop sets (Data/Scaffold/Features/CogMenu/Colour) + addressable substrate (`samantha…_tree.<name>` plus 5 `_propset.*` sub-addresses); `WorkItemsTree` is the first preset wrapper.
 - **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — React surface for `.pill` family; kinds `status|count|letter|tag`, semantic tones only, derives tone from state — no user-supplied colour.
+- **`<TimeboxManager>` reusable timebox surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — single component for sprints/releases/future kinds; table-per-kind (`timebox_sprints`, `timebox_releases`); kind→table registry at `app/components/timebox/kinds.ts`; Samantha addressing 3-level (`_timebox` / `_timebox.<kind>` / `_timebox.<kind>.<name>`).
 - **Memory dir (canonical)** → [`.claude/memory/MEMORY.md`](memory/MEMORY.md) — write all auto-memory entries here; mirror to `~/.claude/projects/.../memory/` so Claude Code's auto-load matches.
 - **Commands & skills index** → [`.claude/c_tools_index.md`](c_tools_index.md) — load when user invokes a shortcut command or skill not listed above.
-
