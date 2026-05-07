@@ -435,6 +435,382 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) 
 	return states, rows.Err()
 }
 
+// CreateWorkItem inserts a new artefact row in vector_artefacts.
+// number is allocated atomically via artefact_number_sequence.
+// The default flow_state is the is_initial=true state for the subscription's
+// work artefact type default flow.
+func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, in CreateWorkItemInput) (*WorkItem, error) {
+	if s.vectorArtefactsPool == nil {
+		return nil, fmt.Errorf("vector_artefacts pool not configured")
+	}
+	if !validItemTypes[in.ItemType] {
+		return nil, fmt.Errorf("%w: item_type must be epic, story, task, or defect", ErrInvalidInput)
+	}
+	if in.StoryPoints != nil && !canHaveManualPoints(in.ItemType) {
+		return nil, fmt.Errorf("%w: story_points cannot be set on %s items", ErrInvalidInput, in.ItemType)
+	}
+	if strings.TrimSpace(in.Title) == "" {
+		return nil, fmt.Errorf("%w: title is required", ErrInvalidInput)
+	}
+
+	tx, err := s.vectorArtefactsPool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// Resolve artefact_type_id for this subscription + item_type.
+	var artefactTypeID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		SELECT id FROM artefact_types
+		WHERE subscription_id = $1
+		  AND scope = 'work'
+		  AND lower(name) = $2
+		  AND archived_at IS NULL
+		LIMIT 1`,
+		subscriptionID, in.ItemType,
+	).Scan(&artefactTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve artefact_type for %q: %w", in.ItemType, err)
+	}
+
+	// Allocate number atomically.
+	var num int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO artefact_number_sequence (subscription_id, artefact_type_id, next_num)
+		VALUES ($1, $2, 2)
+		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
+			SET next_num = artefact_number_sequence.next_num + 1
+		RETURNING next_num - 1`,
+		subscriptionID, artefactTypeID,
+	).Scan(&num)
+	if err != nil {
+		return nil, err
+	}
+
+	// Resolve default (is_initial) flow state for this type.
+	var defaultFlowStateID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		SELECT fs.id FROM flow_states fs
+		JOIN flows f ON f.id = fs.flow_id
+		WHERE f.artefact_type_id = $1
+		  AND f.is_default = TRUE
+		  AND f.archived_at IS NULL
+		  AND fs.is_initial = TRUE
+		  AND fs.archived_at IS NULL
+		LIMIT 1`,
+		artefactTypeID,
+	).Scan(&defaultFlowStateID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve default flow state: %w", err)
+	}
+
+	// Resolve workspace_id — required NOT NULL. Use first workspace for subscription
+	// (same heuristic as the ETL backfill).
+	var workspaceID uuid.UUID
+	err = s.mainPool.QueryRow(ctx, `
+		SELECT id FROM workspaces
+		WHERE subscription_id = $1 AND archived_at IS NULL
+		ORDER BY created_at ASC LIMIT 1`,
+		subscriptionID,
+	).Scan(&workspaceID)
+	if err != nil {
+		// Fall back to subscription_id as workspace_id sentinel (matches ETL).
+		workspaceID = subscriptionID
+	}
+
+	var newID uuid.UUID
+	ownerID := uuid.Nil
+	if in.OwnerID != "" {
+		ownerID, _ = uuid.Parse(in.OwnerID)
+	}
+	createdBy := uuid.Nil
+	if in.CreatedBy != "" {
+		createdBy, _ = uuid.Parse(in.CreatedBy)
+	}
+
+	var parentID *uuid.UUID
+	if in.ParentID != nil {
+		pid, err := uuid.Parse(*in.ParentID)
+		if err == nil {
+			parentID = &pid
+		}
+	}
+	var sprintID *uuid.UUID
+	if in.SprintID != nil {
+		sid, err := uuid.Parse(*in.SprintID)
+		if err == nil {
+			sprintID = &sid
+		}
+	}
+
+	// Append to existing items (position = MAX + 100).
+	var pos int
+	_ = tx.QueryRow(ctx, `
+		SELECT COALESCE(MAX(position), 0) + 100 FROM artefacts
+		WHERE subscription_id = $1
+		  AND artefact_type_id = $2
+		  AND archived_at IS NULL`,
+		subscriptionID, artefactTypeID,
+	).Scan(&pos)
+
+	err = tx.QueryRow(ctx, `
+		INSERT INTO artefacts
+			(subscription_id, workspace_id, artefact_type_id, number, title, description,
+			 flow_state_id, priority, story_points, sprint_id, parent_artefact_id,
+			 owned_by_user_id, created_by_user_id, position)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+		RETURNING id`,
+		subscriptionID, workspaceID, artefactTypeID, num,
+		in.Title, in.Description,
+		defaultFlowStateID, in.Priority, in.StoryPoints, sprintID, parentID,
+		ownerID, createdBy, pos,
+	).Scan(&newID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return s.GetWorkItem(ctx, subscriptionID, newID)
+}
+
+// PatchWorkItem applies a partial update to an artefact row.
+func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID, in PatchWorkItemInput) (*WorkItem, error) {
+	if s.vectorArtefactsPool == nil {
+		return nil, ErrNotFound
+	}
+	if in.Status != nil && !validStatuses[*in.Status] {
+		return nil, fmt.Errorf("%w: invalid status", ErrInvalidInput)
+	}
+	if in.Priority != nil && *in.Priority != "" && !validPriorities[*in.Priority] {
+		return nil, fmt.Errorf("%w: invalid priority", ErrInvalidInput)
+	}
+
+	sets := []string{"updated_at = now()"}
+	args := []any{}
+	n := 1
+
+	if in.Title != nil {
+		sets = append(sets, fmt.Sprintf("title = $%d", n))
+		args = append(args, *in.Title)
+		n++
+	}
+	if in.Description != nil {
+		sets = append(sets, fmt.Sprintf("description = $%d", n))
+		args = append(args, *in.Description)
+		n++
+	}
+	if in.FlowStateID != nil {
+		// Validate the flow_state belongs to this subscription.
+		var fsExists bool
+		err := s.vectorArtefactsPool.QueryRow(ctx, `
+			SELECT EXISTS(
+				SELECT 1 FROM flow_states fs
+				JOIN flows f ON f.id = fs.flow_id
+				JOIN artefact_types at ON at.id = f.artefact_type_id
+				WHERE fs.id = $1
+				  AND at.subscription_id = $2
+				  AND fs.archived_at IS NULL
+			)`, *in.FlowStateID, subscriptionID,
+		).Scan(&fsExists)
+		if err != nil || !fsExists {
+			return nil, fmt.Errorf("%w: flow_state_id not found", ErrInvalidInput)
+		}
+		sets = append(sets, fmt.Sprintf("flow_state_id = $%d::uuid", n))
+		args = append(args, *in.FlowStateID)
+		n++
+	}
+	if in.Priority != nil {
+		if *in.Priority == "" {
+			sets = append(sets, "priority = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("priority = $%d", n))
+			args = append(args, *in.Priority)
+			n++
+		}
+	}
+	if in.StoryPoints != nil {
+		sets = append(sets, fmt.Sprintf("story_points = $%d", n))
+		args = append(args, *in.StoryPoints)
+		n++
+	}
+	if in.SprintID != nil {
+		if *in.SprintID == "" {
+			sets = append(sets, "sprint_id = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("sprint_id = $%d::uuid", n))
+			args = append(args, *in.SprintID)
+			n++
+		}
+	}
+	if in.DueDate != nil {
+		if *in.DueDate == "" {
+			sets = append(sets, "due_date = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("due_date = $%d::date", n))
+			args = append(args, *in.DueDate)
+			n++
+		}
+	}
+
+	// WHERE clause args: id=$N, subscription_id=$N+1
+	args = append(args, id, subscriptionID)
+	idN := n
+	subN := n + 1
+
+	ct, err := s.vectorArtefactsPool.Exec(ctx,
+		fmt.Sprintf(`UPDATE artefacts SET %s
+			WHERE id = $%d AND subscription_id = $%d AND archived_at IS NULL`,
+			strings.Join(sets, ", "), idN, subN),
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if ct.RowsAffected() == 0 {
+		return nil, ErrNotFound
+	}
+	return s.GetWorkItem(ctx, subscriptionID, id)
+}
+
+// ArchiveWorkItem sets archived_at on an artefact row (soft delete).
+func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID) error {
+	if s.vectorArtefactsPool == nil {
+		return ErrNotFound
+	}
+	ct, err := s.vectorArtefactsPool.Exec(ctx, `
+		UPDATE artefacts
+		SET archived_at = now(), updated_at = now()
+		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
+		id, subscriptionID,
+	)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+type bulkRowInfo struct {
+	id       string
+	itemType string
+}
+
+// BulkOps applies one op (set_priority | set_owner | archive | set_flow_state)
+// to a batch of artefact ids in a single transaction.
+// Returns {updated, failed} even on partial failure (best-effort, not all-or-nothing).
+func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []string, op string, payload map[string]any) (BulkOpResult, error) {
+	switch op {
+	case "set_priority", "set_owner", "archive", "set_flow_state", "set_status":
+		// supported
+	default:
+		return BulkOpResult{}, fmt.Errorf("%w: unsupported op %q", ErrInvalidInput, op)
+	}
+	if len(ids) == 0 {
+		return BulkOpResult{Updated: 0}, nil
+	}
+	if s.vectorArtefactsPool == nil {
+		return BulkOpResult{}, fmt.Errorf("vector_artefacts pool not configured")
+	}
+
+	supplied := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		supplied[id] = struct{}{}
+	}
+
+	tx, err := s.vectorArtefactsPool.Begin(ctx)
+	if err != nil {
+		return BulkOpResult{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	rows, err := tx.Query(ctx, `
+		SELECT id::text, lower(at.name)
+		FROM artefacts a
+		JOIN artefact_types at ON at.id = a.artefact_type_id
+		WHERE a.subscription_id = $1 AND a.id::text = ANY($2) AND a.archived_at IS NULL
+		FOR UPDATE`,
+		subscriptionID, ids,
+	)
+	if err != nil {
+		return BulkOpResult{}, err
+	}
+	var visible []bulkRowInfo
+	for rows.Next() {
+		var r bulkRowInfo
+		if err := rows.Scan(&r.id, &r.itemType); err != nil {
+			rows.Close()
+			return BulkOpResult{}, err
+		}
+		visible = append(visible, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return BulkOpResult{}, err
+	}
+
+	visibleSet := make(map[string]struct{}, len(visible))
+	for _, r := range visible {
+		visibleSet[r.id] = struct{}{}
+	}
+
+	var result BulkOpResult
+	for id := range supplied {
+		if _, ok := visibleSet[id]; !ok {
+			result.Failed = append(result.Failed, BulkFailure{ID: id, Reason: "forbidden"})
+		}
+	}
+
+	for _, row := range visible {
+		var execErr error
+		switch op {
+		case "set_priority":
+			val, _ := payload["priority"].(string)
+			if !validPriorities[val] {
+				result.Failed = append(result.Failed, BulkFailure{ID: row.id, Reason: "invalid priority"})
+				continue
+			}
+			_, execErr = tx.Exec(ctx,
+				`UPDATE artefacts SET priority=$1, updated_at=now() WHERE id=$2::uuid`,
+				val, row.id)
+		case "set_owner":
+			ownerID, _ := payload["owner_id"].(string)
+			_, execErr = tx.Exec(ctx,
+				`UPDATE artefacts SET owned_by_user_id=$1::uuid, updated_at=now() WHERE id=$2::uuid`,
+				ownerID, row.id)
+		case "archive":
+			_, execErr = tx.Exec(ctx,
+				`UPDATE artefacts SET archived_at=now(), updated_at=now() WHERE id=$1::uuid`,
+				row.id)
+		case "set_flow_state", "set_status":
+			fsID, _ := payload["flow_state_id"].(string)
+			if fsID == "" {
+				fsID, _ = payload["status"].(string)
+			}
+			_, execErr = tx.Exec(ctx,
+				`UPDATE artefacts SET flow_state_id=$1::uuid, updated_at=now() WHERE id=$2::uuid`,
+				fsID, row.id)
+		}
+		if execErr != nil {
+			result.Failed = append(result.Failed, BulkFailure{ID: row.id, Reason: execErr.Error()})
+		} else {
+			result.Updated++
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return BulkOpResult{}, err
+	}
+	if result.Failed == nil {
+		result.Failed = []BulkFailure{}
+	}
+	return result, nil
+}
+
 // decorateOwners fetches display names for all unique owner UUIDs in items
 // from mmff_vector.users (mainPool) and populates wi.Owner on each row.
 // Skipped silently when mainPool is nil or no items have an owner set.
