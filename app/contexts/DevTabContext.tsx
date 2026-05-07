@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type DevTab = "setup" | "shortcuts" | "reports" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog";
+type DevTab = "setup" | "shortcuts" | "reports" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog" | "api-v2-tests";
 
 interface DevTabContextValue {
   activeTab: DevTab;

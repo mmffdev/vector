@@ -105,7 +105,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		n++
 	}
 	if filters.SprintID != nil {
-		extra = append(extra, fmt.Sprintf("a.sprint_id = $%d::uuid", n))
+		extra = append(extra, fmt.Sprintf("a.timebox_sprint_id = $%d::uuid", n))
 		args = append(args, *filters.SprintID)
 		n++
 	}
@@ -161,7 +161,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 			END                             AS flow_state_code,
 			a.priority,
 			a.story_points,
-			a.sprint_id::text,
+			a.timebox_sprint_id::text,
 			NULL::text                      AS sprint_ref_id,
 			NULL::text                      AS sprint_ref_alias,
 			a.parent_artefact_id::text      AS parent_id,
@@ -233,7 +233,7 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID uuid.UUID, id 
 			END                             AS flow_state_code,
 			a.priority,
 			a.story_points,
-			a.sprint_id::text,
+			a.timebox_sprint_id::text,
 			NULL::text                      AS sprint_ref_id,
 			NULL::text                      AS sprint_ref_alias,
 			a.parent_artefact_id::text      AS parent_id,
@@ -302,7 +302,7 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 			END                             AS flow_state_code,
 			a.priority,
 			a.story_points,
-			a.sprint_id::text,
+			a.timebox_sprint_id::text,
 			NULL::text                      AS sprint_ref_id,
 			NULL::text                      AS sprint_ref_alias,
 			a.parent_artefact_id::text      AS parent_id,
@@ -359,7 +359,7 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 	}
 	n := 2
 	if sprintID != nil && *sprintID != "" {
-		conds = append(conds, fmt.Sprintf("a.sprint_id = $%d::uuid", n))
+		conds = append(conds, fmt.Sprintf("a.timebox_sprint_id = $%d::uuid", n))
 		args = append(args, *sprintID)
 		n++
 	}
@@ -566,7 +566,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	err = tx.QueryRow(ctx, `
 		INSERT INTO artefacts
 			(subscription_id, workspace_id, artefact_type_id, number, title, description,
-			 flow_state_id, priority, story_points, sprint_id, parent_artefact_id,
+			 flow_state_id, priority, story_points, timebox_sprint_id, parent_artefact_id,
 			 owned_by_user_id, created_by_user_id, position)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		RETURNING id`,
@@ -647,9 +647,9 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 	if in.SprintID != nil {
 		if *in.SprintID == "" {
-			sets = append(sets, "sprint_id = NULL")
+			sets = append(sets, "timebox_sprint_id = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("sprint_id = $%d::uuid", n))
+			sets = append(sets, fmt.Sprintf("timebox_sprint_id = $%d::uuid", n))
 			args = append(args, *in.SprintID)
 			n++
 		}
@@ -738,11 +738,11 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	rows, err := tx.Query(ctx, `
-		SELECT id::text, lower(at.name)
+		SELECT a.id::text, lower(at.name)
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
 		WHERE a.subscription_id = $1 AND a.id::text = ANY($2) AND a.archived_at IS NULL
-		FOR UPDATE`,
+		FOR UPDATE OF a`,
 		subscriptionID, ids,
 	)
 	if err != nil {
@@ -1022,7 +1022,7 @@ func buildOrderBy(sort, dir string) string {
 	case "points":
 		return fmt.Sprintf("COALESCE(rp.rollup_points, a.story_points) %s NULLS LAST, a.number ASC", d)
 	case "sprint_id":
-		return fmt.Sprintf("a.sprint_id %s NULLS LAST, a.number ASC", d)
+		return fmt.Sprintf("a.timebox_sprint_id %s NULLS LAST, a.number ASC", d)
 	case "due_date":
 		return fmt.Sprintf("a.due_date %s NULLS LAST, a.number ASC", d)
 	default:

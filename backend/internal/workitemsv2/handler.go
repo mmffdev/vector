@@ -3,6 +3,7 @@ package workitemsv2
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -81,6 +82,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.svc.ListWorkItems(r.Context(), subID, f)
 	if err != nil {
+		log.Printf("workitemsv2.List: subID=%s err=%v", subID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return

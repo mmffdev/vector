@@ -1,8 +1,10 @@
 "use client";
 
-// Phase 2 PoC: Custom Fields v2 - hits vector_artefacts directly via
-// /api/v2/field-library route handlers. Workspace-wide field library;
-// adoption (artefact_type_fields) is shown but not edited from here yet.
+// Phase 2 PoC: Custom Fields v2 — workspace-wide field library.
+// PLA-0026 / Story 00510 (F4): GET list switched from /api/v2/field-library
+// (direct DB via Next.js route) to the Go-backed /api/workspace/:id/fields.
+// Writes (create/rename/archive) still go through /api/v2/field-library
+// until a Go CRUD surface ships.
 //
 // Visible 'PoC' marker so anyone landing on this page knows they're not
 // on the production custom-fields surface.
@@ -10,6 +12,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
+import { getWorkspaceFields, type WorkspaceField } from "@/app/lib/fieldsApi";
+
+// POC_WORKSPACE_ID mirrors the fixture in app/lib/v2/db.ts — both must
+// stay in sync until the PoC surfaces are retired.
+const POC_WORKSPACE_ID = "00000000-0000-0000-0000-000000000002";
 
 const FIELD_TYPES = [
   "textbox", "richtext", "integer", "decimal", "date", "boolean",
@@ -17,19 +24,8 @@ const FIELD_TYPES = [
 ] as const;
 type FieldType = typeof FIELD_TYPES[number];
 
-interface FieldLibraryItem {
-  id: string;
-  field_name: string;
-  label: string;
-  field_type: FieldType;
-  description: string | null;
-  adoption_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export default function CustomFieldsV2Page() {
-  const [items, setItems] = useState<FieldLibraryItem[]>([]);
+  const [items, setItems] = useState<WorkspaceField[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,9 +38,8 @@ export default function CustomFieldsV2Page() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch("/api/v2/field-library").then((r) => r.json());
-      if (res.error) throw new Error(res.error);
-      setItems(res.items as FieldLibraryItem[]);
+      const fields = await getWorkspaceFields(POC_WORKSPACE_ID);
+      setItems(fields);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -89,7 +84,7 @@ export default function CustomFieldsV2Page() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ label: trimmed }),
       });
-      const body = await res.json();
+      const body = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
       setEditingId(null);
       await load();
@@ -102,7 +97,7 @@ export default function CustomFieldsV2Page() {
     setError(null);
     try {
       const res = await fetch(`/api/v2/field-library/${id}`, { method: "DELETE" });
-      const body = await res.json();
+      const body = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
       setArchiveArmed(null);
       await load();
@@ -117,7 +112,7 @@ export default function CustomFieldsV2Page() {
         <h1 className="page-title">Custom Fields (v2)</h1>
         <p className="page-subtitle">
           Phase 2 PoC against vector_artefacts — workspace-wide field library.
-          Adoption count = how many artefact types currently bind the field.
+          Read path: Go-backed /api/workspace/:id/fields (F4). Write path: /api/v2/field-library (PoC only, until Go CRUD ships).
         </p>
       </header>
       <div className="form__row form__row--inline" style={{ alignItems: "center" }}>
@@ -187,7 +182,7 @@ export default function CustomFieldsV2Page() {
             No custom fields yet. Create the first one above.
           </div>
         ) : (
-          <Table<FieldLibraryItem>
+          <Table<WorkspaceField>
             pageId="custom-fields-v2"
             slot="list"
             ariaLabel="Custom fields in PoC subscription"
@@ -219,24 +214,21 @@ export default function CustomFieldsV2Page() {
                   </button>
                 ),
               },
-              { key: "field_name", header: "Slug", width: 200,
+              { key: "name", header: "Slug", width: 200,
                 kind: "custom",
-                render: (r) => <code className="form__hint">{r.field_name}</code>,
+                render: (r) => <code className="form__hint">{r.name}</code>,
               },
-              { key: "field_type", header: "Type", width: 140,
+              { key: "data_type", header: "Type", width: 140,
                 kind: "pill",
                 pillVariant: () => "neutral",
-                pillLabel: (r) => r.field_type,
+                pillLabel: (r) => r.data_type,
               },
-              { key: "adoption_count", header: "Adoption", width: 110,
-                kind: "custom",
-                render: (r) => (
-                  <span className="form__hint">
-                    {r.adoption_count} {r.adoption_count === 1 ? "type" : "types"}
-                  </span>
-                ),
+              { key: "scope", header: "Scope", width: 110,
+                kind: "pill",
+                pillVariant: () => "neutral",
+                pillLabel: (r) => r.scope,
               },
-              { key: "actions", header: "", width: 180,
+              { key: "actions", header: "", width: 160,
                 kind: "custom",
                 render: (r) => archiveArmed === r.id ? (
                   <span className="form__actions form__actions--inline">
@@ -260,10 +252,6 @@ export default function CustomFieldsV2Page() {
                     type="button"
                     className="btn btn--ghost btn--sm"
                     onClick={() => setArchiveArmed(r.id)}
-                    disabled={r.adoption_count > 0}
-                    title={r.adoption_count > 0
-                      ? "Unbind from all artefact types before archiving"
-                      : undefined}
                   >
                     Archive
                   </button>

@@ -50,6 +50,13 @@ interface AuthState {
 
 const Ctx = createContext<AuthState | null>(null);
 
+// Module-level dedup: StrictMode unmounts + remounts the component, which
+// would fire two sequential refresh() calls — each using the same one-time-use
+// rt cookie. The second call hits reuse-detection and revokes the session.
+// A ref inside the component resets to null on unmount, so it can't protect
+// across the remount. Module scope survives the full StrictMode cycle.
+let _bootstrapFlight: Promise<void> | null = null;
+
 function setSessionCookie() {
   document.cookie = "session_alive=1; Path=/; SameSite=Strict; Max-Age=604800";
 }
@@ -62,13 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  // Concurrent refresh() calls (e.g. React StrictMode firing the bootstrap
-  // effect twice, or a duplicated tab mounting fresh while the original
-  // tab is still alive) would otherwise both POST /api/auth/refresh with
-  // the same one-time-use rt cookie. The second arrival hits the
-  // refresh-token-reuse branch in backend service.go and revokes every
-  // session for the user — sending the page to /login. Sharing one
-  // in-flight promise collapses concurrent callers onto a single fetch.
+  // Mid-session dedup: collapses concurrent refresh() calls that may occur
+  // when multiple components detect a 401 simultaneously. This is a ref
+  // (not module-scope) because it should reset between user sessions.
   const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const applyLogin = useCallback((res: LoginResp) => {
@@ -97,15 +100,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setRefreshCallback(refresh);
-    // Only call refresh if a prior session might exist. session_alive is
-    // set on successful login (line above) and cleared on logout/401 —
-    // its absence guarantees no session, so calling /auth/refresh would
-    // just produce a noisy 401 in the console on every cold mount.
     const hasSessionHint =
       typeof document !== "undefined" &&
       document.cookie.split("; ").some((c) => c.startsWith("session_alive="));
     if (hasSessionHint) {
-      refresh().finally(() => setLoading(false));
+      // Use module-level guard for bootstrap: StrictMode unmounts + remounts
+      // this component, which would fire two sequential calls consuming the
+      // same one-time-use rt cookie. The ref resets on unmount so it can't
+      // protect across the remount — module scope can.
+      if (!_bootstrapFlight) {
+        _bootstrapFlight = refresh().finally(() => {
+          _bootstrapFlight = null;
+          setLoading(false);
+        });
+      } else {
+        _bootstrapFlight.finally(() => setLoading(false));
+      }
     } else {
       setLoading(false);
     }

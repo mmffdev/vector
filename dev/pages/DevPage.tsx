@@ -20,6 +20,7 @@ import DevPlansPanel from "./DevPlansPanel";
 import DevRetrosPanel from "./DevRetrosPanel";
 import DevPageHelpPanel from "./DevPageHelpPanel";
 import DevUiCatalogPanel from "./DevUiCatalogPanel";
+import DevApiV2TestsPanel from "./DevApiV2TestsPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 const TAB_LABELS: Record<string, string> = {
@@ -33,6 +34,7 @@ const TAB_LABELS: Record<string, string> = {
   icons: "Icons",
   "page-help": "Page Help",
   "ui-catalog": "UI Catalog",
+  "api-v2-tests": "API v2 Tests",
 };
 
 export default function DevPage() {
@@ -169,6 +171,12 @@ export default function DevPage() {
         >
           UI Catalog
         </button>
+        <button
+          className={`dev-tab${tab === "api-v2-tests" ? " dev-tab--active" : ""}`}
+          onClick={() => setTab("api-v2-tests")}
+        >
+          API v2 Tests
+        </button>
       </nav>
 
       {tab === "shortcuts" && <DevShortcutsPanel />}
@@ -179,6 +187,7 @@ export default function DevPage() {
       {tab === "retros" && <DevRetrosPanel />}
       {tab === "page-help" && <DevPageHelpPanel />}
       {tab === "ui-catalog" && <DevUiCatalogPanel />}
+      {tab === "api-v2-tests" && <DevApiV2TestsPanel />}
       {tab === "icons" && (
         <div className="dui-icons-host">
           <UiAppIconbrowser />

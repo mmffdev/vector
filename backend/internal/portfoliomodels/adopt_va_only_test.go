@@ -66,17 +66,19 @@ func TestAdoptSaga_VectorArtefactsOnly(t *testing.T) {
 
 	// Resolve the workspace the saga's VA-side writers will target.
 	// The saga's resolveWorkspaceID picks the lowest-id live workspace
-	// for the subscription; we mirror that here so cleanup matches.
+	// for the subscription from the `workspaces` table (plural, new in 098).
+	// Note: both `workspace` (singular, legacy) and `workspaces` (plural, new)
+	// coexist in mmff_vector; the saga uses the new table.
 	var workspaceID uuid.UUID
 	if err := vec.QueryRow(ctx, `
-		SELECT id FROM workspace
+		SELECT id FROM workspaces
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY id
 		 LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&workspaceID); err != nil {
-		t.Skipf("no live workspace for padmin subscription %s: %v", user.SubscriptionID, err)
+		t.Skipf("no live workspace in 'workspaces' table for padmin subscription %s: %v", user.SubscriptionID, err)
 	}
 
 	if err := resetAdoptionFixture(ctx, vec, user.SubscriptionID); err != nil {

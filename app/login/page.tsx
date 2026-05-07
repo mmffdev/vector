@@ -14,9 +14,14 @@ function LoginForm() {
   const search = useSearchParams();
   // Allowlist: same-origin path only — single leading slash, never "//" or "/\"
   // (which some browsers resolve as protocol-relative cross-origin URLs).
+  // Also exclude /v2/* PoC paths — login should not bounce back to dev-only surfaces.
   const rawRedirect = search.get("redirect");
   const explicitRedirect =
-    rawRedirect && /^\/(?![\\/])/.test(rawRedirect) ? rawRedirect : null;
+    rawRedirect &&
+    /^\/(?![\\/])/.test(rawRedirect) &&
+    !rawRedirect.startsWith("/v2/")
+      ? rawRedirect
+      : null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -287,6 +287,19 @@ export default function AdoptionOverlay({
     [clearRetryTimer, modelId],
   );
 
+  // Ref to track the current machine state so handleFrame can invoke dispatchFrame
+  // without depending on stale closures. This mirrors the statuses/terminal/lastFail
+  // React state, synced via useEffect to avoid setState delays.
+  const machineStateRef = useRef<AdoptionMachineState>(initialAdoptionState());
+  useEffect(() => {
+    machineStateRef.current = {
+      statuses,
+      terminal: allDone ? "done" : lastFail ? "fail" : "running",
+      lastFail,
+      doneEvent: null,
+    };
+  }, [statuses, allDone, lastFail]);
+
   // SSE lifecycle: uses fetch() so Authorization: Bearer is sent correctly.
   // EventSource cannot set custom headers; the backend requires Bearer auth.
   // Re-runs when streamEpoch bumps (after a retry) so a fresh stream opens.
@@ -305,89 +318,38 @@ export default function AdoptionOverlay({
     let curEvent = "";
     let curData = "";
 
-    // Closure-local runtime handler. Owns the React side-effects (setState,
-    // ctrl.abort, retry scheduling, reportError, callbacks). The pure
-    // module-level `dispatchFrame` mirrors the state-transition portion for
-    // unit tests; the two MUST stay in lockstep.
+    // Closure-local runtime handler. Delegates state transitions to the pure
+    // `dispatchFrame` function (which unit tests verify), then applies
+    // React side-effects (setState, ctrl.abort, retry scheduling, etc).
     function handleFrame(eventName: string, data: string) {
-      if (eventName === "step") {
-        let payload: StepEventPayload;
-        try {
-          payload = JSON.parse(data) as StepEventPayload;
-        } catch {
-          return;
-        }
-        const name = payload.name as AdoptionStepName;
-        if (!ADOPTION_STEPS.includes(name)) return;
-        setStatuses((prev) => {
-          const next = { ...prev };
-          if (payload.status === "fail") {
-            next[name] = "failed";
-            return next;
-          }
-          if (payload.status === "complete" || payload.status === "done") {
-            next[name] = "complete";
-          } else {
-            next[name] = "in-progress";
-            const idx = ADOPTION_STEPS.indexOf(name);
-            for (let i = 0; i < idx; i++) {
-              const earlier = ADOPTION_STEPS[i];
-              if (next[earlier] === "idle" || next[earlier] === "in-progress") {
-                next[earlier] = "complete";
-              }
-            }
-          }
-          return next;
-        });
-      } else if (eventName === "done") {
-        let donePayload: AdoptionDoneEvent | null = null;
-        try {
-          donePayload = JSON.parse(data) as AdoptionDoneEvent;
-        } catch {
-          // still complete even if payload is malformed
-        }
-        setStatuses((prev) => {
-          const next = { ...prev };
-          for (const s of ADOPTION_STEPS) {
-            if (next[s] !== "failed") next[s] = "complete";
-          }
-          return next;
-        });
+      const currentState = machineStateRef.current;
+      const nextState = dispatchFrame(currentState, eventName, data);
+      if (nextState === currentState) return;
+
+      setStatuses(nextState.statuses);
+      if (nextState.terminal === "done" && currentState.terminal !== "done") {
         setAllDone(true);
         setLastFail(null);
-        if (donePayload && onDone) onDone(donePayload);
+        if (nextState.doneEvent && onDone) onDone(nextState.doneEvent);
         ctrl.abort();
-      } else if (eventName === "fail") {
-        let failPayload: AdoptionFailEvent | null = null;
-        try {
-          failPayload = JSON.parse(data) as AdoptionFailEvent;
-        } catch {
-          return;
-        }
-        if (!failPayload) return;
-        if (ADOPTION_STEPS.includes(failPayload.step as AdoptionStepName)) {
-          setStatuses((prev) => ({
-            ...prev,
-            [failPayload!.step as AdoptionStepName]: "failed",
-          }));
-        }
-        setLastFail(failPayload);
+      } else if (nextState.terminal === "fail" && currentState.terminal !== "fail") {
+        setLastFail(nextState.lastFail);
         ctrl.abort();
         const attempt = retryCountRef.current;
-        if (attempt < ADOPTION_MAX_RETRIES) {
+        if (attempt < ADOPTION_MAX_RETRIES && nextState.lastFail) {
           setRetryCount(attempt + 1);
           scheduleRetry(attempt);
-        } else {
+        } else if (nextState.lastFail) {
           setExhausted(true);
-          void reportError(failPayload.error_code, {
+          void reportError(nextState.lastFail.error_code, {
             surface: "AdoptionOverlay",
             model_id: modelId,
             subscription_id: subscriptionId,
-            step: failPayload.step,
-            message: failPayload.message,
+            step: nextState.lastFail.step,
+            message: nextState.lastFail.message,
             retries: attempt,
           });
-          if (onFail) onFail(failPayload);
+          if (onFail) onFail(nextState.lastFail);
         }
       }
     }

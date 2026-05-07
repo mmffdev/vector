@@ -81,7 +81,7 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
 
       const matching = tmplRes.items.find((t) => t.item_type === itemType);
       if (matching) {
-        setTemplate(matching);
+        setTemplate({ ...matching, fields: matching.fields ?? [] });
       } else {
         const created = await api<Template>("/api/work-item-templates", {
           method: "POST",
