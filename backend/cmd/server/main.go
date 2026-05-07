@@ -45,6 +45,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
+	"github.com/mmffdev/vector-backend/internal/tenantsettings"
 	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
@@ -249,6 +250,12 @@ func main() {
 	workspacesSvc := workspaces.New(pool, auditLog, permResolver)
 	workspacesH := workspaces.NewHandler(workspacesSvc)
 
+	// Tenant settings (master_record_tenant). One row per subscription;
+	// auto-seeded by trigger on subscription INSERT (mig 126). Service
+	// handles all validation; handler maps ValidationError → 422.
+	tenantSettingsSvc := tenantsettings.New(pool)
+	tenantSettingsH := tenantsettings.NewHandler(tenantSettingsSvc)
+
 	workItemsSvc := workitems.New(pool)
 	workItemsH := workitems.NewHandler(workItemsSvc)
 
@@ -283,6 +290,21 @@ func main() {
 			return // tier lookup failed — reconciler will warm on first poll
 		}
 		libReleasesRec.Touch(ctx, u.SubscriptionID, tier)
+	})
+
+	// PLA-0010 / story 00368 — per-user write-rate limit, layered on
+	// top of the existing per-IP limiters. Built ONCE and reused across
+	// authenticated route groups so a single user's write quota is
+	// shared across the whole authenticated surface (the entire point —
+	// otherwise a caller can fan writes across endpoints to evade the
+	// cap). Anonymous traffic on routes that mount this falls back to a
+	// security.ClientIP-derived key, which honours the trusted-CIDR
+	// gate from story 00348.
+	userWriteLimiter := security.LimitByUserOnWrites(60, time.Minute, func(req *http.Request) (string, error) {
+		if u := auth.UserFromCtx(req.Context()); u != nil {
+			return "user:" + u.ID.String(), nil
+		}
+		return "ip:" + security.ClientIP(req), nil
 	})
 
 	r := chi.NewRouter()
@@ -475,6 +497,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/theme-pack", usersH.GetThemePack)
 		r.Put("/theme-pack", usersH.SetThemePack)
@@ -488,6 +511,7 @@ func main() {
 		// normal UI churn (load + a handful of PUTs per session), blocks
 		// authed-session abuse.
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/catalogue", navH.Catalogue)
 		r.Get("/prefs", navH.GetPrefs)
@@ -520,6 +544,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/{pageId}", userTabOrderH.Get)
 		r.Put("/{pageId}", userTabOrderH.Put)
@@ -531,6 +556,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", customPagesH.List)
 		r.Post("/", customPagesH.Create)
@@ -555,6 +581,7 @@ func main() {
 		// code). Tech-debt: own code addressables.page_help.admin — see PLA-0007 G3.
 		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 		r.Get("/", addressablesH.PageHelpAdminList)
 		r.Put("/{addressable_id}", addressablesH.PageHelpAdminPut)
 		r.Delete("/{addressable_id}", addressablesH.PageHelpAdminDelete)
@@ -566,6 +593,7 @@ func main() {
 		// own code addressables.admin — see PLA-0007 G3.
 		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 		r.Patch("/{id}/helpable", addressablesH.AdminUpdateHelpable)
 	})
 
@@ -579,6 +607,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		// Padmin-only: list of MMFF-published bundles for the adoption
 		// picker. Registered BEFORE /{id} so chi resolves the static
@@ -625,6 +654,7 @@ func main() {
 		// code). Tech-debt: own code library.releases.ack — see PLA-0007 G3.
 		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", libReleasesH.List)
 		r.Get("/count", libReleasesH.Count)
@@ -640,6 +670,7 @@ func main() {
 		// code). Tech-debt: own code subscription.layers.update — see PLA-0007 G3.
 		r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		// Subscription layer reads + writes (stories 00062–00065).
 		r.Get("/layers", layersBatchH.GetLayers)
@@ -654,6 +685,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Post("/report", errorsReportH.Report)
 	})
@@ -670,6 +702,7 @@ func main() {
 		// inherits the gate by default.
 		r.Use(orgDesignSvc.ClampMiddleware)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Post("/", userStoriesH.Create)
 		r.Get("/{id}", userStoriesH.Get)
@@ -682,6 +715,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Post("/", defectsH.Create)
 		r.Get("/{id}", defectsH.Get)
@@ -698,6 +732,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(240, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Post("/move", rankH.Move)
 	})
@@ -707,6 +742,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", workItemsH.List)
 		r.Post("/", workItemsH.Create)
@@ -730,6 +766,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", workItemsH.ListSprints)
 		r.Post("/", workItemsH.CreateSprint)
@@ -743,6 +780,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", workItemsH.ListCustomFields)
 		r.Post("/", workItemsH.CreateCustomField)
@@ -756,6 +794,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", workItemsH.ListTemplates)
 		r.Post("/", workItemsH.CreateTemplate)
@@ -773,6 +812,7 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
 		r.Use(httprate.LimitByIP(60, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Get("/", flowsH.List)
 	})
@@ -789,6 +829,7 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		// Workspace clamp (PLA-0006 / story 00378): every list-style
 		// read narrows to one workspace, resolved per-request from
@@ -843,7 +884,20 @@ func main() {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 		workspacesH.Mount(r)
+	})
+
+	// ---- /api/tenant-settings (master_record_tenant) ----
+	// One row per subscription; reads + writes scoped to the caller's
+	// tenant via auth context. Auth + fresh-password gate is the only
+	// guard — there's no per-row permission catalogue.
+	r.Route("/api/tenant-settings", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		tenantSettingsH.Mount(r)
 	})
 
 	// ---- /api/portfolio-items ----
@@ -854,6 +908,7 @@ func main() {
 		// /api/user-stories block above for the rationale.
 		r.Use(orgDesignSvc.ClampMiddleware)
 		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
 
 		r.Post("/", portfolioItemsH.Create)
 		r.Get("/{id}", portfolioItemsH.Get)
