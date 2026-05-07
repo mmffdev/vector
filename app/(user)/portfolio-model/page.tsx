@@ -138,7 +138,7 @@ type StateView =
   | { kind: "overlay"; modelId: string; stateId: string }
   | { kind: "adopted"; modelId: string }
   | { kind: "missing-bundle" }
-  | { kind: "preview"; bundle: BundleDTO };
+  | { kind: "preview"; bundle: BundleDTO; workspaceId: string };
 
 export default function PortfolioModelPage() {
   const { user, loading: authLoading } = useAuth();
@@ -237,7 +237,7 @@ export default function PortfolioModelPage() {
           artifacts: [],
           terminology: [],
         };
-        setView({ kind: "preview", bundle });
+        setView({ kind: "preview", bundle, workspaceId });
       } catch (e) {
         if (cancelled) return;
         if (e instanceof ApiError && e.status === 404) {
@@ -362,26 +362,30 @@ function PortfolioRouterBody({
       </div>
     );
   }
-  return <BundleView bundle={view.bundle} />;
+  return <BundleView bundle={view.bundle} workspaceId={view.workspaceId} />;
 }
 
-function BundleView({ bundle }: { bundle: BundleDTO }) {
-  // Layers come exclusively from obj_strategy_types_layers — the tenant's own
-  // copy written at adoption time. The library bundle is never used as a
-  // display source after adoption so library-side edits never bleed through.
+function BundleView({ bundle, workspaceId }: { bundle: BundleDTO; workspaceId: string }) {
+  // PLA-0026 / Story 00509 (F3): layers come from
+  // vector_artefacts.artefact_types (scope='strategy', live, ordered by
+  // sort_order) via GET /api/workspace/{id}/portfolio/layers — the
+  // legacy /api/subscription/layers route (mmff_vector
+  // obj_strategy_types_layers mirror) is retired post-cutover. The
+  // library bundle is never used as a display source after adoption.
   const [localLayers, setLocalLayers] = useState<LayerDTO[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    api<LayerDTO[]>("/api/subscription/layers").then((rows) => {
+    api<LayerDTO[]>(`/api/workspace/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
       if (!cancelled) setLocalLayers(rows.sort((a, b) => a.sort_order - b.sort_order));
     }).catch(() => {
-      // On error fall back to bundle layers so the page isn't blank,
-      // but edits will fail since these IDs are library UUIDs not subscription UUIDs.
+      // On error fall back to bundle layers so the page isn't blank.
+      // Post-F1 the BundleDTO carries an empty layers array, so this
+      // surfaces as an empty preview rather than stale library prose.
       if (!cancelled) setLocalLayers([...bundle.layers].sort((a, b) => a.sort_order - b.sort_order));
     });
     return () => { cancelled = true; };
-  }, [bundle.layers]);
+  }, [bundle.layers, workspaceId]);
 
   const m = bundle.model;
 
