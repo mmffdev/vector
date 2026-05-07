@@ -27,7 +27,7 @@ export function useWorkItemFlowStates(): WorkItemFlowState[] {
   const [states, setStates] = useState<WorkItemFlowState[]>([]);
 
   useEffect(() => {
-    api<{ states: WorkItemFlowState[] }>("/api/work-items/flow-states")
+    api<{ states: WorkItemFlowState[] }>("/api/v2/work-items/flow-states")
       .then((r) => setStates(r.states))
       .catch(() => {});
   }, []);

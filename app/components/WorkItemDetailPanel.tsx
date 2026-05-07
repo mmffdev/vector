@@ -257,7 +257,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
 
   useEffect(() => {
     setFvLoading(true);
-    api<{ field_values: FieldValue[] }>(`/api/work-items/${item.id}/field-values`)
+    api<{ field_values: FieldValue[] }>(`/api/v2/work-items/${item.id}/field-values`)
       .then((r) => setFieldValues(r.field_values))
       .catch(() => setFieldValues([]))
       .finally(() => setFvLoading(false));
@@ -277,7 +277,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
       body.string_value = value;
     }
     const res = await api<{ field_values: FieldValue[] }>(
-      `/api/work-items/${item.id}/field-values`,
+      `/api/v2/work-items/${item.id}/field-values`,
       { method: "PUT", body: JSON.stringify([body]) }
     );
     setFieldValues(res.field_values);

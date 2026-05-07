@@ -768,7 +768,7 @@ export function useWorkItemsWindow(
       if (pageSize === "all") {
         const CHUNK = 1000;
         const first = await api<{ items: WorkItem[]; total: number }>(
-          `/api/work-items?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
+          `/api/v2/work-items?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
         );
         const totalRoots = first.total ?? first.items.length;
         if (totalRoots <= first.items.length) {
@@ -781,7 +781,7 @@ export function useWorkItemsWindow(
         const rest = await Promise.all(
           offsets.map((o) =>
             api<{ items: WorkItem[]; total: number }>(
-              `/api/work-items?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
+              `/api/v2/work-items?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
             ),
           ),
         );
@@ -791,7 +791,7 @@ export function useWorkItemsWindow(
       }
       const offset = pageIndex * pageSize;
       const res = await api<{ items: WorkItem[]; total: number }>(
-        `/api/work-items?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
+        `/api/v2/work-items?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
       );
       setWindowRoots(res.items);
       setTotal(res.total ?? res.items.length);
@@ -807,7 +807,7 @@ export function useWorkItemsWindow(
       setWindowRoots((prev) =>
         prev.map((r) => (r.id === id ? ({ ...r, ...body } as WorkItem) : r)),
       );
-      api<WorkItem>(`/api/work-items/${id}`, {
+      api<WorkItem>(`/api/v2/work-items/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       })
@@ -822,7 +822,7 @@ export function useWorkItemsWindow(
 
   const fetchChildren = useCallback(async (parentId: string) => {
     const res = await api<{ items: WorkItem[] }>(
-      `/api/work-items/${parentId}/children`,
+      `/api/v2/work-items/${parentId}/children`,
     );
     return res.items;
   }, []);

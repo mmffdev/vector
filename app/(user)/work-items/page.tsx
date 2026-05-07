@@ -55,7 +55,7 @@ export default function WorkItemsPage() {
       tasks: number;
       defects: number;
       blocked: number;
-    }>(`/api/work-items/summary${qs ? "?" + qs : ""}`)
+    }>(`/api/v2/work-items/summary${qs ? "?" + qs : ""}`)
       .then((r) => setSummary(r))
       .catch(() => setSummary(null));
   }, [filters.sprint_id]);
