@@ -15,6 +15,7 @@
     "lint:no-raw-table": "python3 dev/scripts/lint_no_raw_table.py",
     "lint:tab-deep-link": "python3 dev/scripts/lint_tab_deep_link.py",
     "audit:dashboard": "python3 dev/scripts/audit_dashboard.py",
+    "audit:field-library": "PGPASSWORD=$(grep '^DB_PASSWORD=' backend/.env.local | cut -d= -f2-) /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d vector_artefacts -f dev/scripts/audit_field_library_orphans.sql",
     "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'",
     "test": "vitest run",
     "test:watch": "vitest"

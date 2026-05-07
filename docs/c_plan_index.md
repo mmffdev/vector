@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0025`
+**Last issued:** `PLA-0026`
 
 ## Format
 
@@ -46,6 +46,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0023` | Vector Artefacts Cutover — move work-items + artefacts from `mmff_vector` to dedicated `vector_artefacts` DB | 2026-05-07 | complete (2026-05-07; dev cutover done, prod pending) |
 | `PLA-0024` | Subscriptions → master_record_tenant table rename + organisation settings | 2026-05-07 | active |
 | `PLA-0025` | Work-Items Full v2 Cutover — all 12 v2 endpoints against vector_artefacts | 2026-05-07 | complete |
+| `PLA-0026` | Per-Workspace Portfolio Adoption Cutover to vector_artefacts — artefact_field_library + scope discriminator + workspace whitelist + master_record_portfolio + saga rewrite + re-adoption placeholder | 2026-05-07 | active |
 
 ## Deletion log
 

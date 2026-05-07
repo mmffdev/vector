@@ -1,0 +1,59 @@
+# PLA-0026 / Story 00476 (M1) — Pre-migration audit of vector_artefacts.field_library
+#
+# Run on: 2026-05-07 by Claude
+# Source script: dev/scripts/audit_field_library_orphans.sql
+# Target DB:     vector_artefacts (port 5435, dev tunnel)
+#
+# ASSERTIONS (gate M2 — rename + scope add):
+#   1. NULL-subscription rows = 0           — pass (constraint enforced; verified 0)
+#   2. Cross-tenant field_name duplicates   — pass (0 rows; no global-candidates today)
+#   3. Inbound FK rows (atf, afv)           — pass (both 0; rename is safe)
+#
+# CONCLUSION: M2 may proceed.
+# - 1 row total, 0 live, 1 archived. No live tenant data depends on field_library today.
+# - Scope discriminator can default to 'tenant' for the surviving archived row, OR the
+#   row may be dropped during M2 (it is archived and unreferenced).
+# - Reasoning notes for M2 author: there is no risk of silently mis-scoping tenant
+#   fields into 'global' on the rename, because no field_name is shared across tenants.
+#
+# -----------------------------------------------------------------------------
+# Raw query output:
+
+=== [M1] Pre-migration audit of field_library (vector_artefacts) ===
+
+--- A. Row totals ---
+ total_rows | live_rows | archived_rows 
+------------+-----------+---------------
+          1 |         0 |             1
+(1 row)
+
+--- B. NULL-subscription audit (must be 0; column is NOT NULL) ---
+ null_subscription_rows 
+------------------------
+                      0
+(1 row)
+
+--- C. Distinct tenants represented ---
+ distinct_tenants 
+------------------
+                0
+(1 row)
+
+--- D. Per-tenant row distribution ---
+ subscription_id | rows 
+-----------------+------
+(0 rows)
+
+--- E. field_name reuse across tenants (global-candidate audit) ---
+--- A field_name shared across N tenants is a candidate for scope=global ---
+ field_name | tenants | total_rows 
+------------+---------+------------
+(0 rows)
+
+--- F. Inbound FK reference counts (dependency audit for M2 rename) ---
+ atf_rows | afv_rows 
+----------+----------
+        0 |        0
+(1 row)
+
+=== [M1] Audit complete ===
