@@ -1,13 +1,6 @@
 # Vector artefacts — production cutover & backfill plan
 
-> Status: **PoC complete, cutover not started.** The `vector_artefacts` database is
-> populated with seed types/flows and proven through three v2 pages
-> (`/v2/work-items`, `/v2/portfolio-model`, `/v2/custom-fields`) wired to
-> Next.js route handlers. This doc describes how the **production Go handlers**
-> in `backend/internal/{workitems,portfolioitems,portfoliomodels,flows,...}`
-> migrate off the renamed `obj_*` family in `mmff_vector` and onto
-> `vector_artefacts`. No code in this plan has shipped yet — open it when you
-> sit down to do the cutover; otherwise this is a sealed reference.
+> Status: **Dev cutover complete** (2026-05-07). WORK_ITEMS_V2=true enabled in dev; v2 endpoint serving 11,363 artefacts from vector_artefacts. Production cutover pending (see deferred-work register).
 
 Cross-refs: [`c_schema.md`](c_schema.md) (live `mmff_vector` map),
 [`c_polymorphic_writes.md`](c_polymorphic_writes.md) (writer-rules pattern),

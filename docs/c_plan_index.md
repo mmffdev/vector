@@ -43,7 +43,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0020` | E2E Human-Friendly Feedback System — Message constants, Toast layer, mmff-cli, Hints | 2026-05-06 | active |
 | `PLA-0021` | ResourceTree — generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap) | 2026-05-06 | active |
 | `PLA-0022` | Auth bootstrap dedup — share AuthProvider.refresh() in-flight promise to prevent tab-duplicate logout | 2026-05-06 | active |
-| `PLA-0023` | Postgres Performance Migration — observability, indexes, JSONB GIN, materialised views, PgBouncer (R045) | 2026-05-07 | active |
+| `PLA-0023` | Vector Artefacts Cutover — move work-items + artefacts from `mmff_vector` to dedicated `vector_artefacts` DB | 2026-05-07 | complete (2026-05-07; dev cutover done, prod pending) |
 
 ## Deletion log
 
