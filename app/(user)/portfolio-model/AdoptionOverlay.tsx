@@ -71,6 +71,119 @@ export interface AdoptionFailEvent {
   message: string;
 }
 
+// Terminal phase of the SSE-driven state machine. Once `done` or `fail` is
+// reached, subsequent `step` frames are ignored — the saga is over.
+export type AdoptionTerminal = "running" | "done" | "fail";
+
+/**
+ * Pure state machine for adoption SSE frames.
+ *
+ * Mirrors the side-effect-free portion of the runtime SSE handler so it can
+ * be unit-tested without mounting the component or stubbing the network.
+ * Given the current state and an inbound frame, returns the next state.
+ *
+ * Contract:
+ *   - "step" frames advance per-step status; an in-progress step also
+ *     promotes any earlier idle/in-progress steps to complete (catch-up
+ *     behaviour matches the runtime closure).
+ *   - "done" frame flips every non-failed step to complete and sets the
+ *     terminal to "done".
+ *   - "fail" frame flips the named step to failed and sets the terminal
+ *     to "fail".
+ *   - Once the terminal is "done" or "fail", further "step" frames are
+ *     ignored. This guarantees no further visual progress after a
+ *     terminal event — the contract assertion the F2 tests pin down.
+ *
+ * Malformed JSON in `data` returns the input state unchanged.
+ */
+export interface AdoptionMachineState {
+  statuses: Record<AdoptionStepName, StepStatus>;
+  terminal: AdoptionTerminal;
+  lastFail: AdoptionFailEvent | null;
+  doneEvent: AdoptionDoneEvent | null;
+}
+
+export function initialAdoptionState(): AdoptionMachineState {
+  return {
+    statuses: initialStatuses(),
+    terminal: "running",
+    lastFail: null,
+    doneEvent: null,
+  };
+}
+
+export function dispatchFrame(
+  state: AdoptionMachineState,
+  eventName: string,
+  data: string,
+): AdoptionMachineState {
+  if (eventName === "step") {
+    if (state.terminal !== "running") return state;
+    let payload: StepEventPayload;
+    try {
+      payload = JSON.parse(data) as StepEventPayload;
+    } catch {
+      return state;
+    }
+    const name = payload.name as AdoptionStepName;
+    if (!ADOPTION_STEPS.includes(name)) return state;
+    const next: Record<AdoptionStepName, StepStatus> = { ...state.statuses };
+    if (payload.status === "fail") {
+      next[name] = "failed";
+    } else if (payload.status === "complete" || payload.status === "done") {
+      next[name] = "complete";
+    } else {
+      next[name] = "in-progress";
+      const idx = ADOPTION_STEPS.indexOf(name);
+      for (let i = 0; i < idx; i++) {
+        const earlier = ADOPTION_STEPS[i];
+        if (next[earlier] === "idle" || next[earlier] === "in-progress") {
+          next[earlier] = "complete";
+        }
+      }
+    }
+    return { ...state, statuses: next };
+  }
+  if (eventName === "done") {
+    let donePayload: AdoptionDoneEvent | null = null;
+    try {
+      donePayload = JSON.parse(data) as AdoptionDoneEvent;
+    } catch {
+      // still complete even if payload is malformed
+    }
+    const next: Record<AdoptionStepName, StepStatus> = { ...state.statuses };
+    for (const s of ADOPTION_STEPS) {
+      if (next[s] !== "failed") next[s] = "complete";
+    }
+    return {
+      statuses: next,
+      terminal: "done",
+      lastFail: null,
+      doneEvent: donePayload,
+    };
+  }
+  if (eventName === "fail") {
+    let failPayload: AdoptionFailEvent | null = null;
+    try {
+      failPayload = JSON.parse(data) as AdoptionFailEvent;
+    } catch {
+      return state;
+    }
+    if (!failPayload) return state;
+    const next: Record<AdoptionStepName, StepStatus> = { ...state.statuses };
+    if (ADOPTION_STEPS.includes(failPayload.step as AdoptionStepName)) {
+      next[failPayload.step as AdoptionStepName] = "failed";
+    }
+    return {
+      ...state,
+      statuses: next,
+      terminal: "fail",
+      lastFail: failPayload,
+    };
+  }
+  return state;
+}
+
 export interface AdoptionOverlayProps {
   modelId: string;
   subscriptionId: string;
@@ -192,7 +305,11 @@ export default function AdoptionOverlay({
     let curEvent = "";
     let curData = "";
 
-    function dispatchFrame(eventName: string, data: string) {
+    // Closure-local runtime handler. Owns the React side-effects (setState,
+    // ctrl.abort, retry scheduling, reportError, callbacks). The pure
+    // module-level `dispatchFrame` mirrors the state-transition portion for
+    // unit tests; the two MUST stay in lockstep.
+    function handleFrame(eventName: string, data: string) {
       if (eventName === "step") {
         let payload: StepEventPayload;
         try {
@@ -299,7 +416,7 @@ export default function AdoptionOverlay({
           for (const line of lines) {
             if (line === "") {
               // Frame boundary — dispatch if we have an event name.
-              if (curEvent) dispatchFrame(curEvent, curData);
+              if (curEvent) handleFrame(curEvent, curData);
               curEvent = "";
               curData = "";
             } else if (line.startsWith(":")) {
