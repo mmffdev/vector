@@ -71,7 +71,7 @@ func (r *Resolver) PermissionsFor(ctx context.Context, userID uuid.UUID) (map[Co
 
 	rows, err := r.pool.Query(ctx, `
 		SELECT p.code
-		  FROM role_permissions rp
+		  FROM roles_permissions rp
 		  JOIN permissions p ON p.id = rp.permission_id
 		 WHERE rp.role_id = $1`, roleID)
 	if err != nil {

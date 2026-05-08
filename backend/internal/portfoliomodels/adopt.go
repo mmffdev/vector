@@ -476,7 +476,7 @@ func (o *Orchestrator) resolveWorkspaceID(ctx context.Context, subscriptionID uu
 	var ws uuid.UUID
 	err := o.VectorPool.QueryRow(ctx, `
 		SELECT id
-		  FROM workspaces
+		  FROM master_record_workspaces
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY id

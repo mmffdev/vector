@@ -510,7 +510,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	// (same heuristic as the ETL backfill).
 	var workspaceID uuid.UUID
 	err = s.mainPool.QueryRow(ctx, `
-		SELECT id FROM workspaces
+		SELECT id FROM master_record_workspaces
 		WHERE subscription_id = $1 AND archived_at IS NULL
 		ORDER BY created_at ASC LIMIT 1`,
 		subscriptionID,

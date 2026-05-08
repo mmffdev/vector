@@ -17,7 +17,7 @@ import (
 //
 // Postgres cannot enforce foreign keys across databases. Every
 // `vector_artefacts.<table>.workspace_id` is a SOFT reference to
-// `mmff_vector.workspaces.id`; the application layer is supposed to validate
+// `mmff_vector.master_record_workspaces.id`; the application layer is supposed to validate
 // before insert (see db/artefacts_schema/001_init_vector_artefacts.sql top
 // comment). This test stands in for the missing FK by ASSERTING that no live
 // (un-archived) row in any VA table carries a workspace_id that is absent
@@ -107,9 +107,9 @@ func TestCrossDBCanary_WorkspaceReferences(t *testing.T) {
 	defer va.Close()
 
 	// Step 1: load the authoritative workspace id set from mmff_vector.
-	rows, err := vec.Query(ctx, `SELECT id FROM workspaces`)
+	rows, err := vec.Query(ctx, `SELECT id FROM master_record_workspaces`)
 	if err != nil {
-		t.Fatalf("load workspaces from mmff_vector: %v", err)
+		t.Fatalf("load master_record_workspaces from mmff_vector: %v", err)
 	}
 	known := make(map[uuid.UUID]struct{}, 64)
 	for rows.Next() {
@@ -122,12 +122,12 @@ func TestCrossDBCanary_WorkspaceReferences(t *testing.T) {
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		t.Fatalf("rows.Err on workspaces load: %v", err)
+		t.Fatalf("rows.Err on master_record_workspaces load: %v", err)
 	}
 	if len(known) == 0 {
 		// Belt-and-braces — empty workspaces would render every VA row an
 		// orphan. If this happens we are pointed at the wrong DB.
-		t.Skipf("mmff_vector.workspaces returned 0 rows — refusing to run canary against an empty source-of-truth")
+		t.Skipf("mmff_vector.master_record_workspaces returned 0 rows — refusing to run canary against an empty source-of-truth")
 	}
 
 	// Step 2: per VA table, pull distinct workspace_id values for live rows
@@ -181,7 +181,7 @@ func TestCrossDBCanary_WorkspaceReferences(t *testing.T) {
 	})
 	msg := fmt.Sprintf("cross-DB canary FAILED: %d orphan workspace_id reference(s) in vector_artefacts:\n", len(orphans))
 	for _, o := range orphans {
-		msg += fmt.Sprintf("  %-30s workspace_id=%s (no row in mmff_vector.workspaces)\n", o.Table, o.WorkspaceID)
+		msg += fmt.Sprintf("  %-30s workspace_id=%s (no row in mmff_vector.master_record_workspaces)\n", o.Table, o.WorkspaceID)
 	}
 	t.Fatal(msg)
 }

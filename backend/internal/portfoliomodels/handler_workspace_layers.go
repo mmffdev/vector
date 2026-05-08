@@ -226,7 +226,7 @@ func (h *WorkspaceLayersHandler) isWorkspaceMember(
 	err := h.VectorPool.QueryRow(ctx, `
 		SELECT EXISTS (
 		    SELECT 1
-		      FROM workspace_roles
+		      FROM roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id      = $2
 		       AND revoked_at  IS NULL

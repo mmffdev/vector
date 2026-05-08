@@ -225,7 +225,7 @@ func WithWorkspaceIDForTest(ctx context.Context, id uuid.UUID) context.Context {
 // Defined as an interface so tests can swap a fake without standing
 // up workspaces.Service. Production wiring (cmd/server/main.go) passes
 // PoolWorkspaceLookup, an adapter that runs pure SELECTs against
-// `workspaces` and `workspace_roles` — those reads sit safely outside
+// `workspaces` and `roles_workspaces` — those reads sit safely outside
 // the workspaces sole-writer boundary, which gates writes only.
 type WorkspaceLookup interface {
 	// FirstLiveWorkspace returns the actor's first live workspace in
@@ -275,7 +275,7 @@ type PoolWorkspaceLookup struct {
 func (l PoolWorkspaceLookup) FirstLiveWorkspace(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := l.Pool.QueryRow(ctx, `
-		SELECT id FROM workspaces
+		SELECT id FROM master_record_workspaces
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY created_at ASC
@@ -291,7 +291,7 @@ func (l PoolWorkspaceLookup) FirstLiveWorkspace(ctx context.Context, subscriptio
 func (l PoolWorkspaceLookup) ResolveSlug(ctx context.Context, subscriptionID uuid.UUID, slug string) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := l.Pool.QueryRow(ctx, `
-		SELECT id FROM workspaces
+		SELECT id FROM master_record_workspaces
 		 WHERE subscription_id = $1
 		   AND slug = $2
 		   AND archived_at IS NULL
@@ -312,7 +312,7 @@ func (l PoolWorkspaceLookup) ResolveRef(ctx context.Context, subscriptionID uuid
 	if id, err := uuid.Parse(ref); err == nil {
 		var got uuid.UUID
 		qerr := l.Pool.QueryRow(ctx, `
-			SELECT id FROM workspaces
+			SELECT id FROM master_record_workspaces
 			 WHERE id              = $1
 			   AND subscription_id = $2
 			   AND archived_at IS NULL
@@ -331,7 +331,7 @@ func (l PoolWorkspaceLookup) HasActiveRole(ctx context.Context, workspaceID, use
 	var ok bool
 	err := l.Pool.QueryRow(ctx, `
 		SELECT EXISTS(
-		    SELECT 1 FROM workspace_roles
+		    SELECT 1 FROM roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id      = $2
 		       AND revoked_at IS NULL

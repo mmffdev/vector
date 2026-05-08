@@ -32,7 +32,7 @@ func TestPackageBoundary(t *testing.T) {
 		t.Skip("ripgrep not installed; CI runs the boundary check via the lint step")
 	}
 
-	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(org_nodes|org_node_roles|org_node_view_state|org_levels)\b`
+	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(org_nodes|roles_org_nodes|org_node_view_state|org_levels)\b`
 
 	cmd := exec.Command("rg",
 		"--no-heading", "--line-number",
@@ -67,7 +67,7 @@ func TestPackageBoundary(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Fatalf("orgdesign write boundary violated — these files write org_nodes/org_node_roles/org_node_view_state/org_levels directly instead of going through backend/internal/orgdesign/:\n%s",
+		t.Fatalf("orgdesign write boundary violated — these files write org_nodes/roles_org_nodes/org_node_view_state/org_levels directly instead of going through backend/internal/orgdesign/:\n%s",
 			strings.Join(violations, "\n"))
 	}
 }

@@ -219,7 +219,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	for _, r := range []models.Role{models.RoleUser, models.RolePAdmin, models.RoleGAdmin} {
 		_ = r // keep r in scope for the closure below
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_roles (page_id, role) VALUES ($1, $2)
+			INSERT INTO roles_pages (page_id, role) VALUES ($1, $2)
 			ON CONFLICT (page_id, role) DO NOTHING`, pageID, string(r)); err != nil {
 			return "", err
 		}

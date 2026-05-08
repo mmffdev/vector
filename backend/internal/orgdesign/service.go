@@ -784,7 +784,7 @@ func (s *Service) GrantRole(
 	// on a freshly-issued grant.
 	var existingID uuid.UUID
 	err = tx.QueryRow(ctx, `
-		SELECT id FROM org_node_roles
+		SELECT id FROM roles_org_nodes
 		 WHERE node_id = $1 AND user_id = $2 AND revoked_at IS NULL
 		 LIMIT 1
 	`, nodeID, userID).Scan(&existingID)
@@ -802,7 +802,7 @@ func (s *Service) GrantRole(
 		var hasAdmin bool
 		err := tx.QueryRow(ctx, `
 			SELECT EXISTS(
-			    SELECT 1 FROM org_node_roles
+			    SELECT 1 FROM roles_org_nodes
 			     WHERE node_id = $1 AND role = 'admin' AND revoked_at IS NULL
 			)
 		`, nodeID).Scan(&hasAdmin)
@@ -817,7 +817,7 @@ func (s *Service) GrantRole(
 	var newID uuid.UUID
 	var grantedAt time.Time
 	err = tx.QueryRow(ctx, `
-		INSERT INTO org_node_roles
+		INSERT INTO roles_org_nodes
 		    (subscription_id, node_id, user_id, role, can_redelegate, granted_by)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, granted_at
@@ -848,7 +848,7 @@ func (s *Service) GrantRole(
 // the API layer if they want).
 func (s *Service) RevokeRole(ctx context.Context, subscriptionID, grantID, revokedBy uuid.UUID) error {
 	tag, err := s.pool.Exec(ctx, `
-		UPDATE org_node_roles
+		UPDATE roles_org_nodes
 		   SET revoked_at = NOW(), revoked_by = $1
 		 WHERE id = $2 AND subscription_id = $3 AND revoked_at IS NULL
 	`, revokedBy, grantID, subscriptionID)
@@ -1233,7 +1233,7 @@ func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uui
 	rows, err := s.pool.Query(ctx, `
 		WITH RECURSIVE grants AS (
 		    SELECT n.id
-		      FROM org_node_roles r
+		      FROM roles_org_nodes r
 		      JOIN org_nodes n ON n.id = r.node_id
 		     WHERE r.subscription_id = $1
 		       AND r.user_id = $2

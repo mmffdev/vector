@@ -111,7 +111,7 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 	var workspaceID uuid.UUID
 	err := h.VectorPool.QueryRow(r.Context(), `
 		SELECT id
-		  FROM workspaces
+		  FROM master_record_workspaces
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY id

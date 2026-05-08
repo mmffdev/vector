@@ -135,7 +135,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
 			FALSE
 		FROM pages p
-		JOIN page_roles pr ON pr.page_id = p.id
+		JOIN roles_pages pr ON pr.page_id = p.id
 		JOIN user_nav_profiles d ON d.id = $4::uuid AND d.is_default = TRUE
 		WHERE p.created_by IS NULL
 		  AND p.subscription_id IS NULL

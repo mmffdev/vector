@@ -65,7 +65,7 @@ func (s *Service) GrantRole(
 	// Idempotent: same (workspace, user) with an active grant returns it.
 	var existingID uuid.UUID
 	err = tx.QueryRow(ctx, `
-		SELECT id FROM workspace_roles
+		SELECT id FROM roles_workspaces
 		 WHERE workspace_id = $1 AND user_id = $2 AND revoked_at IS NULL
 		 LIMIT 1
 	`, workspaceID, userID).Scan(&existingID)
@@ -83,7 +83,7 @@ func (s *Service) GrantRole(
 		var hasAdmin bool
 		if err := tx.QueryRow(ctx, `
 			SELECT EXISTS(
-			    SELECT 1 FROM workspace_roles
+			    SELECT 1 FROM roles_workspaces
 			     WHERE workspace_id = $1 AND role = 'admin' AND revoked_at IS NULL
 			)
 		`, workspaceID).Scan(&hasAdmin); err != nil {
@@ -96,7 +96,7 @@ func (s *Service) GrantRole(
 
 	var newID uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO workspace_roles
+		INSERT INTO roles_workspaces
 		    (subscription_id, workspace_id, user_id, role, can_redelegate, granted_by)
 		VALUES ($1, $2, $3, $4, FALSE, $5)
 		RETURNING id
@@ -156,7 +156,7 @@ func (s *Service) RevokeRole(
 	}
 
 	tag, err := tx.Exec(ctx, `
-		UPDATE workspace_roles
+		UPDATE roles_workspaces
 		   SET revoked_at = NOW(),
 		       revoked_by = $1,
 		       updated_at = NOW()
@@ -207,7 +207,7 @@ func (s *Service) ListRoles(ctx context.Context, subscriptionID, workspaceID uui
 		SELECT id, subscription_id, workspace_id, user_id, role,
 		       can_redelegate, granted_by, granted_at,
 		       revoked_at, revoked_by, created_at, updated_at
-		  FROM workspace_roles
+		  FROM roles_workspaces
 		 WHERE workspace_id = $1
 		   AND subscription_id = $2
 		   AND revoked_at IS NULL

@@ -117,7 +117,7 @@ func TestGetAdoptionState_VAPoolNil(t *testing.T) {
 	// the test collapses into NoWorkspace coverage.
 	var ws uuid.UUID
 	err := pool.QueryRow(context.Background(),
-		`SELECT id FROM workspaces
+		`SELECT id FROM master_record_workspaces
 		  WHERE subscription_id = $1 AND archived_at IS NULL
 		  ORDER BY id LIMIT 1`,
 		user.SubscriptionID,
@@ -162,7 +162,7 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 	// Resolve the caller's workspace — same convention the handler uses.
 	var ws uuid.UUID
 	if err := vec.QueryRow(ctx,
-		`SELECT id FROM workspaces
+		`SELECT id FROM master_record_workspaces
 		  WHERE subscription_id = $1 AND archived_at IS NULL
 		  ORDER BY id LIMIT 1`,
 		user.SubscriptionID,
@@ -236,7 +236,7 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 
 	var ws uuid.UUID
 	if err := vec.QueryRow(ctx,
-		`SELECT id FROM workspaces
+		`SELECT id FROM master_record_workspaces
 		  WHERE subscription_id = $1 AND archived_at IS NULL
 		  ORDER BY id LIMIT 1`,
 		user.SubscriptionID,
@@ -313,7 +313,7 @@ func TestGetAdoptionState_Adopted(t *testing.T) {
 
 	var ws uuid.UUID
 	if err := vec.QueryRow(ctx,
-		`SELECT id FROM workspaces
+		`SELECT id FROM master_record_workspaces
 		  WHERE subscription_id = $1 AND archived_at IS NULL
 		  ORDER BY id LIMIT 1`,
 		user.SubscriptionID,

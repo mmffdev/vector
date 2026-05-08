@@ -144,7 +144,7 @@ func (h *Handler) canRead(ctx context.Context, u *models.User, workspaceID uuid.
 	// Tenancy: workspace must belong to caller's subscription.
 	var ownerSub uuid.UUID
 	err := h.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM workspace WHERE id = $1`, workspaceID,
+		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`, workspaceID,
 	).Scan(&ownerSub)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -166,7 +166,7 @@ func (h *Handler) canRead(ctx context.Context, u *models.User, workspaceID uuid.
 	var member bool
 	err = h.vectorPool.QueryRow(ctx, `
 		SELECT EXISTS (
-		    SELECT 1 FROM workspace_roles
+		    SELECT 1 FROM roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id = $2
 		       AND revoked_at IS NULL

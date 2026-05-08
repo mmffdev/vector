@@ -312,7 +312,7 @@ func (s *Service) AssignPermissions(
 
 	for _, pid := range permissionIDs {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO role_permissions (role_id, permission_id, granted_by)
+			INSERT INTO roles_permissions (role_id, permission_id, granted_by)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (role_id, permission_id) DO NOTHING`,
 			roleID, pid, actor)
@@ -353,7 +353,7 @@ func (s *Service) RevokePermissions(
 	}
 
 	_, err = s.Pool.Exec(ctx, `
-		DELETE FROM role_permissions
+		DELETE FROM roles_permissions
 		 WHERE role_id = $1
 		   AND permission_id = ANY($2)`, roleID, permissionIDs)
 	if err != nil {
@@ -377,7 +377,7 @@ func (s *Service) ListPermissionsForRole(ctx context.Context, roleID, actorTenan
 		return nil, err
 	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT permission_id FROM role_permissions WHERE role_id = $1`, roleID)
+		`SELECT permission_id FROM roles_permissions WHERE role_id = $1`, roleID)
 	if err != nil {
 		return nil, err
 	}

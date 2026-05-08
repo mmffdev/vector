@@ -139,7 +139,7 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
 		       COALESCE(array_agg(pr.role::text ORDER BY pr.role) FILTER (WHERE pr.role IS NOT NULL), '{}') AS roles
 		FROM pages p
-		LEFT JOIN page_roles pr ON pr.page_id = p.id
+		LEFT JOIN roles_pages pr ON pr.page_id = p.id
 		WHERE p.created_by IS NULL
 		  AND (p.subscription_id IS NULL OR p.kind = 'entity')
 		GROUP BY p.id

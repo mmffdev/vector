@@ -70,7 +70,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 		// go before roles. password_resets and other user-FK leaves go
 		// before users.
 		stmts := []string{
-			`DELETE FROM role_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
+			`DELETE FROM roles_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM entity_stakeholders         WHERE subscription_id = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,

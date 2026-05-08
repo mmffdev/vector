@@ -37,7 +37,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
-	"github.com/mmffdev/vector-backend/internal/workspaces"
+	"github.com/mmffdev/vector-backend/internal/master_record_workspaces"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -90,9 +90,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 		// then the legacy `workspace` table (different beast); then
 		// users + roles + the subscription row.
 		stmts := []string{
-			`DELETE FROM workspace_roles             WHERE subscription_id = $1`,
-			`DELETE FROM workspaces                  WHERE subscription_id = $1`,
-			`DELETE FROM role_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
+			`DELETE FROM roles_workspaces             WHERE subscription_id = $1`,
+			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
+			`DELETE FROM roles_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM entity_stakeholders         WHERE subscription_id = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,
@@ -153,7 +153,7 @@ func seedWorkspace(t *testing.T, pool *pgxpool.Pool, subID, createdBy uuid.UUID,
 	t.Helper()
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO workspaces (subscription_id, name, slug, created_by)
+		INSERT INTO master_record_workspaces (subscription_id, name, slug, created_by)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`, subID, name, slug, createdBy).Scan(&id); err != nil {
@@ -182,7 +182,7 @@ func newRouter(pool *pgxpool.Pool, u *models.User) (http.Handler, *workspaces.Se
 	h := workspaces.NewHandler(svc)
 	r := chi.NewRouter()
 	r.Use(withUser(u))
-	r.Route("/api/workspaces", func(r chi.Router) {
+	r.Route("/api/master_record_workspaces", func(r chi.Router) {
 		h.Mount(r)
 	})
 	return r, svc
@@ -231,7 +231,7 @@ func TestList_ReturnsLiveWorkspaces(t *testing.T) {
 	live := seedWorkspace(t, pool, subA, actor.ID, "Live", "live-"+uuid.NewString()[:6])
 	archived := seedWorkspace(t, pool, subA, actor.ID, "Archived", "arc-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
+		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
 		actor.ID, archived,
 	); err != nil {
 		t.Fatalf("archive seed: %v", err)
@@ -239,7 +239,7 @@ func TestList_ReturnsLiveWorkspaces(t *testing.T) {
 	other := seedWorkspace(t, pool, subB, bUser.ID, "Other", "other-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, actor)
-	w := doJSON(t, r, http.MethodGet, "/api/workspaces", nil)
+	w := doJSON(t, r, http.MethodGet, "/api/master_record_workspaces", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status: want 200, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -284,7 +284,7 @@ func TestCreate_201OnSuccess(t *testing.T) {
 
 	r, _ := newRouter(pool, actor)
 	slug := "ws-" + uuid.NewString()[:8]
-	w := doJSON(t, r, http.MethodPost, "/api/workspaces", map[string]any{
+	w := doJSON(t, r, http.MethodPost, "/api/master_record_workspaces", map[string]any{
 		"name": "Ops",
 		"slug": slug,
 	})
@@ -318,7 +318,7 @@ func TestCreate_409OnDuplicateSlug(t *testing.T) {
 	seedWorkspace(t, pool, subID, actor.ID, "First", slug)
 
 	r, _ := newRouter(pool, actor)
-	w := doJSON(t, r, http.MethodPost, "/api/workspaces", map[string]any{
+	w := doJSON(t, r, http.MethodPost, "/api/master_record_workspaces", map[string]any{
 		"name": "Second",
 		"slug": slug,
 	})
@@ -350,7 +350,7 @@ func TestArchive_403ForNonGadmin(t *testing.T) {
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Doomed", "doomed-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, user)
-	w := doJSON(t, r, http.MethodPost, "/api/workspaces/"+wsID.String()+"/archive", nil)
+	w := doJSON(t, r, http.MethodPost, "/api/master_record_workspaces/"+wsID.String()+"/archive", nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("non-gadmin archive: want 403, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -358,7 +358,7 @@ func TestArchive_403ForNonGadmin(t *testing.T) {
 	// Sanity: the row is still live in the DB.
 	var archivedAt *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text FROM workspaces WHERE id = $1`, wsID,
+		`SELECT archived_at::text FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("verify still live: %v", err)
 	}
@@ -382,7 +382,7 @@ func TestArchive_200ForGadmin(t *testing.T) {
 	_ = keep
 
 	r, _ := newRouter(pool, gadmin)
-	w := doJSON(t, r, http.MethodPost, "/api/workspaces/"+target.String()+"/archive", nil)
+	w := doJSON(t, r, http.MethodPost, "/api/master_record_workspaces/"+target.String()+"/archive", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("gadmin archive: want 200, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -391,7 +391,7 @@ func TestArchive_200ForGadmin(t *testing.T) {
 	var archivedAt *string
 	var archivedBy *uuid.UUID
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text, archived_by FROM workspaces WHERE id = $1`,
+		`SELECT archived_at::text, archived_by FROM master_record_workspaces WHERE id = $1`,
 		target,
 	).Scan(&archivedAt, &archivedBy); err != nil {
 		t.Fatalf("verify archived: %v", err)
@@ -420,7 +420,7 @@ func TestPatch_RenamesWorkspace(t *testing.T) {
 	wsID := seedWorkspace(t, pool, subID, actor.ID, "Old Name", "ws-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, actor)
-	w := doJSON(t, r, http.MethodPatch, "/api/workspaces/"+wsID.String(), map[string]any{
+	w := doJSON(t, r, http.MethodPatch, "/api/master_record_workspaces/"+wsID.String(), map[string]any{
 		"name": "New Name",
 	})
 	if w.Code != http.StatusNoContent {
@@ -429,7 +429,7 @@ func TestPatch_RenamesWorkspace(t *testing.T) {
 
 	var got string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT name FROM workspaces WHERE id = $1`, wsID,
+		`SELECT name FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&got); err != nil {
 		t.Fatalf("verify rename: %v", err)
 	}
@@ -454,14 +454,14 @@ func TestRestore_403ForNonGadmin(t *testing.T) {
 
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Limbo", "limbo-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
+		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
 		gadmin.ID, wsID,
 	); err != nil {
 		t.Fatalf("seed archive: %v", err)
 	}
 
 	r, _ := newRouter(pool, user)
-	w := doJSON(t, r, http.MethodPost, "/api/workspaces/"+wsID.String()+"/restore", nil)
+	w := doJSON(t, r, http.MethodPost, "/api/master_record_workspaces/"+wsID.String()+"/restore", nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("non-gadmin restore: want 403, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -469,7 +469,7 @@ func TestRestore_403ForNonGadmin(t *testing.T) {
 	// Sanity: still archived.
 	var archivedAt *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text FROM workspaces WHERE id = $1`, wsID,
+		`SELECT archived_at::text FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("verify still archived: %v", err)
 	}
@@ -488,21 +488,21 @@ func TestRestore_200ForGadmin(t *testing.T) {
 	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Returnee", "ret-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
+		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
 		gadmin.ID, wsID,
 	); err != nil {
 		t.Fatalf("seed archive: %v", err)
 	}
 
 	r, _ := newRouter(pool, gadmin)
-	w := doJSON(t, r, http.MethodPost, "/api/workspaces/"+wsID.String()+"/restore", nil)
+	w := doJSON(t, r, http.MethodPost, "/api/master_record_workspaces/"+wsID.String()+"/restore", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("gadmin restore: want 200, got %d; body=%s", w.Code, w.Body.String())
 	}
 
 	var archivedAt *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text FROM workspaces WHERE id = $1`, wsID,
+		`SELECT archived_at::text FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("verify restored: %v", err)
 	}
@@ -538,7 +538,7 @@ func TestDelete_403ForNonGadmin(t *testing.T) {
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Doomed", "doomed-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, user)
-	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/"+wsID.String(), nil)
+	w := doJSON(t, r, http.MethodDelete, "/api/master_record_workspaces/"+wsID.String(), nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("non-gadmin delete: want 403, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -546,7 +546,7 @@ func TestDelete_403ForNonGadmin(t *testing.T) {
 	// Sanity: row still present.
 	var n int
 	if err := pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM workspaces WHERE id = $1`, wsID,
+		`SELECT COUNT(*) FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&n); err != nil {
 		t.Fatalf("verify still present: %v", err)
 	}
@@ -572,7 +572,7 @@ func TestDelete_404ForCrossTenant(t *testing.T) {
 	wsB := seedWorkspace(t, pool, subB, gadminB.ID, "B", "b-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, gadminA)
-	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/"+wsB.String(), nil)
+	w := doJSON(t, r, http.MethodDelete, "/api/master_record_workspaces/"+wsB.String(), nil)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("cross-tenant delete: want 404, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -594,7 +594,7 @@ func TestDelete_501WhenNoOrphans(t *testing.T) {
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Target", "tgt-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, gadmin)
-	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/"+wsID.String(), nil)
+	w := doJSON(t, r, http.MethodDelete, "/api/master_record_workspaces/"+wsID.String(), nil)
 	if w.Code != http.StatusNotImplemented {
 		t.Fatalf("delete (no orphans, guard disabled): want 501, got %d; body=%s", w.Code, w.Body.String())
 	}
@@ -602,7 +602,7 @@ func TestDelete_501WhenNoOrphans(t *testing.T) {
 	// Sanity: workspace was NOT deleted (501 = not implemented yet).
 	var n int
 	if err := pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM workspaces WHERE id = $1`, wsID,
+		`SELECT COUNT(*) FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&n); err != nil {
 		t.Fatalf("verify still present: %v", err)
 	}
@@ -622,7 +622,7 @@ func TestDelete_400OnMalformedID(t *testing.T) {
 	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
 
 	r, _ := newRouter(pool, gadmin)
-	w := doJSON(t, r, http.MethodDelete, "/api/workspaces/not-a-uuid", nil)
+	w := doJSON(t, r, http.MethodDelete, "/api/master_record_workspaces/not-a-uuid", nil)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("malformed id: want 400, got %d; body=%s", w.Code, w.Body.String())
 	}

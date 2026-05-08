@@ -72,7 +72,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 
 	var w Workspace
 	err = tx.QueryRow(ctx, `
-		INSERT INTO workspaces (subscription_id, name, slug, description, created_by)
+		INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, subscription_id, name, slug, description,
 		          created_by, created_at, updated_at, archived_at, archived_by
@@ -95,7 +95,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 	// workspace back. Migration 101 closes the matching gap for
 	// pre-this-change rows.
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO workspace_roles (subscription_id, workspace_id, user_id, role, granted_by)
+		INSERT INTO roles_workspaces (subscription_id, workspace_id, user_id, role, granted_by)
 		VALUES ($1, $2, $3, 'admin', $3)
 	`, in.SubscriptionID, w.ID, in.ActorID); err != nil {
 		return Workspace{}, err
@@ -174,7 +174,7 @@ func (s *Service) CreateDefault(
 
 	var w Workspace
 	err := tx.QueryRow(ctx, `
-		INSERT INTO workspaces (subscription_id, name, slug, description, created_by)
+		INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, subscription_id, name, slug, description,
 		          created_by, created_at, updated_at, archived_at, archived_by
@@ -195,7 +195,7 @@ func (s *Service) CreateDefault(
 	// every topology call. Caller owns commit, so a roll-back of the
 	// signup also rolls back the role grant.
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO workspace_roles (subscription_id, workspace_id, user_id, role, granted_by)
+		INSERT INTO roles_workspaces (subscription_id, workspace_id, user_id, role, granted_by)
 		VALUES ($1, $2, $3, 'admin', $3)
 	`, subscriptionID, w.ID, firstUserID); err != nil {
 		return Workspace{}, err
@@ -241,7 +241,7 @@ func (s *Service) Rename(ctx context.Context, subscriptionID, workspaceID uuid.U
 		return err
 	}
 	if _, err := tx.Exec(ctx,
-		`UPDATE workspaces SET name = $1, updated_at = NOW() WHERE id = $2`,
+		`UPDATE master_record_workspaces SET name = $1, updated_at = NOW() WHERE id = $2`,
 		name, workspaceID,
 	); err != nil {
 		return err
@@ -298,7 +298,7 @@ func (s *Service) Archive(ctx context.Context, subscriptionID, workspaceID, acto
 	var liveSiblings int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*)
-		  FROM workspaces
+		  FROM master_record_workspaces
 		 WHERE subscription_id = $1
 		   AND id <> $2
 		   AND archived_at IS NULL
@@ -310,7 +310,7 @@ func (s *Service) Archive(ctx context.Context, subscriptionID, workspaceID, acto
 	}
 
 	if _, err := tx.Exec(ctx, `
-		UPDATE workspaces
+		UPDATE master_record_workspaces
 		   SET archived_at = NOW(),
 		       archived_by = $1,
 		       updated_at  = NOW()
@@ -368,7 +368,7 @@ func (s *Service) Restore(ctx context.Context, subscriptionID, workspaceID, acto
 	var collide bool
 	if err := tx.QueryRow(ctx, `
 		SELECT EXISTS(
-		    SELECT 1 FROM workspaces
+		    SELECT 1 FROM master_record_workspaces
 		     WHERE subscription_id = $1
 		       AND slug = $2
 		       AND archived_at IS NULL
@@ -381,7 +381,7 @@ func (s *Service) Restore(ctx context.Context, subscriptionID, workspaceID, acto
 	}
 
 	if _, err := tx.Exec(ctx, `
-		UPDATE workspaces
+		UPDATE master_record_workspaces
 		   SET archived_at = NULL,
 		       archived_by = NULL,
 		       updated_at  = NOW()
@@ -419,7 +419,7 @@ func (s *Service) Get(ctx context.Context, subscriptionID, workspaceID uuid.UUID
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id, subscription_id, name, slug, description,
 		       created_by, created_at, updated_at, archived_at, archived_by
-		  FROM workspaces
+		  FROM master_record_workspaces
 		 WHERE id = $1 AND subscription_id = $2
 	`, workspaceID, subscriptionID).Scan(
 		&w.ID, &w.SubscriptionID, &w.Name, &w.Slug, &w.Description,
@@ -451,7 +451,7 @@ func (s *Service) ListBySubscription(ctx context.Context, subscriptionID uuid.UU
 	q := `
 		SELECT id, subscription_id, name, slug, description,
 		       created_by, created_at, updated_at, archived_at, archived_by
-		  FROM workspaces
+		  FROM master_record_workspaces
 		 WHERE subscription_id = $1
 	`
 	if !includeArchived {
@@ -493,7 +493,7 @@ func (s *Service) loadWorkspace(ctx context.Context, tx pgx.Tx, workspaceID, sub
 	err := tx.QueryRow(ctx, `
 		SELECT id, subscription_id, name, slug, description,
 		       created_by, created_at, updated_at, archived_at, archived_by
-		  FROM workspaces
+		  FROM master_record_workspaces
 		 WHERE id = $1
 		 FOR UPDATE
 	`, workspaceID).Scan(
