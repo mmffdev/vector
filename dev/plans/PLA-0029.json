@@ -1,0 +1,112 @@
+{
+  "id": "PLA-0029",
+  "title": "API Contract Protection & Blast Radius Toolchain",
+  "date_created": "2026-05-08",
+  "date_started": "2026-05-08",
+  "date_last_updated": "2026-05-08",
+  "date_finished": "2026-05-08",
+  "scope": "<p>Install a four-layer API contract protection toolchain: drift detection scripts for the Go chi router vs <code>openapi.yaml</code> and for frontend <code>api()</code> callers vs the spec; a version-controlled pre-push hook with a <code>[breaking]</code> escape token; a snapshot + blast radius reporter (<code>npm run api:snap</code>); a Dev panel tab rendering the report on demand; and a stubbed GitHub Actions workflow ready for when a remote is added.</p>",
+  "value": "<p>Prevents the Go router from silently drifting from the OpenAPI spec, and catches frontend callers referencing undocumented endpoints before they reach production. The breaking-change gate with an explicit <code>[breaking]</code> escape hatch makes intentional breaks visible in git history. The blast radius report gives reviewers a one-glance summary of what changed between spec versions.</p>",
+  "implementation_plan": [
+    "Task 1: check_routes.sh — Go chi router vs openapi.yaml drift detector (Python heredoc parser tracking brace-depth stack for nested r.Route/r.Group/r.Mount blocks).",
+    "Task 2: check_callers.py — frontend api()/apiInfra()/apiV2() callers vs spec; side effects: caller-map.json + dead-apis.txt; dead-api-exemptions.txt allow-list.",
+    "Task 3: snap_api.sh + initial v1 snapshot — auto-numbers vN, oasdiff changelog → blast-radius-latest.md, CHANGELOG.md row.",
+    "Task 4: pre-push.sh + npm scripts — version-controlled hook source (api:snap, api:check, api:install-hooks in package.json); hook not auto-installed.",
+    "Task 5: /api/dev/api-changelog Next.js route — reads api-snapshots/* and returns JSON with changelog, caller_map, dead_apis, snapshot_version, snapshot_date.",
+    "Task 6: DevApiChangelogPanel + DevPage tab — three sections (Blast Radius, Caller Map filterable table, Dead APIs list); Refresh button; registered in DevPage nav.",
+    "Task 7: GitHub Actions workflow stub — api-map + api-protect jobs mirroring pre-push hook; inert until GitHub remote added.",
+    "Task 8: docs/c_c_lint_rules.md + README — api:check rule added to lint table; API contract toolchain section in README with oasdiff install + usage.",
+    "Task 9: dev/plans/PLA-0029.json — this file."
+  ],
+  "areas_impacted": [
+    "Dev toolchain: dev/scripts/check_routes.sh, dev/scripts/check_callers.py, dev/scripts/snap_api.sh, dev/scripts/pre-push.sh",
+    "API: app/api/dev/api-changelog/route.ts",
+    "Dev panel: dev/pages/DevApiChangelogPanel.tsx, dev/pages/DevPage.tsx",
+    "CI: .github/workflows/api-contracts.yml",
+    "Artefacts: api-snapshots/v1.yaml, caller-map.json, dead-apis.txt, blast-radius-latest.md, CHANGELOG.md",
+    "Docs: docs/c_c_lint_rules.md, README.md",
+    "Package: package.json (3 new scripts)"
+  ],
+  "feature_list": [
+    "check_routes.sh: chi router path reconstruction via Python brace-depth stack parser",
+    "check_callers.py: api()/apiInfra()/apiV2() call-site scanner with TS generic support",
+    "api-snapshots/: versioned spec snapshots with oasdiff blast-radius reports",
+    "pre-push hook: blocks pushes with undocumented routes or breaking changes; [breaking] escape token",
+    "GitHub Actions: api-map + api-protect jobs (stubbed)",
+    "Dev panel: API Changelog tab with filterable caller map and dead-API list",
+    "npm scripts: api:snap, api:check, api:install-hooks"
+  ],
+  "features_extended": [],
+  "features_removed": [],
+  "work_item_backlog": [
+    { "order": 1, "title": "check_routes.sh — Go router vs spec", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 2, "title": "check_callers.py — frontend callers vs spec", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 3, "title": "snap_api.sh + initial v1 snapshot", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 4, "title": "pre-push.sh + npm scripts", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 5, "title": "/api/dev/api-changelog Next.js route", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 6, "title": "DevApiChangelogPanel + DevPage tab", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 7, "title": "GitHub Actions workflow stub", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 8, "title": "docs/c_c_lint_rules + README updates", "story_id": null, "card_url": null, "status": "completed" },
+    { "order": 9, "title": "dev/plans/PLA-0029.json", "story_id": null, "card_url": null, "status": "completed" }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "npm run api:check exits 0 with 0 errors (warnings for undocumented spec paths are acceptable)",
+      "proven_by": "Run npm run api:check — check_routes.sh and check_callers.py both exit 0",
+      "story_id": null,
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "api-snapshots/v1.yaml exists and matches openapi.yaml at commit 4d5707b",
+      "proven_by": "diff api-snapshots/v1.yaml openapi.yaml returns 0",
+      "story_id": null,
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "GET /api/dev/api-changelog returns JSON with snapshot_version: 'v1' and caller_map with >0 entries",
+      "proven_by": "curl http://localhost:5101/api/dev/api-changelog | python3 -m json.tool",
+      "story_id": null,
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "Dev panel at /dev shows API Changelog tab rendering caller map and dead-API list",
+      "proven_by": "Browser: http://localhost:5101/dev → API Changelog tab",
+      "story_id": null,
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": ".github/workflows/api-contracts.yml is valid YAML with api-map and api-protect jobs",
+      "proven_by": "python3 -c \"import yaml; yaml.safe_load(open('.github/workflows/api-contracts.yml'))\"",
+      "story_id": null,
+      "card_url": null,
+      "done": true
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "7 real spec drift items remain in openapi.yaml (timebox sprints, work-items/bulk, workspace fields, etc.) — pre-push hook will block pushes until these are documented or the hook is not installed",
+      "mitigation": "Hook is not auto-installed (manual npm run api:install-hooks). Spec drift cleanup is a follow-up task, not a blocker for this plan."
+    },
+    {
+      "impact": 1,
+      "risk": "oasdiff package was renamed from github.com/tufin to github.com/oasdiff — any cached install of the old path will silently use the wrong binary",
+      "mitigation": "All scripts use resolve_oasdiff() with GOPATH fallback and the correct module path is documented in README and lint rules."
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "PLA-0028 — Samantha API Rename", "href": "dev/plans/PLA-0028.json" },
+    { "kind": "internal", "label": "API contract lint rules detail", "href": "docs/c_c_lint_rules.md" },
+    { "kind": "internal", "label": "openapi.yaml", "href": "openapi.yaml" },
+    { "kind": "internal", "label": "api-snapshots/CHANGELOG.md", "href": "api-snapshots/CHANGELOG.md" }
+  ]
+}
