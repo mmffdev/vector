@@ -216,7 +216,7 @@ export default function PortfolioModelPage() {
         }
         const workspaceId = workspaces[0].id;
 
-        const mr = await api<MasterRecordDTO>(
+        const mr = await apiV2<MasterRecordDTO>(
           `/portfolio/master_record?workspace_id=${encodeURIComponent(workspaceId)}`,
         );
         if (cancelled) return;

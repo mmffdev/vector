@@ -51,6 +51,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
+	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/workitemsv2"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -356,6 +357,12 @@ func main() {
 	var sprintH *timeboxsprints.Handler
 	if vaPool != nil {
 		sprintH = timeboxsprints.NewHandler(timeboxsprints.NewService(vaPool))
+	}
+
+	// timebox releases REST handler — mirrors sprints, no adjacency rule.
+	var releaseH *timeboxreleases.Handler
+	if vaPool != nil {
+		releaseH = timeboxreleases.NewHandler(timeboxreleases.NewService(vaPool))
 	}
 
 	flowsSvc := flows.New(pool)
@@ -1091,6 +1098,41 @@ func main() {
 				http.Error(w, "timebox sprints not enabled", http.StatusServiceUnavailable)
 			})
 		}
+
+		// ---- /timeboxes/releases ----
+		if releaseH != nil {
+			r.Route("/timeboxes/releases", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+
+				r.Get("/", releaseH.List)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/", releaseH.Create)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/bulk-create", releaseH.BulkCreate)
+				r.Get("/{id}", releaseH.Get)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Put("/{id}", releaseH.Update)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Delete("/{id}", releaseH.Delete)
+			})
+		} else {
+			r.Get("/timeboxes/releases", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "timebox releases not enabled", http.StatusServiceUnavailable)
+			})
+		}
+
+		// ---- /portfolio/master_record (PLA-0026 B9 / PLA-0030 T4a) ----
+		// Per-workspace read of master_record_portfolio (vector_artefacts).
+		// mmff_vector used only for tenancy/membership gate inside handler.
+		r.Route("/portfolio", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			portfolioMasterRecordH.Mount(r)
+		})
 
 		// ---- /workspace/{id}/fields (PLA-0026 B11 / PLA-0030 T3) ----
 		// Admitted field set for one workspace. Auth + tenancy + membership

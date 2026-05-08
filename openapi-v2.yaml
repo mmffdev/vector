@@ -646,6 +646,72 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ── Portfolio Master Record ───────────────────────────────────────────────
+
+  /portfolio/master_record:
+    get:
+      tags: [portfolio]
+      summary: Get portfolio master record for a workspace
+      operationId: v2_getPortfolioMasterRecord
+      description: |
+        Returns the master_record_portfolio row for the given workspace.
+        404 covers both "workspace not in your tenant" and "no model adopted"
+        (leak-resistant). Tenant admins (padmin/gadmin) bypass workspace
+        membership check.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Workspace ID
+      responses:
+        '200':
+          description: Portfolio master record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  model_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  model_name:
+                    type: string
+                  model_description:
+                    type: string
+                    nullable: true
+                  adopted_at:
+                    type: string
+                    format: date-time
+                  adopted_by_user_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                  archived_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # ── Portfolio Layers ──────────────────────────────────────────────────────
 
   /workspace/{id}/portfolio/layers:

@@ -17,6 +17,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 | `/timeboxes/sprints` (full CRUD + bulk-create) | `vaPool` | ✅ done | PLA-0027 + PLA-0030 T2; all mutations in v2 block, `WorkItemsSettingsEdit` gate on writes |
 | `/workspace/{id}/fields` | `vaPool` | ✅ done | PLA-0030 T3 (2026-05-08); `artefact_field_library` + `artefact_workspace_fields`; mmff_vector used only for tenancy gate |
 | `/workspace/{id}/portfolio/layers` | `vaPool` | ✅ done | PLA-0030 T3 (2026-05-08); `artefact_types` scope=strategy; mmff_vector used only for tenancy gate |
+| `/portfolio/master_record` | `vaPool` | ✅ done | PLA-0030 T4a (2026-05-08); `master_record_portfolio` in vector_artefacts; mmff_vector tenancy gate only |
 
 ---
 
@@ -26,7 +27,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 |---|---|---|---|
 | `/topology` | `pool` (mmff_vector) | `org_nodes` / `org_node_roles` not yet in `vector_artefacts` | Topology data migration plan (not yet created) |
 | `/portfolio-models` | `libPools.RO` (library DB) | Library DB is a separate read-only pool; not a `vector_artefacts` candidate — needs architectural decision on whether portfolio models move or stay library-scoped | PLA-0026 completion + architectural decision |
-| `/portfolio` (master record) | `pool` | `master_record_tenant` / `master_record_portfolio` still in mmff_vector | PLA-0024 (subscriptions cutover) + PLA-0026 (portfolio adoption cutover) |
+| ~~`/portfolio/master_record`~~ | `vaPool` | ✅ Done — PLA-0030 T4a (2026-05-08). `master_record_portfolio` was already in vector_artefacts | — |
 | `/portfolio-items` | `pool` | Work-items v1 legacy table; superseded by `/work-items` on v2 but v1 surface still live for backwards compat | Deprecation + client migration |
 | `/subscription/layers` | `pool` | Layer data in mmff_vector; workspace-scoped successor (`/workspace/{id}/portfolio/layers`) partially uses vaPool | PLA-0026 |
 | ~~`/workspace/{id}/portfolio/layers`~~ | `vaPool` | ✅ Done — PLA-0030 T3 (2026-05-08). mmff_vector tenancy gate retained inside handler | — |
