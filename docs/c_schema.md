@@ -98,7 +98,7 @@ These rules are the contract; every query/handler/migration honours them.
 | Numbering | `subscription_sequence` |
 | Portfolio stack (legacy singular) | `company_roadmap`, `workspace`, `portfolio`, `product`, `entity_stakeholders` |
 | **Strategy artefacts (`obj_*`)** | `obj_portfolio_items`, `obj_strategy_types`, `obj_strategy_types_layers` |
-| **Execution artefacts (`obj_*`)** | `obj_work_items`, `obj_work_items_field_values`, `obj_execution_types`, `obj_execution_types_tenant`, `obj_execution_types_overrides` |
+| **Execution artefacts (`obj_*`)** | `obj_execution_types`, `obj_execution_types_tenant`, `obj_execution_types_overrides` — (`obj_work_items` + `obj_work_items_field_values` dropped migration 137; data lives in `vector_artefacts.artefacts`) |
 | **Custom-field plumbing (`obj_*`)** | `obj_custom_field_lib`, `obj_field_templates`, `obj_field_template_fields` |
 | **Flows (`obj_*`)** | `obj_flow_system`, `obj_flow_tenant` |
 | Item type catalogues (legacy execution) | `execution_item_types` |

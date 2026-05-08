@@ -19,10 +19,9 @@ export const CANONICAL_PILL: Record<string, string> = {
   accepted:  "success",
 };
 
-// useWorkItemFlowStates fetches the ordered flow states for the
-// execution_work_items flow from GET /api/work-items/flow-states.
-// Returns an empty array while loading; callers should fall back
-// to whatever the current item's flow_state_name already shows.
+// useWorkItemFlowStates fetches the ordered flow states from
+// GET /samantha/v2/work-items/flow-states. Returns an empty array
+// while loading; callers fall back to the current item's flow_state_name.
 export function useWorkItemFlowStates(): WorkItemFlowState[] {
   const [states, setStates] = useState<WorkItemFlowState[]>([]);
 

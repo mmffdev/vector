@@ -16,7 +16,7 @@ const ITEM_TYPES = [
 type ItemTypeKey = typeof ITEM_TYPES[number]["key"];
 
 // Read-only mirror of the core columns that exist on every work item.
-// Source: db/schema/063, 065, 068. Cannot be removed or hidden.
+// Source: vector_artefacts.artefacts (PLA-0023). Cannot be removed or hidden.
 interface CoreField {
   name:   string;
   type:   string;
@@ -25,14 +25,15 @@ interface CoreField {
 }
 
 const CORE_FIELDS: CoreField[] = [
-  { name: "title",             type: "text",   source: "obj_work_items.title" },
-  { name: "description",       type: "text",   source: "obj_work_items.description" },
-  { name: "status",            type: "enum",   source: "obj_work_items.status",      note: "open / in_progress / done / cancelled" },
-  { name: "priority",          type: "enum",   source: "obj_work_items.priority",    note: "critical / high / medium / low" },
-  { name: "story_points",      type: "int",    source: "obj_work_items.story_points" },
-  { name: "sprint_id",         type: "uuid",   source: "obj_work_items.sprint_id" },
-  { name: "backlog_position",  type: "int",    source: "obj_work_items.backlog_position", note: "exclusive with sprint_position" },
-  { name: "sprint_position",   type: "int",    source: "obj_work_items.sprint_position",  note: "exclusive with backlog_position" },
+  { name: "title",               type: "text",   source: "artefacts.title" },
+  { name: "description",         type: "text",   source: "artefacts.description" },
+  { name: "priority",            type: "enum",   source: "artefacts.priority",            note: "critical / high / medium / low" },
+  { name: "story_points",        type: "int",    source: "artefacts.story_points" },
+  { name: "due_date",            type: "date",   source: "artefacts.due_date" },
+  { name: "timebox_sprint_id",   type: "uuid",   source: "artefacts.timebox_sprint_id" },
+  { name: "parent_artefact_id",  type: "uuid",   source: "artefacts.parent_artefact_id" },
+  { name: "position",            type: "int",    source: "artefacts.position",            note: "rank within current scope (backlog or sprint)" },
+  { name: "flow_state_id",       type: "uuid",   source: "artefacts.flow_state_id",       note: "current state via flow_states.kind" },
 ];
 
 export default function CustomFieldsWorkItemsPage() {

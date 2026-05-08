@@ -8,11 +8,11 @@
 // graft a new resource type onto the rank API).
 //
 // Adoption checklist for a new resource:
-//   1. Add `backlog_position INT NULL` and `sprint_position INT NULL`
-//      columns plus the position-scope CHECK to its table (see
-//      migration 068 for the convention).
+//   1. Ensure the table has a `position INTEGER NOT NULL` column and a
+//      nullable scope FK (e.g. `timebox_sprint_id UUID`). See
+//      vector_artefacts migration 025 for the canonical pattern.
 //   2. Attach `notify_rank_changed('<resource_type>')` trigger
-//      (see migration 069).
+//      (see mmff_vector migration 069 for the helper function).
 //   3. Call ranking.Register("<resource_type>", ResourceConfig{...})
 //      from the package's init() or wiring file.
 //   4. Implement the PermissionChecker for that resource — the rank
@@ -31,9 +31,9 @@ import (
 // ResourceConfig describes one orderable resource. All fields are
 // required. The registry rejects partial configs at Register time.
 type ResourceConfig struct {
-	// Table is the unqualified Postgres table name (e.g.
-	// "obj_work_items"). The rank service writes
-	// position columns directly against this table.
+	// Table is the schema-qualified or unqualified Postgres table name
+	// (e.g. "artefacts"). The rank service writes the position column
+	// directly against this table.
 	Table string
 
 	// ScopeColumn is the column whose value defines the "scope" a

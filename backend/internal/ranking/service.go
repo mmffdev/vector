@@ -80,7 +80,7 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 
 	var result MoveResult
 	err = pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		row, err := loadRowForUpdate(ctx, tx, cfg.Table, req.SubscriptionID, req.RowID)
+		row, err := loadRowForUpdate(ctx, tx, cfg, req.SubscriptionID, req.RowID)
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 		// Lock the cohort. We don't actually need the rows back —
 		// we just need their lock — but pgx requires a query, and
 		// we'll re-use the result for position math anyway.
-		cohort, err := lockCohort(ctx, tx, cfg.Table, req.SubscriptionID, scope, scopeID)
+		cohort, err := lockCohort(ctx, tx, cfg, req.SubscriptionID, scope, scopeID)
 		if err != nil {
 			return err
 		}
@@ -100,29 +100,20 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 			return err
 		}
 
-		// Write the new position. Only the active scope column is
-		// non-NULL; flip per scope.
-		if scope == ScopeBacklog {
-			_, err = tx.Exec(ctx, fmt.Sprintf(
-				`UPDATE %s SET backlog_position = $1, updated_at = now() WHERE id = $2`,
-				cfg.Table,
-			), newPos, row.id)
-		} else {
-			_, err = tx.Exec(ctx, fmt.Sprintf(
-				`UPDATE %s SET sprint_position = $1, updated_at = now() WHERE id = $2`,
-				cfg.Table,
-			), newPos, row.id)
-		}
+		_, err = tx.Exec(ctx, fmt.Sprintf(
+			`UPDATE %s SET position = $1, updated_at = now() WHERE id = $2`,
+			cfg.Table,
+		), newPos, row.id)
 		if err != nil {
 			return fmt.Errorf("write new position: %w", err)
 		}
 
 		if needsRebalance(cohort, row.id, newPos) {
-			if err := rebalance(ctx, tx, cfg.Table, req.SubscriptionID, scope, scopeID); err != nil {
+			if err := rebalance(ctx, tx, cfg, req.SubscriptionID, scope, scopeID); err != nil {
 				return fmt.Errorf("rebalance: %w", err)
 			}
 			// Re-read final position after rebalance.
-			final, err := readPosition(ctx, tx, cfg.Table, row.id, scope)
+			final, err := readPosition(ctx, tx, cfg.Table, row.id)
 			if err != nil {
 				return err
 			}
@@ -139,43 +130,30 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 // ─── helpers ────────────────────────────────────────────────────────
 
 type rankRow struct {
-	id              uuid.UUID
-	subscriptionID  uuid.UUID
-	sprintID        *uuid.UUID
-	backlogPosition *int
-	sprintPosition  *int
+	id             uuid.UUID
+	subscriptionID uuid.UUID
+	scopeID        *uuid.UUID // NULL = backlog; non-NULL = sprint/timebox
+	position       int
 }
 
 func (r rankRow) scope() (Scope, *uuid.UUID) {
-	if r.sprintID == nil {
+	if r.scopeID == nil {
 		return ScopeBacklog, nil
 	}
-	return ScopeSprint, r.sprintID
+	return ScopeSprint, r.scopeID
 }
 
-func (r rankRow) currentPosition(scope Scope) int {
-	switch scope {
-	case ScopeBacklog:
-		if r.backlogPosition != nil {
-			return *r.backlogPosition
-		}
-	case ScopeSprint:
-		if r.sprintPosition != nil {
-			return *r.sprintPosition
-		}
-	}
-	return 0
-}
+func (r rankRow) currentPosition() int { return r.position }
 
-func loadRowForUpdate(ctx context.Context, tx pgx.Tx, table string, subID, rowID uuid.UUID) (rankRow, error) {
+func loadRowForUpdate(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID, rowID uuid.UUID) (rankRow, error) {
 	q := fmt.Sprintf(`
-		SELECT id, subscription_id, sprint_id, backlog_position, sprint_position
+		SELECT id, subscription_id, %s, position
 		FROM %s
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
-		FOR UPDATE`, table)
+		FOR UPDATE`, cfg.ScopeColumn, cfg.Table)
 	var r rankRow
 	err := tx.QueryRow(ctx, q, rowID, subID).
-		Scan(&r.id, &r.subscriptionID, &r.sprintID, &r.backlogPosition, &r.sprintPosition)
+		Scan(&r.id, &r.subscriptionID, &r.scopeID, &r.position)
 	if err == pgx.ErrNoRows {
 		return rankRow{}, ErrRowNotFound
 	}
@@ -185,26 +163,26 @@ func loadRowForUpdate(ctx context.Context, tx pgx.Tx, table string, subID, rowID
 	return r, nil
 }
 
-func lockCohort(ctx context.Context, tx pgx.Tx, table string, subID uuid.UUID, scope Scope, scopeID *uuid.UUID) ([]rankRow, error) {
+func lockCohort(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.UUID, scope Scope, scopeID *uuid.UUID) ([]rankRow, error) {
 	var (
 		q    string
 		args []any
 	)
 	if scope == ScopeBacklog {
 		q = fmt.Sprintf(`
-			SELECT id, subscription_id, sprint_id, backlog_position, sprint_position
+			SELECT id, subscription_id, %s, position
 			FROM %s
-			WHERE subscription_id = $1 AND sprint_id IS NULL AND archived_at IS NULL
-			ORDER BY backlog_position NULLS LAST, id
-			FOR UPDATE`, table)
+			WHERE subscription_id = $1 AND %s IS NULL AND archived_at IS NULL
+			ORDER BY position, id
+			FOR UPDATE`, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
 		args = []any{subID}
 	} else {
 		q = fmt.Sprintf(`
-			SELECT id, subscription_id, sprint_id, backlog_position, sprint_position
+			SELECT id, subscription_id, %s, position
 			FROM %s
-			WHERE subscription_id = $1 AND sprint_id = $2 AND archived_at IS NULL
-			ORDER BY sprint_position NULLS LAST, id
-			FOR UPDATE`, table)
+			WHERE subscription_id = $1 AND %s = $2 AND archived_at IS NULL
+			ORDER BY position, id
+			FOR UPDATE`, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
 		args = []any{subID, *scopeID}
 	}
 
@@ -217,7 +195,7 @@ func lockCohort(ctx context.Context, tx pgx.Tx, table string, subID uuid.UUID, s
 	var out []rankRow
 	for rows.Next() {
 		var r rankRow
-		if err := rows.Scan(&r.id, &r.subscriptionID, &r.sprintID, &r.backlogPosition, &r.sprintPosition); err != nil {
+		if err := rows.Scan(&r.id, &r.subscriptionID, &r.scopeID, &r.position); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -225,23 +203,16 @@ func lockCohort(ctx context.Context, tx pgx.Tx, table string, subID uuid.UUID, s
 	return out, rows.Err()
 }
 
-func readPosition(ctx context.Context, tx pgx.Tx, table string, rowID uuid.UUID, scope Scope) (int, error) {
-	col := "backlog_position"
-	if scope == ScopeSprint {
-		col = "sprint_position"
-	}
-	var pos *int
+func readPosition(ctx context.Context, tx pgx.Tx, table string, rowID uuid.UUID) (int, error) {
+	var pos int
 	err := tx.QueryRow(ctx,
-		fmt.Sprintf(`SELECT %s FROM %s WHERE id = $1`, col, table),
+		fmt.Sprintf(`SELECT position FROM %s WHERE id = $1`, table),
 		rowID,
 	).Scan(&pos)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("read position: %w", err)
 	}
-	if pos == nil {
-		return 0, fmt.Errorf("read position: row %s has NULL %s after move", rowID, col)
-	}
-	return *pos, nil
+	return pos, nil
 }
 
 func (r MoveRequest) validate() error {
@@ -266,4 +237,3 @@ func (r MoveRequest) validate() error {
 	}
 	return nil
 }
-

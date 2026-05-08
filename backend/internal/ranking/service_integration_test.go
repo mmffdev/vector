@@ -40,14 +40,14 @@ func testPool(t *testing.T) *pgxpool.Pool {
 			break
 		}
 	}
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"))
-	pool, err := pgxpool.New(context.Background(), dsn)
+	// Integration tests run against vector_artefacts (vaPool equivalent).
+	vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL")
+	if vaURL == "" {
+		t.Skip("VECTOR_ARTEFACTS_DB_URL not set — skipping ranking integration test")
+	}
+	pool, err := pgxpool.New(context.Background(), vaURL)
 	if err != nil {
-		t.Skipf("cannot open pool (tunnel down?): %v", err)
+		t.Skipf("cannot open pool: %v", err)
 	}
 	if err := pool.Ping(context.Background()); err != nil {
 		pool.Close()
@@ -61,21 +61,16 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	defer pool.Close()
 	ctx := context.Background()
 
-	// Register a permissive checker for the work item table. Tests
-	// for authz live in the handler suite; here we exercise the
-	// concurrency path only.
+	ranking.ResetForTests()
 	ranking.Register("work_item", ranking.ResourceConfig{
-		Table:       "obj_work_items",
-		ScopeColumn: "sprint_id",
+		Table:       "artefacts",
+		ScopeColumn: "timebox_sprint_id",
 		Permissions: ranking.PermissionCheckerFunc(func(_ context.Context, _, _ uuid.UUID) (bool, error) {
 			return true, nil
 		}),
 	})
 
-	// Pick a subscription with at least one user/org so FK constraints
-	// pass. We seed three rows within it and roll back at the end —
-	// the rows never escape this test even on assertion failure.
-	subID := pickAnySubscription(t, pool)
+	subID, wsID, typeID := pickFixtures(t, pool)
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -83,30 +78,22 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	rows := seedThreeBacklogRows(t, ctx, tx, subID)
+	rows := seedThreeBacklogRows(t, ctx, tx, subID, wsID, typeID)
 	a, b, c := rows[0], rows[1], rows[2]
 
-	// We need real concurrency — that means using the pool, not the
-	// test transaction. Commit our seed first so concurrent goroutines
-	// can see it; we'll clean up by archiving on test exit.
+	// Commit so concurrent goroutines can see the rows.
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatalf("commit seed: %v", err)
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE obj_work_items
-			 SET archived_at = now()
-			 WHERE id = ANY($1)`,
+			`UPDATE artefacts SET archived_at = now() WHERE id = ANY($1)`,
 			[]uuid.UUID{a, b, c},
 		)
 	})
 
 	svc := ranking.New(pool)
 
-	// Both movers fire at the same instant. Move A above C and move
-	// B below C. Whichever lock-release order happens, the final
-	// state must be: every row has a unique position, and both A and
-	// B observe their relative-to-C placement.
 	var wg sync.WaitGroup
 	var errA, errB error
 	wg.Add(2)
@@ -137,7 +124,6 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 		t.Fatalf("move B: %v", errB)
 	}
 
-	// Fetch final positions for the cohort and assert invariants.
 	final := readBacklogCohort(t, ctx, pool, subID, []uuid.UUID{a, b, c})
 	seen := map[int]uuid.UUID{}
 	for id, pos := range final {
@@ -146,7 +132,6 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 		}
 		seen[pos] = id
 	}
-	// A is before C, B is after C, regardless of who won the race.
 	if final[a] >= final[c] {
 		t.Fatalf("expected A (%d) < C (%d)", final[a], final[c])
 	}
@@ -155,34 +140,41 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	}
 }
 
-// pickAnySubscription returns the first subscription_id we can find
-// that has at least one user. Uses the existing data so we don't need
-// to seed orgs/users.
-func pickAnySubscription(t *testing.T, pool *pgxpool.Pool) uuid.UUID {
+// pickFixtures returns a subscription_id, workspace_id, and artefact_type_id
+// that already exist in the DB so FK constraints pass on INSERT.
+func pickFixtures(t *testing.T, pool *pgxpool.Pool) (subID, wsID, typeID uuid.UUID) {
 	t.Helper()
-	var id uuid.UUID
+	// workspace gives us both subscription_id and workspace_id in one query.
 	err := pool.QueryRow(context.Background(),
-		`SELECT subscription_id FROM users WHERE archived_at IS NULL LIMIT 1`).
-		Scan(&id)
+		`SELECT w.subscription_id, w.id, at.id
+		 FROM master_record_workspaces w
+		 JOIN artefact_types at ON at.subscription_id = w.subscription_id
+		 WHERE w.archived_at IS NULL AND at.archived_at IS NULL
+		 LIMIT 1`,
+	).Scan(&subID, &wsID, &typeID)
 	if err != nil {
-		t.Skipf("no usable subscription found: %v", err)
+		t.Skipf("no usable fixtures found: %v", err)
 	}
-	return id
+	return
 }
 
-// seedThreeBacklogRows inserts three work items in the same backlog
-// scope with positions 100, 200, 300 and returns their IDs.
-func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID uuid.UUID) [3]uuid.UUID {
+// seedThreeBacklogRows inserts three artefacts in the same backlog scope
+// (timebox_sprint_id IS NULL) with positions 100, 200, 300.
+func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID, wsID, typeID uuid.UUID) [3]uuid.UUID {
 	t.Helper()
 	var ids [3]uuid.UUID
+	// Use large random-ish numbers to avoid colliding with real rows.
+	base := int64(9_000_000 + os.Getpid())
 	for i, pos := range []int{100, 200, 300} {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx,
-			`INSERT INTO obj_work_items
-			   (subscription_id, kind, title, key_num, backlog_position, created_at, updated_at)
-			 VALUES ($1, 'story', $2, nextval('artefacts_work_item_key_seq'), $3, now(), now())
+			`INSERT INTO artefacts
+			   (subscription_id, workspace_id, artefact_type_id, number, title, position, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, now(), now())
 			 RETURNING id`,
-			subID, fmt.Sprintf("rank-test row %d", i+1), pos,
+			subID, wsID, typeID,
+			base+int64(i),
+			fmt.Sprintf("rank-test row %d", i+1), pos,
 		).Scan(&id)
 		if err != nil {
 			t.Fatalf("seed row %d: %v", i, err)
@@ -195,8 +187,8 @@ func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID uu
 func readBacklogCohort(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID uuid.UUID, ids []uuid.UUID) map[uuid.UUID]int {
 	t.Helper()
 	rows, err := pool.Query(ctx,
-		`SELECT id, backlog_position
-		 FROM obj_work_items
+		`SELECT id, position
+		 FROM artefacts
 		 WHERE id = ANY($1) AND subscription_id = $2`,
 		ids, subID,
 	)
@@ -207,14 +199,11 @@ func readBacklogCohort(t *testing.T, ctx context.Context, pool *pgxpool.Pool, su
 	out := map[uuid.UUID]int{}
 	for rows.Next() {
 		var id uuid.UUID
-		var pos *int
+		var pos int
 		if err := rows.Scan(&id, &pos); err != nil {
 			t.Fatalf("scan: %v", err)
 		}
-		if pos == nil {
-			t.Fatalf("row %s has NULL backlog_position after move", id)
-		}
-		out[id] = *pos
+		out[id] = pos
 	}
 	return out
 }
