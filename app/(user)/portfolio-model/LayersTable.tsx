@@ -289,7 +289,7 @@ export default function LayersTable({ initialLayers, onLayersUpdated, fixedItems
 
     setSaving(true);
     try {
-      const updated = await api<LayerDTO[]>("/api/subscription/layers/batch", {
+      const updated = await api<LayerDTO[]>("/subscription/layers/batch", {
         method: "PATCH",
         body: JSON.stringify(
           localLayers.map((l) => ({

@@ -74,7 +74,7 @@ export default function LibraryReleasesPage() {
   async function loadReleases() {
     setState({ kind: "loading" });
     try {
-      const data = await api<ListResponse>("/api/library/releases");
+      const data = await api<ListResponse>("/library/releases");
       setState({ kind: "ready", releases: data.releases });
     } catch (e) {
       notify.apiError(e, "Failed to load releases");
@@ -85,7 +85,7 @@ export default function LibraryReleasesPage() {
   async function ack(releaseId: string, actionKey: ActionDTO["action_key"]) {
     setAcking(releaseId);
     try {
-      await api(`/api/library/releases/${releaseId}/ack`, {
+      await api(`/library/releases/${releaseId}/ack`, {
         method: "POST",
         body: JSON.stringify({ action_taken: actionKey }),
       });

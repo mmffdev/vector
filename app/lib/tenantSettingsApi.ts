@@ -58,10 +58,10 @@ export interface TenantSettingsPatch {
 
 export const tenantSettingsApi = {
   get() {
-    return api<TenantSettings>(`/api/tenant-settings`);
+    return api<TenantSettings>(`/tenant-settings`);
   },
   patch(input: TenantSettingsPatch) {
-    return api<TenantSettings>(`/api/tenant-settings`, {
+    return api<TenantSettings>(`/tenant-settings`, {
       method: "PATCH",
       body: JSON.stringify(input),
     });

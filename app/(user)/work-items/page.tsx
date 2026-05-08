@@ -5,7 +5,7 @@ import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { api } from "@/app/lib/api";
+import { api, apiV2 } from "@/app/lib/api";
 import WorkItemsTree from "@/app/components/WorkItemsTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
@@ -39,7 +39,7 @@ export default function WorkItemsPage() {
   } | null>(null);
 
   useEffect(() => {
-    api<{ items: Sprint[] }>("/api/sprints")
+    api<{ items: Sprint[] }>("/sprints")
       .then((r) => setSprints(r.items))
       .catch(() => {});
   }, []);
@@ -48,14 +48,14 @@ export default function WorkItemsPage() {
     const params = new URLSearchParams();
     if (filters.sprint_id) params.set("sprint_id", filters.sprint_id);
     const qs = params.toString();
-    return api<{
+    return apiV2<{
       total: number;
       epics: number;
       stories: number;
       tasks: number;
       defects: number;
       blocked: number;
-    }>(`/api/v2/work-items/summary${qs ? "?" + qs : ""}`)
+    }>(`/work-items/summary${qs ? "?" + qs : ""}`)
       .then((r) => setSummary(r))
       .catch(() => setSummary(null));
   }, [filters.sprint_id]);

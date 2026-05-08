@@ -1,8 +1,8 @@
 // Versioned base for all external API calls. Infra/internal routes
-// (/healthz, /api/env, /api/status/pipeline, /api/env/switch) are
+// (/healthz, /env, /status/pipeline, /env/switch) are
 // unversioned and must use API_INFRA_BASE instead.
 export const API_INFRA_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/v1";
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v1";
 
 let _accessToken: string | null = null;
 // Registered by AuthContext so api() can silently refresh an expired JWT
@@ -106,7 +106,14 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
   return _fetch<T>(API_BASE, path, opts);
 }
 
-// For unversioned infra routes: /healthz, /api/env, /api/status/pipeline, /api/env/switch
+// For unversioned infra routes: /healthz, /env, /status/pipeline, /env/switch
 export async function apiInfra<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
   return _fetch<T>(API_INFRA_BASE, path, opts);
+}
+
+const API_V2_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v2";
+
+// For /samantha/v2/* routes (vector_artefacts-backed endpoints).
+export async function apiV2<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+  return _fetch<T>(API_V2_BASE, path, opts);
 }

@@ -156,8 +156,8 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const [profilesRes, catRes] = await Promise.all([
-        api<ProfilesResp>("/api/nav/profiles"),
-        api<CatalogueResp>("/api/nav/catalogue"),
+        api<ProfilesResp>("/nav/profiles"),
+        api<CatalogueResp>("/nav/catalogue"),
       ]);
       const profileList = profilesRes.profiles ?? [];
       setProfiles(profileList);
@@ -173,8 +173,8 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       // Prefs query is scoped by profile_id when present so we always
       // load placements for the same profile we'll write back to.
       const prefsPath = targetId
-        ? `/api/nav/prefs?profile_id=${encodeURIComponent(targetId)}`
-        : "/api/nav/prefs";
+        ? `/nav/prefs?profile_id=${encodeURIComponent(targetId)}`
+        : "/nav/prefs";
       const prefsRes = await api<PrefsResp>(prefsPath);
       setPrefs(prefsRes.prefs ?? []);
       setCustomGroups(prefsRes.groups ?? []);
@@ -209,7 +209,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     const scoped: PutPrefsBody & { profile_id?: string } = activeProfileId
       ? { ...body, profile_id: activeProfileId }
       : body;
-    const resp = await api<{ groups: NavCustomGroup[] }>("/api/nav/prefs", {
+    const resp = await api<{ groups: NavCustomGroup[] }>("/nav/prefs", {
       method: "PUT",
       body: JSON.stringify(scoped),
     });
@@ -219,14 +219,14 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(async () => {
     const path = activeProfileId
-      ? `/api/nav/prefs?profile_id=${encodeURIComponent(activeProfileId)}`
-      : "/api/nav/prefs";
+      ? `/nav/prefs?profile_id=${encodeURIComponent(activeProfileId)}`
+      : "/nav/prefs";
     await api(path, { method: "DELETE" });
     await refetch();
   }, [refetch, activeProfileId]);
 
   const setActiveProfile = useCallback(async (profileId: string) => {
-    await api("/api/nav/profiles/active", {
+    await api("/nav/profiles/active", {
       method: "PUT",
       body: JSON.stringify({ profile_id: profileId }),
     });
@@ -234,7 +234,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   const createProfile = useCallback(async (label: string) => {
-    const created = await api<NavProfile>("/api/nav/profiles", {
+    const created = await api<NavProfile>("/nav/profiles", {
       method: "POST",
       body: JSON.stringify({ label }),
     });
@@ -243,7 +243,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   const renameProfile = useCallback(async (profileId: string, label: string) => {
-    await api(`/api/nav/profiles/${encodeURIComponent(profileId)}`, {
+    await api(`/nav/profiles/${encodeURIComponent(profileId)}`, {
       method: "PATCH",
       body: JSON.stringify({ label }),
     });
@@ -251,14 +251,14 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   const deleteProfile = useCallback(async (profileId: string) => {
-    await api(`/api/nav/profiles/${encodeURIComponent(profileId)}`, {
+    await api(`/nav/profiles/${encodeURIComponent(profileId)}`, {
       method: "DELETE",
     });
     await refetch();
   }, [refetch]);
 
   const reorderProfiles = useCallback(async (orderedIds: string[]) => {
-    await api("/api/nav/profiles/order", {
+    await api("/nav/profiles/order", {
       method: "PUT",
       body: JSON.stringify({ profile_ids: orderedIds }),
     });
@@ -271,7 +271,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   // with other writes (e.g. PUT prefs first, then this).
   const setProfileGroups = useCallback(
     async (profileId: string, placements: ProfileGroupPlacement[]) => {
-      await api(`/api/nav/profiles/${encodeURIComponent(profileId)}/groups`, {
+      await api(`/nav/profiles/${encodeURIComponent(profileId)}/groups`, {
         method: "PUT",
         body: JSON.stringify({ placements }),
       });
@@ -333,7 +333,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const bookmark = useCallback(
     async (kind: EntityKind, id: string) => {
-      await api("/api/nav/bookmark", {
+      await api("/nav/bookmark", {
         method: "POST",
         body: JSON.stringify({ entity_kind: kind, entity_id: id }),
       });
@@ -344,7 +344,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const unbookmark = useCallback(
     async (kind: EntityKind, id: string) => {
-      await api("/api/nav/bookmark", {
+      await api("/nav/bookmark", {
         method: "DELETE",
         body: JSON.stringify({ entity_kind: kind, entity_id: id }),
       });

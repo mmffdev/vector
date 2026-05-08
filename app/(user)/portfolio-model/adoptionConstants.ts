@@ -30,12 +30,12 @@ export const ADOPTION_STEP_LABELS: Record<AdoptionStepName, string> = {
 // Endpoints used by the wizard model-card list (00019). Centralised here
 // so the smart router (00015) and overlay (00017) can reuse identical
 // paths if needed — additive; existing exports above are unchanged.
-export const PORTFOLIO_MODELS_LIST_PATH = "/api/portfolio-models";
+export const PORTFOLIO_MODELS_LIST_PATH = "/portfolio-models";
 export function adoptModelPath(modelId: string): string {
-  return `/api/portfolio-models/${modelId}/adopt`;
+  return `/portfolio-models/${modelId}/adopt`;
 }
 export function adoptStreamPath(modelId: string): string {
-  return `/api/portfolio-models/${modelId}/adopt/stream`;
+  return `/portfolio-models/${modelId}/adopt/stream`;
 }
 
 // Retry policy for the adoption overlay (card 00018). Auto-retry up to

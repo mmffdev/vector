@@ -43,7 +43,7 @@ function LoginForm() {
       } else {
         let dest = "/dashboard";
         try {
-          const res = await api<{ href: string }>("/api/nav/start-page");
+          const res = await api<{ href: string }>("/nav/start-page");
           if (res.href) dest = res.href;
         } catch {
           // fall through to /dashboard

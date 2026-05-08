@@ -114,22 +114,22 @@ export const topologyApi = {
     if (rootId) params.set("root", rootId);
     if (wsRef) params.set("ws", wsRef);
     const q = params.toString();
-    return api<OrgNode[]>(`/api/topology/tree${q ? `?${q}` : ""}`);
+    return api<OrgNode[]>(`/topology/tree${q ? `?${q}` : ""}`);
   },
 
   ancestors(nodeId: string) {
-    return api<OrgNode[]>(`/api/topology/nodes/${nodeId}/ancestors`);
+    return api<OrgNode[]>(`/topology/nodes/${nodeId}/ancestors`);
   },
 
   create(input: CreateNodeInput) {
-    return api<OrgNode>(`/api/topology/nodes`, {
+    return api<OrgNode>(`/topology/nodes`, {
       method: "POST",
       body: JSON.stringify(input),
     });
   },
 
   rename(nodeId: string, name: string) {
-    return api<void>(`/api/topology/nodes/${nodeId}`, {
+    return api<void>(`/topology/nodes/${nodeId}`, {
       method: "PATCH",
       body: JSON.stringify({ name }),
     });
@@ -141,14 +141,14 @@ export const topologyApi = {
       newParentId === null
         ? { clear_root: true }
         : { parent_id: newParentId };
-    return api<void>(`/api/topology/nodes/${nodeId}`, {
+    return api<void>(`/topology/nodes/${nodeId}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     });
   },
 
   archive(nodeId: string) {
-    return api<void>(`/api/topology/nodes/${nodeId}`, { method: "DELETE" });
+    return api<void>(`/topology/nodes/${nodeId}`, { method: "DELETE" });
   },
 
   // Recursively clone the live subtree rooted at nodeId. The new root
@@ -156,7 +156,7 @@ export const topologyApi = {
   // names are copied verbatim (sibling-name uniqueness was dropped in
   // schema migration 096 — identity is the UUID, not the name).
   duplicate(nodeId: string) {
-    return api<OrgNode>(`/api/topology/nodes/${nodeId}/duplicate`, {
+    return api<OrgNode>(`/topology/nodes/${nodeId}/duplicate`, {
       method: "POST",
     });
   },
@@ -168,21 +168,21 @@ export const topologyApi = {
     manual_x?: number | null;
     manual_y?: number | null;
   }>) {
-    return api<void>(`/api/topology/nodes/bulk-position`, {
+    return api<void>(`/topology/nodes/bulk-position`, {
       method: "POST",
       body: JSON.stringify({ updates }),
     });
   },
 
   setViewState(nodeId: string, collapsed: boolean) {
-    return api<void>(`/api/topology/nodes/${nodeId}/view-state`, {
+    return api<void>(`/topology/nodes/${nodeId}/view-state`, {
       method: "PUT",
       body: JSON.stringify({ collapsed }),
     });
   },
 
   grantRole(nodeId: string, userId: string, role: Role, canRedelegate = false) {
-    return api<{ grant_id: string }>(`/api/topology/nodes/${nodeId}/roles`, {
+    return api<{ grant_id: string }>(`/topology/nodes/${nodeId}/roles`, {
       method: "POST",
       body: JSON.stringify({
         user_id: userId,
@@ -193,20 +193,20 @@ export const topologyApi = {
   },
 
   revokeRole(grantId: string) {
-    return api<void>(`/api/topology/roles/${grantId}`, { method: "DELETE" });
+    return api<void>(`/topology/roles/${grantId}`, { method: "DELETE" });
   },
 
   previewMove(nodeId: string, newParentId: string | null) {
     const params = new URLSearchParams({ node: nodeId });
     if (newParentId) params.set("new_parent", newParentId);
-    return api<PreviewMoveResult>(`/api/topology/preview-move?${params.toString()}`);
+    return api<PreviewMoveResult>(`/topology/preview-move?${params.toString()}`);
   },
 
   // Sparse field patch — only non-empty fields applied. Empty string
   // clears a field (description / label_override / icon / colour /
   // avatar_url). For a rename use rename() above.
   patchFields(nodeId: string, fields: PatchNodeFields) {
-    return api<void>(`/api/topology/nodes/${nodeId}`, {
+    return api<void>(`/topology/nodes/${nodeId}`, {
       method: "PATCH",
       body: JSON.stringify(fields),
     });
@@ -215,7 +215,7 @@ export const topologyApi = {
   // Disconnect a node from its parent without archiving — node and
   // its subtree become a root in the disconnected tray.
   disconnect(nodeId: string) {
-    return api<void>(`/api/topology/nodes/${nodeId}/disconnect`, {
+    return api<void>(`/topology/nodes/${nodeId}/disconnect`, {
       method: "POST",
     });
   },
@@ -225,7 +225,7 @@ export const topologyApi = {
   // `parent_id` to render the dotted-line tree.
   archivedDescendants(nodeId: string) {
     return api<ArchivedDescendant[]>(
-      `/api/topology/nodes/${nodeId}/archived-descendants`,
+      `/topology/nodes/${nodeId}/archived-descendants`,
     );
   },
 
@@ -236,30 +236,30 @@ export const topologyApi = {
   restore(nodeId: string, newParentId?: string | null) {
     const body: Record<string, unknown> = {};
     if (newParentId !== undefined) body.new_parent_id = newParentId;
-    return api<void>(`/api/topology/nodes/${nodeId}/restore`, {
+    return api<void>(`/topology/nodes/${nodeId}/restore`, {
       method: "POST",
       body: JSON.stringify(body),
     });
   },
 
   disconnected() {
-    return api<OrgNode[]>(`/api/topology/disconnected`);
+    return api<OrgNode[]>(`/topology/disconnected`);
   },
 
   // Levels — horizontal "rows" the canvas draws nodes onto.
   levels() {
-    return api<OrgLevel[]>(`/api/topology/levels`);
+    return api<OrgLevel[]>(`/topology/levels`);
   },
 
   createLevel(input: { depth: number; name: string; position?: number }) {
-    return api<OrgLevel>(`/api/topology/levels`, {
+    return api<OrgLevel>(`/topology/levels`, {
       method: "POST",
       body: JSON.stringify(input),
     });
   },
 
   renameLevel(levelId: string, name: string) {
-    return api<void>(`/api/topology/levels/${levelId}`, {
+    return api<void>(`/topology/levels/${levelId}`, {
       method: "PATCH",
       body: JSON.stringify({ name }),
     });
@@ -268,15 +268,15 @@ export const topologyApi = {
   // Commit working model — gadmin only. After commit, any edit to
   // org_nodes flips dirty_since_commit until next commit.
   commitStatus() {
-    return api<CommitStatus>(`/api/topology/commit`);
+    return api<CommitStatus>(`/topology/commit`);
   },
 
   commit() {
-    return api<CommitStatus>(`/api/topology/commit`, { method: "POST" });
+    return api<CommitStatus>(`/topology/commit`, { method: "POST" });
   },
 
   // Reset entire canvas — gadmin only. Mass-archives every live node.
   reset() {
-    return api<{ archived: number }>(`/api/topology/reset`, { method: "POST" });
+    return api<{ archived: number }>(`/topology/reset`, { method: "POST" });
   },
 };

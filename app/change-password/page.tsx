@@ -43,7 +43,7 @@ export default function ChangePasswordPage() {
     if (pwd !== pwd2) return setErr("Passwords do not match.");
     setBusy(true);
     try {
-      await api("/api/auth/change-password", {
+      await api("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current, new: pwd }),
       });

@@ -248,7 +248,7 @@ func setRefreshCookie(w http.ResponseWriter, raw string, expAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "rt",
 		Value:    raw,
-		Path:     "/v1/api/auth",
+		Path:     "/samantha/v1/auth",
 		HttpOnly: true,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
@@ -265,9 +265,9 @@ func issueCSRF(w http.ResponseWriter) {
 }
 
 func clearRefreshCookie(w http.ResponseWriter) {
-	// Clear at both the new path (/v1/api/auth) and the legacy path (/api/auth)
-	// so any stale cookies from older builds get evicted on logout/refresh-fail.
-	for _, p := range []string{"/v1/api/auth", "/api/auth"} {
+	// Clear at both the new path (/samantha/v1/auth) and legacy paths so any
+	// stale cookies from older builds get evicted on logout/refresh-fail.
+	for _, p := range []string{"/samantha/v1/auth", "/v1/api/auth", "/api/auth"} {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "rt",
 			Value:    "",

@@ -27,7 +27,7 @@ export default function ProductDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await api<EntitiesResp>("/api/nav/entities");
+        const r = await api<EntitiesResp>("/nav/entities");
         if (cancelled) return;
         const match = (r.entities ?? []).find((e) => e.kind === "product" && e.id === id);
         setName(match?.name ?? null);

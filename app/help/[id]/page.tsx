@@ -30,7 +30,7 @@ export default function HelpPage() {
     if (!id) return;
     let cancelled = false;
     setState({ kind: "loading" });
-    api<Partial<HelpDoc>>(`/api/page-help/${encodeURIComponent(id)}`)
+    api<Partial<HelpDoc>>(`/page-help/${encodeURIComponent(id)}`)
       .then((data) => {
         if (cancelled) return;
         setState({

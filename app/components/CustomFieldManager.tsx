@@ -74,8 +74,8 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
     setError(null);
     try {
       const [libRes, tmplRes] = await Promise.all([
-        api<{ items: CustomField[] }>("/api/custom-field-library"),
-        api<{ items: Template[] }>("/api/work-item-templates"),
+        api<{ items: CustomField[] }>("/custom-field-library"),
+        api<{ items: Template[] }>("/work-item-templates"),
       ]);
       setLibrary(libRes.items);
 
@@ -83,7 +83,7 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
       if (matching) {
         setTemplate({ ...matching, fields: matching.fields ?? [] });
       } else {
-        const created = await api<Template>("/api/work-item-templates", {
+        const created = await api<Template>("/work-item-templates", {
           method: "POST",
           body: JSON.stringify({
             name:        `${itemTypeLabel} fields`,
@@ -119,7 +119,7 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
         type:       newField.type,
       };
       if (newField.options_json.trim()) body.options_json = newField.options_json.trim();
-      await api("/api/custom-field-library", { method: "POST", body: JSON.stringify(body) });
+      await api("/custom-field-library", { method: "POST", body: JSON.stringify(body) });
       setNewField({ field_name: "", label: "", type: "textbox", options_json: "" });
       setShowCreate(false);
       await load();
@@ -131,7 +131,7 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
   }
 
   async function archiveLibraryField(id: string) {
-    await api(`/api/custom-field-library/${id}`, { method: "DELETE" });
+    await api(`/custom-field-library/${id}`, { method: "DELETE" });
     setArchiveArmed(null);
     await load();
   }
@@ -140,7 +140,7 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
 
   async function addToTemplate(fieldLibraryId: string) {
     if (!template) return;
-    await api(`/api/work-item-templates/${template.id}/fields`, {
+    await api(`/work-item-templates/${template.id}/fields`, {
       method: "POST",
       body: JSON.stringify({
         field_library_id: fieldLibraryId,
@@ -153,7 +153,7 @@ export default function CustomFieldManager({ itemType, itemTypeLabel, pageId }: 
 
   async function removeFromTemplate(fieldLibraryId: string) {
     if (!template) return;
-    await api(`/api/work-item-templates/${template.id}/fields/${fieldLibraryId}`, {
+    await api(`/work-item-templates/${template.id}/fields/${fieldLibraryId}`, {
       method: "DELETE",
     });
     await load();

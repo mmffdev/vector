@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag, MdClose } from "react-icons/md";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { api } from "@/app/lib/api";
+import { apiV2 } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
@@ -767,8 +767,8 @@ export function useWorkItemsWindow(
     try {
       if (pageSize === "all") {
         const CHUNK = 1000;
-        const first = await api<{ items: WorkItem[]; total: number }>(
-          `/api/v2/work-items?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
+        const first = await apiV2<{ items: WorkItem[]; total: number }>(
+          `/work-items?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
         );
         const totalRoots = first.total ?? first.items.length;
         if (totalRoots <= first.items.length) {
@@ -780,8 +780,8 @@ export function useWorkItemsWindow(
         for (let o = first.items.length; o < totalRoots; o += CHUNK) offsets.push(o);
         const rest = await Promise.all(
           offsets.map((o) =>
-            api<{ items: WorkItem[]; total: number }>(
-              `/api/v2/work-items?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
+            apiV2<{ items: WorkItem[]; total: number }>(
+              `/work-items?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
             ),
           ),
         );
@@ -790,8 +790,8 @@ export function useWorkItemsWindow(
         return;
       }
       const offset = pageIndex * pageSize;
-      const res = await api<{ items: WorkItem[]; total: number }>(
-        `/api/v2/work-items?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
+      const res = await apiV2<{ items: WorkItem[]; total: number }>(
+        `/work-items?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
       );
       setWindowRoots(res.items);
       setTotal(res.total ?? res.items.length);
@@ -807,7 +807,7 @@ export function useWorkItemsWindow(
       setWindowRoots((prev) =>
         prev.map((r) => (r.id === id ? ({ ...r, ...body } as WorkItem) : r)),
       );
-      api<WorkItem>(`/api/v2/work-items/${id}`, {
+      apiV2<WorkItem>(`/work-items/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       })
@@ -821,8 +821,8 @@ export function useWorkItemsWindow(
   );
 
   const fetchChildren = useCallback(async (parentId: string) => {
-    const res = await api<{ items: WorkItem[] }>(
-      `/api/v2/work-items/${parentId}/children`,
+    const res = await apiV2<{ items: WorkItem[] }>(
+      `/work-items/${parentId}/children`,
     );
     return res.items;
   }, []);

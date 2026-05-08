@@ -5,7 +5,7 @@
 export const TIMEBOX_KINDS = {
   sprint: {
     table: "timebox_sprints",
-    apiBase: "/api/v2/timeboxes/sprints",
+    apiBase: "/timeboxes/sprints",
     namePrefix: "Sprint",
     bindsToTeam: true,
     enforcesNonOverlap: true,

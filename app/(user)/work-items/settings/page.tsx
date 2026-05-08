@@ -58,7 +58,7 @@ function CustomFieldLibrary() {
 
   const load = useCallback(() => {
     setLoading(true);
-    api<{ items: CustomField[] }>("/api/custom-field-library")
+    api<{ items: CustomField[] }>("/custom-field-library")
       .then((r) => setFields(r.items))
       .catch(() => setFields([]))
       .finally(() => setLoading(false));
@@ -76,7 +76,7 @@ function CustomFieldLibrary() {
         type: newField.type,
       };
       if (newField.options_json.trim()) body.options_json = newField.options_json.trim();
-      await api("/api/custom-field-library", { method: "POST", body: JSON.stringify(body) });
+      await api("/custom-field-library", { method: "POST", body: JSON.stringify(body) });
       setNewField({ field_name: "", label: "", type: "textbox", options_json: "" });
       setCreating(false);
       load();
@@ -89,7 +89,7 @@ function CustomFieldLibrary() {
 
   async function archive(id: string) {
     if (!confirm("Archive this field? It will be hidden from new items.")) return;
-    await api(`/api/custom-field-library/${id}`, { method: "DELETE" });
+    await api(`/custom-field-library/${id}`, { method: "DELETE" });
     load();
   }
 
@@ -232,8 +232,8 @@ function TemplateBuilder() {
     setLoading(true);
     try {
       const [tRes, fRes] = await Promise.all([
-        api<{ items: Template[] }>("/api/work-item-templates"),
-        api<{ items: CustomField[] }>("/api/custom-field-library"),
+        api<{ items: Template[] }>("/work-item-templates"),
+        api<{ items: CustomField[] }>("/custom-field-library"),
       ]);
       setTemplates(tRes.items);
       setAllFields(fRes.items);
@@ -253,7 +253,7 @@ function TemplateBuilder() {
       const body: Record<string, unknown> = { name: newTmpl.name.trim() };
       if (newTmpl.description.trim()) body.description = newTmpl.description.trim();
       if (newTmpl.item_type) body.item_type = newTmpl.item_type;
-      await api("/api/work-item-templates", { method: "POST", body: JSON.stringify(body) });
+      await api("/work-item-templates", { method: "POST", body: JSON.stringify(body) });
       setNewTmpl({ name: "", description: "", item_type: "" });
       setCreating(false);
       load();
@@ -263,7 +263,7 @@ function TemplateBuilder() {
   }
 
   async function addField(templateId: string, fieldLibraryId: string, position: number) {
-    await api(`/api/work-item-templates/${templateId}/fields`, {
+    await api(`/work-item-templates/${templateId}/fields`, {
       method: "POST",
       body: JSON.stringify({ field_library_id: fieldLibraryId, position, required: false }),
     });
@@ -271,7 +271,7 @@ function TemplateBuilder() {
   }
 
   async function removeField(templateId: string, fieldLibraryId: string) {
-    await api(`/api/work-item-templates/${templateId}/fields/${fieldLibraryId}`, { method: "DELETE" });
+    await api(`/work-item-templates/${templateId}/fields/${fieldLibraryId}`, { method: "DELETE" });
     load();
   }
 

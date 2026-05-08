@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Panel from "@/app/components/Panel";
 import Table, { Column, PillVariant } from "@/app/components/Table";
-import { api, ApiError } from "@/app/lib/api";
+import { apiV2, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import { TIMEBOX_KINDS, TimeboxKind } from "@/app/components/timebox/kinds";
@@ -146,7 +146,7 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
           org_node_id: orgNodeId,
         };
       });
-      await api(`${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`, {
+      await apiV2(`${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`, {
         method: "POST",
         body: JSON.stringify({ sprints }),
       });
@@ -284,7 +284,7 @@ function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerPro
     const params = new URLSearchParams({ workspace_id: workspaceId });
     if (orgNodeId) params.set("org_node_id", orgNodeId);
     try {
-      const data = await api<ListResponse>(`${cfg.apiBase}?${params.toString()}`);
+      const data = await apiV2<ListResponse>(`${cfg.apiBase}?${params.toString()}`);
       const items = (data.sprints ?? []) as AnyRow[];
       setRows(items);
     } catch (e) {

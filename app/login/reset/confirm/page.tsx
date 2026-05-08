@@ -34,7 +34,7 @@ function ConfirmForm() {
     if (pwd !== pwd2) return setErr("Passwords do not match.");
     setBusy(true);
     try {
-      await api("/api/auth/password-reset/confirm", {
+      await api("/auth/password-reset/confirm", {
         method: "POST",
         body: JSON.stringify({ token, password: pwd }),
         skipAuth: true,

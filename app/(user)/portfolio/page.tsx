@@ -36,7 +36,7 @@ export default function Portfolio() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await api<EntitiesResp>("/api/nav/entities");
+        const r = await api<EntitiesResp>("/nav/entities");
         if (!cancelled) setRows(r.entities ?? []);
       } catch (e) {
         if (!cancelled) {

@@ -90,7 +90,7 @@ export default function Panel({ name, title, className, children }: PanelProps) 
     if (!addressable_id) return;
     let cancelled = false;
     setBodyLoading(true);
-    api<Partial<HelpDoc> | null>(`/api/page-help/${addressable_id}`)
+    api<Partial<HelpDoc> | null>(`/page-help/${addressable_id}`)
       .catch((err) => {
         // 404 is expected when no help doc exists yet; return null and let
         // the SDK-defaults fallback below run. Re-throw anything else so the

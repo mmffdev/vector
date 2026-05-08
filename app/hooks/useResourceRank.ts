@@ -11,7 +11,7 @@
  *
  * It does NOT own the optimistic-UI reorder; callers compose
  * useResourceRank with their own state setter (see useOptimisticReorder
- * in 00216). On drop it POSTs `/api/rank/move` and surfaces the final
+ * in 00216). On drop it POSTs `/rank/move` and surfaces the final
  * server position via the `onMoved` callback so the caller can
  * reconcile any drift (last-write-wins).
  */
@@ -70,7 +70,7 @@ export function useResourceRank(opts: UseResourceRankOptions) {
       else body.to_bottom = true;
 
       try {
-        const result = await api<MoveResult>("/api/rank/move", {
+        const result = await api<MoveResult>("/rank/move", {
           method: "POST",
           body: JSON.stringify(body),
         });

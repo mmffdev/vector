@@ -33,7 +33,7 @@ function UserEditPanel({
 
   useEffect(() => {
     let cancelled = false;
-    api<RoleSummary[]>("/api/roles/creatable")
+    api<RoleSummary[]>("/roles/creatable")
       .then((rows) => { if (!cancelled) setCreatable(rows); })
       .catch(() => { if (!cancelled) setCreatable([]); });
     return () => { cancelled = true; };
@@ -194,7 +194,7 @@ function CreateUserModal({
 
   useEffect(() => {
     let cancelled = false;
-    api<RoleSummary[]>("/api/roles/creatable")
+    api<RoleSummary[]>("/roles/creatable")
       .then((rows) => {
         if (cancelled) return;
         setCreatable(rows);
@@ -210,7 +210,7 @@ function CreateUserModal({
     setErr(null);
     setBusy(true);
     try {
-      const resp = await api<{ user: AdminUser; reset_url?: string }>("/api/admin/users", {
+      const resp = await api<{ user: AdminUser; reset_url?: string }>("/admin/users", {
         method: "POST",
         body: JSON.stringify({ email, role }),
       });
@@ -311,8 +311,8 @@ export default function UsersPage() {
     setErr(null);
     try {
       const [data, roles] = await Promise.all([
-        api<AdminUser[]>("/api/admin/users"),
-        api<RoleSummary[]>("/api/roles/"),
+        api<AdminUser[]>("/admin/users"),
+        api<RoleSummary[]>("/roles/"),
       ]);
       setUsers(data);
       setVisibleRoles(roles);
@@ -369,20 +369,20 @@ export default function UsersPage() {
     role: AdminUserRole; is_active: boolean;
     first_name: string; last_name: string; department: string;
   }>) {
-    await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await api(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
     await load();
   }
 
   async function issueReset(id: string) {
     const resp = await api<{ email: string; reset_url?: string }>(
-      `/api/admin/users/${id}/password-reset`,
+      `/admin/users/${id}/password-reset`,
       { method: "POST" },
     );
     setResetUrl({ email: resp.email, url: resp.reset_url ?? "" });
   }
 
   async function deleteUser(id: string) {
-    await api(`/api/admin/users/${id}`, { method: "DELETE" });
+    await api(`/admin/users/${id}`, { method: "DELETE" });
     await load();
   }
 

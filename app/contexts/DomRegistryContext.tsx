@@ -157,7 +157,7 @@ export function DomRegistryProvider({ children, seed }: DomRegistryProviderProps
     if (seed !== undefined) return; // tests hand us a static seed
     let cancelled = false;
     setReady(false);
-    api<AddressableRow[]>(`/api/addressables/snapshot?route=${encodeURIComponent(pathname)}`)
+    api<AddressableRow[]>(`/addressables/snapshot?route=${encodeURIComponent(pathname)}`)
       .then((rows) => {
         if (cancelled) return;
         const m = new Map<string, string>();
@@ -402,7 +402,7 @@ export function useRegisterAddressable(
     // RequireAuth (when applied elsewhere) require. Raw fetch would
     // pass the cookie but omit the double-submit header → 403.
     void api<{ id: string; address: string; helpable?: boolean }>(
-      "/api/addressables/register",
+      "/addressables/register",
       {
         method: "POST",
         body: JSON.stringify({

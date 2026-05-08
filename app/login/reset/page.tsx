@@ -24,7 +24,7 @@ export default function ResetRequestPage() {
     if (!email) return setErr("Please enter your email.");
     setBusy(true);
     try {
-      await api("/api/auth/password-reset", {
+      await api("/auth/password-reset", {
         method: "POST",
         body: JSON.stringify({ email }),
         skipAuth: true,

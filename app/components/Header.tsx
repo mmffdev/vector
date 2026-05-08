@@ -84,7 +84,7 @@ export default function Header({
     if (!addressable_id) return;
     let cancelled = false;
     setBodyLoading(true);
-    api<{ body_html?: string } | null>(`/api/page-help/${addressable_id}`)
+    api<{ body_html?: string } | null>(`/page-help/${addressable_id}`)
       .catch((err) => {
         // 404 = no help doc; fall through to SDK defaults rather than treat
         // as an error. Re-throw anything else.

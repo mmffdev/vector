@@ -187,7 +187,7 @@ export default function SecondaryNavigation<K extends string = string>({
     let cancelled = false;
     (async () => {
       try {
-        const resp = await api<TabOrderResp>(`/api/user/tab-order/${encodeURIComponent(pageId)}`);
+        const resp = await api<TabOrderResp>(`/user/tab-order/${encodeURIComponent(pageId)}`);
         if (cancelled) return;
         if (resp.items.length > 0) {
           setOrder(applySavedOrder(items, resp.items.map((r) => r.tab_key)));
@@ -275,7 +275,7 @@ export default function SecondaryNavigation<K extends string = string>({
         const body = {
           items: toSave.map((k, idx) => ({ tab_key: k, position: idx })),
         };
-        api(`/api/user/tab-order/${encodeURIComponent(pageId)}`, {
+        api(`/user/tab-order/${encodeURIComponent(pageId)}`, {
           method: "PUT",
           body: JSON.stringify(body),
         }).catch(() => {
@@ -298,7 +298,7 @@ export default function SecondaryNavigation<K extends string = string>({
             items: toSave.map((k, idx) => ({ tab_key: k, position: idx })),
           };
           // Best-effort flush; ignore errors.
-          api(`/api/user/tab-order/${encodeURIComponent(pageId)}`, {
+          api(`/user/tab-order/${encodeURIComponent(pageId)}`, {
             method: "PUT",
             body: JSON.stringify(body),
           }).catch(() => {});

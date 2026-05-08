@@ -102,7 +102,7 @@ export function useThemePack() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await api<ServerThemePack>("/api/me/theme-pack");
+        const r = await api<ServerThemePack>("/me/theme-pack");
         if (cancelled) return;
         const remote: ThemePack = isValidPack(r.pack) ? r.pack : "default";
         if (remote !== local) {
@@ -135,7 +135,7 @@ export function useThemePack() {
     setSaveError(null);
 
     try {
-      await api("/api/me/theme-pack", {
+      await api("/me/theme-pack", {
         method: "PUT",
         body: JSON.stringify({ pack: next }),
       });

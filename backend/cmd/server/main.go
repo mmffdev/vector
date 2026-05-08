@@ -40,7 +40,6 @@ import (
 	"github.com/mmffdev/vector-backend/internal/orgdesign"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
-	"github.com/mmffdev/vector-backend/internal/wsperms"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolio"
 	"github.com/mmffdev/vector-backend/internal/portfolioitems"
@@ -154,9 +153,6 @@ func main() {
 
 	usersSvc := users.New(pool, auditLog, mailer)
 	usersH := users.NewHandler(usersSvc, permResolver)
-
-	permsSvc := wsperms.New(pool, auditLog)
-	permsH := wsperms.NewHandler(permsSvc)
 
 	// Roles HTTP surface (PLA-0007 G3). Service is sole writer for
 	// roles + role_permissions; the handler is a thin translation layer.
@@ -456,7 +452,7 @@ func main() {
 	// /api/env), and a degraded backend MUST be observable from the UI
 	// even when auth is broken (which is exactly when you most need to
 	// see what's wrong). Components reflect bootstatus.All() in real time.
-	r.Get("/api/status/pipeline", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/status/pipeline", func(w http.ResponseWriter, r *http.Request) {
 		env, letter := envFromDBPort()
 		comps := bootstatus.All()
 		w.Header().Set("Content-Type", "application/json")
@@ -485,11 +481,11 @@ func main() {
 		})
 	})
 
-	// /api/env reports which DB the backend is actually connected to.
+	// /env reports which DB the backend is actually connected to.
 	// Letter is derived from the live DB_PORT env var (5434=prod tunnel,
 	// 5435=dev, 5436=staging) — the truth source the frontend EnvBadge
 	// polls so it can never drift from the running backend.
-	r.Get("/api/env", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/env", func(w http.ResponseWriter, r *http.Request) {
 		env, letter := envFromDBPort()
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{
@@ -500,7 +496,7 @@ func main() {
 		})
 	})
 
-	// POST /api/env/switch — flips backend to the requested env by
+	// POST /env/switch — flips backend to the requested env by
 	// spawning .claude/bin/switch-server in a detached process group.
 	// The script kills this very process and starts a new `go run`
 	// with BACKEND_ENV set, so we MUST send the 202 response before
@@ -510,7 +506,7 @@ func main() {
 	// Dev-only: refuses when APP_ENV=production. CSRF middleware
 	// blocks unauthenticated callers (no csrf cookie → 403 before
 	// reaching this handler).
-	r.Post("/api/env/switch", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/env/switch", func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("APP_ENV") == "production" {
 			http.Error(w, "env switch disabled in production", http.StatusForbidden)
 			return
@@ -568,16 +564,16 @@ func main() {
 		r.Get("/ws", realtime.ServeWS(rtHub))
 	})
 
-	// ---- /v1 — all external API routes ----
-	// Internal/infra routes (/healthz, /api/status/pipeline, /api/env,
-	// /api/env/switch, /ws) are mounted above and stay unversioned.
-	r.Route("/v1", func(r chi.Router) {
+	// ---- /samantha/v1 — all external API routes ----
+	// Internal/infra routes (/healthz, /status/pipeline, /env,
+	// /env/switch, /ws) are mounted above and stay unversioned.
+	r.Route("/samantha/v1", func(r chi.Router) {
 		// API key validation middleware (story 00443).
 		// Validates Bearer token API keys; falls through to JWT auth if not present.
 		r.Use(apikeys.Middleware(apiKeysSvc))
 
 	// ---- /api/auth ----
-	r.Route("/api/auth", func(r chi.Router) {
+	r.Route("/auth", func(r chi.Router) {
 		r.With(httprate.LimitByIP(10, time.Minute)).Post("/login", authH.Login)
 		r.Post("/refresh", authH.Refresh)
 		r.Post("/logout", authH.Logout)
@@ -600,7 +596,7 @@ func main() {
 	// Per-user preference surface — small key/value endpoints scoped
 	// to the authenticated session. Theme pack persists which
 	// /public/themes/<pack>.css the Palette flyout has applied.
-	r.Route("/api/me", func(r chi.Router) {
+	r.Route("/me", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -611,7 +607,7 @@ func main() {
 	})
 
 	// ---- /api/nav ----
-	r.Route("/api/nav", func(r chi.Router) {
+	r.Route("/nav", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// 120 requests/min/IP across all nav routes — comfortably above
@@ -647,7 +643,7 @@ func main() {
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
 	// pageId is a stable string catalog key (e.g. "workspace-settings", "theme",
 	// "work-items"); not an FK. See db/schema/115_user_tab_order.sql header.
-	r.Route("/api/user/tab-order", func(r chi.Router) {
+	r.Route("/user/tab-order", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -659,7 +655,7 @@ func main() {
 	})
 
 	// ---- /api/custom-pages ----
-	r.Route("/api/custom-pages", func(r chi.Router) {
+	r.Route("/custom-pages", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -677,11 +673,11 @@ func main() {
 	// register:        dev unrestricted; prod requires X-Custom-App-Token.
 	// snapshot, page-help GET: unauthenticated by design (substrate metadata).
 	// page-help admin (list / PUT / DELETE): gadmin-only, story 00253.
-	r.Post("/api/addressables/build-reconcile", addressablesH.BuildReconcile)
-	r.Post("/api/addressables/register", addressablesH.Register)
-	r.Get("/api/addressables/snapshot", addressablesH.Snapshot)
-	r.Get("/api/page-help/{addressable_id}", addressablesH.PageHelp)
-	r.Route("/api/page-help/admin", func(r chi.Router) {
+	r.Post("/addressables/build-reconcile", addressablesH.BuildReconcile)
+	r.Post("/addressables/register", addressablesH.Register)
+	r.Get("/addressables/snapshot", addressablesH.Snapshot)
+	r.Get("/page-help/{addressable_id}", addressablesH.PageHelp)
+	r.Route("/page-help/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// PLA-0007: gadmin-equivalent gate via menu.admin.view (closest existing
@@ -693,7 +689,7 @@ func main() {
 		r.Put("/{addressable_id}", addressablesH.PageHelpAdminPut)
 		r.Delete("/{addressable_id}", addressablesH.PageHelpAdminDelete)
 	})
-	r.Route("/api/addressables/admin", func(r chi.Router) {
+	r.Route("/addressables/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// PLA-0007: gadmin-equivalent gate via menu.admin.view. Tech-debt:
@@ -710,7 +706,7 @@ func main() {
 	// MMFF-authored content is implicitly visible across tenants;
 	// per-tenant share enforcement lands in Phase 5. List + adoption-state
 	// are padmin-only because adoption is a padmin-owned product decision.
-	r.Route("/api/portfolio-models", func(r chi.Router) {
+	r.Route("/portfolio-models", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -754,7 +750,7 @@ func main() {
 	// persistent portfolio model record. Reads ONLY vector_artefacts —
 	// no live mmff_library look-ups happen here. Auth is enforced at
 	// the group; per-workspace membership is checked inside the handler.
-	r.Route("/api/portfolio", func(r chi.Router) {
+	r.Route("/portfolio", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -769,7 +765,7 @@ func main() {
 	// workspace-membership enforcement happens INSIDE the handler so we
 	// can return 404 for cross-tenant probes (leak-resistant) while
 	// returning 403 for in-tenant non-members.
-	r.Route("/api/workspace/{id}/portfolio", func(r chi.Router) {
+	r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -783,7 +779,7 @@ func main() {
 	// only the subscription's group admin acknowledges releases on
 	// behalf of the tenant. Count endpoint is the cheap badge poll;
 	// list endpoint hands back full release rows + actions.
-	r.Route("/api/library/releases", func(r chi.Router) {
+	r.Route("/library/releases", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// PLA-0007: gadmin-equivalent gate via menu.admin.view (closest existing
@@ -799,7 +795,7 @@ func main() {
 
 	// ---- /api/subscription ----
 	// Subscription-scoped write surface. Padmin-only.
-	r.Route("/api/subscription", func(r chi.Router) {
+	r.Route("/subscription", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// PLA-0007: padmin-equivalent gate via portfolio.list (closest existing
@@ -817,7 +813,7 @@ func main() {
 	// Generic error reporter — any authenticated user (padmin, gadmin,
 	// or user) may report an occurrence. Rate-limited to dampen runaway
 	// loops on the client side; cap matches /api/nav.
-	r.Route("/api/errors", func(r chi.Router) {
+	r.Route("/errors", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -827,7 +823,7 @@ func main() {
 	})
 
 	// ---- /api/user-stories ----
-	r.Route("/api/user-stories", func(r chi.Router) {
+	r.Route("/user-stories", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// PLA-0006 / 00273: every list query under here must clamp to
@@ -847,7 +843,7 @@ func main() {
 	})
 
 	// ---- /api/defects ----
-	r.Route("/api/defects", func(r chi.Router) {
+	r.Route("/defects", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -864,7 +860,7 @@ func main() {
 	// resource_type field in the body picks the registry entry; the
 	// service enforces tenant isolation by scoping every query by
 	// subscription_id from the session (never the body).
-	r.Route("/api/rank", func(r chi.Router) {
+	r.Route("/rank", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(240, time.Minute))
@@ -874,7 +870,7 @@ func main() {
 	})
 
 	// ---- /api/work-items ----
-	r.Route("/api/work-items", func(r chi.Router) {
+	r.Route("/work-items", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -897,57 +893,8 @@ func main() {
 		r.Delete("/{id}/field-values/{field_library_id}", workItemsH.DeleteFieldValue)
 	})
 
-	// ---- /api/v2/work-items (PLA-0023 / 00469 + 00471) ----
-	if os.Getenv("WORK_ITEMS_V2") == "true" {
-		r.Route("/api/v2/work-items", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Get("/", workItemsV2H.List)
-			r.Post("/", workItemsV2H.Create)
-			r.Post("/bulk", workItemsV2H.Bulk)
-			r.Get("/summary", workItemsV2H.Summary)
-			r.Get("/flow-states", workItemsV2H.ListFlowStates)
-			r.Get("/{id}", workItemsV2H.Get)
-			r.Patch("/{id}", workItemsV2H.Patch)
-			r.Delete("/{id}", workItemsV2H.Archive)
-			r.Get("/{id}/children", workItemsV2H.ListChildren)
-			r.Get("/{id}/field-values", workItemsV2H.ListFieldValues)
-			r.Put("/{id}/field-values", workItemsV2H.UpsertFieldValues)
-			r.Delete("/{id}/field-values/{field_library_id}", workItemsV2H.DeleteFieldValue)
-		})
-	} else {
-		r.Get("/api/v2/work-items", func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
-		})
-	}
-
-	// ---- /api/v2/timeboxes/sprints (PLA-0027 / 00514) ----
-	if sprintH != nil {
-		r.Route("/api/v2/timeboxes/sprints", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-
-			r.Get("/", sprintH.List)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/", sprintH.Create)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/bulk-create", sprintH.BulkCreate)
-			r.Get("/{id}", sprintH.Get)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Put("/{id}", sprintH.Update)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Delete("/{id}", sprintH.Delete)
-		})
-	} else {
-		r.Get("/api/v2/timeboxes/sprints", func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "timebox sprints not enabled", http.StatusServiceUnavailable)
-		})
-	}
-
-	// ---- /api/sprints ----
-	r.Route("/api/sprints", func(r chi.Router) {
+	// ---- /sprints ----
+	r.Route("/sprints", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -961,7 +908,7 @@ func main() {
 	})
 
 	// ---- /api/custom-field-library ----
-	r.Route("/api/custom-field-library", func(r chi.Router) {
+	r.Route("/custom-field-library", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -975,7 +922,7 @@ func main() {
 	})
 
 	// ---- /api/work-item-templates ----
-	r.Route("/api/work-item-templates", func(r chi.Router) {
+	r.Route("/work-item-templates", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -992,7 +939,7 @@ func main() {
 	// Per-tenant flow editor surface. gadmin and padmin both have
 	// flows.manage; the page is one shared screen for both roles.
 	// Read-only for now — write paths arrive in the next iteration.
-	r.Route("/api/flows", func(r chi.Router) {
+	r.Route("/flows", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
@@ -1010,7 +957,7 @@ func main() {
 	// authorisation is checked inside orgdesign.Service via the
 	// subscription scope. The single-admin / federated handoff governance
 	// gate (story 00288) layers on top of GrantRole.
-	r.Route("/api/topology", func(r chi.Router) {
+	r.Route("/topology", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1065,7 +1012,7 @@ func main() {
 	// migration 100 seeds the role grid). Non-gadmin callers get 403
 	// on archive/restore because only the gadmin grid carries those
 	// codes in MVP.
-	r.Route("/api/workspaces", func(r chi.Router) {
+	r.Route("/workspaces", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1077,7 +1024,7 @@ func main() {
 	// Returns the admitted field set for one workspace. Auth + fresh-
 	// password gates at the router edge; per-row tenancy + membership
 	// gating happens inside the handler (404 / 403 / 200).
-	r.Route("/api/workspace/{id}/fields", func(r chi.Router) {
+	r.Route("/workspace/{id}/fields", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1088,7 +1035,7 @@ func main() {
 	// One row per subscription; reads + writes scoped to the caller's
 	// tenant via auth context. Auth + fresh-password gate is the only
 	// guard — there's no per-row permission catalogue.
-	r.Route("/api/tenant-settings", func(r chi.Router) {
+	r.Route("/tenant-settings", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1097,7 +1044,7 @@ func main() {
 	})
 
 	// ---- /api/portfolio-items ----
-	r.Route("/api/portfolio-items", func(r chi.Router) {
+	r.Route("/portfolio-items", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		// PLA-0006 / 00273: clamp predicate middleware. See the
@@ -1113,7 +1060,7 @@ func main() {
 	})
 
 	// ---- /api/admin ----
-	r.Route("/api/admin", func(r chi.Router) {
+	r.Route("/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 
 		// Require fresh password for most admin routes
@@ -1143,17 +1090,6 @@ func main() {
 			r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
 				Get("/users", usersH.List)
 
-			// Per-user permissions (legacy table) — gadmin/padmin equivalent.
-			// Tech-debt: this surface is the OLD per-user grants table; on
-			// PLA-0007 G4/G5 it gets folded into the role grid. Gate via
-			// roles.list (closest existing code). See PLA-0007 G3.
-			r.Group(func(r chi.Router) {
-				r.Use(auth.RequirePermission(permResolver, permissions.RolesList))
-				r.Post("/permissions", permsH.Grant)
-				r.Delete("/permissions/{id}", permsH.Revoke)
-				r.Get("/permissions", permsH.List)
-			})
-
 			// Dev tools — gadmin or padmin (reset is scoped to caller's subscription).
 			// PLA-0007: gated via portfolio.list (closest existing code).
 			// Tech-debt: own code dev.adoption_reset — see PLA-0007 G3.
@@ -1175,7 +1111,7 @@ func main() {
 	})
 
 	// ---- /api/roles (PLA-0007 G3) ----
-	r.Route("/api/roles", func(r chi.Router) {
+	r.Route("/roles", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 
@@ -1202,7 +1138,61 @@ func main() {
 			Delete("/{id}/permissions", rolesH.RevokePermissions)
 	})
 
-	}) // end /v1
+	}) // end /samantha/v1
+
+	// ---- /samantha/v2 — feature-gated v2 routes ----
+	r.Route("/samantha/v2", func(r chi.Router) {
+		r.Use(apikeys.Middleware(apiKeysSvc))
+
+		// ---- /work-items (PLA-0023 / 00469 + 00471) ----
+		if os.Getenv("WORK_ITEMS_V2") == "true" {
+			r.Route("/work-items", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Get("/", workItemsV2H.List)
+				r.Post("/", workItemsV2H.Create)
+				r.Post("/bulk", workItemsV2H.Bulk)
+				r.Get("/summary", workItemsV2H.Summary)
+				r.Get("/flow-states", workItemsV2H.ListFlowStates)
+				r.Get("/{id}", workItemsV2H.Get)
+				r.Patch("/{id}", workItemsV2H.Patch)
+				r.Delete("/{id}", workItemsV2H.Archive)
+				r.Get("/{id}/children", workItemsV2H.ListChildren)
+				r.Get("/{id}/field-values", workItemsV2H.ListFieldValues)
+				r.Put("/{id}/field-values", workItemsV2H.UpsertFieldValues)
+				r.Delete("/{id}/field-values/{field_library_id}", workItemsV2H.DeleteFieldValue)
+			})
+		} else {
+			r.Get("/work-items", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
+			})
+		}
+
+		// ---- /timeboxes/sprints (PLA-0027 / 00514) ----
+		if sprintH != nil {
+			r.Route("/timeboxes/sprints", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+
+				r.Get("/", sprintH.List)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/", sprintH.Create)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/bulk-create", sprintH.BulkCreate)
+				r.Get("/{id}", sprintH.Get)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Put("/{id}", sprintH.Update)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Delete("/{id}", sprintH.Delete)
+			})
+		} else {
+			r.Get("/timeboxes/sprints", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "timebox sprints not enabled", http.StatusServiceUnavailable)
+			})
+		}
+	})
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

@@ -53,7 +53,7 @@ export default function EnvBadge() {
 
     const tick = async () => {
       try {
-        const data = await apiInfra<PipelineStatus>("/api/status/pipeline", { skipAuth: true });
+        const data = await apiInfra<PipelineStatus>("/status/pipeline", { skipAuth: true });
         if (cancelled) return;
         setInfo(data);
         setError(false);
@@ -113,7 +113,7 @@ export default function EnvBadge() {
     setSwitching({ target, startedAt: Date.now() });
     setError(false);
     try {
-      await apiInfra("/api/env/switch", {
+      await apiInfra("/env/switch", {
         method: "POST",
         body: JSON.stringify({ target }),
       });

@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (refreshInFlight.current) return refreshInFlight.current;
     const flight = (async () => {
       try {
-        const res = await api<LoginResp>("/api/auth/refresh", { method: "POST", skipAuth: true });
+        const res = await api<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
         applyLogin(res);
       } catch {
         setApiToken(null);
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await api<LoginResp>("/api/auth/login", {
+      const res = await api<LoginResp>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
         skipAuth: true,
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     const departingId = user?.id ?? null;
     try {
-      await api("/api/auth/logout", { method: "POST" });
+      await api("/auth/logout", { method: "POST" });
     } catch {
       // ignore
     }

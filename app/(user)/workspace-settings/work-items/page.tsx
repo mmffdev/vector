@@ -34,7 +34,7 @@ export default function WorkItemsPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api<FlowsResponse>("/api/flows/")
+    api<FlowsResponse>("/flows/")
       .then((res) => {
         if (cancelled) return;
         setData(res);

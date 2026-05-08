@@ -5,7 +5,7 @@ export async function reportError(
   context?: Record<string, unknown>,
 ): Promise<void> {
   try {
-    await api("/api/errors/report", {
+    await api("/errors/report", {
       method: "POST",
       body: JSON.stringify({ code, context }),
     });
