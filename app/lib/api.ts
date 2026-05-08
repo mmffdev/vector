@@ -1,6 +1,7 @@
-// Versioned base for all external API calls. Infra/internal routes
-// (/healthz, /env, /status/pipeline, /env/switch) are
-// unversioned and must use API_INFRA_BASE instead.
+// Versioned base for data API calls (/samantha/v1 or /samantha/v2).
+// Infra/session routes (auth, nav, me, roles, admin, workspaces, errors,
+// addressables, page-help, library/releases, custom-pages, user/tab-order)
+// are unversioned root-level endpoints — use apiInfra() for those.
 export const API_INFRA_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v1";
 
@@ -106,7 +107,9 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
   return _fetch<T>(API_BASE, path, opts);
 }
 
-// For unversioned infra routes: /healthz, /env, /status/pipeline, /env/switch
+// For root-level unversioned routes: auth, nav, me, roles, admin, workspaces,
+// errors, addressables, page-help, library/releases, custom-pages, user/tab-order,
+// healthz, env, status/pipeline, env/switch.
 export async function apiInfra<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
   return _fetch<T>(API_INFRA_BASE, path, opts);
 }

@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { api } from "@/app/lib/api";
+import { apiInfra as api } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
 import { AuthBrand } from "@/app/components/AuthBrand";
 

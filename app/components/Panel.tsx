@@ -25,7 +25,7 @@ import {
   helpValueAsFragment,
 } from "@/app/contexts/SamanthaSdkContext";
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
-import { api, ApiError } from "@/app/lib/api";
+import { apiInfra as api, ApiError } from "@/app/lib/api";
 
 interface PanelProps {
   // Snake-case identifier under this parent. Validated by the substrate

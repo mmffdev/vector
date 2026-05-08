@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/app/lib/api";
+import { apiInfra as api, ApiError } from "@/app/lib/api";
 
 export type ThemePack = "default" | "vector-mono" | "charcoal-amber" | "vector-marine" | "atlas" | "coral-tide" | "slate" | "harbor" | "dusk-mauve" | "sea-glass" | "vesper" | "dusk-slate" | "sundown" | "vector-bloom" | "tideline" | "sorbet" | "kelp" | "linen" | "mesa" | "oyster" | "meadow-pop" | "cobalt-lime" | "cobalt-day" | "abyss" | "tidal-amber" | "taupe-navy" | "chalk-navy" | "buckthorn" | "moonlit" | "nightberry" | "berry-dawn" | "ember-wine" | "saffron-tide" | "spectrum" | "spectrum-dusk" | "stratum" | "coral-chalk" | "oslo" | "blush-steel" | "maritime" | "aurora" | "ironworks" | "rosewood";
 

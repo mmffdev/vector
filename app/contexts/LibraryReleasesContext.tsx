@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useHasPermission } from "@/app/contexts/AuthContext";
-import { api, ApiError } from "@/app/lib/api";
+import { apiInfra as api, ApiError } from "@/app/lib/api";
 
 interface CountResponse {
   count: number;

@@ -561,15 +561,13 @@ func main() {
 		r.Get("/ws", realtime.ServeWS(rtHub))
 	})
 
-	// ---- /samantha/v1 — all external API routes ----
-	// Internal/infra routes (/healthz, /status/pipeline, /env,
-	// /env/switch, /ws) are mounted above and stay unversioned.
-	r.Route("/samantha/v1", func(r chi.Router) {
-		// API key validation middleware (story 00443).
-		// Validates Bearer token API keys; falls through to JWT auth if not present.
-		r.Use(apikeys.Middleware(apiKeysSvc))
+	// ---- Infra routes — unversioned (PLA-0030 Task 8) ----
+	// Session/user/navigation infrastructure — no data versioning; promoted
+	// from /samantha/v1 to root-level. Frontend uses apiInfra() to reach these.
+	// The apikeys middleware is NOT applied here — infra routes authenticate
+	// via JWT only (API keys are a data-plane concept).
 
-	// ---- /api/auth ----
+	// /auth
 	r.Route("/auth", func(r chi.Router) {
 		r.With(httprate.LimitByIP(10, time.Minute)).Post("/login", authH.Login)
 		r.Post("/refresh", authH.Refresh)
@@ -589,10 +587,7 @@ func main() {
 		})
 	})
 
-	// ---- /api/me ----
-	// Per-user preference surface — small key/value endpoints scoped
-	// to the authenticated session. Theme pack persists which
-	// /public/themes/<pack>.css the Palette flyout has applied.
+	// /me
 	r.Route("/me", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
@@ -603,13 +598,10 @@ func main() {
 		r.Put("/theme-pack", usersH.SetThemePack)
 	})
 
-	// ---- /api/nav ----
+	// /nav
 	r.Route("/nav", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		// 120 requests/min/IP across all nav routes — comfortably above
-		// normal UI churn (load + a handful of PUTs per session), blocks
-		// authed-session abuse.
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 
@@ -623,9 +615,6 @@ func main() {
 		r.Get("/bookmark/check", navH.CheckBookmark)
 		r.Get("/entities", navEntitiesH.List)
 
-		// Profiles (Phase 5). /order and /active are static segments —
-		// register them before /{id} so chi prefers the static path,
-		// even though chi's trie does the right thing either way.
 		r.Get("/profiles", navH.ListProfiles)
 		r.Post("/profiles", navH.CreateProfile)
 		r.Put("/profiles/order", navH.ReorderProfiles)
@@ -636,10 +625,7 @@ func main() {
 		r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
 	})
 
-	// ---- /api/user/tab-order ----
-	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
-	// pageId is a stable string catalog key (e.g. "workspace-settings", "theme",
-	// "work-items"); not an FK. See db/schema/115_user_tab_order.sql header.
+	// /user/tab-order
 	r.Route("/user/tab-order", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
@@ -651,7 +637,7 @@ func main() {
 		r.Delete("/{pageId}", userTabOrderH.Delete)
 	})
 
-	// ---- /api/custom-pages ----
+	// /custom-pages
 	r.Route("/custom-pages", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
@@ -665,11 +651,7 @@ func main() {
 		r.Delete("/{id}", customPagesH.Delete)
 	})
 
-	// ---- /api/addressables and /api/page-help/{addressable_id} (PLA-0005) ----
-	// build-reconcile: CI service-account token (X-CI-Token).
-	// register:        dev unrestricted; prod requires X-Custom-App-Token.
-	// snapshot, page-help GET: unauthenticated by design (substrate metadata).
-	// page-help admin (list / PUT / DELETE): gadmin-only, story 00253.
+	// /addressables + /page-help (PLA-0005)
 	r.Post("/addressables/build-reconcile", addressablesH.BuildReconcile)
 	r.Post("/addressables/register", addressablesH.Register)
 	r.Get("/addressables/snapshot", addressablesH.Snapshot)
@@ -677,8 +659,6 @@ func main() {
 	r.Route("/page-help/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0007: gadmin-equivalent gate via menu.admin.view (closest existing
-		// code). Tech-debt: own code addressables.page_help.admin — see PLA-0007 G3.
 		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
@@ -689,13 +669,126 @@ func main() {
 	r.Route("/addressables/admin", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0007: gadmin-equivalent gate via menu.admin.view. Tech-debt:
-		// own code addressables.admin — see PLA-0007 G3.
 		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		r.Patch("/{id}/helpable", addressablesH.AdminUpdateHelpable)
 	})
+
+	// /library/releases
+	r.Route("/library/releases", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+
+		r.Get("/", libReleasesH.List)
+		r.Get("/count", libReleasesH.Count)
+		r.Post("/{id}/ack", libReleasesH.Ack)
+	})
+
+	// /errors
+	r.Route("/errors", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+
+		r.Post("/report", errorsReportH.Report)
+	})
+
+	// /workspaces (PLA-0006)
+	r.Route("/workspaces", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		workspacesH.Mount(r)
+	})
+
+	// /admin
+	r.Route("/admin", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+
+		r.Group(func(r chi.Router) {
+			r.Use(authSvc.RequireFreshPassword)
+
+			r.With(auth.RequireAnyPermission(permResolver,
+				permissions.UsersCreateGadmin,
+				permissions.UsersCreatePadmin,
+				permissions.UsersCreateTeamLead,
+				permissions.UsersCreateUser,
+				permissions.UsersCreateExternal,
+			)).Post("/users", usersH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
+				Patch("/users/{id}", usersH.Patch)
+			r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
+				Delete("/users/{id}", usersH.Delete)
+			r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
+				Post("/users/{id}/password-reset", usersH.IssueReset)
+
+			r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
+				Get("/users", usersH.List)
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
+				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
+			})
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequirePermission(permResolver, permissions.UsersList))
+			r.Post("/api-keys/issue", apiKeysH.Issue)
+			r.Get("/api-keys", apiKeysH.List)
+			r.Post("/api-keys/revoke", apiKeysH.Revoke)
+		})
+	})
+
+	// /roles (PLA-0007 G3)
+	r.Route("/roles", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+
+		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+			Get("/", rolesH.List)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+			Get("/creatable", rolesH.Creatable)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+			Get("/permissions/catalogue", rolesH.ListPermissionsCatalogue)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
+			Get("/{id}", rolesH.Get)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesCreate)).
+			Post("/", rolesH.Create)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesUpdate)).
+			Patch("/{id}", rolesH.Update)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesArchive)).
+			Delete("/{id}", rolesH.Archive)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
+			Get("/{id}/permissions", rolesH.ListPermissions)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions)).
+			Post("/{id}/permissions", rolesH.AssignPermissions)
+		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
+			Delete("/{id}/permissions", rolesH.RevokePermissions)
+	})
+
+	// ---- /samantha/v1 — data routes (infra moved to root above) ----
+	r.Route("/samantha/v1", func(r chi.Router) {
+		// API key validation middleware (story 00443).
+		// Validates Bearer token API keys; falls through to JWT auth if not present.
+		r.Use(apikeys.Middleware(apiKeysSvc))
+
+		// PLA-0030 Task 9: Deprecation + Sunset headers on every v1 response.
+		// Sunset date = 2026-08-07 (90 days from 2026-05-09 cutover start).
+		// RFC 8594 Sunset header uses IMF-fixdate format.
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Set("Deprecation", "true")
+				w.Header().Set("Sunset", "Fri, 07 Aug 2026 00:00:00 GMT")
+				w.Header().Set("Link", `</samantha/v2>; rel="successor-version"`)
+				next.ServeHTTP(w, req)
+			})
+		})
 
 	// ---- /api/portfolio-models ----
 	// Read-only library bundle surface (Phase 3 of mmff_library plan).
@@ -771,25 +864,6 @@ func main() {
 		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
 	})
 
-	// ---- /api/library/releases ----
-	// Release-notification channel (Phase 3, plan §12). Gadmin-only:
-	// only the subscription's group admin acknowledges releases on
-	// behalf of the tenant. Count endpoint is the cheap badge poll;
-	// list endpoint hands back full release rows + actions.
-	r.Route("/library/releases", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0007: gadmin-equivalent gate via menu.admin.view (closest existing
-		// code). Tech-debt: own code library.releases.ack — see PLA-0007 G3.
-		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", libReleasesH.List)
-		r.Get("/count", libReleasesH.Count)
-		r.Post("/{id}/ack", libReleasesH.Ack)
-	})
-
 	// ---- /api/subscription ----
 	// Subscription-scoped write surface. Padmin-only.
 	r.Route("/subscription", func(r chi.Router) {
@@ -804,19 +878,6 @@ func main() {
 		// Subscription layer reads + writes (stories 00062–00065).
 		r.Get("/layers", layersBatchH.GetLayers)
 		r.Patch("/layers/batch", layersBatchH.PatchLayersBatch)
-	})
-
-	// ---- /api/errors ----
-	// Generic error reporter — any authenticated user (padmin, gadmin,
-	// or user) may report an occurrence. Rate-limited to dampen runaway
-	// loops on the client side; cap matches /api/nav.
-	r.Route("/errors", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Post("/report", errorsReportH.Report)
 	})
 
 	// ---- /api/user-stories ----
@@ -921,22 +982,6 @@ func main() {
 		r.Post("/reset", orgDesignH.Reset)
 	})
 
-	// ---- /api/workspaces (PLA-0006 / story 00377) ----
-	// Workspaces are the top-level tenant container above org_nodes.
-	// Reads return the live workspaces in the caller's tenant; mutations
-	// gate inside workspaces.Service via the workspace.* permission
-	// codes (catalogue lives in internal/permissions/catalogue.go;
-	// migration 100 seeds the role grid). Non-gadmin callers get 403
-	// on archive/restore because only the gadmin grid carries those
-	// codes in MVP.
-	r.Route("/workspaces", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		workspacesH.Mount(r)
-	})
-
 	// ---- /api/workspace/{id}/fields (PLA-0026 / Story 00500, B11) ----
 	// Returns the admitted field set for one workspace. Auth + fresh-
 	// password gates at the router edge; per-row tenancy + membership
@@ -974,85 +1019,6 @@ func main() {
 		r.Get("/{id}", portfolioItemsH.Get)
 		r.Patch("/{id}", portfolioItemsH.Patch)
 		r.Delete("/{id}", portfolioItemsH.Archive)
-	})
-
-	// ---- /api/admin ----
-	r.Route("/admin", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-
-		// Require fresh password for most admin routes
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireFreshPassword)
-
-			// Users — per-route permission codes (PLA-0007).
-			// POST creates the actor's chosen target role; the handler is
-			// responsible for self-elevation guard against the actor's grid,
-			// so the gate at the route level is the union of creator-matrix
-			// codes (any one is enough to enter the route — handler discriminates).
-			r.With(auth.RequireAnyPermission(permResolver,
-				permissions.UsersCreateGadmin,
-				permissions.UsersCreatePadmin,
-				permissions.UsersCreateTeamLead,
-				permissions.UsersCreateUser,
-				permissions.UsersCreateExternal,
-			)).Post("/users", usersH.Create)
-			r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
-				Patch("/users/{id}", usersH.Patch)
-			r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
-				Delete("/users/{id}", usersH.Delete)
-			r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
-				Post("/users/{id}/password-reset", usersH.IssueReset)
-
-			// List users — direct mapping to users.list.
-			r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
-				Get("/users", usersH.List)
-
-			// Dev tools — gadmin or padmin (reset is scoped to caller's subscription).
-			// PLA-0007: gated via portfolio.list (closest existing code).
-			// Tech-debt: own code dev.adoption_reset — see PLA-0007 G3.
-			r.Group(func(r chi.Router) {
-				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
-				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
-			})
-		})
-
-		// API keys (story 00443 — PLA-0019) — no RequireFreshPassword (programmatic access).
-		// Tech-debt: PLA-0007 gate via api_keys.manage permission.
-		r.Group(func(r chi.Router) {
-			r.Use(auth.RequirePermission(permResolver, permissions.UsersList)) // Temp gate; should be api_keys.manage
-			r.Post("/api-keys/issue", apiKeysH.Issue)
-			r.Get("/api-keys", apiKeysH.List)
-			r.Post("/api-keys/revoke", apiKeysH.Revoke)
-		})
-
-	})
-
-	// ---- /api/roles (PLA-0007 G3) ----
-	r.Route("/roles", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-
-		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
-			Get("/", rolesH.List)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
-			Get("/creatable", rolesH.Creatable)
-		// /admin/roles UI consumes this to render the assignment grid.
-		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
-			Get("/permissions/catalogue", rolesH.ListPermissionsCatalogue)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
-			Get("/{id}", rolesH.Get)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesCreate)).
-			Post("/", rolesH.Create)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesUpdate)).
-			Patch("/{id}", rolesH.Update)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesArchive)).
-			Delete("/{id}", rolesH.Archive)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
-			Get("/{id}/permissions", rolesH.ListPermissions)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions)).
-			Post("/{id}/permissions", rolesH.AssignPermissions)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
-			Delete("/{id}/permissions", rolesH.RevokePermissions)
 	})
 
 	}) // end /samantha/v1

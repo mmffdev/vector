@@ -14,7 +14,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 |---|---|---|---|
 | `/work-items` (full CRUD + bulk + field-values) | `vaPool` (vector_artefacts) | ✅ done | PLA-0023 / PLA-0025 |
 | `/rank/move` | `vaPool` | ✅ done | Moved 2026-05-08; v1 registration removed 2026-05-09; frontend uses `apiV2` |
-| `/timeboxes/sprints` (list + get) | `vaPool` | ✅ done | PLA-0027; sprints mutations still v1 — see below |
+| `/timeboxes/sprints` (full CRUD + bulk-create) | `vaPool` | ✅ done | PLA-0027 + PLA-0030 T2; all mutations in v2 block, `WorkItemsSettingsEdit` gate on writes |
 
 ---
 
@@ -29,7 +29,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 | `/subscription/layers` | `pool` | Layer data in mmff_vector; workspace-scoped successor (`/workspace/{id}/portfolio/layers`) partially uses vaPool | PLA-0026 |
 | `/workspace/{id}/portfolio/layers` | `pool` + `vaPool` | Partial — reads vaPool but falls back to pool; not fully cut over | PLA-0026 completion |
 | `/workspace/{id}/fields` | `pool` + `vaPool` | Field schema reads vaPool; handler still has mmff_vector dependency for tenancy/membership | PLA-0026 completion |
-| `/timeboxes/sprints` mutations (POST, PUT, DELETE) | `vaPool` | Handler uses vaPool but route is registered v1-only; mutations need permission middleware audit before promoting | Middleware audit story |
+| ~~`/timeboxes/sprints` mutations (POST, PUT, DELETE)~~ | `vaPool` | ✅ Audit complete — mutations were already in v2 block with `WorkItemsSettingsEdit` gate; PLA-0030 T2 done | — |
 | `/defects` | `pool` | Defects not yet migrated to vector_artefacts | Defects migration (not yet planned) |
 | `/user-stories` | `pool` | User stories not yet migrated to vector_artefacts | User stories migration (not yet planned) |
 | `/flows` | `pool` | Flow states live in mmff_vector | Part of work-items data model migration |
@@ -37,24 +37,22 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 
 ---
 
-## Infra — will not version (permanent v1 or unversioned)
+## Infra — promoted to root-level (PLA-0030 Task 8 ✅)
 
-These serve session/user/navigation data that lives in mmff_vector permanently and has no case for versioning. They will either stay on v1 with a deprecation notice or become root-level unversioned routes (alongside `/healthz`, `/env`, `/ws`).
+These serve session/user/navigation data that lives in mmff_vector permanently and have no case for API versioning. All are now registered as root-level routes (alongside `/healthz`, `/env`, `/ws`). The `/samantha/v1` block no longer contains any of these. Frontend uses `apiInfra()` to reach them.
 
 | Route | Rationale |
 |---|---|
-| `/auth` (refresh, logout, change-password, me) | Session infrastructure — not data endpoints |
-| `/me` (theme-pack) | User preferences in mmff_vector — not portfolio data |
-| `/nav` (catalogue, prefs, bookmarks, profiles) | Navigation config in mmff_vector |
-| `/user/tab-order` | UI state in mmff_vector |
-| `/custom-pages` | Page config in mmff_vector |
-| `/addressables/*`, `/page-help/*` | UI registry in mmff_vector |
-| `/roles`, `/admin` | RBAC + admin surface — mmff_vector; PLA-0007 |
-| `/errors` | Error reporting — no versioning requirement |
-| `/library/releases` | Library DB read-only — separate data domain |
-| `/workspaces` | Workspace config in mmff_vector |
-
-**Decision needed:** promote infra routes to root-level (unversioned, alongside `/healthz`) or keep on v1 with explicit `Deprecated: true` in spec. Either way, external SDK consumers must never depend on them.
+| `/auth` | Session infrastructure — login, refresh, logout, change-password, me |
+| `/me` | User preferences (theme-pack) |
+| `/nav` | Navigation catalogue, prefs, bookmarks, profiles, entities, start-page |
+| `/user/tab-order` | Per-user per-page tab ordering (PLA-0014) |
+| `/custom-pages` | Custom page config |
+| `/addressables/*`, `/page-help/*` | Addressable substrate + page-help (PLA-0005) |
+| `/roles`, `/admin` | RBAC + user admin surface (PLA-0007) |
+| `/errors` | Error reporting |
+| `/library/releases` | Library release notifications |
+| `/workspaces` | Workspace config (PLA-0006) |
 
 ---
 
@@ -73,13 +71,11 @@ The current `openapi.yaml` is the v1 spec. A separate `openapi-v2.yaml` is requi
 
 ## Deprecation plan for v1
 
-Once all non-infra routes have moved:
-
-1. Add `Deprecated: true` to all v1 paths in `openapi.yaml`
-2. Add `Deprecation` + `Sunset` response headers to the v1 router middleware
-3. Give external consumers one release cycle (date TBD)
-4. Remove the `/samantha/v1` `r.Route(...)` block from `main.go`
-5. Archive `openapi.yaml` → `openapi-v1-archived.yaml`
+1. ✅ Add `Deprecation: true` + `Sunset` + `Link` headers to v1 router middleware — **done 2026-05-09** (sunset date: `Fri, 07 Aug 2026 00:00:00 GMT`; successor link: `</samantha/v2>`)
+2. Add `Deprecated: true` to all v1 paths in `openapi.yaml` — pending Task 9 spec update
+3. Give external consumers until 2026-08-07 (sunset date)
+4. Remove the `/samantha/v1` `r.Route(...)` block from `main.go` — pending Task 10 (blocked until all data routes migrate)
+5. Archive `openapi.yaml` → `openapi-v1-archived.yaml` — pending Task 10
 
 ---
 

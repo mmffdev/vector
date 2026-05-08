@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import PageShell from "@/app/components/PageShell";
 import PinButton from "@/app/components/PinButton";
-import { api } from "@/app/lib/api";
+import { apiInfra as api } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 interface EntityRow {

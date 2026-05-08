@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { apiInfra as api } from "./api";
 
 export async function reportError(
   code: string,

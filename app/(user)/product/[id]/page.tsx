@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
-import { api } from "@/app/lib/api";
+import { apiInfra as api } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 interface EntityRow {

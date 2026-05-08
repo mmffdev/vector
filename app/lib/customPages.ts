@@ -1,4 +1,4 @@
-import { api } from "@/app/lib/api";
+import { apiInfra as api } from "@/app/lib/api";
 
 export type CustomViewKind = "timeline" | "board" | "list";
 

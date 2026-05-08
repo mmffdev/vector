@@ -15,7 +15,7 @@
 // switcher dropdown (story 00379) refetches without a page reload.
 // Listeners attach via `window.addEventListener('workspaces:changed', …)`.
 
-import { api } from "@/app/lib/api";
+import { apiInfra as api } from "@/app/lib/api";
 
 export const WORKSPACES_CHANGED_EVENT = "workspaces:changed";
 
