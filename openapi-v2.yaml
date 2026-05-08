@@ -23,6 +23,10 @@ tags:
     description: Generic position management across orderable resources
   - name: timeboxes
     description: Timebox management — sprints and releases
+  - name: workspace-fields
+    description: Workspace-scoped admitted field set from artefact_field_library
+  - name: portfolio
+    description: Portfolio layers from artefact_types (scope=strategy)
 
 paths:
 
@@ -568,6 +572,135 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  # ── Workspace Fields ──────────────────────────────────────────────────────
+
+  /workspace/{id}/fields:
+    get:
+      tags: [workspace-fields]
+      summary: List admitted fields for a workspace
+      operationId: v2_listWorkspaceFields
+      description: |
+        Returns the server-resolved field set for the workspace: global fields
+        ∪ tenant-scoped fields ∪ workspace-whitelisted fields. Tenancy and
+        membership are enforced inside the handler (404 for cross-tenant,
+        403 for non-member).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Workspace ID
+      responses:
+        '200':
+          description: Admitted field set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  fields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        subscription_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        name:
+                          type: string
+                        label:
+                          type: string
+                        data_type:
+                          type: string
+                        scope:
+                          type: string
+                          enum: [global, tenant, workspace]
+                        options_json:
+                          description: Present when field has predefined options
+                        config_json:
+                          description: Present when field has extra config
+                        description:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        updated_at:
+                          type: string
+                          format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Portfolio Layers ──────────────────────────────────────────────────────
+
+  /workspace/{id}/portfolio/layers:
+    get:
+      tags: [portfolio]
+      summary: List strategy layers for a workspace
+      operationId: v2_listWorkspacePortfolioLayers
+      description: |
+        Returns strategy artefact_types (scope=strategy, archived_at IS NULL)
+        for the workspace, ordered by sort_order. Tenancy and workspace
+        membership are enforced inside the handler.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Workspace ID
+      responses:
+        '200':
+          description: Strategy layer list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    workspace_id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    sort_order:
+                      type: integer
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: vector_artefacts unavailable
 
 components:
   schemas:

@@ -1091,6 +1091,27 @@ func main() {
 				http.Error(w, "timebox sprints not enabled", http.StatusServiceUnavailable)
 			})
 		}
+
+		// ---- /workspace/{id}/fields (PLA-0026 B11 / PLA-0030 T3) ----
+		// Admitted field set for one workspace. Auth + tenancy + membership
+		// gating happens inside the handler (404 for cross-tenant probes).
+		r.Route("/workspace/{id}/fields", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/", fieldsH.List)
+		})
+
+		// ---- /workspace/{id}/portfolio/layers (PLA-0026 B10 / PLA-0030 T3) ----
+		// Strategy artefact_types (scope='strategy') for one workspace.
+		// Auth + tenancy + membership gating inside the handler.
+		r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
+		})
 	})
 
 	port := os.Getenv("SERVER_PORT")

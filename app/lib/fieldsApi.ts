@@ -6,7 +6,7 @@
 // per-workspace whitelist). Frontend MUST NOT recompute admission;
 // callers render whatever this function returns.
 
-import { api } from "@/app/lib/api";
+import { apiV2 as api } from "@/app/lib/api";
 
 // WorkspaceField is the wire shape for one row in the response. Field
 // names mirror artefact_field_library — `name` is the machine identifier
