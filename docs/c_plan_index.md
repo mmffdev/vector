@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0029`
+**Last issued:** `PLA-0030`
 
 ## Format
 
@@ -50,6 +50,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0027` | Sprints — Timebox Management System | 2026-05-07 | active |
 | `PLA-0028` | Samantha API Rename — `/v1/api/*` → `/samantha/v1/*`, drop `/api/` segment, extract v2 block | 2026-05-08 | active |
 | `PLA-0029` | API Contract Protection & Blast Radius Toolchain — oasdiff, drift detection, caller map, Dev panel | 2026-05-08 | active |
+| `PLA-0030` | v1 → v2 API Cutover — retire `/samantha/v1`, promote all routes to `/samantha/v2`, split openapi specs, deprecation headers | 2026-05-08 | active |
 
 ## Deletion log
 

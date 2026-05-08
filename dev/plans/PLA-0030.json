@@ -1,0 +1,118 @@
+{
+  "id": "PLA-0030",
+  "title": "v1 → v2 API Cutover — retire /samantha/v1",
+  "date_created": "2026-05-08",
+  "date_started": null,
+  "date_last_updated": "2026-05-08",
+  "date_finished": null,
+  "scope": "<p>Retire <code>/samantha/v1</code> entirely. Every non-infra route group moves to <code>/samantha/v2</code> as its backing data migrates to <code>vector_artefacts</code>. Auth/nav/user infrastructure routes are promoted to unversioned root-level endpoints (alongside <code>/healthz</code>). The OpenAPI spec is split into <code>openapi.yaml</code> (v1, frozen on deprecation) and <code>openapi-v2.yaml</code> (v2, live). The <code>/samantha/v1</code> router block is removed from <code>main.go</code> once all routes have moved. Deprecation + Sunset headers gate the removal.</p>",
+  "value": "<p>Establishes a clean, stable external API surface on <code>/samantha/v2</code> backed entirely by <code>vector_artefacts</code>. Removes the dual-pool complexity from <code>main.go</code>. Allows the OpenAPI spec to accurately describe what each version serves, enabling external SDK consumers and the <code>WorkItemsTree</code> DnD surface to call v2 without routing through legacy infrastructure.</p>",
+  "implementation_plan": [
+    "Task 1: Create openapi-v2.yaml — standalone spec for /samantha/v2 paths only (work-items, rank/move, timeboxes/sprints); update check_routes.sh + check_callers.py to validate against both specs; update api:snap to snapshot both.",
+    "Task 2: Migrate /timeboxes/sprints mutations (POST, PUT, DELETE, bulk-create) — audit permission middleware, register under v2 alongside existing GET routes, remove v1 registration.",
+    "Task 3: Migrate /workspace/{id}/fields + /workspace/{id}/portfolio/layers — unblock after PLA-0026 completes; remove pool fallback, register under v2.",
+    "Task 4: Migrate /portfolio (master record) + /tenant-settings — unblock after PLA-0024 + PLA-0026; register under v2.",
+    "Task 5: Migrate /topology — requires org_nodes data migration to vector_artefacts (new sub-plan); register under v2 once data is live.",
+    "Task 6: Architectural decision — /portfolio-models (libPools.RO) — stays library-scoped or moves to vector_artefacts; implement decision.",
+    "Task 7: Migrate /defects + /user-stories + /flows — requires data migration to vector_artefacts (new sub-plan).",
+    "Task 8: Promote infra routes to root-level — /auth, /me, /nav, /user/tab-order, /custom-pages, /addressables, /page-help, /roles, /admin, /errors, /library/releases, /workspaces become unversioned; frontend switches to apiInfra().",
+    "Task 9: Deprecation — add Deprecated: true to all v1 paths in openapi.yaml; add Deprecation + Sunset headers to v1 router middleware; set sunset date.",
+    "Task 10: Remove /samantha/v1 block from main.go; archive openapi.yaml → openapi-v1-archived.yaml; openapi-v2.yaml becomes the canonical spec."
+  ],
+  "areas_impacted": [
+    "Backend: backend/cmd/server/main.go — v1 block removal, v2 registrations, infra route promotion",
+    "Frontend: app/lib/api.ts API_BASE, all api() call sites migrating to apiV2() or apiInfra()",
+    "Spec: openapi.yaml (v1 freeze), openapi-v2.yaml (new v2 spec)",
+    "Toolchain: check_routes.sh, check_callers.py, snap_api.sh — dual-spec awareness",
+    "Data: org_nodes, defects, user-stories, flows, portfolio — vector_artefacts migrations",
+    "Docs: c_c_v1_v2_cutover.md (this register)"
+  ],
+  "feature_list": [
+    "openapi-v2.yaml — standalone v2 spec",
+    "/samantha/v2/rank/move — done (2026-05-08)",
+    "/samantha/v2/work-items — done (PLA-0025)",
+    "/samantha/v2/timeboxes/sprints — partial (GET done; mutations pending Task 2)",
+    "/samantha/v2/workspace/{id}/fields — pending Task 3",
+    "/samantha/v2/workspace/{id}/portfolio/layers — pending Task 3",
+    "/samantha/v2/portfolio — pending Task 4",
+    "/samantha/v2/topology — pending Task 5",
+    "Infra routes promoted to root-level — pending Task 8",
+    "v1 Deprecation + Sunset headers — pending Task 9",
+    "/samantha/v1 block removed — pending Task 10"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "/samantha/v1 router block (main.go)",
+    "openapi.yaml as the live spec (becomes archived v1)"
+  ],
+  "work_item_backlog": [
+    { "order": 1, "title": "Create openapi-v2.yaml + dual-spec toolchain", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 2, "title": "Migrate /timeboxes/sprints mutations to v2", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 3, "title": "Migrate /workspace/{id}/fields + /portfolio/layers to v2 (post PLA-0026)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 4, "title": "Migrate /portfolio + /tenant-settings to v2 (post PLA-0024 + PLA-0026)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 5, "title": "Migrate /topology to v2 (requires data migration sub-plan)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 6, "title": "Architectural decision: /portfolio-models (libPools.RO)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 7, "title": "Migrate /defects + /user-stories + /flows to v2 (requires data migration)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 8, "title": "Promote infra routes to root-level unversioned", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 9, "title": "Add Deprecated + Sunset headers to v1 middleware", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 10, "title": "Remove /samantha/v1 block; archive v1 spec", "story_id": null, "card_url": null, "status": "todo" }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "GET /samantha/v1/work-items returns 410 Gone (or 404) — no v1 router block",
+      "proven_by": "curl smoke test against running backend",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "All frontend api() call sites have migrated to apiV2() or apiInfra() — check_callers.py reports 0 api() callers",
+      "proven_by": "npm run api:check exits 0 with caller-map: 0 api() endpoints",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "openapi-v2.yaml exists and check_routes.sh validates v2 routes against it with 0 errors",
+      "proven_by": "bash dev/scripts/check_routes.sh --spec openapi-v2.yaml exits 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "main.go contains no r.Route(\"/samantha/v1\", ...) block",
+      "proven_by": "grep -c 'samantha/v1' backend/cmd/server/main.go returns 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "Several route groups (topology, defects, user-stories, flows) require data migrations to vector_artefacts that are not yet planned — v1 retirement is blocked until those land",
+      "mitigation": "Register as sub-plans as each data domain comes into scope. v1 stays live (with Deprecation headers) until all migrations are complete."
+    },
+    {
+      "impact": 2,
+      "risk": "/portfolio-models uses a library read-only pool — architectural decision on whether it moves to vector_artefacts or stays library-scoped is unresolved",
+      "mitigation": "Defer Task 6 until PLA-0026 is complete; make the decision in that context."
+    },
+    {
+      "impact": 2,
+      "risk": "Infra route promotion (auth, nav, etc.) requires all frontend callers to switch to apiInfra() — missed callers would break auth silently",
+      "mitigation": "check_callers.py already tracks apiInfra() callers; extend it to enforce that /auth/* etc. are never called via api() or apiV2()."
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "v1→v2 cutover register", "href": "docs/c_c_v1_v2_cutover.md" },
+    { "kind": "internal", "label": "PLA-0023 — vector_artefacts cutover", "href": "dev/plans/PLA-0023.json" },
+    { "kind": "internal", "label": "PLA-0025 — work-items v2 cutover", "href": "dev/plans/PLA-0025.json" },
+    { "kind": "internal", "label": "PLA-0026 — portfolio adoption cutover", "href": "dev/plans/PLA-0026.json" },
+    { "kind": "internal", "label": "PLA-0029 — API contract toolchain", "href": "dev/plans/PLA-0029.json" }
+  ]
+}
