@@ -17,6 +17,7 @@ All lints share the same shape:
 | `lint:dev-css` | `dev/scripts/lint_dev_css.py` | _(no registry — hard gate)_ | zero `dev-*` / `dui-*` selectors in `app/globals.css`; zero imports of `app/globals.css` from anywhere under `dev/` (PLA-0013) |
 | `lint:secondary-nav` | `dev/scripts/lint_secondary_nav.py` | `secondary_nav_exempt.json` | every `<SecondaryNavigation reorderable …>` carries a `pageId="…"` so per-user tab order can persist (PLA-0014 / 00420) |
 | `lint:portfolio-library-read` | `dev/scripts/lint_portfolio_library_read.py` | `lint_portfolio_library_read_exemptions.json` | tenant-side code MUST NOT read `/api/library/`, `/api/portfolio-templates/`, or `mmff_library` outside the adoption saga + library admin surface — post-cutover invariant: tenant runtime reads `vector_artefacts` only, library is consulted once at adoption (PLA-0026 / 00512) |
+| `api:check` | `dev/scripts/check_routes.sh` + `dev/scripts/check_callers.py` | `dev/registries/dead-api-exemptions.txt` | Go chi router routes must be documented in `openapi.yaml`; frontend `api(...)` callers must reference a spec path; `apiInfra` and `apiV2` tracked but not hard-failed (PLA-0029) |
 
 ---
 
@@ -112,6 +113,28 @@ The detector skips the component implementation file itself (`app/components/Sec
 - **It's a known pre-migration violation** → add the path to the exemption registry with a one-line note in the registry's `description` if more justification is needed.
 - **It's a new violation** → fix it, don't exempt it. The exempt list is a one-way ratchet that only ever shrinks.
 - **The detector mis-fired** → tighten the regex in the script and re-run; do not exempt false positives blindly.
+
+---
+
+---
+
+## `api:check` — detail (PLA-0029)
+
+Two scripts enforce the API contract between the Go backend and the frontend:
+
+**`check_routes.sh`** — parses `backend/cmd/server/main.go` to reconstruct the full path of every chi route (`r.Get`, `r.Post`, `r.Put`, `r.Delete`, `r.Patch`) by tracking `r.Route(...)` / `r.Group(...)` / `r.Mount(...)` nesting depth. Strips the `/samantha/v[0-9]+` prefix, normalises trailing slashes, and diffs against `openapi.yaml` paths (lines matching `^  /`). Exits 1 if any route is missing from the spec.
+
+**`check_callers.py`** — scans every `*.ts` / `*.tsx` under `app/` (excluding `app/api/`, `node_modules`, `.next`) for `api(...)`, `apiInfra(...)`, and `apiV2(...)` call sites. `api(...)` callers must have a matching spec path — exit 1 if not. `apiInfra` and `apiV2` are tracked but skipped from hard-fail (infra is unversioned; v2 is not in the v1 spec). Side effects: writes `api-snapshots/caller-map.json` and `api-snapshots/dead-apis.txt`.
+
+**Snapshot + breaking-change system:**
+
+- `npm run api:snap` — copies `openapi.yaml` → `api-snapshots/vN.yaml`, generates `blast-radius-latest.md` via `oasdiff changelog`, regenerates caller-map, appends a CHANGELOG row.
+- `npm run api:install-hooks` — installs `dev/scripts/pre-push.sh` as `.git/hooks/pre-push`; runs both checks + `oasdiff breaking` on every push; breaking changes blocked unless the last commit message contains `[breaking]`.
+- GitHub Actions: `.github/workflows/api-contracts.yml` mirrors the pre-push hook; `[breaking]` in PR title/body bypasses the block.
+- **Dead-API exemptions:** add paths to `dev/registries/dead-api-exemptions.txt` (one path per line, `#` comments ok) for spec paths with no caller that are intentionally uncalled (e.g. reserved, admin-only, docs-only).
+- **oasdiff install:** `go install github.com/oasdiff/oasdiff@latest`
+
+**Dev panel:** `http://localhost:5101/dev` → **API Changelog** tab shows the blast-radius diff, caller map (filterable), and dead-API list.
 
 ---
 

@@ -77,6 +77,30 @@ If you skip step 2, the model auto-downloads on first transcription (will take a
 
 **Cleanup:** If you later switch back to cloud-based transcription, remove the old installation with `pip uninstall openai-whisper`.
 
+### Optional: API contract toolchain (PLA-0029)
+
+Drift detection and breaking-change protection for the Go router ↔ `openapi.yaml` ↔ frontend callers contract.
+
+```bash
+# Install oasdiff (one-time)
+go install github.com/oasdiff/oasdiff@latest
+
+# Check router + caller drift against openapi.yaml
+npm run api:check
+
+# Take a new snapshot + generate blast-radius report
+npm run api:snap
+
+# Install the pre-push hook (blocks pushes with undocumented routes or breaking changes)
+npm run api:install-hooks
+```
+
+Breaking-change escape hatch: include `[breaking]` in your commit message (pre-push hook) or PR title/body (GitHub Actions) to allow intentional breaks through.
+
+Dev panel: `http://localhost:5101/dev` → **API Changelog** tab.
+
+See [`docs/c_c_lint_rules.md`](docs/c_c_lint_rules.md) for full detail.
+
 ## Project docs
 
 See [`.claude/CLAUDE.md`](.claude/CLAUDE.md) for the full topic index.
