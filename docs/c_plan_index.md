@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0027`
+**Last issued:** `PLA-0029`
 
 ## Format
 
@@ -48,6 +48,8 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0025` | Work-Items Full v2 Cutover — all 12 v2 endpoints against vector_artefacts | 2026-05-07 | complete |
 | `PLA-0026` | Per-Workspace Portfolio Adoption Cutover to vector_artefacts — artefact_field_library + scope discriminator + workspace whitelist + master_record_portfolio + saga rewrite + re-adoption placeholder | 2026-05-07 | active |
 | `PLA-0027` | Sprints — Timebox Management System | 2026-05-07 | active |
+| `PLA-0028` | Samantha API Rename — `/v1/api/*` → `/samantha/v1/*`, drop `/api/` segment, extract v2 block | 2026-05-08 | active |
+| `PLA-0029` | API Contract Protection & Blast Radius Toolchain — oasdiff, drift detection, caller map, Dev panel | 2026-05-08 | active |
 
 ## Deletion log
 

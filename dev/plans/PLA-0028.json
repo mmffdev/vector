@@ -1,0 +1,108 @@
+{
+  "id": "PLA-0028",
+  "title": "Samantha API Rename — /v1/api/* → /samantha/v1/*",
+  "date_created": "2026-05-08",
+  "date_started": null,
+  "date_last_updated": "2026-05-08",
+  "date_finished": null,
+  "scope": "<p>Pure URL rename of the entire API surface. The Go router mount point moves from <code>/v1</code> to <code>/samantha/v1</code>, and the redundant <code>/api/</code> segment is dropped from all sub-route strings. Unversioned infra routes (<code>/api/env</code>, <code>/api/status/pipeline</code>, <code>/api/env/switch</code>) are hoisted to the root. The v2 sub-routes currently nested inside the v1 block (<code>/api/v2/work-items</code>, <code>/api/v2/timeboxes/sprints</code>) are extracted into a new top-level <code>/samantha/v2</code> block.</p><p>On the frontend, <code>API_BASE</code> in <code>app/lib/api.ts</code> changes from <code>+ &quot;/v1&quot;</code> to <code>+ &quot;/samantha/v1&quot;</code>, and all ~40 <code>api(&quot;/api/…&quot;)</code> call sites have their path strings stripped of the <code>/api/</code> prefix. The OpenAPI spec server URLs and path entries are updated to match. No logic, middleware, auth, or handler code changes.</p>",
+  "value": "<p>Establishes <code>samantha</code> as the permanent, human-readable service identifier in every API URL — making it unambiguous which service is being called when multiple services or external clients exist. Drops the redundant <code>/api/</code> segment inside an already-versioned prefix. Sets the correct URL shape before any external client adoption occurs, making future graceful version retirement (Deprecation + Sunset headers, 410 Gone) straightforward to implement.</p>",
+  "implementation_plan": [
+    "Task 1: Rename Go router — /v1 block → /samantha/v1, drop /api/ from ~32 sub-route strings, hoist infra routes to root, extract v2 sub-routes to new /samantha/v2 block.",
+    "Task 2: Update frontend api() base — API_BASE in app/lib/api.ts: '+ /v1' → '+ /samantha/v1'; update 2 apiInfra call sites in EnvBadge.tsx (/api/env → /env, /api/status/pipeline → /status/pipeline).",
+    "Task 3: Bulk-rename ~40 api('/api/…') call sites — strip /api/ prefix from every path string passed to api(); update 3 hardcoded path constants in app/(user)/portfolio-model/adoptionConstants.ts.",
+    "Task 4: Verify direct-fetch files — useRealtimeSubscription.ts (WebSocket /ws unchanged), useTopologyHandoffs.ts, AdoptionOverlay.tsx — confirm no stale /v1/api/ or /api/ references remain.",
+    "Task 5: Update openapi.yaml — server URL + strip /api/ from all ~106 path entries.",
+    "Task 6: E2E smoke test — confirm /samantha/v1/auth/login returns 200, old /v1/api/ paths return 404, /healthz unchanged."
+  ],
+  "areas_impacted": [
+    "API: backend/cmd/server/main.go — router mount points, ~32 sub-route strings, infra route hoisting, v2 block extraction",
+    "Frontend: app/lib/api.ts API_BASE, ~40 api() call sites, 2 apiInfra call sites, 3 adoptionConstants.ts path literals",
+    "Docs: openapi.yaml server URLs + ~106 path entries; api-reference/docs/rest-api/ MDX path strings"
+  ],
+  "feature_list": [
+    "Go router: /v1 mount → /samantha/v1",
+    "Go router: /api/ prefix dropped from all ~32 sub-route strings inside the block",
+    "Go router: /api/env, /api/status/pipeline, /api/env/switch → /env, /status/pipeline, /env/switch (root-level)",
+    "Go router: /samantha/v2 block extracted for work-items v2 and timeboxes/sprints v2",
+    "Frontend API_BASE: ${host}/v1 → ${host}/samantha/v1",
+    "Frontend call sites: api('/api/work-items') → api('/work-items') (all ~40 sites)",
+    "apiInfra call sites: /api/env → /env, /api/status/pipeline → /status/pipeline",
+    "openapi.yaml: server URL + path entries updated",
+    "Old /v1/api/* paths return 404 (no legacy aliases)"
+  ],
+  "features_extended": [],
+  "features_removed": [],
+  "work_item_backlog": [],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "GET /samantha/v1/auth/login returns 200 (or redirect)",
+      "proven_by": "curl smoke test against running backend",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "GET /v1/api/work-items returns 404",
+      "proven_by": "curl smoke test confirming old paths are gone",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "Frontend work-items page loads with no network errors",
+      "proven_by": "Browser devtools Network tab — all API calls resolve 2xx",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "GET /healthz, /ws still return 200 (unchanged paths)",
+      "proven_by": "curl smoke test",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "openapi.yaml server URL reflects /samantha/v1",
+      "proven_by": "grep check on spec file",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "Stale api('/api/…') call site missed in bulk rename — silent 404 in browser",
+      "mitigation": "grep for '/api/' in app/ after rename; confirm zero hits before smoke test"
+    },
+    {
+      "impact": 2,
+      "risk": "Cookie Path on rt cookie still references /v1/api/auth — refresh logout regresses",
+      "mitigation": "auth/handler.go setRefreshCookie Path must be updated to /samantha/v1/auth in Task 1"
+    },
+    {
+      "impact": 2,
+      "risk": "openapi.yaml has duplicate /api/ prefix removal leaving malformed paths",
+      "mitigation": "sed dry-run review before apply; validate with openapi-spec-validator"
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "Design spec — 2026-05-08-samantha-api-rename-design.md",
+      "href": "docs/superpowers/specs/2026-05-08-samantha-api-rename-design.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Implementation plan — 2026-05-08-samantha-api-rename.md",
+      "href": "docs/superpowers/plans/2026-05-08-samantha-api-rename.md"
+    }
+  ]
+}
