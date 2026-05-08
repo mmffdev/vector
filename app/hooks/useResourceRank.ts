@@ -11,13 +11,13 @@
  *
  * It does NOT own the optimistic-UI reorder; callers compose
  * useResourceRank with their own state setter (see useOptimisticReorder
- * in 00216). On drop it POSTs `/rank/move` and surfaces the final
+ * in 00216). On drop it POSTs `/samantha/v2/rank/move` and surfaces the final
  * server position via the `onMoved` callback so the caller can
  * reconcile any drift (last-write-wins).
  */
 
 import { useCallback, useRef, useState } from "react";
-import { api, ApiError } from "@/app/lib/api";
+import { apiV2, ApiError } from "@/app/lib/api";
 
 export type RankIntent =
   | { before: string }
@@ -70,7 +70,7 @@ export function useResourceRank(opts: UseResourceRankOptions) {
       else body.to_bottom = true;
 
       try {
-        const result = await api<MoveResult>("/rank/move", {
+        const result = await apiV2<MoveResult>("/rank/move", {
           method: "POST",
           body: JSON.stringify(body),
         });

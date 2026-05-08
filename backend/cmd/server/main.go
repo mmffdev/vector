@@ -52,7 +52,6 @@ import (
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
-	"github.com/mmffdev/vector-backend/internal/workitems"
 	"github.com/mmffdev/vector-backend/internal/workitemsv2"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
@@ -264,9 +263,6 @@ func main() {
 	tenantSettingsSvc := tenantsettings.New(pool)
 	tenantSettingsH := tenantsettings.NewHandler(tenantSettingsSvc)
 
-	workItemsSvc := workitems.New(pool)
-	workItemsH := workitems.NewHandler(workItemsSvc)
-
 	// vector_artefacts pool — reads/writes the cutover DB. Shared by
 	// v2 work-items (PLA-0023) AND portfolio adoption dual-writes
 	// (PLA-0026). VECTOR_ARTEFACTS_DB_URL is optional; absent = v2
@@ -365,19 +361,20 @@ func main() {
 	flowsSvc := flows.New(pool)
 	flowsH := flows.NewHandler(flowsSvc)
 
-	// Generic rank service. Resource registration happens here so the
-	// PermissionChecker can delegate to the owning package's authz —
-	// the loadRowForUpdate scopes by subscription_id, so a permissive
-	// checker is safe (tenant isolation is enforced at the SQL boundary).
-	ranking.Register("work_item", ranking.ResourceConfig{
-		Table:       "obj_work_items",
-		ScopeColumn: "sprint_id",
-		Permissions: ranking.PermissionCheckerFunc(func(ctx context.Context, subscriptionID, rowID uuid.UUID) (bool, error) {
-			return true, nil
-		}),
-	})
-	rankSvc := ranking.New(pool)
-	rankH := ranking.NewHandler(rankSvc)
+	// Generic rank service. Backed by vaPool (vector_artefacts) for
+	// work items — the rank service writes position directly to artefacts.
+	// Falls back gracefully to a no-op handler when vaPool is nil.
+	var rankH *ranking.Handler
+	if vaPool != nil {
+		ranking.Register("work_item", ranking.ResourceConfig{
+			Table:       "artefacts",
+			ScopeColumn: "timebox_sprint_id",
+			Permissions: ranking.PermissionCheckerFunc(func(ctx context.Context, subscriptionID, rowID uuid.UUID) (bool, error) {
+				return true, nil
+			}),
+		})
+		rankH = ranking.NewHandler(ranking.New(vaPool))
+	}
 
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
@@ -860,80 +857,21 @@ func main() {
 	// resource_type field in the body picks the registry entry; the
 	// service enforces tenant isolation by scoping every query by
 	// subscription_id from the session (never the body).
-	r.Route("/rank", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(240, time.Minute))
-		r.Use(userWriteLimiter)
+	// Requires vaPool; returns 503 when vector_artefacts is unavailable.
+	if rankH != nil {
+		r.Route("/rank", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(240, time.Minute))
+			r.Use(userWriteLimiter)
 
-		r.Post("/move", rankH.Move)
-	})
-
-	// ---- /api/work-items ----
-	r.Route("/work-items", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", workItemsH.List)
-		r.Post("/", workItemsH.Create)
-		r.Get("/summary", workItemsH.Summary)
-		r.Get("/flow-states", workItemsH.ListFlowStates)
-		// PLA-0021 / 00456 — bulk surface. MUST be registered before /{id}
-		// because chi dispatches by registration order; otherwise /bulk
-		// would be swallowed by the {id} pattern.
-		r.Post("/bulk", workItemsH.Bulk)
-		r.Get("/{id}", workItemsH.Get)
-		r.Patch("/{id}", workItemsH.Patch)
-		r.Delete("/{id}", workItemsH.Archive)
-		r.Get("/{id}/children", workItemsH.ListChildren)
-		r.Get("/{id}/field-values", workItemsH.ListFieldValues)
-		r.Put("/{id}/field-values", workItemsH.UpsertFieldValues)
-		r.Delete("/{id}/field-values/{field_library_id}", workItemsH.DeleteFieldValue)
-	})
-
-	// ---- /sprints ----
-	r.Route("/sprints", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", workItemsH.ListSprints)
-		r.Post("/", workItemsH.CreateSprint)
-		r.Get("/{id}", workItemsH.GetSprint)
-		r.Patch("/{id}", workItemsH.PatchSprint)
-		r.Delete("/{id}", workItemsH.ArchiveSprint)
-	})
-
-	// ---- /api/custom-field-library ----
-	r.Route("/custom-field-library", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", workItemsH.ListCustomFields)
-		r.Post("/", workItemsH.CreateCustomField)
-		r.Get("/{id}", workItemsH.GetCustomField)
-		r.Patch("/{id}", workItemsH.PatchCustomField)
-		r.Delete("/{id}", workItemsH.ArchiveCustomField)
-	})
-
-	// ---- /api/work-item-templates ----
-	r.Route("/work-item-templates", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", workItemsH.ListTemplates)
-		r.Post("/", workItemsH.CreateTemplate)
-		r.Get("/{id}", workItemsH.GetTemplate)
-		r.Post("/{id}/fields", workItemsH.AddTemplateField)
-		r.Delete("/{id}/fields/{field_library_id}", workItemsH.RemoveTemplateField)
-	})
+			r.Post("/move", rankH.Move)
+		})
+	} else {
+		r.Post("/rank/move", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "rank service not available", http.StatusServiceUnavailable)
+		})
+	}
 
 	// ---- /api/flows (migration 112) ----
 	// Per-tenant flow editor surface. gadmin and padmin both have
@@ -1166,6 +1104,22 @@ func main() {
 		} else {
 			r.Get("/work-items", func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
+			})
+		}
+
+		// ---- /rank (mirrors v1; required for v2 WorkItemsTree DnD) ----
+		if rankH != nil {
+			r.Route("/rank", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(240, time.Minute))
+				r.Use(userWriteLimiter)
+
+				r.Post("/move", rankH.Move)
+			})
+		} else {
+			r.Post("/rank/move", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "rank service not available", http.StatusServiceUnavailable)
 			})
 		}
 
