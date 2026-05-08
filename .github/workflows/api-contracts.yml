@@ -1,0 +1,86 @@
+# api-contracts.yml
+# Mirrors the pre-push hook for CI.
+# Inert until a GitHub remote is configured.
+#
+# Jobs:
+#   api-map     — Go router + frontend caller drift (blocks PR on failure)
+#   api-protect — Breaking change detection (blocks PR unless [breaking] in PR title/body)
+
+name: API Contracts
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  api-map:
+    name: Route & Caller Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Go routes vs spec
+        run: bash dev/scripts/check_routes.sh
+
+      - name: Check frontend callers vs spec
+        run: python3 dev/scripts/check_callers.py
+
+  api-protect:
+    name: Breaking Change Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Install oasdiff
+        run: go install github.com/oasdiff/oasdiff@latest
+
+      - name: Find latest snapshot
+        id: snap
+        run: |
+          latest=""
+          latest_n=0
+          for f in api-snapshots/v*.yaml; do
+            [ -f "$f" ] || continue
+            n="${f##*/v}"; n="${n%.yaml}"
+            [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && { latest_n=$n; latest=$f; }
+          done
+          echo "path=$latest" >> "$GITHUB_OUTPUT"
+          echo "found=$([ -n "$latest" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Breaking change check
+        if: steps.snap.outputs.found == 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          SNAP: ${{ steps.snap.outputs.path }}
+        run: |
+          if oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR 2>/dev/null; then
+            echo "No breaking changes."
+            exit 0
+          fi
+          if echo "$PR_TITLE $PR_BODY" | grep -q '\[breaking\]'; then
+            echo "Breaking changes detected — [breaking] token present. Allowed."
+            oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR 2>/dev/null || true
+            exit 0
+          fi
+          echo "FAIL: Breaking API changes detected. Add [breaking] to your PR title to allow." >&2
+          oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR >&2 || true
+          exit 1
+
+      - name: No snapshot warning
+        if: steps.snap.outputs.found == 'false'
+        run: |
+          echo "WARN: No snapshot found in api-snapshots/ — breaking-change check skipped."
+          echo "      Run 'npm run api:snap' and commit the result to establish a baseline."
