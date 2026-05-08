@@ -1,0 +1,105 @@
+{
+  "/roles/creatable": [
+    "app/(user)/workspace-settings/users/page.tsx:36",
+    "app/(user)/workspace-settings/users/page.tsx:197"
+  ],
+  "/nav/prefs": [
+    "app/contexts/NavPrefsContext.tsx:212"
+  ],
+  "/library/releases": [
+    "app/(user)/library-releases/page.tsx:77"
+  ],
+  "/sprints": [
+    "app/(user)/work-items/page.tsx:42"
+  ],
+  "/auth/login": [
+    "app/contexts/AuthContext.tsx:127"
+  ],
+  "/auth/password-reset": [
+    "app/login/reset/page.tsx:27"
+  ],
+  "/auth/refresh": [
+    "app/contexts/AuthContext.tsx:87"
+  ],
+  "/nav/profiles": [
+    "app/contexts/NavPrefsContext.tsx:159",
+    "app/contexts/NavPrefsContext.tsx:237"
+  ],
+  "/roles": [
+    "app/(user)/workspace-settings/users/page.tsx:315",
+    "app/(user)/admin/roles/page.tsx:87",
+    "app/(user)/admin/roles/page.tsx:193"
+  ],
+  "/library/releases/count": [
+    "app/contexts/LibraryReleasesContext.tsx:44"
+  ],
+  "/me/theme-pack": [
+    "app/hooks/useThemePack.ts:105",
+    "app/hooks/useThemePack.ts:138"
+  ],
+  "/roles/permissions/catalogue": [
+    "app/(user)/admin/roles/page.tsx:88"
+  ],
+  "/custom-field-library": [
+    "app/components/CustomFieldManager.tsx:77",
+    "app/components/CustomFieldManager.tsx:122",
+    "app/(user)/work-items/settings/page.tsx:61",
+    "app/(user)/work-items/settings/page.tsx:79",
+    "app/(user)/work-items/settings/page.tsx:236"
+  ],
+  "/errors/report": [
+    "app/lib/reportError.ts:8"
+  ],
+  "/auth/password-reset/confirm": [
+    "app/login/reset/confirm/page.tsx:37"
+  ],
+  "/admin/users": [
+    "app/(user)/workspace-settings/users/page.tsx:213",
+    "app/(user)/workspace-settings/users/page.tsx:314"
+  ],
+  "/auth/change-password": [
+    "app/change-password/page.tsx:46"
+  ],
+  "/subscription/layers/batch": [
+    "app/(user)/portfolio-model/LayersTable.tsx:292"
+  ],
+  "/nav/entities": [
+    "app/(user)/product/[id]/page.tsx:30",
+    "app/(user)/portfolio/page.tsx:39"
+  ],
+  "/auth/logout": [
+    "app/contexts/AuthContext.tsx:141"
+  ],
+  "/work-item-templates": [
+    "app/components/CustomFieldManager.tsx:78",
+    "app/components/CustomFieldManager.tsx:86",
+    "app/(user)/work-items/settings/page.tsx:235",
+    "app/(user)/work-items/settings/page.tsx:256"
+  ],
+  "/nav/profiles/active": [
+    "app/contexts/NavPrefsContext.tsx:229"
+  ],
+  "/rank/move": [
+    "app/hooks/useResourceRank.ts:73"
+  ],
+  "/nav/profiles/order": [
+    "app/contexts/NavPrefsContext.tsx:261"
+  ],
+  "/custom-pages": [
+    "app/lib/customPages.ts:23",
+    "app/lib/customPages.ts:32"
+  ],
+  "/nav/catalogue": [
+    "app/contexts/NavPrefsContext.tsx:160"
+  ],
+  "/nav/bookmark": [
+    "app/contexts/NavPrefsContext.tsx:336",
+    "app/contexts/NavPrefsContext.tsx:347"
+  ],
+  "/nav/start-page": [
+    "app/login/page.tsx:46"
+  ],
+  "/flows": [
+    "app/(user)/workspace-settings/work-items/page.tsx:37"
+  ]
+}

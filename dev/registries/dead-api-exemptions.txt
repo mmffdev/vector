@@ -1,0 +1,4 @@
+# dead-api-exemptions.txt
+# Spec paths with no frontend caller that are intentionally uncalled
+# (e.g. used by external scripts or future external clients).
+# One path per line. Lines starting with # are ignored.
