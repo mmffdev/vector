@@ -1,0 +1,91 @@
+{
+  "id": "PLA-0032",
+  "title": "Tenant-Settings Migration — master_record_tenant → vector_artefacts",
+  "date_created": "2026-05-08",
+  "date_started": null,
+  "date_last_updated": "2026-05-08",
+  "date_finished": null,
+  "scope": "<p>Migrate the <code>/tenant-settings</code> API endpoint from <code>master_record_tenant</code> in mmff_vector to a new <code>master_record_tenant</code> table in vector_artefacts. The existing table stores subscription-scoped org configuration (name, brand colours, timezone, etc.). The new table uses workspace_id as the tenancy key (consistent with the rest of vector_artefacts). A one-time ETL step copies live data. The handler service is rewritten to query vaPool. The route is registered under <code>/samantha/v2</code>; the v1 registration is removed. This unblocks PLA-0030 T4b, completing Task 4.</p>",
+  "value": "<p>Eliminates the last subscription-scoped config table blocking v2 promotion. After this plan, every non-topology non-legacy route will be backed by vector_artefacts, making PLA-0030 Task 10 (v1 block removal) dependent only on topology, defects, user-stories, flows, and portfolio-items migrations.</p>",
+  "implementation_plan": [
+    "Task 1: Inspect master_record_tenant schema in mmff_vector — list all columns; map subscription_id → workspace_id tenancy translation; identify any columns not present in PLA-0024 schema changes.",
+    "Task 2: Create artefacts_schema migration — new master_record_tenant table in vector_artefacts scoped by workspace_id (mirroring the existing column set but dropping subscription_id).",
+    "Task 3: ETL — one-off script to copy master_record_tenant rows from mmff_vector to vector_artefacts, resolving subscription_id → workspace_id via the workspaces table.",
+    "Task 4: Rewrite tenantsettings.Service to query vaPool; tenancy gate uses mmff_vector pool for membership check only.",
+    "Task 5: Register /tenant-settings under /samantha/v2 in main.go; remove /samantha/v1 registration.",
+    "Task 6: Switch frontend callers to apiInfra or apiV2 as appropriate (tenant-settings may qualify as infra — decide during implementation).",
+    "Task 7: Update openapi-v2.yaml + openapi.yaml; update c_c_v1_v2_cutover.md and PLA-0030 T4 → done."
+  ],
+  "areas_impacted": [
+    "Backend: backend/internal/tenantsettings/service.go — rewrite against vaPool",
+    "Backend: backend/cmd/server/main.go — v2 registration, v1 deregistration",
+    "Database: new artefacts_schema migration for master_record_tenant in vector_artefacts",
+    "Frontend: api('/tenant-settings') callers → apiV2 or apiInfra",
+    "Spec: openapi-v2.yaml (add /tenant-settings), openapi.yaml (mark deprecated)",
+    "Docs: c_c_v1_v2_cutover.md, PLA-0030.json"
+  ],
+  "feature_list": [
+    "master_record_tenant table in vector_artefacts (new migration)",
+    "/samantha/v2/tenant-settings — full CRUD",
+    "tenantsettings.Service vaPool rewrite",
+    "ETL: master_record_tenant mmff_vector → vector_artefacts",
+    "/samantha/v1/tenant-settings removed (PLA-0030 T4b complete)"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "/samantha/v1/tenant-settings registration"
+  ],
+  "work_item_backlog": [
+    { "order": 1, "title": "Schema audit: master_record_tenant column mapping", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 2, "title": "artefacts_schema migration: master_record_tenant in vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 3, "title": "ETL script: master_record_tenant mmff_vector → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 4, "title": "Rewrite tenantsettings.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 5, "title": "Register /tenant-settings under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 6, "title": "Switch frontend callers to apiV2/apiInfra", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 7, "title": "Update openapi specs + cutover register + PLA-0030 T4 done", "story_id": null, "card_url": null, "status": "todo" }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "GET /samantha/v2/tenant-settings returns 200 with data sourced from vector_artefacts",
+      "proven_by": "curl smoke test against running backend",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "GET /samantha/v1/tenant-settings returns 410 Gone after cutover",
+      "proven_by": "curl smoke test",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "No frontend callers reference api('/tenant-settings') — check_callers.py reports 0",
+      "proven_by": "npm run api:check exits 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "PLA-0024 may alter master_record_tenant schema (rename/restructure) — timing dependency if PLA-0024 and PLA-0032 run concurrently",
+      "mitigation": "Coordinate with PLA-0024; complete PLA-0024's tenant-settings changes before running the ETL migration in Task 3"
+    },
+    {
+      "impact": 2,
+      "risk": "subscription_id → workspace_id mapping may be ambiguous for multi-workspace subscriptions",
+      "mitigation": "ETL audit during Task 1 confirms cardinality; one-workspace-per-subscription assumption documented or multi-workspace case handled explicitly"
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "PLA-0030 — v1→v2 cutover", "href": "dev/plans/PLA-0030.json" },
+    { "kind": "internal", "label": "PLA-0024 — master_record_tenant rename", "href": "dev/plans/PLA-0024.json" },
+    { "kind": "internal", "label": "v1→v2 cutover register", "href": "docs/c_c_v1_v2_cutover.md" },
+    { "kind": "internal", "label": "tenantsettings service (legacy)", "href": "backend/internal/tenantsettings/service.go" }
+  ]
+}

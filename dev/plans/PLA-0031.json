@@ -1,0 +1,98 @@
+{
+  "id": "PLA-0031",
+  "title": "Flows Migration — obj_flow_tenant → vector_artefacts flows/flow_states tables",
+  "date_created": "2026-05-08",
+  "date_started": null,
+  "date_last_updated": "2026-05-08",
+  "date_finished": null,
+  "scope": "<p>Migrate the <code>/flows</code> API endpoint from the legacy <code>obj_flow_tenant</code> table in mmff_vector to the <code>flows</code> / <code>flow_states</code> / <code>flow_transitions</code> tables that already exist in vector_artefacts. The legacy schema is subscription-scoped with polymorphic type FKs (<code>system_artefact_type_id</code>, <code>tenant_artefact_type_id</code>, <code>portfolio_item_type_id</code>). The vaPool schema uses a single <code>artefact_type_id</code> FK into <code>artefact_types</code> with a standard <code>workspace_id</code> tenancy gate. A one-time ETL step migrates live data; the handler service is rewritten to query vaPool; the route is registered under <code>/samantha/v2</code>; the v1 registration is removed.</p>",
+  "value": "<p>Unblocks <code>/flows</code> from v1, removing one of the major blockers to PLA-0030 Task 10 (v1 block removal). Collapses the dual-pool complexity from the flows handler. Enables the work-items flow-state assignment to resolve from the same DB as the artefact, eliminating a cross-DB join that currently runs in-process.</p>",
+  "implementation_plan": [
+    "Task 1: Schema audit — map obj_flow_tenant columns to flows/flow_states/flow_transitions in vector_artefacts; document the subscription_id → workspace_id tenancy translation; identify any data not representable in the vaPool schema.",
+    "Task 2: ETL migration — write a one-off migration script (Go or SQL) that reads obj_flow_tenant rows from mmff_vector and inserts corresponding flows + flow_states + flow_transitions rows into vector_artefacts scoped to the matching workspace. Handle the three polymorphic FK variants (system/tenant/portfolio) by resolving to artefact_type_id via artefact_types.",
+    "Task 3: Rewrite flows.Service to query vaPool — new constructor takes vectorArtefactsPool; List query reads flows JOIN artefact_types scoped by workspace_id; tenancy gate uses mmff_vector pool for membership check only (as per T3/T4a pattern).",
+    "Task 4: Register /flows under /samantha/v2 in main.go; remove /samantha/v1 flows registration.",
+    "Task 5: Update frontend callers — find all api('/flows') call sites and switch to apiV2('/flows').",
+    "Task 6: Update openapi-v2.yaml — add /flows paths; update openapi.yaml to mark /flows as Deprecated.",
+    "Task 7: Update docs/c_c_v1_v2_cutover.md and PLA-0030 work_item_backlog; update this plan."
+  ],
+  "areas_impacted": [
+    "Backend: backend/internal/flows/service.go — full rewrite against vaPool",
+    "Backend: backend/cmd/server/main.go — v2 registration, v1 deregistration",
+    "Frontend: all api('/flows') call sites → apiV2('/flows')",
+    "Spec: openapi-v2.yaml (add /flows), openapi.yaml (mark deprecated)",
+    "Data: ETL script migrating obj_flow_tenant → flows/flow_states in vector_artefacts",
+    "Docs: c_c_v1_v2_cutover.md, PLA-0030.json"
+  ],
+  "feature_list": [
+    "/samantha/v2/flows — GET /flows (list flows for workspace)",
+    "flows.Service vaPool rewrite",
+    "obj_flow_tenant → vector_artefacts ETL script",
+    "/samantha/v1/flows removed"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "/samantha/v1/flows registration"
+  ],
+  "work_item_backlog": [
+    { "order": 1, "title": "Schema audit: obj_flow_tenant → flows/flow_states column mapping", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 2, "title": "ETL migration script: obj_flow_tenant → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 3, "title": "Rewrite flows.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 4, "title": "Register /flows under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 5, "title": "Switch frontend callers to apiV2('/flows')", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 6, "title": "Update openapi-v2.yaml + mark v1 deprecated", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 7, "title": "Update cutover register + PLA-0030", "story_id": null, "card_url": null, "status": "todo" }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "GET /samantha/v2/flows returns 200 with workflow data sourced from vector_artefacts",
+      "proven_by": "curl smoke test; verify response matches obj_flow_tenant data via comparison script",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "GET /samantha/v1/flows returns 410 Gone (route removed) after cutover",
+      "proven_by": "curl smoke test",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "check_callers.py reports 0 api('/flows') callers in frontend",
+      "proven_by": "npm run api:check exits 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "check_routes.sh --spec openapi-v2.yaml validates /flows with 0 errors",
+      "proven_by": "bash dev/scripts/check_routes.sh --spec openapi-v2.yaml exits 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "Schema mismatch between obj_flow_tenant (polymorphic type FKs: system/tenant/portfolio) and vaPool flows (single artefact_type_id) — some legacy rows may not map cleanly if artefact_type lookup fails",
+      "mitigation": "ETL script logs unmapped rows; schema audit (Task 1) identifies gaps before data is moved"
+    },
+    {
+      "impact": 2,
+      "risk": "obj_flow_tenant uses subscription_id tenancy; vaPool uses workspace_id — mapping may not be 1:1 if a subscription has multiple workspaces with divergent flow configs",
+      "mitigation": "Audit during Task 1; ETL duplicates rows per workspace if needed, or documents the mapping decision"
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "PLA-0030 — v1→v2 cutover", "href": "dev/plans/PLA-0030.json" },
+    { "kind": "internal", "label": "v1→v2 cutover register", "href": "docs/c_c_v1_v2_cutover.md" },
+    { "kind": "internal", "label": "flows service (legacy)", "href": "backend/internal/flows/service.go" },
+    { "kind": "internal", "label": "vector_artefacts flows schema", "href": "db/artefacts_schema/004_flows.sql" }
+  ]
+}

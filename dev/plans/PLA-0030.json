@@ -50,10 +50,10 @@
     { "order": 1, "title": "Create openapi-v2.yaml + dual-spec toolchain", "story_id": null, "card_url": null, "status": "done" },
     { "order": 2, "title": "Migrate /timeboxes/sprints mutations to v2", "story_id": null, "card_url": null, "status": "done" },
     { "order": 3, "title": "Migrate /workspace/{id}/fields + /portfolio/layers to v2 (post PLA-0026)", "story_id": null, "card_url": null, "status": "done" },
-    { "order": 4, "title": "Migrate /portfolio + /tenant-settings to v2 (post PLA-0024 + PLA-0026)", "story_id": null, "card_url": null, "status": "in-progress" },
-    { "order": 5, "title": "Migrate /topology to v2 (requires data migration sub-plan)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 4, "title": "Migrate /portfolio + /tenant-settings to v2 — T4a (/portfolio/master_record) done 2026-05-08; T4b (/tenant-settings) blocked on PLA-0032", "story_id": null, "card_url": null, "status": "in-progress" },
+    { "order": 5, "title": "Migrate /topology to v2 — sub-plan PLA-0034 created 2026-05-08", "story_id": null, "card_url": null, "status": "todo" },
     { "order": 6, "title": "Architectural decision: /portfolio-models (libPools.RO)", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 7, "title": "Migrate /defects + /user-stories + /flows to v2 (requires data migration)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 7, "title": "Migrate /defects + /user-stories + /portfolio-items to v2 — sub-plan PLA-0033 created 2026-05-08; /flows — sub-plan PLA-0031 created 2026-05-08", "story_id": null, "card_url": null, "status": "todo" },
     { "order": 8, "title": "Promote infra routes to root-level unversioned", "story_id": null, "card_url": null, "status": "done" },
     { "order": 9, "title": "Add Deprecated + Sunset headers to v1 middleware", "story_id": null, "card_url": null, "status": "done" },
     { "order": 10, "title": "Remove /samantha/v1 block; archive v1 spec", "story_id": null, "card_url": null, "status": "todo" }
@@ -95,8 +95,8 @@
   "risks": [
     {
       "impact": 3,
-      "risk": "Several route groups (topology, defects, user-stories, flows) require data migrations to vector_artefacts that are not yet planned — v1 retirement is blocked until those land",
-      "mitigation": "Register as sub-plans as each data domain comes into scope. v1 stays live (with Deprecation headers) until all migrations are complete."
+      "risk": "Several route groups (topology, defects, user-stories, flows, tenant-settings) require data migrations to vector_artefacts — v1 retirement is blocked until those land",
+      "mitigation": "Sub-plans created 2026-05-08: PLA-0031 (flows), PLA-0032 (tenant-settings), PLA-0033 (defects/user-stories/portfolio-items), PLA-0034 (topology). v1 stays live (with Deprecation headers) until all migrations complete."
     },
     {
       "impact": 2,
@@ -114,6 +114,10 @@
     { "kind": "internal", "label": "PLA-0023 — vector_artefacts cutover", "href": "dev/plans/PLA-0023.json" },
     { "kind": "internal", "label": "PLA-0025 — work-items v2 cutover", "href": "dev/plans/PLA-0025.json" },
     { "kind": "internal", "label": "PLA-0026 — portfolio adoption cutover", "href": "dev/plans/PLA-0026.json" },
-    { "kind": "internal", "label": "PLA-0029 — API contract toolchain", "href": "dev/plans/PLA-0029.json" }
+    { "kind": "internal", "label": "PLA-0029 — API contract toolchain", "href": "dev/plans/PLA-0029.json" },
+    { "kind": "internal", "label": "PLA-0031 — flows migration (T7 sub-plan)", "href": "dev/plans/PLA-0031.json" },
+    { "kind": "internal", "label": "PLA-0032 — tenant-settings migration (T4b sub-plan)", "href": "dev/plans/PLA-0032.json" },
+    { "kind": "internal", "label": "PLA-0033 — polymorphic artefact consolidation (T7 sub-plan)", "href": "dev/plans/PLA-0033.json" },
+    { "kind": "internal", "label": "PLA-0034 — topology migration (T5 sub-plan)", "href": "dev/plans/PLA-0034.json" }
   ]
 }

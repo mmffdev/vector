@@ -1,0 +1,112 @@
+{
+  "id": "PLA-0034",
+  "title": "Topology Migration — org_nodes / org_node_roles / org_node_view_state → vector_artefacts",
+  "date_created": "2026-05-08",
+  "date_started": null,
+  "date_last_updated": "2026-05-08",
+  "date_finished": null,
+  "scope": "<p>Migrate the three topology tables (<code>org_nodes</code>, <code>roles_org_nodes</code>, <code>org_node_view_state</code>) from mmff_vector to vector_artefacts. <code>org_nodes</code> is a self-referential tree (<code>parent_id</code> self-FK) with subscription-scoped tenancy and spatial canvas coordinates. <code>roles_org_nodes</code> is the cross-table that links RBAC roles to org nodes. <code>org_node_view_state</code> stores per-user canvas viewport state. No equivalent tables exist in vector_artefacts today — all three must be created via new artefacts_schema migrations. Once migrated, <code>/topology</code> is registered under <code>/samantha/v2</code> and removed from v1.</p>",
+  "value": "<p>Unblocks <code>/topology</code> from v1. The topology canvas (PLA-0006) is the organisational modelling surface — having it served from vector_artefacts aligns it with the rest of the workspace-scoped data model and removes the last structural/organisational table from mmff_vector.</p>",
+  "implementation_plan": [
+    "Task 1: Schema design — define org_nodes, roles_org_nodes, org_node_view_state in vector_artefacts. Key decisions: tenancy via workspace_id (replacing subscription_id); self-referential parent_id FK within vector_artefacts; spatial fields (x, y, width, height) retained as-is; roles_org_nodes cross-references roles table (already in vector_artefacts per PLA-0007 if roles were migrated, or retain cross-DB soft FK).",
+    "Task 2: Write artefacts_schema migrations 027_org_nodes.sql, 028_roles_org_nodes.sql, 029_org_node_view_state.sql.",
+    "Task 3: ETL — migrate org_nodes from mmff_vector to vector_artefacts; preserve tree structure (parent_id must be remapped to new IDs or retained if UUIDs match).",
+    "Task 4: ETL — migrate roles_org_nodes; resolve role_id cross-DB reference (roles table may still be in mmff_vector or moved by PLA-0007).",
+    "Task 5: ETL — migrate org_node_view_state (per-user viewport — low-risk, can be reset on cutover if mapping is complex).",
+    "Task 6: Rewrite orgdesign.Service to query vaPool; tenancy gate via workspace_id; membership check against mmff_vector retained if roles still cross-DB.",
+    "Task 7: Register /topology under /samantha/v2 in main.go; remove /samantha/v1 registration.",
+    "Task 8: Update frontend callers — api('/topology') → apiV2('/topology').",
+    "Task 9: Update openapi-v2.yaml + openapi.yaml; update c_c_v1_v2_cutover.md and PLA-0030."
+  ],
+  "areas_impacted": [
+    "Backend: backend/internal/orgdesign/service.go — rewrite against vaPool",
+    "Backend: backend/cmd/server/main.go — v2 registration, v1 deregistration",
+    "Database: 3 new artefacts_schema migrations + ETL",
+    "Frontend: api('/topology') callers → apiV2('/topology')",
+    "Spec: openapi-v2.yaml (add /topology), openapi.yaml (mark deprecated)",
+    "Docs: c_c_v1_v2_cutover.md, c_c_topology.md, PLA-0030.json"
+  ],
+  "feature_list": [
+    "org_nodes table in vector_artefacts (new migration 027)",
+    "roles_org_nodes table in vector_artefacts (new migration 028)",
+    "org_node_view_state table in vector_artefacts (new migration 029)",
+    "orgdesign.Service vaPool rewrite",
+    "ETL: org_nodes + roles_org_nodes + org_node_view_state → vector_artefacts",
+    "/samantha/v2/topology — full CRUD",
+    "/samantha/v1/topology removed"
+  ],
+  "features_extended": [],
+  "features_removed": [
+    "/samantha/v1/topology registration"
+  ],
+  "work_item_backlog": [
+    { "order": 1, "title": "Schema design: org_nodes / roles_org_nodes / org_node_view_state in vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 2, "title": "artefacts_schema migrations 027/028/029", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 3, "title": "ETL: migrate org_nodes → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 4, "title": "ETL: migrate roles_org_nodes → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 5, "title": "ETL: migrate org_node_view_state → vector_artefacts (or reset)", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 6, "title": "Rewrite orgdesign.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 7, "title": "Register /topology under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 8, "title": "Switch frontend callers to apiV2('/topology')", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 9, "title": "Update openapi specs + cutover register + PLA-0030", "story_id": null, "card_url": null, "status": "todo" }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "GET /samantha/v2/topology returns org tree sourced from vector_artefacts with correct node hierarchy",
+      "proven_by": "curl smoke test; tree depth and parent_id relationships validated against migrated data",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "GET /samantha/v1/topology returns 410 Gone after cutover",
+      "proven_by": "curl smoke test",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "No frontend callers reference api('/topology') — check_callers.py reports 0",
+      "proven_by": "npm run api:check exits 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "check_routes.sh --spec openapi-v2.yaml validates /topology with 0 errors",
+      "proven_by": "bash dev/scripts/check_routes.sh --spec openapi-v2.yaml exits 0",
+      "story_id": null,
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "org_nodes is a self-referential tree — UUID remapping during ETL must preserve parent_id integrity; a single mis-mapped UUID breaks the entire tree",
+      "mitigation": "ETL retains original UUIDs where possible (INSERT with explicit id); post-ETL verify all parent_id values exist in the migrated set"
+    },
+    {
+      "impact": 3,
+      "risk": "roles_org_nodes references roles table — if roles still live in mmff_vector at migration time (PLA-0007 not yet complete for vaPool), the FK becomes a cross-DB soft FK",
+      "mitigation": "Coordinate with PLA-0007 completion timeline; if roles not yet in vaPool, use soft FK (UUID column, no PG FK constraint) and document as tech debt"
+    },
+    {
+      "impact": 2,
+      "risk": "org_node_view_state is per-user viewport data — mapping user_id across DBs may be lossy",
+      "mitigation": "Accept viewport state reset on cutover as low-impact; document in release notes"
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "PLA-0030 — v1→v2 cutover", "href": "dev/plans/PLA-0030.json" },
+    { "kind": "internal", "label": "PLA-0006 — Topology canvas MVP", "href": "dev/plans/PLA-0006.json" },
+    { "kind": "internal", "label": "PLA-0007 — RBAC roles + permissions", "href": "dev/plans/PLA-0007.json" },
+    { "kind": "internal", "label": "v1→v2 cutover register", "href": "docs/c_c_v1_v2_cutover.md" },
+    { "kind": "internal", "label": "topology doc", "href": "docs/c_c_topology.md" },
+    { "kind": "internal", "label": "orgdesign service (legacy)", "href": "backend/internal/orgdesign/service.go" }
+  ]
+}

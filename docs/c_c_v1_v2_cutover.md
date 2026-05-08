@@ -25,18 +25,18 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 
 | Route | Handler pool | Blocker | Depends on |
 |---|---|---|---|
-| `/topology` | `pool` (mmff_vector) | `org_nodes` / `org_node_roles` not yet in `vector_artefacts` | Topology data migration plan (not yet created) |
-| `/portfolio-models` | `libPools.RO` (library DB) | Library DB is a separate read-only pool; not a `vector_artefacts` candidate — needs architectural decision on whether portfolio models move or stay library-scoped | PLA-0026 completion + architectural decision |
+| `/topology` | `pool` (mmff_vector) | `org_nodes` / `org_node_roles` not yet in `vector_artefacts` | [PLA-0034](../dev/plans/PLA-0034.json) |
+| `/portfolio-models` | `libPools.RO` (library DB) | Library DB is a separate read-only pool; not a `vector_artefacts` candidate — needs architectural decision on whether portfolio models move or stay library-scoped | PLA-0026 completion + PLA-0030 T6 architectural decision |
 | ~~`/portfolio/master_record`~~ | `vaPool` | ✅ Done — PLA-0030 T4a (2026-05-08). `master_record_portfolio` was already in vector_artefacts | — |
-| `/portfolio-items` | `pool` | Work-items v1 legacy table; superseded by `/work-items` on v2 but v1 surface still live for backwards compat | Deprecation + client migration |
-| `/subscription/layers` | `pool` | Layer data in mmff_vector; workspace-scoped successor (`/workspace/{id}/portfolio/layers`) partially uses vaPool | PLA-0026 |
+| `/portfolio-items` | `pool` | Work-items v1 legacy table; superseded by `/work-items` on v2 — consolidation into `artefacts` table | [PLA-0033](../dev/plans/PLA-0033.json) |
+| `/subscription/layers` | `pool` | Legacy subscription-scoped layers; workspace-scoped successor `/workspace/{id}/portfolio/layers` now live on v2 — deprecate v1 surface, migrate frontend callers | PLA-0026 completion + frontend migration |
 | ~~`/workspace/{id}/portfolio/layers`~~ | `vaPool` | ✅ Done — PLA-0030 T3 (2026-05-08). mmff_vector tenancy gate retained inside handler | — |
 | ~~`/workspace/{id}/fields`~~ | `vaPool` | ✅ Done — PLA-0030 T3 (2026-05-08). mmff_vector tenancy gate retained inside handler | — |
 | ~~`/timeboxes/sprints` mutations (POST, PUT, DELETE)~~ | `vaPool` | ✅ Audit complete — mutations were already in v2 block with `WorkItemsSettingsEdit` gate; PLA-0030 T2 done | — |
-| `/defects` | `pool` | Defects not yet migrated to vector_artefacts | Defects migration (not yet planned) |
-| `/user-stories` | `pool` | User stories not yet migrated to vector_artefacts | User stories migration (not yet planned) |
-| `/flows` | `pool` | Flow states live in mmff_vector | Part of work-items data model migration |
-| `/tenant-settings` | `pool` | Tenant config lives in mmff_vector; no vector_artefacts equivalent | PLA-0024 |
+| `/defects` | `pool` | Defects consolidate into `artefacts` table in vector_artefacts | [PLA-0033](../dev/plans/PLA-0033.json) |
+| `/user-stories` | `pool` | User stories consolidate into `artefacts` table in vector_artefacts | [PLA-0033](../dev/plans/PLA-0033.json) |
+| `/flows` | `pool` | `obj_flow_tenant` in mmff_vector; vaPool `flows`/`flow_states` tables exist but handler not yet switched | [PLA-0031](../dev/plans/PLA-0031.json) |
+| `/tenant-settings` | `pool` | `master_record_tenant` in mmff_vector; no vector_artefacts equivalent yet | [PLA-0032](../dev/plans/PLA-0032.json) (depends on PLA-0024) |
 
 ---
 

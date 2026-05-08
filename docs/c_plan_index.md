@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0030`
+**Last issued:** `PLA-0034`
 
 ## Format
 
@@ -51,6 +51,24 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0028` | Samantha API Rename — `/v1/api/*` → `/samantha/v1/*`, drop `/api/` segment, extract v2 block | 2026-05-08 | active |
 | `PLA-0029` | API Contract Protection & Blast Radius Toolchain — oasdiff, drift detection, caller map, Dev panel | 2026-05-08 | active |
 | `PLA-0030` | v1 → v2 API Cutover — retire `/samantha/v1`, promote all routes to `/samantha/v2`, split openapi specs, deprecation headers | 2026-05-08 | active |
+| `PLA-0031` | Flows Migration — `obj_flow_tenant` → vector_artefacts `flows`/`flow_states` tables | 2026-05-08 | active |
+| `PLA-0032` | Tenant-Settings Migration — `master_record_tenant` → vector_artefacts | 2026-05-08 | active |
+| `PLA-0033` | Polymorphic Artefact Consolidation — defects + user-stories + portfolio-items → `artefacts` | 2026-05-08 | active |
+| `PLA-0034` | Topology Migration — `org_nodes` / `roles_org_nodes` / `org_node_view_state` → vector_artefacts | 2026-05-08 | active |
+
+## Scope linkage rule
+
+When a new plan is created, check whether it maps to a scope item in `Vector_Scope.md`:
+
+1. Scan all scope items for keyword overlap with the plan title.
+2. If a match is found: append below that item's line (after any existing `>` notes):
+
+   ```markdown
+   > Plan `PLA-NNNN` (YYYY-MM-DD): {title}
+   ```
+
+3. If no match (bespoke / cross-cutting): skip. Do not add to Unmatched Commits.
+4. Never create a new scope item from this step — only annotate an existing one.
 
 ## Deletion log
 
