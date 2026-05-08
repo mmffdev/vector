@@ -41,6 +41,9 @@
 /roles/{id}/permissions
 /sprints/{id}
 /subscription/layers
+/timeboxes/sprints
+/timeboxes/sprints/bulk-create
+/timeboxes/sprints/{id}
 /topology/commit
 /topology/disconnected
 /topology/levels
@@ -66,11 +69,14 @@
 /work-item-templates/{id}/fields
 /work-item-templates/{id}/fields/{field_library_id}
 /work-items
+/work-items/bulk
 /work-items/flow-states
 /work-items/summary
 /work-items/{id}
 /work-items/{id}/children
 /work-items/{id}/field-values
 /work-items/{id}/field-values/{field_library_id}
+/workspace/{id}/fields
+/workspace/{id}/portfolio/layers
 /workspaces
 /ws
