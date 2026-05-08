@@ -3,7 +3,7 @@
   "title": "v1 → v2 API Cutover — retire /samantha/v1",
   "date_created": "2026-05-08",
   "date_started": null,
-  "date_last_updated": "2026-05-08",
+  "date_last_updated": "2026-05-09",
   "date_finished": null,
   "scope": "<p>Retire <code>/samantha/v1</code> entirely. Every non-infra route group moves to <code>/samantha/v2</code> as its backing data migrates to <code>vector_artefacts</code>. Auth/nav/user infrastructure routes are promoted to unversioned root-level endpoints (alongside <code>/healthz</code>). The OpenAPI spec is split into <code>openapi.yaml</code> (v1, frozen on deprecation) and <code>openapi-v2.yaml</code> (v2, live). The <code>/samantha/v1</code> router block is removed from <code>main.go</code> once all routes have moved. Deprecation + Sunset headers gate the removal.</p>",
   "value": "<p>Establishes a clean, stable external API surface on <code>/samantha/v2</code> backed entirely by <code>vector_artefacts</code>. Removes the dual-pool complexity from <code>main.go</code>. Allows the OpenAPI spec to accurately describe what each version serves, enabling external SDK consumers and the <code>WorkItemsTree</code> DnD surface to call v2 without routing through legacy infrastructure.</p>",
@@ -28,7 +28,7 @@
     "Docs: c_c_v1_v2_cutover.md (this register)"
   ],
   "feature_list": [
-    "openapi-v2.yaml — standalone v2 spec",
+    "openapi-v2.yaml — standalone v2 spec ✅ done (2026-05-09)",
     "/samantha/v2/rank/move — done (2026-05-08)",
     "/samantha/v2/work-items — done (PLA-0025)",
     "/samantha/v2/timeboxes/sprints — partial (GET done; mutations pending Task 2)",
@@ -46,7 +46,7 @@
     "openapi.yaml as the live spec (becomes archived v1)"
   ],
   "work_item_backlog": [
-    { "order": 1, "title": "Create openapi-v2.yaml + dual-spec toolchain", "story_id": null, "card_url": null, "status": "todo" },
+    { "order": 1, "title": "Create openapi-v2.yaml + dual-spec toolchain", "story_id": null, "card_url": null, "status": "done" },
     { "order": 2, "title": "Migrate /timeboxes/sprints mutations to v2", "story_id": null, "card_url": null, "status": "todo" },
     { "order": 3, "title": "Migrate /workspace/{id}/fields + /portfolio/layers to v2 (post PLA-0026)", "story_id": null, "card_url": null, "status": "todo" },
     { "order": 4, "title": "Migrate /portfolio + /tenant-settings to v2 (post PLA-0024 + PLA-0026)", "story_id": null, "card_url": null, "status": "todo" },

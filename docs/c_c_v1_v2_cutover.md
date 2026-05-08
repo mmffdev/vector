@@ -13,7 +13,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 | Route | Handler pool | Moved | Notes |
 |---|---|---|---|
 | `/work-items` (full CRUD + bulk + field-values) | `vaPool` (vector_artefacts) | ✅ done | PLA-0023 / PLA-0025 |
-| `/rank/move` | `vaPool` | ✅ done | Moved 2026-05-08; frontend uses `apiV2` |
+| `/rank/move` | `vaPool` | ✅ done | Moved 2026-05-08; v1 registration removed 2026-05-09; frontend uses `apiV2` |
 | `/timeboxes/sprints` (list + get) | `vaPool` | ✅ done | PLA-0027; sprints mutations still v1 — see below |
 
 ---
@@ -67,7 +67,7 @@ The current `openapi.yaml` is the v1 spec. A separate `openapi-v2.yaml` is requi
 - Is validated independently by `check_routes.sh` and `check_callers.py`
 - Is snapshotted by `api:snap` into `api-snapshots/v2/vN.yaml`
 
-**Status:** not yet created — tracked as Task 1 of PLA-0030.
+**Status:** ✅ created 2026-05-09 (PLA-0030 Task 1). `check_routes.sh --spec openapi-v2.yaml` and `check_callers.py --spec openapi-v2.yaml` both validate clean. Baselines in `api-snapshots/v1/` and `api-snapshots/v2/`. `npm run api:check` runs both specs.
 
 ---
 

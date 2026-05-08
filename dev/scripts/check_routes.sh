@@ -1,15 +1,46 @@
 #!/usr/bin/env bash
-# check_routes.sh — Layer 1: Go router ↔ openapi.yaml drift
+# check_routes.sh — Layer 1: Go router ↔ OpenAPI spec drift
 # Exit 0 = clean. Exit 1 = undocumented routes found.
 #
 # Reconstructs full paths through nested r.Route("/parent", func(r chi.Router) { ... })
 # blocks by tracking brace depth in main.go. Strips the /samantha/v1 (or /v2) mount
-# prefix before comparing against openapi.yaml path keys.
+# prefix before comparing against the spec path keys.
+#
+# Usage:
+#   check_routes.sh                          # validate v1 routes against openapi.yaml
+#   check_routes.sh --spec openapi-v2.yaml   # validate v2 routes against openapi-v2.yaml
+#   check_routes.sh --all                    # validate both specs in sequence
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MAIN_GO="$REPO_ROOT/backend/cmd/server/main.go"
+
+# Default spec
 SPEC="$REPO_ROOT/openapi.yaml"
+RUN_ALL=false
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --spec)
+      SPEC="$REPO_ROOT/$2"
+      shift 2
+      ;;
+    --all)
+      RUN_ALL=true
+      shift
+      ;;
+    *)
+      echo "Unknown flag: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if $RUN_ALL; then
+  "$0" --spec openapi.yaml && "$0" --spec openapi-v2.yaml
+  exit $?
+fi
 
 # Infra routes that live outside the versioned block — always skip
 INFRA_ALLOW=(
@@ -20,20 +51,28 @@ INFRA_ALLOW=(
   "/ws"
 )
 
+# Determine which version prefix to filter to based on the spec filename.
+# openapi.yaml → v1, openapi-v2.yaml → v2.
+VERSION_PREFIX="v1"
+if [[ "$SPEC" == *"v2"* ]]; then
+  VERSION_PREFIX="v2"
+fi
+
 # Reconstruct full chi route paths by walking main.go and tracking r.Route(...) nesting.
 # Output: one path per line, deduped, prefix-stripped.
+# Only emits paths from the /samantha/vN block that matches VERSION_PREFIX.
 go_paths() {
-  python3 - "$MAIN_GO" <<'PY'
+  python3 - "$MAIN_GO" "$VERSION_PREFIX" <<'PY'
 import re
 import sys
 
 src = open(sys.argv[1], encoding="utf-8").read()
+version_filter = sys.argv[2]  # "v1" or "v2"
+target_prefix = f"/samantha/{version_filter}"
 
 route_re = re.compile(r'r\.Route\(\s*"([^"]+)"\s*,\s*func\s*\(\s*r\s+chi\.Router\s*\)\s*\{')
 verb_re  = re.compile(r'r\.(?:Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
 
-# Stack of (prefix, recorded_depth). When brace depth drops back below recorded,
-# pop the prefix.
 stack = []
 depth = 0
 paths = set()
@@ -68,18 +107,16 @@ while i < n:
         end = src.find("`", i+1)
         i = end + 1 if end != -1 else n
         continue
-    # Rune literal '{' or '}' or '\''
+    # Rune literal
     if src[i] == "'":
         j = i + 1
         if j < n and src[j] == "\\" and j+1 < n:
             j += 2
         else:
             j += 1
-        # Expect closing '
         if j < n and src[j] == "'":
             i = j + 1
             continue
-        # Not a rune literal — fall through
     ch = src[i]
     if ch == "{":
         depth += 1
@@ -87,19 +124,15 @@ while i < n:
         continue
     if ch == "}":
         depth -= 1
-        # Pop frames whose recorded depth is greater than current depth.
         while stack and stack[-1][1] > depth:
             stack.pop()
         i += 1
         continue
 
-    # Try to match a route construct starting at i.
     sub = src[i:i+300]
     m = route_re.match(sub)
     if m:
         prefix = m.group(1)
-        # The match includes the opening "{". We must increment depth to reflect
-        # that we're now inside the block, and record the frame at the inside depth.
         depth += 1
         stack.append((prefix, depth))
         i += m.end()
@@ -115,13 +148,13 @@ while i < n:
     i += 1
 
 for p in sorted(paths):
-    # Strip /samantha/v1 or /samantha/v2 prefix
+    # Only emit paths that belong to the target version block.
+    if not p.startswith(target_prefix):
+        continue
+    # Strip the /samantha/vN prefix.
     p2 = re.sub(r"^/samantha/v[0-9]+", "", p)
     if not p2:
         p2 = "/"
-    # Normalise trailing slash: chi treats r.Get("/", ...) inside r.Route("/x", ...)
-    # as /x/, but openapi spec authors usually write /x. Strip the trailing / unless
-    # the whole path is just "/".
     if len(p2) > 1 and p2.endswith("/"):
         p2 = p2[:-1]
     print(p2)
@@ -144,7 +177,7 @@ is_infra() {
 errors=0
 warnings=0
 
-echo "=== check_routes: Go router ↔ openapi.yaml ==="
+echo "=== check_routes: Go router [${VERSION_PREFIX}] ↔ $(basename "$SPEC") ==="
 
 # Hard fail: Go route not in spec
 while IFS= read -r path; do

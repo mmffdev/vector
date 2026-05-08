@@ -24,11 +24,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check Go routes vs spec
-        run: bash dev/scripts/check_routes.sh
+      - name: Check Go routes vs v1 spec
+        run: bash dev/scripts/check_routes.sh --spec openapi.yaml
 
-      - name: Check frontend callers vs spec
-        run: python3 dev/scripts/check_callers.py
+      - name: Check Go routes vs v2 spec
+        run: bash dev/scripts/check_routes.sh --spec openapi-v2.yaml
+
+      - name: Check frontend api() callers vs v1 spec
+        run: python3 dev/scripts/check_callers.py --spec openapi.yaml
+
+      - name: Check frontend apiV2() callers vs v2 spec
+        run: python3 dev/scripts/check_callers.py --spec openapi-v2.yaml
 
   api-protect:
     name: Breaking Change Gate
@@ -46,41 +52,68 @@ jobs:
       - name: Install oasdiff
         run: go install github.com/oasdiff/oasdiff@latest
 
-      - name: Find latest snapshot
+      - name: Find latest snapshots
         id: snap
         run: |
-          latest=""
-          latest_n=0
-          for f in api-snapshots/v*.yaml; do
-            [ -f "$f" ] || continue
-            n="${f##*/v}"; n="${n%.yaml}"
-            [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && { latest_n=$n; latest=$f; }
-          done
-          echo "path=$latest" >> "$GITHUB_OUTPUT"
-          echo "found=$([ -n "$latest" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          find_latest() {
+            local dir="$1"
+            local latest="" latest_n=0
+            for f in "$dir"/v*.yaml; do
+              [ -f "$f" ] || continue
+              n="${f##*/v}"; n="${n%.yaml}"
+              [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && { latest_n=$n; latest=$f; }
+            done
+            echo "$latest"
+          }
+          snap_v1=$(find_latest "api-snapshots/v1")
+          snap_v2=$(find_latest "api-snapshots/v2")
+          echo "v1_path=$snap_v1" >> "$GITHUB_OUTPUT"
+          echo "v1_found=$([ -n "$snap_v1" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "v2_path=$snap_v2" >> "$GITHUB_OUTPUT"
+          echo "v2_found=$([ -n "$snap_v2" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - name: Breaking change check
-        if: steps.snap.outputs.found == 'true'
+      - name: Breaking change check — v1 spec
+        if: steps.snap.outputs.v1_found == 'true'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
-          SNAP: ${{ steps.snap.outputs.path }}
+          SNAP: ${{ steps.snap.outputs.v1_path }}
         run: |
           if oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR 2>/dev/null; then
-            echo "No breaking changes."
+            echo "v1: No breaking changes."
             exit 0
           fi
           if echo "$PR_TITLE $PR_BODY" | grep -q '\[breaking\]'; then
-            echo "Breaking changes detected — [breaking] token present. Allowed."
+            echo "v1: Breaking changes detected — [breaking] token present. Allowed."
             oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR 2>/dev/null || true
             exit 0
           fi
-          echo "FAIL: Breaking API changes detected. Add [breaking] to your PR title to allow." >&2
+          echo "FAIL: Breaking API changes in openapi.yaml. Add [breaking] to your PR title to allow." >&2
           oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR >&2 || true
           exit 1
 
-      - name: No snapshot warning
-        if: steps.snap.outputs.found == 'false'
+      - name: Breaking change check — v2 spec
+        if: steps.snap.outputs.v2_found == 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          SNAP: ${{ steps.snap.outputs.v2_path }}
         run: |
-          echo "WARN: No snapshot found in api-snapshots/ — breaking-change check skipped."
+          if oasdiff breaking "$SNAP" openapi-v2.yaml --fail-on ERR 2>/dev/null; then
+            echo "v2: No breaking changes."
+            exit 0
+          fi
+          if echo "$PR_TITLE $PR_BODY" | grep -q '\[breaking\]'; then
+            echo "v2: Breaking changes detected — [breaking] token present. Allowed."
+            oasdiff breaking "$SNAP" openapi-v2.yaml --fail-on ERR 2>/dev/null || true
+            exit 0
+          fi
+          echo "FAIL: Breaking API changes in openapi-v2.yaml. Add [breaking] to your PR title to allow." >&2
+          oasdiff breaking "$SNAP" openapi-v2.yaml --fail-on ERR >&2 || true
+          exit 1
+
+      - name: No snapshot warning
+        if: steps.snap.outputs.v1_found == 'false' && steps.snap.outputs.v2_found == 'false'
+        run: |
+          echo "WARN: No snapshots found in api-snapshots/ — breaking-change check skipped."
           echo "      Run 'npm run api:snap' and commit the result to establish a baseline."

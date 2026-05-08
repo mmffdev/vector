@@ -2,14 +2,13 @@
 # snap_api.sh — Layer 4: bump snapshot + generate blast radius report
 # Usage: npm run api:snap
 #
-# Determines the next vN by scanning api-snapshots/, copies openapi.yaml as
-# the new snapshot, runs `oasdiff changelog` against the previous snapshot,
-# regenerates caller-map.json + dead-apis.txt, and appends a row to
-# api-snapshots/CHANGELOG.md tagging breaking-yes/no.
+# Snapshots both openapi.yaml (v1) and openapi-v2.yaml (v2) into api-snapshots/.
+# v1 snapshots: api-snapshots/v1/vN.yaml
+# v2 snapshots: api-snapshots/v2/vN.yaml
+# blast-radius-latest.md covers the v1 diff (v2 diff written to blast-radius-v2-latest.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SPEC="$REPO_ROOT/openapi.yaml"
 SNAP_DIR="$REPO_ROOT/api-snapshots"
 SCRIPTS_DIR="$REPO_ROOT/dev/scripts"
 
@@ -28,62 +27,81 @@ resolve_oasdiff() {
   return 1
 }
 
+snap_spec() {
+  local label="$1"       # "v1" or "v2"
+  local spec_file="$2"   # path to the spec
+  local blast_out="$3"   # output file for blast-radius report
+
+  local dir="$SNAP_DIR/$label"
+  mkdir -p "$dir"
+
+  local latest_n=0
+  for f in "$dir"/v*.yaml; do
+    [[ -f "$f" ]] || continue
+    local n="${f##*/v}"; n="${n%.yaml}"
+    [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && latest_n=$n
+  done
+  local next_n=$(( latest_n + 1 ))
+  local prev_n=$latest_n
+
+  echo "=== api:snap [$label] — creating v${next_n} snapshot ==="
+  cp "$spec_file" "$dir/v${next_n}.yaml"
+  echo "  Wrote api-snapshots/$label/v${next_n}.yaml"
+
+  if [[ $prev_n -gt 0 && -f "$dir/v${prev_n}.yaml" ]]; then
+    if OASDIFF=$(resolve_oasdiff); then
+      "$OASDIFF" changelog \
+        "$dir/v${prev_n}.yaml" \
+        "$dir/v${next_n}.yaml" \
+        --format=markdown \
+        > "$SNAP_DIR/$blast_out" 2>/dev/null || true
+      echo "  Wrote api-snapshots/$blast_out"
+    else
+      echo "WARN: oasdiff not found — $blast_out not generated."
+      echo "      Install: go install github.com/oasdiff/oasdiff@latest"
+      echo "# Blast radius report not generated — oasdiff not installed" > "$SNAP_DIR/$blast_out"
+    fi
+  else
+    echo "# First $label snapshot — no previous version to diff against" > "$SNAP_DIR/$blast_out"
+    echo "  v${next_n} is first $label snapshot — no diff generated"
+  fi
+
+  # Append to CHANGELOG.md
+  local sha
+  sha=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  local date
+  date=$(date +%Y-%m-%d)
+  local breaking="no"
+  if [[ -f "$SNAP_DIR/$blast_out" ]] && grep -qi "breaking" "$SNAP_DIR/$blast_out" 2>/dev/null; then
+    breaking="yes"
+  fi
+
+  local changelog="$dir/CHANGELOG.md"
+  cat >> "$changelog" <<EOF
+
+## v${next_n} — ${date}
+
+Snapshot of ${spec_file##*/} at ${sha}. Breaking changes: ${breaking}.
+EOF
+  echo "  Appended to api-snapshots/$label/CHANGELOG.md"
+}
+
 mkdir -p "$SNAP_DIR"
 
-# Determine next version number
-latest_n=0
-for f in "$SNAP_DIR"/v*.yaml; do
-  [[ -f "$f" ]] || continue
-  n="${f##*/v}"; n="${n%.yaml}"
-  [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && latest_n=$n
-done
-next_n=$(( latest_n + 1 ))
-prev_n=$latest_n
+# Snapshot v1 spec
+snap_spec "v1" "$REPO_ROOT/openapi.yaml" "blast-radius-latest.md"
 
-echo "=== api:snap — creating v${next_n} snapshot ==="
-
-# Copy spec
-cp "$SPEC" "$SNAP_DIR/v${next_n}.yaml"
-echo "  Wrote api-snapshots/v${next_n}.yaml"
-
-# Generate changelog vs previous snapshot
-if [[ $prev_n -gt 0 && -f "$SNAP_DIR/v${prev_n}.yaml" ]]; then
-  if OASDIFF=$(resolve_oasdiff); then
-    "$OASDIFF" changelog \
-      "$SNAP_DIR/v${prev_n}.yaml" \
-      "$SNAP_DIR/v${next_n}.yaml" \
-      --format=markdown \
-      > "$SNAP_DIR/blast-radius-latest.md" 2>/dev/null || true
-    echo "  Wrote api-snapshots/blast-radius-latest.md"
-  else
-    echo "WARN: oasdiff not found — blast-radius-latest.md not generated."
-    echo "      Install: go install github.com/oasdiff/oasdiff@latest"
-    echo "# Blast radius report not generated — oasdiff not installed" > "$SNAP_DIR/blast-radius-latest.md"
-  fi
+# Snapshot v2 spec (if it exists)
+if [[ -f "$REPO_ROOT/openapi-v2.yaml" ]]; then
+  snap_spec "v2" "$REPO_ROOT/openapi-v2.yaml" "blast-radius-v2-latest.md"
 else
-  echo "# First snapshot — no previous version to diff against" > "$SNAP_DIR/blast-radius-latest.md"
-  echo "  v${next_n} is first snapshot — no diff generated"
+  echo "INFO: openapi-v2.yaml not found — skipping v2 snapshot"
 fi
 
-# Regenerate caller map
+# Regenerate caller maps for both specs
 python3 "$SCRIPTS_DIR/check_callers.py" > /dev/null
+python3 "$SCRIPTS_DIR/check_callers.py" --spec openapi-v2.yaml > /dev/null 2>/dev/null || true
 echo "  Regenerated api-snapshots/caller-map.json + dead-apis.txt"
 
-# Append to CHANGELOG.md
-SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-DATE=$(date +%Y-%m-%d)
-BREAKING="no"
-if [[ -f "$SNAP_DIR/blast-radius-latest.md" ]] && grep -qi "breaking" "$SNAP_DIR/blast-radius-latest.md" 2>/dev/null; then
-  BREAKING="yes"
-fi
-
-cat >> "$SNAP_DIR/CHANGELOG.md" <<EOF
-
-## v${next_n} — ${DATE}
-
-Snapshot of openapi.yaml at ${SHA}. Breaking changes: ${BREAKING}.
-EOF
-echo "  Appended to api-snapshots/CHANGELOG.md"
-
 echo ""
-echo "=== Done: v${next_n} snapshot ready. Commit api-snapshots/ to record it. ==="
+echo "=== Done: snapshots ready. Commit api-snapshots/ to record them. ==="

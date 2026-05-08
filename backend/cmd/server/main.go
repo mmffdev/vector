@@ -852,27 +852,6 @@ func main() {
 		r.Delete("/{id}", defectsH.Archive)
 	})
 
-	// ---- /api/rank ----
-	// One generic endpoint serves every registered resource. The
-	// resource_type field in the body picks the registry entry; the
-	// service enforces tenant isolation by scoping every query by
-	// subscription_id from the session (never the body).
-	// Requires vaPool; returns 503 when vector_artefacts is unavailable.
-	if rankH != nil {
-		r.Route("/rank", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(240, time.Minute))
-			r.Use(userWriteLimiter)
-
-			r.Post("/move", rankH.Move)
-		})
-	} else {
-		r.Post("/rank/move", func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "rank service not available", http.StatusServiceUnavailable)
-		})
-	}
-
 	// ---- /api/flows (migration 112) ----
 	// Per-tenant flow editor surface. gadmin and padmin both have
 	// flows.manage; the page is one shared screen for both roles.

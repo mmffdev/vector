@@ -1,0 +1,639 @@
+openapi: 3.1.0
+info:
+  title: Samantha API v2
+  version: 2.0.0
+  description: |
+    Samantha v2 API — vector_artefacts-backed endpoints only.
+    All paths are served at /samantha/v2.
+
+    Routes on this spec use vaPool (vector_artefacts pgxpool). Routes still
+    backed by the legacy mmff_vector pool remain on /samantha/v1 until their
+    data migrations complete (see docs/c_c_v1_v2_cutover.md).
+
+servers:
+  - url: http://localhost:5100/samantha/v2
+    description: Local development
+  - url: https://api.mmff.dev/samantha/v2
+    description: Production
+
+tags:
+  - name: work-items
+    description: Work items (tasks, epics, bugs, stories) in vector_artefacts
+  - name: ranking
+    description: Generic position management across orderable resources
+  - name: timeboxes
+    description: Timebox management — sprints and releases
+
+paths:
+
+  # ── Work Items ────────────────────────────────────────────────────────────
+
+  /work-items:
+    get:
+      tags: [work-items]
+      summary: List work items
+      operationId: v2_listWorkItems
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: dir
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Work items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [work-items]
+      summary: Create work item
+      operationId: v2_createWorkItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Work item created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /work-items/summary:
+    get:
+      tags: [work-items]
+      summary: Get work items summary
+      operationId: v2_getWorkItemsSummary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Work items summary
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /work-items/flow-states:
+    get:
+      tags: [work-items]
+      summary: List work item flow states
+      operationId: v2_listWorkItemFlowStates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Flow states
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /work-items/bulk:
+    post:
+      tags: [work-items]
+      summary: Bulk work item operations
+      operationId: v2_bulkWorkItems
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /work-items/{id}:
+    get:
+      tags: [work-items]
+      summary: Get work item
+      operationId: v2_getWorkItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Work item
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [work-items]
+      summary: Update work item
+      operationId: v2_updateWorkItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Work item updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [work-items]
+      summary: Archive work item
+      operationId: v2_archiveWorkItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Work item archived
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /work-items/{id}/children:
+    get:
+      tags: [work-items]
+      summary: List work item children
+      operationId: v2_listWorkItemChildren
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Child work items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /work-items/{id}/field-values:
+    get:
+      tags: [work-items]
+      summary: List work item field values
+      operationId: v2_listWorkItemFieldValues
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Field values
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [work-items]
+      summary: Upsert work item field values
+      operationId: v2_upsertWorkItemFieldValues
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Field values upserted
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /work-items/{id}/field-values/{field_library_id}:
+    delete:
+      tags: [work-items]
+      summary: Delete work item field value
+      operationId: v2_deleteWorkItemFieldValue
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: field_library_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Field value deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Ranking ───────────────────────────────────────────────────────────────
+
+  /rank/move:
+    post:
+      tags: [ranking]
+      summary: Move item in ranking
+      operationId: v2_moveRank
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resource_type:
+                  type: string
+                  description: e.g. "work_item"
+                row_id:
+                  type: string
+                  format: uuid
+                before:
+                  type: string
+                  format: uuid
+                  description: Place row immediately before this ID
+                after:
+                  type: string
+                  format: uuid
+                  description: Place row immediately after this ID
+                to_top:
+                  type: boolean
+                  description: Move row to top of list
+                to_bottom:
+                  type: boolean
+                  description: Move row to bottom of list
+              required: [resource_type, row_id]
+      responses:
+        '200':
+          description: Rank updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  row_id:
+                    type: string
+                    format: uuid
+                  scope:
+                    type: string
+                    enum: [backlog, sprint]
+                  new_position:
+                    type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── Timeboxes ─────────────────────────────────────────────────────────────
+
+  /timeboxes/sprints:
+    get:
+      tags: [timeboxes]
+      summary: List sprints
+      operationId: v2_listSprints
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sprint list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sprints:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Timebox sprints not enabled
+    post:
+      tags: [timeboxes]
+      summary: Create a sprint
+      operationId: v2_createSprint
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Sprint created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /timeboxes/sprints/bulk-create:
+    post:
+      tags: [timeboxes]
+      summary: Bulk-create sprints
+      operationId: v2_bulkCreateSprints
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sprints:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '201':
+          description: Sprints created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /timeboxes/sprints/{id}:
+    get:
+      tags: [timeboxes]
+      summary: Get a sprint
+      operationId: v2_getSprint
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Sprint
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [timeboxes]
+      summary: Update a sprint
+      operationId: v2_updateSprint
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Sprint updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [timeboxes]
+      summary: Delete a sprint
+      operationId: v2_deleteSprint
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Sprint deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        type:
+          type: string
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request (400)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    Unauthorized:
+      description: Unauthorized (401)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    Forbidden:
+      description: Forbidden (403)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    NotFound:
+      description: Not Found (404)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    UnprocessableEntity:
+      description: Unprocessable Entity (422)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
