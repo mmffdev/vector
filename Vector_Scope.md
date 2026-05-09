@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-09 (B22 added — Transport segregation via shared service core, PLA-0039)
-**Doc version:** 2.3
+**Last updated:** 2026-05-09 (B22.16–B22.27 added — Phase 2 `/_site` full coverage, 14 apiV2 callers → 0)
+**Doc version:** 2.4
 
 ---
 
@@ -323,6 +323,7 @@ Full lifecycle management for tasks, bugs, epics.
 - **B1.7** Work item templates `[P4]`
 - **B1.8** Blocked-state — orthogonal stuck flag with provenance `[P2]`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
+> Commit `5d7e472` (2026-05-09): fix(auth): _bootstrapped flag prevents HMR re-runs from firing second refresh() on rotated rt cookie [B16]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -502,11 +503,14 @@ Full lifecycle management for tasks, bugs, epics.
 
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 
 - ✅ ~~**B9.1** Webhook subscriptions table — URL, event filter, secret~~
   > `db/artefacts_schema/037_webhooks.sql` — `webhook_subscriptions` + `webhook_deliveries` tables; CRUD API at `GET/POST /workspaces/{id}/webhooks` + `GET/PATCH/DELETE /workspaces/{id}/webhooks/{webhookId}`; secret auto-generated (32-byte random hex) if not supplied
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   >
 - ✅ ~~**B9.2** Outbox delivery pattern~~
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > `webhook_deliveries` outbox table; `Enqueue` fans out to all matching active subscriptions; FOR UPDATE SKIP LOCKED claim
   >
 - ✅ ~~**B9.3** Retry worker — exponential backoff, 24h window~~
@@ -527,6 +531,8 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
   >
 - **B9.7** `item.blocked` / `item.unblocked` event wiring → tracked under B1.8.5 (blocked-state feature) `[P3]`
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
+> Commit `5d7e472` (2026-05-09): fix(auth): _bootstrapped flag prevents HMR re-runs from firing second refresh() on rotated rt cookie [B16]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -611,6 +617,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ **B15.5** `<DiagramCanvas>` — Canvas2D + dagre + d3-zoom `[P3]`
 > Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
   > Spec: `docs/c_c_diagram_canvas.md` — Vector-built Canvas2D + dagre layout + d3-zoom; 10px snap-to-grid default; pluggable node renderer; exposed via Samantha API as `samantha.diagram.canvas`
 - ✅ **B15.6** Drag-and-drop (`@dnd-kit`) `[P2]`
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
@@ -848,12 +855,18 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -866,6 +879,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -883,6 +897,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -903,6 +922,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -922,6 +946,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -943,6 +968,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -960,6 +989,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -977,6 +1010,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -997,6 +1034,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1013,6 +1054,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
+> Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -1030,12 +1075,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -1053,6 +1100,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -1176,6 +1224,50 @@ Manage per-role access to pages and features. Control what each role (user, padm
 - ✅ ~~**B22.15** Decision log — site-only vs customer-also for new endpoints `[P3]`~~
 > Commit `e76dd70` (2026-05-09): feat(B22 PLA-0039): add transport gate (Gate 8) to stories skill [B22] [B22.15]
   > One-line addition to the `<stories>` skill checklist: every new endpoint card declares `transport: site | public | both`. Forces the decision at story time, not at handler time. Keeps drift from re-emerging.
+
+### B22 Phase 2 — `/_site` Full Coverage (14 allowlisted files → 0)
+
+> **Goal:** Every internal app call routes through `/_site`. The 14 files currently in `public_helper_allowlist.json` all call `apiV2` directly — each needs a `/_site` route added to the Go backend and its frontend caller switched to `apiSite`. When the allowlist reaches 0 non-exempt entries, `lint:public-helper-allowlist` becomes a hard block with no exemptions.
+>
+> **State today (2026-05-09):** `/_site` has auth, me, nav, workspaces, webhooks, roles, custom-pages, addressables, library-releases, errors, user/tab-order. **Missing:** topology, work-items, portfolio-items, portfolio-model, flows, fields, rank, timeboxes, artefact-items (resourceUrl pattern).
+>
+> **Per-group work pattern:** (1) add route group to `mountSiteRoutes` in `main.go`; (2) switch frontend callers `apiV2` → `apiSite`; (3) remove files from allowlist; (4) verify lint passes.
+
+- **B22.16** Mount `/_site/topology/*` + switch `app/lib/topologyApi.ts` → `apiSite` `[P1]`
+  > 18 topology operations (tree, nodes CRUD, roles, view-state, move, commit, reset, archive/restore, disconnected). All handlers exist under `/samantha/v2/topology`; duplicate the mount into `mountSiteRoutes`. topologyApi.ts is 1 file, ~20 call sites. Remove 1 entry from allowlist.
+
+- **B22.17** Mount `/_site/work-items/*` + switch `work-items/list`, `WorkItemDetailPanel`, `useWorkItemFlowStates`, `work-items-tree-config` → `apiSite` `[P1]`
+  > Work-items list/summary, field-values, flow-states, tree pagination/sort/filter, PATCH. 4 frontend files. Handler group exists under `/samantha/v2/work-items`. Remove 4 entries from allowlist.
+
+- **B22.18** Mount `/_site/portfolio-items/*` + switch `portfolio-items/list/page.tsx` → `apiSite` `[P1]`
+  > Single call: `/portfolio-items/summary`. Handler group exists under `/samantha/v2/portfolio-items`. Remove 1 entry from allowlist.
+
+- **B22.19** Mount `/_site/portfolio/*` + `/_site/workspace/{id}/portfolio/layers` + switch `portfolio-model/page.tsx` → `apiSite` `[P1]`
+  > Two calls: `/portfolio/master_record?workspace_id=` and `/workspace/{id}/portfolio/layers`. Table-name bug fixed (commit b3defb3); this removes the `apiV2` exposure. Remove 1 entry from allowlist.
+
+- **B22.20** Mount `/_site/flows/*` + switch `workspace-settings/work-items/page.tsx` → `apiSite` `[P1]`
+  > Single call: `GET /flows/`. Handler already mounted under `/samantha/v2/flows`. Remove 1 entry from allowlist.
+
+- **B22.21** Mount `/_site/workspace/{id}/fields` + switch `app/lib/fieldsApi.ts` → `apiSite` `[P1]`
+  > Single call: `GET /workspace/{id}/fields`. Handler (`fields.Service`) exists. Remove 1 entry from allowlist.
+
+- **B22.22** Mount `/_site/rank/move` + switch `app/hooks/useResourceRank.ts` → `apiSite` `[P2]`
+  > Single call: `POST /rank/move`. Handler exists under `/samantha/v2`. Remove 1 entry from allowlist.
+
+- **B22.23** Mount `/_site/timeboxes/*` + switch `TimeboxManager.tsx` + `useTimebox.ts` → `apiSite` `[P2]`
+  > Two files; `cfg.apiBase` is dynamic — the timebox kind registry at `app/components/timebox/kinds.ts` needs `/_site`-prefixed base strings. Calls: `GET ${cfg.apiBase}?...` and `POST ${cfg.apiBase}/bulk-create`. Remove 2 entries from allowlist.
+
+- **B22.24** Mount `/_site/work-items/relations/*` + switch `useRelationsData.ts` → `apiSite` `[P2]`
+  > Relations graph calls. Handler exists under `/samantha/v2/work-items/relations`. Remove 1 entry from allowlist. Depends on B22.17 (shares the work-items mount group).
+
+- **B22.25** Switch `p_ObjectTree.tsx` (artefact-items resourceUrl pattern) → `apiSite` `[P1]`
+  > The wizard sidecar `resourceUrl` is constructed dynamically (B21). `p_ObjectTree.tsx` calls `apiV2(resourceUrl + ...)`. Once B22.17 + B22.18 mount the underlying route groups under `/_site`, this file just needs its helper swapped. Remove 1 entry from allowlist. Depends on B22.17, B22.18.
+
+- **B22.26** Shrink `public_helper_allowlist.json` to zero; make lint a hard block `[P2]`
+  > Once B22.16–B22.25 land, remove all 14 entries. The lint `--warn` mode becomes a hard fail. `app/lib/api.ts` (the definition file) gets a `# definition` exemption comment; all other callers must route through `apiSite`. Any future `apiV2` call requires an explicit PR-reviewed allowlist entry.
+
+- **B22.27** Update `docs/c_c_transport_segregation.md` with Phase 2 completion + full `/_site` route inventory `[P3]`
+  > Document the complete `/_site` surface after Phase 2. Reference for the gateway block rule (B22.14) when B17.9 ships.
 
 ---
 

@@ -68,3 +68,16 @@ B22.12	dto mapper convention public MapPublic lint dto-mapper transport
 B22.13	docs transport segregation site _site samantha v2 boundary diagram
 B22.14	gateway _site staff VPN SSO ingress 404 public requests
 B22.15	stories skill transport site public both decision log endpoint
+B22.16	topology site mount apiSite topologyApi _site
+B22.17	work-items site mount apiSite WorkItemDetailPanel useWorkItemFlowStates tree-config
+B22.17	work-items site mount apiSite WorkItemDetailPanel useWorkItemFlowStates tree-config
+B22.18	portfolio-items site mount apiSite summary list
+B22.19	portfolio master_record layers site mount apiSite portfolio-model
+B22.20	flows site mount apiSite workspace-settings
+B22.21	fields site mount apiSite fieldsApi workspace
+B22.22	rank move site mount apiSite useResourceRank
+B22.23	timeboxes sprints releases site mount apiSite TimeboxManager useTimebox kinds
+B22.24	relations work-items site mount apiSite useRelationsData
+B22.25	ObjectTree resourceUrl artefact-items site mount apiSite
+B22.26	allowlist public_helper_allowlist zero hard block lint
+B22.27	transport segregation docs _site inventory phase2
