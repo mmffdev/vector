@@ -178,6 +178,8 @@
   },
   "active": "0f49d6199bf31706",
   "lastOpenFiles": [
+    "dev/tests/playwright/work-item-relations.spec.ts",
+    "app/components/ObjectTree/p_ObjectTreeRegistry.tsx",
     "app/components/ObjectTree/index.tsx",
     "app/components/ObjectTree/object-tree-registry.tsx",
     "app/components/ObjectTree/p_ObjectTree.tsx",
@@ -187,8 +189,6 @@
     "app/components/__tests__/p_ObjectTree.test.tsx",
     "app/components/p_ObjectTree.tsx",
     "app/(user)/portfolio-items/settings/page.tsx",
-    "app/(user)/portfolio-items/relations/page.tsx",
-    "app/(user)/portfolio-items/list/page.tsx",
     "node_modules/3d-force-graph/README.md",
     "node_modules/three-render-objects/README.md",
     "node_modules/ngraph.forcelayout/README.md",

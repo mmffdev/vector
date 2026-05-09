@@ -706,5 +706,6 @@ A 3D force-directed graph (Obsidian-style globe) for visualising the work-item h
 
 ## Unmatched Commits
 
+> Commit `fa56b2c` (2026-05-09): refactor(B15.2): organize ObjectTree into dedicated folder structure
 > Commit `01a0c38` (2026-05-09): fix(B6.7): workspace-settings should not be default-pinned
 > Commit `027638a` (2026-05-09): chore(B6.6): drop legacy topology V1 tables (org_nodes, org_levels, org_node_roles)
