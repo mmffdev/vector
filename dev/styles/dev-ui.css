@@ -520,6 +520,7 @@
   top: 140px;
   max-height: calc(100vh - 140px - var(--space-6));
   overflow-y: scroll;
+  overscroll-behavior: contain;
   border-right: 1px solid var(--border);
   padding-right: var(--space-4);
 }
