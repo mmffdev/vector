@@ -13627,3 +13627,33 @@
 {"action":"watch","extra":{"pid":"88832","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:16:42.551Z"}
 {"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"89065","pid":"89065"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:16:42.553Z"}
 {"action":"start","extra":{"pgid":"89065","pid":"89065","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:16:42.650Z"}
+{"action":"watch","extra":{"pid":"89065","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:17:13.055Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"89836","pid":"89836"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:17:13.059Z"}
+{"action":"start","extra":{"pgid":"89836","pid":"89836","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:17:13.176Z"}
+{"action":"watch","extra":{"pid":"89836","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:17:43.299Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"89918","pid":"89918"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:17:43.302Z"}
+{"action":"start","extra":{"pgid":"89918","pid":"89918","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:17:43.398Z"}
+{"action":"watch","extra":{"pid":"89918","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:18:13.805Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90011","pid":"90011"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:18:13.808Z"}
+{"action":"start","extra":{"pgid":"90011","pid":"90011","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:18:13.888Z"}
+{"action":"watch","extra":{"pid":"90011","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:18:44.118Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90166","pid":"90166"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:18:44.120Z"}
+{"action":"start","extra":{"pgid":"90166","pid":"90166","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:18:44.208Z"}
+{"action":"watch","extra":{"pid":"90166","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:19:14.298Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90258","pid":"90258"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:19:14.301Z"}
+{"action":"start","extra":{"pgid":"90258","pid":"90258","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:19:14.379Z"}
+{"action":"watch","extra":{"pid":"90258","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:19:44.393Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90361","pid":"90361"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:19:44.396Z"}
+{"action":"start","extra":{"pgid":"90361","pid":"90361","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:19:44.482Z"}
+{"action":"watch","extra":{"pid":"90361","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:20:14.898Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90458","pid":"90458"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:20:14.902Z"}
+{"action":"start","extra":{"pgid":"90458","pid":"90458","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:20:14.994Z"}
+{"action":"watch","extra":{"pid":"90458","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:20:45.298Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90551","pid":"90551"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:20:45.303Z"}
+{"action":"start","extra":{"pgid":"90551","pid":"90551","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:20:45.405Z"}
+{"action":"watch","extra":{"pid":"90551","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:21:15.807Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90646","pid":"90646"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:21:15.812Z"}
+{"action":"start","extra":{"pgid":"90646","pid":"90646","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:21:15.912Z"}
+{"action":"watch","extra":{"pid":"90646","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T03:21:46.123Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"90734","pid":"90734"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:21:46.126Z"}
+{"action":"start","extra":{"pgid":"90734","pid":"90734","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T03:21:46.192Z"}

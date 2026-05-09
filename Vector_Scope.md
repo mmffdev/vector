@@ -603,6 +603,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
   > `app/components/TimeboxManager.tsx` (369 LOC) — generic `kind` system (sprint/release); table-per-kind via `kinds.ts` registry; spec: `docs/c_c_timebox_manager.md`
 - ✅ **B15.5** `<DiagramCanvas>` — Canvas2D + dagre + d3-zoom `[P3]`
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Spec: `docs/c_c_diagram_canvas.md` — Vector-built Canvas2D + dagre layout + d3-zoom; 10px snap-to-grid default; pluggable node renderer; exposed via Samantha API as `samantha.diagram.canvas`
 - ✅ **B15.6** Drag-and-drop (`@dnd-kit`) `[P2]`
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
@@ -828,6 +829,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -847,6 +849,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -858,6 +861,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -882,6 +886,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3dc9cdd` (2026-05-09): chore(plans): normalise unicode escapes in PLA plan files
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -891,6 +896,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -900,6 +906,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -912,6 +919,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3dc9cdd` (2026-05-09): chore(plans): normalise unicode escapes in PLA plan files
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -920,6 +928,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
