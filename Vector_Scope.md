@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-09 (B19.3 complete; B19.4 parked pending filter guardrails in B19.5.2; B19.6 tests remain)
-**Doc version:** 1.6
+**Last updated:** 2026-05-09 (B9 complete; webhook UI live, worker running, migration 037 applied)
+**Doc version:** 1.7
 
 ---
 
@@ -447,9 +447,9 @@ Full lifecycle management for tasks, bugs, epics.
 
 ---
 
-## B9. Webhooks
+## ✅ ~~B9. Webhooks~~
 
-🔵 IN FLIGHT — backend complete; UI and sprint events pending.
+✅ All items complete — backend + UI live; worker running.
 
 - ✅ ~~**B9.1** Webhook subscriptions table — URL, event filter, secret~~
   > `db/artefacts_schema/037_webhooks.sql` — `webhook_subscriptions` + `webhook_deliveries` tables; CRUD API at `GET/POST /workspaces/{id}/webhooks` + `GET/PATCH/DELETE /workspaces/{id}/webhooks/{webhookId}`; secret auto-generated (32-byte random hex) if not supplied
@@ -459,12 +459,17 @@ Full lifecycle management for tasks, bugs, epics.
   >
 - ✅ ~~**B9.3** Retry worker — exponential backoff, 24h window~~
   > `backend/internal/webhooks/worker.go` — exponential backoff (base 30s, cap 6h), up to 10 attempts; started via `go webhooks.NewWorker(vaPool).Run(shutdownCtx)` alongside search worker
+  > Last checked: 2026-05-09 — worker started without errors post-migration 037
   >
 - ✅ ~~**B9.4** Events: `item.created/updated/deleted`, `item.status_changed`, `sprint.started/closed` `[P1]`~~
   > All six events wired: `item.*` via `workitemsv2/service.go`; `sprint.started`/`sprint.closed` via `timeboxsprints/service.go`. Notifier pattern throughout — nil-safe, non-blocking.
   > Last checked: 2026-05-08
   >
-- **B9.5** Webhook management UI `[P2]`
+- ✅ ~~**B9.5** Webhook management UI `[P2]`~~
+  > `app/(user)/workspace-settings/webhooks/page.tsx` + `WebhookForm.tsx` — full CRUD UI at workspace-settings/webhooks tab; list view with URL/events/status columns; create/edit/delete actions; event filter dropdown (all events or specific types); secret show/hide toggle. Integrated into workspace-settings navigation as default-pinned tab. Backend API fully consumed.
+  > Commit `9256433` (2026-05-09): feat(B9.5): webhook management UI at workspace-settings/webhooks
+  > Last checked: 2026-05-09
+  >
 - ✅ ~~**B9.6** `X-Vector-Signature` HMAC header for consumer verification~~
   > `webhooks/worker.go:sign()` — HMAC-SHA256 of payload body keyed on subscription secret; sent as `X-Vector-Signature: sha256=<hex>`
   >
@@ -710,8 +715,10 @@ A 3D force-directed graph (Obsidian-style globe) for visualising the work-item h
 
 ## Unmatched Commits
 
+> Commit `4bdfeea` (2026-05-09): fix(B9.1): resolve webhookSvc variable shadowing bug
+> Commit `8b194b6` (2026-05-09): fix: add CSRF token to webhook form submission [B9.1]
+> Commit `88ff415` (2026-05-09): docs(B6.7): update scope with workspace-settings padmin fix completion
 > Commit `61a1876` (2026-05-09): fix(PLA-0018): grant padmin access to workspace-settings [B6.7]
-> Commit `9256433` (2026-05-09): feat(B9.5): webhook management UI at workspace-settings/webhooks
 > Commit `22f6bfc` (2026-05-09): docs(B15.2): add example ObjectTreeConfig props for work_items and strategy_items
 > Commit `fa56b2c` (2026-05-09): refactor(B15.2): organize ObjectTree into dedicated folder structure
 > Commit `01a0c38` (2026-05-09): fix(B6.7): workspace-settings should not be default-pinned
