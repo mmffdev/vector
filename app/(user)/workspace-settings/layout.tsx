@@ -6,7 +6,7 @@ import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
-const TABS = ["organization", "workspaces", "users", "permissions", "topology", "topology_map", "portfolio_model", "work_items", "custom_fields"] as const;
+const TABS = ["organization", "workspaces", "users", "permissions", "topology", "topology_map", "portfolio_model", "work_items", "custom_fields", "webhooks"] as const;
 type TabKey = typeof TABS[number];
 
 const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
@@ -19,6 +19,7 @@ const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
   portfolio_model: { title: "Portfolio Model", subtitle: "Adopt a model or preview your subscription's adopted bundle" },
   work_items:      { title: "Work Items",      subtitle: "Flows for system, portfolio, and custom artefact types" },
   custom_fields:   { title: "Custom Fields",   subtitle: "Tenant-defined fields available on work items and portfolio artefacts" },
+  webhooks:        { title: "Webhooks",        subtitle: "Manage webhook subscriptions for work item and sprint events" },
 };
 
 // Tab key → URL path segment (only overrides where they differ)
@@ -40,6 +41,7 @@ const SEG_TO_KEY: Record<string, TabKey> = {
   "portfolio-model": "portfolio_model",
   "work-items":    "work_items",
   "custom-fields": "custom_fields",
+  webhooks:        "webhooks",
 };
 
 function segmentForKey(key: TabKey): string {
@@ -109,6 +111,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
           { key: "portfolio_model", label: "Portfolio Model", sortKey: "Portfolio Model" },
           ...(canManageFlows ? [{ key: "work_items" as const, label: "Work Items", sortKey: "Work Items" }] : []),
           { key: "custom_fields",   label: "Custom Fields",   sortKey: "Custom Fields" },
+          { key: "webhooks",        label: "Webhooks",        sortKey: "Webhooks" },
         ]}
       />
       {children}
