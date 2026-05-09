@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-09 (B9 complete; webhook UI live, worker running, migration 037 applied)
-**Doc version:** 1.7
+**Last updated:** 2026-05-09 (B21 added — Artefact-items substrate, PLA-0037; rename `workitemsv2` → `artefactitemsv2`, scope-parameterised; B15.2.5 sidecar wizard JSON pattern)
+**Doc version:** 2.0
 
 ---
 
@@ -39,6 +39,7 @@
 - [B18. Developer Experience](#b18-developer-experience)
 - [B19. Work Item Relations Graph](#b19-work-item-relations-graph)
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
+- [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
 
 ---
 
@@ -319,6 +320,38 @@ Full lifecycle management for tasks, bugs, epics.
   > `GET /api/v2/work-items/{id}/field-values` live — `handler.go:341`
   >
 - **B1.7** Work item templates `[P4]`
+- **B1.8** Blocked-state — orthogonal stuck flag with provenance `[P2]`
+  > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
+  > - `is_blocked` `BOOLEAN NOT NULL DEFAULT FALSE` — convenience flag for indexing/filters
+  > - `blocked_id` `UUID` — surrogate id for the active blocker record (so history can be added later without schema churn)
+  > - `blocked_title` `TEXT` — short label, e.g. "Waiting on legal review"
+  > - `blocked_description` `TEXT` — free-form detail
+  > - `blocked_reason` `TEXT` — short categorisation (later: enum/lookup once patterns emerge)
+  > - `blocked_user_reporter` `UUID` — who flagged it blocked
+  > - `blocked_user_unblocked` `UUID` — who cleared the block (null while still blocked)
+  > - `blocked_date_blocked` `TIMESTAMPTZ` — when the block was raised
+  > - `blocked_date_unblocked` `TIMESTAMPTZ` — when the block was cleared (null while still blocked)
+  >
+  > **Sub-items below.** Webhook event `item.blocked` is a downstream consumer (B1.8.5).
+  >
+  - **B1.8.1** Migration — add `blocked_*` columns to `artefacts` table `[P2]`
+    > Single migration in `db/artefacts_schema/`; index on `(workspace_id, is_blocked) WHERE is_blocked = TRUE` for fast unblocked-list queries.
+    >
+  - **B1.8.2** Backend — `Block` / `Unblock` service methods on `workitemsv2/service.go` `[P2]`
+    > `Block(ctx, subID, itemID, BlockInput)` sets all `blocked_*` fields + `is_blocked=TRUE`, fires `item.blocked` notifier. `Unblock(ctx, subID, itemID)` sets `blocked_user_unblocked` + `blocked_date_unblocked`, flips `is_blocked=FALSE`, fires `item.unblocked`. Both operations leave flow_state_id untouched.
+    >
+  - **B1.8.3** API routes — `POST /work-items/{id}/block` and `POST /work-items/{id}/unblock` `[P2]`
+    > Mounted on v2; OpenAPI spec updated. `block` body: `{title, description, reason}`; `unblock` body: `{}` (server fills user + timestamp).
+    >
+  - **B1.8.4** UI — block/unblock action on work-item detail panel + visual marker `[P2]`
+    > Button on `WorkItemDetailPanel.tsx`; opens small form (title required, description + reason optional). When blocked: panel shows red banner with reporter + date; tree row shows red dot/badge. Unblock action records `blocked_user_unblocked` automatically.
+    >
+  - **B1.8.5** Webhook event wiring — `item.blocked` + `item.unblocked` `[P3]`
+    > Notifier already lists `item.blocked` in `WebhookForm.tsx` dropdown. Add `item.unblocked` to dropdown. Backend fires both from B1.8.2 service methods. (Replaces deferred B9.7 wiring task — track here.)
+    >
+  - **B1.8.6** Reports — blocked-time on cycle/lead time and "currently blocked" filter `[P3]`
+    > Cycle-time/lead-time reports subtract blocked windows. List views get `blocked = true/false` filter. Blocked items surface at the top of stale-work reports.
+    >
 
 ---
 
@@ -387,6 +420,15 @@ Full lifecycle management for tasks, bugs, epics.
 - **B5.5** Custom role creation and assignment `[P3]`
 - **B5.6** Replace stop-gap permission codes with precise codes (TD-PERM-001) `[P3]`
 - **B5.7** `api_keys.manage` permission — not yet wired to API key routes `[P3]`
+- **B5.8** Capability matrix — single transparent view of role × permission grants `[P2]`
+  > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
+  >
+- **B5.9** Single source-of-truth seed for role capabilities `[P3]`
+  > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
+  >
+- **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
+  > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
+  >
 
 ---
 
@@ -448,9 +490,9 @@ Full lifecycle management for tasks, bugs, epics.
 
 ---
 
-## ✅ ~~B9. Webhooks~~
+## B9. Webhooks
 
-✅ All items complete — backend + UI live; worker running.
+Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
 
 - ✅ ~~**B9.1** Webhook subscriptions table — URL, event filter, secret~~
   > `db/artefacts_schema/037_webhooks.sql` — `webhook_subscriptions` + `webhook_deliveries` tables; CRUD API at `GET/POST /workspaces/{id}/webhooks` + `GET/PATCH/DELETE /workspaces/{id}/webhooks/{webhookId}`; secret auto-generated (32-byte random hex) if not supplied
@@ -473,6 +515,9 @@ Full lifecycle management for tasks, bugs, epics.
   >
 - ✅ ~~**B9.6** `X-Vector-Signature` HMAC header for consumer verification~~
   > `webhooks/worker.go:sign()` — HMAC-SHA256 of payload body keyed on subscription secret; sent as `X-Vector-Signature: sha256=<hex>`
+  >
+- **B9.7** `item.blocked` / `item.unblocked` event wiring → tracked under B1.8.5 (blocked-state feature) `[P3]`
+  > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
 ---
@@ -545,6 +590,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ **B15.2** `<ResourceTree>` / `ObjectTree` — hierarchical tree + configuration registry `[P2]`
   `[x] Generic dumb primitive (p_ObjectTree.tsx); pluggable data-type config via object-tree-registry.tsx; ready for releases/sprints/portfolio items`
   > `app/components/ResourceTree.tsx` (1554 LOC); five prop sets (Data/Scaffold/Features/CogMenu/Colour); addressable substrate; spec: `docs/c_c_resource_tree.md`
+- **B15.2.5** Sidecar wizard JSON pattern (`p_wizard_*.json`) `[P2]`
+  > Each `p_*` primitive component reads its config from a sibling JSON file in `app/components/<primitive>/configs/`. Static config (UI labels, columns, dnd type, **resourceUrl**, **scope**, panel header / filter chip selectors) lives in JSON; runtime closures (accessors, hooks, React nodes) injected by the page via `resolveWizardConfig()`. Goal: non-technical users configure components by editing JSON, no TypeScript. First adopter: `p_ObjectTree` with `p_wizard_workitems.json` + `p_wizard_portfolio.json`. Spec to write: `docs/c_c_wizard_sidecar.md` (tracked under B21.3.3).
 - ✅ **B15.3** `<Badge>` — status / count / letter / tag variants `[P2]`
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
@@ -759,8 +806,107 @@ Manage per-role access to pages and features. Control what each role (user, padm
 
 ---
 
+## B21. Artefact-Items Substrate (PLA-0037)
+
+> Generalise the v2 work-items handler family into a scope-parameterised **artefact-items** substrate so a single Go package serves both `/work-items` (scope=`work`, ~5 types) and `/portfolio-items` (scope=`strategy`, 51 types: themes, objectives, business epics, business outcomes, features-as-strategy). Frontend `useWorkItemsWindow` becomes generic `useArtefactItemsWindow` driven by `resourceUrl` from `p_wizard_*.json` so the existing portfolio page stops silently rendering work-items data.
+>
+> **Why now:** B15.2.5 introduced `p_wizard_portfolio.json` but the page still calls `/work-items` because the hook is hardcoded; backend filters `at.scope='work'` in 7 places, so the portfolio route — even when wired — would return 0 strategy artefacts. Without B21 the sidecar pattern is cosmetic.
+>
+> **Cutover model:** Phase 1 = rename Go package + add scope parameter, both routes register against same handler. Phase 2 = generic frontend hook + sidecar `resourceUrl`/`scope` fields. Phase 3 = tests, docs, deprecate legacy paths. Strict additive — no breaking changes to `/work-items` contract.
+
+- **B21.1** Backend — rename `workitemsv2` → `artefactitemsv2` and parameterise by scope `[P1]`
+  > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
+  >
+- **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
+  > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
+  >
+- **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
+  > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
+  >
+- **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
+  > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
+  >
+- **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
+  > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
+  >
+- **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
+  > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
+  >
+- **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
+  > Currently returns hardcoded `{total, epics, stories, tasks, defects, blocked}`. Make summary buckets data-driven from artefact-types of the current scope. Strategy summary should return `{total, themes, objectives, features}` per existing portfolio page contract. Pattern: GROUP BY `at.code`, project into stable JSON keys per scope config.
+  >
+- **B21.1.7** Register `/portfolio-items` routes against `artefactitemsv2.New(db, "strategy")` in `main.go` `[P1]` `[ ]B21.1.4` `[ ]B21.1.6`
+  > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
+  >
+- **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
+  > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
+  >
+
+- **B21.2** Frontend — generic hook + sidecar JSON drives endpoint `[P1]`
+  > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
+  >
+- **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
+  > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
+  >
+- **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
+  > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
+  >
+- **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
+  > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
+  >
+- **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
+  > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
+  >
+- **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
+  > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
+  >
+
+- **B21.3** Tests, docs, lint, cutover hygiene `[P2]`
+  > Cement the substrate so it can't regress.
+  >
+- **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
+  > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
+  >
+- **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
+  > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
+  >
+- **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
+  > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
+  >
+- **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
+  > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
+  >
+- **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
+  > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
+  >
+- **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
+  > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
+  >
+
+- **B21.4** Deferred follow-ups (post-cutover) `[P4]`
+  > Tracked here so they don't get lost; do NOT block B21.1–B21.3 completion.
+  >
+- **B21.4.1** Generalise `useRefetchOnPush` topic to scope-aware `[P3]`
+  > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
+  >
+- **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
+  > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
+  >
+- **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
+  > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
+  >
+- **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
+  > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
+  >
+- **B21.4.5** Per-scope flow-state validation `[P3]`
+  > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
+  >
+
+---
+
 ## Unmatched Commits
 
+> Commit `4ebf82f` (2026-05-09): fix: resolve getParentId/getChildrenCount functions in wizard config
 > Commit `ca3e543` (2026-05-09): feat(PLA-0030 B19.7): wire p_wizard.json sidecar pattern to work-items and portfolio-items pages
 > Commit `5c8f97b` (2026-05-09): docs(B20): add User Access Rights & Navigation Control section [B20]
 > Commit `65851a0` (2026-05-09): fix: auto-redirect to first accessible tab in workspace-settings

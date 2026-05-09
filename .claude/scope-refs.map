@@ -7,3 +7,44 @@
 13.1	openapi v2 spec developer experience SDK
 18.7	api snapshot snap_api check_routes check_callers toolchain
 18.7.1	api-contracts workflow github actions CI spec breaking
+B5.8	capability matrix permissions roles_permissions view dev/permissions-matrix transparency grant
+B5.9	role_capabilities seed declarative single-source role permission consolidation
+B5.10	lint:permission-codes useHasPermission RequirePermission audit catalogue codes
+B9.7	item.blocked event webhook notifier fire blocked subscription dropdown
+B1.8	blocked state orthogonal stuck flag provenance is_blocked blocked_title blocked_reason
+B1.8.1	migration artefacts blocked_columns is_blocked index unblocked
+B1.8.2	Block Unblock service workitemsv2 notifier item.blocked item.unblocked
+B1.8.3	block unblock route POST work-items v2 openapi
+B1.8.4	WorkItemDetailPanel block button banner blocked badge tree marker
+B1.8.5	webhook item.blocked item.unblocked notifier dropdown EVENT_FILTERS
+B1.8.6	blocked time cycle lead time report filter currently_blocked
+B21	artefact-items substrate artefactitemsv2 PLA-0037 scope work strategy portfolio rename workitemsv2
+B21.1	backend rename artefactitemsv2 scope parameterise sole-writer service
+B21.1.1	rename go package workitemsv2 artefactitemsv2 service.go types.go handler.go
+B21.1.2	main.go imports update workitemsv2 artefactitemsv2 constructor route
+B21.1.3	doc-comment refs portfolio master_record_service fields handler resolver
+B21.1.4	scope field constructor SELECT at.scope hardcoded literals service.go
+B21.1.5	validItemTypes scope keyed allow-list strategy work types.go
+B21.1.6	SummariseWorkItems scope-shaped summary buckets data-driven
+B21.1.7	register portfolio-items routes artefactitemsv2 main.go strategy
+B21.1.8	backend regression work-items contract canary unchanged
+B21.2	frontend hook sidecar JSON resourceUrl scope generic useArtefactItemsWindow
+B21.2.1	rename hook useWorkItemsWindow useArtefactItemsWindow resourceUrl scope
+B21.2.2	p_ObjectTree resourceUrl scope config wizardConfig
+B21.2.3	wizard JSON resourceUrl scope p_wizard_workitems p_wizard_portfolio
+B21.2.4	ObjectTreeDataConfig interface resourceUrl scope optional fields
+B21.2.5	useWorkItemsWindow callsites grep replace rename
+B21.3	tests docs lint cutover hygiene substrate
+B21.3.1	backend integration test portfolio-items strategy artefacts scope-leak
+B21.3.2	frontend unit test p_ObjectTree resourceUrl correct endpoint
+B21.3.3	spec doc c_c_wizard_sidecar.md sidecar pattern resolveWizardConfig
+B21.3.4	lint scope-literals work strategy hardcoded forbid registry
+B21.3.5	migration note c_c_v1_v2_cutover.md portfolio-items deprecation
+B21.3.6	CLAUDE.md hard-rule index sidecar pointer working practices
+B21.4	deferred follow-ups artefact-items post-cutover
+B21.4.1	useRefetchOnPush rankTopic artefact scope-aware unify
+B21.4.2	sidecar pattern adoption Table DiagramCanvas TimeboxManager primitives
+B21.4.3	storify strategy artefact types theme objective feature creation flows
+B21.4.4	drop legacy v1 portfolio-items routes deprecation cutover
+B21.4.5	per-scope flow-state validation transitions ListFlowStates audit
+B15.2.5	sidecar wizard JSON p_wizard configs resolveWizardConfig sidecar pattern
