@@ -1,8 +1,8 @@
-// Package workitemsv2 owns the v2 work-items wire types mirroring
+// Package artefactitemsv2 owns the v2 artefacts wire types mirroring
 // backend/internal/workitems/types.go. The struct layout MUST NOT drift
 // from v1 — any schema change must be applied to both packages in tandem
 // until the vector_artefacts cutover is complete.
-package workitemsv2
+package artefactitemsv2
 
 import (
 	"errors"
@@ -304,14 +304,24 @@ type BulkFailure struct {
 	Reason string `json:"reason"`
 }
 
-// WorkItemsSummary is the wire shape for GET /api/v2/work-items/summary.
+// WorkItemsSummary is the wire shape for GET /samantha/v2/{work-items,
+// portfolio-items}/summary. The fixed fields (Total/Epics/Stories/Tasks/
+// Defects/Blocked) are retained for backward compatibility with the v2
+// work-items page summary header. ByType is the scope-agnostic bucket map
+// keyed on `lower(artefact_types.name)` and is populated for every scope —
+// portfolio/strategy consumers (themes, objectives, business epics, …)
+// read from ByType because they have no static field analogue.
+//
+// B21 (PLA-0037): added ByType so the same summary endpoint serves both
+// scopes. The fixed work-only fields stay zero outside scope="work".
 type WorkItemsSummary struct {
-	Total   int `json:"total"`
-	Epics   int `json:"epics"`
-	Stories int `json:"stories"`
-	Tasks   int `json:"tasks"`
-	Defects int `json:"defects"`
-	Blocked int `json:"blocked"`
+	Total   int            `json:"total"`
+	Epics   int            `json:"epics"`
+	Stories int            `json:"stories"`
+	Tasks   int            `json:"tasks"`
+	Defects int            `json:"defects"`
+	Blocked int            `json:"blocked"`
+	ByType  map[string]int `json:"by_type"`
 }
 
 // UpsertFieldValueInput holds the value to write for one field on a work item.
@@ -330,11 +340,29 @@ var validFieldTypes = map[string]bool{
 	"radio": true, "user": true, "url": true,
 }
 
-// validItemTypes is the set of allowed item_type discriminators. Mirrors
-// the CHECK in migration 066 (epic | story | task | defect) plus portfolio item (PLA-0033).
-var validItemTypes = map[string]bool{
-	"epic": true, "story": true, "task": true, "defect": true, "portfolio item": true,
+// validItemTypesByScope is the per-scope allow-list for the item_type
+// discriminator on Create. Scope "work" mirrors the legacy CHECK on
+// obj_work_items (migration 066) plus the portfolio-item escape hatch
+// retained from PLA-0033. Scope "strategy" is intentionally an open set —
+// strategy artefact_types are tenant-extensible (themes, objectives,
+// business epics, capabilities, …) and the canonical authority is the
+// `artefact_types` row lookup performed by CreateWorkItem; an extra
+// hardcoded list here would force a code change every time a tenant
+// added a new strategy type. Returning nil from validItemTypesByScope
+// means "trust the DB lookup".
+//
+// B21 (PLA-0037): introduced when artefactitemsv2 became scope-parameterised.
+var validItemTypesByScope = map[string]map[string]bool{
+	"work": {
+		"epic": true, "story": true, "task": true, "defect": true, "portfolio item": true,
+	},
+	// "strategy": nil — DB row lookup is authoritative, no static allow-list.
 }
+
+// validItemTypes is retained for back-compat with any in-package callers
+// that still treat the work scope as default. Prefer validItemTypesByScope
+// keyed by Service.scope at the call-site.
+var validItemTypes = validItemTypesByScope["work"]
 
 // validStatuses is the set of allowed work item statuses.
 var validStatuses = map[string]bool{

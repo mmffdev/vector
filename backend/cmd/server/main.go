@@ -52,7 +52,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
-	"github.com/mmffdev/vector-backend/internal/workitemsv2"
+	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
@@ -257,24 +257,35 @@ func main() {
 	// route returns empty pages AND adoption falls back to legacy-only
 	// (no PLA-0026 dual-writes).
 	var vaPool *pgxpool.Pool
-	var workItemsV2H *workitemsv2.Handler
+	// B21 (PLA-0037): two handler instances on the same artefactitemsv2
+	// codebase — workItemsV2H mounted at /samantha/v2/work-items with
+	// scope="work" (legacy compat), portfolioItemsV2H mounted at
+	// /samantha/v2/portfolio-items with scope="strategy" (new in B21).
+	// Both share vaPool/pool; the only difference is the scope literal
+	// each Service binds for `at.scope = $N` filtering.
+	var workItemsV2H *artefactitemsv2.Handler
+	var portfolioItemsV2H *artefactitemsv2.Handler
 	var webhookSvc *webhooks.Service
+	makeStubHandlers := func() {
+		workItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "work"))
+		portfolioItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "strategy"))
+	}
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
 		if vaErr != nil {
-			log.Printf("⚠ vector_artefacts pool config error — v2 work-items will return empty: %v", vaErr)
-			workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+			log.Printf("⚠ vector_artefacts pool config error — v2 artefact-items will return empty: %v", vaErr)
+			makeStubHandlers()
 		} else {
 			vaCfg.MinConns = 2
 			vaCfg.MaxConnIdleTime = 5 * time.Minute
 			p, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
 			if vaErr != nil {
-				log.Printf("⚠ vector_artefacts pool connect failed — v2 work-items will return empty: %v", vaErr)
-				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+				log.Printf("⚠ vector_artefacts pool connect failed — v2 artefact-items will return empty: %v", vaErr)
+				makeStubHandlers()
 			} else if vaErr = p.Ping(ctx); vaErr != nil {
-				log.Printf("⚠ vector_artefacts pool ping failed — v2 work-items will return empty: %v", vaErr)
+				log.Printf("⚠ vector_artefacts pool ping failed — v2 artefact-items will return empty: %v", vaErr)
 				p.Close()
-				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+				makeStubHandlers()
 			} else {
 				vaPool = p
 				defer vaPool.Close()
@@ -286,10 +297,14 @@ func main() {
 					}
 				}
 				log.Printf("vector_artefacts pool connected: %s", maskedURL)
-				wiSvc := workitemsv2.NewService(vaPool, pool)
 				webhookSvc = webhooks.New(vaPool)
-				wiSvc.WithNotifier(webhooks.NewNotifier(webhookSvc))
-				workItemsV2H = workitemsv2.NewHandler(wiSvc)
+				notifier := webhooks.NewNotifier(webhookSvc)
+				wiSvc := artefactitemsv2.NewService(vaPool, pool, "work")
+				wiSvc.WithNotifier(notifier)
+				workItemsV2H = artefactitemsv2.NewHandler(wiSvc)
+				piSvc := artefactitemsv2.NewService(vaPool, pool, "strategy")
+				piSvc.WithNotifier(notifier)
+				portfolioItemsV2H = artefactitemsv2.NewHandler(piSvc)
 				// PLA-0026 / story 00502 (B13): attach the VA pool to the
 				// workspaces service so DELETE /api/workspaces/{id} can
 				// scan vector_artefacts for orphan rows BEFORE deletion.
@@ -300,8 +315,8 @@ func main() {
 			}
 		}
 	} else {
-		log.Printf("⚠ VECTOR_ARTEFACTS_DB_URL unset — v2 work-items will return empty pages")
-		workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
+		log.Printf("⚠ VECTOR_ARTEFACTS_DB_URL unset — v2 artefact-items will return empty pages")
+		makeStubHandlers()
 	}
 
 	// Topology service (PLA-0006 / M6.2.7). Constructed here, after
@@ -957,31 +972,41 @@ func main() {
 	r.Route("/samantha/v2", func(r chi.Router) {
 		r.Use(apikeys.Middleware(apiKeysSvc))
 
-		// ---- /work-items (PLA-0023 / 00469 + 00471) ----
+		// ---- /work-items + /portfolio-items (B21 / PLA-0037) ----
+		// Both groups share the artefactitemsv2 handler; the only
+		// difference is each Service's bound `at.scope` value (see
+		// the construction block above). The route shape is identical;
+		// any new endpoint added to /work-items must be added to
+		// /portfolio-items in the same edit (no scope-leak between groups).
 		if os.Getenv("WORK_ITEMS_V2") == "true" {
-			r.Route("/work-items", func(r chi.Router) {
+			// Reads use a higher cap (600/min) so expandAll tree fetches don't
+			// exhaust the limit; writes keep the conservative 120/min + per-user gate.
+			readLimit := httprate.LimitByIP(600, time.Minute)
+			writeLimit := httprate.LimitByIP(120, time.Minute)
+			mountArtefactRoutes := func(r chi.Router, h *artefactitemsv2.Handler) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
-				// Reads use a higher cap (600/min) so expandAll tree fetches don't
-				// exhaust the limit; writes keep the conservative 120/min + per-user gate.
-				readLimit := httprate.LimitByIP(600, time.Minute)
-				writeLimit := httprate.LimitByIP(120, time.Minute)
-				r.With(readLimit).Get("/", workItemsV2H.List)
-				r.With(writeLimit, userWriteLimiter).Post("/", workItemsV2H.Create)
-				r.With(writeLimit, userWriteLimiter).Post("/bulk", workItemsV2H.Bulk)
-				r.With(readLimit).Get("/summary", workItemsV2H.Summary)
-				r.With(readLimit).Get("/flow-states", workItemsV2H.ListFlowStates)
-				r.With(readLimit).Get("/{id}", workItemsV2H.Get)
-				r.With(writeLimit, userWriteLimiter).Patch("/{id}", workItemsV2H.Patch)
-				r.With(writeLimit, userWriteLimiter).Delete("/{id}", workItemsV2H.Archive)
-				r.With(readLimit).Get("/{id}/children", workItemsV2H.ListChildren)
-				r.With(readLimit).Get("/{id}/field-values", workItemsV2H.ListFieldValues)
-				r.With(writeLimit, userWriteLimiter).Put("/{id}/field-values", workItemsV2H.UpsertFieldValues)
-				r.With(writeLimit, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", workItemsV2H.DeleteFieldValue)
-			})
+				r.With(readLimit).Get("/", h.List)
+				r.With(writeLimit, userWriteLimiter).Post("/", h.Create)
+				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
+				r.With(readLimit).Get("/summary", h.Summary)
+				r.With(readLimit).Get("/flow-states", h.ListFlowStates)
+				r.With(readLimit).Get("/{id}", h.Get)
+				r.With(writeLimit, userWriteLimiter).Patch("/{id}", h.Patch)
+				r.With(writeLimit, userWriteLimiter).Delete("/{id}", h.Archive)
+				r.With(readLimit).Get("/{id}/children", h.ListChildren)
+				r.With(readLimit).Get("/{id}/field-values", h.ListFieldValues)
+				r.With(writeLimit, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
+				r.With(writeLimit, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
+			}
+			r.Route("/work-items", func(r chi.Router) { mountArtefactRoutes(r, workItemsV2H) })
+			r.Route("/portfolio-items", func(r chi.Router) { mountArtefactRoutes(r, portfolioItemsV2H) })
 		} else {
 			r.Get("/work-items", func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
+			})
+			r.Get("/portfolio-items", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "v2 portfolio-items not enabled", http.StatusServiceUnavailable)
 			})
 		}
 

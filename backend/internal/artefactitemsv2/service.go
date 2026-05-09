@@ -1,4 +1,4 @@
-package workitemsv2
+package artefactitemsv2
 
 import (
 	"context"
@@ -12,21 +12,34 @@ import (
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
-// Service owns all DB operations for the v2 work-items domain.
+// Service owns all DB operations for the v2 artefacts domain.
 // vectorArtefactsPool reads from vector_artefacts; mainPool reads from
 // mmff_vector (owner decoration cross-DB lookup). Either may be nil.
+//
+// scope discriminates which `artefact_types.scope` value this Service
+// instance serves. main.go registers two instances: scope="work" for
+// /work-items, scope="strategy" for /portfolio-items. The value is
+// embedded in every SQL clause via `at.scope = $N` parameter binding —
+// no string interpolation, no SQL-injection surface.
 type Service struct {
 	vectorArtefactsPool *pgxpool.Pool
 	mainPool            *pgxpool.Pool
 	notifier            *webhooks.Notifier
+	scope               string
 }
 
-// NewService creates a Service backed by the given pools.
+// NewService creates a Service backed by the given pools, scoped to the
+// given `artefact_types.scope` value (typically "work" or "strategy").
 // vaPool may be nil when VECTOR_ARTEFACTS_DB_URL is unset; mainPool may be
 // nil (owner decoration is skipped and Owner stays nil on every item).
-func NewService(vaPool, mainPool *pgxpool.Pool) *Service {
-	return &Service{vectorArtefactsPool: vaPool, mainPool: mainPool}
+// scope must be a non-empty literal known in `artefact_types.scope`.
+func NewService(vaPool, mainPool *pgxpool.Pool, scope string) *Service {
+	return &Service{vectorArtefactsPool: vaPool, mainPool: mainPool, scope: scope}
 }
+
+// Scope returns the artefact_types.scope value this Service is bound to.
+// Used by tests and diagnostics.
+func (s *Service) Scope() string { return s.scope }
 
 // WithNotifier attaches a webhook notifier. Safe to call with nil.
 func (s *Service) WithNotifier(n *webhooks.Notifier) { s.notifier = n }
@@ -81,9 +94,9 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	}
 
 	// ── dynamic WHERE ────────────────────────────────────────────────────────
-	// $1 = subscriptionID (always). Extra conditions start at $2.
-	args := []any{subscriptionID}
-	n := 2
+	// $1 = subscriptionID (always). $2 = scope (always). Extras start at $3.
+	args := []any{subscriptionID, s.scope}
+	n := 3
 	var extra []string
 
 	if filters.ParentID != nil {
@@ -134,7 +147,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
-		  AND at.scope = 'work'` + extraWhere
+		  AND at.scope = $2` + extraWhere
 
 	if err = s.vectorArtefactsPool.QueryRow(ctx, countQ, args...).Scan(&total); err != nil {
 		return nil, 0, err
@@ -190,7 +203,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
-		  AND at.scope = 'work'` + extraWhere + `
+		  AND at.scope = $2` + extraWhere + `
 		ORDER BY ` + orderBy + fmt.Sprintf(`
 		LIMIT $%d OFFSET $%d`, limitN, offsetN)
 
@@ -263,8 +276,8 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID uuid.UUID, id 
 		WHERE a.id = $2
 		  AND a.subscription_id = $1
 		  AND a.archived_at IS NULL
-		  AND at.scope = 'work'`,
-		subscriptionID, id,
+		  AND at.scope = $3`,
+		subscriptionID, id, s.scope,
 	)
 	wi, err := scanWorkItemRow(row)
 	if err == pgx.ErrNoRows {
@@ -332,9 +345,9 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 		WHERE a.subscription_id = $1
 		  AND a.parent_artefact_id = $2
 		  AND a.archived_at IS NULL
-		  AND at.scope = 'work'
+		  AND at.scope = $3
 		ORDER BY a.position ASC, a.number ASC`,
-		subscriptionID, parentID,
+		subscriptionID, parentID, s.scope,
 	)
 	if err != nil {
 		return nil, err
@@ -352,30 +365,36 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 
 // SummariseWorkItems returns counts for the Page Summary Header strip.
 // Optional sprintID narrows counts to items in that sprint.
+//
+// B21 (PLA-0037): the by-type bucket map is populated data-driven from
+// artefact_types.name so portfolio/strategy scopes (which have no
+// epic/story/task/defect static fields) still get a useful summary. The
+// fixed Epics/Stories/Tasks/Defects fields remain populated from ByType
+// for back-compat with the v2 work-items page header.
 func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UUID, sprintID *string) (WorkItemsSummary, error) {
+	out := WorkItemsSummary{ByType: map[string]int{}}
 	if s.vectorArtefactsPool == nil {
-		return WorkItemsSummary{}, nil
+		return out, nil
 	}
-	args := []any{subscriptionID}
+	args := []any{subscriptionID, s.scope}
 	conds := []string{
 		"a.subscription_id = $1",
 		"a.archived_at IS NULL",
-		"at.scope = 'work'",
+		"at.scope = $2",
 	}
-	n := 2
+	n := 3
 	if sprintID != nil && *sprintID != "" {
 		conds = append(conds, fmt.Sprintf("a.timebox_sprint_id = $%d::uuid", n))
 		args = append(args, *sprintID)
 		n++
 	}
 	_ = n
-	q := fmt.Sprintf(`
+	whereClause := strings.Join(conds, " AND ")
+
+	// Pass 1: total + blocked (single row).
+	totalQ := fmt.Sprintf(`
 		SELECT
-			COUNT(*)                                               AS total,
-			COUNT(*) FILTER (WHERE lower(at.name) = 'epic')        AS epics,
-			COUNT(*) FILTER (WHERE lower(at.name) = 'story')       AS stories,
-			COUNT(*) FILTER (WHERE lower(at.name) = 'task')        AS tasks,
-			COUNT(*) FILTER (WHERE lower(at.name) = 'defect')      AS defects,
+			COUNT(*) AS total,
 			COUNT(*) FILTER (
 				WHERE (fs.kind = 'todo' OR fs.id IS NULL)
 				  AND a.updated_at < NOW() - INTERVAL '14 days'
@@ -383,15 +402,42 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		WHERE %s`,
-		strings.Join(conds, " AND "),
-	)
-	var out WorkItemsSummary
-	if err := s.vectorArtefactsPool.QueryRow(ctx, q, args...).Scan(
-		&out.Total, &out.Epics, &out.Stories, &out.Tasks, &out.Defects, &out.Blocked,
-	); err != nil {
-		return WorkItemsSummary{}, err
+		WHERE %s`, whereClause)
+	if err := s.vectorArtefactsPool.QueryRow(ctx, totalQ, args...).Scan(&out.Total, &out.Blocked); err != nil {
+		return WorkItemsSummary{ByType: map[string]int{}}, err
 	}
+
+	// Pass 2: per-type bucket map (one row per artefact_type.name).
+	typeQ := fmt.Sprintf(`
+		SELECT lower(at.name) AS name, COUNT(*)
+		FROM artefacts a
+		JOIN artefact_types at ON at.id = a.artefact_type_id
+		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		WHERE %s
+		GROUP BY lower(at.name)`, whereClause)
+	rows, err := s.vectorArtefactsPool.Query(ctx, typeQ, args...)
+	if err != nil {
+		return WorkItemsSummary{ByType: map[string]int{}}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		var n int
+		if err := rows.Scan(&name, &n); err != nil {
+			return WorkItemsSummary{ByType: map[string]int{}}, err
+		}
+		out.ByType[name] = n
+	}
+	if err := rows.Err(); err != nil {
+		return WorkItemsSummary{ByType: map[string]int{}}, err
+	}
+
+	// Back-compat: fill the fixed work-only fields from ByType. Outside
+	// scope="work" these stay 0 (the keys won't exist in the map).
+	out.Epics = out.ByType["epic"]
+	out.Stories = out.ByType["story"]
+	out.Tasks = out.ByType["task"]
+	out.Defects = out.ByType["defect"]
 	return out, nil
 }
 
@@ -410,7 +456,7 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) 
 			SELECT at.id FROM artefact_types at
 			JOIN flows f2 ON f2.artefact_type_id = at.id
 			WHERE at.subscription_id = $1
-			  AND at.scope = 'work'
+			  AND at.scope = $2
 			  AND f2.is_default = TRUE
 			  AND f2.archived_at IS NULL
 			  AND at.archived_at IS NULL
@@ -421,7 +467,7 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) 
 		  AND f.archived_at IS NULL
 		  AND fs.archived_at IS NULL
 		ORDER BY fs.sort_order ASC`,
-		subscriptionID,
+		subscriptionID, s.scope,
 	)
 	if err != nil {
 		return nil, err
@@ -449,8 +495,10 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	if s.vectorArtefactsPool == nil {
 		return nil, fmt.Errorf("vector_artefacts pool not configured")
 	}
-	if !validItemTypes[in.ItemType] {
-		return nil, fmt.Errorf("%w: item_type must be epic, story, task, or defect", ErrInvalidInput)
+	if allowed, ok := validItemTypesByScope[s.scope]; ok && allowed != nil {
+		if !allowed[in.ItemType] {
+			return nil, fmt.Errorf("%w: item_type %q not allowed in scope %q", ErrInvalidInput, in.ItemType, s.scope)
+		}
 	}
 	if in.StoryPoints != nil && !canHaveManualPoints(in.ItemType) {
 		return nil, fmt.Errorf("%w: story_points cannot be set on %s items", ErrInvalidInput, in.ItemType)
@@ -470,11 +518,11 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	err = tx.QueryRow(ctx, `
 		SELECT id FROM artefact_types
 		WHERE subscription_id = $1
-		  AND scope = 'work'
+		  AND scope = $3
 		  AND lower(name) = $2
 		  AND archived_at IS NULL
 		LIMIT 1`,
-		subscriptionID, in.ItemType,
+		subscriptionID, in.ItemType, s.scope,
 	).Scan(&artefactTypeID)
 	if err != nil {
 		return nil, fmt.Errorf("resolve artefact_type for %q: %w", in.ItemType, err)

@@ -68,7 +68,7 @@ type Resolver struct {
 
 // New builds a Resolver backed by the vector_artefacts pool. Pass nil
 // to construct a no-op Resolver that returns ErrPoolMissing on every
-// call — symmetric with workitemsv2 and portfolio's null-pool path.
+// call — symmetric with artefactitemsv2 and portfolio's null-pool path.
 func New(pool *pgxpool.Pool) *Resolver { return &Resolver{pool: pool} }
 
 // fieldRow is the minimum projection needed to resolve scope.

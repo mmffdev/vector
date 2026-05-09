@@ -62,7 +62,7 @@ type Handler struct {
 // NewHandler wires the handler. vectorPool MUST be non-nil (the workspace
 // existence + tenancy check requires mmff_vector). artefactsPool MAY be
 // nil; in that case List returns {workspace_id, fields:[]} after the auth
-// gate succeeds — same null-pool fallback used by workitemsv2.
+// gate succeeds — same null-pool fallback used by artefactitemsv2.
 func NewHandler(vectorPool, artefactsPool *pgxpool.Pool) *Handler {
 	return &Handler{vectorPool: vectorPool, artefactsPool: artefactsPool}
 }

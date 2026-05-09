@@ -102,7 +102,7 @@ type Service struct {
 // NewService builds a Service backed by the given vector_artefacts pool.
 // Pass nil to construct a no-op Service that surfaces ErrPoolMissing on
 // every call — useful for boot configurations where the artefacts DB is
-// optional (see workitemsv2 for the same pattern).
+// optional (see artefactitemsv2 for the same pattern).
 func NewService(vaPool *pgxpool.Pool) *Service {
 	return &Service{vectorArtefactsPool: vaPool}
 }
