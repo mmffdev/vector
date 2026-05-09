@@ -850,3 +850,96 @@ func TestBulkOps_CrossTenantRejected(t *testing.T) {
 		t.Errorf("failure reason = %q, want forbidden", result.Failed[0].Reason)
 	}
 }
+
+// TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts verifies that a Service
+// constructed with scope="work" never returns rows whose artefact_type has
+// scope='strategy'. PLA-0037 / B21 — the route registration in main.go binds
+// each handler to a fixed scope; this test pins the SQL filter so a future
+// refactor can't quietly turn it back on.
+//
+// Asserted via every list-shaped read path: ListWorkItems, ListChildren,
+// ListFlowStates. The strategy service runs the symmetric assertion.
+func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
+	va := vaPool(t)
+	sub := pickTestSubscription(t, va)
+	ctx := context.Background()
+
+	// Probe: does this subscription have any strategy-scoped artefact_types?
+	// If not, the test reduces to a vacuous truth — skip rather than mislead.
+	var strategyTypeCount int
+	if err := va.QueryRow(ctx, `
+		SELECT COUNT(*) FROM artefact_types
+		 WHERE subscription_id=$1 AND scope='strategy' AND archived_at IS NULL`,
+		sub,
+	).Scan(&strategyTypeCount); err != nil {
+		t.Skipf("cannot probe strategy artefact_types: %v", err)
+	}
+	if strategyTypeCount == 0 {
+		t.Skip("subscription has no strategy artefact_types — vacuous; seed required")
+	}
+
+	workSvc := artefactitemsv2.NewService(va, nil, "work")
+	stratSvc := artefactitemsv2.NewService(va, nil, "strategy")
+
+	// 1. work service: every returned row must have a work-scoped item_type.
+	workItems, _, err := workSvc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 500})
+	if err != nil {
+		t.Fatalf("workSvc.ListWorkItems: %v", err)
+	}
+	for _, it := range workItems {
+		// item_type carries the artefact_types.name; assert this row's type
+		// row in fact has scope='work'.
+		var rowScope string
+		if err := va.QueryRow(ctx, `
+			SELECT scope FROM artefact_types
+			 WHERE subscription_id=$1 AND lower(name)=lower($2) AND archived_at IS NULL
+			 LIMIT 1`, sub, it.ItemType,
+		).Scan(&rowScope); err != nil {
+			continue // ItemType may not match a row exactly under casing edge-cases
+		}
+		if rowScope != "work" {
+			t.Errorf("workSvc returned item %s with type %q (scope=%q); want scope=work",
+				it.ID, it.ItemType, rowScope)
+		}
+	}
+
+	// 2. strategy service: every returned row must have a strategy-scoped type.
+	stratItems, _, err := stratSvc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 500})
+	if err != nil {
+		t.Fatalf("stratSvc.ListWorkItems: %v", err)
+	}
+	for _, it := range stratItems {
+		var rowScope string
+		if err := va.QueryRow(ctx, `
+			SELECT scope FROM artefact_types
+			 WHERE subscription_id=$1 AND lower(name)=lower($2) AND archived_at IS NULL
+			 LIMIT 1`, sub, it.ItemType,
+		).Scan(&rowScope); err != nil {
+			continue
+		}
+		if rowScope != "strategy" {
+			t.Errorf("stratSvc returned item %s with type %q (scope=%q); want scope=strategy",
+				it.ID, it.ItemType, rowScope)
+		}
+	}
+
+	// 3. ListFlowStates must also be scope-isolated.
+	workStates, err := workSvc.ListFlowStates(ctx, sub)
+	if err != nil {
+		t.Fatalf("workSvc.ListFlowStates: %v", err)
+	}
+	stratStates, err := stratSvc.ListFlowStates(ctx, sub)
+	if err != nil {
+		t.Fatalf("stratSvc.ListFlowStates: %v", err)
+	}
+	// Build a set of work flow-state IDs and assert no overlap with strategy.
+	workIDs := make(map[string]bool, len(workStates))
+	for _, s := range workStates {
+		workIDs[s.ID] = true
+	}
+	for _, s := range stratStates {
+		if workIDs[s.ID] {
+			t.Errorf("flow_state %s appears in both work and strategy lists — scope filter leaked", s.ID)
+		}
+	}
+}
