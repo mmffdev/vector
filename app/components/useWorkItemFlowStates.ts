@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiV2 } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 export interface WorkItemFlowState {
   id: string;
@@ -26,7 +26,7 @@ export function useWorkItemFlowStates(): WorkItemFlowState[] {
   const [states, setStates] = useState<WorkItemFlowState[]>([]);
 
   useEffect(() => {
-    apiV2<{ states: WorkItemFlowState[] }>("/work-items/flow-states")
+    apiSite<{ states: WorkItemFlowState[] }>("/work-items/flow-states")
       .then((r) => setStates(r.states))
       .catch(() => {});
   }, []);

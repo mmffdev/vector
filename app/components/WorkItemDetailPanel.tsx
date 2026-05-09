@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { apiV2 } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import InlineEditField from "@/app/components/InlineEditField";
 import { useWorkItemFlowStates } from "./useWorkItemFlowStates";
 
@@ -257,7 +257,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
 
   useEffect(() => {
     setFvLoading(true);
-    apiV2<{ field_values: FieldValue[] }>(`/work-items/${item.id}/field-values`)
+    apiSite<{ field_values: FieldValue[] }>(`/work-items/${item.id}/field-values`)
       .then((r) => setFieldValues(r.field_values))
       .catch(() => setFieldValues([]))
       .finally(() => setFvLoading(false));
@@ -276,7 +276,7 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
     } else {
       body.string_value = value;
     }
-    const res = await apiV2<{ field_values: FieldValue[] }>(
+    const res = await apiSite<{ field_values: FieldValue[] }>(
       `/work-items/${item.id}/field-values`,
       { method: "PUT", body: JSON.stringify([body]) }
     );

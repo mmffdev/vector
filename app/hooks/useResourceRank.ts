@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
-import { apiV2, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 export type RankIntent =
   | { before: string }
@@ -70,7 +70,7 @@ export function useResourceRank(opts: UseResourceRankOptions) {
       else body.to_bottom = true;
 
       try {
-        const result = await apiV2<MoveResult>("/rank/move", {
+        const result = await apiSite<MoveResult>("/rank/move", {
           method: "POST",
           body: JSON.stringify(body),
         });

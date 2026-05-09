@@ -59,7 +59,7 @@ export interface ObjectTreeDataConfig<T = any> {
   paginationOptions: number[];
   defaultPageSize: number;
 
-  // Backend wiring (PLA-0037 / B21) — apiV2 path prefix for the artefact
+  // Backend wiring (PLA-0037 / B21) — apiSite path prefix for the artefact
   // resource ("/work-items" or "/portfolio-items"). When omitted, derived
   // from `mode` for back-compat. Supplied by p_wizard_*.json sidecars.
   resourceUrl?: string;

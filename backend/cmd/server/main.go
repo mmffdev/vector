@@ -830,6 +830,42 @@ func main() {
 		})
 	})
 
+	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
+	// These are BFF-only: the ObjectTree, WorkItemDetailPanel, and
+	// artefact-items tree are all staff/site surfaces. The same
+	// artefactitemsv2 handlers (and rate limits) are reused.
+	if workItemsV2H != nil {
+		readLimit17 := httprate.LimitByIP(600, time.Minute)
+		writeLimit17 := httprate.LimitByIP(120, time.Minute)
+		mountArtefactSite := func(r chi.Router, h *artefactitemsv2.Handler) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.With(readLimit17).Get("/", h.List)
+			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
+			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
+			r.With(readLimit17).Get("/summary", h.Summary)
+			r.With(readLimit17).Get("/flow-states", h.ListFlowStates)
+			r.With(readLimit17).Get("/{id}", h.Get)
+			r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
+			r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
+			r.With(readLimit17).Get("/{id}/children", h.ListChildren)
+			r.With(readLimit17).Get("/{id}/field-values", h.ListFieldValues)
+			r.With(writeLimit17, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
+			r.With(writeLimit17, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
+		}
+		r.Route("/work-items", func(r chi.Router) { mountArtefactSite(r, workItemsV2H) })
+		r.Route("/portfolio-items", func(r chi.Router) { mountArtefactSite(r, portfolioItemsV2H) })
+	}
+	if rankH != nil {
+		r.Route("/rank", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(240, time.Minute))
+			r.Use(userWriteLimiter)
+			r.Post("/move", rankH.Move)
+		})
+	}
+
 	// /topology (B22.16 — /_site mirror of /samantha/v2/topology)
 	// All topology I/O is internal-only (staff + padmin); there is no
 	// public customer surface for org-design operations.

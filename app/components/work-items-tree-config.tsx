@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag, MdClose } from "react-icons/md";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { apiV2 } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
@@ -737,7 +737,7 @@ export interface UseWorkItemsWindowResult {
 // `?status=` param is the legacy enum during the flow_state migration window.
 // The chip-level `type` field maps to the server param `item_type`.
 //
-// resourceUrl is the apiV2 path prefix (e.g. "/work-items" or
+// resourceUrl is the apiSite path prefix (e.g. "/work-items" or
 // "/portfolio-items"). Both endpoints are served by the same scope-parameterised
 // artefactitemsv2 handler — see backend/internal/artefactitemsv2 (PLA-0037, B21).
 export interface UseArtefactItemsWindowOptions {
@@ -776,7 +776,7 @@ export function useArtefactItemsWindow(
     try {
       if (pageSize === "all") {
         const CHUNK = 1000;
-        const first = await apiV2<{ items: WorkItem[]; total: number }>(
+        const first = await apiSite<{ items: WorkItem[]; total: number }>(
           `${resourceUrl}?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
         );
         const totalRoots = first.total ?? first.items.length;
@@ -789,7 +789,7 @@ export function useArtefactItemsWindow(
         for (let o = first.items.length; o < totalRoots; o += CHUNK) offsets.push(o);
         const rest = await Promise.all(
           offsets.map((o) =>
-            apiV2<{ items: WorkItem[]; total: number }>(
+            apiSite<{ items: WorkItem[]; total: number }>(
               `${resourceUrl}?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
             ),
           ),
@@ -799,7 +799,7 @@ export function useArtefactItemsWindow(
         return;
       }
       const offset = pageIndex * pageSize;
-      const res = await apiV2<{ items: WorkItem[]; total: number }>(
+      const res = await apiSite<{ items: WorkItem[]; total: number }>(
         `${resourceUrl}?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
       );
       setWindowRoots(res.items);
@@ -816,7 +816,7 @@ export function useArtefactItemsWindow(
       setWindowRoots((prev) =>
         prev.map((r) => (r.id === id ? ({ ...r, ...body } as WorkItem) : r)),
       );
-      apiV2<WorkItem>(`${resourceUrl}/${id}`, {
+      apiSite<WorkItem>(`${resourceUrl}/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       })
@@ -830,7 +830,7 @@ export function useArtefactItemsWindow(
   );
 
   const fetchChildren = useCallback(async (parentId: string) => {
-    const res = await apiV2<{ items: WorkItem[] }>(
+    const res = await apiSite<{ items: WorkItem[] }>(
       `${resourceUrl}/${parentId}/children`,
     );
     return res.items;

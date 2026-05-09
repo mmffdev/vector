@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Panel from "@/app/components/Panel";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
-import { apiV2 } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
@@ -39,7 +39,7 @@ export default function PortfolioItemsListPage() {
   }, []);
 
   const refetchSummary = useCallback(() => {
-    return apiV2<{
+    return apiSite<{
       total: number;
       themes: number;
       objectives: number;
