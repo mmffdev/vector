@@ -383,7 +383,8 @@ func main() {
 	// vectorPool is required (membership + tenancy lookups); vaPool
 	// may be nil — in that case the handler returns an empty fields
 	// slice after the auth gate succeeds (mirrors v2 work-items).
-	fieldsH := fields.NewHandler(pool, vaPool)
+	fieldsSvc := fields.NewService(pool, vaPool)
+	fieldsH := fields.NewHandler(fieldsSvc)
 
 	// PLA-0026 / Story 00499 (B10): workspace-scoped successor to the
 	// legacy GET /api/subscription/layers. Reads strategy artefact_types

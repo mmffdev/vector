@@ -163,7 +163,7 @@ func pickWorkspaceInTenant(t *testing.T, pool *pgxpool.Pool, tenant uuid.UUID) u
 
 func TestList_Unauthenticated_Returns401(t *testing.T) {
 	// Nil user → middleware does not stash a User in ctx → handler 401.
-	h := NewHandler(nil, nil)
+	h := NewHandler(NewService(nil, nil))
 	r := chi.NewRouter()
 	r.Get("/api/workspace/{id}/fields", h.List)
 
@@ -182,7 +182,7 @@ func TestList_BadUUID_Returns400(t *testing.T) {
 	defer pool.Close()
 	u := pickGadmin(t, pool)
 
-	h := NewHandler(pool, nil)
+	h := NewHandler(NewService(pool, nil))
 	srv := httptest.NewServer(newRouter(h, u))
 	defer srv.Close()
 
@@ -201,7 +201,7 @@ func TestList_NonexistentWorkspace_Returns404(t *testing.T) {
 	defer pool.Close()
 	u := pickGadmin(t, pool)
 
-	h := NewHandler(pool, nil)
+	h := NewHandler(NewService(pool, nil))
 	srv := httptest.NewServer(newRouter(h, u))
 	defer srv.Close()
 
@@ -229,7 +229,7 @@ func TestList_CrossTenantWorkspace_Returns404(t *testing.T) {
 	intruder := *g
 	intruder.SubscriptionID = uuid.New() // different tenant
 
-	h := NewHandler(pool, nil)
+	h := NewHandler(NewService(pool, nil))
 	srv := httptest.NewServer(newRouter(h, &intruder))
 	defer srv.Close()
 
@@ -248,7 +248,7 @@ func TestList_WorkspaceMember_NoArtefactsPool_Returns200Empty(t *testing.T) {
 	defer pool.Close()
 	wsID, u := pickWorkspaceUser(t, pool)
 
-	h := NewHandler(pool, nil) // null artefacts pool
+	h := NewHandler(NewService(pool, nil)) // null artefacts pool
 	srv := httptest.NewServer(newRouter(h, u))
 	defer srv.Close()
 
@@ -290,7 +290,7 @@ func TestList_NonMember_Returns403(t *testing.T) {
 		IsActive:       true,
 	}
 
-	h := NewHandler(pool, nil)
+	h := NewHandler(NewService(pool, nil))
 	srv := httptest.NewServer(newRouter(h, &stranger))
 	defer srv.Close()
 
@@ -409,7 +409,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	})
 
 	// Hit the handler.
-	h := NewHandler(vecPool, artPool)
+	h := NewHandler(NewService(vecPool, artPool))
 	srv := httptest.NewServer(newRouter(h, u))
 	defer srv.Close()
 
