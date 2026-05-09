@@ -1,7 +1,6 @@
 {
   "description": "Exemption ledger for lint:no-db-in-handlers (PLA-0039 / Story 00524). Each entry is a backend handler file that currently performs DB I/O directly (`*sql.DB`, `pgxpool.*`, or `database/sql`) instead of delegating to a Service. The architectural target is: handlers do parse + auth + call svc.Method() + render — no SQL strings in handlers. Each later Story (00525–00530) extracts a Service from one of these handlers and removes the file from this list. End state: empty array → invariant. New `*handler*.go` files MUST be Service-driven from day one and never appear here. The lint rejects any handler outside this list that opens a DB connection.",
   "exempt_paths": [
-    "backend/internal/libraryreleases/handler.go",
     "backend/internal/portfolio/master_record_handler.go",
     "backend/internal/portfoliomodels/handler.go",
     "backend/internal/portfoliomodels/handler_layers.go",

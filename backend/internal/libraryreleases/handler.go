@@ -7,64 +7,63 @@
 // Both endpoints are gated by RequirePermission(MenuAdminView) at the
 // router (PLA-0007). Acks are stored in mmff_vector (subscription state) and
 // reference release_id as an app-enforced FK into mmff_library.
+//
+// All DB I/O lives in libraryreleases.Service (service.go); this
+// handler is parse + auth + svc.Method + render only —
+// `lint:no-db-in-handlers` enforces it.
 package libraryreleases
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
+	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/security"
 )
 
-// Handler holds the two pools needed for the cross-DB workflow:
-// libRO for release content (mmff_library), vectorPool for acks +
-// audit log + the per-subscription tier lookup (mmff_vector).
+// Handler is the chi-mountable HTTP surface. Every DB call goes
+// through Svc.
 //
-// Reconciler is optional — when set, the count endpoint reads from
-// the cache and Ack invalidates after a successful write. Tests can
-// pass nil to skip the cache layer.
+// Reconciler is optional — when set, the count endpoint reads from the
+// cache and Ack invalidates after a successful write. Tests can pass
+// nil to skip the cache layer.
 type Handler struct {
-	LibRO      *pgxpool.Pool
-	VectorPool *pgxpool.Pool
+	Svc        *Service
 	Audit      *audit.Logger
 	Reconciler *Reconciler
 }
 
-func NewHandler(libRO, vectorPool *pgxpool.Pool, auditLog *audit.Logger, rec *Reconciler) *Handler {
-	return &Handler{LibRO: libRO, VectorPool: vectorPool, Audit: auditLog, Reconciler: rec}
+// NewHandler wires the handler around an existing Service.
+func NewHandler(svc *Service, auditLog *audit.Logger, rec *Reconciler) *Handler {
+	return &Handler{Svc: svc, Audit: auditLog, Reconciler: rec}
 }
 
 // listResponse is the wire shape of GET /api/library/releases.
-// Includes a count so the badge UI doesn't need to count locally.
 type listResponse struct {
-	Count    int           `json:"count"`
-	Releases []releaseDTO  `json:"releases"`
+	Count    int          `json:"count"`
+	Releases []releaseDTO `json:"releases"`
 }
 
 type releaseDTO struct {
-	ID                   uuid.UUID         `json:"id"`
-	LibraryVersion       string            `json:"library_version"`
-	Title                string            `json:"title"`
-	SummaryMD            string            `json:"summary_md"`
-	BodyMD               *string           `json:"body_md"`
-	Severity             string            `json:"severity"`
-	AffectsModelFamilyID *uuid.UUID        `json:"affects_model_family_id"`
-	ReleasedAt           time.Time         `json:"released_at"`
-	ExpiresAt            *time.Time        `json:"expires_at"`
-	Actions              []actionDTO       `json:"actions"`
+	ID                   uuid.UUID   `json:"id"`
+	LibraryVersion       string      `json:"library_version"`
+	Title                string      `json:"title"`
+	SummaryMD            string      `json:"summary_md"`
+	BodyMD               *string     `json:"body_md"`
+	Severity             string      `json:"severity"`
+	AffectsModelFamilyID *uuid.UUID  `json:"affects_model_family_id"`
+	ReleasedAt           time.Time   `json:"released_at"`
+	ExpiresAt            *time.Time  `json:"expires_at"`
+	Actions              []actionDTO `json:"actions"`
 }
 
 type actionDTO struct {
@@ -91,9 +90,6 @@ type countResponse struct {
 }
 
 // Count — GET /api/library/releases/count
-// Cheap badge endpoint: returns the cached outstanding count for the
-// caller's subscription. On cold cache or miss, computes inline and
-// warms the cache.
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
@@ -106,7 +102,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	tier, err := h.subscriptionTier(r.Context(), u.SubscriptionID)
+	tier, err := h.Svc.SubscriptionTier(r.Context(), u.SubscriptionID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
@@ -117,10 +113,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, countResponse{Count: n, HasBlocking: blocking, Fresh: true})
 		return
 	}
-	// Fallback path (no reconciler wired): compute inline.
-	n, blocking, err := librarydb.CountOutstandingForSubscription(
-		r.Context(), h.LibRO, h.VectorPool, u.SubscriptionID, tier,
-	)
+	n, blocking, err := h.Svc.CountOutstanding(r.Context(), u.SubscriptionID, tier)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
@@ -129,23 +122,18 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 }
 
 // List — GET /api/library/releases
-// Returns every active release the caller's subscription has not yet
-// acknowledged. Caller MUST be authenticated; gadmin gating happens at
-// the router layer.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
 		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
-	tier, err := h.subscriptionTier(r.Context(), u.SubscriptionID)
+	tier, err := h.Svc.SubscriptionTier(r.Context(), u.SubscriptionID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
-	releases, err := librarydb.ListReleasesSinceAck(
-		r.Context(), h.LibRO, h.VectorPool, u.SubscriptionID, tier,
-	)
+	releases, err := h.Svc.ListSinceAck(r.Context(), u.SubscriptionID, tier)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
@@ -161,8 +149,6 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Ack — POST /api/library/releases/{id}/ack
-// Body: {"action_taken": "<one of upgrade_model|review_terminology|enable_flag|dismissed>"}
-// Returns 201 on first ack, 200 on idempotent re-ack.
 func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
@@ -183,12 +169,8 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		return
 	}
-
-	// Validate the release id against mmff_library before writing the
-	// ack — protects us from orphan ack rows when a stale URL gets
-	// posted (no cross-DB FK to enforce this in Postgres).
-	if _, err := librarydb.FindRelease(r.Context(), h.LibRO, releaseID); err != nil {
-		if errors.Is(err, librarydb.ErrReleaseNotFound) {
+	if err := h.Svc.FindRelease(r.Context(), releaseID); err != nil {
+		if errors.Is(err, ErrReleaseNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 			return
 		}
@@ -196,22 +178,14 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := librarydb.AckRelease(
-		r.Context(), h.VectorPool,
-		u.SubscriptionID, releaseID, u.ID, body.ActionTaken,
-	)
+	created, err := h.Svc.AckRelease(r.Context(), u.SubscriptionID, releaseID, u.ID, body.ActionTaken)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
-
-	// Invalidate the badge cache so the next poll recomputes.
 	if created && h.Reconciler != nil {
 		h.Reconciler.Invalidate(u.SubscriptionID)
 	}
-
-	// Audit only when a new ack lands — re-acks are no-ops and would
-	// otherwise spam the audit log on every page reload.
 	if created && h.Audit != nil {
 		ip := security.ClientIP(r)
 		resourceID := releaseID.String()
@@ -237,21 +211,6 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 		AcknowledgedAt: time.Now().UTC(),
 		Created:        created,
 	})
-}
-
-// subscriptionTier loads the caller's tier from mmff_vector. Cached at
-// the request scope — if it becomes a hot path we'll memoise per
-// subscription_id with a TTL, but a single SELECT against the
-// subscriptions PK is well under a millisecond.
-func (h *Handler) subscriptionTier(ctx context.Context, subID uuid.UUID) (string, error) {
-	var tier string
-	err := h.VectorPool.QueryRow(ctx,
-		`SELECT tier FROM subscriptions WHERE id = $1`, subID,
-	).Scan(&tier)
-	if err != nil {
-		return "", fmt.Errorf("libraryreleases: load tier: %w", err)
-	}
-	return tier, nil
 }
 
 func toReleaseDTO(r librarydb.Release) releaseDTO {

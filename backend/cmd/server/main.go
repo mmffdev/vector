@@ -218,7 +218,7 @@ func main() {
 	libReleasesRec := libraryreleases.NewReconciler(libPools.RO, pool)
 	libReleasesRec.Start(ctx)
 	defer libReleasesRec.Stop()
-	libReleasesH := libraryreleases.NewHandler(libPools.RO, pool, auditLog, libReleasesRec)
+	libReleasesH := libraryreleases.NewHandler(libraryreleases.NewService(libPools.RO, pool), auditLog, libReleasesRec)
 
 	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
 	// bridge runs LISTEN rank_changed on a dedicated connection and

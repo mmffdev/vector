@@ -58,7 +58,7 @@ func TestList_OK(t *testing.T) {
 		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
 		sub.ID, releaseID)
 
-	h := NewHandler(libPool, vecPool, nil, nil)
+	h := NewHandler(NewService(libPool, vecPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -86,7 +86,7 @@ func TestAck_BadAction(t *testing.T) {
 	vecPool, _, user := testVectorPool(t)
 	defer vecPool.Close()
 
-	h := NewHandler(libPool, vecPool, nil, nil)
+	h := NewHandler(NewService(libPool, vecPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -110,7 +110,7 @@ func TestAck_NotFound(t *testing.T) {
 	vecPool, _, user := testVectorPool(t)
 	defer vecPool.Close()
 
-	h := NewHandler(libPool, vecPool, nil, nil)
+	h := NewHandler(NewService(libPool, vecPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -139,7 +139,7 @@ func TestAck_OK_Then_Idempotent(t *testing.T) {
 		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
 		sub.ID, releaseID)
 
-	h := NewHandler(libPool, vecPool, nil, nil)
+	h := NewHandler(NewService(libPool, vecPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
