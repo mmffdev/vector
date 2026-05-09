@@ -56,6 +56,7 @@ const FIXTURE: WorkItem[] = Array.from({ length: 5 }, (_, i) => ({
   id: `00000000-0000-0000-0000-00000000000${i + 1}`,
   key_num: 100 + i,
   item_type: i === 0 ? "epic" : i === 1 ? "story" : "task",
+  type_prefix: i === 0 ? "EP" : i === 1 ? "US" : "TA",
   title: `Fixture row ${i + 1}`,
   status: "active",
   flow_state_id: "fs-1",
