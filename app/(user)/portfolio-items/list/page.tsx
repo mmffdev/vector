@@ -11,7 +11,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
-import workItemsWizardJson from "@/app/components/ObjectTree/p_wizard.json";
+import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_portfolio.json";
 
 export default function PortfolioItemsListPage() {
   const { user } = useAuth();
@@ -26,7 +26,7 @@ export default function PortfolioItemsListPage() {
 
   // Load and resolve wizard config from p_wizard.json
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
-    const resolved = resolveWizardConfig(workItemsWizardJson as any);
+    const resolved = resolveWizardConfig(portfolioWizardJson as any);
     const funcs = buildWorkItemsFunctions();
     return {
       ...resolved,

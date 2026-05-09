@@ -11,11 +11,5 @@
   "paginationOptions": [10, 25, 50, 100],
   "defaultPageSize": 25,
   "panelHeaderComponent": "WorkItemsPanelHeader",
-  "filterChipsComponent": "WorkItemsFilterChips",
-  "columnsComponent": "buildWorkItemsColumns",
-  "_functions": {
-    "getParentId": "row.parent_id",
-    "getChildrenCount": "row.children_count",
-    "searchAccessor": "title and key_num"
-  }
+  "filterChipsComponent": "WorkItemsFilterChips"
 }

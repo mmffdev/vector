@@ -11,7 +11,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
-import workItemsWizardJson from "@/app/components/ObjectTree/p_wizard.json";
+import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_workitems.json";
 
 export default function WorkItemsListPage() {
   const { user } = useAuth();

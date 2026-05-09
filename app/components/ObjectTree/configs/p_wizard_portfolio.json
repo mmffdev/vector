@@ -1,0 +1,15 @@
+{
+  "dataType": "portfolio_items",
+  "label": "Portfolio items",
+  "searchPlaceholder": "Search portfolio items…",
+  "ariaLabel": "Portfolio items dense grid",
+  "treeName": "portfolioitems",
+  "dndResourceType": "portfolio_item",
+  "dndEnabled": true,
+  "defaultSortKey": "key_num",
+  "defaultSortDir": "asc",
+  "paginationOptions": [10, 25, 50, 100],
+  "defaultPageSize": 25,
+  "panelHeaderComponent": "WorkItemsPanelHeader",
+  "filterChipsComponent": "WorkItemsFilterChips"
+}

@@ -120,7 +120,10 @@ export default function ObjectTree({
   // Build config based on mode or accept from wizardConfig (p_wizard.json).
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
     if (wizardConfig) {
-      return wizardConfig;
+      return {
+        ...wizardConfig,
+        columns,
+      };
     }
     const isPortfolio = mode === "portfolio_items";
     return {
