@@ -102,19 +102,18 @@ func vectorPoolForTest(t *testing.T) *pgxpool.Pool {
 }
 
 // pickWorkspaceUser pulls one (workspace, user) pair from the live DB
-// where the user is a member of the workspace via
-// user_workspace_permissions.can_view=TRUE. The user is NOT a tenant
-// admin (so the membership branch — not the role-bypass branch — is
-// exercised). Skips when no such pair exists.
+// where the user has an active roles_workspaces grant on the workspace.
+// The user is NOT a tenant admin (so the membership branch — not the
+// role-bypass branch — is exercised). Skips when no such pair exists.
 func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID, u *models.User) {
 	t.Helper()
 	u = &models.User{}
 	err := pool.QueryRow(context.Background(), `
-		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, p.workspace_id
-		  FROM user_workspace_permissions p
-		  JOIN users u ON u.id = p.user_id
-		  JOIN workspace w ON w.id = p.workspace_id
-		 WHERE p.can_view = TRUE
+		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.workspace_id
+		  FROM roles_workspaces rw
+		  JOIN users u ON u.id = rw.user_id
+		  JOIN master_record_workspaces w ON w.id = rw.workspace_id
+		 WHERE rw.revoked_at IS NULL
 		   AND u.is_active = TRUE
 		   AND u.role = 'user'
 		   AND w.archived_at IS NULL
@@ -150,7 +149,7 @@ func pickWorkspaceInTenant(t *testing.T, pool *pgxpool.Pool, tenant uuid.UUID) u
 	t.Helper()
 	var id uuid.UUID
 	err := pool.QueryRow(context.Background(), `
-		SELECT id FROM workspace
+		SELECT id FROM master_record_workspaces
 		 WHERE subscription_id = $1 AND archived_at IS NULL
 		 ORDER BY created_at LIMIT 1`, tenant,
 	).Scan(&id)

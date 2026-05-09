@@ -387,11 +387,36 @@
 
 /* ---- Tab navigation ---- */
 .dev-tabs {
+  position: relative;
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-6);
 }
+
+/* Sliding underline — driven by JS translateX + width */
+.dev-tabs__indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 1px;
+  pointer-events: none;
+  will-change: transform, width;
+}
+
+.dev-tabs__indicator.is-animated {
+  transition:
+    transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    width     360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-tabs__indicator.is-animated { transition: none; }
+}
+
+/* Suppress indicator transitions while drag is active */
+.dev-tabs.is-edit-mode .dev-tabs__indicator { display: none; }
 
 .dev-tab {
   height: 36px;
@@ -402,10 +427,8 @@
   color: var(--ink-muted);
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
   cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease;
+  transition: color 0.12s ease;
 }
 
 .dev-tab:hover {
@@ -414,7 +437,66 @@
 
 .dev-tab--active {
   color: var(--ink);
-  border-bottom-color: var(--ink);
+}
+
+/* Reorder mode — grab handle state */
+.dev-tab.is-reorder {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.dev-tab.is-reorder.is-dragging {
+  cursor: grabbing;
+  opacity: 0.7;
+  z-index: 2;
+}
+
+/* Position number chip shown in reorder mode */
+.dev-tabs__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  background: var(--surface-2, var(--surface-sunken));
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+/* Reorder toggle button — pushed to far right by margin-left: auto */
+.dev-tabs__reorder-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  align-self: center;
+}
+
+.dev-tabs__reorder-toggle:hover {
+  color: var(--ink);
+  background: var(--surface-2, var(--surface-sunken));
+}
+
+.dev-tabs__reorder-toggle.is-active {
+  color: var(--ink);
+  background: var(--surface-2, var(--surface-sunken));
+  border-color: var(--border);
 }
 /* Wrap library table in a Vector-style surface card via .table-wrap;
    here we replicate the look in case the markup omits the wrap. */

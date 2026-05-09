@@ -1,0 +1,9 @@
+1.5	rank move ranking drag-drop reorder useResourceRank apiV2
+2.1	sprint timebox sprints CRUD mutations
+2.1.1	timeboxes sprints mutations POST PUT DELETE bulk-create v2 middleware audit
+8.3	openapi-v2 openapi spec v2 standalone
+8.3.1	check_routes check_callers dual-spec spec flag all
+8.3.2	api:check api:check:v1 api:check:v2 npm scripts
+13.1	openapi v2 spec developer experience SDK
+18.7	api snapshot snap_api check_routes check_callers toolchain
+18.7.1	api-contracts workflow github actions CI spec breaking

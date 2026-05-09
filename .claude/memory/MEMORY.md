@@ -6,7 +6,6 @@
 - [Stories acceptance system — 7 gates, Fibonacci, risk](feedback_stories_system.md) — Hard gates: AIGEN+phase+feature+EST+RISK+description; F21+ auto-splits; 85%/90% confidence thresholds.
 - [All stories MUST go through /stories shortcut](feedback_stories_shortcut_mandatory.md) — No exceptions, no direct Planka writes; every story routes through the 7-gate skill.
 - [Planka PATCH listId requires position field](feedback_planka_listid_patch.md) — PATCH /api/cards/:id silently ignores listId change if position omitted.
-- [Accounts pointer in CLAUDE.md — entry is live](feedback_claudemd_accounts.md) — `<accounts>` pointer in .claude/CLAUDE.md → commands/c_accounts.md.
 - [Never change passwords (HARD RULE)](feedback_never_change_passwords.md) — Never touch password_hash/email/role/is_active on gadmin@/padmin@/cookra@/user@; ask Rick or use claude@ test account.
 - [Backend pinned to dev (HARD RULE)](feedback_dev_only.md) — Env permanently dev; staging/prod refusing stubs; revert any non-dev marker silently.
 - [Always recommend the safest, best approach](feedback_safety_first.md) — Lead with ranked safest-first recommendation; never neutral A/B/C menus.
@@ -22,9 +21,7 @@
 - [Never wipe uncommitted](feedback_never_wipe_uncommitted.md) — Do not run destructive git clean; always preserve local work.
 - [CSS — canonical .btn rule](css_buttons.md) — Every <button> MUST use .btn + variant; bespoke selectors override only positioning/colour, never restate baseline.
 - [CSS — tables use tree_accordion-dense__scroll](css_tables.md) — `.table*` family deprecated 2026-05-05; touched files migrate as part of the change.
-- [Test account — claude@mmffdev.com](test_account_claude.md) — `claude@mmffdev.com` / `password`, role=user, fixture subscription `00000000-...-0001`.
-- [Test accounts — claude_N_test@mmffdev.com tier](test_accounts_claude_tier.md) — `claude_1_test` (user), `claude_2_test` (padmin), `claude_3_test` (gadmin), all `password123!`.
-- [Dev app login credentials](reference_dev_app_login.md) — padmin/user/gadmin @mmffdev.com / TestPass1! on dev env (browser & Playwright).
+- [Test accounts — Claude-owned + human-owned](test_accounts.md) — All test logins (claude@, claude_N_test@, gadmin/padmin/user@) consolidated; HARD RULE on human accounts.
 - [Vector Design System](reference_design_system.md) — `/MMFFDev - Vector Assets/Vector Design System/`; skill `/vector-design`; Inter font, warm neutrals.
 - [Planka API reference](planka_api_access.md) — Authoritative: .claude/bin/planka helper, board/list IDs, REST endpoints; planka-mcp uninstalled.
 - [Role boundaries — gadmin vs padmin vs user](project_role_boundaries.md) — gadmin=tech/support, padmin=product owner, user=consumer; portfolio model = padmin-only.
@@ -40,12 +37,11 @@
 - [Portfolio layers are tenant-built & independent (max 10)](project_portfolio_layers_independent.md) — Each `portfolio_item_types` row = one layer with own flow; depth 2–10.
 - [Archive map flyout — live breadcrumb rows](project_archive_map_breadcrumbs.md) — `ArchiveMapFlyout` renders muted "live" intermediates; new callers MUST pass `liveAncestorsMap`.
 - [Flow-state construction across <Table> artefacts](project_flow_state_construction.md) — PLA-0015→PLA-0017 pickup record: hyphen fix in Table.tsx → spec-flag model.
-- [PLA-0019 — Samantha external API surface (active, Backlog)](project_pla0019_samantha.md) — 5 stories 00440–00444 awaiting "go"; Planka label `1768714873165841589`; exec order 00441→00442→00440→00443→00444.
 - [Work-items interaction perf — 2s sort block](project_workitems_perf.md) — Client-side sort hypothesis; fix = server-driven via ?sort=&dir=; observed 2026-05-06.
-- [Session restore — 2026-05-06 instance 1](boot1.md) — PLA-0019 Samantha API research + stories (00440–00444 Backlog); work-items 2s perf flagged; branch `main`, story counter `00444`.
-- [Session restore — 2026-04-27 instance 2](boot2.md) — Boot file reorganisation + DevSetup inline confirmation snapshot.
-- [Session restore — 2026-05-05 instance 3](boot3.md) — Qdrant research / vector DB exploration snapshot.
-- [Session restore — 2026-04-27 instance 4](boot4.md) — Rebrand + tooling session snapshot.
+- [Scan dev/plans/ descending for highest PLA-NNNN](feedback_scan_plans_descending.md) — Use `ls -r dev/plans/ | grep PLA | head -1` to find highest plan ID; ascending list buries it at the tail.
+- [Table names use domain prefix for transparency](feedback_table_naming_prefixes.md) — New tables MUST carry their substrate prefix (e.g. `artefact_*`); generic names like `field_library` or `workspace_fields` are rejected.
+- [Sanitise legacy DB gradually, drop as unused](feedback_gradual_db_sanitisation.md) — Never big-bang DB cutovers; drop legacy tables/columns one at a time as their last reader is migrated.
+- [Bracket-tag commits with scope ref](feedback_scope_commit_bracket_ref.md) — Always include `[B19.1.4]` in commit subject; otherwise scope-commit-note hook can't match → Unmatched (no growthbar tick).
 
 ### Rules
 
@@ -54,3 +50,4 @@
 3. Read MEMORY.md at session start. Load other files only when relevant.
 4. If a file doesn't exist yet, create it.
 5. **Project memory dir is canonical:** `.claude/memory/` inside this repo. Mirrored to `~/.claude/projects/.../memory/` so Claude Code's auto-load picks it up. Always write to project; sync to global as a follow-up.
+6. **Boot files are not indexed.** Boot snapshots (`boot1.md`, `boot2.md`, …, `bootA.md`) live in this directory but DO NOT get MEMORY.md entries — they are one-shot session-launch artefacts read via the `<b> -N -R` skill. See [`.claude/commands/c_boot.md`](../commands/c_boot.md).

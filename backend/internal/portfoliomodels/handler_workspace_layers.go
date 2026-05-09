@@ -26,7 +26,7 @@
 //   - 401 if unauthenticated.
 //   - 404 if the workspace does not exist OR is in a different tenant
 //     (tenant-isolation: existence is sensitive — same response either
-//     way, mirroring wsperms.ErrNotFound).
+//     way, leaked-resistant).
 //   - 403 if the caller is neither a workspace member (workspace_roles
 //     row, revoked_at IS NULL) nor a tenant admin (Role == "gadmin").
 //   - 200 with the layers array on success.
@@ -88,7 +88,7 @@ type workspaceLayerDTO struct {
 
 // errWorkspaceNotFound is the sentinel returned when the workspace doesn't
 // exist or belongs to another tenant. Existence is leaked-resistant — same
-// 404 response either way (matches wsperms.ErrNotFound).
+// 404 response either way.
 var errWorkspaceNotFound = errors.New("workspace not found")
 
 // GetWorkspaceLayers — GET /api/workspace/{id}/portfolio/layers

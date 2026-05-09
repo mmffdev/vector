@@ -12,16 +12,23 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
 // Service owns all DB operations for timebox_sprints.
 type Service struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	notifier *webhooks.Notifier
 }
 
 // NewService creates a Service backed by the given pool.
 func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
+}
+
+// WithNotifier attaches a webhook notifier to the service.
+func (s *Service) WithNotifier(n *webhooks.Notifier) {
+	s.notifier = n
 }
 
 // Create inserts a new sprint. Returns ErrConflict if the DB EXCLUDE
@@ -313,6 +320,86 @@ func (s *Service) Delete(ctx context.Context, workspaceID, sprintID string) erro
 		return ErrNotFound
 	}
 	return nil
+}
+
+// Start transitions a sprint from planned → active. Returns ErrStartLifecycle
+// if the sprint is not in the planned state. The atomic UPDATE guards against
+// concurrent transitions.
+func (s *Service) Start(ctx context.Context, workspaceID, sprintID string) (*Sprint, error) {
+	const q = `
+		UPDATE timebox_sprints
+		SET status = 'active'
+		WHERE id = $1 AND workspace_id = $2 AND status = 'planned' AND archived_at IS NULL
+		RETURNING
+			id, subscription_id, workspace_id, org_node_id,
+			sprint_name, sprint_suffix, sprint_owner,
+			sprint_cadence_days,
+			sprint_date_start::text, sprint_date_end::text,
+			sprint_scope, sprint_velocity, sprint_estimate,
+			sprint_creep_by_count, sprint_creep_by_estimate,
+			status, sprint_date_added, sprint_date_updated, archived_at`
+
+	row := s.pool.QueryRow(ctx, q, sprintID, workspaceID)
+	sprint, err := scanSprint(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Either not found or already active/completed — distinguish.
+			existing, getErr := s.Get(ctx, workspaceID, sprintID)
+			if getErr != nil {
+				return nil, getErr
+			}
+			if existing.Status != "planned" {
+				return nil, ErrStartLifecycle
+			}
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("start sprint: %w", err)
+	}
+
+	if s.notifier != nil {
+		wsID, _ := uuid.Parse(sprint.WorkspaceID)
+		s.notifier.Fire(wsID, "sprint.started", sprint)
+	}
+	return sprint, nil
+}
+
+// Close transitions a sprint from active → completed. Returns ErrCloseLifecycle
+// if the sprint is not active. The atomic UPDATE guards against concurrent transitions.
+func (s *Service) Close(ctx context.Context, workspaceID, sprintID string) (*Sprint, error) {
+	const q = `
+		UPDATE timebox_sprints
+		SET status = 'completed'
+		WHERE id = $1 AND workspace_id = $2 AND status = 'active' AND archived_at IS NULL
+		RETURNING
+			id, subscription_id, workspace_id, org_node_id,
+			sprint_name, sprint_suffix, sprint_owner,
+			sprint_cadence_days,
+			sprint_date_start::text, sprint_date_end::text,
+			sprint_scope, sprint_velocity, sprint_estimate,
+			sprint_creep_by_count, sprint_creep_by_estimate,
+			status, sprint_date_added, sprint_date_updated, archived_at`
+
+	row := s.pool.QueryRow(ctx, q, sprintID, workspaceID)
+	sprint, err := scanSprint(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			existing, getErr := s.Get(ctx, workspaceID, sprintID)
+			if getErr != nil {
+				return nil, getErr
+			}
+			if existing.Status != "active" {
+				return nil, ErrCloseLifecycle
+			}
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("close sprint: %w", err)
+	}
+
+	if s.notifier != nil {
+		wsID, _ := uuid.Parse(sprint.WorkspaceID)
+		s.notifier.Fire(wsID, "sprint.closed", sprint)
+	}
+	return sprint, nil
 }
 
 // checkAdjacency verifies that the proposed start date is exactly one day

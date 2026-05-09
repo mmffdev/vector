@@ -56,6 +56,7 @@ func ipPtr(s string) *string {
 // ─── request/response shapes ───────────────────────────────────────────
 
 type createNodeReq struct {
+	WorkspaceID      *uuid.UUID `json:"workspace_id,omitempty"`
 	ParentID         *uuid.UUID `json:"parent_id,omitempty"`
 	Name             string     `json:"name"`
 	Description      *string    `json:"description,omitempty"`
@@ -81,16 +82,6 @@ type patchNodeReq struct {
 	AvatarURL     *string    `json:"avatar_url,omitempty"`
 }
 
-type createLevelReq struct {
-	Depth    int    `json:"depth"`
-	Name     string `json:"name"`
-	Position int    `json:"position,omitempty"`
-}
-
-type renameLevelReq struct {
-	Name string `json:"name"`
-}
-
 type bulkPositionReq struct {
 	Updates []bulkPositionEntry `json:"updates"`
 }
@@ -109,8 +100,17 @@ type grantRoleReq struct {
 	CanRedelegate bool      `json:"can_redelegate,omitempty"`
 }
 
+// viewStateReq is the request body for PUT /api/topology/view-state.
+//
+// Signature change at M6.2.7: legacy org_node_view_state stored a
+// per-node collapsed flag, while topology_view_state stores the
+// canvas-level viewport (pan + zoom). The route is now scoped to a
+// workspace (resolved from the WorkspaceClampMiddleware on context),
+// not a node.
 type viewStateReq struct {
-	Collapsed bool `json:"collapsed"`
+	ViewportX    float64 `json:"viewport_x"`
+	ViewportY    float64 `json:"viewport_y"`
+	ViewportZoom float64 `json:"viewport_zoom"`
 }
 
 // ─── handlers ───────────────────────────────────────────────────────────
@@ -123,7 +123,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
+	// Resolve workspace_id: prefer an explicit body field, fall back to
+	// the workspace clamped onto the request context by
+	// WorkspaceClampMiddleware (story 00378). When the parent is set,
+	// CreateNode itself overrides this with the parent's workspace.
+	var workspaceID uuid.UUID
+	if req.WorkspaceID != nil {
+		workspaceID = *req.WorkspaceID
+	} else if id, ok := WorkspaceIDFromCtx(r.Context()); ok {
+		workspaceID = id
+	}
 	n, err := h.Svc.CreateNode(r.Context(), CreateNodeInput{
+		WorkspaceID:      workspaceID,
 		SubscriptionID:   u.SubscriptionID,
 		ParentID:         req.ParentID,
 		Name:             req.Name,
@@ -296,71 +307,12 @@ func (h *Handler) Disconnected(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, nodes)
 }
 
-// GET /api/topology/levels — story 00318 (left-edge label boxes).
-func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFromCtx(r.Context())
-	levels, err := h.Svc.ListLevels(r.Context(), u.SubscriptionID)
-	if err != nil {
-		writeErr(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, levels)
-}
-
-// POST /api/topology/levels — story 00318.
-func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFromCtx(r.Context())
-	var req createLevelReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
-		return
-	}
-	l, err := h.Svc.CreateLevel(r.Context(), CreateLevelInput{
-		SubscriptionID: u.SubscriptionID,
-		Depth:          req.Depth,
-		Name:           req.Name,
-		Position:       req.Position,
-	})
-	if err != nil {
-		writeErr(w, r, err)
-		return
-	}
-	h.logAudit(r.Context(), audit.Entry{
-		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
-		Action: "topology.level.created",
-		Resource: strPtr("org_level"), ResourceID: strPtr(l.ID.String()),
-		IPAddress: ipPtr(security.ClientIP(r)),
-		Metadata:  map[string]any{"depth": l.Depth, "name": l.Name},
-	})
-	writeJSON(w, http.StatusCreated, l)
-}
-
-// PATCH /api/topology/levels/{id} — story 00318 (rename).
-func (h *Handler) RenameLevel(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFromCtx(r.Context())
-	id, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
-		return
-	}
-	var req renameLevelReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
-		return
-	}
-	if err := h.Svc.RenameLevel(r.Context(), u.SubscriptionID, id, req.Name); err != nil {
-		writeErr(w, r, err)
-		return
-	}
-	h.logAudit(r.Context(), audit.Entry{
-		UserID: &u.ID, SubscriptionID: &u.SubscriptionID,
-		Action: "topology.level.renamed",
-		Resource: strPtr("org_level"), ResourceID: strPtr(id.String()),
-		IPAddress: ipPtr(security.ClientIP(r)),
-		Metadata:  map[string]any{"new_name": req.Name},
-	})
-	w.WriteHeader(http.StatusNoContent)
-}
+// Levels handlers (ListLevels / CreateLevel / RenameLevel) were
+// removed at M6.2.7. The vector_artefacts substrate has no
+// org_levels equivalent — display depth is derived on the fly from
+// parent_id chains. The /levels routes were unmounted from the
+// router at the same time; clients that depended on them now read
+// the topology tree directly.
 
 // GET /api/topology/commit — story 00322 (banner state).
 func (h *Handler) CommitStatus(w http.ResponseWriter, r *http.Request) {
@@ -679,12 +631,19 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// PUT /api/topology/nodes/{id}/view-state — per-user collapse flag.
+// PUT /api/topology/view-state — per-user canvas viewport (pan + zoom).
+//
+// Signature change at M6.2.7: legacy org_node_view_state stored a
+// per-node collapsed flag; topology_view_state stores the canvas
+// viewport, scoped by (workspace_id, user_id). The workspace is
+// resolved from WorkspaceClampMiddleware on the request context — no
+// {id} URL param. Callers that previously hit /nodes/{id}/view-state
+// now hit /view-state with a viewport_x/y/zoom body.
 func (h *Handler) ViewState(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	nodeID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+	workspaceID, ok := WorkspaceIDFromCtx(r.Context())
+	if !ok {
+		httperr.Write(w, r, http.StatusBadRequest, "view-state requires a workspace clamp on the request")
 		return
 	}
 	var req viewStateReq
@@ -692,7 +651,7 @@ func (h *Handler) ViewState(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
 		return
 	}
-	if err := h.Svc.SetViewState(r.Context(), u.SubscriptionID, nodeID, u.ID, req.Collapsed); err != nil {
+	if err := h.Svc.SetViewState(r.Context(), u.SubscriptionID, workspaceID, u.ID, req.ViewportX, req.ViewportY, req.ViewportZoom); err != nil {
 		writeErr(w, r, err)
 		return
 	}
@@ -730,12 +689,12 @@ func (h *Handler) PreviewMove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var ancestor bool
-		err := h.Svc.pool.QueryRow(r.Context(), `
+		err := h.Svc.vaPool.QueryRow(r.Context(), `
 			WITH RECURSIVE up AS (
-			    SELECT id, parent_id FROM org_nodes WHERE id = $1 AND subscription_id = $3
+			    SELECT id, parent_id FROM topology_nodes WHERE id = $1 AND subscription_id = $3
 			    UNION ALL
 			    SELECT n.id, n.parent_id
-			      FROM org_nodes n
+			      FROM topology_nodes n
 			      JOIN up ON up.parent_id = n.id
 			     WHERE n.subscription_id = $3
 			)
@@ -803,10 +762,8 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		httperr.Write(w, r, http.StatusForbidden, "delegation depth exceeded — only gadmin may grant in MVP")
 	case errors.Is(err, ErrRedelegationDisabled):
 		httperr.Write(w, r, http.StatusForbidden, "can_redelegate is reserved for Phase X")
-	case errors.Is(err, ErrLevelNotFound):
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
-	case errors.Is(err, ErrInvalidLevelDepth):
-		httperr.Write(w, r, http.StatusBadRequest, "level depth must be >= 0")
+	case errors.Is(err, ErrWorkspaceRequired):
+		httperr.Write(w, r, http.StatusBadRequest, "write requires a workspace clamp on context")
 	case errors.Is(err, ErrCommitForbidden):
 		httperr.Write(w, r, http.StatusForbidden, "only gadmin may commit the topology working model")
 	case errors.Is(err, ErrResetForbidden):

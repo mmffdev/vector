@@ -38,7 +38,7 @@ var (
 // of X-Forwarded-For only when r.RemoteAddr is inside a whitelisted CIDR;
 // otherwise it falls back to the RemoteAddr host.
 //
-// Replaces the previous per-package helpers in auth, roles, users, wsperms
+// Replaces the previous per-package helpers in auth, roles, users
 // (and the no-XFF helper in libraryreleases) — same call shape.
 func ClientIP(r *http.Request) string {
 	peerHost, _, err := net.SplitHostPort(r.RemoteAddr)

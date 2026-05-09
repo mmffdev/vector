@@ -1,0 +1,188 @@
+{"ts":"2026-04-26T22:50:02Z","channel":"claude","status":"ok","sha":"5a1d073","label":"5a1d073","filename":"5a1d073_20260426_235000.sql","bytes":394102,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-26T22:50:03Z","channel":"git","status":"deduped","sha":"5a1d073","label":"5a1d073","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-26T22:51:06Z","channel":"claude","status":"ok","sha":"11f57bb","label":"11f57bb","filename":"11f57bb_20260426_235104.sql","bytes":394102,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-26T22:51:07Z","channel":"git","status":"deduped","sha":"11f57bb","label":"11f57bb","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-26T22:55:35Z","channel":"claude","status":"deduped","sha":"11f57bb","label":"11f57bb","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 269s ago"}
+{"ts":"2026-04-26T22:55:39Z","channel":"git","status":"ok","sha":"16c0619","label":"16c0619","filename":"16c0619_20260426_235536.sql","bytes":394102,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-27T06:50:09Z","channel":"claude","status":"ok","sha":"1ce4cfe","label":"1ce4cfe","filename":"1ce4cfe_20260427_075007.sql","bytes":371000,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-27T06:50:11Z","channel":"git","status":"deduped","sha":"1ce4cfe","label":"1ce4cfe","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 2s ago"}
+{"ts":"2026-04-27T06:50:16Z","channel":"claude","status":"deduped","sha":"1ce4cfe","label":"1ce4cfe","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 7s ago"}
+{"ts":"2026-04-27T06:50:19Z","channel":"git","status":"ok","sha":"2c700bd","label":"2c700bd","filename":"2c700bd_20260427_075017.sql","bytes":371000,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-27T06:51:22Z","channel":"claude","status":"ok","sha":"1ce4cfe","label":"1ce4cfe","filename":"1ce4cfe_20260427_075119.sql","bytes":371000,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-27T06:51:23Z","channel":"git","status":"deduped","sha":"1ce4cfe","label":"1ce4cfe","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-27T06:52:50Z","channel":"claude","status":"deduped","sha":"1ce4cfe","label":"1ce4cfe","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 88s ago"}
+{"ts":"2026-04-27T06:52:51Z","channel":"git","status":"deduped","sha":"1ce4cfe","label":"1ce4cfe","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 89s ago"}
+{"ts":"2026-04-27T09:25:49Z","channel":"claude","status":"ok","sha":"6dcd103","label":"6dcd103","filename":"6dcd103_20260427_102546.sql","bytes":399134,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-27T09:25:52Z","channel":"git","status":"ok","sha":"a10ea25","label":"a10ea25","filename":"a10ea25_20260427_102550.sql","bytes":399134,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-27T09:29:13Z","channel":"claude","status":"ok","sha":"0d9a51d","label":"0d9a51d","filename":"0d9a51d_20260427_102911.sql","bytes":399134,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-27T09:29:14Z","channel":"git","status":"deduped","sha":"0d9a51d","label":"0d9a51d","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-27T09:30:05Z","channel":"claude","status":"deduped","sha":"0d9a51d","label":"0d9a51d","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 52s ago"}
+{"ts":"2026-04-27T09:30:07Z","channel":"git","status":"deduped","sha":"0d9a51d","label":"0d9a51d","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 54s ago"}
+{"ts":"2026-04-27T09:33:08Z","channel":"claude","status":"deduped","sha":"0d9a51d","label":"0d9a51d","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 235s ago"}
+{"ts":"2026-04-27T09:33:12Z","channel":"git","status":"ok","sha":"49486b4","label":"49486b4","filename":"49486b4_20260427_103309.sql","bytes":399660,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-27T09:51:56Z","channel":"claude","status":"ok","sha":"c3fad45","label":"c3fad45","filename":"c3fad45_20260427_105154.sql","bytes":412084,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-27T09:51:57Z","channel":"git","status":"deduped","sha":"c3fad45","label":"c3fad45","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-27T12:24:13Z","channel":"claude","status":"ok","sha":"d76ef12","label":"d76ef12","filename":"d76ef12_20260427_132410.sql","bytes":417409,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-27T12:24:14Z","channel":"git","status":"deduped","sha":"d76ef12","label":"d76ef12","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-27T15:35:58Z","channel":"claude","status":"ok","sha":"d76ef12","label":"d76ef12","filename":"d76ef12_20260427_163555.sql","bytes":417409,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-27T15:36:02Z","channel":"git","status":"ok","sha":"291f10e","label":"291f10e","filename":"291f10e_20260427_163559.sql","bytes":417409,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-28T05:21:52Z","channel":"claude","status":"ok","sha":"351c375","label":"351c375","filename":"351c375_20260428_062149.sql","bytes":469061,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-28T05:21:53Z","channel":"git","status":"deduped","sha":"351c375","label":"351c375","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-28T05:23:16Z","channel":"claude","status":"ok","sha":"6b65c4d","label":"6b65c4d","filename":"6b65c4d_20260428_062313.sql","bytes":469061,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-28T05:23:20Z","channel":"git","status":"ok","sha":"0738b02","label":"0738b02","filename":"0738b02_20260428_062318.sql","bytes":469061,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-28T08:31:39Z","channel":"claude","status":"ok","sha":"c0148ef","label":"c0148ef","filename":"c0148ef_20260428_093136.sql","bytes":469133,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-28T08:31:40Z","channel":"git","status":"deduped","sha":"c0148ef","label":"c0148ef","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-28T10:28:27Z","channel":"claude","status":"ok","sha":"b39f07f","label":"b39f07f","filename":"b39f07f_20260428_112823.sql","bytes":469133,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-04-28T10:28:29Z","channel":"claude","status":"ok","sha":"b39f07f","label":"b39f07f_library","filename":"b39f07f_20260428_112823_library.sql","bytes":70402,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-28T10:28:31Z","channel":"git","status":"deduped","sha":"b39f07f","label":"b39f07f","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 2s ago"}
+{"ts":"2026-04-29T01:08:15Z","channel":"claude","status":"skipped","sha":"ff0ad55","label":"ff0ad55","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-04-29T01:08:17Z","channel":"git","status":"skipped","sha":"ff0ad55","label":"ff0ad55","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-04-29T01:13:25Z","channel":"claude","status":"ok","sha":"8a0587b","label":"8a0587b","filename":"8a0587b_20260429_021322.sql","bytes":469133,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-29T01:13:28Z","channel":"claude","status":"ok","sha":"8a0587b","label":"8a0587b_library","filename":"8a0587b_20260429_021322_library.sql","bytes":70402,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-29T01:13:29Z","channel":"git","status":"deduped","sha":"8a0587b","label":"8a0587b","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-29T02:04:59Z","channel":"claude","status":"ok","sha":"3cbfa4b","label":"3cbfa4b","filename":"3cbfa4b_20260429_030457.sql","bytes":469133,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-29T02:05:01Z","channel":"claude","status":"ok","sha":"3cbfa4b","label":"3cbfa4b_library","filename":"3cbfa4b_20260429_030457_library.sql","bytes":70402,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-04-29T02:05:02Z","channel":"git","status":"deduped","sha":"3cbfa4b","label":"3cbfa4b","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-29T09:22:17Z","channel":"claude","status":"ok","sha":"c803b13","label":"c803b13","filename":"c803b13_20260429_102215.sql","bytes":469133,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-29T09:22:19Z","channel":"claude","status":"ok","sha":"c803b13","label":"c803b13_library","filename":"c803b13_20260429_102215_library.sql","bytes":70402,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-29T09:22:20Z","channel":"git","status":"deduped","sha":"c803b13","label":"c803b13","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-29T09:25:38Z","channel":"claude","status":"ok","sha":"66a6523","label":"66a6523","filename":"66a6523_20260429_102535.sql","bytes":469133,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-29T09:25:41Z","channel":"claude","status":"ok","sha":"66a6523","label":"66a6523_library","filename":"66a6523_20260429_102535_library.sql","bytes":70402,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-29T09:25:42Z","channel":"git","status":"deduped","sha":"66a6523","label":"66a6523","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-04-30T19:38:00Z","channel":"claude","status":"ok","sha":"87196a4","label":"87196a4","filename":"87196a4_20260430_203757.sql","bytes":469133,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-04-30T19:38:02Z","channel":"claude","status":"ok","sha":"87196a4","label":"87196a4_library","filename":"87196a4_20260430_203757_library.sql","bytes":70402,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-04-30T19:38:04Z","channel":"git","status":"deduped","sha":"87196a4","label":"87196a4","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 2s ago"}
+{"ts":"2026-05-01T00:14:59Z","channel":"claude","status":"ok","sha":"3bcd5f2","label":"3bcd5f2","filename":"3bcd5f2_20260501_011454.sql","bytes":364149,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-01T00:15:03Z","channel":"claude","status":"ok","sha":"3bcd5f2","label":"3bcd5f2_library","filename":"3bcd5f2_20260501_011454_library.sql","bytes":71101,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-01T00:15:04Z","channel":"git","status":"deduped","sha":"3bcd5f2","label":"3bcd5f2","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-01T07:16:21Z","channel":"claude","status":"ok","sha":"43d7468","label":"43d7468","filename":"43d7468_20260501_081618.sql","bytes":364149,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-01T07:16:23Z","channel":"claude","status":"ok","sha":"43d7468","label":"43d7468_library","filename":"43d7468_20260501_081618_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-01T07:16:24Z","channel":"git","status":"deduped","sha":"43d7468","label":"43d7468","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-01T08:43:26Z","channel":"claude","status":"ok","sha":"513b3c2","label":"513b3c2","filename":"513b3c2_20260501_094323.sql","bytes":365208,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-01T08:43:28Z","channel":"claude","status":"ok","sha":"513b3c2","label":"513b3c2_library","filename":"513b3c2_20260501_094323_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-01T09:04:26Z","channel":"claude","status":"ok","sha":"dfa1a95","label":"dfa1a95","filename":"dfa1a95_20260501_100423.sql","bytes":365208,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-01T09:04:28Z","channel":"claude","status":"ok","sha":"dfa1a95","label":"dfa1a95_library","filename":"dfa1a95_20260501_100423_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-01T09:07:08Z","channel":"claude","status":"deduped","sha":"dfa1a95","label":"dfa1a95","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 160s ago"}
+{"ts":"2026-05-01T09:08:57Z","channel":"claude","status":"ok","sha":"66660fd","label":"66660fd","filename":"66660fd_20260501_100854.sql","bytes":365208,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-01T09:08:59Z","channel":"claude","status":"ok","sha":"66660fd","label":"66660fd_library","filename":"66660fd_20260501_100854_library.sql","bytes":71101,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-01T09:15:14Z","channel":"claude","status":"ok","sha":"055676a","label":"055676a","filename":"055676a_20260501_101511.sql","bytes":365208,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-01T09:15:16Z","channel":"claude","status":"ok","sha":"055676a","label":"055676a_library","filename":"055676a_20260501_101511_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-01T11:01:42Z","channel":"claude","status":"ok","sha":"1492398","label":"1492398","filename":"1492398_20260501_120139.sql","bytes":365208,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-01T11:01:44Z","channel":"claude","status":"ok","sha":"1492398","label":"1492398_library","filename":"1492398_20260501_120139_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-01T11:10:18Z","channel":"claude","status":"deduped","sha":"1492398","label":"1492398","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 514s ago"}
+{"ts":"2026-05-02T03:39:54Z","channel":"claude","status":"ok","sha":"7fd5355","label":"7fd5355","filename":"7fd5355_20260502_043950.sql","bytes":365208,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-02T03:39:56Z","channel":"claude","status":"ok","sha":"7fd5355","label":"7fd5355_library","filename":"7fd5355_20260502_043950_library.sql","bytes":71101,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-02T08:52:40Z","channel":"claude","status":"ok","sha":"9540016","label":"9540016","filename":"9540016_20260502_095235.sql","bytes":368967,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-02T08:52:43Z","channel":"claude","status":"ok","sha":"9540016","label":"9540016_library","filename":"9540016_20260502_095235_library.sql","bytes":71101,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-02T08:53:03Z","channel":"claude","status":"deduped","sha":"9540016","label":"9540016","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 19s ago"}
+{"ts":"2026-05-02T10:19:30Z","channel":"claude","status":"ok","sha":"9540016","label":"9540016","filename":"9540016_20260502_111927.sql","bytes":368967,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-02T10:19:31Z","channel":"claude","status":"ok","sha":"9540016","label":"9540016_library","filename":"9540016_20260502_111927_library.sql","bytes":71101,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-02T14:33:34Z","channel":"claude","status":"ok","sha":"ecd0f5e","label":"ecd0f5e","filename":"ecd0f5e_20260502_153331.sql","bytes":368967,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-02T14:33:36Z","channel":"claude","status":"ok","sha":"ecd0f5e","label":"ecd0f5e_library","filename":"ecd0f5e_20260502_153331_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-03T17:03:55Z","channel":"claude","status":"ok","sha":"1877cb0","label":"1877cb0","filename":"1877cb0_20260503_180352.sql","bytes":368967,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-03T17:03:57Z","channel":"claude","status":"ok","sha":"1877cb0","label":"1877cb0_library","filename":"1877cb0_20260503_180352_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-03T17:28:59Z","channel":"claude","status":"ok","sha":"cb42137","label":"cb42137","filename":"cb42137_20260503_182856.sql","bytes":368967,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-03T17:29:01Z","channel":"claude","status":"ok","sha":"cb42137","label":"cb42137_library","filename":"cb42137_20260503_182856_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-03T18:44:24Z","channel":"claude","status":"ok","sha":"a4abef2","label":"a4abef2","filename":"a4abef2_20260503_194421.sql","bytes":368967,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-03T18:44:26Z","channel":"claude","status":"ok","sha":"a4abef2","label":"a4abef2_library","filename":"a4abef2_20260503_194421_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-04T00:30:26Z","channel":"claude","status":"ok","sha":"bd588fb","label":"bd588fb","filename":"bd588fb_20260504_013022.sql","bytes":369106,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-04T00:30:28Z","channel":"claude","status":"ok","sha":"bd588fb","label":"bd588fb_library","filename":"bd588fb_20260504_013022_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-04T06:54:18Z","channel":"claude","status":"ok","sha":"11565db","label":"11565db","filename":"11565db_20260504_075414.sql","bytes":374552,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-04T06:54:20Z","channel":"claude","status":"ok","sha":"11565db","label":"11565db_library","filename":"11565db_20260504_075414_library.sql","bytes":71101,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T01:49:46Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240","filename":"1db6240_20260505_024942.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T01:49:48Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240_library","filename":"1db6240_20260505_024942_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T01:49:53Z","channel":"git","status":"ok","sha":"b1e1fc7","label":"b1e1fc7","filename":"b1e1fc7_20260505_024950.sql","bytes":314702,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T01:49:55Z","channel":"git","status":"ok","sha":"b1e1fc7","label":"b1e1fc7_library","filename":"b1e1fc7_20260505_024950_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T01:57:46Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240","filename":"1db6240_20260505_025741.sql","bytes":314702,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-05T01:57:49Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240_library","filename":"1db6240_20260505_025741_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T01:57:55Z","channel":"git","status":"ok","sha":"f2e1f20","label":"f2e1f20","filename":"f2e1f20_20260505_025750.sql","bytes":314702,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-05T01:57:58Z","channel":"git","status":"ok","sha":"f2e1f20","label":"f2e1f20_library","filename":"f2e1f20_20260505_025750_library.sql","bytes":17654,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:38Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240","filename":"1db6240_20260505_025832.sql","bytes":314702,"duration_ms":6000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:42Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240_library","filename":"1db6240_20260505_025832_library.sql","bytes":17654,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:44Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240","filename":"1db6240_20260505_025837.sql","bytes":314702,"duration_ms":7000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:48Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240_library","filename":"1db6240_20260505_025837_library.sql","bytes":17654,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:50Z","channel":"git","status":"ok","sha":"e588a07","label":"e588a07","filename":"e588a07_20260505_025843.sql","bytes":314702,"duration_ms":7000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:53Z","channel":"git","status":"ok","sha":"e588a07","label":"e588a07_library","filename":"e588a07_20260505_025843_library.sql","bytes":17654,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:56Z","channel":"git","status":"ok","sha":"ac6a37b","label":"ac6a37b","filename":"ac6a37b_20260505_025851.sql","bytes":314702,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-05T01:58:57Z","channel":"git","status":"ok","sha":"ac6a37b","label":"ac6a37b_library","filename":"ac6a37b_20260505_025851_library.sql","bytes":17654,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-05T02:00:08Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240","filename":"1db6240_20260505_030002.sql","bytes":314702,"duration_ms":6000,"skip_reason":""}
+{"ts":"2026-05-05T02:00:10Z","channel":"claude","status":"ok","sha":"1db6240","label":"1db6240_library","filename":"1db6240_20260505_030002_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T02:00:19Z","channel":"git","status":"ok","sha":"8b0585f","label":"8b0585f","filename":"8b0585f_20260505_030014.sql","bytes":314702,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-05T02:00:21Z","channel":"git","status":"ok","sha":"8b0585f","label":"8b0585f_library","filename":"8b0585f_20260505_030014_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T02:25:59Z","channel":"claude","status":"ok","sha":"97a1ae5","label":"97a1ae5","filename":"97a1ae5_20260505_032555.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T02:26:02Z","channel":"claude","status":"ok","sha":"97a1ae5","label":"97a1ae5_library","filename":"97a1ae5_20260505_032555_library.sql","bytes":17654,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T02:26:08Z","channel":"git","status":"ok","sha":"e5b79e7","label":"e5b79e7","filename":"e5b79e7_20260505_032603.sql","bytes":314702,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-05T02:26:10Z","channel":"git","status":"ok","sha":"e5b79e7","label":"e5b79e7_library","filename":"e5b79e7_20260505_032603_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T02:29:04Z","channel":"git","status":"ok","sha":"8e34480","label":"8e34480","filename":"8e34480_20260505_032900.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T02:29:06Z","channel":"git","status":"ok","sha":"8e34480","label":"8e34480_library","filename":"8e34480_20260505_032900_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T02:34:15Z","channel":"git","status":"ok","sha":"596ead4","label":"596ead4","filename":"596ead4_20260505_033412.sql","bytes":314702,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T02:34:17Z","channel":"git","status":"ok","sha":"596ead4","label":"596ead4_library","filename":"596ead4_20260505_033412_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T02:38:27Z","channel":"git","status":"ok","sha":"d070d97","label":"d070d97","filename":"d070d97_20260505_033823.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T02:38:30Z","channel":"git","status":"ok","sha":"d070d97","label":"d070d97_library","filename":"d070d97_20260505_033823_library.sql","bytes":17654,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T02:42:50Z","channel":"git","status":"ok","sha":"926723b","label":"926723b","filename":"926723b_20260505_034246.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T02:42:52Z","channel":"git","status":"ok","sha":"926723b","label":"926723b_library","filename":"926723b_20260505_034246_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T02:47:40Z","channel":"git","status":"ok","sha":"5585544","label":"5585544","filename":"5585544_20260505_034737.sql","bytes":314702,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T02:47:42Z","channel":"git","status":"ok","sha":"5585544","label":"5585544_library","filename":"5585544_20260505_034737_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:01:12Z","channel":"claude","status":"ok","sha":"1212618","label":"1212618","filename":"1212618_20260505_040109.sql","bytes":314702,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T03:01:14Z","channel":"claude","status":"ok","sha":"1212618","label":"1212618_library","filename":"1212618_20260505_040109_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:01:15Z","channel":"git","status":"deduped","sha":"1212618","label":"1212618","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-05T03:01:41Z","channel":"claude","status":"ok","sha":"5cf32b7","label":"5cf32b7","filename":"5cf32b7_20260505_040138.sql","bytes":314702,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T03:01:43Z","channel":"claude","status":"ok","sha":"5cf32b7","label":"5cf32b7_library","filename":"5cf32b7_20260505_040138_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:01:44Z","channel":"git","status":"deduped","sha":"5cf32b7","label":"5cf32b7","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-05T03:03:56Z","channel":"claude","status":"deduped","sha":"5cf32b7","label":"5cf32b7","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 133s ago"}
+{"ts":"2026-05-05T03:04:03Z","channel":"git","status":"ok","sha":"75138ea","label":"75138ea","filename":"75138ea_20260505_040357.sql","bytes":314702,"duration_ms":6000,"skip_reason":""}
+{"ts":"2026-05-05T03:04:05Z","channel":"git","status":"ok","sha":"75138ea","label":"75138ea_library","filename":"75138ea_20260505_040357_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:05:42Z","channel":"claude","status":"ok","sha":"59b9975","label":"59b9975","filename":"59b9975_20260505_040536.sql","bytes":314702,"duration_ms":6000,"skip_reason":""}
+{"ts":"2026-05-05T03:05:44Z","channel":"claude","status":"ok","sha":"59b9975","label":"59b9975_library","filename":"59b9975_20260505_040536_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:05:46Z","channel":"git","status":"deduped","sha":"59b9975","label":"59b9975","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 2s ago"}
+{"ts":"2026-05-05T03:06:29Z","channel":"claude","status":"ok","sha":"266000d","label":"266000d","filename":"266000d_20260505_040624.sql","bytes":314702,"duration_ms":5000,"skip_reason":""}
+{"ts":"2026-05-05T03:06:31Z","channel":"claude","status":"ok","sha":"266000d","label":"266000d_library","filename":"266000d_20260505_040624_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:06:32Z","channel":"git","status":"deduped","sha":"266000d","label":"266000d","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-05T03:18:08Z","channel":"claude","status":"ok","sha":"aa2db34","label":"aa2db34","filename":"aa2db34_20260505_041804.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T03:18:09Z","channel":"claude","status":"ok","sha":"aa2db34","label":"aa2db34_library","filename":"aa2db34_20260505_041804_library.sql","bytes":17654,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-05T03:18:11Z","channel":"git","status":"deduped","sha":"aa2db34","label":"aa2db34","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 2s ago"}
+{"ts":"2026-05-05T03:22:00Z","channel":"claude","status":"ok","sha":"12f2870","label":"12f2870","filename":"12f2870_20260505_042156.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T03:22:01Z","channel":"claude","status":"ok","sha":"12f2870","label":"12f2870_library","filename":"12f2870_20260505_042156_library.sql","bytes":17654,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-05T03:22:03Z","channel":"git","status":"deduped","sha":"12f2870","label":"12f2870","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 2s ago"}
+{"ts":"2026-05-05T03:35:28Z","channel":"claude","status":"ok","sha":"0b2d96c","label":"0b2d96c","filename":"0b2d96c_20260505_043525.sql","bytes":314702,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-05T03:35:30Z","channel":"claude","status":"ok","sha":"0b2d96c","label":"0b2d96c_library","filename":"0b2d96c_20260505_043525_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:35:31Z","channel":"git","status":"deduped","sha":"0b2d96c","label":"0b2d96c","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-05T03:42:31Z","channel":"claude","status":"ok","sha":"8f86d3b","label":"8f86d3b","filename":"8f86d3b_20260505_044227.sql","bytes":314702,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-05T03:42:33Z","channel":"claude","status":"ok","sha":"8f86d3b","label":"8f86d3b_library","filename":"8f86d3b_20260505_044227_library.sql","bytes":17654,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-05T03:42:34Z","channel":"git","status":"deduped","sha":"8f86d3b","label":"8f86d3b","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-05T06:52:51Z","channel":"claude","status":"skipped","sha":"b0d8e4a","label":"b0d8e4a","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-05T06:52:52Z","channel":"git","status":"skipped","sha":"b0d8e4a","label":"b0d8e4a","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-05T08:09:48Z","channel":"claude","status":"skipped","sha":"ee6a878","label":"ee6a878","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-05T08:09:50Z","channel":"git","status":"skipped","sha":"ee6a878","label":"ee6a878","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-05T11:28:30Z","channel":"claude","status":"skipped","sha":"a1debd8","label":"a1debd8","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-05T11:28:32Z","channel":"git","status":"skipped","sha":"a1debd8","label":"a1debd8","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T12:12:22Z","channel":"claude","status":"skipped","sha":"b05aaac","label":"b05aaac","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T12:12:23Z","channel":"git","status":"skipped","sha":"b05aaac","label":"b05aaac","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T15:35:24Z","channel":"claude","status":"skipped","sha":"7b9076f","label":"7b9076f","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T15:35:26Z","channel":"git","status":"skipped","sha":"7b9076f","label":"7b9076f","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T15:37:55Z","channel":"claude","status":"skipped","sha":"ca17b21","label":"ca17b21","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T15:37:56Z","channel":"git","status":"skipped","sha":"ca17b21","label":"ca17b21","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T23:42:06Z","channel":"claude","status":"skipped","sha":"163c996","label":"163c996","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T23:42:07Z","channel":"git","status":"skipped","sha":"163c996","label":"163c996","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T23:50:11Z","channel":"claude","status":"skipped","sha":"163c996","label":"163c996","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T23:50:12Z","channel":"git","status":"skipped","sha":"609c0b0","label":"609c0b0","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T23:56:55Z","channel":"claude","status":"skipped","sha":"68dd3a8","label":"68dd3a8","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-06T23:56:56Z","channel":"git","status":"skipped","sha":"68dd3a8","label":"68dd3a8","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5434"}
+{"ts":"2026-05-07T00:04:17Z","channel":"manual","status":"skipped","sha":"simskip","label":"simskip","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5499 (source=env-override:DEV_DB_PORT_OVERRIDE)"}
+{"ts":"2026-05-07T00:04:33Z","channel":"manual","status":"skipped","sha":"simskip","label":"simskip","filename":"","bytes":0,"duration_ms":0,"skip_reason":"tunnel_down: localhost:5499 (source=env-override:DEV_DB_PORT_OVERRIDE)"}
+{"ts":"2026-05-07T00:06:14Z","channel":"claude","status":"ok","sha":"e02f6ba","label":"e02f6ba","filename":"e02f6ba_20260507_010611.sql","bytes":5772073,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-07T00:06:16Z","channel":"claude","status":"ok","sha":"e02f6ba","label":"e02f6ba_library","filename":"e02f6ba_20260507_010611_library.sql","bytes":30939,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-07T00:06:17Z","channel":"git","status":"deduped","sha":"e02f6ba","label":"e02f6ba","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-07T00:07:05Z","channel":"unknown","status":"deduped","sha":"e02f6ba","label":"e02f6ba","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 49s ago"}
+{"ts":"2026-05-07T00:07:14Z","channel":"unknown","status":"deduped","sha":"e02f6ba","label":"e02f6ba","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 58s ago"}
+{"ts":"2026-05-07T00:07:34Z","channel":"claude","status":"deduped","sha":"e02f6ba","label":"e02f6ba","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 78s ago"}
+{"ts":"2026-05-07T00:07:39Z","channel":"git","status":"ok","sha":"7796ba9","label":"7796ba9","filename":"7796ba9_20260507_010735.sql","bytes":5772073,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-07T00:07:40Z","channel":"git","status":"ok","sha":"7796ba9","label":"7796ba9_library","filename":"7796ba9_20260507_010735_library.sql","bytes":30939,"duration_ms":1000,"skip_reason":""}
+{"ts":"2026-05-07T00:21:12Z","channel":"claude","status":"ok","sha":"b4b534e","label":"b4b534e","filename":"b4b534e_20260507_012108.sql","bytes":5772591,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-07T00:21:14Z","channel":"claude","status":"ok","sha":"b4b534e","label":"b4b534e_library","filename":"b4b534e_20260507_012108_library.sql","bytes":30939,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-07T00:21:17Z","channel":"git","status":"deduped","sha":"b4b534e","label":"b4b534e","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 3s ago"}
+{"ts":"2026-05-07T00:36:54Z","channel":"claude","status":"ok","sha":"5be1191","label":"5be1191","filename":"5be1191_20260507_013650.sql","bytes":5777543,"duration_ms":4000,"skip_reason":""}
+{"ts":"2026-05-07T00:36:56Z","channel":"claude","status":"ok","sha":"5be1191","label":"5be1191_library","filename":"5be1191_20260507_013650_library.sql","bytes":30939,"duration_ms":2000,"skip_reason":""}
+{"ts":"2026-05-07T00:36:57Z","channel":"git","status":"deduped","sha":"5be1191","label":"5be1191","filename":"","bytes":0,"duration_ms":0,"skip_reason":"prior ok entry 1s ago"}
+{"ts":"2026-05-07T00:59:34Z","channel":"claude","status":"ok","sha":"a8e90d8","label":"a8e90d8","filename":"a8e90d8_20260507_015931.sql","bytes":5795776,"duration_ms":3000,"skip_reason":""}
+{"ts":"2026-05-07T00:59:36Z","channel":"claude","status":"ok","sha":"a8e90d8","label":"a8e90d8_library","filename":"a8e90d8_20260507_015931_library.sql","bytes":30939,"duration_ms":2000,"skip_reason":""}

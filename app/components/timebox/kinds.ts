@@ -7,11 +7,22 @@ export const TIMEBOX_KINDS = {
     table: "timebox_sprints",
     apiBase: "/timeboxes/sprints",
     namePrefix: "Sprint",
+    listKey: "sprints",
+    rowPrefix: "sprint",
     bindsToTeam: true,
     enforcesNonOverlap: true,
     tracksCreep: true,
   },
-  // release: { … } — lands when timebox_releases ships
+  release: {
+    table: "timebox_releases",
+    apiBase: "/timeboxes/releases",
+    namePrefix: "Release",
+    listKey: "releases",
+    rowPrefix: "release",
+    bindsToTeam: false,
+    enforcesNonOverlap: true,
+    tracksCreep: true,
+  },
 } as const;
 
 export type TimeboxKind = keyof typeof TIMEBOX_KINDS;

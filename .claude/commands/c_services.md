@@ -71,7 +71,7 @@ PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDe
   -c "SELECT email, role, is_active, force_password_change FROM users ORDER BY role, email;"
 ```
 
-Also print: `Planka board: claude@mmffdev.com (agent account) → http://localhost:3333` — see c_accounts.md for credentials
+<!-- PLANKA SUSPENDED: previously printed Planka board URL (http://localhost:3333). Skipped while Planka is retired. Credentials remain in c_accounts.md. -->
 
 Full credential reference: [`.claude/commands/c_accounts.md`](c_accounts.md)
 

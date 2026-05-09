@@ -97,7 +97,7 @@ actor Supervisor {
     private func bringUp(allowAdopt: Bool = true) async {
         if !enabled { return }
         if case .up = state { return }
-        state = .starting
+        state = .starting(attempt: 1, of: spec.retry.maxAttempts)
 
         // Adoption — claim a foreign listener if our spec says so.
         if allowAdopt, await spec.adoptIf(spec.port) {
@@ -116,6 +116,7 @@ actor Supervisor {
 
         // Spawn — retry per the spec's policy.
         for attempt in 0..<spec.retry.maxAttempts {
+            state = .starting(attempt: attempt + 1, of: spec.retry.maxAttempts)
             if !enabled {
                 state = .off
                 return

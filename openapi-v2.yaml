@@ -27,6 +27,8 @@ tags:
     description: Workspace-scoped admitted field set from artefact_field_library
   - name: portfolio
     description: Portfolio layers from artefact_types (scope=strategy)
+  - name: topology
+    description: Federated organisational canvas — topology_nodes in vector_artefacts (M6.1)
 
 paths:
 
@@ -113,6 +115,110 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /work-items/relations:
+    get:
+      tags: [work-items]
+      summary: Work-item relations graph payload
+      description: |
+        Read-only payload for the Work Item Relations 3D graph. Returns every
+        work-scope artefact in the caller's subscription as `nodes`, every
+        parent edge as `edges`, plus a `meta` block with hard-cap and
+        truncation flags. Hub-size on the client is driven by
+        `descendant_count`, computed server-side via a recursive CTE.
+
+        Edge `kind` is currently always `"parent"`. The shape is edge-typed
+        so PLA-0036 (`work_item_links`) typed edges plug in without a client
+        refactor.
+      operationId: v2_getWorkItemRelations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Relations payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nodes, edges, meta]
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [id, number, prefix, type_name, title, depth, descendant_count]
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        number:
+                          type: integer
+                        prefix:
+                          type: string
+                          description: Artefact-type prefix — EP, US, DE, TA, or tenant prefix
+                        type_name:
+                          type: string
+                        title:
+                          type: string
+                        state_name:
+                          type: string
+                          nullable: true
+                        state_kind:
+                          type: string
+                          nullable: true
+                          description: todo | doing | done | blocked | …
+                        parent_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        depth:
+                          type: integer
+                          description: 0 = root, 1 = child of root, …
+                        descendant_count:
+                          type: integer
+                          description: Total transitive descendants under this node
+                  edges:
+                    type: array
+                    items:
+                      type: object
+                      required: [source, target, kind]
+                      properties:
+                        source:
+                          type: string
+                          format: uuid
+                        target:
+                          type: string
+                          format: uuid
+                        kind:
+                          type: string
+                          enum: [parent, blocks, duplicates, relates_to]
+                  meta:
+                    type: object
+                    required:
+                      [subscription_id, generated_at, node_count, edge_count, edge_kinds, truncated, cap]
+                    properties:
+                      subscription_id:
+                        type: string
+                        format: uuid
+                      generated_at:
+                        type: string
+                        format: date-time
+                      node_count:
+                        type: integer
+                      edge_count:
+                        type: integer
+                      edge_kinds:
+                        type: array
+                        items:
+                          type: string
+                          enum: [parent, blocks, duplicates, relates_to]
+                      truncated:
+                        type: boolean
+                      cap:
+                        type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -768,8 +874,748 @@ paths:
         '503':
           description: vector_artefacts unavailable
 
+  /flows:
+    get:
+      tags: [flows]
+      summary: List flows for the caller's subscription
+      operationId: v2_listFlows
+      description: |
+        Returns every flow for the caller's subscription, grouped by artefact
+        type scope (work / strategy). Each group contains the flow's states
+        ordered by sort_order. Archived flows and states are excluded.
+        Requires the flows.manage permission.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Flow list grouped by scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  work:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FlowGroup'
+                  strategy:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FlowGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: vector_artefacts unavailable
+
+  # ── Topology ──────────────────────────────────────────────────────────────
+
+  /topology/tree:
+    get:
+      tags: [topology]
+      summary: Get org topology tree
+      operationId: v2_getTopologyTree
+      description: |
+        Returns the tree of live topology nodes for the workspace resolved
+        from ?ws=<slug|uuid>. If ws is absent the backend falls back to the
+        actor's first live workspace. Archived nodes are excluded from the
+        main tree (see /topology/nodes/{id}/archived-descendants).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ws
+          in: query
+          description: Workspace slug or UUID (absent → actor's first workspace)
+          schema:
+            type: string
+        - name: root
+          in: query
+          description: Root node UUID (absent → tenant root)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Topology node tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /topology/nodes:
+    post:
+      tags: [topology]
+      summary: Create topology node
+      operationId: v2_createTopologyNode
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopologyNodeInput'
+      responses:
+        '201':
+          description: Node created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyNode'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /topology/nodes/{id}:
+    patch:
+      tags: [topology]
+      summary: Update topology node (rename / move / field patch)
+      operationId: v2_patchTopologyNode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Node updated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [topology]
+      summary: Archive topology node
+      operationId: v2_archiveTopologyNode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Node archived
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /topology/nodes/{id}/ancestors:
+    get:
+      tags: [topology]
+      summary: Get node ancestors
+      operationId: v2_getTopologyAncestors
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ancestor list (root first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /topology/nodes/{id}/archived-descendants:
+    get:
+      tags: [topology]
+      summary: List archived descendants
+      operationId: v2_getArchivedDescendants
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: ws
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Archived descendants in tree order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArchivedDescendant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /topology/nodes/{id}/disconnect:
+    post:
+      tags: [topology]
+      summary: Disconnect node from parent
+      operationId: v2_disconnectTopologyNode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Node disconnected
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /topology/nodes/{id}/duplicate:
+    post:
+      tags: [topology]
+      summary: Duplicate node subtree
+      operationId: v2_duplicateTopologyNode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Duplicated root node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /topology/nodes/{id}/restore:
+    post:
+      tags: [topology]
+      summary: Restore archived node
+      operationId: v2_restoreTopologyNode
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_parent_id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Node restored
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Parent archived or missing
+
+  /topology/nodes/{id}/roles:
+    post:
+      tags: [topology]
+      summary: Grant role on node
+      operationId: v2_grantTopologyRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, role]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                role:
+                  type: string
+                  enum: [admin, editor, viewer]
+                can_redelegate:
+                  type: boolean
+      responses:
+        '201':
+          description: Role granted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grant_id:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /topology/nodes/bulk-position:
+    post:
+      tags: [topology]
+      summary: Bulk update node positions
+      operationId: v2_bulkPositionTopologyNodes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [updates]
+              properties:
+                updates:
+                  type: array
+                  items:
+                    type: object
+                    required: [node_id, position]
+                    properties:
+                      node_id:
+                        type: string
+                        format: uuid
+                      position:
+                        type: integer
+                      layout_mode:
+                        type: string
+                      manual_x:
+                        type: number
+                        nullable: true
+                      manual_y:
+                        type: number
+                        nullable: true
+      responses:
+        '204':
+          description: Positions updated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /topology/roles/{grant_id}:
+    delete:
+      tags: [topology]
+      summary: Revoke role grant
+      operationId: v2_revokeTopologyRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: grant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Grant revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /topology/preview-move:
+    get:
+      tags: [topology]
+      summary: Preview node move (cycle check)
+      operationId: v2_previewTopologyMove
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: node
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: new_parent
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: ws
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Move preview result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  reason:
+                    type: string
+                    enum: [cycle]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /topology/disconnected:
+    get:
+      tags: [topology]
+      summary: List disconnected nodes
+      operationId: v2_listDisconnectedTopologyNodes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ws
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Disconnected nodes (no parent, not the tenant root)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /topology/view-state:
+    put:
+      tags: [topology]
+      summary: Upsert canvas viewport state for the caller
+      operationId: v2_setTopologyViewState
+      description: |
+        Stores the canvas pan/zoom viewport for the (workspace, user) pair.
+        workspace_id is resolved from the ?ws query param (WorkspaceClampMiddleware).
+        Replaces the legacy per-node collapsed flag.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ws
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [viewport_x, viewport_y, viewport_zoom]
+              properties:
+                viewport_x:
+                  type: number
+                viewport_y:
+                  type: number
+                viewport_zoom:
+                  type: number
+      responses:
+        '204':
+          description: View state saved
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /topology/commit:
+    get:
+      tags: [topology]
+      summary: Get commit status
+      operationId: v2_getTopologyCommitStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ws
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commit status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyCommitStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [topology]
+      summary: Commit topology changes (gadmin only)
+      operationId: v2_commitTopology
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Committed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyCommitStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /topology/reset:
+    post:
+      tags: [topology]
+      summary: Reset topology canvas (gadmin only — mass-archives all live nodes)
+      operationId: v2_resetTopology
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reset complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  archived:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
 components:
   schemas:
+    TopologyNode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        subscription_id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+        label_override:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        colour:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        layout_mode:
+          type: string
+          enum: [auto-horizontal, auto-vertical, auto-radial, manual]
+        manual_x:
+          type: number
+          nullable: true
+        manual_y:
+          type: number
+          nullable: true
+        collapsed_default:
+          type: boolean
+        sort_order:
+          type: integer
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+        archived_descendant_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ArchivedDescendant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        archived_at:
+          type: string
+          format: date-time
+        parent_is_archived:
+          type: boolean
+
+    CreateTopologyNodeInput:
+      type: object
+      required: [name]
+      properties:
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        label_override:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        colour:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        layout_mode:
+          type: string
+          enum: [auto-horizontal, auto-vertical, auto-radial, manual]
+        manual_x:
+          type: number
+          nullable: true
+        manual_y:
+          type: number
+          nullable: true
+        collapsed_default:
+          type: boolean
+        sort_order:
+          type: integer
+
+    TopologyCommitStatus:
+      type: object
+      properties:
+        committed_at:
+          type: string
+          format: date-time
+          nullable: true
+        committed_by:
+          type: string
+          format: uuid
+          nullable: true
+        last_node_update:
+          type: string
+          format: date-time
+          nullable: true
+        dirty_since_commit:
+          type: boolean
+
+    FlowState:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [todo, in_progress, done, cancelled]
+        sort_order:
+          type: integer
+        is_initial:
+          type: boolean
+        colour:
+          type: string
+          nullable: true
+    FlowGroup:
+      type: object
+      properties:
+        flow_id:
+          type: string
+          format: uuid
+        type_id:
+          type: string
+          format: uuid
+        type_name:
+          type: string
+        type_scope:
+          type: string
+          enum: [work, strategy]
+        states:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowState'
     Problem:
       type: object
       description: RFC 9457 Problem Details

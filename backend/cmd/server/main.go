@@ -28,7 +28,6 @@ import (
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
-	"github.com/mmffdev/vector-backend/internal/defects"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/fields"
 	"github.com/mmffdev/vector-backend/internal/flows"
@@ -40,19 +39,19 @@ import (
 	"github.com/mmffdev/vector-backend/internal/orgdesign"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
+	"github.com/mmffdev/vector-backend/internal/search"
 	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolio"
-	"github.com/mmffdev/vector-backend/internal/portfolioitems"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
 	"github.com/mmffdev/vector-backend/internal/tenantsettings"
-	"github.com/mmffdev/vector-backend/internal/userstories"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
+	"github.com/mmffdev/vector-backend/internal/webhooks"
 	"github.com/mmffdev/vector-backend/internal/workitemsv2"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
@@ -220,15 +219,6 @@ func main() {
 	defer libReleasesRec.Stop()
 	libReleasesH := libraryreleases.NewHandler(libPools.RO, pool, auditLog, libReleasesRec)
 
-	userStoriesSvc := userstories.New(pool)
-	userStoriesH := userstories.NewHandler(userStoriesSvc)
-
-	defectsSvc := defects.New(pool)
-	defectsH := defects.NewHandler(defectsSvc)
-
-	portfolioItemsSvc := portfolioitems.New(pool)
-	portfolioItemsH := portfolioitems.NewHandler(portfolioItemsSvc)
-
 	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
 	// bridge runs LISTEN rank_changed on a dedicated connection and
 	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
@@ -240,13 +230,16 @@ func main() {
 	realtime.StartRankListener(context.Background(), pool, rtHub)
 
 	// Topology / federated org canvas (PLA-0006). orgdesign is the SOLE
-	// writer for org_nodes, org_node_roles, and org_node_view_state —
-	// see backend/internal/orgdesign/boundary_test.go for the CI gate.
+	// writer for topology_nodes, topology_role_grants, and
+	// topology_view_state — see backend/internal/orgdesign/boundary_test.go
+	// for the CI gate.
 	//
-	// WithNotifier wires the realtime hub so a fresh role grant
-	// publishes a per-user "topology-handoff" event (story 00283).
-	orgDesignSvc := orgdesign.New(pool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
-	orgDesignH := orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
+	// M6.2.7 cutover: those three tables now live in vector_artefacts,
+	// so orgdesign needs vaPool. Construction is deferred until after
+	// the vaPool block runs (further down this file). orgDesignSvc /
+	// orgDesignH are declared here so handler wiring can reference them.
+	var orgDesignSvc *orgdesign.Service
+	var orgDesignH *orgdesign.Handler
 
 	// Workspaces (PLA-0006 / story 00377). workspaces is the SOLE
 	// writer for the workspaces and workspace_roles tables — see
@@ -258,12 +251,6 @@ func main() {
 	workspacesSvc := workspaces.New(pool, auditLog, permResolver)
 	workspacesH := workspaces.NewHandler(workspacesSvc)
 
-	// Tenant settings (master_record_tenant). One row per subscription;
-	// auto-seeded by trigger on subscription INSERT (mig 126). Service
-	// handles all validation; handler maps ValidationError → 422.
-	tenantSettingsSvc := tenantsettings.New(pool)
-	tenantSettingsH := tenantsettings.NewHandler(tenantSettingsSvc)
-
 	// vector_artefacts pool — reads/writes the cutover DB. Shared by
 	// v2 work-items (PLA-0023) AND portfolio adoption dual-writes
 	// (PLA-0026). VECTOR_ARTEFACTS_DB_URL is optional; absent = v2
@@ -271,6 +258,7 @@ func main() {
 	// (no PLA-0026 dual-writes).
 	var vaPool *pgxpool.Pool
 	var workItemsV2H *workitemsv2.Handler
+	var webhookSvc *webhooks.Service
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
 		if vaErr != nil {
@@ -298,7 +286,10 @@ func main() {
 					}
 				}
 				log.Printf("vector_artefacts pool connected: %s", maskedURL)
-				workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(vaPool, pool))
+				wiSvc := workitemsv2.NewService(vaPool, pool)
+				webhookSvc := webhooks.New(vaPool)
+				wiSvc.WithNotifier(webhooks.NewNotifier(webhookSvc))
+				workItemsV2H = workitemsv2.NewHandler(wiSvc)
 				// PLA-0026 / story 00502 (B13): attach the VA pool to the
 				// workspaces service so DELETE /api/workspaces/{id} can
 				// scan vector_artefacts for orphan rows BEFORE deletion.
@@ -312,6 +303,22 @@ func main() {
 		log.Printf("⚠ VECTOR_ARTEFACTS_DB_URL unset — v2 work-items will return empty pages")
 		workItemsV2H = workitemsv2.NewHandler(workitemsv2.NewService(nil, nil))
 	}
+
+	// Topology service (PLA-0006 / M6.2.7). Constructed here, after
+	// the vaPool block, because every topology read/write goes through
+	// vector_artefacts. The legacy `pool` (mmff_vector) is retained on
+	// the service for membership/auth lookups (PoolWorkspaceLookup) and
+	// for the subscriptions.topology_committed_* checkpoint columns
+	// which still live in mmff_vector.
+	//
+	// vaPool may be nil (no VECTOR_ARTEFACTS_DB_URL): the handler is
+	// still wired so the routes return 5xx-with-context rather than
+	// 404, but every topology read/write will fail at the first SQL
+	// call until vaPool is provisioned. WithNotifier wires the
+	// realtime hub so a fresh role grant publishes a per-user
+	// "topology-handoff" event (story 00283).
+	orgDesignSvc = orgdesign.New(pool, vaPool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
+	orgDesignH = orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
 
 	// Portfolio adopt handler — wired AFTER vaPool so PLA-0026 dual-
 	// writes target vector_artefacts when the pool is available.
@@ -331,6 +338,22 @@ func main() {
 	// vectorPool is still required to resolve subscription_id →
 	// workspace_id; vaPool may be nil (handler returns notStarted).
 	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
+
+	// Tenant settings (master_record_tenant). M2: reads/writes vector_artefacts
+	// (mig 036). Falls back to mmff_vector pool until 036 is applied on dev.
+	tenantSettingsPool := pool
+	if vaPool != nil {
+		tenantSettingsPool = vaPool
+	}
+	tenantSettingsSvc := tenantsettings.New(tenantSettingsPool)
+	tenantSettingsH := tenantsettings.NewHandler(tenantSettingsSvc)
+
+	// Webhooks (B9). Requires vector_artefacts (mig 037).
+	// webhookSvc is created in the vaPool block above when vaPool != nil.
+	var webhooksH *webhooks.Handler
+	if vaPool != nil {
+		webhooksH = webhooks.NewHandler(webhookSvc)
+	}
 
 	// PLA-0026 / Story 00498 (B9): read surface for the persistent
 	// portfolio model record. BundleView reads model_name +
@@ -356,7 +379,9 @@ func main() {
 	// Uses the same vaPool as v2 work-items; gracefully degrades when nil.
 	var sprintH *timeboxsprints.Handler
 	if vaPool != nil {
-		sprintH = timeboxsprints.NewHandler(timeboxsprints.NewService(vaPool))
+		sprintSvc := timeboxsprints.NewService(vaPool)
+		sprintSvc.WithNotifier(webhooks.NewNotifier(webhookSvc))
+		sprintH = timeboxsprints.NewHandler(sprintSvc)
 	}
 
 	// timebox releases REST handler — mirrors sprints, no adjacency rule.
@@ -365,8 +390,10 @@ func main() {
 		releaseH = timeboxreleases.NewHandler(timeboxreleases.NewService(vaPool))
 	}
 
-	flowsSvc := flows.New(pool)
-	flowsH := flows.NewHandler(flowsSvc)
+	var flowsH *flows.Handler
+	if vaPool != nil {
+		flowsH = flows.NewHandler(flows.New(vaPool, pool))
+	}
 
 	// Generic rank service. Backed by vaPool (vector_artefacts) for
 	// work items — the rank service writes position directly to artefacts.
@@ -381,6 +408,13 @@ func main() {
 			}),
 		})
 		rankH = ranking.NewHandler(ranking.New(vaPool))
+	}
+
+	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
+	// Only available when vaPool is up (vector_artefacts has the search columns).
+	var searchH *search.Handler
+	if vaPool != nil {
+		searchH = search.NewHandler(search.New(vaPool))
 	}
 
 	// Generic error reporter: any authenticated role can POST a
@@ -712,6 +746,13 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		workspacesH.Mount(r)
+
+		// /workspaces/{workspaceId}/webhooks (B9)
+		if webhooksH != nil {
+			r.Route("/{workspaceId}/webhooks", func(r chi.Router) {
+				webhooksH.Mount(r)
+			})
+		}
 	})
 
 	// /admin
@@ -887,108 +928,6 @@ func main() {
 		r.Patch("/layers/batch", layersBatchH.PatchLayersBatch)
 	})
 
-	// ---- /api/user-stories ----
-	r.Route("/user-stories", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0006 / 00273: every list query under here must clamp to
-		// the user's visible org_nodes subtree. Middleware seeds the
-		// computed clamp into context; consuming queries call
-		// orgdesign.ApplyClamp to splice it in. Mounted on the route
-		// group rather than per-handler so a new endpoint added later
-		// inherits the gate by default.
-		r.Use(orgDesignSvc.ClampMiddleware)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Post("/", userStoriesH.Create)
-		r.Get("/{id}", userStoriesH.Get)
-		r.Patch("/{id}", userStoriesH.Patch)
-		r.Delete("/{id}", userStoriesH.Archive)
-	})
-
-	// ---- /api/defects ----
-	r.Route("/defects", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Post("/", defectsH.Create)
-		r.Get("/{id}", defectsH.Get)
-		r.Patch("/{id}", defectsH.Patch)
-		r.Delete("/{id}", defectsH.Archive)
-	})
-
-	// ---- /api/flows (migration 112) ----
-	// Per-tenant flow editor surface. gadmin and padmin both have
-	// flows.manage; the page is one shared screen for both roles.
-	// Read-only for now — write paths arrive in the next iteration.
-	r.Route("/flows", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
-		r.Use(httprate.LimitByIP(60, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", flowsH.List)
-	})
-
-	// ---- /api/topology (PLA-0006) ----
-	// Federated organisational canvas. All authenticated roles can read
-	// the tree (clamp predicate trims what each user sees at consuming
-	// endpoints — this surface returns the structural shape). Mutations
-	// require padmin OR an admin grant on the affected node; node-grant
-	// authorisation is checked inside orgdesign.Service via the
-	// subscription scope. The single-admin / federated handoff governance
-	// gate (story 00288) layers on top of GrantRole.
-	r.Route("/topology", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		// Workspace clamp (PLA-0006 / story 00378): every list-style
-		// read narrows to one workspace, resolved per-request from
-		// `?ws=<slug>` (absent → actor's first live workspace; missing
-		// slug → 404; in-tenant but no role → 403). The middleware
-		// stashes workspace_id on the request context; service-layer
-		// reads (Subtree / ListDisconnected / ArchivedDescendants /
-		// TenantRootID) splice it into their WHERE clauses through
-		// orgdesign.WorkspaceIDFromCtx. Mounted on a read-only sub-
-		// router so write paths (which already constrain by
-		// subscription_id + per-node role inside orgdesign.Service)
-		// are not affected.
-		wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
-		r.Group(func(r chi.Router) {
-			r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
-
-			r.Get("/tree", orgDesignH.Tree)
-			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
-			r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
-			r.Get("/preview-move", orgDesignH.PreviewMove)
-			r.Get("/disconnected", orgDesignH.Disconnected)
-			r.Get("/levels", orgDesignH.ListLevels)
-			r.Get("/commit", orgDesignH.CommitStatus)
-		})
-
-		// Writes
-		r.Post("/nodes", orgDesignH.Create)
-		r.Patch("/nodes/{id}", orgDesignH.Patch)
-		r.Delete("/nodes/{id}", orgDesignH.Archive)
-		r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
-		r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
-		r.Post("/nodes/{id}/restore", orgDesignH.Restore)
-		r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
-		r.Put("/nodes/{id}/view-state", orgDesignH.ViewState)
-		r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)
-		r.Delete("/roles/{grant_id}", orgDesignH.RevokeRole)
-		r.Post("/levels", orgDesignH.CreateLevel)
-		r.Patch("/levels/{id}", orgDesignH.RenameLevel)
-		r.Post("/commit", orgDesignH.Commit)
-		r.Post("/reset", orgDesignH.Reset)
-	})
-
 	// ---- /api/workspace/{id}/fields (PLA-0026 / Story 00500, B11) ----
 	// Returns the admitted field set for one workspace. Auth + fresh-
 	// password gates at the router edge; per-row tenancy + membership
@@ -1012,22 +951,6 @@ func main() {
 		tenantSettingsH.Mount(r)
 	})
 
-	// ---- /api/portfolio-items ----
-	r.Route("/portfolio-items", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0006 / 00273: clamp predicate middleware. See the
-		// /api/user-stories block above for the rationale.
-		r.Use(orgDesignSvc.ClampMiddleware)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Post("/", portfolioItemsH.Create)
-		r.Get("/{id}", portfolioItemsH.Get)
-		r.Patch("/{id}", portfolioItemsH.Patch)
-		r.Delete("/{id}", portfolioItemsH.Archive)
-	})
-
 	}) // end /samantha/v1
 
 	// ---- /samantha/v2 — feature-gated v2 routes ----
@@ -1039,19 +962,22 @@ func main() {
 			r.Route("/work-items", func(r chi.Router) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
-				r.Use(httprate.LimitByIP(120, time.Minute))
-				r.Get("/", workItemsV2H.List)
-				r.Post("/", workItemsV2H.Create)
-				r.Post("/bulk", workItemsV2H.Bulk)
-				r.Get("/summary", workItemsV2H.Summary)
-				r.Get("/flow-states", workItemsV2H.ListFlowStates)
-				r.Get("/{id}", workItemsV2H.Get)
-				r.Patch("/{id}", workItemsV2H.Patch)
-				r.Delete("/{id}", workItemsV2H.Archive)
-				r.Get("/{id}/children", workItemsV2H.ListChildren)
-				r.Get("/{id}/field-values", workItemsV2H.ListFieldValues)
-				r.Put("/{id}/field-values", workItemsV2H.UpsertFieldValues)
-				r.Delete("/{id}/field-values/{field_library_id}", workItemsV2H.DeleteFieldValue)
+				// Reads use a higher cap (600/min) so expandAll tree fetches don't
+				// exhaust the limit; writes keep the conservative 120/min + per-user gate.
+				readLimit := httprate.LimitByIP(600, time.Minute)
+				writeLimit := httprate.LimitByIP(120, time.Minute)
+				r.With(readLimit).Get("/", workItemsV2H.List)
+				r.With(writeLimit, userWriteLimiter).Post("/", workItemsV2H.Create)
+				r.With(writeLimit, userWriteLimiter).Post("/bulk", workItemsV2H.Bulk)
+				r.With(readLimit).Get("/summary", workItemsV2H.Summary)
+				r.With(readLimit).Get("/flow-states", workItemsV2H.ListFlowStates)
+				r.With(readLimit).Get("/{id}", workItemsV2H.Get)
+				r.With(writeLimit, userWriteLimiter).Patch("/{id}", workItemsV2H.Patch)
+				r.With(writeLimit, userWriteLimiter).Delete("/{id}", workItemsV2H.Archive)
+				r.With(readLimit).Get("/{id}/children", workItemsV2H.ListChildren)
+				r.With(readLimit).Get("/{id}/field-values", workItemsV2H.ListFieldValues)
+				r.With(writeLimit, userWriteLimiter).Put("/{id}/field-values", workItemsV2H.UpsertFieldValues)
+				r.With(writeLimit, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", workItemsV2H.DeleteFieldValue)
 			})
 		} else {
 			r.Get("/work-items", func(w http.ResponseWriter, r *http.Request) {
@@ -1075,6 +1001,20 @@ func main() {
 			})
 		}
 
+		// ---- /search (B7.2) ----
+		if searchH != nil {
+			r.Route("/search", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(60, time.Minute))
+				r.Post("/", searchH.Search)
+			})
+		} else {
+			r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "search not available", http.StatusServiceUnavailable)
+			})
+		}
+
 		// ---- /timeboxes/sprints (PLA-0027 / 00514) ----
 		if sprintH != nil {
 			r.Route("/timeboxes/sprints", func(r chi.Router) {
@@ -1092,6 +1032,10 @@ func main() {
 					Put("/{id}", sprintH.Update)
 				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 					Delete("/{id}", sprintH.Delete)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/{id}/start", sprintH.Start)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/{id}/close", sprintH.Close)
 			})
 		} else {
 			r.Get("/timeboxes/sprints", func(w http.ResponseWriter, r *http.Request) {
@@ -1154,6 +1098,69 @@ func main() {
 			r.Use(userWriteLimiter)
 			r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
 		})
+
+		// ---- /topology (PLA-0006 / M6.1.1) ----
+		// Federated organisational canvas. All authenticated roles can read
+		// the tree (clamp predicate trims what each user sees at consuming
+		// endpoints). Mutations require padmin OR an admin grant on the
+		// affected node; node-grant authorisation is checked inside
+		// orgdesign.Service. Registered on v2 because all topology I/O now
+		// targets vector_artefacts via vaPool (M6.2.7).
+		r.Route("/topology", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			// Workspace clamp: every list-style read narrows to one
+			// workspace resolved from ?ws=<slug|uuid>. Middleware stashes
+			// workspace_id on context; service reads splice it into WHERE.
+			wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+			r.Group(func(r chi.Router) {
+				r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+
+				r.Get("/tree", orgDesignH.Tree)
+				r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
+				r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
+				r.Get("/preview-move", orgDesignH.PreviewMove)
+				r.Get("/disconnected", orgDesignH.Disconnected)
+				r.Get("/commit", orgDesignH.CommitStatus)
+
+				// View-state is per-(workspace, user) canvas viewport;
+				// workspace_id comes from WorkspaceClampMiddleware context.
+				r.Put("/view-state", orgDesignH.ViewState)
+			})
+
+			// Writes
+			r.Post("/nodes", orgDesignH.Create)
+			r.Patch("/nodes/{id}", orgDesignH.Patch)
+			r.Delete("/nodes/{id}", orgDesignH.Archive)
+			r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
+			r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
+			r.Post("/nodes/{id}/restore", orgDesignH.Restore)
+			r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
+			r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)
+			r.Delete("/roles/{grant_id}", orgDesignH.RevokeRole)
+			r.Post("/commit", orgDesignH.Commit)
+			r.Post("/reset", orgDesignH.Reset)
+		})
+
+		// ---- /flows (PLA-0031 / M1) ----
+		// Per-subscription workflow definitions. Reads from vector_artefacts.
+		// mmff_vector pool retained in service for tenancy gate only.
+		if flowsH != nil {
+			r.Route("/flows", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
+				r.Use(httprate.LimitByIP(60, time.Minute))
+				r.Get("/", flowsH.List)
+			})
+		} else {
+			r.Get("/flows", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "flows service not available", http.StatusServiceUnavailable)
+			})
+		}
 	})
 
 	port := os.Getenv("SERVER_PORT")
@@ -1173,15 +1180,23 @@ func main() {
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Start search index outbox worker.
-	swCfg := searchworker.Config{
-		OllamaURL:   os.Getenv("OLLAMA_URL"),
-		OllamaModel: os.Getenv("OLLAMA_MODEL"),
+	// Start search index outbox worker — requires vector_artefacts pool (B7.1.1).
+	// Reads artefacts_search_outbox in vector_artefacts (migration 035).
+	if vaPool != nil {
+		swCfg := searchworker.Config{
+			OllamaURL:   os.Getenv("OLLAMA_URL"),
+			OllamaModel: os.Getenv("OLLAMA_MODEL"),
+		}
+		if swCfg.OllamaURL == "" {
+			swCfg.OllamaURL = "http://localhost:11434"
+		}
+		go searchworker.New(vaPool, swCfg).Run(shutdownCtx)
+		// Start webhook delivery worker (B9). Reads webhook_deliveries (migration 037).
+		go webhooks.NewWorker(vaPool).Run(shutdownCtx)
+	} else {
+		log.Println("searchworker: vaPool not available — search indexing disabled")
+		log.Println("webhooks/worker: vaPool not available — webhook delivery disabled")
 	}
-	if swCfg.OllamaURL == "" {
-		swCfg.OllamaURL = "http://localhost:11434"
-	}
-	go searchworker.New(pool, swCfg).Run(shutdownCtx)
 
 	serverErr := make(chan error, 1)
 	go func() {

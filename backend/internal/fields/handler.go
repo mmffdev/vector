@@ -25,9 +25,9 @@ package fields
 // resolver uses (ResolveField in resolver.go).
 //
 // IMPORTANT: this handler reads only vector_artefacts (artefact_field_library
-// + artefact_workspace_fields) and mmff_vector.workspace (for the tenant
-// boundary check). It does NOT read mmff_library — see
-// dev/scripts/lint_portfolio_library_read.py.
+// + artefact_workspace_fields) and mmff_vector.master_record_workspaces (for
+// the tenant boundary check) + roles_workspaces (for membership). It does
+// NOT read mmff_library — see dev/scripts/lint_portfolio_library_read.py.
 
 import (
 	"context"
@@ -158,13 +158,13 @@ var (
 //
 // Tenant admins (gadmin / padmin) bypass the membership check — they
 // already have full read access to every workspace in the tenant via
-// the role grid (PLA-0007 migrations). Plain users must hold a
-// user_workspace_permissions row with can_view=TRUE.
+// the role grid (PLA-0007 migrations). Plain users must hold an active
+// roles_workspaces grant (any role: viewer / editor / admin).
 func (h *Handler) assertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *models.User) error {
 	// 1. Workspace exists + tenant boundary.
 	var wsTenant uuid.UUID
 	err := h.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM workspace WHERE id = $1`, wsID,
+		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`, wsID,
 	).Scan(&wsTenant)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errWorkspaceNotFound
@@ -181,21 +181,19 @@ func (h *Handler) assertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *mo
 		return nil
 	}
 
-	// 3. Workspace membership — any user_workspace_permissions row with
-	//    can_view=TRUE is sufficient. The legacy table is the current
-	//    source of truth; PLA-0007 G4/G5 will fold this into the role
-	//    grid (tracked separately).
-	var hasView bool
+	// 3. Workspace membership — any active roles_workspaces grant is
+	//    sufficient (viewer / editor / admin). Revoked rows are excluded.
+	var member bool
 	err = h.vectorPool.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM user_workspace_permissions
-			 WHERE user_id = $1 AND workspace_id = $2 AND can_view = TRUE
+			SELECT 1 FROM roles_workspaces
+			 WHERE user_id = $1 AND workspace_id = $2 AND revoked_at IS NULL
 		)`, u.ID, wsID,
-	).Scan(&hasView)
+	).Scan(&member)
 	if err != nil {
 		return err
 	}
-	if !hasView {
+	if !member {
 		return errForbidden
 	}
 	return nil

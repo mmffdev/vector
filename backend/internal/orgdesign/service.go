@@ -1,8 +1,8 @@
-// Package orgdesign is the SOLE writer for org_nodes, org_node_roles,
-// and org_node_view_state. Every INSERT/UPDATE/DELETE against any of
-// these tables must pass through this package.
+// Package orgdesign is the SOLE writer for topology_nodes,
+// topology_role_grants, and topology_view_state. Every INSERT/UPDATE/
+// DELETE against any of these tables must pass through this package.
 //
-// The Topology canvas (PLA-0006) treats the org_nodes tree as the
+// The Topology canvas (PLA-0006) treats the topology_nodes tree as the
 // source of truth for tenant organisational structure. Every other
 // clamp / rollup / audit / cross-team-move feature in Vector reads
 // from it, so a single corrupting writer outside this boundary has
@@ -17,8 +17,15 @@
 //      backend/internal/orgdesign/ writes to one of the tables.
 //
 // SQL migrations are exempt from the boundary (the test scopes to
-// .go files); migration 085 inserts the bootstrap root nodes and
-// is the documented exception.
+// .go files).
+//
+// M6.2.7 cutover (PLA-0006): topology_nodes, topology_role_grants and
+// topology_view_state live in the vector_artefacts database. Every
+// topology read/write goes through s.vaPool. The legacy s.pool
+// (mmff_vector) is retained for membership/auth checks (e.g. the
+// PoolWorkspaceLookup adapter) and for non-topology helpers like
+// GetCommitStatus which still reads `subscriptions.topology_committed_*`
+// from mmff_vector.
 package orgdesign
 
 import (
@@ -32,8 +39,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// LayoutMode is the closed vocabulary for org_nodes.layout_mode.
-// Mirrored by the CHECK constraint in migration 082.
+// LayoutMode is the closed vocabulary for topology_nodes.layout_mode.
+// Mirrored by the CHECK constraint in artefacts migration 031.
 type LayoutMode string
 
 const (
@@ -51,7 +58,7 @@ func (l LayoutMode) IsValid() bool {
 	return false
 }
 
-// Role is the closed vocabulary for org_node_roles.role.
+// Role is the closed vocabulary for topology_role_grants.role_code.
 type Role string
 
 const (
@@ -82,6 +89,7 @@ func (r Role) IsValid() bool {
 //	ErrGrantNotFound       → 404
 //	ErrDelegationDepth     → 403 (story 00288: single-level delegation)
 //	ErrRedelegationDisabled → 403 (story 00288: can_redelegate is Phase X)
+//	ErrWorkspaceRequired   → 400 (writes need a workspace clamp)
 var (
 	ErrNodeNotFound         = errors.New("orgdesign: node not found")
 	ErrTenantMismatch       = errors.New("orgdesign: node not found")
@@ -95,17 +103,16 @@ var (
 	ErrGrantNotFound        = errors.New("orgdesign: role grant not found")
 	ErrDelegationDepth      = errors.New("orgdesign: delegation depth exceeded — only gadmin may grant in MVP")
 	ErrRedelegationDisabled = errors.New("orgdesign: can_redelegate is reserved for Phase X — must be false in MVP")
-	ErrLevelNotFound        = errors.New("orgdesign: level not found")
-	ErrInvalidLevelDepth    = errors.New("orgdesign: level depth must be >= 0")
 	ErrCommitForbidden      = errors.New("orgdesign: only gadmin may commit the topology working model")
 	ErrResetForbidden       = errors.New("orgdesign: only gadmin may reset the topology canvas")
+	ErrWorkspaceRequired    = errors.New("orgdesign: write requires a workspace clamp on context")
 	// Restore-specific. ErrNotArchived guards POST /restore from being
 	// run against a live node. ErrParentArchived / ErrParentMissing
 	// surface the two cases where the requested landing parent is not
 	// a valid restoration target.
-	ErrNotArchived          = errors.New("orgdesign: node is not archived")
-	ErrParentArchived       = errors.New("orgdesign: target parent is archived — pick a live new_parent_id")
-	ErrParentMissing        = errors.New("orgdesign: target parent does not exist")
+	ErrNotArchived    = errors.New("orgdesign: node is not archived")
+	ErrParentArchived = errors.New("orgdesign: target parent is archived — pick a live new_parent_id")
+	ErrParentMissing  = errors.New("orgdesign: target parent does not exist")
 )
 
 // GrantNotifier receives a one-shot notification each time a new
@@ -133,14 +140,29 @@ type GrantNotification struct {
 }
 
 // Service is the sole writer for the three Topology tables.
+//
+// pool   — mmff_vector. Membership / auth lookups (PoolWorkspaceLookup)
+//
+//	and non-topology bookkeeping (subscriptions.topology_committed_*).
+//	NOT used for any topology read or write after M6.2.7.
+//
+// vaPool — vector_artefacts. EVERY topology read/write goes here. The
+//
+//	three boundary tables (topology_nodes, topology_role_grants,
+//	topology_view_state) only exist in this database.
 type Service struct {
 	pool     *pgxpool.Pool
+	vaPool   *pgxpool.Pool
 	notifier GrantNotifier
 }
 
-// New constructs a Service.
-func New(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+// New constructs a Service. pool is the legacy mmff_vector pool (kept
+// for membership/auth lookups); vaPool is the vector_artefacts pool
+// where all topology reads/writes land. Both are required for normal
+// operation; vaPool may be nil only in narrow test paths that do not
+// call any topology method.
+func New(pool *pgxpool.Pool, vaPool *pgxpool.Pool) *Service {
+	return &Service{pool: pool, vaPool: vaPool}
 }
 
 // WithNotifier wires a GrantNotifier into the Service. Optional —
@@ -151,29 +173,38 @@ func (s *Service) WithNotifier(n GrantNotifier) *Service {
 	return s
 }
 
-// Node is one row of org_nodes returned by reads.
+// Node is one row of topology_nodes returned by reads.
 //
 // ArchivedDescendantCount is a computed rollup populated by Subtree (the
 // /tree endpoint): for each live node it counts the archived descendants
 // reachable through live ancestors. Always 0 outside of Subtree results
 // — single-node reads (loadNode, ancestors) leave it zero because the
 // rollup requires walking the live tree.
+//
+// Field names changed from the legacy org_nodes shape:
+//
+//	ManualX/ManualY → X/Y (direct rename in topology_nodes.x / .y)
+//	Position        → SortOrder (column rename)
+//	LevelID         → DROPPED (no equivalent in vector_artefacts)
+//
+// JSON tags retain the legacy wire shape (manual_x, manual_y, position)
+// so existing frontend clients keep working.
 type Node struct {
 	ID                      uuid.UUID  `json:"id"`
+	WorkspaceID             uuid.UUID  `json:"workspace_id"`
 	SubscriptionID          uuid.UUID  `json:"subscription_id"`
 	ParentID                *uuid.UUID `json:"parent_id"`
-	LevelID                 uuid.UUID  `json:"level_id"`
 	Name                    string     `json:"name"`
-	Description             string     `json:"description"` // PLA-0006/00312: NOT NULL DEFAULT ''
+	Description             string     `json:"description"`
 	LabelOverride           *string    `json:"label_override"`
 	Icon                    *string    `json:"icon"`
 	Colour                  *string    `json:"colour"`
 	AvatarURL               *string    `json:"avatar_url"`
 	LayoutMode              LayoutMode `json:"layout_mode"`
-	ManualX                 *int       `json:"manual_x"`
-	ManualY                 *int       `json:"manual_y"`
+	X                       *int       `json:"manual_x"`
+	Y                       *int       `json:"manual_y"`
 	CollapsedDefault        bool       `json:"collapsed_default"`
-	Position                int        `json:"position"`
+	SortOrder               int        `json:"position"`
 	ArchivedAt              *time.Time `json:"archived_at"`
 	ArchivedDescendantCount int        `json:"archived_descendant_count"`
 	CreatedAt               time.Time  `json:"created_at"`
@@ -193,9 +224,11 @@ type ArchivedDescendant struct {
 	ParentIsArchived bool       `json:"parent_is_archived"`
 }
 
-// CreateNodeInput collects the writable columns of org_nodes for a
-// new row. ParentID nil means root.
+// CreateNodeInput collects the writable columns of topology_nodes for
+// a new row. ParentID nil means root. WorkspaceID is required: the
+// new substrate is workspace-scoped.
 type CreateNodeInput struct {
+	WorkspaceID      uuid.UUID
 	SubscriptionID   uuid.UUID
 	ParentID         *uuid.UUID
 	Name             string
@@ -211,8 +244,8 @@ type CreateNodeInput struct {
 	Position         int
 }
 
-// CreateNode inserts a new org_node. When ParentID is non-nil it must
-// be a live node in the same subscription. Returns the new node.
+// CreateNode inserts a new topology_nodes row. When ParentID is non-nil
+// it must be a live node in the same subscription. Returns the new node.
 func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, error) {
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -230,27 +263,26 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 		return Node{}, err
 	}
 
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return Node{}, err
 	}
 	defer tx.Rollback(ctx)
 
+	workspaceID := in.WorkspaceID
 	if in.ParentID != nil {
-		if _, err := s.loadNode(ctx, tx, *in.ParentID, in.SubscriptionID, false); err != nil {
+		parent, err := s.loadNode(ctx, tx, *in.ParentID, in.SubscriptionID, false)
+		if err != nil {
 			return Node{}, err
 		}
+		// A child always inherits its parent's workspace_id. If the
+		// caller supplied a (possibly stale) workspace_id, parent wins —
+		// this prevents a child from accidentally being filed under a
+		// sibling workspace within the same subscription.
+		workspaceID = parent.WorkspaceID
 	}
-
-	// Resolve the level_id for this node's tree depth, auto-creating
-	// a generic "Level N" row if none exists for that depth yet.
-	depth, err := s.computeDepthForParent(ctx, tx, in.SubscriptionID, in.ParentID)
-	if err != nil {
-		return Node{}, err
-	}
-	levelID, err := s.resolveLevelForDepth(ctx, tx, in.SubscriptionID, depth)
-	if err != nil {
-		return Node{}, err
+	if workspaceID == uuid.Nil {
+		return Node{}, ErrWorkspaceRequired
 	}
 
 	var collapsedDefault any
@@ -262,32 +294,34 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 
 	var n Node
 	err = tx.QueryRow(ctx, `
-		INSERT INTO org_nodes (
-		    subscription_id, parent_id, level_id, name, description, label_override,
+		INSERT INTO topology_nodes (
+		    id,
+		    workspace_id, subscription_id, parent_id, name, description, label_override,
 		    icon, colour, avatar_url,
-		    layout_mode, manual_x, manual_y,
-		    collapsed_default, position
+		    layout_mode, x, y,
+		    collapsed_default, sort_order
 		) VALUES (
+		    gen_random_uuid(),
 		    $1, $2, $3, $4, $5, $6,
 		    $7, $8, $9,
 		    $10, $11, $12,
 		    $13, $14
 		)
 		RETURNING
-		    id, subscription_id, parent_id, level_id, name, description, label_override,
+		    id, workspace_id, subscription_id, parent_id, name, description, label_override,
 		    icon, colour, avatar_url,
-		    layout_mode, manual_x, manual_y,
-		    collapsed_default, position, archived_at, created_at, updated_at
+		    layout_mode, x, y,
+		    collapsed_default, sort_order, archived_at, created_at, updated_at
 	`,
-		in.SubscriptionID, in.ParentID, levelID, name, derefStr(in.Description), in.LabelOverride,
+		workspaceID, in.SubscriptionID, in.ParentID, name, derefStr(in.Description), in.LabelOverride,
 		in.Icon, in.Colour, in.AvatarURL,
 		string(mode), in.ManualX, in.ManualY,
 		collapsedDefault, in.Position,
 	).Scan(
-		&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
+		&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 		&n.Icon, &n.Colour, &n.AvatarURL,
-		&n.LayoutMode, &n.ManualX, &n.ManualY,
-		&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
+		&n.LayoutMode, &n.X, &n.Y,
+		&n.CollapsedDefault, &n.SortOrder, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
 	)
 	if err != nil {
 		return Node{}, err
@@ -298,13 +332,13 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 	return n, nil
 }
 
-// RenameNode updates org_nodes.name. Subscription scope is enforced.
+// RenameNode updates topology_nodes.name. Subscription scope is enforced.
 func (s *Service) RenameNode(ctx context.Context, subscriptionID, nodeID uuid.UUID, name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ErrInvalidName
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -313,7 +347,7 @@ func (s *Service) RenameNode(ctx context.Context, subscriptionID, nodeID uuid.UU
 	if _, err := s.loadNode(ctx, tx, nodeID, subscriptionID, false); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE org_nodes SET name = $1 WHERE id = $2`, name, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE topology_nodes SET name = $1 WHERE id = $2`, name, nodeID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -324,7 +358,7 @@ func (s *Service) RenameNode(ctx context.Context, subscriptionID, nodeID uuid.UU
 // descendants (cycle prevention) — this is a hard server-side gate;
 // the canvas UI is convenience-only.
 func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID, newParentID *uuid.UUID) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -346,10 +380,10 @@ func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID
 		var ancestorOfNew bool
 		err := tx.QueryRow(ctx, `
 			WITH RECURSIVE up AS (
-			    SELECT id, parent_id FROM org_nodes WHERE id = $1
+			    SELECT id, parent_id FROM topology_nodes WHERE id = $1
 			    UNION ALL
 			    SELECT n.id, n.parent_id
-			      FROM org_nodes n
+			      FROM topology_nodes n
 			      JOIN up ON up.parent_id = n.id
 			)
 			SELECT EXISTS(SELECT 1 FROM up WHERE id = $2)
@@ -362,94 +396,11 @@ func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID
 		}
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE org_nodes SET parent_id = $1 WHERE id = $2`, newParentID, nodeID); err != nil {
-		return err
-	}
-
-	// Depth invariant: a move can shift the depth of the moved node
-	// and its entire subtree. Re-resolve level_id for every affected
-	// row so node.level.depth still equals tree-depth(node).
-	if err := s.refreshSubtreeLevels(ctx, tx, subscriptionID, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE topology_nodes SET parent_id = $1 WHERE id = $2`, newParentID, nodeID); err != nil {
 		return err
 	}
 
 	return tx.Commit(ctx)
-}
-
-// refreshSubtreeLevels walks the subtree rooted at nodeID and
-// rewrites org_nodes.level_id so every row still satisfies the
-// depth invariant. Called from MoveNode after parent_id flips and
-// from DisconnectNode when a node is detached to root.
-//
-// The CTE computes each row's depth from parent_id chains; the
-// UPDATE then maps depth → level_id, auto-creating "Level N" rows
-// where the new depth exceeds existing levels.
-func (s *Service) refreshSubtreeLevels(ctx context.Context, tx pgx.Tx, subscriptionID, rootID uuid.UUID) error {
-	// Step 1: compute depth for every node in the subtree.
-	type depthRow struct {
-		ID    uuid.UUID
-		Depth int
-	}
-	rows, err := tx.Query(ctx, `
-		WITH RECURSIVE root AS (
-		    SELECT n.id, n.parent_id
-		      FROM org_nodes n
-		     WHERE n.id = $1 AND n.subscription_id = $2
-		), root_depth AS (
-		    SELECT r.id, (
-		        WITH RECURSIVE up AS (
-		            SELECT id, parent_id, 0 AS d FROM org_nodes
-		             WHERE id = r.id AND subscription_id = $2
-		            UNION ALL
-		            SELECT p.id, p.parent_id, up.d + 1
-		              FROM org_nodes p
-		              JOIN up ON up.parent_id = p.id
-		             WHERE p.subscription_id = $2
-		        )
-		        SELECT MAX(d) FROM up
-		    ) AS d
-		      FROM root r
-		), down AS (
-		    SELECT n.id, rd.d AS depth
-		      FROM org_nodes n
-		      JOIN root_depth rd ON rd.id = n.id
-		     WHERE n.subscription_id = $2
-		    UNION ALL
-		    SELECT c.id, d.depth + 1
-		      FROM org_nodes c
-		      JOIN down d ON c.parent_id = d.id
-		     WHERE c.subscription_id = $2
-		)
-		SELECT id, depth FROM down
-	`, rootID, subscriptionID)
-	if err != nil {
-		return err
-	}
-	var subtree []depthRow
-	for rows.Next() {
-		var dr depthRow
-		if err := rows.Scan(&dr.ID, &dr.Depth); err != nil {
-			rows.Close()
-			return err
-		}
-		subtree = append(subtree, dr)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	// Step 2: per-row resolve level_id and update.
-	for _, dr := range subtree {
-		levelID, err := s.resolveLevelForDepth(ctx, tx, subscriptionID, dr.Depth)
-		if err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE org_nodes SET level_id = $1 WHERE id = $2`, levelID, dr.ID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // ArchiveNode sets archived_at = NOW() on a node. The subtree stays
@@ -457,7 +408,7 @@ func (s *Service) refreshSubtreeLevels(ctx context.Context, tx pgx.Tx, subscript
 // per the MVP decision in c_c_topology.md. Idempotent: archiving an
 // already-archived node is a no-op.
 func (s *Service) ArchiveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -467,7 +418,7 @@ func (s *Service) ArchiveNode(ctx context.Context, subscriptionID, nodeID uuid.U
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE org_nodes SET archived_at = NOW()
+		UPDATE topology_nodes SET archived_at = NOW()
 		 WHERE id = $1 AND archived_at IS NULL
 	`, nodeID); err != nil {
 		return err
@@ -485,14 +436,14 @@ type NodePositionUpdate struct {
 	ManualY    *int
 }
 
-// BulkPosition applies a batch of (position, layout_mode, manual_x,
-// manual_y) updates in one tx. All updates must belong to
-// subscriptionID — any mismatch aborts the whole batch.
+// BulkPosition applies a batch of (sort_order, layout_mode, x, y)
+// updates in one tx. All updates must belong to subscriptionID — any
+// mismatch aborts the whole batch.
 func (s *Service) BulkPosition(ctx context.Context, subscriptionID uuid.UUID, updates []NodePositionUpdate) error {
 	if len(updates) == 0 {
 		return nil
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -520,8 +471,8 @@ func (s *Service) BulkPosition(ctx context.Context, subscriptionID uuid.UUID, up
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			UPDATE org_nodes
-			   SET position = $1, layout_mode = $2, manual_x = $3, manual_y = $4
+			UPDATE topology_nodes
+			   SET sort_order = $1, layout_mode = $2, x = $3, y = $4
 			 WHERE id = $5
 		`, u.Position, string(mode), mx, my, u.NodeID); err != nil {
 			return err
@@ -532,22 +483,20 @@ func (s *Service) BulkPosition(ctx context.Context, subscriptionID uuid.UUID, up
 
 // DuplicateSubtree clones the live subtree rooted at sourceID into the
 // same subscription, preserving every field except identity timestamps.
-// Names are copied verbatim — migration 096 dropped sibling-uniqueness,
+// Names are copied verbatim — sibling-uniqueness was dropped pre-cutover,
 // so a duplicate of "Dev" is a second "Dev" sitting next to the source.
 //
 // The whole walk runs in one transaction: either every row of the new
 // subtree commits, or none does. Old → new ID mapping is built as the
 // walk descends so each child's parent_id is remapped to its cloned
-// parent. Level rows are resolved per-depth via resolveLevelForDepth,
-// matching CreateNode semantics (the new root keeps the source's depth,
-// since we attach to the source's parent).
+// parent.
 //
 // Returns the new root node. The new root is appended after its source
-// in sibling order: position = source.position + 1 with all later
+// in sibling order: sort_order = source.sort_order + 1 with all later
 // siblings of the source shifted up by 1 in the same tx, so the new
 // root lands immediately to the right of the original.
 func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID uuid.UUID) (Node, error) {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return Node{}, err
 	}
@@ -559,50 +508,49 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 	}
 
 	// Shift later siblings of the source up by 1 so the clone can land
-	// at source.position + 1 without colliding. Root and child branches
+	// at source.sort_order + 1 without colliding. Root and child branches
 	// take slightly different WHERE clauses because parent_id is nullable.
 	if src.ParentID == nil {
 		if _, err := tx.Exec(ctx, `
-			UPDATE org_nodes
-			   SET position = position + 1
+			UPDATE topology_nodes
+			   SET sort_order = sort_order + 1
 			 WHERE subscription_id = $1
 			   AND parent_id IS NULL
 			   AND archived_at IS NULL
-			   AND position > $2
-		`, subscriptionID, src.Position); err != nil {
+			   AND sort_order > $2
+		`, subscriptionID, src.SortOrder); err != nil {
 			return Node{}, err
 		}
 	} else {
 		if _, err := tx.Exec(ctx, `
-			UPDATE org_nodes
-			   SET position = position + 1
+			UPDATE topology_nodes
+			   SET sort_order = sort_order + 1
 			 WHERE subscription_id = $1
 			   AND parent_id = $2
 			   AND archived_at IS NULL
-			   AND position > $3
-		`, subscriptionID, *src.ParentID, src.Position); err != nil {
+			   AND sort_order > $3
+		`, subscriptionID, *src.ParentID, src.SortOrder); err != nil {
 			return Node{}, err
 		}
 	}
 
 	// Walk the live subtree depth-first via recursive CTE, ordered so
-	// every parent appears before its children. We capture the depth so
-	// resolveLevelForDepth can pick the right level row for each clone.
+	// every parent appears before its children.
 	rows, err := tx.Query(ctx, `
 		WITH RECURSIVE down AS (
-		    SELECT n.*, 0 AS depth, ARRAY[n.position]::INT[] AS path
-		      FROM org_nodes n
+		    SELECT n.*, ARRAY[n.sort_order]::INT[] AS path
+		      FROM topology_nodes n
 		     WHERE n.id = $1 AND n.subscription_id = $2 AND n.archived_at IS NULL
 		    UNION ALL
-		    SELECT c.*, down.depth + 1, down.path || c.position
-		      FROM org_nodes c
+		    SELECT c.*, down.path || c.sort_order
+		      FROM topology_nodes c
 		      JOIN down ON c.parent_id = down.id
 		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL
 		)
-		SELECT id, parent_id, name, description, label_override,
+		SELECT id, workspace_id, parent_id, name, description, label_override,
 		       icon, colour, avatar_url,
-		       layout_mode, manual_x, manual_y,
-		       collapsed_default, position, depth
+		       layout_mode, x, y,
+		       collapsed_default, sort_order
 		  FROM down
 		 ORDER BY path
 	`, sourceID, subscriptionID)
@@ -610,11 +558,9 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 		return Node{}, err
 	}
 
-	// Drain rows fully before issuing further queries on this tx — pgx
-	// holds the connection until the rows iterator closes, and we'll
-	// be running INSERTs against the same tx in the next loop.
 	type srcRow struct {
 		ID               uuid.UUID
+		WorkspaceID      uuid.UUID
 		ParentID         *uuid.UUID
 		Name             string
 		Description      string
@@ -623,20 +569,19 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 		Colour           *string
 		AvatarURL        *string
 		LayoutMode       LayoutMode
-		ManualX          *int
-		ManualY          *int
+		X                *int
+		Y                *int
 		CollapsedDefault bool
-		Position         int
-		Depth            int
+		SortOrder        int
 	}
 	walked := []srcRow{}
 	for rows.Next() {
 		var r srcRow
 		if err := rows.Scan(
-			&r.ID, &r.ParentID, &r.Name, &r.Description, &r.LabelOverride,
+			&r.ID, &r.WorkspaceID, &r.ParentID, &r.Name, &r.Description, &r.LabelOverride,
 			&r.Icon, &r.Colour, &r.AvatarURL,
-			&r.LayoutMode, &r.ManualX, &r.ManualY,
-			&r.CollapsedDefault, &r.Position, &r.Depth,
+			&r.LayoutMode, &r.X, &r.Y,
+			&r.CollapsedDefault, &r.SortOrder,
 		); err != nil {
 			rows.Close()
 			return Node{}, err
@@ -648,15 +593,7 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 		return Node{}, err
 	}
 	if len(walked) == 0 {
-		// loadNode succeeded above so this can only happen if the row
-		// vanished mid-tx — treat as not-found rather than panicking.
 		return Node{}, ErrNodeNotFound
-	}
-
-	// Source root's depth in the wider tree (not the walk's local depth).
-	rootDepth, err := s.computeDepthForParent(ctx, tx, subscriptionID, src.ParentID)
-	if err != nil {
-		return Node{}, err
 	}
 
 	idMap := make(map[uuid.UUID]uuid.UUID, len(walked))
@@ -664,57 +601,51 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 
 	for i, r := range walked {
 		var newParent *uuid.UUID
-		var newPosition int
+		var newSortOrder int
 		if i == 0 {
 			// Root of the duplicate: attach to the source's parent and
-			// land at source.position + 1 (slot opened by the shift above).
+			// land at source.sort_order + 1 (slot opened by the shift above).
 			newParent = src.ParentID
-			newPosition = src.Position + 1
+			newSortOrder = src.SortOrder + 1
 		} else {
 			mapped, ok := idMap[*r.ParentID]
 			if !ok {
-				// Should be unreachable because the CTE orders parents
-				// before children, but fail loudly rather than silently
-				// reparenting to NULL (which would make the row a root).
 				return Node{}, ErrNodeNotFound
 			}
 			newParent = &mapped
-			newPosition = r.Position
-		}
-
-		levelID, err := s.resolveLevelForDepth(ctx, tx, subscriptionID, rootDepth+r.Depth)
-		if err != nil {
-			return Node{}, err
+			newSortOrder = r.SortOrder
 		}
 
 		var n Node
 		err = tx.QueryRow(ctx, `
-			INSERT INTO org_nodes (
-			    subscription_id, parent_id, level_id, name, description, label_override,
+			INSERT INTO topology_nodes (
+			    id,
+			    workspace_id, subscription_id, parent_id, name, description, label_override,
 			    icon, colour, avatar_url,
-			    layout_mode, manual_x, manual_y,
-			    collapsed_default, position
+			    layout_mode, x, y,
+			    collapsed_default, sort_order
 			) VALUES (
+			    gen_random_uuid(),
 			    $1, $2, $3, $4, $5, $6,
 			    $7, $8, $9,
 			    $10, $11, $12,
 			    $13, $14
 			)
 			RETURNING
-			    id, subscription_id, parent_id, level_id, name, description, label_override,
+			    id, workspace_id, subscription_id, parent_id, name, description, label_override,
 			    icon, colour, avatar_url,
-			    layout_mode, manual_x, manual_y,
-			    collapsed_default, position, archived_at, created_at, updated_at
+			    layout_mode, x, y,
+			    collapsed_default, sort_order, archived_at, created_at, updated_at
 		`,
-			subscriptionID, newParent, levelID, r.Name, r.Description, r.LabelOverride,
+			r.WorkspaceID, subscriptionID, newParent, r.Name, r.Description, r.LabelOverride,
 			r.Icon, r.Colour, r.AvatarURL,
-			string(r.LayoutMode), r.ManualX, r.ManualY,
-			r.CollapsedDefault, newPosition,
+			string(r.LayoutMode), r.X, r.Y,
+			r.CollapsedDefault, newSortOrder,
 		).Scan(
-			&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
+			&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 			&n.Icon, &n.Colour, &n.AvatarURL,
-			&n.LayoutMode, &n.ManualX, &n.ManualY,
-			&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
+			&n.LayoutMode, &n.X, &n.Y,
+			&n.CollapsedDefault, &n.SortOrder, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
 		)
 		if err != nil {
 			return Node{}, err
@@ -731,11 +662,11 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 	return newRoot, nil
 }
 
-// GrantRole inserts (or re-grants) an org_node_roles row. MVP
+// GrantRole inserts (or re-grants) a topology_role_grants row. MVP
 // constraint: at most one active admin grant per node — checked here
 // before the INSERT and also enforced by the partial unique index in
-// migration 083 (defence in depth). The same (node, user) cannot have
-// two active rows; an existing active grant for the same user is a
+// the artefacts schema (defence in depth). The same (node, user) cannot
+// have two active rows; an existing active grant for the same user is a
 // no-op (the existing row is returned).
 //
 // Story 00288 — federated handoff governance gate:
@@ -745,11 +676,6 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 //     Phase X but is read by zero handlers — passing true returns
 //     ErrRedelegationDisabled so a future loosening of the rule is an
 //     explicit code change, not a quiet config drift.
-//
-// granterRole is the caller's user.role at the time of the request, as
-// resolved by auth middleware. Pass "" for tooling/test contexts that
-// have already done their own gating; "" is treated as gadmin so this
-// boundary doesn't break test fixtures that predate the gate.
 func (s *Service) GrantRole(
 	ctx context.Context,
 	subscriptionID, nodeID, userID uuid.UUID,
@@ -768,7 +694,7 @@ func (s *Service) GrantRole(
 		return uuid.Nil, ErrDelegationDepth
 	}
 
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -780,11 +706,9 @@ func (s *Service) GrantRole(
 	}
 
 	// Idempotent: same (node, user) with an active grant returns it.
-	// No notification on idempotent re-grant — story 00283 fires only
-	// on a freshly-issued grant.
 	var existingID uuid.UUID
 	err = tx.QueryRow(ctx, `
-		SELECT id FROM roles_org_nodes
+		SELECT id FROM topology_role_grants
 		 WHERE node_id = $1 AND user_id = $2 AND revoked_at IS NULL
 		 LIMIT 1
 	`, nodeID, userID).Scan(&existingID)
@@ -802,8 +726,8 @@ func (s *Service) GrantRole(
 		var hasAdmin bool
 		err := tx.QueryRow(ctx, `
 			SELECT EXISTS(
-			    SELECT 1 FROM roles_org_nodes
-			     WHERE node_id = $1 AND role = 'admin' AND revoked_at IS NULL
+			    SELECT 1 FROM topology_role_grants
+			     WHERE node_id = $1 AND role_code = 'admin' AND revoked_at IS NULL
 			)
 		`, nodeID).Scan(&hasAdmin)
 		if err != nil {
@@ -817,11 +741,11 @@ func (s *Service) GrantRole(
 	var newID uuid.UUID
 	var grantedAt time.Time
 	err = tx.QueryRow(ctx, `
-		INSERT INTO roles_org_nodes
-		    (subscription_id, node_id, user_id, role, can_redelegate, granted_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO topology_role_grants
+		    (id, workspace_id, subscription_id, node_id, user_id, role_code, role_id, can_redelegate, granted_by)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NULL, $6, $7)
 		RETURNING id, granted_at
-	`, subscriptionID, nodeID, userID, string(role), canRedelegate, grantedBy).Scan(&newID, &grantedAt)
+	`, node.WorkspaceID, subscriptionID, nodeID, userID, string(role), canRedelegate, grantedBy).Scan(&newID, &grantedAt)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -847,8 +771,8 @@ func (s *Service) GrantRole(
 // ErrGrantNotFound (callers should treat the action as idempotent at
 // the API layer if they want).
 func (s *Service) RevokeRole(ctx context.Context, subscriptionID, grantID, revokedBy uuid.UUID) error {
-	tag, err := s.pool.Exec(ctx, `
-		UPDATE roles_org_nodes
+	tag, err := s.vaPool.Exec(ctx, `
+		UPDATE topology_role_grants
 		   SET revoked_at = NOW(), revoked_by = $1
 		 WHERE id = $2 AND subscription_id = $3 AND revoked_at IS NULL
 	`, revokedBy, grantID, subscriptionID)
@@ -861,70 +785,70 @@ func (s *Service) RevokeRole(ctx context.Context, subscriptionID, grantID, revok
 	return nil
 }
 
-// SetViewState upserts the per-user collapse/expand record for a
-// node. Subscription scope is enforced via the node load.
-func (s *Service) SetViewState(ctx context.Context, subscriptionID, nodeID, userID uuid.UUID, collapsed bool) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
+// SetViewState upserts the per-user canvas viewport (pan + zoom) for a
+// workspace. One row per (workspace_id, user_id); the unique constraint
+// drives ON CONFLICT.
+//
+// Signature change at M6.2.7: the legacy org_node_view_state stored
+// per-node collapse state, while topology_view_state stores the canvas
+// viewport. Callers now pass workspaceID + viewport coordinates instead
+// of nodeID + collapsed.
+func (s *Service) SetViewState(
+	ctx context.Context,
+	subscriptionID, workspaceID, userID uuid.UUID,
+	viewportX, viewportY, viewportZoom float64,
+) error {
+	if workspaceID == uuid.Nil {
+		return ErrWorkspaceRequired
+	}
+	if viewportZoom <= 0 {
+		// CHECK (viewport_zoom > 0) on the column; reject early.
+		viewportZoom = 1.0
+	}
+	if _, err := s.vaPool.Exec(ctx, `
+		INSERT INTO topology_view_state
+		    (workspace_id, subscription_id, user_id,
+		     viewport_x, viewport_y, viewport_zoom)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (workspace_id, user_id)
+		DO UPDATE SET viewport_x    = EXCLUDED.viewport_x,
+		              viewport_y    = EXCLUDED.viewport_y,
+		              viewport_zoom = EXCLUDED.viewport_zoom,
+		              updated_at    = NOW()
+	`, workspaceID, subscriptionID, userID, viewportX, viewportY, viewportZoom); err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
-
-	if _, err := s.loadNode(ctx, tx, nodeID, subscriptionID, true); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO org_node_view_state
-		    (subscription_id, node_id, user_id, collapsed, last_viewed_at)
-		VALUES ($1, $2, $3, $4, NOW())
-		ON CONFLICT (node_id, user_id)
-		DO UPDATE SET collapsed = EXCLUDED.collapsed,
-		              last_viewed_at = NOW()
-	`, subscriptionID, nodeID, userID, collapsed); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // Subtree returns every live descendant of rootID (including rootID
 // itself) inside the given subscription, ordered depth-first by
-// position. The recursive CTE is the same shape used by the clamp
+// sort_order. The recursive CTE is the same shape used by the clamp
 // predicate so query plans stay symmetric.
 //
 // When WorkspaceIDFromCtx is set (story 00378), every reference to
-// org_nodes is additionally filtered by workspace_id — a Topology
+// topology_nodes is additionally filtered by workspace_id — a Topology
 // canvas request bound to workspace W cannot accidentally surface a
-// row anchored under a sibling workspace in the same tenant, even if
-// the recursive descent or an archived branch would otherwise cross
-// the boundary. Without a workspace clamp (admin tools / migrations)
-// the query falls back to subscription-only scoping.
+// row anchored under a sibling workspace in the same tenant. Without
+// a workspace clamp (admin tools / migrations) the query falls back
+// to subscription-only scoping.
 func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID) ([]Node, error) {
-	// `down` walks the live tree rooted at $1 (path-ordered, used by the
-	//   frontend to render).
-	// `archived_children` finds every directly-archived child of any live
-	//   node in `down` — those are the entry points into the archived
-	//   sub-graphs the user can reach from this tree.
-	// `archived_subtree` then recursively expands each entry point into
-	//   the full archived closure. Counting these per live "anchor" gives
-	//   each live node its archived_descendant_count: every archived row
-	//   reachable through it (directly via an archived child, plus
-	//   anything those archived branches transitively contain).
 	wsClause, args, slot := workspaceClause(ctx, "n", []any{rootID, subscriptionID})
 	wsClauseC := workspaceClauseAt("c", slot)
 	wsClauseA := workspaceClauseAt("a", slot)
-	rows, err := s.pool.Query(ctx, `
+	rows, err := s.vaPool.Query(ctx, `
 		WITH RECURSIVE down AS (
-		    SELECT n.*, ARRAY[n.position, 0]::INT[] AS path
-		      FROM org_nodes n
+		    SELECT n.*, ARRAY[n.sort_order, 0]::INT[] AS path
+		      FROM topology_nodes n
 		     WHERE n.id = $1 AND n.subscription_id = $2 AND n.archived_at IS NULL`+wsClause+`
 		    UNION ALL
-		    SELECT c.*, down.path || c.position
-		      FROM org_nodes c
+		    SELECT c.*, down.path || c.sort_order
+		      FROM topology_nodes c
 		      JOIN down ON c.parent_id = down.id
 		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL`+wsClauseC+`
 		), archived_children AS (
 		    SELECT a.id AS arch_id, d.id AS anchor_id
-		      FROM org_nodes a
+		      FROM topology_nodes a
 		      JOIN down d ON a.parent_id = d.id
 		     WHERE a.subscription_id = $2
 		       AND a.archived_at IS NOT NULL`+wsClauseA+`
@@ -932,7 +856,7 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 		    SELECT arch_id, anchor_id FROM archived_children
 		    UNION ALL
 		    SELECT c.id, ast.anchor_id
-		      FROM org_nodes c
+		      FROM topology_nodes c
 		      JOIN archived_subtree ast ON c.parent_id = ast.arch_id
 		     WHERE c.subscription_id = $2
 		       AND c.archived_at IS NOT NULL`+wsClauseC+`
@@ -941,15 +865,6 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 		      FROM archived_subtree
 		     GROUP BY anchor_id
 		), live_path AS (
-		    -- (live_id=X, anchor_id=Y) where Y is X itself or a live
-		    -- descendant of X within the down CTE. Joining per_anchor on
-		    -- anchor_id and grouping by live_id rolls each branch
-		    -- archived count UP to every live ancestor, so an archived
-		    -- twig anchored at Y bumps Y, Y parent, grandparent, etc.
-		    -- (Earlier this CTE walked UP from each live node and joined
-		    -- per_anchor on the ancestor, which made a leaf count
-		    -- include its ancestors archived branches, painting a
-		    -- triangle on every row in the tree.)
 		    SELECT d.id AS live_id, d.id AS anchor_id
 		      FROM down d
 		    UNION ALL
@@ -962,10 +877,10 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 		      LEFT JOIN per_anchor pa ON pa.anchor_id = lp.anchor_id
 		     GROUP BY lp.live_id
 		)
-		SELECT d.id, d.subscription_id, d.parent_id, d.level_id, d.name, d.description, d.label_override,
+		SELECT d.id, d.workspace_id, d.subscription_id, d.parent_id, d.name, d.description, d.label_override,
 		       d.icon, d.colour, d.avatar_url,
-		       d.layout_mode, d.manual_x, d.manual_y,
-		       d.collapsed_default, d.position, d.archived_at, d.created_at, d.updated_at,
+		       d.layout_mode, d.x, d.y,
+		       d.collapsed_default, d.sort_order, d.archived_at, d.created_at, d.updated_at,
 		       COALESCE(r.arch_total, 0) AS archived_descendant_count
 		  FROM down d
 		  LEFT JOIN rollup r ON r.live_id = d.id
@@ -980,10 +895,10 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 	for rows.Next() {
 		var n Node
 		if err := rows.Scan(
-			&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
+			&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 			&n.Icon, &n.Colour, &n.AvatarURL,
-			&n.LayoutMode, &n.ManualX, &n.ManualY,
-			&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
+			&n.LayoutMode, &n.X, &n.Y,
+			&n.CollapsedDefault, &n.SortOrder, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
 			&n.ArchivedDescendantCount,
 		); err != nil {
 			return nil, err
@@ -998,21 +913,21 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 // on the node-detail panel and by audit log "where did this happen"
 // queries.
 func (s *Service) AncestorsOf(ctx context.Context, subscriptionID, nodeID uuid.UUID) ([]Node, error) {
-	rows, err := s.pool.Query(ctx, `
+	rows, err := s.vaPool.Query(ctx, `
 		WITH RECURSIVE up AS (
 		    SELECT n.*, 0 AS depth
-		      FROM org_nodes n
+		      FROM topology_nodes n
 		     WHERE n.id = $1 AND n.subscription_id = $2
 		    UNION ALL
 		    SELECT p.*, up.depth + 1
-		      FROM org_nodes p
+		      FROM topology_nodes p
 		      JOIN up ON up.parent_id = p.id
 		     WHERE p.subscription_id = $2
 		)
-		SELECT id, subscription_id, parent_id, level_id, name, description, label_override,
+		SELECT id, workspace_id, subscription_id, parent_id, name, description, label_override,
 		       icon, colour, avatar_url,
-		       layout_mode, manual_x, manual_y,
-		       collapsed_default, position, archived_at, created_at, updated_at
+		       layout_mode, x, y,
+		       collapsed_default, sort_order, archived_at, created_at, updated_at
 		  FROM up
 		 ORDER BY depth DESC
 	`, nodeID, subscriptionID)
@@ -1025,10 +940,10 @@ func (s *Service) AncestorsOf(ctx context.Context, subscriptionID, nodeID uuid.U
 	for rows.Next() {
 		var n Node
 		if err := rows.Scan(
-			&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
+			&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 			&n.Icon, &n.Colour, &n.AvatarURL,
-			&n.LayoutMode, &n.ManualX, &n.ManualY,
-			&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
+			&n.LayoutMode, &n.X, &n.Y,
+			&n.CollapsedDefault, &n.SortOrder, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1041,21 +956,11 @@ func (s *Service) AncestorsOf(ctx context.Context, subscriptionID, nodeID uuid.U
 // from a live anchor node. Walks down from `nodeID` (which must be live
 // and in this tenant), enters every archived child branch, and recurses
 // into transitively-archived descendants.
-//
-// The result is flat (no nesting); each row carries `parent_id` so the
-// frontend can rebuild the tree, plus `parent_is_archived` so the UI can
-// decide whether the row's default Restore action is reachable.
 func (s *Service) ArchivedDescendants(
 	ctx context.Context,
 	subscriptionID, nodeID uuid.UUID,
 ) ([]ArchivedDescendant, error) {
-	// Tenant + liveness check on the anchor — keeps tenant-isolation
-	// guarantees identical to Subtree (we never disclose the existence
-	// of a node in another subscription, and never list the archived
-	// closure of an archived anchor). loadNode uses SELECT … FOR UPDATE,
-	// so we MUST open a read-write tx (read-only tx + FOR UPDATE was the
-	// 500 that surfaced as "internal error" in the archive-map flyout).
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1064,44 +969,31 @@ func (s *Service) ArchivedDescendants(
 		return nil, err
 	}
 
-	// Walk live descendants of the anchor first, then enter every
-	// archived branch hanging off any of them. Using only direct
-	// archived children of the anchor would miss archived twigs whose
-	// nearest live ancestor is deeper in the tree — and the rollup
-	// count on the canvas counts them, so the flyout would disagree
-	// with the warning triangle.
-	//
-	// Workspace clamp (story 00378): scope every org_nodes reference
-	// to the request's workspace_id when present. The anchor itself
-	// has already been load-checked above; the recursive descent and
-	// the archived-parent join still need the predicate.
 	wsClauseN, archArgs, slot := workspaceClause(ctx, "n", []any{nodeID, subscriptionID})
 	wsClauseC := workspaceClauseAt("c", slot)
 	wsClauseA := workspaceClauseAt("a", slot)
 	rows, err := tx.Query(ctx, `
 		WITH RECURSIVE live_down AS (
 		    SELECT n.id
-		      FROM org_nodes n
+		      FROM topology_nodes n
 		     WHERE n.id = $1
 		       AND n.subscription_id = $2
 		       AND n.archived_at IS NULL`+wsClauseN+`
 		    UNION ALL
 		    SELECT c.id
-		      FROM org_nodes c
+		      FROM topology_nodes c
 		      JOIN live_down ld ON c.parent_id = ld.id
 		     WHERE c.subscription_id = $2
 		       AND c.archived_at IS NULL`+wsClauseC+`
 		), arch AS (
-		    -- Archived children whose parent is any live node in the
-		    -- anchor's live subtree.
 		    SELECT a.id, a.parent_id, a.name, a.archived_at
-		      FROM org_nodes a
+		      FROM topology_nodes a
 		      JOIN live_down ld ON a.parent_id = ld.id
 		     WHERE a.subscription_id = $2
 		       AND a.archived_at IS NOT NULL`+wsClauseA+`
 		    UNION ALL
 		    SELECT c.id, c.parent_id, c.name, c.archived_at
-		      FROM org_nodes c
+		      FROM topology_nodes c
 		      JOIN arch ON c.parent_id = arch.id
 		     WHERE c.subscription_id = $2
 		       AND c.archived_at IS NOT NULL`+wsClauseC+`
@@ -1109,7 +1001,7 @@ func (s *Service) ArchivedDescendants(
 		SELECT a.id, a.parent_id, a.name, a.archived_at,
 		       (p.archived_at IS NOT NULL) AS parent_is_archived
 		  FROM arch a
-		  LEFT JOIN org_nodes p ON p.id = a.parent_id
+		  LEFT JOIN topology_nodes p ON p.id = a.parent_id
 		 ORDER BY a.archived_at DESC, a.name
 	`, archArgs...)
 	if err != nil {
@@ -1149,7 +1041,7 @@ func (s *Service) RestoreNode(
 	subscriptionID, nodeID uuid.UUID,
 	newParentID *uuid.UUID,
 ) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -1163,17 +1055,12 @@ func (s *Service) RestoreNode(
 		return ErrNotArchived
 	}
 
-	// Resolve the landing parent. Three cases:
-	//   1. newParentID supplied → must exist + be live + same tenant.
-	//   2. newParentID nil + node had no parent → restore as a root.
-	//   3. newParentID nil + node had a parent → that parent must be live.
 	var landingParent *uuid.UUID
 	if newParentID != nil {
-		// Explicit reparent.
 		var pSub uuid.UUID
 		var pArchived *time.Time
 		err := tx.QueryRow(ctx, `
-			SELECT subscription_id, archived_at FROM org_nodes WHERE id = $1
+			SELECT subscription_id, archived_at FROM topology_nodes WHERE id = $1
 		`, *newParentID).Scan(&pSub, &pArchived)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrParentMissing
@@ -1189,10 +1076,9 @@ func (s *Service) RestoreNode(
 		}
 		landingParent = newParentID
 	} else if n.ParentID != nil {
-		// Implicit: keep the existing parent IF it is live.
 		var pArchived *time.Time
 		err := tx.QueryRow(ctx, `
-			SELECT archived_at FROM org_nodes WHERE id = $1 AND subscription_id = $2
+			SELECT archived_at FROM topology_nodes WHERE id = $1 AND subscription_id = $2
 		`, *n.ParentID, subscriptionID).Scan(&pArchived)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrParentMissing
@@ -1205,10 +1091,9 @@ func (s *Service) RestoreNode(
 		}
 		landingParent = n.ParentID
 	}
-	// landingParent stays nil for "restore as root" (case 2).
 
 	if _, err := tx.Exec(ctx, `
-		UPDATE org_nodes
+		UPDATE topology_nodes
 		   SET archived_at = NULL,
 		       parent_id   = $2,
 		       updated_at  = NOW()
@@ -1224,17 +1109,12 @@ func (s *Service) RestoreNode(
 // the union of the subtrees rooted at every node they hold an active
 // grant on. Empty result means "no Topology access" and should result
 // in an empty list response from any clamped endpoint.
-//
-// Wired in as cross-cutting middleware on every list endpoint that
-// touches obj_portfolio_items or user_stories. Feature teams MUST NOT
-// re-implement this — the docs/c_c_topology.md "Clamp predicate"
-// section is the single contract.
 func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := s.pool.Query(ctx, `
+	rows, err := s.vaPool.Query(ctx, `
 		WITH RECURSIVE grants AS (
 		    SELECT n.id
-		      FROM roles_org_nodes r
-		      JOIN org_nodes n ON n.id = r.node_id
+		      FROM topology_role_grants r
+		      JOIN topology_nodes n ON n.id = r.node_id
 		     WHERE r.subscription_id = $1
 		       AND r.user_id = $2
 		       AND r.revoked_at IS NULL
@@ -1243,7 +1123,7 @@ func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uui
 		    SELECT id FROM grants
 		    UNION
 		    SELECT c.id
-		      FROM org_nodes c
+		      FROM topology_nodes c
 		      JOIN reachable ON c.parent_id = reachable.id
 		     WHERE c.subscription_id = $1 AND c.archived_at IS NULL
 		)
@@ -1277,18 +1157,18 @@ func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uui
 func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionID uuid.UUID, allowArchived bool) (Node, error) {
 	var n Node
 	err := tx.QueryRow(ctx, `
-		SELECT id, subscription_id, parent_id, level_id, name, description, label_override,
+		SELECT id, workspace_id, subscription_id, parent_id, name, description, label_override,
 		       icon, colour, avatar_url,
-		       layout_mode, manual_x, manual_y,
-		       collapsed_default, position, archived_at, created_at, updated_at
-		  FROM org_nodes
+		       layout_mode, x, y,
+		       collapsed_default, sort_order, archived_at, created_at, updated_at
+		  FROM topology_nodes
 		 WHERE id = $1
 		 FOR UPDATE
 	`, nodeID).Scan(
-		&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
+		&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 		&n.Icon, &n.Colour, &n.AvatarURL,
-		&n.LayoutMode, &n.ManualX, &n.ManualY,
-		&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
+		&n.LayoutMode, &n.X, &n.Y,
+		&n.CollapsedDefault, &n.SortOrder, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Node{}, ErrNodeNotFound
@@ -1306,9 +1186,9 @@ func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionI
 	return n, nil
 }
 
-// validateManualXY enforces the same pair-or-null rule the migration
-// 082 CHECK enforces, in Go, so we return a typed error instead of a
-// raw constraint violation.
+// validateManualXY enforces the same pair-or-null rule the artefacts
+// migration 031 CHECK enforces, in Go, so we return a typed error
+// instead of a raw constraint violation.
 func validateManualXY(mode LayoutMode, x, y *int) error {
 	if mode == LayoutManual {
 		if x == nil || y == nil {

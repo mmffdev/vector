@@ -14,8 +14,8 @@
 //   4. CogMenu    — per-row menu items (type only this card; not wired)
 //   5. Colour     — tone overrides (badge/icon/pill); default no-op
 //
-// Concrete trees (WorkItemsTree, PortfolioItemsTree, …) compose this primitive
-// by passing column defs and fetchers — no per-tree scaffold copies.
+// ObjectTree (p_ObjectTree) composes this primitive by passing column defs and
+// fetchers configured per data type — no per-tree scaffold copies.
 
 import React, {
   useCallback,
@@ -122,7 +122,7 @@ export interface SortConfig {
 
 // PLA-0021 / 00449 — DnD rank. When provided, the tree paints a leading
 // drag-handle column, applies optimistic local reorder on drop, posts to
-// `/api/rank/move` via useResourceRank, and rolls back on a server reject.
+// `/rank/move` via useResourceRank, and rolls back on a server reject.
 // Drops within `roots` reorder the loaded root window; drops within an
 // expanded parent's children reorder that parent's child array.
 export interface DnDConfig {

@@ -1,11 +1,15 @@
 // Package tenantsettings is the SOLE writer for the
-// master_record_tenant table.
+// master_record_tenant table in vector_artefacts.
 //
-// One row exists per subscription (the table's PRIMARY KEY) and is
-// auto-seeded by a DB trigger on subscription INSERT. The service
-// surfaces a Get + Patch pair: Get auto-creates the row on demand
-// (defensive — covers any pre-trigger subscriptions), Patch applies
-// a partial update with full server-side validation.
+// One row exists per workspace (the table's PRIMARY KEY). Get
+// auto-creates the row on demand (defensive — covers workspaces
+// seeded before mig 036). Patch applies a partial update with full
+// server-side validation.
+//
+// Rewired for M2: reads/writes vector_artefacts (vaPool).
+// tenant_owner_user_id is accepted as a bare UUID — cross-DB user
+// existence is not validated here; the DB CHECK constraint on
+// email format is the only DB-enforced guard.
 package tenantsettings
 
 import (
@@ -129,36 +133,34 @@ var (
 	emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 )
 
-// Get returns the row for subscriptionID, defensively inserting an
-// empty row if none exists yet (the post-insert trigger on
-// subscriptions handles the normal seeding path; this guards against
-// pre-mig-126 tenants).
-func (s *Service) Get(ctx context.Context, subscriptionID uuid.UUID) (*Settings, error) {
-	row, err := s.read(ctx, subscriptionID)
+// Get returns the row for workspaceID, defensively inserting an
+// empty row if none exists yet.
+func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*Settings, error) {
+	row, err := s.read(ctx, workspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		if _, err := s.Pool.Exec(ctx,
-			`INSERT INTO master_record_tenant (tenant_id) VALUES ($1)
-             ON CONFLICT (tenant_id) DO NOTHING`,
-			subscriptionID,
+			`INSERT INTO master_record_tenant (workspace_id) VALUES ($1)
+             ON CONFLICT (workspace_id) DO NOTHING`,
+			workspaceID,
 		); err != nil {
 			return nil, err
 		}
-		return s.read(ctx, subscriptionID)
+		return s.read(ctx, workspaceID)
 	}
 	return row, err
 }
 
-func (s *Service) read(ctx context.Context, subscriptionID uuid.UUID) (*Settings, error) {
+func (s *Service) read(ctx context.Context, workspaceID uuid.UUID) (*Settings, error) {
 	var x Settings
 	err := s.Pool.QueryRow(ctx, `
-		SELECT tenant_id, tenant_name, tenant_description, tenant_owner_user_id, tenant_primary_contact_email,
+		SELECT workspace_id, tenant_name, tenant_description, tenant_owner_user_id, tenant_primary_contact_email,
 		       tenant_data_region, tenant_timezone, tenant_date_format, tenant_datetime_format,
 		       tenant_workdays, tenant_week_start, tenant_rank_method, tenant_build_changeset_tracking,
 		       tenant_notes,
 		       tenant_created_at, tenant_updated_at, tenant_archived_at
 		  FROM master_record_tenant
-		 WHERE tenant_id = $1`,
-		subscriptionID,
+		 WHERE workspace_id = $1`,
+		workspaceID,
 	).Scan(
 		&x.TenantID, &x.TenantName, &x.TenantDescription, &x.TenantOwnerUserID, &x.TenantPrimaryContactEmail,
 		&x.TenantDataRegion, &x.TenantTimezone, &x.TenantDateFormat, &x.TenantDatetimeFormat,
@@ -175,8 +177,8 @@ func (s *Service) read(ctx context.Context, subscriptionID uuid.UUID) (*Settings
 // Patch validates the input then applies a partial update. Returns
 // the fresh row on success. Validation failures return a
 // *ValidationError with the offending fields.
-func (s *Service) Patch(ctx context.Context, subscriptionID, actorID uuid.UUID, in PatchInput) (*Settings, error) {
-	if _, err := s.Get(ctx, subscriptionID); err != nil {
+func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in PatchInput) (*Settings, error) {
+	if _, err := s.Get(ctx, workspaceID); err != nil {
 		return nil, err
 	}
 
@@ -219,20 +221,7 @@ func (s *Service) Patch(ctx context.Context, subscriptionID, actorID uuid.UUID, 
 			if err != nil {
 				violations = append(violations, Violation{Field: "tenant_owner_user_id", Message: "must be a valid UUID"})
 			} else {
-				// Confirm the user belongs to the same subscription.
-				var ok bool
-				err := s.Pool.QueryRow(ctx,
-					`SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND subscription_id = $2)`,
-					id, subscriptionID,
-				).Scan(&ok)
-				if err != nil {
-					return nil, err
-				}
-				if !ok {
-					violations = append(violations, Violation{Field: "tenant_owner_user_id", Message: "user not found in this tenant"})
-				} else {
-					addSet("tenant_owner_user_id", id)
-				}
+				addSet("tenant_owner_user_id", id)
 			}
 		}
 	}
@@ -334,17 +323,17 @@ func (s *Service) Patch(ctx context.Context, subscriptionID, actorID uuid.UUID, 
 	}
 	if len(sets) == 0 {
 		// Nothing to do — return current.
-		return s.read(ctx, subscriptionID)
+		return s.read(ctx, workspaceID)
 	}
 
-	args = append(args, subscriptionID)
+	args = append(args, workspaceID)
 	q := fmt.Sprintf(
-		`UPDATE master_record_tenant SET %s WHERE tenant_id = $%d`,
+		`UPDATE master_record_tenant SET %s WHERE workspace_id = $%d`,
 		strings.Join(sets, ", "), len(args),
 	)
 	if _, err := s.Pool.Exec(ctx, q, args...); err != nil {
 		return nil, err
 	}
 	_ = actorID // future audit hook
-	return s.read(ctx, subscriptionID)
+	return s.read(ctx, workspaceID)
 }

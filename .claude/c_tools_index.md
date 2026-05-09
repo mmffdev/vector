@@ -27,20 +27,22 @@ Load when the user invokes a shortcut, command, or skill not listed in CLAUDE.md
 - **Selenium Grid UI (`<seleniumup>`)** → [`.claude/commands/c_selenium.md`](commands/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
 - **Playwright MCP (`<playwright>`)** → [`.claude/commands/c_playwright.md`](commands/c_playwright.md) — disabled by default (21 tools); use Crawlio for browser automation; enable by renaming `.mcp.json.disabled` → `.mcp.json`.
 - **Research agent (`/research`)** → [`.claude/commands/c_research.md`](commands/c_research.md) — crawl + web-search + compile structured reports; `--page` saves JSON to `dev/research/` viewable in Dev → Research tab.
-- **Research paper shorthand (`<addpaper>`)** → [`.claude/commands/c_addpaper.md`](commands/c_addpaper.md) — web-search-only shortcut that writes `dev/research/RNNN.json` and optionally hands off to `/stories` for Planka cards.
+- **Research paper shorthand (`<addpaper>`)** → [`.claude/commands/c_addpaper.md`](commands/c_addpaper.md) — web-search-only shortcut that writes `dev/research/RNNN.json` and optionally hands off to `/stories` for plan JSON stories.
 - **Research paper format** → [`.claude/commands/c_research-paper-format.md`](commands/c_research-paper-format.md) — canonical JSON shape for PM research papers, content HTML rules, frontmatter.
-- **Research paper stories** → [`.claude/commands/c_addpaper-stories.md`](commands/c_addpaper-stories.md) — synthesise story candidates from research; hands off to `/stories` for Planka card creation.
+- **Research paper stories** → [`.claude/commands/c_addpaper-stories.md`](commands/c_addpaper-stories.md) — synthesise story candidates from research; hands off to `/stories` for plan JSON writing.
 - **Write research paper** → [`.claude/commands/c_write-research-paper.md`](commands/c_write-research-paper.md) — shared CREATE step; allocates R### ID, stamps date, writes JSON to `dev/research/`.
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
 - **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
-- **Planka REST templates** → [`docs/c_c_planka_rest.md`](../docs/c_c_planka_rest.md) — child of `c_backlog`; auth, create (MCP), move, comment, board fetch, parallel scan, gotchas.
+- ~~**Planka REST templates**~~ → <!-- PLANKA SUSPENDED: doc preserved at docs/c_c_planka_rest.md for future re-activation; do not load while Planka is retired. -->
 - **Dev Plans tab** → [`dev/pages/DevPlansPanel.tsx`](../dev/pages/DevPlansPanel.tsx) — first tab in `/dev`; renders `dev/plans/PLA-NNNN.json` via `/api/dev/plans` (lazy-loaded body).
 - **Dev Retros tab** → [`dev/pages/DevRetrosPanel.tsx`](../dev/pages/DevRetrosPanel.tsx) — Ledger + Retrospectives sub-tabs; reads via `/api/dev/retros` (list, `?id=`, `?view=ledger`).
 
 ## Skills
 
-- **Retro skill (`<r>`, `/retro`)** → [`.claude/skills/retro/SKILL.md`](skills/retro/SKILL.md) — 5-Whys + reversal; auto-fires on LOOP DETECTED; writes `dev/retros/RETRO-NNN.json` + LEDGER; sev-4+ → Planka Continuous Improvement board (`1767896664086938708`); index at [`docs/c_retro_index.md`](../docs/c_retro_index.md).
+- **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` as single source of truth; `-r` opens discussion on in-flight items, `-a` adds from session context, `-u` runs codebase check and applies ✅/🔵/❌/⚠️ markers + P1–P5 priority; commit hook appends notes per item; session-start hook surfaces in-flight count.
+
+- **Retro skill (`<r>`, `/retro`)** → [`.claude/skills/retro/SKILL.md`](skills/retro/SKILL.md) — 5-Whys + reversal; auto-fires on LOOP DETECTED; writes `dev/retros/RETRO-NNN.json` + LEDGER; sev-4+ findings logged to tech debt; index at [`docs/c_retro_index.md`](../docs/c_retro_index.md). <!-- PLANKA SUSPENDED: sev-4+ previously created Planka CI board cards (1767896664086938708); skipped while Planka is retired. -->
 - **`/writeweb` skill** → [`.claude/skills/writeweb/SKILL.md`](skills/writeweb/SKILL.md) — Human-AI collaborative website copy; flags `-t hero|feature|faq|about|explainer`, `-len`, `-context`, `-h`.
 - **`<theme>` skill** → [`.claude/skills/theme/SKILL.md`](skills/theme/SKILL.md) — image → Vector theme pack; deterministic L/C/H bucket → role mapping; spec at [`docs/c_theme_rules.md`](../docs/c_theme_rules.md).
 - **`<chart>` skill (`-m` make from image, `-p` place from plan)** → [`.claude/skills/chart/SKILL.md`](skills/chart/SKILL.md) — themed chart component in `app/components/`, stub data, sanitised preview random generator, dashboard catalog entry.

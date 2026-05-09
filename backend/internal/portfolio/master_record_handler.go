@@ -17,8 +17,8 @@ package portfolio
 //     404 (not 403) so the workspace's existence is not leaked.
 //   - Padmin / Gadmin bypass the per-workspace membership check
 //     (tenant-admin tier).
-//   - All other authenticated users must hold an active workspace_roles
-//     grant or a user_workspace_permissions row with can_view = true.
+//   - All other authenticated users must hold an active roles_workspaces
+//     grant (viewer / editor / admin).
 //
 // Errors are RFC 9457 problem-details via internal/httperr.
 
@@ -41,8 +41,8 @@ import (
 // Handler is the HTTP surface for master_record_portfolio reads.
 //
 // vectorPool is the mmff_vector pool — used ONLY for the tenancy +
-// membership probe (workspace.subscription_id, workspace_roles,
-// user_workspace_permissions). master_record_portfolio itself lives in
+// membership probe (master_record_workspaces.subscription_id,
+// roles_workspaces). master_record_portfolio itself lives in
 // vector_artefacts and is read through Svc, never directly here.
 type Handler struct {
 	Svc        *Service
@@ -96,8 +96,8 @@ func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Tenancy + membership check. On any "not allowed" outcome we
-	// return 404 so existence isn't leaked — same shape as
-	// wsperms.assertWorkspaceInTenant.
+	// return 404 so existence isn't leaked (leak-resistant: do not
+	// distinguish "not found" from "not in your tenant").
 	ok, err := h.canRead(r.Context(), u, workspaceID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
@@ -161,8 +161,8 @@ func (h *Handler) canRead(ctx context.Context, u *models.User, workspaceID uuid.
 		return true, nil
 	}
 
-	// Per-workspace membership: either an active workspace_roles grant
-	// or a user_workspace_permissions row with can_view = true.
+	// Per-workspace membership: any active roles_workspaces grant
+	// (viewer / editor / admin) suffices.
 	var member bool
 	err = h.vectorPool.QueryRow(ctx, `
 		SELECT EXISTS (
@@ -170,12 +170,6 @@ func (h *Handler) canRead(ctx context.Context, u *models.User, workspaceID uuid.
 		     WHERE workspace_id = $1
 		       AND user_id = $2
 		       AND revoked_at IS NULL
-		)
-		OR EXISTS (
-		    SELECT 1 FROM user_workspace_permissions
-		     WHERE workspace_id = $1
-		       AND user_id = $2
-		       AND can_view = TRUE
 		)`,
 		workspaceID, u.ID,
 	).Scan(&member)

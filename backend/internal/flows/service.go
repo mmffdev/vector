@@ -7,93 +7,56 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service is the sole writer to obj_flow_tenant. All queries are scoped by
-// subscription_id at the SQL boundary — callers pass the caller's
-// SubscriptionID and the service refuses to leak across tenants.
+// Service reads flows and their states from vector_artefacts, scoped per
+// subscription. mainPool is kept for the tenancy gate only (membership
+// check); all data reads go to vaPool.
 type Service struct {
-	pool *pgxpool.Pool
+	vaPool   *pgxpool.Pool
+	mainPool *pgxpool.Pool
 }
 
-// New returns a Service backed by the given pool.
-func New(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
+// New returns a Service backed by the given pools.
+func New(vaPool, mainPool *pgxpool.Pool) *Service {
+	return &Service{vaPool: vaPool, mainPool: mainPool}
+}
 
-// ListBySubscription returns every flow row for the subscription, grouped by
-// target (system / tenant / portfolio). Each group's states are ordered by
-// flow_position. Archived rows are excluded.
-//
-// We do three small queries rather than one big polymorphic UNION because
-// each target type joins to a different label table and the query plans
-// stay obvious.
+// ListBySubscription returns every flow for the subscription, each with its
+// states ordered by sort_order. Archived flows and states are excluded.
 func (s *Service) ListBySubscription(ctx context.Context, subscriptionID string) (*ListResponse, error) {
-	system, err := s.listSystem(ctx, subscriptionID)
+	work, err := s.listByScope(ctx, subscriptionID, "work")
 	if err != nil {
-		return nil, fmt.Errorf("flows: list system: %w", err)
+		return nil, fmt.Errorf("flows: list work scope: %w", err)
 	}
-	tenant, err := s.listTenant(ctx, subscriptionID)
+	strategy, err := s.listByScope(ctx, subscriptionID, "strategy")
 	if err != nil {
-		return nil, fmt.Errorf("flows: list tenant: %w", err)
+		return nil, fmt.Errorf("flows: list strategy scope: %w", err)
 	}
-	portfolio, err := s.listPortfolio(ctx, subscriptionID)
-	if err != nil {
-		return nil, fmt.Errorf("flows: list portfolio: %w", err)
-	}
-	return &ListResponse{System: system, Tenant: tenant, Portfolio: portfolio}, nil
+	return &ListResponse{Work: work, Strategy: strategy}, nil
 }
 
-func (s *Service) listSystem(ctx context.Context, subID string) ([]FlowGroup, error) {
+func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string) ([]FlowGroup, error) {
 	const q = `
 		SELECT
-		    f.id, f.subscription_id, f.flow_position, f.name, f.canonical_code, f.description,
-		    f.system_artefact_type_id, f.tenant_artefact_type_id, f.portfolio_item_type_id,
-		    f.created_at, f.updated_at,
-		    t.id AS target_id, t.display_label_plural AS target_label
-		FROM obj_flow_tenant f
-		JOIN obj_execution_types t ON t.id = f.system_artefact_type_id
-		WHERE f.subscription_id = $1
-		  AND f.system_artefact_type_id IS NOT NULL
+		    f.id,
+		    f.artefact_type_id,
+		    at.name        AS type_name,
+		    at.scope       AS type_scope,
+		    fs.id          AS state_id,
+		    fs.name        AS state_name,
+		    fs.kind        AS state_kind,
+		    fs.sort_order  AS state_sort_order,
+		    fs.is_initial  AS state_is_initial,
+		    fs.colour      AS state_colour
+		FROM flows f
+		JOIN artefact_types at ON at.id = f.artefact_type_id
+		JOIN flow_states    fs ON fs.flow_id = f.id AND fs.archived_at IS NULL
+		WHERE at.subscription_id = $1
+		  AND at.scope = $2
+		  AND at.archived_at IS NULL
 		  AND f.archived_at IS NULL
-		ORDER BY t.display_label_plural, f.flow_position;`
-	return s.scanGroups(ctx, q, subID, "system")
-}
+		ORDER BY at.name, fs.sort_order;`
 
-func (s *Service) listTenant(ctx context.Context, subID string) ([]FlowGroup, error) {
-	const q = `
-		SELECT
-		    f.id, f.subscription_id, f.flow_position, f.name, f.canonical_code, f.description,
-		    f.system_artefact_type_id, f.tenant_artefact_type_id, f.portfolio_item_type_id,
-		    f.created_at, f.updated_at,
-		    t.id AS target_id, t.display_label_plural AS target_label
-		FROM obj_flow_tenant f
-		JOIN obj_execution_types_tenant t ON t.id = f.tenant_artefact_type_id
-		WHERE f.subscription_id = $1
-		  AND f.tenant_artefact_type_id IS NOT NULL
-		  AND f.archived_at IS NULL
-		  AND t.archived_at IS NULL
-		ORDER BY t.display_label_plural, f.flow_position;`
-	return s.scanGroups(ctx, q, subID, "tenant")
-}
-
-func (s *Service) listPortfolio(ctx context.Context, subID string) ([]FlowGroup, error) {
-	const q = `
-		SELECT
-		    f.id, f.subscription_id, f.flow_position, f.name, f.canonical_code, f.description,
-		    f.system_artefact_type_id, f.tenant_artefact_type_id, f.portfolio_item_type_id,
-		    f.created_at, f.updated_at,
-		    p.id AS target_id, p.name AS target_label
-		FROM obj_flow_tenant f
-		JOIN obj_strategy_types p ON p.id = f.portfolio_item_type_id
-		WHERE f.subscription_id = $1
-		  AND f.portfolio_item_type_id IS NOT NULL
-		  AND f.archived_at IS NULL
-		  AND p.archived_at IS NULL
-		ORDER BY p.name, f.flow_position;`
-	return s.scanGroups(ctx, q, subID, "portfolio")
-}
-
-// scanGroups reads rows from any of the three list queries and bins them
-// by target_id while preserving target order.
-func (s *Service) scanGroups(ctx context.Context, query, subID, kind string) ([]FlowGroup, error) {
-	rows, err := s.pool.Query(ctx, query, subID)
+	rows, err := s.vaPool.Query(ctx, q, subscriptionID, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -104,27 +67,25 @@ func (s *Service) scanGroups(ctx context.Context, query, subID, kind string) ([]
 
 	for rows.Next() {
 		var (
-			st          FlowState
-			targetID    string
-			targetLabel string
+			flowID, typeID, typeName, typeScope string
+			st                                  FlowState
 		)
 		if err := rows.Scan(
-			&st.ID, &st.SubscriptionID, &st.Position, &st.Name, &st.CanonicalCode, &st.Description,
-			&st.SystemTypeID, &st.TenantTypeID, &st.PortfolioTypeID,
-			&st.CreatedAt, &st.UpdatedAt,
-			&targetID, &targetLabel,
+			&flowID, &typeID, &typeName, &typeScope,
+			&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
 		); err != nil {
 			return nil, err
 		}
-		idx, ok := groupIdx[targetID]
+		idx, ok := groupIdx[flowID]
 		if !ok {
 			idx = len(groups)
-			groupIdx[targetID] = idx
+			groupIdx[flowID] = idx
 			groups = append(groups, FlowGroup{
-				TargetKind:  kind,
-				TargetID:    targetID,
-				TargetLabel: targetLabel,
-				States:      []FlowState{},
+				FlowID:    flowID,
+				TypeID:    typeID,
+				TypeName:  typeName,
+				TypeScope: typeScope,
+				States:    []FlowState{},
 			})
 		}
 		groups[idx].States = append(groups[idx].States, st)

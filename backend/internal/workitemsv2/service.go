@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
 // Service owns all DB operations for the v2 work-items domain.
@@ -17,6 +18,7 @@ import (
 type Service struct {
 	vectorArtefactsPool *pgxpool.Pool
 	mainPool            *pgxpool.Pool
+	notifier            *webhooks.Notifier
 }
 
 // NewService creates a Service backed by the given pools.
@@ -25,6 +27,9 @@ type Service struct {
 func NewService(vaPool, mainPool *pgxpool.Pool) *Service {
 	return &Service{vectorArtefactsPool: vaPool, mainPool: mainPool}
 }
+
+// WithNotifier attaches a webhook notifier. Safe to call with nil.
+func (s *Service) WithNotifier(n *webhooks.Notifier) { s.notifier = n }
 
 // rollupCTE is the WITH RECURSIVE expression retargeted to
 // vector_artefacts.artefacts. Structure is identical to v1's
@@ -582,7 +587,12 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return s.GetWorkItem(ctx, subscriptionID, newID)
+	item, err := s.GetWorkItem(ctx, subscriptionID, newID)
+	if err != nil {
+		return nil, err
+	}
+	s.notifier.Fire(subscriptionID, "item.created", item)
+	return item, nil
 }
 
 // PatchWorkItem applies a partial update to an artefact row.
@@ -681,7 +691,16 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if ct.RowsAffected() == 0 {
 		return nil, ErrNotFound
 	}
-	return s.GetWorkItem(ctx, subscriptionID, id)
+	item, err := s.GetWorkItem(ctx, subscriptionID, id)
+	if err != nil {
+		return nil, err
+	}
+	eventType := "item.updated"
+	if in.FlowStateID != nil {
+		eventType = "item.status_changed"
+	}
+	s.notifier.Fire(subscriptionID, eventType, item)
+	return item, nil
 }
 
 // ArchiveWorkItem sets archived_at on an artefact row (soft delete).
@@ -701,6 +720,7 @@ func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID uuid.UUID,
 	if ct.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+	s.notifier.Fire(subscriptionID, "item.deleted", map[string]string{"id": id.String()})
 	return nil
 }
 

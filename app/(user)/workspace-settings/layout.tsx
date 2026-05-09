@@ -6,7 +6,7 @@ import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
-const TABS = ["organization", "workspaces", "users", "permissions", "topology", "portfolio_model", "work_items", "custom_fields"] as const;
+const TABS = ["organization", "workspaces", "users", "permissions", "topology", "topology_map", "portfolio_model", "work_items", "custom_fields"] as const;
 type TabKey = typeof TABS[number];
 
 const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
@@ -15,6 +15,7 @@ const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
   users:           { title: "Users",           subtitle: "Invite, manage, and assign roles to tenant members" },
   permissions:     { title: "Permissions",     subtitle: "Capabilities granted to each role in this tenant" },
   topology:        { title: "Topology",        subtitle: "Federated org canvas — offices, teams, and reporting lines" },
+  topology_map:    { title: "Topology Map",    subtitle: "3D map of how work items cluster across the tenant" },
   portfolio_model: { title: "Portfolio Model", subtitle: "Adopt a model or preview your subscription's adopted bundle" },
   work_items:      { title: "Work Items",      subtitle: "Flows for system, portfolio, and custom artefact types" },
   custom_fields:   { title: "Custom Fields",   subtitle: "Tenant-defined fields available on work items and portfolio artefacts" },
@@ -22,6 +23,7 @@ const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
 
 // Tab key → URL path segment (only overrides where they differ)
 const KEY_TO_SEG: Partial<Record<TabKey, string>> = {
+  topology_map:    "topology-map",
   portfolio_model: "portfolio-model",
   work_items:      "work-items",
   custom_fields:   "custom-fields",
@@ -34,6 +36,7 @@ const SEG_TO_KEY: Record<string, TabKey> = {
   users:           "users",
   permissions:     "permissions",
   topology:        "topology",
+  "topology-map":  "topology_map",
   "portfolio-model": "portfolio_model",
   "work-items":    "work_items",
   "custom-fields": "custom_fields",
@@ -102,6 +105,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
           { key: "users",           label: "Users",           sortKey: "Users" },
           { key: "permissions",     label: "Permissions",     sortKey: "Permissions" },
           { key: "topology",        label: "Topology",        sortKey: "Topology" },
+          { key: "topology_map",    label: "Topology Map",    sortKey: "Topology Map" },
           { key: "portfolio_model", label: "Portfolio Model", sortKey: "Portfolio Model" },
           ...(canManageFlows ? [{ key: "work_items" as const, label: "Work Items", sortKey: "Work Items" }] : []),
           { key: "custom_fields",   label: "Custom Fields",   sortKey: "Custom Fields" },

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 240" role="img" aria-labelledby="uptime-title uptime-desc" font-family="Inter, system-ui, sans-serif">
+  <title id="uptime-title">Tunnel uptime — rolling 24 hours</title>
+  <desc id="uptime-desc">Line chart of SSH tunnel uptime percentage sampled every hour for the last 24 hours. Y axis is percent from 90 to 100. Reference band shaded between 99.0 and 100 marks the SLO. Most samples sit between 99.4 and 100; one dip to 96.2 occurred around hour 11.</desc>
+  <rect x="0" y="0" width="720" height="240" fill="#FFFFFF"/>
+  <text x="24" y="28" font-size="14" font-weight="600" fill="#1A1A1A">Tunnel uptime — rolling 24h</text>
+  <text x="24" y="46" font-size="11" fill="#5C5C5C">Target ≥ 99.0% (shaded). Sampled hourly via /healthz tunnel probe.</text>
+  <!-- plot area: x 60..690 (630 wide), y 70..200 (130 tall) -->
+  <!-- SLO band 99.0..100 -->
+  <rect x="60" y="70" width="630" height="13" fill="#E5F0E9"/>
+  <!-- gridlines: 90, 92.5, 95, 97.5, 100 -->
+  <g stroke="#E5E1DA" stroke-width="1">
+    <line x1="60" y1="200" x2="690" y2="200"/>
+    <line x1="60" y1="167.5" x2="690" y2="167.5"/>
+    <line x1="60" y1="135" x2="690" y2="135"/>
+    <line x1="60" y1="102.5" x2="690" y2="102.5"/>
+    <line x1="60" y1="70" x2="690" y2="70"/>
+  </g>
+  <!-- y labels -->
+  <g font-size="10" fill="#8A8A8A" text-anchor="end">
+    <text x="54" y="204">90%</text>
+    <text x="54" y="171.5">92.5%</text>
+    <text x="54" y="139">95%</text>
+    <text x="54" y="106.5">97.5%</text>
+    <text x="54" y="74">100%</text>
+  </g>
+  <!-- x labels -->
+  <g font-size="10" fill="#8A8A8A" text-anchor="middle">
+    <text x="60" y="218">-24h</text>
+    <text x="217.5" y="218">-18h</text>
+    <text x="375" y="218">-12h</text>
+    <text x="532.5" y="218">-6h</text>
+    <text x="690" y="218">now</text>
+  </g>
+  <!-- data path: 24 hourly points across 60..690 (step ~26.25) values mapped 90..100 to y 200..70 -->
+  <polyline fill="none" stroke="#1A1A1A" stroke-width="1.75" stroke-linejoin="round" points="
+    60,75 86.25,73 112.5,72 138.75,74 165,76 191.25,73 217.5,72 243.75,72 270,73 296.25,82 322.5,121 348.75,89 375,77 401.25,73 427.5,72 453.75,71 480,72 506.25,73 532.5,72 558.75,71 585,72 611.25,72 637.5,73 663.75,71 690,72
+  "/>
+  <!-- dip marker -->
+  <circle cx="322.5" cy="121" r="3" fill="#B23B3B"/>
+  <text x="328" y="118" font-size="10" fill="#B23B3B">96.2% (1 reconnect)</text>
+  <!-- legend -->
+  <g font-size="11">
+    <rect x="500" y="36" width="12" height="3" fill="#1A1A1A"/>
+    <text x="518" y="40" fill="#5C5C5C">uptime %</text>
+    <rect x="588" y="33" width="12" height="9" fill="#E5F0E9"/>
+    <text x="606" y="40" fill="#5C5C5C">SLO ≥99%</text>
+  </g>
+</svg>

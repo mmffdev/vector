@@ -331,9 +331,9 @@ var validFieldTypes = map[string]bool{
 }
 
 // validItemTypes is the set of allowed item_type discriminators. Mirrors
-// the CHECK in migration 066 (epic | story | task | defect).
+// the CHECK in migration 066 (epic | story | task | defect) plus portfolio item (PLA-0033).
 var validItemTypes = map[string]bool{
-	"epic": true, "story": true, "task": true, "defect": true,
+	"epic": true, "story": true, "task": true, "defect": true, "portfolio item": true,
 }
 
 // validStatuses is the set of allowed work item statuses.

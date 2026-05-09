@@ -273,11 +273,23 @@ export async function GET(request: Request) {
       .sort()
       .reverse();
 
+    // Fetch the board once and sync all plans so counters reflect the live
+    // Planka state (e.g. cards moved to Completed by an agent).
+    const board = await fetchBoard();
+
     const plans: PlanMeta[] = [];
     for (const file of files) {
       try {
         const raw = fs.readFileSync(path.join(PLANS_DIR, file), "utf-8");
-        plans.push(summarise(JSON.parse(raw) as PlanDoc));
+        let plan = JSON.parse(raw) as PlanDoc;
+        if (board) {
+          const { plan: synced, changed } = syncPlanFromBoard(plan, board);
+          if (changed) {
+            writePlan(synced);
+            plan = synced;
+          }
+        }
+        plans.push(summarise(plan));
       } catch {
         // skip malformed
       }

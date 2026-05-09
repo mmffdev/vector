@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0034`
+**Last issued:** `PLA-0036`
 
 ## Format
 
@@ -55,6 +55,8 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0032` | Tenant-Settings Migration — `master_record_tenant` → vector_artefacts | 2026-05-08 | active |
 | `PLA-0033` | Polymorphic Artefact Consolidation — defects + user-stories + portfolio-items → `artefacts` | 2026-05-08 | active |
 | `PLA-0034` | Topology Migration — `org_nodes` / `roles_org_nodes` / `org_node_view_state` → vector_artefacts | 2026-05-08 | active |
+| `PLA-0035` | Work Item Relations Graph — 3D force-directed Obsidian-style globe on the Work Items page | 2026-05-09 | active |
+| `PLA-0036` | Typed work-item links — `work_item_links` table for blocks/duplicates/relates_to cross-tree edges | 2026-05-09 | reserved |
 
 ## Scope linkage rule
 

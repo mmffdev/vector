@@ -50,7 +50,7 @@ var systemRoleSet = map[uuid.UUID]struct{}{
 // clearer error before the round-trip.
 var reservedSystemRanks = map[int]struct{}{5: {}, 10: {}, 20: {}, 25: {}, 30: {}}
 
-// Sentinel errors. Same family/shape as wsperms / entityrefs.
+// Sentinel errors. Same family/shape as entityrefs.
 var (
 	// ErrNotFound — role doesn't exist OR belongs to another tenant.
 	// Existence is sensitive; same error either way.

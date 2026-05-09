@@ -98,6 +98,20 @@
   margin: 0;
 }
 
+/* Stacks the title + a sub-row (e.g. live-update growthbar) under it,
+ * while still claiming flex:1 so the meta strip stays right-aligned. */
+.dui-panel__title-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.dui-panel__title-stack .dui-panel__title {
+  flex: 0 0 auto;
+}
+
 .dui-panel__body {
   padding: var(--space-4);
 }
@@ -1536,4 +1550,75 @@
 
 .dui-icons-host {
   height: calc(100vh - 160px);
+}
+
+
+/* ─── 27. Sticky subheader — frozen strip just above scroll content ─ */
+/*
+ * Sits inside .app-viewport-container (the page scroll root) and sticks to
+ * the top as the user scrolls. Use for secondary-nav tabs, counter bars, or
+ * any content that must remain visible regardless of scroll depth.
+ *
+ * Pattern:
+ *   <div class="dui-sticky-subheader">
+ *     <nav class="dev-tabs">…</nav>
+ *     <div class="dui-sticky-subheader__row">…optional extra rows…</div>
+ *   </div>
+ */
+
+.dui-sticky-subheader {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--canvas);
+}
+
+.dui-sticky-subheader__row {
+  padding: var(--space-2) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--canvas);
+}
+
+.dui-sticky-subheader + * {
+  margin-top: var(--space-6);
+}
+
+/* ─── 28. Growth bar — running tick of updates next to a label ─ */
+
+/*
+ * Inline strip of small green rectangles that grows by one tick on
+ * every "update" (e.g. each save of Vector_Scope.md). Caps at --dui-growthbar-max
+ * (default 100) and resets to 1 on the next tick after the cap.
+ *
+ * Pattern:
+ *   <span class="dui-growthbar">
+ *     <span class="dui-growthbar__tick"></span>
+ *     <span class="dui-growthbar__tick"></span>
+ *     ...
+ *     <span class="dui-growthbar__time">27/11/1975 : 18:57</span>
+ *   </span>
+ */
+
+.dui-growthbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+
+.dui-growthbar__tick {
+  display: inline-block;
+  width: 10px;
+  height: 20px;
+  background: #50E869;
+  border-radius: 1px;
+  flex: 0 0 auto;
+}
+
+.dui-growthbar__time {
+  margin-left: var(--space-2);
+  white-space: nowrap;
+  color: var(--ink-muted, var(--text-muted, #888));
+  font-variant-numeric: tabular-nums;
 }

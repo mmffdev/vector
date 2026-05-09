@@ -5,8 +5,13 @@ package orgdesign
 //
 // Lives alongside service.go inside the sole-writer boundary —
 // every INSERT/UPDATE here counts toward the package's monopoly
-// on writes to org_nodes / org_node_roles / org_node_view_state /
-// subscriptions.topology_committed_*.
+// on writes to topology_nodes / topology_role_grants /
+// topology_view_state (vector_artefacts) and the legacy
+// subscriptions.topology_committed_* columns (mmff_vector).
+//
+// Topology reads/writes go through s.vaPool. The
+// subscriptions.topology_committed_* checkpoint still lives in
+// mmff_vector and is read/written via s.pool.
 
 import (
 	"context"
@@ -47,7 +52,7 @@ func (s *Service) PatchNode(ctx context.Context, subscriptionID, nodeID uuid.UUI
 		}
 	}
 
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -88,7 +93,7 @@ func (s *Service) PatchNode(ctx context.Context, subscriptionID, nodeID uuid.UUI
 		add("avatar_url", nullIfEmpty(*in.AvatarURL))
 	}
 	args = append(args, nodeID)
-	sql := "UPDATE org_nodes SET " + strings.Join(parts, ", ") + " WHERE id = $" + itoa(idx)
+	sql := "UPDATE topology_nodes SET " + strings.Join(parts, ", ") + " WHERE id = $" + itoa(idx)
 
 	if _, err := tx.Exec(ctx, sql, args...); err != nil {
 		return err
@@ -104,8 +109,12 @@ func (s *Service) PatchNode(ctx context.Context, subscriptionID, nodeID uuid.UUI
 // Reversible via the standard MoveNode call once a new parent is
 // chosen. Idempotent when called on an already-detached root
 // (it's a no-op).
+//
+// Note: legacy org_levels-based depth refresh was removed at
+// M6.2.7 — vector_artefacts has no level_id column, depth is
+// derived on the fly by the renderer from parent_id chains.
 func (s *Service) DisconnectNode(ctx context.Context, subscriptionID, nodeID uuid.UUID) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -120,22 +129,18 @@ func (s *Service) DisconnectNode(ctx context.Context, subscriptionID, nodeID uui
 		return tx.Commit(ctx)
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE org_nodes SET parent_id = NULL WHERE id = $1`, nodeID); err != nil {
-		return err
-	}
-	// Subtree depths shift up; re-resolve level_id for every row.
-	if err := s.refreshSubtreeLevels(ctx, tx, subscriptionID, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE topology_nodes SET parent_id = NULL WHERE id = $1`, nodeID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
 // ListDisconnected returns every live node whose parent_id is NULL,
-// excluding the canonical root (the lowest-position root). The
+// excluding the canonical root (the lowest-sort_order root). The
 // disconnected tray (story 00321) renders this list so a user can
 // re-attach orphaned subtrees.
 //
-// "Canonical root" is defined as the lowest-position parent_id-NULL
+// "Canonical root" is defined as the lowest-sort_order parent_id-NULL
 // node. Tenants will normally have exactly one root; multi-root
 // data is treated as: first root = canonical, the rest = disconnected.
 //
@@ -146,28 +151,28 @@ func (s *Service) DisconnectNode(ctx context.Context, subscriptionID, nodeID uui
 // tenant. Without a clamp the query falls back to subscription-only
 // scoping.
 func (s *Service) ListDisconnected(ctx context.Context, subscriptionID uuid.UUID) ([]Node, error) {
-	// The disconnected tray's two org_nodes references both need the
+	// The disconnected tray's two topology_nodes references both need the
 	// same workspace_id, so we bind it once and re-splice via the
 	// `slot` returned from workspaceClause.
-	wsClauseRoots, args, slot := workspaceClause(ctx, "org_nodes", []any{subscriptionID})
+	wsClauseRoots, args, slot := workspaceClause(ctx, "topology_nodes", []any{subscriptionID})
 	wsClauseN := workspaceClauseAt("n", slot)
-	rows, err := s.pool.Query(ctx, `
+	rows, err := s.vaPool.Query(ctx, `
 		WITH roots AS (
-		    SELECT id, position,
-		           ROW_NUMBER() OVER (ORDER BY position, created_at) AS rn
-		      FROM org_nodes
+		    SELECT id, sort_order,
+		           ROW_NUMBER() OVER (ORDER BY sort_order, created_at) AS rn
+		      FROM topology_nodes
 		     WHERE subscription_id = $1
 		       AND parent_id IS NULL
 		       AND archived_at IS NULL`+wsClauseRoots+`
 		)
-		SELECT n.id, n.subscription_id, n.parent_id, n.level_id, n.name, n.description, n.label_override,
+		SELECT n.id, n.workspace_id, n.subscription_id, n.parent_id, n.name, n.description, n.label_override,
 		       n.icon, n.colour, n.avatar_url,
-		       n.layout_mode, n.manual_x, n.manual_y,
-		       n.collapsed_default, n.position, n.archived_at, n.created_at, n.updated_at
-		  FROM org_nodes n
+		       n.layout_mode, n.x, n.y,
+		       n.collapsed_default, n.sort_order, n.archived_at, n.created_at, n.updated_at
+		  FROM topology_nodes n
 		  JOIN roots r ON r.id = n.id
 		 WHERE r.rn > 1`+wsClauseN+`
-		 ORDER BY n.position, n.created_at
+		 ORDER BY n.sort_order, n.created_at
 	`, args...)
 	if err != nil {
 		return nil, err
@@ -178,10 +183,10 @@ func (s *Service) ListDisconnected(ctx context.Context, subscriptionID uuid.UUID
 	for rows.Next() {
 		var n Node
 		if err := rows.Scan(
-			&n.ID, &n.SubscriptionID, &n.ParentID, &n.LevelID, &n.Name, &n.Description, &n.LabelOverride,
+			&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 			&n.Icon, &n.Colour, &n.AvatarURL,
-			&n.LayoutMode, &n.ManualX, &n.ManualY,
-			&n.CollapsedDefault, &n.Position, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
+			&n.LayoutMode, &n.X, &n.Y,
+			&n.CollapsedDefault, &n.SortOrder, &n.ArchivedAt, &n.CreatedAt, &n.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -204,6 +209,10 @@ type CommitStatus struct {
 // GetCommitStatus reads the current commit checkpoint and
 // computes whether the working model is dirty (any node updated
 // after the commit timestamp, or never committed).
+//
+// Cross-DB: subscriptions.topology_committed_* still lives in
+// mmff_vector (s.pool); MAX(updated_at) is taken from
+// topology_nodes in vector_artefacts (s.vaPool).
 func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID) (CommitStatus, error) {
 	var st CommitStatus
 	err := s.pool.QueryRow(ctx, `
@@ -216,8 +225,8 @@ func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID)
 	}
 
 	var lastUpdate *time.Time
-	if err := s.pool.QueryRow(ctx, `
-		SELECT MAX(updated_at) FROM org_nodes WHERE subscription_id = $1
+	if err := s.vaPool.QueryRow(ctx, `
+		SELECT MAX(updated_at) FROM topology_nodes WHERE subscription_id = $1
 	`, subscriptionID).Scan(&lastUpdate); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return CommitStatus{}, err
 	}
@@ -235,6 +244,10 @@ func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID)
 // the subscription row. Only gadmin may call — actorRole is the
 // caller's user.role string. Returns the new CommitStatus so the
 // frontend can swap the banner immediately.
+//
+// Cross-DB: writes to subscriptions in mmff_vector (s.pool); the
+// follow-up GetCommitStatus reads MAX(updated_at) from
+// vector_artefacts (s.vaPool).
 func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID, actorRole string) (CommitStatus, error) {
 	if actorRole != "gadmin" {
 		return CommitStatus{}, ErrCommitForbidden
@@ -250,12 +263,12 @@ func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID,
 	return s.GetCommitStatus(ctx, subscriptionID)
 }
 
-// ResetCanvas archives every live org_node in a subscription so
-// the gadmin can start over (story 00310). Role grants stay
-// intact (so a re-build with the same delegated padmins doesn't
-// require re-granting); view-state rows are left alone too —
-// they're per-user and reset themselves on re-collapse. Audit-
-// logged at the handler layer.
+// ResetCanvas archives every live topology_nodes row in a
+// subscription so the gadmin can start over (story 00310). Role
+// grants stay intact (so a re-build with the same delegated
+// padmins doesn't require re-granting); view-state rows are left
+// alone too — they're per-user and reset themselves on re-collapse.
+// Audit-logged at the handler layer.
 //
 // Only gadmin may call. Idempotent: re-running on an already
 // empty canvas is a no-op.
@@ -263,8 +276,8 @@ func (s *Service) ResetCanvas(ctx context.Context, subscriptionID, actorID uuid.
 	if actorRole != "gadmin" {
 		return 0, ErrResetForbidden
 	}
-	tag, err := s.pool.Exec(ctx, `
-		UPDATE org_nodes
+	tag, err := s.vaPool.Exec(ctx, `
+		UPDATE topology_nodes
 		   SET archived_at = NOW()
 		 WHERE subscription_id = $1
 		   AND archived_at IS NULL

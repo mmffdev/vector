@@ -52,8 +52,8 @@ func ClearCSRFCookie(w http.ResponseWriter) {
 }
 
 // CSRF middleware enforces the double-submit check on state-changing methods.
-// Safe methods (GET/HEAD/OPTIONS) pass through. The /v1/api/auth/login and
-// /v1/api/auth/refresh endpoints also pass — they ARE how the user obtains the
+// Safe methods (GET/HEAD/OPTIONS) pass through. Auth bootstrap endpoints
+// (/auth/login, /auth/refresh) also pass — they're how the user obtains the
 // token, and they're protected by rate limiting + credentials.
 func CSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,18 +81,21 @@ func CSRF(next http.Handler) http.Handler {
 }
 
 func isCSRFExempt(path string) bool {
-	// API key routes are for programmatic access and don't need CSRF protection.
-	// They're validated via API key middleware instead.
 	switch path {
-	case "/v1/api/auth/login",
-		"/v1/api/auth/refresh",
-		"/v1/api/auth/password-reset",
-		"/v1/api/auth/password-reset/confirm",
-		"/v1/api/addressables/build-reconcile":
+	// Current infra auth paths (root-level, promoted in PLA-0030 T8).
+	case "/auth/login",
+		"/auth/refresh",
+		"/auth/password-reset",
+		"/auth/password-reset/confirm",
+		// Legacy paths kept so any in-flight cookies from old builds don't 403.
+		"/samantha/v1/auth/login",
+		"/samantha/v1/auth/refresh",
+		"/samantha/v1/auth/password-reset",
+		"/samantha/v1/auth/password-reset/confirm",
+		"/samantha/v1/addressables/build-reconcile":
 		return true
 	}
-	// Check if path starts with /v1/api/admin/api-keys (all sub-paths)
-	if strings.HasPrefix(path, "/v1/api/admin/api-keys") {
+	if strings.HasPrefix(path, "/samantha/v1/admin/api-keys") {
 		return true
 	}
 	return false

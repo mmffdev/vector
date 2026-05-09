@@ -9,17 +9,21 @@ import (
 )
 
 // TestPackageBoundary asserts that orgdesign is the SOLE writer for
-// org_nodes, org_node_roles, org_node_view_state, and org_levels.
+// topology_nodes, topology_role_grants, and topology_view_state.
 // It fails CI if any .go file outside backend/internal/orgdesign/
 // contains an INSERT/UPDATE/DELETE SQL string targeting one of those
 // tables.
 //
+// M6.2.7 cutover (PLA-0006): the three boundary tables moved from
+// mmff_vector (org_nodes / roles_org_nodes / org_node_view_state /
+// org_levels) to vector_artefacts (topology_nodes / topology_role_grants /
+// topology_view_state). The boundary follows the new tables — the
+// legacy names are now read-only fossils served by the ETL scripts.
+//
 // Mirrors the addressables boundary test (see
 // backend/internal/addressables/boundary_test.go) — same mechanism,
-// different tables. SQL migrations under db/schema/ are exempt
-// because the rg invocation scopes to .go files; migration 085's
-// bootstrap INSERT into org_nodes is the documented exception
-// described in db/schema/085_org_node_id_fk.sql.
+// different tables. SQL migrations under db/artefacts_schema/ are
+// exempt because the rg invocation scopes to .go files.
 func TestPackageBoundary(t *testing.T) {
 	repoRoot, err := filepath.Abs("../../..")
 	if err != nil {
@@ -32,7 +36,7 @@ func TestPackageBoundary(t *testing.T) {
 		t.Skip("ripgrep not installed; CI runs the boundary check via the lint step")
 	}
 
-	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(org_nodes|roles_org_nodes|org_node_view_state|org_levels)\b`
+	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(topology_nodes|topology_role_grants|topology_view_state)\b`
 
 	cmd := exec.Command("rg",
 		"--no-heading", "--line-number",
@@ -67,7 +71,7 @@ func TestPackageBoundary(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Fatalf("orgdesign write boundary violated — these files write org_nodes/roles_org_nodes/org_node_view_state/org_levels directly instead of going through backend/internal/orgdesign/:\n%s",
+		t.Fatalf("orgdesign write boundary violated — these files write topology_nodes/topology_role_grants/topology_view_state directly instead of going through backend/internal/orgdesign/:\n%s",
 			strings.Join(violations, "\n"))
 	}
 }

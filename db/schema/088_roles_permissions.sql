@@ -184,7 +184,8 @@ WHERE p.code IN (
     'users.update_profile', 'users.update_active', 'users.issue_reset',
     'users.create.team_lead', 'users.create.user', 'users.create.external',
     'roles.list', 'roles.read',
-    'portfolio.list'
+    'portfolio.list',
+    'work_items.settings.edit'
 );
 
 -- team_lead: same as padmin in v0, minus users.create.padmin (which padmin doesn't have either)

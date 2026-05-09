@@ -129,29 +129,29 @@ func (s *Service) ClampMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// tenantRootID resolves the subscription's single root org_node — the
-// node with parent_id IS NULL. Used by ClampMiddleware to decide
+// tenantRootID resolves the subscription's single root topology_node —
+// the node with parent_id IS NULL. Used by ClampMiddleware to decide
 // whether the user's grant set covers the entire tenant.
 //
 // This deliberately does NOT read WorkspaceIDFromCtx — the per-node
 // clamp predicate needs the absolute tenant root to detect the
 // "ClampAll" shortcut. Callers that want the workspace-scoped root
-// must use TenantRootIDForWorkspace instead.
+// must use TenantRootID instead.
 func (s *Service) tenantRootID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := s.pool.QueryRow(ctx, `
-		SELECT id FROM org_nodes
+	err := s.vaPool.QueryRow(ctx, `
+		SELECT id FROM topology_nodes
 		 WHERE subscription_id = $1
 		   AND parent_id IS NULL
 		   AND archived_at IS NULL
-		 ORDER BY position
+		 ORDER BY sort_order
 		 LIMIT 1
 	`, subscriptionID).Scan(&id)
 	return id, err
 }
 
 // TenantRootID resolves the canonical root of subscriptionID — the
-// lowest-position live node with parent_id IS NULL — narrowed to the
+// lowest-sort_order live node with parent_id IS NULL — narrowed to the
 // request's workspace clamp when present (story 00378). Returns
 // pgx.ErrNoRows when the (workspace-scoped) tenant has no root.
 //
@@ -160,14 +160,14 @@ func (s *Service) tenantRootID(ctx context.Context, subscriptionID uuid.UUID) (u
 // workspace, so the root resolves WITHIN that workspace and never
 // crosses to a sibling workspace's root in the same subscription.
 func (s *Service) TenantRootID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
-	wsClause, args, _ := workspaceClause(ctx, "org_nodes", []any{subscriptionID})
+	wsClause, args, _ := workspaceClause(ctx, "topology_nodes", []any{subscriptionID})
 	var id uuid.UUID
-	err := s.pool.QueryRow(ctx, `
-		SELECT id FROM org_nodes
+	err := s.vaPool.QueryRow(ctx, `
+		SELECT id FROM topology_nodes
 		 WHERE subscription_id = $1
 		   AND parent_id IS NULL
 		   AND archived_at IS NULL`+wsClause+`
-		 ORDER BY position
+		 ORDER BY sort_order
 		 LIMIT 1
 	`, args...).Scan(&id)
 	return id, err
@@ -186,7 +186,7 @@ func containsID(haystack []uuid.UUID, needle uuid.UUID) bool {
 // Workspace clamp (PLA-0006 / story 00378)
 //
 // Above the per-node grant clamp sits a coarser scope: every list
-// endpoint that reads org_nodes must narrow to a single workspace.
+// endpoint that reads topology_nodes must narrow to a single workspace.
 // The workspace is resolved per-request from `?ws=<slug>` (or, when
 // absent, the actor's first live workspace in their tenant). Cross-
 // tenant access returns 404, in-tenant access without a role on the

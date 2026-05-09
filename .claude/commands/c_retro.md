@@ -151,7 +151,7 @@ Ledger entry shape:
 
 Per user directive 2026-05-04: auto-actions execute immediately on retro completion. No approval prompt. Quotas:
 
-- **Planka cards (Continuous Improvement board only)** — at most 5 per retro. Only severity ≥ 4 AND confidence ≥ 90%. Board ID `1767896664086938708`, Backlog list `1767896919369057368`. Title format: `RETRO-NNN/<idx> — <Issue>`. Card body must include: 5 Whys block, reversal chain, retro JSON path, ledger entry id, severity. **HARD: never the main workflow board (`1760699595475649556`).**
+- <!-- PLANKA SUSPENDED: Severity-4+ findings previously created Planka cards on the Continuous Improvement board (ID 1767896664086938708, Backlog list 1767896919369057368). Cap: 5 per retro. Only when confidence ≥ 90%. Title format: RETRO-NNN/<idx> — <Issue>. Hard: never the main workflow board (1760699595475649556). Bin files and API scripts remain intact for future re-activation. -->
 - **Tech-debt appends** — to `docs/c_tech_debt.md`. Idempotent on `RETRO-NNN` reference. S1 promotion when ledger hit_count ≥ 3 unresolved. S2 cap when severity = 4 and not yet recurring.
 - **CLAUDE.md proposals** — write to `dev/retros/RETRO-NNN.proposed-claudemd.md` ONLY. Never edit CLAUDE.md directly. The proposed file shows the exact diff the user can apply.
 
@@ -205,7 +205,7 @@ Schema for `dev/retros/RETRO-NNN.json`:
       "confidence": 0.92,
       "fingerprint": "stale-binary:tmp/vector-backend:a3f2b1c0",
       "ledger_entry_id": "LDG-001",
-      "planka_card_id": "1767xxx",
+      "planka_card_id": null,
       "tech_debt_ref": "S1#23"
     }
   ],
@@ -255,8 +255,8 @@ def sync_retro(retro_doc):
         if retro_doc.claudemd_proposals:
             write(f"dev/retros/{retro_doc.id}.proposed-claudemd.md", retro_doc.claudemd_proposals)
 
-        # 7. Auto-create Planka cards (cap 5, severity≥4, conf≥90%, Continuous Improvement board only)
-        create_retro_cards(retro_doc)
+        # 7. PLANKA SUSPENDED: previously auto-created CI board cards (cap 5, severity≥4, conf≥90%)
+        # create_retro_cards(retro_doc)
 
         # 8. SELF-CHECK — re-read every touched file and verify
         self_check(retro_doc)
@@ -273,11 +273,11 @@ def self_check(retro_doc):
     parsed = read_json(f"dev/retros/{retro_doc.id}.json")
     if parsed.get("id") != retro_doc.id: failures.append("id mismatch")
 
-    # 8b. Every Planka card link in JSON resolves
-    for f in retro_doc.table_1_root_causes:
-        if f.planka_card_id:
-            if not planka_card_exists(f.planka_card_id):
-                failures.append(f"card {f.planka_card_id} missing")
+    # 8b. PLANKA SUSPENDED: card link verification skipped
+    # for f in retro_doc.table_1_root_causes:
+    #     if f.planka_card_id:
+    #         if not planka_card_exists(f.planka_card_id):
+    #             failures.append(f"card {f.planka_card_id} missing")
 
     # 8c. Every ledger entry referenced in JSON contains back-reference to RETRO-NNN
     ledger = read_json("dev/retros/LEDGER.json")

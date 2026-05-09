@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "@dev/styles/dev.css";
 import "@dev/styles/dev-ui.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
@@ -22,22 +22,65 @@ import DevPageHelpPanel from "./DevPageHelpPanel";
 import DevUiCatalogPanel from "./DevUiCatalogPanel";
 import DevApiV2TestsPanel from "./DevApiV2TestsPanel";
 import DevApiChangelogPanel from "./DevApiChangelogPanel";
+import DevScopePanel from "./DevScopePanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
+import DevTabNav, { type DevTab } from "@dev/components/DevTabNav";
 
-const TAB_LABELS: Record<string, string> = {
-  plans: "Plans",
-  retros: "Retros",
-  setup: "Setup",
-  shortcuts: "Shortcuts",
-  reports: "Reports",
-  research: "Research",
-  operations: "Operations",
-  icons: "Icons",
-  "page-help": "Page Help",
-  "ui-catalog": "UI Catalog",
-  "api-v2-tests": "API v2 Tests",
-  "api-changelog": "API Changelog",
-};
+const GROWTHBAR_MAX = 100;
+const GROWTHBAR_KEY = "dev.scope.growthbar.v1";
+
+function formatGrowthbarTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} : ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+type GrowthbarSnapshot = { count: number; at: number | null };
+
+function readGrowthbar(): GrowthbarSnapshot {
+  if (typeof window === "undefined") return { count: 0, at: null };
+  try {
+    const raw = window.localStorage.getItem(GROWTHBAR_KEY);
+    if (!raw) return { count: 0, at: null };
+    const parsed = JSON.parse(raw) as Partial<GrowthbarSnapshot>;
+    const count =
+      typeof parsed.count === "number" && parsed.count >= 0 && parsed.count <= GROWTHBAR_MAX
+        ? parsed.count
+        : 0;
+    const at = typeof parsed.at === "number" ? parsed.at : null;
+    return { count, at };
+  } catch {
+    return { count: 0, at: null };
+  }
+}
+
+function writeGrowthbar(snap: GrowthbarSnapshot) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GROWTHBAR_KEY, JSON.stringify(snap));
+  } catch {
+    // quota exceeded / private mode — non-fatal
+  }
+}
+
+const DEV_TABS: readonly DevTab[] = [
+  { key: "plans",         label: "Plans" },
+  { key: "retros",        label: "Retros" },
+  { key: "setup",         label: "Setup" },
+  { key: "shortcuts",     label: "Shortcuts" },
+  { key: "reports",       label: "Reports" },
+  { key: "research",      label: "Research" },
+  { key: "operations",    label: "Operations" },
+  { key: "icons",         label: "Icons" },
+  { key: "page-help",     label: "Page Help" },
+  { key: "ui-catalog",    label: "UI Catalog" },
+  { key: "api-v2-tests",  label: "API v2 Tests" },
+  { key: "api-changelog", label: "API Changelog" },
+  { key: "scope",         label: "Scope" },
+] as const;
+
+const TAB_LABELS: Record<string, string> = Object.fromEntries(
+  DEV_TABS.map((t) => [t.key, t.label])
+);
 
 export default function DevPage() {
   const { activeTab: tab, setActiveTab: setTab } = useDevTab();
@@ -55,6 +98,23 @@ export default function DevPage() {
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
   const [fieldsProbe, setFieldsProbe] = useState<{ ok: boolean; message: string } | null>(null);
   const [fieldsProbeLoading, setFieldsProbeLoading] = useState(false);
+  const [tickCount, setTickCount] = useState(0);
+  const [tickAt, setTickAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const snap = readGrowthbar();
+    setTickCount(snap.count);
+    setTickAt(snap.at != null ? new Date(snap.at) : null);
+  }, []);
+
+  const handleScopeTick = useCallback((at: Date) => {
+    setTickCount((n) => {
+      const next = n >= GROWTHBAR_MAX ? 1 : n + 1;
+      writeGrowthbar({ count: next, at: at.getTime() });
+      return next;
+    });
+    setTickAt(at);
+  }, []);
 
   const cancelReset = () => { setResetConfirm(false); setResetConfirmText(""); };
 
@@ -112,80 +172,28 @@ export default function DevPage() {
   return (
     <StrictRoute>
     <div className="dev-root">
-      <nav className="dev-tabs">
-        <button
-          className={`dev-tab${tab === "plans" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("plans")}
-        >
-          Plans
-        </button>
-        <button
-          className={`dev-tab${tab === "retros" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("retros")}
-        >
-          Retros
-        </button>
-        <button
-          className={`dev-tab${tab === "setup" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("setup")}
-        >
-          Setup
-        </button>
-        <button
-          className={`dev-tab${tab === "shortcuts" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("shortcuts")}
-        >
-          Shortcuts
-        </button>
-        <button
-          className={`dev-tab${tab === "reports" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("reports")}
-        >
-          Reports
-        </button>
-        <button
-          className={`dev-tab${tab === "research" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("research")}
-        >
-          Research
-        </button>
-        <button
-          className={`dev-tab${tab === "operations" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("operations")}
-        >
-          Operations
-        </button>
-        <button
-          className={`dev-tab${tab === "icons" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("icons")}
-        >
-          Icons
-        </button>
-        <button
-          className={`dev-tab${tab === "page-help" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("page-help")}
-        >
-          Page Help
-        </button>
-        <button
-          className={`dev-tab${tab === "ui-catalog" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("ui-catalog")}
-        >
-          UI Catalog
-        </button>
-        <button
-          className={`dev-tab${tab === "api-v2-tests" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("api-v2-tests")}
-        >
-          API v2 Tests
-        </button>
-        <button
-          className={`dev-tab${tab === "api-changelog" ? " dev-tab--active" : ""}`}
-          onClick={() => setTab("api-changelog")}
-        >
-          API Changelog
-        </button>
-      </nav>
+      <div className="dui-sticky-subheader">
+        <DevTabNav
+          tabs={DEV_TABS}
+          active={tab}
+          onChange={(key) => setTab(key as Parameters<typeof setTab>[0])}
+          storageKey="dev.tabs"
+        />
+        {tab === "scope" && (
+          <div className="dui-sticky-subheader__row">
+            <span className="dui-growthbar" aria-label={`Live updates: ${tickCount}`}>
+              {Array.from({ length: tickCount }, (_, i) => (
+                <span key={i} className="dui-growthbar__tick" />
+              ))}
+              <span className="dui-growthbar__time">
+                {tickAt
+                  ? `Updated ${formatGrowthbarTime(tickAt)}`
+                  : "Waiting for first update…"}
+              </span>
+            </span>
+          </div>
+        )}
+      </div>
 
       {tab === "shortcuts" && <DevShortcutsPanel />}
       {tab === "reports" && <DevReportsPanel />}
@@ -197,6 +205,7 @@ export default function DevPage() {
       {tab === "ui-catalog" && <DevUiCatalogPanel />}
       {tab === "api-v2-tests" && <DevApiV2TestsPanel />}
       {tab === "api-changelog" && <DevApiChangelogPanel />}
+      {tab === "scope" && <DevScopePanel onTick={handleScopeTick} />}
       {tab === "icons" && (
         <div className="dui-icons-host">
           <UiAppIconbrowser />

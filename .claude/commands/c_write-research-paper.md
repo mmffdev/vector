@@ -65,7 +65,21 @@ Create `dev/research/{NEXT}.json` with the shape defined in `c_research-paper-fo
 
 **Important:** The `content` field is a single JSON string. Escape `"` as `\"` and `\` as `\\`. Use `python3 -c 'import json; print(json.dumps({...}))'` for safety with large content blocks.
 
-### 5. Confirm to user
+### 5. Insert reference into Vector_Scope.md
+
+After writing the JSON, check whether this research maps to a scope item:
+
+1. Read `Vector_Scope.md`. Scan all items for keyword overlap with the paper's `topic` and `title`.
+2. If a match is found: append below that item's line (after any existing `>` notes):
+
+   ```markdown
+   > Research `{NEXT}` (YYYY-MM-DD): {title}
+   ```
+
+3. If no match (bespoke / brainstorming): skip. Do not add to scope. Do not add to Unmatched Commits.
+4. Never create a new scope item from this step — only annotate an existing one.
+
+### 6. Confirm to user
 
 Print:
 
@@ -73,6 +87,7 @@ Print:
 > Title: {title}
 > Category: {category}
 > Date: {date}
+> Scope: linked to {ref} / not linked (bespoke)
 
 ### 6. Ask: Accept stories?
 
@@ -84,7 +99,7 @@ Print:
 
 **If no:** Done. The paper is complete.
 
-**If yes:** Read [`c_addpaper-stories.md`](c_addpaper-stories.md) and follow it. That protocol synthesises story candidates from the compiled content and hands off to the project's `/stories` skill (which creates Planka cards through the 7-gate system).
+**If yes:** Read [`c_addpaper-stories.md`](c_addpaper-stories.md) and follow it. That protocol synthesises story candidates from the compiled content and hands off to the project's `/stories` skill (which writes stories to plan JSON through the 7-gate system). <!-- PLANKA SUSPENDED: previously created Planka cards; now writes to dev/plans/ JSON only. -->
 
 ---
 

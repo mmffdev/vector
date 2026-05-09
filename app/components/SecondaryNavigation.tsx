@@ -331,6 +331,7 @@ export default function SecondaryNavigation<K extends string = string>({
   const showReorderToggle = reorderable && !!pageId;
 
   return (
+    <div className="ui-sticky-subheader">
     <div
       ref={containerRef}
       className={`${cls}${editMode ? " is-edit-mode" : ""}`}
@@ -394,6 +395,7 @@ export default function SecondaryNavigation<K extends string = string>({
           <MdOutlineSwapVert size={16} />
         </button>
       )}
+    </div>
     </div>
   );
 }

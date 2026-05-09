@@ -1,4 +1,4 @@
-// Package searchworker consumes o_search_index_outbox rows and keeps
+// Package searchworker consumes artefacts_search_outbox rows and keeps
 // the TSVECTOR + pgvector content_embedding columns in sync with artefact
 // content. It runs as a background goroutine started from main.go.
 //
@@ -6,6 +6,9 @@
 // Multiple worker instances are safe — Postgres lock prevents double-processing.
 // Polling every 5s is the fallback; pg_notify('search_index_queue') is the
 // fast wake-up path (outbox trigger fires it on INSERT).
+//
+// Rewired for B7.1.1: reads from vector_artefacts (vaPool) instead of
+// the legacy mmff_vector o_search_index_outbox table.
 package searchworker
 
 import (
@@ -21,14 +24,14 @@ import (
 )
 
 const (
-	pollInterval  = 5 * time.Second
-	claimTimeout  = 30 * time.Second
-	maxAttempts   = 5
+	pollInterval = 5 * time.Second
+	claimTimeout = 30 * time.Second
+	maxAttempts  = 5
 )
 
 // Config holds worker configuration loaded from environment.
 type Config struct {
-	OllamaURL  string // e.g. "http://localhost:11434"
+	OllamaURL   string // e.g. "http://localhost:11434"
 	OllamaModel string // e.g. "nomic-embed-text"
 }
 
@@ -113,24 +116,21 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 	defer tx.Rollback(ctx)
 
 	var rowID int64
-	var artefactType, artefactIDStr string
-	var attempts int
+	var artefactID string
 
 	claimCtx, cancel := context.WithTimeout(ctx, claimTimeout)
 	defer cancel()
 
 	err = tx.QueryRow(claimCtx, `
-		SELECT id, artefact_type, artefact_id, attempts
-		FROM o_search_index_outbox
+		SELECT id, artefact_id
+		FROM artefacts_search_outbox
 		WHERE claimed_at IS NULL
 		  AND attempts < $1
 		ORDER BY enqueued_at
 		LIMIT 1
 		FOR UPDATE SKIP LOCKED`, maxAttempts,
-	).Scan(&rowID, &artefactType, &artefactIDStr, &attempts)
+	).Scan(&rowID, &artefactID)
 	if err != nil {
-		// pgx returns no error on no-rows for QueryRow when using Scan —
-		// a zero rowID means nothing was found.
 		if rowID == 0 {
 			tx.Rollback(ctx)
 			return false, nil
@@ -143,7 +143,7 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 
 	// Mark claimed.
 	if _, err := tx.Exec(claimCtx, `
-		UPDATE o_search_index_outbox SET claimed_at = NOW()
+		UPDATE artefacts_search_outbox SET claimed_at = NOW()
 		WHERE id = $1`, rowID); err != nil {
 		return false, err
 	}
@@ -152,36 +152,30 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 	}
 
 	// Process outside the transaction so the lock is released.
-	if err := w.process(ctx, rowID, artefactType, artefactIDStr); err != nil {
-		log.Printf("searchworker: process error (row %d, type %s, id %s attempt %d): %v",
-			rowID, artefactType, artefactIDStr, attempts+1, err)
+	if err := w.process(ctx, rowID, artefactID); err != nil {
+		log.Printf("searchworker: process error (row %d, artefact %s): %v",
+			rowID, artefactID, err)
 		w.recordFailure(ctx, rowID, err.Error())
 		return true, nil
 	}
 
 	// Success — delete the outbox row.
-	if _, err := w.pool.Exec(ctx, `DELETE FROM o_search_index_outbox WHERE id = $1`, rowID); err != nil {
+	if _, err := w.pool.Exec(ctx, `DELETE FROM artefacts_search_outbox WHERE id = $1`, rowID); err != nil {
 		log.Printf("searchworker: failed to delete outbox row %d: %v", rowID, err)
 	}
 	return true, nil
 }
 
 // process fetches the artefact content, computes TSVECTOR and embedding,
-// and writes both back to the core artefact row.
-func (w *Worker) process(ctx context.Context, rowID int64, artefactType, artefactIDStr string) error {
-	t, ok := coreTable(artefactType)
-	if !ok {
-		return fmt.Errorf("unknown artefact type %q", artefactType)
-	}
-
-	// Fetch text content from the core table.
-	var title, contentPlain string
+// and writes both back to the artefacts row in vector_artefacts.
+func (w *Worker) process(ctx context.Context, rowID int64, artefactID string) error {
+	var title string
 	var descPtr *string
-	err := w.pool.QueryRow(ctx, fmt.Sprintf(`
-		SELECT title, description, COALESCE(content_plain_text,'')
-		FROM %s WHERE id = $1 AND archived_at IS NULL`, t),
-		artefactIDStr,
-	).Scan(&title, &descPtr, &contentPlain)
+	err := w.pool.QueryRow(ctx, `
+		SELECT title, description
+		FROM artefacts WHERE id = $1 AND archived_at IS NULL`,
+		artefactID,
+	).Scan(&title, &descPtr)
 	if err != nil {
 		return fmt.Errorf("fetch artefact: %w", err)
 	}
@@ -189,7 +183,7 @@ func (w *Worker) process(ctx context.Context, rowID int64, artefactType, artefac
 	if descPtr != nil {
 		desc = *descPtr
 	}
-	combined := title + " " + desc + " " + contentPlain
+	combined := title + " " + desc
 
 	// Recompute TSVECTOR in Postgres.
 	var tsvector string
@@ -206,12 +200,12 @@ func (w *Worker) process(ctx context.Context, rowID int64, artefactType, artefac
 	}
 
 	// Write both back.
-	_, err = w.pool.Exec(ctx, fmt.Sprintf(`
-		UPDATE %s
-		SET search_index    = $2::tsvector,
-		    content_embedding = $3::vector
-		WHERE id = $1`, t),
-		artefactIDStr, tsvector, pgvectorLiteral(embedding))
+	_, err = w.pool.Exec(ctx, `
+		UPDATE artefacts
+		SET search_index       = $2::tsvector,
+		    content_embedding  = $3::vector
+		WHERE id = $1`,
+		artefactID, tsvector, pgvectorLiteral(embedding))
 	if err != nil {
 		return fmt.Errorf("write back: %w", err)
 	}
@@ -257,7 +251,7 @@ func (w *Worker) embed(ctx context.Context, text string) ([]float32, error) {
 // and clears claimed_at so it will be retried on the next poll.
 func (w *Worker) recordFailure(ctx context.Context, rowID int64, errMsg string) {
 	_, err := w.pool.Exec(ctx, `
-		UPDATE o_search_index_outbox
+		UPDATE artefacts_search_outbox
 		SET attempts   = attempts + 1,
 		    last_error = $2,
 		    claimed_at = NULL
@@ -282,14 +276,3 @@ func pgvectorLiteral(v []float32) string {
 	return string(b)
 }
 
-// coreTable maps scope_key → core table name. Empty during the
-// vector_artefacts cutover (see docs/c_c_vector_artefacts_backfill.md):
-// migrations 124 and 125 dropped the legacy per-type artefact tables
-// entirely. Re-populate when the worker is rewired against the new
-// substrate.
-var coreTableMap = map[string]string{}
-
-func coreTable(artefactType string) (string, bool) {
-	t, ok := coreTableMap[artefactType]
-	return t, ok
-}

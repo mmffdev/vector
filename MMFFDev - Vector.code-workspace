@@ -8,7 +8,53 @@
 		}
 	],
 	"settings": {
-		"DockerRun.DisableAutoGenerateConfig": true
+		"DockerRun.DisableAutoGenerateConfig": true,
+		"favorites.resources": [
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/app/components",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/app",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/docs",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/app/v2",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/app/(user)",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/api-reference",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/build",
+				"group": "Default"
+			},
+			{
+				"filePath": "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/public/themes",
+				"group": "Default"
+			}
+		]
 	},
 	"launch": {
 		"configurations": [

@@ -2,36 +2,23 @@
 
 // PLA-0027 / Story 00518 — <TimeboxManager> reusable timebox surface.
 // Switches behaviour by `kind` prop; all per-kind config lives in kinds.ts.
-// First consumer: <TimeboxManager kind="sprint"> on the Planning → Sprints page.
+// First consumer: kind="sprint" (Planning → Sprints).
+// Second consumer: kind="release" (Planning → Releases).
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import Panel from "@/app/components/Panel";
 import Table, { Column, PillVariant } from "@/app/components/Table";
 import { apiV2, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import { TIMEBOX_KINDS, TimeboxKind } from "@/app/components/timebox/kinds";
+import { useTimebox } from "@/app/hooks/useTimebox";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface SprintRow {
-  id: string;
-  sprint_name: string;
-  sprint_suffix: string | null;
-  sprint_date_start: string;
-  sprint_date_end: string;
-  sprint_cadence_days: number;
-  status: "planned" | "active" | "completed";
-  sprint_scope: number | null;
-  sprint_velocity: number | null;
-}
-
-type AnyRow = SprintRow;
-
-interface ListResponse {
-  sprints?: SprintRow[];
-  count: number;
-}
+// Generic row shape — field names vary by kind (sprint_name vs release_name etc.)
+// We use a Record<string, unknown> internally and access via the rowPrefix.
+export type TimeboxRow = Record<string, unknown> & { id: string; status: string };
 
 export interface TimeboxManagerProps {
   kind: TimeboxKind;
@@ -52,28 +39,27 @@ function statusVariant(status: string): PillVariant {
 // ── Bulk-create form ──────────────────────────────────────────────────────────
 
 interface BulkRow {
-  sprint_suffix: string;
-  sprint_date_start: string;
-  sprint_cadence_days: string;
-  sprint_velocity: string;
+  suffix: string;
+  date_start: string;
+  cadence_days: string;
+  velocity: string;
 }
 
 function addDays(dateStr: string, days: number): string {
   if (!dateStr) return "";
-  // Parse as UTC to avoid DST/timezone shifts corrupting the date arithmetic.
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + days));
   return dt.toISOString().slice(0, 10);
 }
 
 function deriveEnd(row: BulkRow): string {
-  const cadence = parseInt(row.sprint_cadence_days, 10);
-  if (!row.sprint_date_start || isNaN(cadence) || cadence <= 0) return "";
-  return addDays(row.sprint_date_start, cadence - 1);
+  const cadence = parseInt(row.cadence_days, 10);
+  if (!row.date_start || isNaN(cadence) || cadence <= 0) return "";
+  return addDays(row.date_start, cadence - 1);
 }
 
 function makeEmptyRow(start: string, cadence: string): BulkRow {
-  return { sprint_suffix: "", sprint_date_start: start, sprint_cadence_days: cadence, sprint_velocity: "" };
+  return { suffix: "", date_start: start, cadence_days: cadence, velocity: "" };
 }
 
 function buildRows(count: number, firstStart: string, cadence: string): BulkRow[] {
@@ -102,6 +88,7 @@ interface BulkCreateFormProps {
 function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEndDate, onCreated, onCancel }: BulkCreateFormProps) {
   const defaultCadence = "14";
   const firstStart = lastEndDate ? addDays(lastEndDate, 1) : "";
+  const p = cfg.rowPrefix;
 
   const [count, setCount] = useState(1);
   const [rows, setRows] = useState<BulkRow[]>([makeEmptyRow(firstStart, defaultCadence)]);
@@ -111,8 +98,8 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
     const clamped = Math.max(1, Math.min(52, n));
     setCount(clamped);
     setRows(prev => {
-      const cadence = prev[0]?.sprint_cadence_days ?? defaultCadence;
-      const start = prev[0]?.sprint_date_start ?? firstStart;
+      const cadence = prev[0]?.cadence_days ?? defaultCadence;
+      const start = prev[0]?.date_start ?? firstStart;
       return buildRows(clamped, start, cadence);
     });
   }
@@ -120,10 +107,10 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
   function updateRow(i: number, field: keyof BulkRow, value: string) {
     setRows(prev => {
       const next = prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r);
-      if (field === "sprint_date_start" || field === "sprint_cadence_days") {
+      if (field === "date_start" || field === "cadence_days") {
         for (let j = i + 1; j < next.length; j++) {
           const prevEnd = deriveEnd(next[j - 1]);
-          next[j] = { ...next[j], sprint_date_start: prevEnd ? addDays(prevEnd, 1) : "" };
+          next[j] = { ...next[j], date_start: prevEnd ? addDays(prevEnd, 1) : "" };
         }
       }
       return next;
@@ -134,21 +121,21 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
     e.preventDefault();
     setSaving(true);
     try {
-      const sprints = rows.map((r, i) => {
-        const velocity = parseInt(r.sprint_velocity, 10);
+      const items = rows.map((r, i) => {
+        const velocity = parseInt(r.velocity, 10);
         return {
-          sprint_name: `${cfg.namePrefix} ${nextNumber + i}`,
-          sprint_suffix: r.sprint_suffix || undefined,
-          sprint_cadence_days: parseInt(r.sprint_cadence_days, 10),
-          sprint_date_start: r.sprint_date_start,
-          sprint_date_end: deriveEnd(r),
-          sprint_velocity: isNaN(velocity) ? undefined : velocity,
+          [`${p}_name`]: `${cfg.namePrefix} ${nextNumber + i}`,
+          [`${p}_suffix`]: r.suffix || undefined,
+          [`${p}_cadence_days`]: parseInt(r.cadence_days, 10),
+          [`${p}_date_start`]: r.date_start,
+          [`${p}_date_end`]: deriveEnd(r),
+          [`${p}_velocity`]: isNaN(velocity) ? undefined : velocity,
           org_node_id: orgNodeId,
         };
       });
       await apiV2(`${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`, {
         method: "POST",
-        body: JSON.stringify({ sprints }),
+        body: JSON.stringify({ [cfg.listKey]: items }),
       });
       notify.success(`Created ${rows.length} ${rows.length === 1 ? kind : kind + "s"}`);
       onCreated();
@@ -162,11 +149,11 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
   return (
     <form className="form" onSubmit={handleSubmit}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <label className="form__label" style={{ margin: 0 }} htmlFor="sprint-count">
+        <label className="form__label" style={{ margin: 0 }} htmlFor="timebox-count">
           Number of {cfg.namePrefix}s
         </label>
         <input
-          id="sprint-count"
+          id="timebox-count"
           className="form__input"
           type="number"
           min={1}
@@ -192,35 +179,35 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
             ),
           },
           {
-            key: "sprint_suffix",
+            key: "suffix",
             header: "Suffix (optional)",
             kind: "custom",
             render: (r) => (
               <input
                 className="form__input"
-                value={r.sprint_suffix}
-                onChange={e => updateRow(r._idx, "sprint_suffix", e.target.value)}
+                value={r.suffix}
+                onChange={e => updateRow(r._idx, "suffix", e.target.value)}
                 placeholder="e.g. Red Cherry"
               />
             ),
           },
           {
-            key: "sprint_date_start",
+            key: "date_start",
             header: "Start",
             kind: "custom",
             render: (r) => (
               <input
                 className="form__input"
                 type="date"
-                value={r.sprint_date_start}
-                onChange={e => updateRow(r._idx, "sprint_date_start", e.target.value)}
+                value={r.date_start}
+                onChange={e => updateRow(r._idx, "date_start", e.target.value)}
                 required
                 readOnly={r._idx > 0}
               />
             ),
           },
           {
-            key: "sprint_cadence_days",
+            key: "cadence_days",
             header: "Cadence (days)",
             kind: "custom",
             render: (r) => (
@@ -228,21 +215,21 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
                 className="form__input"
                 type="number"
                 min={1}
-                value={r.sprint_cadence_days}
-                onChange={e => updateRow(r._idx, "sprint_cadence_days", e.target.value)}
+                value={r.cadence_days}
+                onChange={e => updateRow(r._idx, "cadence_days", e.target.value)}
                 required
                 style={{ width: 90 }}
               />
             ),
           },
           {
-            key: "sprint_date_end",
+            key: "date_start",
             header: "End (derived)",
             kind: "mono",
             render: (r) => deriveEnd(r) || "—",
           },
           {
-            key: "sprint_velocity",
+            key: "velocity",
             header: "Velocity",
             kind: "custom",
             render: (r) => (
@@ -250,8 +237,8 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
                 className="form__input"
                 type="number"
                 min={0}
-                value={r.sprint_velocity}
-                onChange={e => updateRow(r._idx, "sprint_velocity", e.target.value)}
+                value={r.velocity}
+                onChange={e => updateRow(r._idx, "velocity", e.target.value)}
                 placeholder="—"
                 style={{ width: 80 }}
               />
@@ -277,66 +264,52 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
 
 function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerProps) {
   const cfg = TIMEBOX_KINDS[kind];
-  const [rows, setRows] = useState<AnyRow[] | null>(null);
+  const p = cfg.rowPrefix;
+  const { rows, loading, reload } = useTimebox({ kind, workspaceId, orgNodeId });
   const [creating, setCreating] = useState(false);
 
-  const load = useCallback(async () => {
-    const params = new URLSearchParams({ workspace_id: workspaceId });
-    if (orgNodeId) params.set("org_node_id", orgNodeId);
-    try {
-      const data = await apiV2<ListResponse>(`${cfg.apiBase}?${params.toString()}`);
-      const items = (data.sprints ?? []) as AnyRow[];
-      setRows(items);
-    } catch (e) {
-      notify.apiError(e as ApiError, `Failed to load ${kind}s`);
-      setRows([]);
-    }
-  }, [cfg.apiBase, kind, workspaceId, orgNodeId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const columns: Column<AnyRow>[] = [
+  const columns: Column<TimeboxRow>[] = [
     {
-      key: "sprint_name",
+      key: `${p}_name`,
       header: "Name",
       kind: "custom",
       render: (r) => {
-        const s = r as SprintRow;
-        return s.sprint_suffix
-          ? <>{s.sprint_name} <span style={{ color: "var(--ink-3)" }}>({s.sprint_suffix})</span></>
-          : <>{s.sprint_name}</>;
+        const suffix = r[`${p}_suffix`] as string | null;
+        const name = r[`${p}_name`] as string;
+        return suffix
+          ? <>{name} <span style={{ color: "var(--ink-3)" }}>({suffix})</span></>
+          : <>{name}</>;
       },
     },
-    { key: "sprint_date_start", header: "Start", kind: "mono" },
-    { key: "sprint_date_end", header: "End", kind: "mono" },
-    { key: "sprint_cadence_days", header: "Cadence (days)", kind: "numeric" },
+    { key: `${p}_date_start`, header: "Start", kind: "mono" },
+    { key: `${p}_date_end`, header: "End", kind: "mono" },
+    { key: `${p}_cadence_days`, header: "Cadence (days)", kind: "numeric" },
     {
       key: "status",
       header: "Status",
       kind: "pill",
-      pillVariant: (r) => statusVariant((r as SprintRow).status),
-      pillLabel: (r) => (r as SprintRow).status,
+      pillVariant: (r) => statusVariant(r.status),
+      pillLabel: (r) => r.status,
     },
     {
-      key: "sprint_scope",
+      key: `${p}_scope`,
       header: "Scope",
       kind: "numeric",
-      render: (r) => String((r as SprintRow).sprint_scope ?? "—"),
+      render: (r) => String(r[`${p}_scope`] ?? "—"),
     },
     {
-      key: "sprint_velocity",
+      key: `${p}_velocity`,
       header: "Velocity",
       kind: "numeric",
-      render: (r) => String((r as SprintRow).sprint_velocity ?? "—"),
+      render: (r) => String(r[`${p}_velocity`] ?? "—"),
     },
   ];
 
-  // Derive next sprint number and last end date from existing rows
   const nextNumber = (rows?.length ?? 0) + 1;
   const lastEndDate = rows?.length
-    ? [...rows].sort((a, b) => b.sprint_date_end.localeCompare(a.sprint_date_end))[0].sprint_date_end
+    ? [...rows].sort((a, b) =>
+        String(b[`${p}_date_end`]).localeCompare(String(a[`${p}_date_end`]))
+      )[0][`${p}_date_end`] as string
     : "";
 
   const panelTitle = (
@@ -360,18 +333,18 @@ function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerPro
           orgNodeId={orgNodeId}
           nextNumber={nextNumber}
           lastEndDate={lastEndDate}
-          onCreated={() => { setCreating(false); void load(); }}
+          onCreated={() => { setCreating(false); void reload(); }}
           onCancel={() => setCreating(false)}
         />
       ) : (
-        <Table<AnyRow>
+        <Table<TimeboxRow>
           pageId={`timebox_${kind}`}
           slot="list"
           ariaLabel={`${cfg.namePrefix} list`}
           columns={columns}
           rows={rows}
           rowKey={(r) => r.id}
-          loading={rows === null}
+          loading={loading}
           empty={`No ${kind}s found.`}
         />
       )}
@@ -379,7 +352,7 @@ function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerPro
   );
 }
 
-// ── Samantha _timebox substrate registration (PLA-0027 / Story 00519) ─────────
+// ── Samantha _timebox substrate registration ───────────────────────────────────
 
 export default function TimeboxManager(props: TimeboxManagerProps) {
   const { address, Provider } = useRegisterAddressable({

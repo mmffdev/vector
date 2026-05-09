@@ -63,7 +63,7 @@ enum ServiceID: String, CaseIterable, Codable, Sendable {
 enum ServiceState: Equatable, Sendable {
     case off          // user-disabled
     case down         // enabled but not yet up (or after a confirmed-dead PID)
-    case starting
+    case starting(attempt: Int, of: Int)
     case up(pid: Int32, owned: Bool)
     case failed(reason: String)
 
@@ -72,11 +72,11 @@ enum ServiceState: Equatable, Sendable {
     }
     var label: String {
         switch self {
-        case .off:                return "off"
-        case .down:               return "down"
-        case .starting:           return "starting"
-        case .up(_, let owned):   return owned ? "up" : "up (adopted)"
-        case .failed(let r):      return "failed: \(r)"
+        case .off:                    return "off"
+        case .down:                   return "down"
+        case .starting(let a, let t): return t > 1 ? "starting \(a)/\(t)" : "starting"
+        case .up(_, let owned):       return owned ? "up" : "up (adopted)"
+        case .failed(let r):          return "failed: \(r)"
         }
     }
     var pid: Int32? {

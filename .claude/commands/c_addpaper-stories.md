@@ -2,9 +2,11 @@
 
 **Loaded on demand — read this file when the user says **"yes"** to story generation after `<addpaper>` (or `<research> --page`) completes.**
 
-This protocol is **research-specific**. It synthesises 1–5 candidate stories from the compiled research, presents them for review, then **hands off to the project's `/stories` skill** for the actual card creation. PM uses Planka (not Postgres `backlog_items`), so all card writes go through `/stories` — never directly.
+This protocol is **research-specific**. It synthesises 1–5 candidate stories from the compiled research, presents them for review, then **hands off to the project's `/stories` skill** for story creation and plan JSON writing.
 
-See [`.claude/skills/stories/SKILL.md`](../skills/stories/SKILL.md) for the 7-gate story acceptance system, Fibonacci estimation (F0–F13), AIGEN+phase+feature+EST+RISK label rules, and Planka card creation.
+<!-- PLANKA SUSPENDED: Planka card creation is disabled. Stories are recorded in dev/plans/ JSON only via /stories skill. -->
+
+See [`.claude/skills/stories/SKILL.md`](../skills/stories/SKILL.md) for the 7-gate story acceptance system, Fibonacci estimation (F0–F13), and EST+RISK metadata rules.
 
 ---
 
@@ -106,20 +108,18 @@ Reparse, show updated table, confirm again before proceeding to Step 5.
 
 Invoke the `/stories` skill (see [`.claude/skills/stories/SKILL.md`](../skills/stories/SKILL.md)) with the accepted story drafts as input. The skill takes over from here:
 
-- **Step 0:** Allocates story IDs from `docs/c_story_index.md`, resolves phase + feature labels.
-- **Steps 1–7:** Decomposes / parses, runs each candidate through the 7 gates (estimation, risk, AIGEN, label assignment, description format, decomposition check, label verification).
-- **Outcome:** Cards land in **Planka Backlog** with all 7 mandatory attributes (Story ID + Title, AIGEN, phase, feature area, EST-F#, RISK-LOW/MED/HIGH, description with 3+ "As proven by"). The user reviews in Planka and decides which to start.
+- **Step 0:** Allocates story IDs from `docs/c_story_index.md`, resolves phase + feature metadata.
+- **Steps 1–7:** Decomposes / parses, runs each candidate through the 7 gates (estimation, risk, description format, decomposition check).
+- **Outcome:** Stories land in `dev/plans/PLA-NNNN.json` with all mandatory attributes (Story ID + Title, phase, feature area, EST-F#, RISK-LOW/MED/HIGH, description with 3+ "As proven by"). <!-- PLANKA SUSPENDED: previously landed in Planka Backlog. -->
 
 **Hard rules `/stories` enforces (do not try to bypass):**
 - Confidence < 85% on any gate → STOP, ask user to revise
 - Story scoring F21+ → automatic split, don't report intermediate steps
-- Step 3c (label verification) must run for every batch
 
 After `/stories` reports success, print:
 
-> **✓ Cards created in Planka Backlog**
-> N stories from `dev/research/RXXX.json` are awaiting review.
-> Card lifecycle reminder: on "go"/"start" → cards move Backlog → To Do → Doing → Completed.
+> **✓ Stories written to plan JSON**
+> N stories from `dev/research/RXXX.json` are awaiting review in Dev → Plans tab.
 
 ---
 
@@ -129,7 +129,7 @@ After `/stories` reports success, print:
 PM's `/stories` skill enforces 7 mandatory gates that protect the backlog from incomplete cards. Bypassing it would create cards missing labels, IDs, or acceptance criteria — which is a defect per the project's hard rules. Always go through `/stories`.
 
 ### Decomposition across layers
-PM's **stories-all-layers rule** (`feedback_stories_all_layers.md`): before invoking `/stories`, decompose the feature across backend, frontend, migration, and tests. A research-derived story for "add deeplinks" probably needs at least three cards — one per layer. Catch this in Step 1, not after Planka is full of half-cards.
+PM's **stories-all-layers rule** (`feedback_stories_all_layers.md`): before invoking `/stories`, decompose the feature across backend, frontend, migration, and tests. A research-derived story for "add deeplinks" probably needs at least three entries — one per layer. Catch this in Step 1, not after the plan JSON is full of half-stories.
 
 ### When in doubt, decline
 The user can always say `<addpaper>` again and ask for stories later. Better to write the paper without stories than to create weak cards that need rework.

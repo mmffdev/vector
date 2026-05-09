@@ -2,28 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Table from "@/app/components/Table";
-import { api } from "@/app/lib/api";
+import { apiV2 } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 interface FlowState {
   id: string;
-  flow_position: number;
   name: string;
-  canonical_code: string;
-  description?: string | null;
+  kind: "todo" | "in_progress" | "done" | "cancelled";
+  sort_order: number;
+  is_initial: boolean;
+  colour?: string | null;
 }
 
 interface FlowGroup {
-  target_kind: "system" | "tenant" | "portfolio";
-  target_id: string;
-  target_label: string;
+  flow_id: string;
+  type_id: string;
+  type_name: string;
+  type_scope: "work" | "strategy";
   states: FlowState[] | null;
 }
 
 interface FlowsResponse {
-  system: FlowGroup[] | null;
-  tenant: FlowGroup[] | null;
-  portfolio: FlowGroup[] | null;
+  work:     FlowGroup[] | null;
+  strategy: FlowGroup[] | null;
 }
 
 export default function WorkItemsPage() {
@@ -34,7 +35,7 @@ export default function WorkItemsPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api<FlowsResponse>("/flows/")
+    apiV2<FlowsResponse>("/flows/")
       .then((res) => {
         if (cancelled) return;
         setData(res);
@@ -56,19 +57,14 @@ export default function WorkItemsPage() {
 
   const sections: Array<{ title: string; subtitle: string; groups: FlowGroup[] }> = [
     {
-      title: "System types",
-      subtitle: "Vendor-defined artefact types (work items, defects, tasks, test cases, epics, strategic).",
-      groups: data.system ?? [],
+      title: "Work types",
+      subtitle: "Sprint-tracked execution types (work items, defects, tasks, …). Each has an independent flow.",
+      groups: data.work ?? [],
     },
     {
-      title: "Portfolio layers",
-      subtitle: "Each strategy layer your tenant has defined (Feature, Initiative, Theme, …) has its own independent flow.",
-      groups: data.portfolio ?? [],
-    },
-    {
-      title: "Custom types",
-      subtitle: "Tenant-invented artefact types. Empty until a gadmin creates one.",
-      groups: data.tenant ?? [],
+      title: "Strategy types",
+      subtitle: "Hierarchical portfolio layers (Feature, Initiative, Theme, …). Each has an independent flow.",
+      groups: data.strategy ?? [],
     },
   ];
 
@@ -90,33 +86,34 @@ export default function WorkItemsPage() {
           ) : (
             <div className="u-stack--gap-3">
               {section.groups.map((g) => (
-                <div key={g.target_id}>
+                <div key={g.flow_id}>
                   <Table<FlowState>
                     pageId="workspace-settings"
-                    slot={`flows__${g.target_id.replace(/-/g, "_")}`}
-                    ariaLabel={g.target_label}
+                    slot={`flows__${g.flow_id.replace(/-/g, "_")}`}
+                    ariaLabel={g.type_name}
                     rows={g.states ?? []}
                     rowKey={(s) => s.id}
-                    toolbar={{ meta: <strong>{g.target_label}</strong> }}
+                    toolbar={{ meta: <strong>{g.type_name}</strong> }}
                     cellClassName={(_s, c) =>
-                      c.key === "flow_position" ? "tree_accordion-dense__cell--mono" : undefined
+                      c.key === "sort_order" ? "tree_accordion-dense__cell--mono" : undefined
                     }
                     columns={[
-                      { key: "flow_position", header: "#",          width: 56,  kind: "numeric" },
-                      { key: "name",          header: "Name",       width: 200 },
+                      { key: "sort_order", header: "#",    width: 56,  kind: "numeric" },
+                      { key: "name",       header: "Name", width: 200 },
                       {
-                        key: "canonical_code",
-                        header: "Canonical",
+                        key: "kind",
+                        header: "Kind",
                         width: 160,
                         kind: "pill",
                         pillVariant: () => "neutral",
-                        pillLabel: (s) => s.canonical_code,
+                        pillLabel: (s) => s.kind,
                       },
                       {
-                        key: "description",
-                        header: "Description",
+                        key: "is_initial",
+                        header: "Initial",
+                        width: 80,
                         kind: "custom",
-                        render: (s) => s.description ?? "",
+                        render: (s) => s.is_initial ? "✓" : "",
                       },
                     ]}
                   />

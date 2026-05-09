@@ -232,6 +232,56 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// Start handles POST /api/v2/timeboxes/sprints/{id}/start
+func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
+	wsID, ok := requireWorkspaceID(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+
+	sprint, err := h.svc.Start(r.Context(), wsID, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrNotFound):
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		case errors.Is(err, ErrStartLifecycle):
+			httperr.Write(w, r, http.StatusConflict, ErrStartLifecycle.Error())
+		default:
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sprint)
+}
+
+// Close handles POST /api/v2/timeboxes/sprints/{id}/close
+func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
+	wsID, ok := requireWorkspaceID(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+
+	sprint, err := h.svc.Close(r.Context(), wsID, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrNotFound):
+			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		case errors.Is(err, ErrCloseLifecycle):
+			httperr.Write(w, r, http.StatusConflict, ErrCloseLifecycle.Error())
+		default:
+			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sprint)
+}
+
 // BulkCreate handles POST /api/v2/timeboxes/sprints/bulk-create
 func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)

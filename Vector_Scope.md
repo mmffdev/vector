@@ -532,7 +532,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 
 - ✅ **B15.1** `<Table>` component — single sanctioned table primitive `[P2]`
   > `app/components/Table.tsx` — canonical primitive (657 LOC); `lint:no-raw-table` enforcement; 4 tree exceptions on allow-list; spec: `docs/c_c_table_component.md`
-- ✅ **B15.2** `<ResourceTree>` / `WorkItemsTree` — hierarchical tree `[P2]`
+- ✅ **B15.2** `<ResourceTree>` / `ObjectTree` — hierarchical tree + configuration registry `[P2]`
+  `[x] Generic dumb primitive (p_ObjectTree.tsx); pluggable data-type config via object-tree-registry.tsx; ready for releases/sprints/portfolio items`
   > `app/components/ResourceTree.tsx` (1554 LOC); five prop sets (Data/Scaffold/Features/CogMenu/Colour); addressable substrate; spec: `docs/c_c_resource_tree.md`
 - ✅ **B15.3** `<Badge>` — status / count / letter / tag variants `[P2]`
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
@@ -705,4 +706,4 @@ A 3D force-directed graph (Obsidian-style globe) for visualising the work-item h
 
 ## Unmatched Commits
 
-_(none)_
+> Commit `027638a` (2026-05-09): chore(B6.6): drop legacy topology V1 tables (org_nodes, org_levels, org_node_roles)

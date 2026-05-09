@@ -1264,6 +1264,7 @@ paths:
   /user-stories:
     post:
       tags: [work-items]
+      deprecated: true
       summary: Create user story
       operationId: createUserStory
       security:
@@ -1289,6 +1290,7 @@ paths:
   /user-stories/{id}:
     get:
       tags: [work-items]
+      deprecated: true
       summary: Get user story
       operationId: getUserStory
       security:
@@ -1313,6 +1315,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     patch:
       tags: [work-items]
+      deprecated: true
       summary: Update user story
       operationId: patchUserStory
       security:
@@ -1343,6 +1346,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     delete:
       tags: [work-items]
+      deprecated: true
       summary: Archive user story
       operationId: archiveUserStory
       security:
@@ -1364,6 +1368,7 @@ paths:
 
   /defects:
     post:
+      deprecated: true
       tags: [work-items]
       summary: Create defect
       operationId: createDefect
@@ -1389,6 +1394,7 @@ paths:
 
   /defects/{id}:
     get:
+      deprecated: true
       tags: [work-items]
       summary: Get defect
       operationId: getDefect
@@ -1413,6 +1419,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
+      deprecated: true
       tags: [work-items]
       summary: Update defect
       operationId: patchDefect
@@ -1443,6 +1450,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
+      deprecated: true
       tags: [work-items]
       summary: Archive defect
       operationId: archiveDefect
@@ -2770,6 +2778,7 @@ paths:
 
   /portfolio-items:
     post:
+      deprecated: true
       tags: [work-items]
       summary: Create portfolio item
       operationId: createPortfolioItem
@@ -2795,6 +2804,7 @@ paths:
 
   /portfolio-items/{id}:
     get:
+      deprecated: true
       tags: [work-items]
       summary: Get portfolio item
       operationId: getPortfolioItem
@@ -2819,6 +2829,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
+      deprecated: true
       tags: [work-items]
       summary: Update portfolio item
       operationId: patchPortfolioItem
@@ -2849,6 +2860,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
+      deprecated: true
       tags: [work-items]
       summary: Archive portfolio item
       operationId: archivePortfolioItem

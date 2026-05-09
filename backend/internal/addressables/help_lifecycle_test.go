@@ -42,7 +42,7 @@ import (
 // wires these behind RequirePermission(MenuAdminView); for the test we
 // inject the user via auth.WithUserForTest at request time so we exercise
 // the same handler code path the live router does, just without the RBAC
-// middleware (covered separately by the wsperms package).
+// middleware (covered separately by the roles package).
 func newAdminRouter(pool *pgxpool.Pool) (*chi.Mux, *addressables.Service) {
 	svc := addressables.New(pool, false)
 	h := addressables.NewHandler(svc, testCIToken, testCustomAppToken)

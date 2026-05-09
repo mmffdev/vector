@@ -2,13 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
-import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { api } from "@/app/lib/api";
-import { useTabState } from "@/app/hooks/useTabState";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -455,7 +452,7 @@ export default function WorkItemsSettingsPage() {
   const { user } = useAuth();
   const canEditSettings = useHasPermission("work_items.settings.edit");
   const router = useRouter();
-  const [tab, setTab] = useTabState(TABS, "fields", "tab");
+  const [tab, setTab] = useState<typeof TABS[number]>("fields");
 
   useEffect(() => {
     if (user && !canEditSettings) router.replace("/work-items");
@@ -464,16 +461,7 @@ export default function WorkItemsSettingsPage() {
   if (!user || !canEditSettings) return null;
 
   return (
-    <StrictRoute>
-    <PageShell
-      title="Work Items Settings"
-      subtitle="Custom field library and item templates"
-      actions={
-        <a href="/work-items" className="btn btn--ghost">
-          ← Back to Work Items
-        </a>
-      }
-    >
+    <>
       <div className="wi-settings__filter-bar">
         {(["fields", "templates"] as const).map((t) => (
           <button
@@ -497,7 +485,6 @@ export default function WorkItemsSettingsPage() {
           <TemplateBuilder />
         </Panel>
       )}
-    </PageShell>
-    </StrictRoute>
+    </>
   );
 }

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" role="img" aria-labelledby="retry-title retry-desc" font-family="Inter, system-ui, sans-serif">
+  <title id="retry-title">Retries per launch phase — last 14 launches</title>
+  <desc id="retry-desc">Stacked area chart of retry counts per phase across the last 14 launches. Phases stacked bottom to top: tunnel, backend, frontend. Most launches show 0 to 2 retries; launches 6 and 11 show elevated tunnel retries (4 and 5).</desc>
+  <rect x="0" y="0" width="720" height="280" fill="#FFFFFF"/>
+  <text x="24" y="28" font-size="14" font-weight="600" fill="#1A1A1A">Retries per launch phase</text>
+  <text x="24" y="46" font-size="11" fill="#5C5C5C">Last 14 launches. Stacked: tunnel + backend + frontend retries before healthy.</text>
+  <!-- plot area x 60..680 (620), y 70..230 (160). 14 points step ~47.7. y axis 0..10 retries -->
+  <!-- gridlines every 2 -->
+  <g stroke="#E5E1DA" stroke-width="1">
+    <line x1="60" y1="230" x2="680" y2="230"/>
+    <line x1="60" y1="198" x2="680" y2="198"/>
+    <line x1="60" y1="166" x2="680" y2="166"/>
+    <line x1="60" y1="134" x2="680" y2="134"/>
+    <line x1="60" y1="102" x2="680" y2="102"/>
+    <line x1="60" y1="70" x2="680" y2="70"/>
+  </g>
+  <g font-size="10" fill="#8A8A8A" text-anchor="end">
+    <text x="54" y="234">0</text>
+    <text x="54" y="202">2</text>
+    <text x="54" y="170">4</text>
+    <text x="54" y="138">6</text>
+    <text x="54" y="106">8</text>
+    <text x="54" y="74">10</text>
+  </g>
+  <g font-size="10" fill="#8A8A8A" text-anchor="middle">
+    <text x="60" y="248">L1</text>
+    <text x="202" y="248">L4</text>
+    <text x="345" y="248">L7</text>
+    <text x="488" y="248">L10</text>
+    <text x="680" y="248">L14</text>
+  </g>
+  <!-- 14 points step 47.69230769 -->
+  <!-- tunnel retries: 0,1,0,0,1,2,4,1,0,0,1,5,2,1 -->
+  <!-- backend retries: 0,0,1,0,0,1,0,1,0,1,0,1,0,0 -->
+  <!-- frontend retries: 0,0,0,1,0,0,1,0,0,0,1,1,0,0 -->
+  <!-- 16px per retry -->
+  <!-- tunnel polygon (bottom) -->
+  <polygon fill="#1A1A1A" fill-opacity="0.85" points="
+    60,230 107.7,230 155.4,214 203.1,230 250.8,230 298.5,214 346.2,198 393.8,166 441.5,214 489.2,230 536.9,230 584.6,214 632.3,150 680,198
+    680,230 60,230" />
+  <!-- backend polygon stacked above tunnel: tunnel y - backend value*16 -->
+  <!-- per point: tunnelY - backend*16 -->
+  <polygon fill="#5C5C5C" fill-opacity="0.85" points="
+    60,230 107.7,230 155.4,198 203.1,230 250.8,230 298.5,198 346.2,198 393.8,150 441.5,214 489.2,214 536.9,230 584.6,198 632.3,134 680,198
+    680,198 632.3,150 584.6,214 536.9,230 489.2,230 441.5,214 393.8,166 346.2,198 298.5,214 250.8,230 203.1,230 155.4,214 107.7,230 60,230" />
+  <!-- frontend polygon stacked above backend -->
+  <polygon fill="#B8B5AF" fill-opacity="0.85" points="
+    60,230 107.7,230 155.4,198 203.1,214 250.8,230 298.5,198 346.2,182 393.8,150 441.5,214 489.2,214 536.9,214 584.6,182 632.3,134 680,198
+    680,198 632.3,134 584.6,198 536.9,230 489.2,214 441.5,214 393.8,150 346.2,198 298.5,198 250.8,230 203.1,230 155.4,198 107.7,230 60,230" />
+  <!-- legend -->
+  <g font-size="11">
+    <rect x="500" y="60" width="12" height="8" fill="#1A1A1A" fill-opacity="0.85"/>
+    <text x="518" y="68" fill="#5C5C5C">tunnel</text>
+    <rect x="558" y="60" width="12" height="8" fill="#5C5C5C" fill-opacity="0.85"/>
+    <text x="576" y="68" fill="#5C5C5C">backend</text>
+    <rect x="626" y="60" width="12" height="8" fill="#B8B5AF" fill-opacity="0.85"/>
+    <text x="644" y="68" fill="#5C5C5C">frontend</text>
+  </g>
+</svg>

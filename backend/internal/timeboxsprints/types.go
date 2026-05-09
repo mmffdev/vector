@@ -11,6 +11,8 @@ var (
 	ErrAdjacency      = errors.New("sprint start date must be exactly one day after the previous sprint's end date")
 	ErrInvalidInput   = errors.New("invalid sprint input")
 	ErrLifecycle      = errors.New("active or completed sprints cannot be deleted")
+	ErrStartLifecycle = errors.New("only planned sprints can be started")
+	ErrCloseLifecycle = errors.New("only active sprints can be closed")
 )
 
 // Sprint is the wire representation of a timebox_sprints row.
