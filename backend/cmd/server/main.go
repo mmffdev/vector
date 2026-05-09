@@ -830,6 +830,42 @@ func main() {
 		})
 	})
 
+	// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
+	// Portfolio master record + workspace layer reads — site-only BFF surfaces.
+	r.Route("/portfolio", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		portfolioMasterRecordH.Mount(r)
+	})
+	r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
+	})
+
+	// /flows (B22.20) — site-only; padmin-managed workflow definitions.
+	if flowsH != nil {
+		r.Route("/flows", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
+			r.Use(httprate.LimitByIP(60, time.Minute))
+			r.Get("/", flowsH.List)
+		})
+	}
+
+	// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
+	r.Route("/workspace/{id}/fields", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Get("/", fieldsH.List)
+	})
+
 	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
 	// These are BFF-only: the ObjectTree, WorkItemDetailPanel, and
 	// artefact-items tree are all staff/site surfaces. The same

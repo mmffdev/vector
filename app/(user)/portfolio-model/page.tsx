@@ -35,7 +35,7 @@ import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { api, apiV2, ApiError } from "@/app/lib/api";
+import { api, apiSite, ApiError } from "@/app/lib/api";
 import { useHintOnce } from "@/app/lib/hints";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import WizardModelCardList from "./WizardModelCardList";
@@ -216,7 +216,7 @@ export default function PortfolioModelPage() {
         }
         const workspaceId = workspaces[0].id;
 
-        const mr = await apiV2<MasterRecordDTO>(
+        const mr = await apiSite<MasterRecordDTO>(
           `/portfolio/master_record?workspace_id=${encodeURIComponent(workspaceId)}`,
         );
         if (cancelled) return;
@@ -376,7 +376,7 @@ function BundleView({ bundle, workspaceId }: { bundle: BundleDTO; workspaceId: s
 
   useEffect(() => {
     let cancelled = false;
-    apiV2<LayerDTO[]>(`/workspace/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
+    apiSite<LayerDTO[]>(`/workspace/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
       if (!cancelled) setLocalLayers(rows.sort((a, b) => a.sort_order - b.sort_order));
     }).catch(() => {
       // On error fall back to bundle layers so the page isn't blank.

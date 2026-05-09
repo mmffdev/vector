@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Table from "@/app/components/Table";
-import { apiV2 } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 interface FlowState {
@@ -35,7 +35,7 @@ export default function WorkItemsPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    apiV2<FlowsResponse>("/flows/")
+    apiSite<FlowsResponse>("/flows/")
       .then((res) => {
         if (cancelled) return;
         setData(res);
