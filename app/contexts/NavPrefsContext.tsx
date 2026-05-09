@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { apiInfra as api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export type NavItemKind = "static" | "entity" | "user_custom";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { apiInfra } from "@/app/lib/api";
+import { apiRoot } from "@/app/lib/api";
 
 type EnvName = "dev" | "staging" | "production" | "unknown";
 type Letter = "D" | "S" | "P" | "?";
@@ -53,7 +53,7 @@ export default function EnvBadge() {
 
     const tick = async () => {
       try {
-        const data = await apiInfra<PipelineStatus>("/status/pipeline", { skipAuth: true });
+        const data = await apiRoot<PipelineStatus>("/status/pipeline", { skipAuth: true });
         if (cancelled) return;
         setInfo(data);
         setError(false);
@@ -113,7 +113,7 @@ export default function EnvBadge() {
     setSwitching({ target, startedAt: Date.now() });
     setError(false);
     try {
-      await apiInfra("/env/switch", {
+      await apiRoot("/env/switch", {
         method: "POST",
         body: JSON.stringify({ target }),
       });

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Table from "@/app/components/Table";
 import ToggleBtn from "@/app/components/ToggleBtn";
-import { apiInfra as api, ApiError } from "@/app/lib/api";
+import { apiSite as api, ApiError } from "@/app/lib/api";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "../_shared";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;

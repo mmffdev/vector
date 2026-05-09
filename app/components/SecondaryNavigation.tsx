@@ -26,7 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { MdOutlineSwapVert } from "react-icons/md";
-import { apiInfra as api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export interface SecondaryNavigationItem<K extends string = string> {

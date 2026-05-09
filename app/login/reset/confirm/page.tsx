@@ -12,7 +12,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { apiInfra as api, ApiError } from "@/app/lib/api";
+import { apiSite as api, ApiError } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
 import { AuthBrand } from "@/app/components/AuthBrand";
 

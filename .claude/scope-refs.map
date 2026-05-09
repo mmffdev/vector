@@ -48,3 +48,23 @@ B21.4.3	storify strategy artefact types theme objective feature creation flows
 B21.4.4	drop legacy v1 portfolio-items routes deprecation cutover
 B21.4.5	per-scope flow-state validation transitions ListFlowStates audit
 B15.2.5	sidecar wizard JSON p_wizard configs resolveWizardConfig sidecar pattern
+B8.7	idempotency keys mutating public endpoints replay retry stripe header
+B8.8	cursor pagination opaque token list endpoints offset replace stable
+B8.9	sparse fieldsets fields query parameter REST graphql substitute mask
+B8.10	scoped api keys permissions sam_live tenant scopes column n8n
+B17.9	api gateway kong envoy public surface subdomain validation deprecation
+B22.1	mount _site BFF subtree main.go chi route admin nav healthz dev
+B22.2	rename apiInfra apiSite frontend helper _site prefix codemod
+B22.3	lint public-helper-allowlist apiV2 ledger registries vetted callers
+B22.4	lint no-db-in-handlers pgxpool database/sql exemptions ledger ratchet
+B22.5	extract auth handler service login refresh logout
+B22.6	extract fields handler service custom field crud
+B22.7	extract errorsreport handler service site-only audit
+B22.8	extract libraryreleases handler service library cross-DB pool
+B22.9	extract roles handler service reads writer-boundary
+B22.10	extract portfoliomodels master_record_handler service portfolio
+B22.11	audit_events table audit Service Record sole-writer source_transport SOC
+B22.12	dto mapper convention public MapPublic lint dto-mapper transport
+B22.13	docs transport segregation site _site samantha v2 boundary diagram
+B22.14	gateway _site staff VPN SSO ingress 404 public requests
+B22.15	stories skill transport site public both decision log endpoint

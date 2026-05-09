@@ -617,11 +617,18 @@ func main() {
 		r.Get("/ws", realtime.ServeWS(rtHub))
 	})
 
-	// ---- Infra routes — unversioned (PLA-0030 Task 8) ----
-	// Session/user/navigation infrastructure — no data versioning; promoted
-	// from /samantha/v1 to root-level. Frontend uses apiInfra() to reach these.
-	// The apikeys middleware is NOT applied here — infra routes authenticate
-	// via JWT only (API keys are a data-plane concept).
+	// ---- Site (BFF) routes — PLA-0039 / B22 ----
+	// Closure mounts every site-only route (auth/me/nav/user/tab-order/
+	// custom-pages/addressables/page-help/library/releases/errors/workspaces/
+	// admin/roles). Mounted twice:
+	//   • r.Route("/_site", mountSiteRoutes)   — canonical BFF prefix
+	//   • mountSiteRoutes(r) at root           — back-compat shim with
+	//     Deprecation: site=/_site header (≤2 release cycles, then removed)
+	// Customer/public traffic stays under /samantha/v2 below; never inside
+	// this closure. The apikeys middleware is NOT applied — site routes
+	// authenticate via JWT only (API keys are a data-plane concept on
+	// /samantha/v2).
+	mountSiteRoutes := func(r chi.Router) {
 
 	// /auth
 	r.Route("/auth", func(r chi.Router) {
@@ -833,6 +840,27 @@ func main() {
 			Post("/{id}/permissions", rolesH.AssignPermissions)
 		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
 			Delete("/{id}/permissions", rolesH.RevokePermissions)
+	})
+
+	} // end mountSiteRoutes
+
+	// Canonical BFF mount: every site-only route lives under /_site.
+	// Frontend uses apiSite() (formerly apiInfra) to reach these.
+	r.Route("/_site", func(r chi.Router) { mountSiteRoutes(r) })
+
+	// Back-compat shim: mount the same routes at root with a Deprecation
+	// header pointing callers at /_site. Removed after ≤2 release cycles
+	// once apiSite() codemod has landed and gateway rules are in place.
+	// PLA-0039 / B22.1.
+	r.Group(func(r chi.Router) {
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Set("Deprecation", "true")
+				w.Header().Set("Link", `</_site>; rel="successor-version"`)
+				next.ServeHTTP(w, req)
+			})
+		})
+		mountSiteRoutes(r)
 	})
 
 	// ---- /samantha/v1 — data routes (infra moved to root above) ----

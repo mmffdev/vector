@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiInfra, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
+import { apiSite, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (refreshInFlight.current) return refreshInFlight.current;
     const flight = (async () => {
       try {
-        const res = await apiInfra<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
+        const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
         applyLogin(res);
       } catch {
         setApiToken(null);
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await apiInfra<LoginResp>("/auth/login", {
+      const res = await apiSite<LoginResp>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
         skipAuth: true,
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     const departingId = user?.id ?? null;
     try {
-      await apiInfra("/auth/logout", { method: "POST" });
+      await apiSite("/auth/logout", { method: "POST" });
     } catch {
       // ignore
     }

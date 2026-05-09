@@ -30,7 +30,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { useSamanthaSdk } from "@/app/contexts/SamanthaSdkContext";
-import { apiInfra as api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 
 // Six closed-vocabulary slots — must mirror backend's ViewportSlot.
 // TypeScript's literal union enforces this at compile time (AC12).

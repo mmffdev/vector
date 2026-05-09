@@ -1,4 +1,4 @@
-import { apiInfra as api } from "./api";
+import { apiSite as api } from "./api";
 
 export async function reportError(
   code: string,

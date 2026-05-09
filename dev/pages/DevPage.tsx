@@ -6,7 +6,7 @@ import "@dev/styles/dev-ui.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
-import { api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { getWorkspaceFields } from "@/app/lib/fieldsApi";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import Panel from "@/app/components/Panel";
@@ -154,7 +154,7 @@ export default function DevPage() {
     setResetResult(null);
 
     try {
-      const response = (await api("/api/admin/dev/adoption-reset", { method: "POST" })) as { message?: string };
+      const response = (await apiSite("/admin/dev/adoption-reset", { method: "POST" })) as { message?: string };
       setResetResult({
         success: true,
         message: response.message || "Adoption state reset successfully.",

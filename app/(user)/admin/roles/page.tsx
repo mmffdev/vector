@@ -18,7 +18,7 @@ import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { apiInfra as api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 
 interface Role {
   id: string;

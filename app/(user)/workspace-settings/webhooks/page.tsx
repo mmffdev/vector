@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Table from "@/app/components/Table";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
-import { apiInfra } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import WebhookForm from "./WebhookForm";
 
@@ -54,7 +54,7 @@ export default function WebhooksPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiInfra<{ webhooks?: Webhook[] }>(`/workspaces/${workspaceId}/webhooks`);
+      const data = await apiSite<{ webhooks?: Webhook[] }>(`/workspaces/${workspaceId}/webhooks`);
       setWebhooks(data.webhooks || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -77,7 +77,7 @@ export default function WebhooksPage() {
     if (!workspaceId) return;
     if (!confirm("Delete this webhook?")) return;
     try {
-      await apiInfra(`/workspaces/${workspaceId}/webhooks/${id}`, { method: "DELETE" });
+      await apiSite(`/workspaces/${workspaceId}/webhooks/${id}`, { method: "DELETE" });
       await fetchWebhooks();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");

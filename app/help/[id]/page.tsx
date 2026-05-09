@@ -13,7 +13,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
-import { apiInfra as api, ApiError } from "@/app/lib/api";
+import { apiSite as api, ApiError } from "@/app/lib/api";
 
 type FetchState =
   | { kind: "loading" }

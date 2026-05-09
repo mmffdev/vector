@@ -17,7 +17,7 @@ import {
   resolveSdkHelp,
   helpValueAsFragment,
 } from "@/app/contexts/SamanthaSdkContext";
-import { apiInfra as api, ApiError } from "@/app/lib/api";
+import { apiSite as api, ApiError } from "@/app/lib/api";
 
 interface HeaderProps {
   // Snake-case identifier under this parent. Substrate validates against

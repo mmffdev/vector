@@ -1,8 +1,9 @@
-// Versioned base for data API calls (/samantha/v1 or /samantha/v2).
-// Infra/session routes (auth, nav, me, roles, admin, workspaces, errors,
+// Versioned base for data API calls (/samantha/v1 or /samantha/v2 — public).
+// Site/BFF routes (auth, nav, me, roles, admin, workspaces, errors,
 // addressables, page-help, library/releases, custom-pages, user/tab-order)
-// are unversioned root-level endpoints — use apiInfra() for those.
-export const API_INFRA_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
+// live under /_site (PLA-0039 / B22) — use apiSite() for those.
+const API_ROOT_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
+export const API_SITE_BASE = API_ROOT_BASE + "/_site";
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v1";
 
 let _accessToken: string | null = null;
@@ -107,11 +108,21 @@ export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promis
   return _fetch<T>(API_BASE, path, opts);
 }
 
-// For root-level unversioned routes: auth, nav, me, roles, admin, workspaces,
-// errors, addressables, page-help, library/releases, custom-pages, user/tab-order,
-// healthz, env, status/pipeline, env/switch.
-export async function apiInfra<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
-  return _fetch<T>(API_INFRA_BASE, path, opts);
+// For site/BFF routes mounted under /_site: auth, nav, me, roles, admin,
+// workspaces, errors, addressables, page-help, library/releases, custom-pages,
+// user/tab-order. Root-level transport infra (healthz, env, status/pipeline,
+// env/switch) is reached via API_SITE_BASE without the /_site prefix — pass
+// an absolute path starting with "//" to bypass, or call fetch() directly.
+// PLA-0039 / B22.2.
+export async function apiSite<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+  return _fetch<T>(API_SITE_BASE, path, opts);
+}
+
+// Root-level transport infra (NOT site, NOT public): /healthz, /env, /env/switch,
+// /status/pipeline, /ws. These intentionally live outside both /_site and
+// /samantha/v2 because they describe the transport itself.
+export async function apiRoot<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+  return _fetch<T>(API_ROOT_BASE, path, opts);
 }
 
 const API_V2_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v2";

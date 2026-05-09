@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-09 (B1.8 plan link added — PLA-0038 blocked-state)
-**Doc version:** 2.1
+**Last updated:** 2026-05-09 (B22 added — Transport segregation via shared service core, PLA-0039)
+**Doc version:** 2.3
 
 ---
 
@@ -40,6 +40,7 @@
 - [B19. Work Item Relations Graph](#b19-work-item-relations-graph)
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 - [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
+- [B22. Transport Segregation via Shared Service Core (PLA-0039)](#b22-transport-segregation-via-shared-service-core-pla-0039)
 
 ---
 
@@ -490,11 +491,16 @@ Full lifecycle management for tasks, bugs, epics.
 - **B8.4** TypeScript SDK `[P4]`
 - **B8.5** Python SDK `[P5]`
 - **B8.6** Postman collection `[P4]`
+- **B8.7** Idempotency keys on mutating public endpoints `[P2]`
+  > `Idempotency-Key` request header → server stores `(tenant_id, key, response_body, status_code)` for 24h and replays on retry. Stripe model. Required before any external integration ships, otherwise consumers with retry loops double-create. Scope: every POST/PATCH/DELETE on `/samantha/v2`. Storage: new `idempotency_records` table in `vector_artefacts` keyed on `(tenant_id, key)` with TTL cleanup. Middleware fires before handler; cache hit short-circuits. Exempt from BFF / admin surface.
+- **B8.8** Cursor-based pagination on list endpoints `[P2]`
+  > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
+- **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
+  > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
+- **B8.10** Per-tenant API keys with scoped permissions `[P2]`
+  > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 
----
-
-## B9. Webhooks
-
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
 
 - ✅ ~~**B9.1** Webhook subscriptions table — URL, event filter, secret~~
@@ -612,6 +618,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ **B15.7** Theme pack system `[P3]`
   > CSS variable theming live; warm neutrals palette per Design System; color derivation in Badge, Table, tree styles
 - ✅ **B15.8** Dev-UI primitives (`.dui-*` catalog for internal pages) `[P3]`
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > `dev/styles/dev-ui.css` — `.dui-*` catalog live; HARD RULE: every `/dev` panel composes from catalog, no bespoke per-page classes, no inline styles; spec: `docs/c_c_dev_ui_primitives.md`
 - ✅ **B15.9** CSS table migration — legacy `.table*` → canonical classes `[P3]`
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
@@ -662,6 +669,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   >
 - ✅ ~~**B17.7** API snapshot toolchain — dual-spec, `api-snapshots/v1/` + `v2/`~~
 - **B17.8** Unused index audit `[P3]`
+- **B17.9** API gateway in front of public surface `[P3]`
+  > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 
 ---
 
@@ -835,11 +844,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -865,6 +879,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -881,6 +899,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -892,6 +914,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -916,6 +939,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -929,6 +956,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -942,6 +973,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -958,6 +993,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -970,6 +1009,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -980,6 +1023,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b65e06a` (2026-05-09): docs(B21): add Artefact-Items Substrate plan, PLA-0037 [B21]
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -999,6 +1043,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -1006,18 +1051,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -1034,6 +1083,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -1044,11 +1094,73 @@ Manage per-role access to pages and features. Control what each role (user, padm
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
+> Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
+
+---
+
+## B22. Transport Segregation via Shared Service Core (PLA-0039)
+
+> **The win-win.** Keep one product codebase. Segregate by **transport adapter**, not by **service**. Site features ship as fast as before because there is no detour: every handler — site or customer — calls the *same* `Service` method. Two thin transport mounts (`/_site` for the BFF, `/samantha/v2` for the customer-facing API) sit on top. SOC 2 sees one auditable boundary; URL prefixes make site-vs-customer traffic visibly separate at the gateway, in logs, in WAF rules; a DTO mapper guard stops internal columns leaking through the customer adapter.
+>
+> **Why this is win-win, not a detour:** the work that already exists (B21 `artefactitemsv2.Service`, the 18 service.go files, RFC 9457 errors, RBAC, rate-limit middleware) **is the substrate**. We are not rebuilding — we are renaming a frontend helper, mounting a router subtree, adding two lints, and writing one DTO convention. Site velocity is unaffected because nothing about how a site feature is built changes — handler-calls-service is already the dominant pattern.
+>
+> **Why now:** the 252 / 9 / 8 split between `api()` / `apiV2` / `apiInfra` proves the site is silently riding the customer pool. Today's Reset Adoption State 404 was caused by exactly this confusion. Every week we wait, more callers cement the wrong assumption. After PLA-0030 (v1→v2 cutover) lands but before any external customer touches the system is the cheapest moment to draw the line.
+>
+> **Out of scope (deliberately):** rewriting any service; introducing GraphQL; multi-region; tenant-per-database; anything that does not directly enforce the adapter boundary.
+
+- **B22.1** Mount `/_site` BFF subtree in `main.go` `[P1]`
+> Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
+> Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+  > Re-home every site-only route under a single chi `Route("/_site", …)` block: `/admin/*`, `/me`, `/nav/*`, `/auth/refresh` + `/auth/logout`, `/dev/*`, `/healthz`, `/env*`, `/page-help/*`, `/library/releases/*`, `/custom-pages/*`, `/user/tab-order/*`, `/addressables/*`, `/errors/*`, `/workspaces/*`, `/status/pipeline`. Keep root-level shims for ≤2 release cycles emitting `Deprecation: site=/_site` header, then drop. After this lands, "is this route customer-facing?" is answered by `strings.HasPrefix(path, "/_site")` — usable in middleware, gateway rules, log filters.
+
+- **B22.2** Rename frontend helper `apiInfra` → `apiSite`; point at `/_site` `[P1]` `[ ]B22.1`
+  > Single rename + base-URL change in `app/lib/api.ts` (the file already documents the routes in its header — they just need a shorter name and the `/_site` prefix). Codemod the 8 call sites. After this, `apiSite()` for site code is the literal name of what it does; helper count stays at 3, semantics sharpen.
+
+- **B22.3** Lint `lint:public-helper-allowlist` — gate `api()` and `apiV2` to a vetted file allowlist `[P1]` `[ ]B22.2`
+  > New python lint under `dev/scripts/lint_public_helper_allowlist.py` + ledger `dev/registries/public_helper_allowlist.txt`. Default rule: any file under `app/` or `dev/` that calls `api(` or `apiV2(` must be in the ledger. CI fails on a new caller that isn't allowlisted. Forces deliberate decisions; converts the 252 / 9 split from drift into evidence.
+
+- **B22.4** Lint `lint:no-db-in-handlers` — fail CI on `pgxpool` / `database/sql` import in any non-test `handler*.go` `[P1]`
+  > Python script under `dev/scripts/lint_no_db_in_handlers.py`; ledger `dev/registries/handler_db_exemptions.txt` seeded with the 8 known stragglers (auth, fields, errorsreport, libraryreleases, roles, portfoliomodels ×3, portfolio/master_record). Each removal from the ledger = one handler extracted to its service. The lint is the ratchet; the ledger is the migration tracker.
+
+- **B22.5** Extract `auth/handler.go` to `auth.Service` `[P2]` `[ ]B22.4`
+  > First straggler. `Login`, `Refresh`, `Logout` move into `auth.Service`; handler holds only HTTP concerns. Removes auth from the lint ledger.
+
+- **B22.6** Extract `fields/handler.go` to `fields.Service` `[P2]` `[ ]B22.4`
+  > Second straggler. Custom-field CRUD into service; ledger row removed.
+
+- **B22.7** Extract `errorsreport/handler.go` to `errorsreport.Service` `[P2]` `[ ]B22.4`
+  > Site-only handler — moves under `/_site/errors`; service writes go through `audit.Service` once B22.11 lands.
+
+- **B22.8** Extract `libraryreleases/handler.go` to `libraryreleases.Service` `[P2]` `[ ]B22.4`
+  > Library-DB-pool consumer; service holds the cross-DB read pattern.
+
+- **B22.9** Extract `roles/handler.go` to `roles.Service` `[P2]` `[ ]B22.4`
+  > `roles.Service` already exists for writes (per `lint:writer-boundary`); reads still in handler — fold them in.
+
+- **B22.10** Extract `portfoliomodels/handler*.go` (×3) and `portfolio/master_record_handler.go` to services `[P2]` `[ ]B22.4`
+  > Largest straggler set. Bundle so PLA-0026 (per-workspace adoption cutover) and B22 stop colliding on the same files.
+
+- **B22.11** `audit_events` table + `audit.Service.Record()` sole-writer `[P1]` `[ ]B22.4`
+  > New migration `db/schema/NNN_audit_events.sql`: `(id, tenant_id, actor_user_id, action, resource_type, resource_id, request_id, source_transport, before_jsonb, after_jsonb, created_at)`. `source_transport` ∈ {`site`, `public`} so SOC 2 reviewers can distinguish staff actions from customer actions. Mutating service methods call `audit.Record(ctx, …)` synchronously; failure rolls back the transaction. `lint:writer-boundary` extended so only `audit.Service` writes the table.
+
+- **B22.12** DTO + mapper convention — every service exposing data via `apiV2` declares `dto.go` `[P2]` `[ ]B22.11`
+  > Pattern: `MapPublic(internal Foo) dto.FooPublic`. Lint `lint:public-dto-mapper`: any handler under `/samantha/v2` returning a Go struct from `internal/<svc>` (i.e. not from `internal/<svc>/dto`) fails. Stops a future PR accidentally exposing a column added internally. `portfoliomodels/dto.go` is the seed example; document the pattern in `docs/c_c_transport_segregation.md`.
+
+- **B22.13** Docs — `docs/c_c_transport_segregation.md` `[P2]` `[ ]B22.1`
+  > Single page: the diagram (handler → Service → audit), the URL-prefix rule (`/_site` vs `/samantha/v2`), the three lints (`lint:public-helper-allowlist`, `lint:no-db-in-handlers`, `lint:public-dto-mapper`), the DTO mapper convention, and the SOC 2 evidence story (one audit table, two transports, one boundary). Linked from CLAUDE.md alongside `c_c_v1_v2_cutover.md`.
+
+- **B22.14** Gateway-layer rule — drop `/_site` requests at the public ingress `[P3]` `[ ]B22.1`
+  > Once a real gateway lands (B17.9), add a rule: requests to `/_site/*` from outside the staff VPN/SSO are 404'd. Before the gateway exists, document the intent in `docs/c_c_transport_segregation.md` so it ships when B17.9 ships.
+
+- **B22.15** Decision log — site-only vs customer-also for new endpoints `[P3]`
+  > One-line addition to the `<stories>` skill checklist: every new endpoint card declares `transport: site | public | both`. Forces the decision at story time, not at handler time. Keeps drift from re-emerging.
 
 ---
 

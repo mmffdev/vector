@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiInfra, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 interface WebhookFormProps {
   workspaceId: string;
@@ -43,7 +43,7 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
     if (!webhookId) return;
     setLoading(true);
     try {
-      const data = await apiInfra<{ url: string; events: string | null; secret: string | null }>(
+      const data = await apiSite<{ url: string; events: string | null; secret: string | null }>(
         `/workspaces/${workspaceId}/webhooks/${webhookId}`
       );
       setForm({
@@ -79,7 +79,7 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
       };
       if (form.secret) payload.secret = form.secret;
 
-      await apiInfra(path, { method, body: JSON.stringify(payload) });
+      await apiSite(path, { method, body: JSON.stringify(payload) });
       onSubmit();
     } catch (err) {
       const msg =

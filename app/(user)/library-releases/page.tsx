@@ -18,7 +18,7 @@ import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { apiInfra as api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 type Severity = "info" | "action" | "breaking";

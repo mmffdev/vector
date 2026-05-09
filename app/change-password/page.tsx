@@ -16,7 +16,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { apiInfra as api, ApiError } from "@/app/lib/api";
+import { apiSite as api, ApiError } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { AuthFooter } from "@/app/components/AuthFooter";
 

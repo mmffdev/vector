@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0038`
+**Last issued:** `PLA-0039`
 
 ## Format
 
@@ -59,6 +59,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0036` | Typed work-item links — `work_item_links` table for blocks/duplicates/relates_to cross-tree edges | 2026-05-09 | reserved |
 | `PLA-0037` | Artefact-Items Substrate — rename `workitemsv2` → `artefactitemsv2`, scope-parameterised (B21) | 2026-05-09 | reserved (plan file pending) |
 | `PLA-0038` | Blocked-state — orthogonal stuck flag with provenance for work items | 2026-05-09 | active |
+| `PLA-0039` | Transport Segregation via Shared Service Core — `/_site` BFF + `/samantha/v2` public, with one Service per domain | 2026-05-09 | active |
 
 ## Scope linkage rule
 

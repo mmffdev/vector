@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth, ApiError } from "@/app/contexts/AuthContext";
 import { AuthFooter } from "@/app/components/AuthFooter";
 import { AuthBrand } from "@/app/components/AuthBrand";
-import { apiInfra as api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 
 function LoginForm() {
   const { login } = useAuth();
