@@ -139,7 +139,8 @@ func main() {
 	mailer := email.NewFromEnv()
 
 	authSvc := auth.NewService(pool, auditLog, mailer)
-	authH := auth.NewHandler(authSvc, permResolver, pool)
+	authSvc.Resolver = permResolver
+	authH := auth.NewHandler(authSvc)
 
 	apiKeysSvc := apikeys.New(pool)
 	apiKeysH := apikeys.NewHandler(apiKeysSvc)

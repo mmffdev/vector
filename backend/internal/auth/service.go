@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -23,10 +24,24 @@ var (
 	ErrTokenExpired       = errors.New("token expired or used")
 )
 
+// PermissionResolver is the small surface auth.Service needs from the
+// permissions package — kept narrow so the handler doesn't have to keep
+// holding the resolver itself just to render userPayload. Anything that
+// can answer "what permissions does this user have?" satisfies it.
+//
+// Returns codes as `[]string` (sorted) — auth doesn't need typed codes
+// for rendering and this keeps the auth → permissions edge one-way
+// (resolver consumes auth's user model, auth consumes a tiny string-list
+// projection). The resolver implements this via PermissionCodesFor.
+type PermissionResolver interface {
+	PermissionCodesFor(ctx context.Context, userID uuid.UUID) ([]string, error)
+}
+
 type Service struct {
-	Pool   *pgxpool.Pool
-	Audit  *audit.Logger
-	Mailer *email.Service
+	Pool     *pgxpool.Pool
+	Audit    *audit.Logger
+	Mailer   *email.Service
+	Resolver PermissionResolver
 
 	// OnLogin is invoked synchronously after a successful Login.
 	// Used by Phase 3 to warm the library-releases reconciler cache for
@@ -39,6 +54,44 @@ type Service struct {
 
 func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
 	return &Service{Pool: pool, Audit: audit, Mailer: mailer}
+}
+
+// RolePayload is the wire shape for users.role on auth responses
+// (login, refresh, /me). Frontend RBAC reads code/rank/is_external
+// directly so it never has to translate the legacy enum into capability.
+type RolePayload struct {
+	ID         uuid.UUID `json:"id"`
+	Code       string    `json:"code"`
+	Label      string    `json:"label"`
+	Rank       int       `json:"rank"`
+	IsSystem   bool      `json:"is_system"`
+	IsExternal bool      `json:"is_external"`
+}
+
+// LoadRoleAndPermissions returns the user's role row and effective
+// permission codes. Returns a zero RolePayload + empty slice (no error)
+// rather than failing if the lookup hiccups — auth-payload rendering must
+// not break because the catalogue is briefly unavailable.
+func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) (RolePayload, []string) {
+	var roleID uuid.UUID
+	if err := s.Pool.QueryRow(ctx, `SELECT role_id FROM users WHERE id = $1`, userID).Scan(&roleID); err != nil {
+		return RolePayload{}, []string{}
+	}
+	var rp RolePayload
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT id, code, label, rank, is_system, is_external
+		  FROM roles WHERE id = $1`, roleID,
+	).Scan(&rp.ID, &rp.Code, &rp.Label, &rp.Rank, &rp.IsSystem, &rp.IsExternal); err != nil {
+		return RolePayload{}, []string{}
+	}
+	perms := []string{}
+	if s.Resolver != nil {
+		if codes, err := s.Resolver.PermissionCodesFor(ctx, userID); err == nil {
+			perms = codes
+			sort.Strings(perms)
+		}
+	}
+	return rp, perms
 }
 
 func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {

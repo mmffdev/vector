@@ -107,6 +107,22 @@ func (r *Resolver) Has(ctx context.Context, userID uuid.UUID, code Code) (bool, 
 	return ok, nil
 }
 
+// PermissionCodesFor returns the user's effective permission codes as a
+// flat (unsorted) string slice. Used by callers that just need to render
+// the codes (auth/me payload) without typed `Code` values. Caller may
+// sort the result for stable output.
+func (r *Resolver) PermissionCodesFor(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	set, err := r.PermissionsFor(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(set))
+	for c := range set {
+		out = append(out, string(c))
+	}
+	return out, nil
+}
+
 // Invalidate drops the cached entry for userID. Call this after the
 // user's role_id changes (creator-matrix updates, role assignment).
 func (r *Resolver) Invalidate(userID uuid.UUID) {
