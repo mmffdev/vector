@@ -407,6 +407,10 @@ Full lifecycle management for tasks, bugs, epics.
   > Migration 138: `org_nodes`, `org_levels`, `org_node_roles` dropped from mmff_vector. No backend consumers since M6.2.7 cutover (verified by grep audit). Zero rows since cutover date. Applied 2026-05-09.
   > Last checked: 2026-05-09
   >
+- ✅ ~~**B6.7** Fix padmin role access to workspace-settings~~
+  > padmin role was unable to save navigation preferences due to workspace-settings being gadmin-only but default_pinned=TRUE. Fixed via: (1) Migration 140 grants padmin access to workspace-settings in roles_pages table, (2) Migration 141 restores workspace-settings.default_pinned = TRUE so padmin sees it in defaults. The earlier migration 139 (default_pinned=FALSE) was the wrong approach and is now superseded.
+  > Last checked: 2026-05-09
+  >
 
 ---
 
@@ -706,6 +710,8 @@ A 3D force-directed graph (Obsidian-style globe) for visualising the work-item h
 
 ## Unmatched Commits
 
+> Commit `61a1876` (2026-05-09): fix(PLA-0018): grant padmin access to workspace-settings [B6.7]
+> Commit `9256433` (2026-05-09): feat(B9.5): webhook management UI at workspace-settings/webhooks
 > Commit `22f6bfc` (2026-05-09): docs(B15.2): add example ObjectTreeConfig props for work_items and strategy_items
 > Commit `fa56b2c` (2026-05-09): refactor(B15.2): organize ObjectTree into dedicated folder structure
 > Commit `01a0c38` (2026-05-09): fix(B6.7): workspace-settings should not be default-pinned
