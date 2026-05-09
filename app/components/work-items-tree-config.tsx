@@ -29,6 +29,7 @@ export interface WorkItem {
   id: string;
   key_num: number;
   item_type: string;
+  type_prefix: string;
   title: string;
   status: string;
   flow_state_id: string;
@@ -62,13 +63,6 @@ export interface WorkItem {
 }
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
-
-const TYPE_PREFIX: Record<string, string> = {
-  epic: "EP",
-  story: "US",
-  task: "TA",
-  defect: "DE",
-};
 
 const TYPE_VARIANT: Record<string, string> = {
   epic: "tree_accordion-dense__type-badge--epic",
@@ -163,7 +157,7 @@ export function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkIte
 // ─── Cell renderers ───────────────────────────────────────────────────────────
 
 function IdCell({ row, ctx }: { row: WorkItem; ctx: RenderCtx<WorkItem> }) {
-  const idText = `${TYPE_PREFIX[row.item_type] ?? "?"}-${row.key_num}`;
+  const idText = `${row.type_prefix || row.item_type.slice(0, 2).toUpperCase()}-${row.key_num}`;
   return (
     <span className="tree_accordion-dense__id-inner">
       <PrimaryCellTreeLines
@@ -206,7 +200,7 @@ function SummaryCell({
           (TYPE_VARIANT[row.item_type] ?? "")
         }
       >
-        {TYPE_PREFIX[row.item_type] ?? "?"}
+        {row.type_prefix || row.item_type.slice(0, 2).toUpperCase()}
       </span>
       <span
         className={

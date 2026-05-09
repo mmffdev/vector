@@ -37,6 +37,7 @@ type WorkItem struct {
 	SubscriptionID string     `json:"subscription_id"`
 	KeyNum         int64      `json:"key_num"`
 	ItemType       string     `json:"item_type"`
+	TypePrefix     string     `json:"type_prefix"`
 	Title          string     `json:"title"`
 	Description    *string    `json:"description"`
 	Status         string     `json:"status"`
