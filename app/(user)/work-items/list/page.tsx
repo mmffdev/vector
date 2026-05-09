@@ -9,7 +9,7 @@ import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
-import { resolveWizardConfig } from "@/app/lib/wizardLoader";
+import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
 import workItemsWizardJson from "@/app/components/ObjectTree/p_wizard.json";
 
@@ -30,8 +30,12 @@ export default function WorkItemsListPage() {
   // Load and resolve wizard config from p_wizard.json
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
     const resolved = resolveWizardConfig(workItemsWizardJson as any);
+    const funcs = buildWorkItemsFunctions();
     return {
       ...resolved,
+      getParentId: funcs.getParentId,
+      getChildrenCount: funcs.getChildrenCount,
+      searchAccessor: funcs.searchAccessor,
       panelHeader: resolved.panelHeaderComponent === "WorkItemsPanelHeader" ? <WorkItemsPanelHeader /> : undefined,
       filterChips: resolved.filterChipsComponent === "WorkItemsFilterChips" ? <WorkItemsFilterChips /> : undefined,
     } as ObjectTreeDataConfig;

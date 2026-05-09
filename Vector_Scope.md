@@ -761,6 +761,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 
 ## Unmatched Commits
 
+> Commit `ca3e543` (2026-05-09): feat(PLA-0030 B19.7): wire p_wizard.json sidecar pattern to work-items and portfolio-items pages
 > Commit `5c8f97b` (2026-05-09): docs(B20): add User Access Rights & Navigation Control section [B20]
 > Commit `65851a0` (2026-05-09): fix: auto-redirect to first accessible tab in workspace-settings
 > Commit `974c640` (2026-05-09): fix: allow padmin to access workspace-settings with role-gated tabs

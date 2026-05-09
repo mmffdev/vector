@@ -13286,3 +13286,107 @@
 {"action":"start","extra":{"pgid":"58766","pid":"58766","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:20:20.434Z"}
 {"action":"watch","extra":{"pid":"58766","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:20:51.116Z"}
 {"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"59482","pid":"59482"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:20:51.505Z"}
+{"action":"kill","extra":{"pgid":"59482"},"level":"info","result":"term-sent","tag":"frontend","ts":"2026-05-09T02:22:51.545Z"}
+{"action":"kill","extra":{"pgid":"59482"},"level":"info","result":"term-ok","tag":"frontend","ts":"2026-05-09T02:22:51.649Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"60748","pid":"60748"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:22:53.334Z"}
+{"action":"kill","extra":{"pgid":"60748"},"level":"info","result":"term-sent","tag":"frontend","ts":"2026-05-09T02:24:53.647Z"}
+{"action":"kill","extra":{"pgid":"60748"},"level":"info","result":"term-ok","tag":"frontend","ts":"2026-05-09T02:24:53.753Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"60938","pid":"60938"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:24:57.025Z"}
+{"action":"kill","extra":{"pgid":"13087"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:24:57.668Z"}
+{"action":"kill","extra":{"pgid":"13087"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:24:57.769Z"}
+{"action":"kill","extra":{"pgid":"49474"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:24:58.191Z"}
+{"action":"kill","extra":{"pgid":"49474"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:24:58.297Z"}
+{"action":"watch","extra":{"pid":"13087","service":"tunnel.dev"},"level":"warn","result":"pid-dead","tag":"tunnel","ts":"2026-05-09T02:24:59.787Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes vector-dev-pg","pgid":"60950","pid":"60950"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:24:59.790Z"}
+{"action":"start","extra":{"pgid":"60950","pid":"60950","service":"tunnel.dev"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:25:01.357Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"60990","pid":"60990"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:25:10.410Z"}
+{"action":"spawn","extra":{"cmd":"export BROWSER=none && npm start -- --no-open","pgid":"61012","pid":"61012"},"level":"info","result":"ok","tag":"docs","ts":"2026-05-09T02:25:13.240Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"61024","pid":"61024"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:25:16.345Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"61058","pid":"61058"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:25:22.152Z"}
+{"action":"kill","extra":{"pgid":"61024"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:25:25.361Z"}
+{"action":"kill","extra":{"pgid":"61024"},"level":"warn","result":"kill-sent","tag":"tunnel","ts":"2026-05-09T02:25:28.375Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"61104","pid":"61104"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:25:28.716Z"}
+{"action":"kill","extra":{"pgid":"61104"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:25:37.719Z"}
+{"action":"kill","extra":{"pgid":"61104"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:25:37.820Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"61191","pid":"61191"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:25:38.700Z"}
+{"action":"kill","extra":{"pgid":"61191"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:25:47.708Z"}
+{"action":"kill","extra":{"pgid":"61191"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:25:47.809Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"61256","pid":"61256"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:25:48.271Z"}
+{"action":"kill","extra":{"pgid":"61256"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:25:57.272Z"}
+{"action":"kill","extra":{"pgid":"61256"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:25:57.373Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"61280","pid":"61280"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:25:58.753Z"}
+{"action":"kill","extra":{"pgid":"61280"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:26:07.755Z"}
+{"action":"kill","extra":{"pgid":"61280"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:26:07.855Z"}
+{"action":"start","extra":{"service":"tunnel.prod"},"level":"error","result":"fail","tag":"tunnel","ts":"2026-05-09T02:26:08.769Z"}
+{"action":"kill","extra":{"pgid":"60938"},"level":"info","result":"term-sent","tag":"frontend","ts":"2026-05-09T02:27:00.392Z"}
+{"action":"kill","extra":{"pgid":"60938"},"level":"info","result":"term-ok","tag":"frontend","ts":"2026-05-09T02:27:00.392Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"61494","pid":"61494"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:27:00.394Z"}
+{"action":"kill","extra":{"pgid":"60990"},"level":"info","result":"term-sent","tag":"frontend","ts":"2026-05-09T02:27:10.920Z"}
+{"action":"kill","extra":{"pgid":"60990"},"level":"info","result":"term-ok","tag":"frontend","ts":"2026-05-09T02:27:11.117Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"62034","pid":"62034"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:27:12.270Z"}
+{"action":"kill","extra":{"pgid":"61012"},"level":"info","result":"term-sent","tag":"docs","ts":"2026-05-09T02:27:13.463Z"}
+{"action":"kill","extra":{"pgid":"61012"},"level":"info","result":"term-ok","tag":"docs","ts":"2026-05-09T02:27:13.563Z"}
+{"action":"spawn","extra":{"cmd":"export BROWSER=none && npm start -- --no-open","pgid":"62054","pid":"62054"},"level":"info","result":"ok","tag":"docs","ts":"2026-05-09T02:27:13.636Z"}
+{"action":"start","extra":{"pgid":"61058","pid":"61058","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:27:15.133Z"}
+{"action":"start","extra":{"pgid":"62034","pid":"62034","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:27:15.135Z"}
+{"action":"watch","extra":{"pid":"62034","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:27:45.136Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"62779","pid":"62779"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:27:45.137Z"}
+{"action":"start","extra":{"pgid":"62779","pid":"62779","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:27:45.238Z"}
+{"action":"watch","extra":{"pid":"62779","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:28:15.238Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"63292","pid":"63292"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:28:15.240Z"}
+{"action":"start","extra":{"pgid":"63292","pid":"63292","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:28:15.363Z"}
+{"action":"watch","extra":{"pid":"63292","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:28:45.364Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"63589","pid":"63589"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:28:45.365Z"}
+{"action":"start","extra":{"pgid":"63589","pid":"63589","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:28:45.459Z"}
+{"action":"kill","extra":{"pgid":"61494"},"level":"info","result":"term-sent","tag":"frontend","ts":"2026-05-09T02:29:00.457Z"}
+{"action":"kill","extra":{"pgid":"61494"},"level":"info","result":"term-ok","tag":"frontend","ts":"2026-05-09T02:29:00.461Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"63766","pid":"63766"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:29:00.473Z"}
+{"action":"kill","extra":{"pgid":"62054"},"level":"info","result":"term-sent","tag":"docs","ts":"2026-05-09T02:29:13.999Z"}
+{"action":"kill","extra":{"pgid":"62054"},"level":"info","result":"term-ok","tag":"docs","ts":"2026-05-09T02:29:14.138Z"}
+{"action":"spawn","extra":{"cmd":"export BROWSER=none && npm start -- --no-open","pgid":"63946","pid":"63946"},"level":"info","result":"ok","tag":"docs","ts":"2026-05-09T02:29:14.496Z"}
+{"action":"watch","extra":{"pid":"63766","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:29:15.593Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"63991","pid":"63991"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:29:15.598Z"}
+{"action":"start","extra":{"pgid":"63991","pid":"63991","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:29:15.780Z"}
+{"action":"watch","extra":{"pid":"63991","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:29:45.782Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"64047","pid":"64047"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:29:45.784Z"}
+{"action":"start","extra":{"pgid":"64047","pid":"64047","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:29:45.880Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"64089","pid":"64089"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:29:53.964Z"}
+{"action":"kill","extra":{"pgid":"64089"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:30:02.966Z"}
+{"action":"kill","extra":{"pgid":"64089"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:30:03.066Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"64430","pid":"64430"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:30:03.258Z"}
+{"action":"kill","extra":{"pgid":"64430"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:30:12.260Z"}
+{"action":"kill","extra":{"pgid":"64430"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:30:12.360Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"64985","pid":"64985"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:30:12.686Z"}
+{"action":"watch","extra":{"pid":"64047","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:30:15.881Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"65390","pid":"65390"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:30:15.882Z"}
+{"action":"start","extra":{"pgid":"65390","pid":"65390","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:30:16.499Z"}
+{"action":"kill","extra":{"pgid":"64985"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:30:21.687Z"}
+{"action":"kill","extra":{"pgid":"64985"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:30:21.787Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"65446","pid":"65446"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:30:21.791Z"}
+{"action":"kill","extra":{"pgid":"65446"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:30:30.792Z"}
+{"action":"kill","extra":{"pgid":"65446"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:30:30.892Z"}
+{"action":"spawn","extra":{"cmd":"ssh -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -o BatchMode=yes mmffdev-pg","pgid":"65488","pid":"65488"},"level":"info","result":"ok","tag":"tunnel","ts":"2026-05-09T02:30:33.529Z"}
+{"action":"kill","extra":{"pgid":"65488"},"level":"info","result":"term-sent","tag":"tunnel","ts":"2026-05-09T02:30:42.530Z"}
+{"action":"kill","extra":{"pgid":"65488"},"level":"info","result":"term-ok","tag":"tunnel","ts":"2026-05-09T02:30:42.630Z"}
+{"action":"start","extra":{"service":"tunnel.prod"},"level":"error","result":"fail","tag":"tunnel","ts":"2026-05-09T02:30:42.945Z"}
+{"action":"watch","extra":{"pid":"65390","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:30:46.500Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"65524","pid":"65524"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:30:46.504Z"}
+{"action":"start","extra":{"pgid":"65524","pid":"65524","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:30:46.614Z"}
+{"action":"kill","extra":{"pgid":"63766"},"level":"info","result":"term-sent","tag":"frontend","ts":"2026-05-09T02:31:00.475Z"}
+{"action":"kill","extra":{"pgid":"63766"},"level":"info","result":"term-ok","tag":"frontend","ts":"2026-05-09T02:31:00.477Z"}
+{"action":"start","extra":{"service":"frontend"},"level":"error","result":"fail","tag":"frontend","ts":"2026-05-09T02:31:00.479Z"}
+{"action":"kill","extra":{"pgid":"63946"},"level":"info","result":"term-sent","tag":"docs","ts":"2026-05-09T02:31:14.658Z"}
+{"action":"kill","extra":{"pgid":"63946"},"level":"info","result":"term-ok","tag":"docs","ts":"2026-05-09T02:31:14.766Z"}
+{"action":"watch","extra":{"pid":"65524","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:31:16.748Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"65823","pid":"65823"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:31:16.751Z"}
+{"action":"start","extra":{"pgid":"65823","pid":"65823","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:31:16.870Z"}
+{"action":"spawn","extra":{"cmd":"export BROWSER=none && npm start -- --no-open","pgid":"65919","pid":"65919"},"level":"info","result":"ok","tag":"docs","ts":"2026-05-09T02:31:22.400Z"}
+{"action":"watch","extra":{"pid":"65823","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:31:47.124Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"66243","pid":"66243"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:31:47.127Z"}
+{"action":"start","extra":{"pgid":"66243","pid":"66243","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:31:47.240Z"}
+{"action":"watch","extra":{"pid":"66243","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:32:17.249Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"66595","pid":"66595"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:32:17.252Z"}
+{"action":"start","extra":{"pgid":"66595","pid":"66595","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:32:17.359Z"}
+{"action":"watch","extra":{"pid":"66595","service":"frontend"},"level":"warn","result":"pid-dead","tag":"frontend","ts":"2026-05-09T02:32:47.550Z"}
+{"action":"spawn","extra":{"cmd":"npm run dev -- -p 5101","pgid":"66898","pid":"66898"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:32:47.553Z"}
+{"action":"start","extra":{"pgid":"66898","pid":"66898","service":"frontend"},"level":"info","result":"ok","tag":"frontend","ts":"2026-05-09T02:32:47.674Z"}

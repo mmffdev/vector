@@ -12,5 +12,10 @@
   "defaultPageSize": 25,
   "panelHeaderComponent": "WorkItemsPanelHeader",
   "filterChipsComponent": "WorkItemsFilterChips",
-  "columnsComponent": "buildWorkItemsColumns"
+  "columnsComponent": "buildWorkItemsColumns",
+  "_functions": {
+    "getParentId": "row.parent_id",
+    "getChildrenCount": "row.children_count",
+    "searchAccessor": "title and key_num"
+  }
 }
