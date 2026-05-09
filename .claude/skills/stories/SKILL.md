@@ -1,12 +1,12 @@
 ---
 name: stories
-description: 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
+description: 8-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK + transport labels.
 allowed-tools: Bash, Read, Write, Edit
 ---
 
 # /stories
 
-Turn a plan or work description into shippable user stories with 7-gate acceptance system, write the plan JSON, then wait for user approval.
+Turn a plan or work description into shippable user stories with 8-gate acceptance system, write the plan JSON, then wait for user approval.
 
 <!-- PLANKA SUSPENDED: Planka board integration is disabled. Keep API scripts and bin files intact; only board-driving steps are commented out. Stories are tracked via dev/plans/ JSON only. -->
 
@@ -182,7 +182,7 @@ Present classification to the user before card creation so they can override.
 
 ## Step 3 — Confidence Gate (85%+ rule)
 
-Before creating ANY card, assess 85%+ confidence on these seven criteria. If ANY criterion < 85%, **STOP and ask the user to revise**.
+Before creating ANY card, assess 85%+ confidence on these eight criteria. If ANY criterion < 85%, **STOP and ask the user to revise**.
 
 ### Confidence Checklist
 
@@ -196,6 +196,7 @@ Before creating ANY card, assess 85%+ confidence on these seven criteria. If ANY
 - [ ] **Feature area assigned** (85%+): One of: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV.
 - [ ] **Estimation assigned** (85%+): F0–F13 (Fibonacci). If calculated as F21+, proceed to Step 4 (automatic split).
 - [ ] **Risk assigned** (85%+): RISK-LOW, RISK-MED, or RISK-HIGH. Brief justification required if RISK-HIGH.
+- [ ] **Transport gate** (85%+, PLA-0039): Any story that adds or modifies a backend endpoint MUST declare which transport it touches: `site` (`/_site` BFF), `public` (`/samantha/v2`), `both`, or `none`. If `public`, the story must either reference a `MapPublic*` mapper in the description or justify why no projection is needed (e.g., handler produces no JSON response body). Stories that fail this gate without a transport declaration are rejected. See [`docs/c_c_transport_segregation.md`](../../../docs/c_c_transport_segregation.md).
 
 **If ANY criterion < 85%:**
 - Output: `⚠ Story N: [REPLAN REQUIRED] — <specific reason>`

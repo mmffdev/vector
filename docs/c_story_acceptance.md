@@ -69,6 +69,17 @@ Every card MUST have ALL of these before exiting `<stories>` skill:
   ```
 - **Gate:** Description MUST follow this format exactly; no tech jargon in "As a" clause
 
+### 8. Transport Gate (PLA-0039)
+- **Applies to:** Any story that adds or modifies a backend HTTP endpoint.
+- **Declaration required:** Story description MUST state which transport the endpoint uses:
+  - `Transport: site` — `/_site` BFF (session-cookie, Next.js frontend only)
+  - `Transport: public` — `/samantha/v2` (API key, frozen contract, external callers)
+  - `Transport: both` — appears on both (rare; document why)
+  - `Transport: none` — no HTTP endpoint involved
+- **If `public`:** Story MUST reference a `MapPublic*` mapper or justify why none is needed (e.g., endpoint returns no JSON body, redirect only).
+- **Gate:** A story touching a backend endpoint without a transport declaration is rejected at Step 3. The reviewer must add the declaration before the story can proceed.
+- See [`docs/c_c_transport_segregation.md`](c_c_transport_segregation.md) for the full architecture.
+
 ---
 
 ## Description Format (Hard Rule)
