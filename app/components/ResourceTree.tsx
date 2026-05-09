@@ -802,6 +802,27 @@ function ResourceTreeImpl<T>({
   const leadOffset = selectionOffset + dndOffset;
   const primaryColIdx = leadOffset;
 
+  // ID column width tracks the deepest currently-visible row so tree-line
+  // chrome never clips the tag text. Depends on expanded+childMap which are
+  // declared above; must sit before fixedWidths which consumes it.
+  const maxVisibleDepth = useMemo(() => {
+    let max = 0;
+    const walk = (rows: T[], depth: number) => {
+      for (const r of rows) {
+        if (depth > max) max = depth;
+        if (expanded.has(getId(r))) {
+          const kids = childMap[getId(r)] ?? [];
+          if (kids.length) walk(kids, depth + 1);
+        }
+      }
+    };
+    walk(roots, 0);
+    return max;
+  }, [roots, expanded, childMap, getId]);
+
+  // depth*STEP + expander(16) + gaps(8) + text(~40px), capped at 240px.
+  const dynamicIdColWidth = Math.min(maxVisibleDepth * DEFAULT_STEP + 64, 240);
+
   const fixedWidths = useMemo<Array<number | null>>(() => {
     const userWidths = columns.map((c) => (c.width === undefined ? 100 : c.width));
     userWidths[0] = dynamicIdColWidth;
@@ -1002,26 +1023,6 @@ function ResourceTreeImpl<T>({
     walk(pagedRoots);
     return n;
   }, [pagedRoots, expanded, childMap, getId]);
-
-  // Compute max depth of currently-visible rows so the ID column can grow.
-  const maxVisibleDepth = useMemo(() => {
-    let max = 0;
-    const walk = (rows: T[], depth: number) => {
-      for (const r of rows) {
-        if (depth > max) max = depth;
-        if (expanded.has(getId(r))) {
-          const kids = childMap[getId(r)] ?? [];
-          if (kids.length) walk(kids, depth + 1);
-        }
-      }
-    };
-    walk(pagedRoots, 0);
-    return max;
-  }, [pagedRoots, expanded, childMap, getId]);
-
-  // ID column needs: (depth * STEP) + expander(16) + gaps(8) + text(~40px).
-  // Cap at 240px so it doesn't eat the whole table on very deep trees.
-  const dynamicIdColWidth = Math.min(maxVisibleDepth * DEFAULT_STEP + 64, 240);
 
   // ── Selection (00455) ────────────────────────────────────────────────────
   // Flat list of row ids in render order — drives shift-click range and the
