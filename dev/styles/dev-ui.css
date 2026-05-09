@@ -502,10 +502,19 @@
   align-items: start;
 }
 
+/*
+ * Sticks below the .dui-sticky-subheader (which is itself position:sticky
+ * with top:0 inside the same .app-viewport-container scroll root).
+ * Offset accounts for the subheader's two rows on the scope tab + the
+ * --space-6 margin .dui-sticky-subheader+* injects below it. Capped to
+ * the visible viewport so its own list scrolls if it overflows.
+ */
 .dui-toc {
   position: sticky;
-  top: var(--space-3);
+  top: calc(var(--dui-subheader-h, 96px) + var(--space-3));
   align-self: start;
+  max-height: calc(100vh - var(--dui-subheader-h, 96px) - var(--space-6));
+  overflow-y: auto;
   border-right: 1px solid var(--border);
   padding-right: var(--space-4);
 }
