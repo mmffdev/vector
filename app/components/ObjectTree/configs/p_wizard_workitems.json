@@ -4,6 +4,8 @@
   "searchPlaceholder": "Search work items…",
   "ariaLabel": "Work items dense grid",
   "treeName": "workitems",
+  "resourceUrl": "/work-items",
+  "scope": "work",
   "dndResourceType": "work_item",
   "dndEnabled": true,
   "defaultSortKey": "key_num",

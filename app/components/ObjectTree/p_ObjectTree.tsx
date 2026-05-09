@@ -11,9 +11,9 @@ import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
   buildWorkItemsColumns,
+  useArtefactItemsWindow,
   useWorkItemsFilters,
   useWorkItemsSort,
-  useWorkItemsWindow,
   WorkItemsFilterChips,
   WorkItemsPanelHeader,
   type SortKey,
@@ -58,6 +58,14 @@ export interface ObjectTreeDataConfig<T = any> {
   // Pagination configuration
   paginationOptions: number[];
   defaultPageSize: number;
+
+  // Backend wiring (PLA-0037 / B21) — apiV2 path prefix for the artefact
+  // resource ("/work-items" or "/portfolio-items"). When omitted, derived
+  // from `mode` for back-compat. Supplied by p_wizard_*.json sidecars.
+  resourceUrl?: string;
+  // Optional scope hint for diagnostics / addressing — does NOT influence
+  // routing (the backend route already encodes the scope).
+  scope?: "work" | "strategy";
 }
 
 export default function ObjectTree({
@@ -93,8 +101,23 @@ export default function ObjectTree({
     setPageIndex(0);
   }, [filters.type, filters.status, filters.priority, filters.owner_id, sortKey, sortDir]);
 
+  // resourceUrl resolution order:
+  //   1. wizardConfig.resourceUrl (sidecar JSON — preferred path, PLA-0037)
+  //   2. mode-derived fallback (back-compat for callers not on sidecars yet)
+  // Both endpoints land on artefactitemsv2 with different scope (work | strategy).
+  const resourceUrl =
+    wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
+
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren } =
-    useWorkItemsWindow(pageSize, pageIndex, sortKey, sortDir, filters, onPatched);
+    useArtefactItemsWindow({
+      resourceUrl,
+      pageSize,
+      pageIndex,
+      sortKey,
+      sortDir,
+      filters,
+      onPatched,
+    });
 
   // Patch wrapper to satisfy the ResourceTree contract (returns the row).
   const patchRemote = useCallback(
@@ -143,6 +166,8 @@ export default function ObjectTree({
       filterChips: <WorkItemsFilterChips />,
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
+      resourceUrl: isPortfolio ? "/portfolio-items" : "/work-items",
+      scope: isPortfolio ? "strategy" : "work",
     };
   }, [mode, columns, wizardConfig]);
 

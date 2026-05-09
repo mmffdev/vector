@@ -4,6 +4,8 @@
   "searchPlaceholder": "Search strategy items…",
   "ariaLabel": "Strategy items dense grid",
   "treeName": "strategyitems",
+  "resourceUrl": "/portfolio-items",
+  "scope": "strategy",
   "summaryEndpoint": "/strategy-items/summary",
   "columns": [
     { "key": "number", "label": "ID", "width": 80, "sortable": true },

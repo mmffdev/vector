@@ -729,21 +729,31 @@ export interface UseWorkItemsWindowResult {
   fetchChildren: (parentId: string) => Promise<WorkItem[]>;
 }
 
-// Fetches a window of root work items + supplies optimistic PATCH and lazy
+// Fetches a window of root artefact items + supplies optimistic PATCH and lazy
 // child loading. "View all" issues a first chunk to learn total, then fetches
 // remaining chunks in parallel — children stay lazy.
 //
 // Filters: each non-null entry is appended to the request query. The backend
 // `?status=` param is the legacy enum during the flow_state migration window.
 // The chip-level `type` field maps to the server param `item_type`.
-export function useWorkItemsWindow(
-  pageSize: number | "all",
-  pageIndex: number,
-  sortKey: SortKey | null,
-  sortDir: SortDir,
-  filters: WorkItemsFilters,
-  onPatched?: (body: Record<string, unknown>) => void,
+//
+// resourceUrl is the apiV2 path prefix (e.g. "/work-items" or
+// "/portfolio-items"). Both endpoints are served by the same scope-parameterised
+// artefactitemsv2 handler — see backend/internal/artefactitemsv2 (PLA-0037, B21).
+export interface UseArtefactItemsWindowOptions {
+  resourceUrl: string;
+  pageSize: number | "all";
+  pageIndex: number;
+  sortKey: SortKey | null;
+  sortDir: SortDir;
+  filters: WorkItemsFilters;
+  onPatched?: (body: Record<string, unknown>) => void;
+}
+
+export function useArtefactItemsWindow(
+  opts: UseArtefactItemsWindowOptions,
 ): UseWorkItemsWindowResult {
+  const { resourceUrl, pageSize, pageIndex, sortKey, sortDir, filters, onPatched } = opts;
   const [windowRoots, setWindowRoots] = useState<WorkItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loadingWindow, setLoadingWindow] = useState(false);
@@ -767,7 +777,7 @@ export function useWorkItemsWindow(
       if (pageSize === "all") {
         const CHUNK = 1000;
         const first = await apiV2<{ items: WorkItem[]; total: number }>(
-          `/work-items?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
+          `${resourceUrl}?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
         );
         const totalRoots = first.total ?? first.items.length;
         if (totalRoots <= first.items.length) {
@@ -780,7 +790,7 @@ export function useWorkItemsWindow(
         const rest = await Promise.all(
           offsets.map((o) =>
             apiV2<{ items: WorkItem[]; total: number }>(
-              `/work-items?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
+              `${resourceUrl}?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
             ),
           ),
         );
@@ -790,14 +800,14 @@ export function useWorkItemsWindow(
       }
       const offset = pageIndex * pageSize;
       const res = await apiV2<{ items: WorkItem[]; total: number }>(
-        `/work-items?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
+        `${resourceUrl}?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
       );
       setWindowRoots(res.items);
       setTotal(res.total ?? res.items.length);
     } finally {
       setLoadingWindow(false);
     }
-  }, [pageSize, pageIndex, sortKey, sortDir, filterQuery]);
+  }, [resourceUrl, pageSize, pageIndex, sortKey, sortDir, filterQuery]);
 
   useEffect(() => { void refetchWindow(); }, [refetchWindow]);
 
@@ -806,7 +816,7 @@ export function useWorkItemsWindow(
       setWindowRoots((prev) =>
         prev.map((r) => (r.id === id ? ({ ...r, ...body } as WorkItem) : r)),
       );
-      apiV2<WorkItem>(`/work-items/${id}`, {
+      apiV2<WorkItem>(`${resourceUrl}/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       })
@@ -816,15 +826,38 @@ export function useWorkItemsWindow(
         })
         .catch(() => { /* swallow — refetch on next push */ });
     },
-    [onPatched, refetchWindow],
+    [resourceUrl, onPatched, refetchWindow],
   );
 
   const fetchChildren = useCallback(async (parentId: string) => {
     const res = await apiV2<{ items: WorkItem[] }>(
-      `/work-items/${parentId}/children`,
+      `${resourceUrl}/${parentId}/children`,
     );
     return res.items;
-  }, []);
+  }, [resourceUrl]);
 
   return { windowRoots, total, loadingWindow, refetchWindow, patchAndApply, fetchChildren };
+}
+
+// useWorkItemsWindow — back-compat shim for existing call-sites that haven't
+// adopted the sidecar-driven resourceUrl yet. Defaults to "/work-items".
+// New call-sites should use useArtefactItemsWindow directly with an explicit
+// resourceUrl from the wizard JSON.
+export function useWorkItemsWindow(
+  pageSize: number | "all",
+  pageIndex: number,
+  sortKey: SortKey | null,
+  sortDir: SortDir,
+  filters: WorkItemsFilters,
+  onPatched?: (body: Record<string, unknown>) => void,
+): UseWorkItemsWindowResult {
+  return useArtefactItemsWindow({
+    resourceUrl: "/work-items",
+    pageSize,
+    pageIndex,
+    sortKey,
+    sortDir,
+    filters,
+    onPatched,
+  });
 }

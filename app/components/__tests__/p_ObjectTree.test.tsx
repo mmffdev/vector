@@ -94,16 +94,21 @@ vi.mock("@/app/components/work-items-tree-config", async () => {
     await vi.importActual<typeof import("@/app/components/work-items-tree-config")>(
       "@/app/components/work-items-tree-config",
     );
+  // Both names are mocked: useArtefactItemsWindow is the new path used by
+  // p_ObjectTree post-PLA-0037; useWorkItemsWindow is kept for any back-compat
+  // call-sites that haven't migrated yet.
+  const stub = () => ({
+    windowRoots: FIXTURE,
+    total: FIXTURE.length,
+    loadingWindow: false,
+    refetchWindow: vi.fn(),
+    patchAndApply: vi.fn(),
+    fetchChildren: vi.fn(async () => []),
+  });
   return {
     ...actual,
-    useWorkItemsWindow: () => ({
-      windowRoots: FIXTURE,
-      total: FIXTURE.length,
-      loadingWindow: false,
-      refetchWindow: vi.fn(),
-      patchAndApply: vi.fn(),
-      fetchChildren: vi.fn(async () => []),
-    }),
+    useArtefactItemsWindow: stub,
+    useWorkItemsWindow: stub,
     WorkItemsPanelHeader: () => <header data-testid="wi-panel-head" />,
     WorkItemsFilterChips: () => <div data-testid="wi-filter-chips" />,
   };

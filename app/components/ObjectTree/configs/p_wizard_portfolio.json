@@ -4,6 +4,8 @@
   "searchPlaceholder": "Search portfolio items…",
   "ariaLabel": "Portfolio items dense grid",
   "treeName": "portfolioitems",
+  "resourceUrl": "/portfolio-items",
+  "scope": "strategy",
   "dndResourceType": "portfolio_item",
   "dndEnabled": true,
   "defaultSortKey": "key_num",
