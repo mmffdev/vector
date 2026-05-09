@@ -287,7 +287,7 @@ func main() {
 				}
 				log.Printf("vector_artefacts pool connected: %s", maskedURL)
 				wiSvc := workitemsv2.NewService(vaPool, pool)
-				webhookSvc := webhooks.New(vaPool)
+				webhookSvc = webhooks.New(vaPool)
 				wiSvc.WithNotifier(webhooks.NewNotifier(webhookSvc))
 				workItemsV2H = workitemsv2.NewHandler(wiSvc)
 				// PLA-0026 / story 00502 (B13): attach the VA pool to the
