@@ -804,18 +804,20 @@ function ResourceTreeImpl<T>({
 
   const fixedWidths = useMemo<Array<number | null>>(() => {
     const userWidths = columns.map((c) => (c.width === undefined ? 100 : c.width));
+    userWidths[0] = dynamicIdColWidth;
     const lead: Array<number | null> = [];
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
     return [...lead, ...userWidths];
-  }, [columns, dnd, selection]);
+  }, [columns, dnd, selection, dynamicIdColWidth]);
   const minWidthsArr = useMemo<number[]>(() => {
     const userMins = columns.map((c) => c.minWidth ?? 40);
+    userMins[0] = dynamicIdColWidth;
     const lead: number[] = [];
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
     return [...lead, ...userMins];
-  }, [columns, dnd, selection]);
+  }, [columns, dnd, selection, dynamicIdColWidth]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1000,6 +1002,26 @@ function ResourceTreeImpl<T>({
     walk(pagedRoots);
     return n;
   }, [pagedRoots, expanded, childMap, getId]);
+
+  // Compute max depth of currently-visible rows so the ID column can grow.
+  const maxVisibleDepth = useMemo(() => {
+    let max = 0;
+    const walk = (rows: T[], depth: number) => {
+      for (const r of rows) {
+        if (depth > max) max = depth;
+        if (expanded.has(getId(r))) {
+          const kids = childMap[getId(r)] ?? [];
+          if (kids.length) walk(kids, depth + 1);
+        }
+      }
+    };
+    walk(pagedRoots, 0);
+    return max;
+  }, [pagedRoots, expanded, childMap, getId]);
+
+  // ID column needs: (depth * STEP) + expander(16) + gaps(8) + text(~40px).
+  // Cap at 240px so it doesn't eat the whole table on very deep trees.
+  const dynamicIdColWidth = Math.min(maxVisibleDepth * DEFAULT_STEP + 64, 240);
 
   // ── Selection (00455) ────────────────────────────────────────────────────
   // Flat list of row ids in render order — drives shift-click range and the
