@@ -197,7 +197,11 @@ func main() {
 	userTabOrderSvc := usertaborder.New(pool)
 	userTabOrderH := usertaborder.NewHandler(userTabOrderSvc)
 
-	portfolioModelsH := portfoliomodels.NewHandler(libPools.RO)
+	// PLA-0039 / Story 00530: portfoliomodels.Service hosts all DB I/O
+	// for the package. vaPool is wired further down — pmSvc is rebound
+	// after the vaPool block so workspace-layers reads see the live pool.
+	portfolioModelsSvc := portfoliomodels.NewService(libPools.RO, pool, nil)
+	portfolioModelsH := portfoliomodels.NewHandler(portfolioModelsSvc)
 	// vaPool is wired below; nil = legacy-only adoption path. The
 	// orchestrator skips PLA-0026 dual-writes when nil.
 	// Constructed AFTER the vaPool block so the handler picks up the
@@ -209,7 +213,7 @@ func main() {
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
 	var portfolioAdoptStreamH *portfoliomodels.AdoptStreamHandler
 	devResetH := portfoliomodels.NewDevResetHandler(pool)
-	layersBatchH := portfoliomodels.NewLayersBatchHandler(pool)
+	layersBatchH := portfoliomodels.NewLayersBatchHandler(portfolioModelsSvc)
 
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
@@ -345,7 +349,10 @@ func main() {
 	// VA-disabled environments).
 	var masterRecordSvc *portfolio.Service
 	if vaPool != nil {
-		masterRecordSvc = portfolio.NewService(vaPool)
+		// PLA-0039 / Story 00530: Service holds both pools so the
+		// handler can be DB-free. WithVectorPool wires mmff_vector for
+		// the read authz path (CanReadMasterRecord).
+		masterRecordSvc = portfolio.NewService(vaPool).WithVectorPool(pool)
 	}
 	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool, masterRecordSvc)
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
@@ -376,7 +383,7 @@ func main() {
 	// portfolio model record. BundleView reads model_name +
 	// model_description from here so the frontend never touches
 	// mmff_library at runtime.
-	portfolioMasterRecordH := portfolio.NewHandler(masterRecordSvc, pool)
+	portfolioMasterRecordH := portfolio.NewHandler(masterRecordSvc)
 
 	// PLA-0026 / Story 00500 (B11): GET /api/workspace/{id}/fields —
 	// returns the admitted field set for one workspace, computed by
@@ -391,7 +398,11 @@ func main() {
 	// legacy GET /api/subscription/layers. Reads strategy artefact_types
 	// from vector_artefacts; legacy handler stays live until F3 (per
 	// R047 §9). vaPool may be nil — handler returns 503 in that case.
-	workspaceLayersH := portfoliomodels.NewWorkspaceLayersHandler(pool, vaPool)
+	// PLA-0039 / Story 00530: pmSvc was constructed up-top with vaPool=nil
+	// (before VA boot). Now that vaPool is known, attach it so workspace-
+	// layers reads see the live pool.
+	portfolioModelsSvc.WithVAPool(vaPool)
+	workspaceLayersH := portfoliomodels.NewWorkspaceLayersHandler(portfolioModelsSvc)
 
 	// PLA-0027 / Story 00514: timebox sprints REST handler.
 	// Uses the same vaPool as v2 work-items; gracefully degrades when nil.

@@ -4,8 +4,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-
-	"github.com/mmffdev/vector-backend/internal/librarydb"
 )
 
 // templateLayerDTO is the wire shape for a single layer in the response.
@@ -31,7 +29,7 @@ type modelListResponseDTO struct {
 //
 // padmin-only listing of MMFF-published portfolio model bundles.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	models, err := librarydb.ListPublishedModels(r.Context(), h.RO)
+	models, err := h.Svc.ListPublishedModels(r.Context())
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

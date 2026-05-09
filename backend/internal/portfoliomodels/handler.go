@@ -21,20 +21,22 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
+	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
-// Handler holds the RO library pool. Only the RO pool is needed for
-// Phase 3; publish / ack pools are wired by later phases.
+// Handler delegates all DB I/O to Svc; PLA-0039 / Story 00530 lifted
+// the RO library pool out of this struct.
 type Handler struct {
-	RO *pgxpool.Pool
+	Svc *Service
 }
 
-func NewHandler(ro *pgxpool.Pool) *Handler { return &Handler{RO: ro} }
+// NewHandler constructs the bundle-read handler around the package
+// Service. The Service must hold a non-nil libRO pool for these routes
+// to function.
+func NewHandler(svc *Service) *Handler { return &Handler{Svc: svc} }
 
 // GetLatestByFamily — GET /api/portfolio-models/{family}/latest
 //
@@ -47,7 +49,7 @@ func (h *Handler) GetLatestByFamily(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
-	bundle, err := librarydb.FetchTemplateByID(r.Context(), h.RO, templateID)
+	bundle, err := h.Svc.FetchTemplate(r.Context(), templateID)
 	if err != nil {
 		writeBundleErr(w, r, err)
 		return
@@ -62,7 +64,7 @@ func (h *Handler) GetByModelID(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
 		return
 	}
-	bundle, err := librarydb.FetchTemplateByID(r.Context(), h.RO, modelID)
+	bundle, err := h.Svc.FetchTemplate(r.Context(), modelID)
 	if err != nil {
 		writeBundleErr(w, r, err)
 		return

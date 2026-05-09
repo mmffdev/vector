@@ -26,6 +26,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/mmffdev/vector-backend/internal/models"
 )
 
 var (
@@ -97,14 +99,96 @@ type Service struct {
 	// when VECTOR_ARTEFACTS_DB_URL is unset; in that case all methods
 	// return ErrPoolMissing rather than panicking.
 	vectorArtefactsPool *pgxpool.Pool
+
+	// vectorPool reads mmff_vector for tenancy + workspace-membership
+	// probes used by CanReadMasterRecord. Optional: when nil, the read
+	// authz path falls back to "padmin/gadmin only" so unit tests that
+	// bypass the DB still exercise the deny path without panicking.
+	// Wired via WithVectorPool to avoid breaking the legacy
+	// NewService(vaPool) signature used by the adoption saga.
+	vectorPool *pgxpool.Pool
 }
 
 // NewService builds a Service backed by the given vector_artefacts pool.
 // Pass nil to construct a no-op Service that surfaces ErrPoolMissing on
 // every call — useful for boot configurations where the artefacts DB is
 // optional (see artefactitemsv2 for the same pattern).
+//
+// To enable the read authz path (CanReadMasterRecord), chain
+// .WithVectorPool(pool) — the master-record HTTP handler requires it.
 func NewService(vaPool *pgxpool.Pool) *Service {
 	return &Service{vectorArtefactsPool: vaPool}
+}
+
+// WithVectorPool attaches the mmff_vector pool used by CanReadMasterRecord
+// for tenancy + workspace-membership probes. Returns the Service for
+// fluent wiring at boot.
+func (s *Service) WithVectorPool(p *pgxpool.Pool) *Service {
+	s.vectorPool = p
+	return s
+}
+
+// CanReadMasterRecord reports whether u may read workspaceID's master
+// record. Returns:
+//
+//	(true,  nil) — caller is allowed.
+//	(false, nil) — workspace not in caller's tenant OR caller is not a
+//	               member of the workspace; treat as 404 (leak-resistant
+//	               existence semantics).
+//	(_,     err) — DB error.
+//
+// Tenant admins (padmin / gadmin) bypass the workspace_roles probe but
+// still require the workspace to belong to their tenant. When vectorPool
+// is nil (unit tests bypassing the DB), only padmin/gadmin pass.
+func (s *Service) CanReadMasterRecord(
+	ctx context.Context, u *models.User, workspaceID uuid.UUID,
+) (bool, error) {
+	if u == nil {
+		return false, nil
+	}
+	// Without a vector pool we cannot prove tenancy; only padmin/gadmin
+	// pass. This path exists for unit tests that bypass the DB.
+	if s.vectorPool == nil {
+		return u.Role == models.RolePAdmin || u.Role == models.RoleGAdmin, nil
+	}
+
+	// Tenancy: workspace must belong to caller's subscription.
+	var ownerSub uuid.UUID
+	err := s.vectorPool.QueryRow(ctx,
+		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`,
+		workspaceID,
+	).Scan(&ownerSub)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	if ownerSub != u.SubscriptionID {
+		return false, nil
+	}
+
+	// Tenant admins always pass.
+	if u.Role == models.RolePAdmin || u.Role == models.RoleGAdmin {
+		return true, nil
+	}
+
+	// Per-workspace membership: any active roles_workspaces grant
+	// (viewer / editor / admin) suffices.
+	var member bool
+	err = s.vectorPool.QueryRow(ctx, `
+		SELECT EXISTS (
+		    SELECT 1 FROM roles_workspaces
+		     WHERE workspace_id = $1
+		       AND user_id = $2
+		       AND revoked_at IS NULL
+		)`,
+		workspaceID, u.ID,
+	).Scan(&member)
+	if err != nil {
+		return false, err
+	}
+	return member, nil
 }
 
 // Get returns the master_record_portfolio row for workspaceID, or

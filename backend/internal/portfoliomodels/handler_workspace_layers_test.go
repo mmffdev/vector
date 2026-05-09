@@ -52,7 +52,7 @@ func TestWorkspaceLayers_Unauthorized(t *testing.T) {
 	// No DB needed — RequireAuth-equivalent guard is at the top of the
 	// handler. Pool args may be nil because the auth check returns
 	// before any query runs.
-	h := NewWorkspaceLayersHandler(nil, nil)
+	h := NewWorkspaceLayersHandler(NewService(nil, nil, nil))
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, nil))
 	defer srv.Close()
 
@@ -69,7 +69,7 @@ func TestWorkspaceLayers_Unauthorized(t *testing.T) {
 
 func TestWorkspaceLayers_BadUUID(t *testing.T) {
 	// UUID parse fails before any pool use.
-	h := NewWorkspaceLayersHandler(nil, nil)
+	h := NewWorkspaceLayersHandler(NewService(nil, nil, nil))
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser}
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, u))
 	defer srv.Close()
@@ -90,7 +90,7 @@ func TestWorkspaceLayers_NotFound(t *testing.T) {
 	va := vaTestPool(t)
 	defer va.Close()
 
-	h := NewWorkspaceLayersHandler(vec, va)
+	h := NewWorkspaceLayersHandler(NewService(nil, vec, va))
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, user))
 	defer srv.Close()
 
@@ -175,7 +175,7 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 		IsActive:       true,
 	}
 
-	h := NewWorkspaceLayersHandler(vec, va)
+	h := NewWorkspaceLayersHandler(NewService(nil, vec, va))
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, gadmin))
 	defer srv.Close()
 
@@ -188,13 +188,13 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 		t.Fatalf("status: want 200, got %d", resp.StatusCode)
 	}
 
-	var body []workspaceLayerDTO
+	var body []WorkspaceLayer
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 
 	// Find our seeded row by prefix and assert shape.
-	var found *workspaceLayerDTO
+	var found *WorkspaceLayer
 	for i := range body {
 		if body[i].Tag == prefix {
 			found = &body[i]
@@ -257,7 +257,7 @@ func TestWorkspaceLayers_Forbidden_NonMember(t *testing.T) {
 		IsActive:       true,
 	}
 
-	h := NewWorkspaceLayersHandler(vec, va)
+	h := NewWorkspaceLayersHandler(NewService(nil, vec, va))
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, user))
 	defer srv.Close()
 
@@ -305,7 +305,7 @@ func TestWorkspaceLayers_NotFound_CrossTenant(t *testing.T) {
 		t.Skip("randomly drew the same subscription id; rerun")
 	}
 
-	h := NewWorkspaceLayersHandler(vec, va)
+	h := NewWorkspaceLayersHandler(NewService(nil, vec, va))
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, user))
 	defer srv.Close()
 

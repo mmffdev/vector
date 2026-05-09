@@ -47,7 +47,7 @@ func newRouter(h *Handler) http.Handler {
 
 func TestGetMasterRecord_Unauthenticated(t *testing.T) {
 	t.Parallel()
-	h := NewHandler(NewService(nil), nil)
+	h := NewHandler(NewService(nil))
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet,
 		"/api/portfolio/master_record?workspace_id="+uuid.New().String(), nil)
@@ -59,7 +59,7 @@ func TestGetMasterRecord_Unauthenticated(t *testing.T) {
 
 func TestGetMasterRecord_MissingWorkspaceID(t *testing.T) {
 	t.Parallel()
-	h := NewHandler(NewService(nil), nil)
+	h := NewHandler(NewService(nil))
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
 
 	rr := httptest.NewRecorder()
@@ -72,7 +72,7 @@ func TestGetMasterRecord_MissingWorkspaceID(t *testing.T) {
 
 func TestGetMasterRecord_InvalidWorkspaceID(t *testing.T) {
 	t.Parallel()
-	h := NewHandler(NewService(nil), nil)
+	h := NewHandler(NewService(nil))
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
 
 	rr := httptest.NewRecorder()
@@ -89,7 +89,7 @@ func TestGetMasterRecord_InvalidWorkspaceID(t *testing.T) {
 // configuration.
 func TestGetMasterRecord_NonAdminDeniedWithoutPool(t *testing.T) {
 	t.Parallel()
-	h := NewHandler(NewService(nil), nil)
+	h := NewHandler(NewService(nil))
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser}
 
 	rr := httptest.NewRecorder()
@@ -106,7 +106,7 @@ func TestGetMasterRecord_NonAdminDeniedWithoutPool(t *testing.T) {
 // surfacing as 500.
 func TestGetMasterRecord_PadminPoolMissingIs500(t *testing.T) {
 	t.Parallel()
-	h := NewHandler(NewService(nil), nil)
+	h := NewHandler(NewService(nil))
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
 
 	rr := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func TestGetMasterRecord_LiveUnadopted_404(t *testing.T) {
 	pool := liveVAPool(t)
 	defer pool.Close()
 
-	h := NewHandler(NewService(pool), nil) // nil vectorPool → padmin-only authz
+	h := NewHandler(NewService(pool)) // no vector pool → padmin-only authz
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
 
 	wsID := uuid.New() // guaranteed-unadopted random UUID
@@ -175,7 +175,7 @@ func TestGetMasterRecord_LiveAdopted_200(t *testing.T) {
 	defer pool.Close()
 
 	svc := NewService(pool)
-	h := NewHandler(svc, nil) // nil vectorPool → padmin-only authz
+	h := NewHandler(svc) // no vector pool → padmin-only authz
 	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
 
 	wsID := uuid.New()

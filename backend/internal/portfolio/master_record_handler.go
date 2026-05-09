@@ -23,41 +23,33 @@ package portfolio
 // Errors are RFC 9457 problem-details via internal/httperr.
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
-	"github.com/mmffdev/vector-backend/internal/models"
 )
 
 // Handler is the HTTP surface for master_record_portfolio reads.
 //
-// vectorPool is the mmff_vector pool — used ONLY for the tenancy +
-// membership probe (master_record_workspaces.subscription_id,
-// roles_workspaces). master_record_portfolio itself lives in
-// vector_artefacts and is read through Svc, never directly here.
+// All DB I/O lives in Svc. Tenancy + workspace-membership probes are
+// also delegated to Svc via CanReadMasterRecord; the handler does only
+// parse + auth-context check + svc.Method() + render (PLA-0039).
 type Handler struct {
-	Svc        *Service
-	vectorPool *pgxpool.Pool
+	Svc *Service
 }
 
 // NewHandler builds the read handler.
 //
-// svc    — the master_record_portfolio sole-writer service (vector_artefacts).
-// vector — the mmff_vector pool, for the auth/tenancy probe. May be nil
-//          in unit tests; in that case authz is short-circuited to "deny
-//          unless padmin/gadmin" so non-admin tests still exercise the
-//          deny path without panicking on a nil pool.
-func NewHandler(svc *Service, vector *pgxpool.Pool) *Handler {
-	return &Handler{Svc: svc, vectorPool: vector}
+// svc — the master_record_portfolio service. Must be non-nil; pass a
+// Service whose pools are wired (vector_artefacts via NewService, +
+// .WithVectorPool(mmff_vector) for the read authz path).
+func NewHandler(svc *Service) *Handler {
+	return &Handler{Svc: svc}
 }
 
 // Mount registers the read route on r. The caller is responsible for
@@ -95,10 +87,11 @@ func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Tenancy + membership check. On any "not allowed" outcome we
-	// return 404 so existence isn't leaked (leak-resistant: do not
-	// distinguish "not found" from "not in your tenant").
-	ok, err := h.canRead(r.Context(), u, workspaceID)
+	// Tenancy + membership check delegated to the Service. On any
+	// "not allowed" outcome we return 404 so existence isn't leaked
+	// (leak-resistant: do not distinguish "not found" from "not in
+	// your tenant").
+	ok, err := h.Svc.CanReadMasterRecord(r.Context(), u, workspaceID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
@@ -126,55 +119,5 @@ func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(row)
 }
 
-// canRead reports whether u may read workspaceID's master record.
-//
-// Returns (true, nil)  — caller is allowed.
-// Returns (false, nil) — workspace not in caller's tenant OR caller is
-//                       not a member of the workspace; treat as 404.
-// Returns (_, err)     — DB error.
-//
-// Tenant admins (padmin / gadmin) bypass the membership probe.
-func (h *Handler) canRead(ctx context.Context, u *models.User, workspaceID uuid.UUID) (bool, error) {
-	// Without a vector pool we cannot prove tenancy; only padmin/gadmin
-	// pass. This path exists for unit tests that bypass the DB.
-	if h.vectorPool == nil {
-		return u.Role == models.RolePAdmin || u.Role == models.RoleGAdmin, nil
-	}
-
-	// Tenancy: workspace must belong to caller's subscription.
-	var ownerSub uuid.UUID
-	err := h.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`, workspaceID,
-	).Scan(&ownerSub)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	if ownerSub != u.SubscriptionID {
-		return false, nil
-	}
-
-	// Tenant admins always pass.
-	if u.Role == models.RolePAdmin || u.Role == models.RoleGAdmin {
-		return true, nil
-	}
-
-	// Per-workspace membership: any active roles_workspaces grant
-	// (viewer / editor / admin) suffices.
-	var member bool
-	err = h.vectorPool.QueryRow(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id = $2
-		       AND revoked_at IS NULL
-		)`,
-		workspaceID, u.ID,
-	).Scan(&member)
-	if err != nil {
-		return false, err
-	}
-	return member, nil
-}
+// canRead has moved to Service.CanReadMasterRecord (PLA-0039 / Story
+// 00530). The handler is now DB-free; all SQL lives in the Service.

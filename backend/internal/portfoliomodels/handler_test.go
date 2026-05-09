@@ -43,7 +43,7 @@ func newTestRouter(t *testing.T, h *Handler) http.Handler {
 func TestGetLatestByFamily_OK(t *testing.T) {
 	pool := testRoPool(t)
 	defer pool.Close()
-	srv := httptest.NewServer(newTestRouter(t, NewHandler(pool)))
+	srv := httptest.NewServer(newTestRouter(t, NewHandler(NewService(pool, nil, nil))))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/api/portfolio-models/" + seededFamilyID + "/latest")
@@ -77,7 +77,7 @@ func TestGetLatestByFamily_OK(t *testing.T) {
 func TestGetByModelID_NotFound(t *testing.T) {
 	pool := testRoPool(t)
 	defer pool.Close()
-	srv := httptest.NewServer(newTestRouter(t, NewHandler(pool)))
+	srv := httptest.NewServer(newTestRouter(t, NewHandler(NewService(pool, nil, nil))))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/api/portfolio-models/" + missingID)
@@ -93,7 +93,7 @@ func TestGetByModelID_NotFound(t *testing.T) {
 func TestGetByModelID_OK(t *testing.T) {
 	pool := testRoPool(t)
 	defer pool.Close()
-	srv := httptest.NewServer(newTestRouter(t, NewHandler(pool)))
+	srv := httptest.NewServer(newTestRouter(t, NewHandler(NewService(pool, nil, nil))))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/api/portfolio-models/" + seededModelID)

@@ -19,7 +19,7 @@ func TestList_OK(t *testing.T) {
 	defer pool.Close()
 
 	r := chi.NewRouter()
-	h := NewHandler(pool)
+	h := NewHandler(NewService(pool, nil, nil))
 	r.Get("/api/portfolio-models", h.List)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
