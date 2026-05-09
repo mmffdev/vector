@@ -1233,40 +1233,50 @@ Manage per-role access to pages and features. Control what each role (user, padm
 >
 > **Per-group work pattern:** (1) add route group to `mountSiteRoutes` in `main.go`; (2) switch frontend callers `apiV2` → `apiSite`; (3) remove files from allowlist; (4) verify lint passes.
 
-- **B22.16** Mount `/_site/topology/*` + switch `app/lib/topologyApi.ts` → `apiSite` `[P1]`
+- ✅ ~~**B22.16** Mount `/_site/topology/*` + switch `app/lib/topologyApi.ts` → `apiSite` `[P1]`~~
+> Commit `35703e6` (2026-05-09): feat(B22 PLA-0039): mount /_site/topology + switch topologyApi.ts → apiSite [B22] [B22.16]
   > 18 topology operations (tree, nodes CRUD, roles, view-state, move, commit, reset, archive/restore, disconnected). All handlers exist under `/samantha/v2/topology`; duplicate the mount into `mountSiteRoutes`. topologyApi.ts is 1 file, ~20 call sites. Remove 1 entry from allowlist.
 
-- **B22.17** Mount `/_site/work-items/*` + switch `work-items/list`, `WorkItemDetailPanel`, `useWorkItemFlowStates`, `work-items-tree-config` → `apiSite` `[P1]`
+- ✅ ~~**B22.17** Mount `/_site/work-items/*` + switch `work-items/list`, `WorkItemDetailPanel`, `useWorkItemFlowStates`, `work-items-tree-config` → `apiSite` `[P1]`~~
+> Commit `adcc284` (2026-05-09): feat(B22 PLA-0039): mount /_site/work-items + /portfolio-items + /rank; switch 7 callers → apiSite [B22] [B22.17] [B22.18] [B22.22] [B22.25]
   > Work-items list/summary, field-values, flow-states, tree pagination/sort/filter, PATCH. 4 frontend files. Handler group exists under `/samantha/v2/work-items`. Remove 4 entries from allowlist.
 
-- **B22.18** Mount `/_site/portfolio-items/*` + switch `portfolio-items/list/page.tsx` → `apiSite` `[P1]`
+- ✅ ~~**B22.18** Mount `/_site/portfolio-items/*` + switch `portfolio-items/list/page.tsx` → `apiSite` `[P1]`~~
+> Commit `adcc284` (2026-05-09): feat(B22 PLA-0039): mount /_site/work-items + /portfolio-items + /rank; switch 7 callers → apiSite [B22] [B22.17] [B22.18] [B22.22] [B22.25]
   > Single call: `/portfolio-items/summary`. Handler group exists under `/samantha/v2/portfolio-items`. Remove 1 entry from allowlist.
 
-- **B22.19** Mount `/_site/portfolio/*` + `/_site/workspace/{id}/portfolio/layers` + switch `portfolio-model/page.tsx` → `apiSite` `[P1]`
+- ✅ ~~**B22.19** Mount `/_site/portfolio/*` + `/_site/workspace/{id}/portfolio/layers` + switch `portfolio-model/page.tsx` → `apiSite` `[P1]`~~
+> Commit `ff79293` (2026-05-09): feat(B22): /_site mirrors for portfolio, flows, workspace-fields + frontend migration [B22] [B22.19] [B22.20] [B22.21]
   > Two calls: `/portfolio/master_record?workspace_id=` and `/workspace/{id}/portfolio/layers`. Table-name bug fixed (commit b3defb3); this removes the `apiV2` exposure. Remove 1 entry from allowlist.
 
-- **B22.20** Mount `/_site/flows/*` + switch `workspace-settings/work-items/page.tsx` → `apiSite` `[P1]`
+- ✅ ~~**B22.20** Mount `/_site/flows/*` + switch `workspace-settings/work-items/page.tsx` → `apiSite` `[P1]`~~
+> Commit `ff79293` (2026-05-09): feat(B22): /_site mirrors for portfolio, flows, workspace-fields + frontend migration [B22] [B22.19] [B22.20] [B22.21]
   > Single call: `GET /flows/`. Handler already mounted under `/samantha/v2/flows`. Remove 1 entry from allowlist.
 
-- **B22.21** Mount `/_site/workspace/{id}/fields` + switch `app/lib/fieldsApi.ts` → `apiSite` `[P1]`
+- ✅ ~~**B22.21** Mount `/_site/workspace/{id}/fields` + switch `app/lib/fieldsApi.ts` → `apiSite` `[P1]`~~
+> Commit `ff79293` (2026-05-09): feat(B22): /_site mirrors for portfolio, flows, workspace-fields + frontend migration [B22] [B22.19] [B22.20] [B22.21]
   > Single call: `GET /workspace/{id}/fields`. Handler (`fields.Service`) exists. Remove 1 entry from allowlist.
 
-- **B22.22** Mount `/_site/rank/move` + switch `app/hooks/useResourceRank.ts` → `apiSite` `[P2]`
+- ✅ ~~**B22.22** Mount `/_site/rank/move` + switch `app/hooks/useResourceRank.ts` → `apiSite` `[P2]`~~
+> Commit `adcc284` (2026-05-09): feat(B22 PLA-0039): mount /_site/work-items + /portfolio-items + /rank; switch 7 callers → apiSite [B22] [B22.17] [B22.18] [B22.22] [B22.25]
   > Single call: `POST /rank/move`. Handler exists under `/samantha/v2`. Remove 1 entry from allowlist.
 
-- **B22.23** Mount `/_site/timeboxes/*` + switch `TimeboxManager.tsx` + `useTimebox.ts` → `apiSite` `[P2]`
+- ✅ ~~**B22.23** Mount `/_site/timeboxes/*` + switch `TimeboxManager.tsx` + `useTimebox.ts` → `apiSite` `[P2]`~~
+> Commit `b587134` (2026-05-09): feat(B22): /_site mirrors for timeboxes + frontend migration + allowlist to 1 [B22] [B22.23] [B22.24]
   > Two files; `cfg.apiBase` is dynamic — the timebox kind registry at `app/components/timebox/kinds.ts` needs `/_site`-prefixed base strings. Calls: `GET ${cfg.apiBase}?...` and `POST ${cfg.apiBase}/bulk-create`. Remove 2 entries from allowlist.
 
-- **B22.24** Mount `/_site/work-items/relations/*` + switch `useRelationsData.ts` → `apiSite` `[P2]`
+- ✅ ~~**B22.24** Mount `/_site/work-items/relations/*` + switch `useRelationsData.ts` → `apiSite` `[P2]`~~
+> Commit `b587134` (2026-05-09): feat(B22): /_site mirrors for timeboxes + frontend migration + allowlist to 1 [B22] [B22.23] [B22.24]
   > Relations graph calls. Handler exists under `/samantha/v2/work-items/relations`. Remove 1 entry from allowlist. Depends on B22.17 (shares the work-items mount group).
 
-- **B22.25** Switch `p_ObjectTree.tsx` (artefact-items resourceUrl pattern) → `apiSite` `[P1]`
+- ✅ ~~**B22.25** Switch `p_ObjectTree.tsx` (artefact-items resourceUrl pattern) → `apiSite` `[P1]`~~
+> Commit `adcc284` (2026-05-09): feat(B22 PLA-0039): mount /_site/work-items + /portfolio-items + /rank; switch 7 callers → apiSite [B22] [B22.17] [B22.18] [B22.22] [B22.25]
   > The wizard sidecar `resourceUrl` is constructed dynamically (B21). `p_ObjectTree.tsx` calls `apiV2(resourceUrl + ...)`. Once B22.17 + B22.18 mount the underlying route groups under `/_site`, this file just needs its helper swapped. Remove 1 entry from allowlist. Depends on B22.17, B22.18.
 
-- **B22.26** Shrink `public_helper_allowlist.json` to zero; make lint a hard block `[P2]`
+- ✅ ~~**B22.26** Shrink `public_helper_allowlist.json` to zero; make lint a hard block `[P2]`~~
   > Once B22.16–B22.25 land, remove all 14 entries. The lint `--warn` mode becomes a hard fail. `app/lib/api.ts` (the definition file) gets a `# definition` exemption comment; all other callers must route through `apiSite`. Any future `apiV2` call requires an explicit PR-reviewed allowlist entry.
 
-- **B22.27** Update `docs/c_c_transport_segregation.md` with Phase 2 completion + full `/_site` route inventory `[P3]`
+- ✅ ~~**B22.27** Update `docs/c_c_transport_segregation.md` with Phase 2 completion + full `/_site` route inventory `[P3]`~~
   > Document the complete `/_site` surface after Phase 2. Reference for the gateway block rule (B22.14) when B17.9 ships.
 
 ---
