@@ -38,6 +38,12 @@ COMMIT_MSG=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" 
 COMMIT_DATE=$(date +%Y-%m-%d)
 CHANGED_FILES=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null || true)
 
+# Strip self-references: Vector_Scope.md is the hook's destination, never a
+# source signal. Likewise scope-refs.map (the keyword catalogue) — without
+# this, every commit that touches either file matches its own keywords and
+# the hook annotates itself in an infinite loop.
+CHANGED_FILES=$(printf '%s\n' "$CHANGED_FILES" | grep -vE '^(Vector_Scope\.md|\.claude/scope-refs\.map)$' || true)
+
 [[ -z "$COMMIT_HASH" || -z "$COMMIT_MSG" ]] && exit 0
 
 NOTE="> Commit \`${COMMIT_HASH}\` (${COMMIT_DATE}): ${COMMIT_MSG}"
