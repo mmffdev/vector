@@ -510,17 +510,16 @@
 }
 
 /*
- * Sticks below the .dui-sticky-subheader (which is itself position:sticky
- * with top:0 inside the same .app-viewport-container scroll root). Offset
- * accounts for the subheader's two rows on the scope tab. max-height +
- * overflow-y:auto cap the TOC to the visible viewport so its own list
- * scrolls internally when it overflows.
+ * Sticks below the .dui-sticky-subheader. top/max-height use a generous
+ * 140px estimate for the two-row subheader (tabs + growthbar) plus page
+ * padding. overflow-y:scroll keeps the scrollbar permanently visible so
+ * users can see the TOC is scrollable even before they try.
  */
 .dui-toc {
   position: sticky;
-  top: calc(var(--dui-subheader-h, 96px) + var(--space-3));
-  max-height: calc(100vh - var(--dui-subheader-h, 96px) - var(--space-6));
-  overflow-y: auto;
+  top: 140px;
+  max-height: calc(100vh - 140px - var(--space-6));
+  overflow-y: scroll;
   border-right: 1px solid var(--border);
   padding-right: var(--space-4);
 }
