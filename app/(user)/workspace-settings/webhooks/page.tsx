@@ -35,7 +35,7 @@ export default function WebhooksPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v2/workspaces/${workspaceId}/webhooks`);
+      const res = await fetch(`/workspaces/${workspaceId}/webhooks`);
       if (!res.ok) throw new Error("Failed to fetch webhooks");
       const data = await res.json();
       setWebhooks(data.webhooks || []);
@@ -59,8 +59,15 @@ export default function WebhooksPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this webhook?")) return;
     try {
-      const res = await fetch(`/api/v2/workspaces/${workspaceId}/webhooks/${id}`, {
+      // Extract CSRF token from cookie
+      const csrfToken = document.cookie
+        .split("; ")
+        .find(row => row.startsWith("csrf_token="))
+        ?.split("=")[1] || "";
+
+      const res = await fetch(`/workspaces/${workspaceId}/webhooks/${id}`, {
         method: "DELETE",
+        headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
       });
       if (!res.ok) throw new Error("Failed to delete webhook");
       await fetchWebhooks();

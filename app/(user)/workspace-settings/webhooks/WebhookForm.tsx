@@ -41,7 +41,7 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
     if (!webhookId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/v2/workspaces/${workspaceId}/webhooks/${webhookId}`);
+      const res = await fetch(`/workspaces/${workspaceId}/webhooks/${webhookId}`);
       if (!res.ok) throw new Error("Failed to fetch webhook");
       const data = await res.json();
       setForm({
@@ -68,8 +68,8 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
     try {
       const method = webhookId ? "PATCH" : "POST";
       const url = webhookId
-        ? `/api/v2/workspaces/${workspaceId}/webhooks/${webhookId}`
-        : `/api/v2/workspaces/${workspaceId}/webhooks`;
+        ? `/workspaces/${workspaceId}/webhooks/${webhookId}`
+        : `/workspaces/${workspaceId}/webhooks`;
 
       const payload: Record<string, any> = {
         url: form.url,
@@ -77,9 +77,18 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
       };
       if (form.secret) payload.secret = form.secret;
 
+      // Extract CSRF token from cookie
+      const csrfToken = document.cookie
+        .split("; ")
+        .find(row => row.startsWith("csrf_token="))
+        ?.split("=")[1] || "";
+
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRF-Token": csrfToken }),
+        },
         body: JSON.stringify(payload),
       });
 
