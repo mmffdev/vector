@@ -322,6 +322,7 @@ Full lifecycle management for tasks, bugs, epics.
 - **B1.7** Work item templates `[P4]`
 - **B1.8** Blocked-state — orthogonal stuck flag with provenance `[P2]`
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
   > - `is_blocked` `BOOLEAN NOT NULL DEFAULT FALSE` — convenience flag for indexing/filters
   > - `blocked_id` `UUID` — surrogate id for the active blocker record (so history can be added later without schema churn)
@@ -518,6 +519,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
   > `webhooks/worker.go:sign()` — HMAC-SHA256 of payload body keyed on subscription secret; sent as `X-Vector-Signature: sha256=<hex>`
   >
 - **B9.7** `item.blocked` / `item.unblocked` event wiring → tracked under B1.8.5 (blocked-state feature) `[P3]`
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -600,6 +602,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ **B15.5** `<DiagramCanvas>` — Canvas2D + dagre + d3-zoom `[P3]`
   > Spec: `docs/c_c_diagram_canvas.md` — Vector-built Canvas2D + dagre layout + d3-zoom; 10px snap-to-grid default; pluggable node renderer; exposed via Samantha API as `samantha.diagram.canvas`
 - ✅ **B15.6** Drag-and-drop (`@dnd-kit`) `[P2]`
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > `@dnd-kit/core` + `@dnd-kit/sortable` installed; canonical DnD library; sortable lists/tables/tabs; server is order of truth (250ms debounce); no competing libs; spec: `docs/c_c_dnd.md`
 - ✅ **B15.7** Theme pack system `[P3]`
   > CSS variable theming live; warm neutrals palette per Design System; color derivation in Badge, Table, tree styles
@@ -847,6 +850,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -865,6 +869,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -873,6 +878,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -889,6 +895,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -905,6 +912,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 
 - **B21.3** Tests, docs, lint, cutover hygiene `[P2]`
 > Commit `b65e06a` (2026-05-09): docs(B21): add Artefact-Items Substrate plan, PLA-0037 [B21]
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -915,9 +923,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
 > Commit `b65e06a` (2026-05-09): docs(B21): add Artefact-Items Substrate plan, PLA-0037 [B21]
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -926,6 +936,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
+> Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
