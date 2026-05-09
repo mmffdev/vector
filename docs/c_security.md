@@ -95,6 +95,16 @@ A human marks a flag by editing the JSONL row's `state` field: `open` → `resol
 
 Full librarian contract: [c_librarian.md](c_librarian.md).
 
+## Gateway Rule (PLA-0039, enforced)
+
+Two HTTP transports exist. The rule is simple and hard:
+
+- **New public endpoints** (external callers, API keys) → `/samantha/v2` **only**.
+- **New BFF endpoints** (Next.js UI, session-cookie auth) → `/_site` **only**.
+- **Root back-compat mount** (legacy `apiInfra` callers) → **frozen** — no new routes added there under any circumstance. It will be removed within ≤2 release cycles once all callers have migrated to `apiSite()` → `/_site`.
+
+Enforcement: `lint:public-helper-allowlist` prevents unapproved `apiV2()` callers from appearing in the frontend. See [`docs/c_c_transport_segregation.md`](c_c_transport_segregation.md) for the full transport architecture.
+
 ## Related
 
 - [c_c_schema_auth.md](c_c_schema_auth.md) — `users`, `sessions`, `password_resets`, `user_workspace_permissions`.
@@ -102,3 +112,4 @@ Full librarian contract: [c_librarian.md](c_librarian.md).
 - [c_deployment.md](c_deployment.md) — secrets locations, env files.
 - [c_c_roles_permissions.md](c_c_roles_permissions.md) — data-driven RBAC (PLA-0007); roles/permissions/role_permissions tables and the `useHasPermission` frontend contract.
 - [c_c_lint_rules.md](c_c_lint_rules.md) — `lint:role-literals` and `lint:writer-boundary` (writer-boundary enforcement for the RBAC tables).
+- [c_c_transport_segregation.md](c_c_transport_segregation.md) — full transport architecture: two mounts, shared Service core, lint trio, audit `source_transport`, `MapPublic*` convention.
