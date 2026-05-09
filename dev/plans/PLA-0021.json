@@ -3,8 +3,8 @@
   "title": "ResourceTree — generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap)",
   "date_created": "2026-05-06",
   "date_started": "2026-05-06",
-  "date_last_updated": "2026-05-06",
-  "date_finished": null,
+  "date_last_updated": "2026-05-07",
+  "date_finished": "2026-05-07",
   "scope": "<p><code>WorkItemsTree</code> is refactored into two layers: a generic <code>&lt;ResourceTree&gt;</code> primitive that accepts five prop sets (Data types, UI scaffold, Feature requirements, Cog menu, Colour overrides) and a thin <code>WorkItemsTree</code> preset wrapper that passes the work-items configuration. The five prop-set configs are registered in the addressables registry (PLA-0005) under stable addresses such as <code>samantha.work-items._tree.workitems</code>. Future adopters (PortfolioItemsTree, TopologyTree, etc.) get all 28 features for free by passing their own prop sets. The 28 features from R042 §0.B are implemented in ranked order across work streams.</p>",
   "value": "<p>The current <code>WorkItemsTree</code> has 14 ❌ missing features, 4 📦 stubbed features (fake sprint, owner, due-date columns), and 2 🚧 partial features from the R042 feature matrix — covering only inline-edit, server-sort on id only, and ad-hoc realtime. Users see synthetic data in three columns. DnD rank code exists but is parked in <code>reference/dnd_tree.tsx</code> and not wired. This plan delivers the full feature set in importance order, with ResourceTree as a reusable primitive so every future tree view inherits the complete capability stack including realtime sync, RBAC-gated columns, URL deep-linking, streaming skeletons, and mobile responsive layout — features Rally never had.</p>",
   "implementation_plan": [
@@ -95,105 +95,105 @@
       "title": "Refactor: extract ResourceTree primitive; WorkItemsTree becomes preset wrapper",
       "story_id": "00445",
       "card_url": "http://localhost:3333/cards/1769171253874132248",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 2,
       "title": "Register 5 prop-set configs at samantha.work-items._tree.workitems",
       "story_id": "00446",
       "card_url": "http://localhost:3333/cards/1769171344101999899",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 3,
       "title": "Vitest smoke: WorkItemsTree visual no-regression after ResourceTree extraction",
       "story_id": "00447",
       "card_url": "http://localhost:3333/cards/1769171432987690270",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 4,
       "title": "Doc leaf: docs/c_c_resource_tree.md — ResourceTree component spec",
       "story_id": "00448",
       "card_url": "http://localhost:3333/cards/1769171531075683617",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 5,
       "title": "Wire DnD rank into ResourceTree from reference/dnd_tree.tsx.bak",
       "story_id": "00449",
       "card_url": "http://localhost:3333/cards/1769197332504511885",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 6,
       "title": "Backend: add ?owner_id= filter to GET /api/work-items",
       "story_id": "00450",
       "card_url": "http://localhost:3333/cards/1769197511685178779",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 7,
       "title": "Frontend: controlled filter chips + URL nuqs (type/status/priority/owner)",
       "story_id": "00451",
       "card_url": "http://localhost:3333/cards/1769197702081414570",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 8,
       "title": "Backend: ORDER BY whitelist for every sortable column + tests",
       "story_id": "00452",
       "card_url": "http://localhost:3333/cards/1769197877453653433",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 9,
       "title": "Frontend: thread sort/dir into URL via nuqs; drop client sort branch",
       "story_id": "00453",
       "card_url": "http://localhost:3333/cards/1769198046173726152",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 10,
       "title": "Add useKeyboardGrid hook to ResourceTree (Tab/Enter/Esc/Arrow grid keyboarding)",
       "story_id": "00454",
       "card_url": "http://localhost:3333/cards/1769230236299298314",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 11,
       "title": "Add multi-select checkbox column to ResourceTree (range shift-click + header toggle)",
       "story_id": "00455",
       "card_url": "http://localhost:3333/cards/1769230238539056653",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 12,
       "title": "Build BulkActionBar wired to POST /api/work-items/bulk for batch ops",
       "story_id": "00456",
       "card_url": "http://localhost:3333/cards/1769230241441515024",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 13,
       "title": "WS4-A: real sprints join + Sprint column (replace sprintAlias FAKE)",
       "story_id": "00458",
       "card_url": "http://localhost:3333/cards/1769270391307503218",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 14,
       "title": "WS4-B: real users join + OwnerChip (replace ownerGlyph FAKE)",
       "story_id": "00459",
       "card_url": "http://localhost:3333/cards/1769270716466726518",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 15,
       "title": "WS4-C: due_date column migration + inline date editor",
       "story_id": "00460",
       "card_url": "http://localhost:3333/cards/1769270832565061241",
-      "status": "done"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [

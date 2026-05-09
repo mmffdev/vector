@@ -1,12 +1,12 @@
 {
   "id": "PLA-0012",
-  "title": "Reusable Page Summary Header \u2014 full-span stat strip + Work Items adopter",
+  "title": "Reusable Page Summary Header — full-span stat strip + Work Items adopter",
   "date_created": "2026-05-05",
   "date_started": "2026-05-05",
-  "date_last_updated": "2026-05-05",
-  "date_finished": "2026-05-05",
-  "scope": "<p>Introduce a Vector-standard <strong>Page Summary Header</strong> primitive \u2014 a full-span horizontal stat strip rendered above a page's main content. The strip shows label+value cells (e.g. <em>TOTAL ITEMS, EPICS, TASKS, DEFECTS</em>) and an optional trailing search slot, modelled on the screenshot reference supplied by the operator.</p><p>The component composes <code>&lt;Panel name=\"page_summary\"&gt;</code> so it inherits the addressable substrate (PLA-0005), the <code>TbHelpHexagon</code> trigger top-right, and the Page Help fetch path (PLA-0008). All visual rules live in <code>app/globals.css</code> as a single <code>.page-summary</code> catalog block \u2014 <strong>no inline styles, no per-component CSS-in-JS</strong>, per the project HARD CSS RULE.</p><p>The first adopter is the <code>/work-items</code> page: the strip renders above the Filters panel with five cells driven by the work-items tree state (Total, Epics, Tasks, Defects, Blocked) and the search input is hoisted out of <code>WorkItemsFilterBar</code> into the new strip's trailing slot.</p>",
-  "value": "<ul><li>Gives users an at-a-glance read of any dataset rendered below \u2014 they can see the shape (counts by type, defect/blocked totals) before scanning rows.</li><li>Establishes a single reusable primitive for every page in the product, reducing drift in summary-strip implementations.</li><li>Inherits the Page Help substrate automatically, so every adopter gains a discoverable, gadmin-editable help doc by virtue of being a registered <code>_panel.page_summary</code> addressable.</li><li>Hardens the no-inline-styles rule by adding a clean catalog block that other adopters extend rather than duplicate.</li></ul>",
+  "date_last_updated": "2026-05-07",
+  "date_finished": "2026-05-07",
+  "scope": "<p>Introduce a Vector-standard <strong>Page Summary Header</strong> primitive — a full-span horizontal stat strip rendered above a page's main content. The strip shows label+value cells (e.g. <em>TOTAL ITEMS, EPICS, TASKS, DEFECTS</em>) and an optional trailing search slot, modelled on the screenshot reference supplied by the operator.</p><p>The component composes <code>&lt;Panel name=\"page_summary\"&gt;</code> so it inherits the addressable substrate (PLA-0005), the <code>TbHelpHexagon</code> trigger top-right, and the Page Help fetch path (PLA-0008). All visual rules live in <code>app/globals.css</code> as a single <code>.page-summary</code> catalog block — <strong>no inline styles, no per-component CSS-in-JS</strong>, per the project HARD CSS RULE.</p><p>The first adopter is the <code>/work-items</code> page: the strip renders above the Filters panel with five cells driven by the work-items tree state (Total, Epics, Tasks, Defects, Blocked) and the search input is hoisted out of <code>WorkItemsFilterBar</code> into the new strip's trailing slot.</p>",
+  "value": "<ul><li>Gives users an at-a-glance read of any dataset rendered below — they can see the shape (counts by type, defect/blocked totals) before scanning rows.</li><li>Establishes a single reusable primitive for every page in the product, reducing drift in summary-strip implementations.</li><li>Inherits the Page Help substrate automatically, so every adopter gains a discoverable, gadmin-editable help doc by virtue of being a registered <code>_panel.page_summary</code> addressable.</li><li>Hardens the no-inline-styles rule by adding a clean catalog block that other adopters extend rather than duplicate.</li></ul>",
   "implementation_plan": [
     "Build the <PageSummaryHeader> primitive in app/components/ composing <Panel name=\"page_summary\">; types: cells: SummaryCell[], search?: SearchSlotProps. Tone 'warning' paints amber only when value > 0.",
     "Add the .page-summary catalog block to app/globals.css (grid layout, cell, glyph, search, warning-tone, responsive collapse). Reuse .tile__label and .t-metric tokens for typography.",
@@ -39,35 +39,35 @@
       "title": "Build <PageSummaryHeader> primitive composing <Panel> with metric cells + search slot",
       "story_id": "00397",
       "card_url": "http://localhost:3333/cards/1767866585634047832",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 2,
       "title": "Add .page-summary catalog classes to app/globals.css",
       "story_id": "00398",
       "card_url": "http://localhost:3333/cards/1767866601891170151",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 3,
       "title": "Adopt PageSummaryHeader on Work Items page above filters with tree-state cells",
       "story_id": "00399",
       "card_url": "http://localhost:3333/cards/1767866618399950710",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 4,
       "title": "Seed Page Help row for panel.page_summary so the help icon serves content",
       "story_id": "00400",
       "card_url": "http://localhost:3333/cards/1767866635101669253",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 5,
       "title": "Vitest snapshot + render tests for PageSummaryHeader",
       "story_id": "00401",
       "card_url": "http://localhost:3333/cards/1767866651434289044",
-      "status": "done"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [
@@ -137,7 +137,7 @@
     },
     {
       "order": 9,
-      "criterion": "Cell values reflect items state \u2014 totals match items.length and per-type counts match item_type filters",
+      "criterion": "Cell values reflect items state — totals match items.length and per-type counts match item_type filters",
       "proven_by": "With a 28-item fixture (4 epics, 12 tasks, 6 defects, 6 stories) the rendered cells show 28/4/12/6 with DEFECTS carrying .page-summary__cell--issue",
       "story_id": "00399",
       "card_url": "http://localhost:3333/cards/1767866618399950710",
@@ -170,7 +170,7 @@
     {
       "order": 13,
       "criterion": "Clicking the help icon on the work-items summary strip opens a popover whose body contains the seeded help copy",
-      "proven_by": "Manual /work-items click test: popover shows 'Cells are derived from\u2026' substring rendered by HelpDocRenderer",
+      "proven_by": "Manual /work-items click test: popover shows 'Cells are derived from…' substring rendered by HelpDocRenderer",
       "story_id": "00400",
       "card_url": "http://localhost:3333/cards/1767866635101669253",
       "done": true
@@ -201,7 +201,7 @@
     {
       "impact": 1,
       "risk": "Tree-state cell counts could drift from server-side totals if the local items state is filtered before the cells receive it",
-      "mitigation": "Compute cells from the same items array WorkItemsTree consumes, after the search filter is applied \u2014 the spec explicitly defines cells as reflecting the filtered subset, so this is the desired behaviour"
+      "mitigation": "Compute cells from the same items array WorkItemsTree consumes, after the search filter is applied — the spec explicitly defines cells as reflecting the filtered subset, so this is the desired behaviour"
     },
     {
       "impact": 1,

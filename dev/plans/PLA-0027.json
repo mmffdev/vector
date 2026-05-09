@@ -2,7 +2,7 @@
   "id": "PLA-0027",
   "title": "Sprints — Timebox Management System",
   "date_created": "2026-05-07",
-  "date_started": null,
+  "date_started": "2026-05-07",
   "date_last_updated": "2026-05-07",
   "date_finished": null,
   "scope": "<p>Full-stack implementation of the Sprints feature as the first timebox kind in the <code>TimeboxManager</code> architecture. Covers the Go service layer (<code>internal/timeboxsprints</code> as sole writer), REST API endpoints under <code>/api/v2/timeboxes/sprints</code>, page registry + navigation wiring for <code>/planning/sprints</code>, the reusable <code>&lt;TimeboxManager&gt;</code> React component with sprint-specific date validation, Samantha SDK <code>_timebox</code> 3-level addressing substrate, and documentation finalisation.</p><p>The DB layer (migration 025: <code>timebox_sprints</code> table with EXCLUDE constraint on overlapping sprint ranges per workspace+org_node) was shipped in commit 26e861a and is complete. All API endpoints are built on the v2 pattern (<code>/api/v2/</code> prefix, RFC 9457 error format, <code>messages.*</code> constants).</p>",
@@ -53,7 +53,7 @@
       "title": "Backend: Implement `timeboxsprints` Go service (CRUD + validation)",
       "story_id": "00513",
       "card_url": "http://localhost:3333/cards/1769632316088387202",
-      "status": "todo"
+      "status": "doing"
     },
     {
       "order": 2,
@@ -298,10 +298,30 @@
     }
   ],
   "references": [
-    { "kind": "internal", "label": "handover1.md — Sprints/TimeboxManager scoping session", "href": "handover1.md" },
-    { "kind": "internal", "label": "docs/c_c_timebox_manager.md — TimeboxManager design doc", "href": "docs/c_c_timebox_manager.md" },
-    { "kind": "internal", "label": "db/artefacts_schema/025_timebox_sprints.sql — migration 025", "href": "db/artefacts_schema/025_timebox_sprints.sql" },
-    { "kind": "internal", "label": "docs/c_c_secondary_nav_deeplink.md — secondary nav contract", "href": "docs/c_c_secondary_nav_deeplink.md" },
-    { "kind": "internal", "label": "docs/c_c_addressables.md — Samantha addressing substrate", "href": "docs/c_c_addressables.md" }
+    {
+      "kind": "internal",
+      "label": "handover1.md — Sprints/TimeboxManager scoping session",
+      "href": "handover1.md"
+    },
+    {
+      "kind": "internal",
+      "label": "docs/c_c_timebox_manager.md — TimeboxManager design doc",
+      "href": "docs/c_c_timebox_manager.md"
+    },
+    {
+      "kind": "internal",
+      "label": "db/artefacts_schema/025_timebox_sprints.sql — migration 025",
+      "href": "db/artefacts_schema/025_timebox_sprints.sql"
+    },
+    {
+      "kind": "internal",
+      "label": "docs/c_c_secondary_nav_deeplink.md — secondary nav contract",
+      "href": "docs/c_c_secondary_nav_deeplink.md"
+    },
+    {
+      "kind": "internal",
+      "label": "docs/c_c_addressables.md — Samantha addressing substrate",
+      "href": "docs/c_c_addressables.md"
+    }
   ]
 }

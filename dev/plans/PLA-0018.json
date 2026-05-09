@@ -1,20 +1,20 @@
 {
   "id": "PLA-0018",
-  "title": "Nested-tab deep-linking via nuqs \u2014 bookmarkable secondary tabs across the app",
+  "title": "Nested-tab deep-linking via nuqs — bookmarkable secondary tabs across the app",
   "date_created": "2026-05-06",
-  "date_started": null,
-  "date_last_updated": "2026-05-06",
-  "date_finished": "2026-05-06",
+  "date_started": "2026-05-05",
+  "date_last_updated": "2026-05-07",
+  "date_finished": "2026-05-07",
   "scope": "<p>Add URL-encoded deep-link support to every page that uses <code>&lt;SecondaryNavigation&gt;</code>, so that the active secondary tab is reflected in the query string (<code>?tab=&lt;key&gt;</code>), survives page reload, and can be bookmarked or shared.</p><p>The implementation follows the architectural recommendation from <strong>R040</strong> (Nested Tab Deep-Linking in Next.js 14+ App Router): query-param encoding via the <code>nuqs</code> library (<code>useQueryState</code> + <code>parseAsStringLiteral</code>), <code>history:'replace'</code> with <code>scroll:false</code> on every tab click, a mandatory <code>&lt;Suspense&gt;</code> boundary audit, and a custom <code>lint:tab-deep-link</code> rule to enforce the boundary at CI time.</p>",
   "value": "<p>Secondary tabs currently store their active state in component-local <code>useState</code>. This means:</p><ul><li>Reloading the page drops the user back to the default tab.</li><li>Sharing a link to a non-default tab sends the recipient to the wrong place.</li><li>Browser back/forward does not restore the tab that was open.</li></ul><p>Query-param deep-linking solves all three with a single, lightweight convention that requires no backend changes and no new routes.</p>",
   "implementation_plan": [
-    "Step 1 \u2014 Document the nuqs convention (urlKey pattern, Suspense requirement, router.replace semantics) in docs/c_c_secondary_nav_deeplink.md.",
-    "Step 2 \u2014 Install nuqs, mount NuqsAdapter at app/layout.tsx root; add Vitest smoke test.",
-    "Step 3 \u2014 Extend SecondaryNavigation with urlKey?: string prop; when present, delegate active/onChange to useQueryState instead of the caller.",
-    "Step 4 \u2014 Migrate work-items page: remove activeTab useState; pass urlKey='tab'; wrap in Suspense.",
-    "Step 5 \u2014 Migrate workspace-settings page: pass urlKey='tab'; preserve dirty-state guard; wrap in Suspense.",
-    "Step 6 \u2014 Migrate theme page: pass urlKey='tab'; wrap in Suspense.",
-    "Step 7 \u2014 Write lint:tab-deep-link Python script; verify CI exits 0 across all adopters."
+    "Step 1 — Document the nuqs convention (urlKey pattern, Suspense requirement, router.replace semantics) in docs/c_c_secondary_nav_deeplink.md.",
+    "Step 2 — Install nuqs, mount NuqsAdapter at app/layout.tsx root; add Vitest smoke test.",
+    "Step 3 — Extend SecondaryNavigation with urlKey?: string prop; when present, delegate active/onChange to useQueryState instead of the caller.",
+    "Step 4 — Migrate work-items page: remove activeTab useState; pass urlKey='tab'; wrap in Suspense.",
+    "Step 5 — Migrate workspace-settings page: pass urlKey='tab'; preserve dirty-state guard; wrap in Suspense.",
+    "Step 6 — Migrate theme page: pass urlKey='tab'; wrap in Suspense.",
+    "Step 7 — Write lint:tab-deep-link Python script; verify CI exits 0 across all adopters."
   ],
   "areas_impacted": [
     "FE-UI: SecondaryNavigation component extended with urlKey prop",
@@ -25,16 +25,16 @@
   ],
   "feature_list": [
     "URL-encoded secondary tab state via nuqs (query-param ?tab=<key>)",
-    "SecondaryNavigation urlKey prop \u2014 opt-in, backward-compatible",
+    "SecondaryNavigation urlKey prop — opt-in, backward-compatible",
     "NuqsAdapter mounted at root layout",
     "Suspense boundary enforcement across all adopters",
     "Custom lint:tab-deep-link CI rule"
   ],
   "features_extended": [
-    "<strong>SecondaryNavigation</strong> \u2014 gains <code>urlKey?: string</code> prop alongside existing <code>pageId</code> (PLA-0014 tab-order); the two props are independent and composable.",
-    "<strong>work-items page</strong> \u2014 activeTab useState removed; tabs become bookmarkable.",
-    "<strong>workspace-settings page</strong> \u2014 tab deep-link added; existing dirty-state warning preserved.",
-    "<strong>theme page</strong> \u2014 tab deep-link added (no dirty-state guard needed)."
+    "<strong>SecondaryNavigation</strong> — gains <code>urlKey?: string</code> prop alongside existing <code>pageId</code> (PLA-0014 tab-order); the two props are independent and composable.",
+    "<strong>work-items page</strong> — activeTab useState removed; tabs become bookmarkable.",
+    "<strong>workspace-settings page</strong> — tab deep-link added; existing dirty-state warning preserved.",
+    "<strong>theme page</strong> — tab deep-link added (no dirty-state guard needed)."
   ],
   "features_removed": [],
   "work_item_backlog": [
@@ -278,12 +278,12 @@
   "references": [
     {
       "kind": "internal",
-      "label": "R040 \u2014 Nested Tab Deep-Linking in Next.js App Router",
+      "label": "R040 — Nested Tab Deep-Linking in Next.js App Router",
       "href": "dev/research/R040.json"
     },
     {
       "kind": "internal",
-      "label": "PLA-0014 \u2014 Tab reorder primitive (pageId prop, dnd-kit, user_tab_order)",
+      "label": "PLA-0014 — Tab reorder primitive (pageId prop, dnd-kit, user_tab_order)",
       "href": "dev/plans/PLA-0014.json"
     },
     {
@@ -293,7 +293,7 @@
     },
     {
       "kind": "external",
-      "label": "nuqs \u2014 Type-safe URL state for Next.js",
+      "label": "nuqs — Type-safe URL state for Next.js",
       "href": "https://nuqs.47ng.com"
     }
   ]

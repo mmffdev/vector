@@ -4,7 +4,7 @@
   "date_created": "2026-05-07",
   "date_started": "2026-05-07",
   "date_last_updated": "2026-05-07",
-  "date_finished": "2026-05-07",
+  "date_finished": null,
   "scope": "<p>Migrate the work-items / artefacts read+write path off the legacy <code>mmff_vector.obj_*</code> tables and onto a new dedicated Postgres database <code>vector_artefacts</code> with a unified <code>artefacts</code> table. Five-phase rollout: <strong>Phase 1</strong> stand up <code>vector_artefacts</code> schema and dev fixture (migrations 010–014, 15-artefact seed, deferred-work register); <strong>Phase 2</strong> build the <code>backend/internal/workitemsv2</code> Go package (dual-pool service against <code>vector_artefacts</code> + <code>mmff_vector</code>, list query with <code>rollup_points</code> recursive CTE + 5→44 flow-state translation, 8 filter slots, 7-key sort whitelist, cross-DB owner decoration); <strong>Phase 3</strong> wire <code>GET /v1/api/v2/work-items</code> with auth context (subscription_id from JWT, not query param), <code>RequireAuth</code> + <code>RequireFreshPassword</code> + <code>LimitByIP</code>, and the <code>WORK_ITEMS_V2</code> env gate (503 when unset); <strong>Phase 4</strong> ETL backfill via <code>postgres_fdw</code> from <code>mmff_vector.obj_work_items</code> into <code>vector_artefacts.artefacts</code>; <strong>Phase 5</strong> parity smoke test, flag flip + frontend burn-in, finalisation docs and PLA close-out.</p>",
   "value": "<p>The legacy <code>mmff_vector.obj_*</code> work-items model conflates write-path mutation with read-path materialisation in one schema, blocks horizontal scaling because <em>every</em> tenant action shares one pgxpool, and forces every artefact-shaped resource (work-items, defects, sprints, events) to live as a sibling table inside the tenant DB. Moving artefacts into their own <code>vector_artefacts</code> database unlocks: <em>(a)</em> unified artefact storage in one wide <code>artefacts</code> table with type discrimination, ready for cross-tenant analytics that the per-tenant DB cannot serve; <em>(b)</em> independent connection pooling and tuning targets for the artefact workload (typically high-volume read with bursty writes) versus the tenant control-plane workload (low-volume but transactional); <em>(c)</em> a clean cutover surface for v2 endpoints — the <code>WORK_ITEMS_V2</code> env gate lets per-environment opt-in without redeploy, and the parity smoke test gives a single command to assert that v1 and v2 return identical shapes for any client; <em>(d)</em> a place for future artefact subtypes (defects, sprints, retrospectives) to land without polluting the tenant schema. Five phases land zero-data-loss, gated by the env flag, with a per-phase rollback path: phase 1–3 are additive (new DB, new package, new route); phase 4 is idempotent ETL; phase 5 is the only step that takes user-visible reads off the v1 path.</p>",
   "implementation_plan": [
@@ -52,73 +52,73 @@
       "order": 1,
       "title": "vector_artefacts migrations 010 (self-invoke append), 012 (artefact columns), 013 (sprints + FK), 014 (seed catch-up) + matching DOWN scripts",
       "story_id": "00461",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369074027988759",
       "commit": "2c81e50",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 2,
       "title": "seed/01_work_items_fixture.sql — 15-artefact idempotent dev fixture (3 epic / 6 story / 4 task / 2 defect)",
       "story_id": "00462",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369087399429925",
       "commit": "2c81e50",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 3,
       "title": "docs — c_schema vector_artefacts section + c_c_v2_workitems_cutover_followups.md deferred-work register + .claude/handoffs/v2-cutover/ design artefacts",
       "story_id": "00463",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369101433571124",
       "commit": "2c81e50",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 4,
       "title": "backend/internal/workitemsv2 package skeleton + dual pgxpool (vector_artefacts read pool + mmff_vector main pool) + migrate runner vector_artefacts case",
       "story_id": "00464",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369115518043971",
       "commit": "2d5c85d",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 5,
       "title": "ListWorkItems list query — rollup_points recursive CTE + 5→4 flow_state translation",
       "story_id": "00465",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369129610905426",
       "commit": "2d5c85d",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 6,
       "title": "Eight filter slots (parent_id / item_type / status / priority / sprint_id / owner_id / limit / offset) parsed in workitemsv2 handler",
       "story_id": "00466",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369145868027747",
       "commit": "2d5c85d",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 7,
       "title": "ORDER BY whitelist — 7 sort keys (item_type / title / status / priority / points / sprint_id / due_date) + direction clamp",
       "story_id": "00467",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369159692453746",
       "commit": "2d5c85d",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 8,
       "title": "Cross-DB owner decoration — decorateOwners() best-effort batch lookup against mmff_vector.users via mainPool",
       "story_id": "00468",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369173969864577",
       "commit": "2d5c85d",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 9,
       "title": "auth.UserFromCtx subscription_id wiring — replaces query-param tenant scope with JWT-derived context",
       "story_id": "00469",
-      "card_url": null,
+      "card_url": "http://localhost:3333/cards/1769369189958551442",
       "commit": "62f6197",
-      "status": "done"
+      "status": "todo"
     },
     {
       "order": 10,
@@ -133,28 +133,28 @@
       "title": "Backfill production work-items into vector_artefacts via postgres_fdw ETL",
       "story_id": "00472",
       "card_url": "http://localhost:3333/cards/1769415585503905724",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 12,
       "title": "Parity smoke test: /api/work-items vs /api/v2/work-items",
       "story_id": "00473",
       "card_url": "http://localhost:3333/cards/1769415587978545087",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 13,
       "title": "Frontend cutover + WORK_ITEMS_V2=true burn-in (dev)",
       "story_id": "00474",
       "card_url": "http://localhost:3333/cards/1769415590260246466",
-      "status": "done"
+      "status": "completed"
     },
     {
       "order": 14,
       "title": "Docs finalise: backfill, scope, tech-debt; close PLA-0023",
       "story_id": "00475",
       "card_url": "http://localhost:3333/cards/1769415592533559237",
-      "status": "done"
+      "status": "completed"
     }
   ],
   "acceptance_criteria": [
@@ -404,7 +404,7 @@
       "proven_by": "row-count parity audit",
       "story_id": "00472",
       "card_url": "http://localhost:3333/cards/1769415585503905724",
-      "done": false
+      "done": true
     },
     {
       "order": 32,
@@ -412,7 +412,7 @@
       "proven_by": "re-run idempotency check",
       "story_id": "00472",
       "card_url": "http://localhost:3333/cards/1769415585503905724",
-      "done": false
+      "done": true
     },
     {
       "order": 33,
@@ -420,7 +420,7 @@
       "proven_by": "field round-trip diff",
       "story_id": "00472",
       "card_url": "http://localhost:3333/cards/1769415585503905724",
-      "done": false
+      "done": true
     },
     {
       "order": 34,
@@ -428,7 +428,7 @@
       "proven_by": "script exit code",
       "story_id": "00473",
       "card_url": "http://localhost:3333/cards/1769415587978545087",
-      "done": false
+      "done": true
     },
     {
       "order": 35,
@@ -436,7 +436,7 @@
       "proven_by": "negative-test artefact",
       "story_id": "00473",
       "card_url": "http://localhost:3333/cards/1769415587978545087",
-      "done": false
+      "done": true
     },
     {
       "order": 36,
@@ -444,7 +444,7 @@
       "proven_by": "research file present + content",
       "story_id": "00473",
       "card_url": "http://localhost:3333/cards/1769415587978545087",
-      "done": false
+      "done": true
     },
     {
       "order": 37,
@@ -452,7 +452,7 @@
       "proven_by": "browser console + screenshot",
       "story_id": "00474",
       "card_url": "http://localhost:3333/cards/1769415590260246466",
-      "done": false
+      "done": true
     },
     {
       "order": 38,
@@ -460,7 +460,7 @@
       "proven_by": "manual smoke checklist",
       "story_id": "00474",
       "card_url": "http://localhost:3333/cards/1769415590260246466",
-      "done": false
+      "done": true
     },
     {
       "order": 39,
@@ -468,7 +468,7 @@
       "proven_by": "logs + toast surface clean",
       "story_id": "00474",
       "card_url": "http://localhost:3333/cards/1769415590260246466",
-      "done": false
+      "done": true
     },
     {
       "order": 40,
@@ -476,7 +476,7 @@
       "proven_by": "doc diff + commit list",
       "story_id": "00475",
       "card_url": "http://localhost:3333/cards/1769415592533559237",
-      "done": false
+      "done": true
     },
     {
       "order": 41,
@@ -484,7 +484,7 @@
       "proven_by": "index + plan JSON",
       "story_id": "00475",
       "card_url": "http://localhost:3333/cards/1769415592533559237",
-      "done": false
+      "done": true
     },
     {
       "order": 42,
@@ -492,7 +492,7 @@
       "proven_by": "register row presence",
       "story_id": "00475",
       "card_url": "http://localhost:3333/cards/1769415592533559237",
-      "done": false
+      "done": true
     }
   ],
   "risks": [
