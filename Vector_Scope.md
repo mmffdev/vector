@@ -38,6 +38,7 @@
 - [B17. Infrastructure &amp; DevOps](#b17-infrastructure--devops)
 - [B18. Developer Experience](#b18-developer-experience)
 - [B19. Work Item Relations Graph](#b19-work-item-relations-graph)
+- [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 
 ---
 
@@ -713,8 +714,56 @@ A 3D force-directed graph (Obsidian-style globe) for visualising the work-item h
 
 ---
 
+## B20. User Access Rights & Navigation Control
+
+Manage per-role access to pages and features. Control what each role (user, padmin, gadmin) can view and pin in navigation.
+
+### B20.1 Role-based Page Access
+
+- ✅ ~~**B20.1.1** Role gate system for pages — `roles_pages` junction table~~
+  > `pages` table seeded with system pages (dashboard, portfolio, workspace-settings, etc.); `roles_pages` defines which roles can view each page. Queries scoped by role via `nav.Service.CatalogFor(role)`. All seeded pages + role assignments live.
+  > Last checked: 2026-05-09
+  >
+- ✅ ~~**B20.1.2** Frontend catalogue filtering by user role~~
+  > `NavPrefsContext.tsx` loads catalogue from `/nav/catalogue`, filtered to only show pages user's role can access. Prevents role-forbidden items in UI.
+  > Last checked: 2026-05-09
+  >
+- ✅ ~~**B20.1.3** Backend validation of pinned items against role permissions~~
+  > `nav.Service.ReplacePrefsForProfile()` validates each pinned item exists in user's role-filtered catalogue before saving. Rejects with `ErrRoleForbidden` if user tries to pin page outside their role.
+  > Last checked: 2026-05-09
+  >
+
+### B20.2 Default Navigation Profiles
+
+- ✅ ~~**B20.2.1** Default pinned items by role~~
+  > `pages.default_pinned = TRUE` flags items shown by default when user first creates nav prefs. Filtered by role via catalogue so each role sees only its own defaults. E.g., workspace-settings is default for gadmin + padmin, hidden from user role.
+  > Last checked: 2026-05-09
+  >
+- ✅ ~~**B20.2.2** Graceful hydration when defaults change~~
+  > Frontend draft reconstruction skips items not in current catalogue (migration-safe: if a default gets removed, user's existing pinned list stays stable; only new users see the updated set).
+  > Last checked: 2026-05-09
+  >
+
+### B20.3 Role-Specific Feature Access
+
+- ✅ ~~**B20.3.1** padmin access to workspace-settings~~
+  > Migration 140 grants padmin role to `roles_pages` for workspace-settings; Migration 141 keeps it as default_pinned. padmin can now see, pin, and edit workspace-settings tabs (role-gated via `useHasPermission` per-tab). Gadmin retains full access.
+  > Last checked: 2026-05-09
+  >
+- **B20.3.2** Permission predicate per tab in workspace-settings `[P2]`
+  > Some tabs (e.g., users, permissions) are gadmin-only; padmin sees a subset (organization, workspaces, portfolio_model, etc.). Use `useHasPermission()` checks to hide/disable tabs per role. Define permission codes per tab in service layer.
+  >
+- **B20.3.3** Role-gated custom pages (Phase 5+) `[P4]`
+  > When users can create custom pages, role assignments on custom pages follow same `roles_pages` pattern as system pages. Permissions inherit from creator tenant role or explicit assignment.
+  >
+
+---
+
 ## Unmatched Commits
 
+> Commit `65851a0` (2026-05-09): fix: auto-redirect to first accessible tab in workspace-settings
+> Commit `974c640` (2026-05-09): fix: allow padmin to access workspace-settings with role-gated tabs
+> Commit `5989e2b` (2026-05-09): docs: mark B9 (webhooks) as complete [B9]
 > Commit `4bdfeea` (2026-05-09): fix(B9.1): resolve webhookSvc variable shadowing bug
 > Commit `8b194b6` (2026-05-09): fix: add CSRF token to webhook form submission [B9.1]
 > Commit `88ff415` (2026-05-09): docs(B6.7): update scope with workspace-settings padmin fix completion
