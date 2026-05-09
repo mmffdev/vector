@@ -504,7 +504,7 @@
  */
 .dui-toc-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 330px 1fr;
   gap: var(--space-6);
   padding: var(--space-4);
 }
