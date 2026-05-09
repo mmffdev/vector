@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { DevAccordion, DevAccordionItem } from "@dev/components/DevAccordion";
 import Panel from "@/app/components/Panel";
@@ -90,7 +90,7 @@ function HelpRow({
     setTogglingHelpable(true);
     setError(null);
     try {
-      await api(`/api/addressables/admin/${encodeURIComponent(row.addressable_id)}/helpable`, {
+      await api(`/addressables/admin/${encodeURIComponent(row.addressable_id)}/helpable`, {
         method: "PATCH",
         body: JSON.stringify({ helpable: next }),
       });
@@ -138,7 +138,7 @@ function HelpRow({
     const titleField: string | null = titleTrimmed.length > 0 ? titleTrimmed : null;
 
     try {
-      await api(`/api/page-help/admin/${encodeURIComponent(row.addressable_id)}`, {
+      await api(`/page-help/admin/${encodeURIComponent(row.addressable_id)}`, {
         method: "PUT",
         body: JSON.stringify({
           locale: row.locale,
