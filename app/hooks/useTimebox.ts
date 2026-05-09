@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { apiV2, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { TIMEBOX_KINDS, TimeboxKind } from "@/app/components/timebox/kinds";
 import type { TimeboxRow } from "@/app/components/TimeboxManager";
@@ -27,7 +27,7 @@ export function useTimebox({ kind, workspaceId, orgNodeId }: UseTimeboxOptions):
     const params = new URLSearchParams({ workspace_id: workspaceId });
     if (orgNodeId) params.set("org_node_id", orgNodeId);
     try {
-      const data = await apiV2<Record<string, unknown>>(`${cfg.apiBase}?${params.toString()}`);
+      const data = await apiSite<Record<string, unknown>>(`${cfg.apiBase}?${params.toString()}`);
       setRows((data[cfg.listKey] ?? []) as TimeboxRow[]);
     } catch (e) {
       notify.apiError(e as ApiError, `Failed to load ${kind}s`);

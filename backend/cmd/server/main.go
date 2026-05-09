@@ -830,6 +830,46 @@ func main() {
 		})
 	})
 
+	// /timeboxes/sprints + /timeboxes/releases (B22.23)
+	if sprintH != nil {
+		r.Route("/timeboxes/sprints", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/", sprintH.List)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/", sprintH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/bulk-create", sprintH.BulkCreate)
+			r.Get("/{id}", sprintH.Get)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Put("/{id}", sprintH.Update)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Delete("/{id}", sprintH.Delete)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/{id}/start", sprintH.Start)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/{id}/close", sprintH.Close)
+		})
+	}
+	if releaseH != nil {
+		r.Route("/timeboxes/releases", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/", releaseH.List)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/", releaseH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/bulk-create", releaseH.BulkCreate)
+			r.Get("/{id}", releaseH.Get)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Put("/{id}", releaseH.Update)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Delete("/{id}", releaseH.Delete)
+		})
+	}
+
 	// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
 	// Portfolio master record + workspace layer reads — site-only BFF surfaces.
 	r.Route("/portfolio", func(r chi.Router) {

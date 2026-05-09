@@ -8,7 +8,7 @@
 import { useState } from "react";
 import Panel from "@/app/components/Panel";
 import Table, { Column, PillVariant } from "@/app/components/Table";
-import { apiV2, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import { TIMEBOX_KINDS, TimeboxKind } from "@/app/components/timebox/kinds";
@@ -133,7 +133,7 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
           org_node_id: orgNodeId,
         };
       });
-      await apiV2(`${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`, {
+      await apiSite(`${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`, {
         method: "POST",
         body: JSON.stringify({ [cfg.listKey]: items }),
       });

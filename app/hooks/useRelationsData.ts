@@ -4,9 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { RelationsPayload } from "@/app/api/v2/work-items/relations/route";
 
 // The relations endpoint lives in Next.js (app/api/v2/work-items/relations/route.ts),
-// not in the Go backend on :5100, so we hit it via a relative fetch rather
-// than apiV2(). When B19.6.x lifts the route into Go alongside the rest of
-// /samantha/v2, switch this to apiV2('/work-items/relations').
+// not in the Go backend on :5100, so we hit it via a raw fetch rather than
+// apiSite(). When B19.6.x lifts the route into Go, switch to apiSite.
 const RELATIONS_PATH = "/api/v2/work-items/relations";
 
 export type UseRelationsDataResult = {
