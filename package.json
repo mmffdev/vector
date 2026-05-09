@@ -15,6 +15,7 @@
     "lint:no-raw-table": "python3 dev/scripts/lint_no_raw_table.py",
     "lint:tab-deep-link": "python3 dev/scripts/lint_tab_deep_link.py",
     "lint:portfolio-library-read": "python3 dev/scripts/lint_portfolio_library_read.py",
+    "lint:scope-literals": "python3 dev/scripts/lint_scope_literals.py",
     "api:snap": "bash dev/scripts/snap_api.sh",
     "api:check": "bash dev/scripts/check_routes.sh --all && python3 dev/scripts/check_callers.py --all",
     "api:check:v1": "bash dev/scripts/check_routes.sh --spec openapi.yaml && python3 dev/scripts/check_callers.py --spec openapi.yaml",

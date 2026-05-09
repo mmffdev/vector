@@ -17,6 +17,7 @@ All lints share the same shape:
 | `lint:dev-css` | `dev/scripts/lint_dev_css.py` | _(no registry — hard gate)_ | zero `dev-*` / `dui-*` selectors in `app/globals.css`; zero imports of `app/globals.css` from anywhere under `dev/` (PLA-0013) |
 | `lint:secondary-nav` | `dev/scripts/lint_secondary_nav.py` | `secondary_nav_exempt.json` | every `<SecondaryNavigation reorderable …>` carries a `pageId="…"` so per-user tab order can persist (PLA-0014 / 00420) |
 | `lint:portfolio-library-read` | `dev/scripts/lint_portfolio_library_read.py` | `lint_portfolio_library_read_exemptions.json` | tenant-side code MUST NOT read `/api/library/`, `/api/portfolio-templates/`, or `mmff_library` outside the adoption saga + library admin surface — post-cutover invariant: tenant runtime reads `vector_artefacts` only, library is consulted once at adoption (PLA-0026 / 00512) |
+| `lint:scope-literals` | `dev/scripts/lint_scope_literals.py` | `scope_literals_exempt.json` | inside `backend/internal/artefactitemsv2/`, `'work'` / `'strategy'` MUST NOT appear as SQL literals — bind via `$N` + `s.scope` (PLA-0037 / B21) |
 | `api:check` | `dev/scripts/check_routes.sh` + `dev/scripts/check_callers.py` | `dev/registries/dead-api-exemptions.txt` | Go chi router routes must be documented in `openapi.yaml`; frontend `api(...)` callers must reference a spec path; `apiInfra` and `apiV2` tracked but not hard-failed (PLA-0029) |
 
 ---

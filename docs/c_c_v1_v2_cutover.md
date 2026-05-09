@@ -13,6 +13,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 | Route | Handler pool | Moved | Notes |
 |---|---|---|---|
 | `/work-items` (full CRUD + bulk + field-values) | `vaPool` (vector_artefacts) | ✅ done | PLA-0023 / PLA-0025 |
+| `/portfolio-items` (full CRUD + bulk + field-values) | `vaPool` (vector_artefacts) | ✅ done | PLA-0037 / B21 — same handler as `/work-items` with `scope='strategy'`; package renamed `workitemsv2` → `artefactitemsv2` |
 | `/rank/move` | `vaPool` | ✅ done | Moved 2026-05-08; v1 registration removed 2026-05-09; frontend uses `apiV2` |
 | `/timeboxes/sprints` (full CRUD + bulk-create) | `vaPool` | ✅ done | PLA-0027 + PLA-0030 T2; all mutations in v2 block, `WorkItemsSettingsEdit` gate on writes |
 | `/workspace/{id}/fields` | `vaPool` | ✅ done | PLA-0030 T3 (2026-05-08); `artefact_field_library` + `artefact_workspace_fields`; mmff_vector used only for tenancy gate |
@@ -28,7 +29,7 @@ The end state: `/samantha/v1` is removed from the router entirely. All external 
 | `/topology` | `pool` (mmff_vector) | `org_nodes` / `org_node_roles` not yet in `vector_artefacts` | [PLA-0034](../dev/plans/PLA-0034.json) |
 | `/portfolio-models` | `libPools.RO` (library DB) | Library DB is a separate read-only pool; not a `vector_artefacts` candidate — needs architectural decision on whether portfolio models move or stay library-scoped | PLA-0026 completion + PLA-0030 T6 architectural decision |
 | ~~`/portfolio/master_record`~~ | `vaPool` | ✅ Done — PLA-0030 T4a (2026-05-08). `master_record_portfolio` was already in vector_artefacts | — |
-| `/portfolio-items` | `pool` | Work-items v1 legacy table; superseded by `/work-items` on v2 — consolidation into `artefacts` table | [PLA-0033](../dev/plans/PLA-0033.json) |
+| ~~`/portfolio-items`~~ | `vaPool` | ✅ Done — PLA-0037 / B21 (2026-05-09). v2 `/portfolio-items` mounted on `artefactitemsv2` with `scope='strategy'`; v1 surface still served from `pool` for now, ready to retire as frontend callers migrate | — |
 | `/subscription/layers` | `pool` | Legacy subscription-scoped layers; workspace-scoped successor `/workspace/{id}/portfolio/layers` now live on v2 — deprecate v1 surface, migrate frontend callers | PLA-0026 completion + frontend migration |
 | ~~`/workspace/{id}/portfolio/layers`~~ | `vaPool` | ✅ Done — PLA-0030 T3 (2026-05-08). mmff_vector tenancy gate retained inside handler | — |
 | ~~`/workspace/{id}/fields`~~ | `vaPool` | ✅ Done — PLA-0030 T3 (2026-05-08). mmff_vector tenancy gate retained inside handler | — |
