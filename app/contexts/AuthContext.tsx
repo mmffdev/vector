@@ -55,7 +55,13 @@ const Ctx = createContext<AuthState | null>(null);
 // rt cookie. The second call hits reuse-detection and revokes the session.
 // A ref inside the component resets to null on unmount, so it can't protect
 // across the remount. Module scope survives the full StrictMode cycle.
+//
+// _bootstrapped also prevents HMR effect re-runs from firing a second
+// refresh() on an already-rotated token — which is the recurring "logout
+// on browser refresh" root cause. Once bootstrap succeeds, the flag stays
+// true for the lifetime of the module (i.e. the browser tab).
 let _bootstrapFlight: Promise<void> | null = null;
+let _bootstrapped = false;
 
 function setSessionCookie() {
   document.cookie = "session_alive=1; Path=/; SameSite=Strict; Max-Age=604800";
@@ -86,10 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
         applyLogin(res);
+        _bootstrapped = true;
       } catch {
         setApiToken(null);
         setUser(null);
         clearSessionCookie();
+        _bootstrapped = false;
       }
     })().finally(() => {
       refreshInFlight.current = null;
@@ -104,10 +112,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       typeof document !== "undefined" &&
       document.cookie.split("; ").some((c) => c.startsWith("session_alive="));
     if (hasSessionHint) {
-      // Use module-level guard for bootstrap: StrictMode unmounts + remounts
-      // this component, which would fire two sequential calls consuming the
-      // same one-time-use rt cookie. The ref resets on unmount so it can't
-      // protect across the remount — module scope can.
+      // _bootstrapped: already succeeded this tab lifetime — HMR re-ran
+      // the effect but the rt cookie was already rotated by the first call.
+      // Firing again hits reuse-detection and nukes all sessions.
+      if (_bootstrapped) {
+        setLoading(false);
+        return;
+      }
+      // _bootstrapFlight: deduplicates StrictMode's unmount+remount double-fire
+      // within the same synchronous render cycle.
       if (!_bootstrapFlight) {
         _bootstrapFlight = refresh().finally(() => {
           _bootstrapFlight = null;
@@ -150,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
+    _bootstrapped = false;
     notify.success("You've been signed out.");
     router.push("/login");
   }, [router, user]);
