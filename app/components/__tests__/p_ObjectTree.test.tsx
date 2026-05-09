@@ -131,7 +131,7 @@ vi.mock("@/app/contexts/AuthContext", () => ({
   useHasPermission: () => true,
 }));
 
-import ObjectTree from "@/app/components/p_ObjectTree";
+import ObjectTree from "@/app/components/ObjectTree/p_ObjectTree";
 
 // ─── Tests ──────────────────────────────────────────────────────────────
 

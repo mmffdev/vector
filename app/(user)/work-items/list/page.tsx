@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Panel from "@/app/components/Panel";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiV2 } from "@/app/lib/api";
-import ObjectTree, { type WorkItem } from "@/app/components/p_ObjectTree";
+import ObjectTree, { type WorkItem } from "@/app/components/ObjectTree/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
