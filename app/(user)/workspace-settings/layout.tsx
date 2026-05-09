@@ -70,8 +70,22 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   const pathname          = usePathname();
 
   useEffect(() => {
-    if (user && !canAccessSettings) router.replace("/dashboard");
-  }, [user, canAccessSettings, router]);
+    if (user && !canAccessSettings) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    // If at /workspace-settings with no tab, redirect to first accessible tab
+    const segments = pathname.split("/").filter(Boolean);
+    const rootIdx  = segments.indexOf("workspace-settings");
+    const tabSeg   = rootIdx >= 0 ? segments[rootIdx + 1] ?? "" : "";
+
+    if (!tabSeg) {
+      // Determine first accessible tab for this user
+      const firstTab = canAdminWorkspace ? "organization" : "portfolio_model";
+      router.replace(`/workspace-settings/${segmentForKey(firstTab)}`);
+    }
+  }, [user, canAccessSettings, canAdminWorkspace, pathname, router]);
 
   if (!user || !canAccessSettings) return null;
 
@@ -81,7 +95,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   const segments = pathname.split("/").filter(Boolean);
   const rootIdx  = segments.indexOf("workspace-settings");
   const tabSeg   = rootIdx >= 0 ? segments[rootIdx + 1] ?? "" : "";
-  const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "organization";
+  const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "portfolio_model";
 
   const header = TAB_HEADERS[activeTab];
 
