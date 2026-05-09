@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import Table from "@/app/components/Table";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
+import { apiInfra } from "@/app/lib/api";
+import { workspacesApi } from "@/app/lib/workspacesApi";
 import WebhookForm from "./WebhookForm";
 
 interface Webhook {
@@ -17,9 +18,7 @@ interface Webhook {
 }
 
 export default function WebhooksPage() {
-  const params = useParams();
-  const workspaceId = Array.isArray(params.workspace_id) ? params.workspace_id[0] : params.workspace_id;
-
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,17 +26,35 @@ export default function WebhooksPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
+  // Resolve the caller's live workspace. No shared workspace context yet
+  // (PLA-0026 follow-up); current convention is first-row of workspacesApi.list().
   useEffect(() => {
-    fetchWebhooks();
+    (async () => {
+      try {
+        const ws = await workspacesApi.list();
+        if (ws.length === 0) {
+          setError("No workspace available");
+          setLoading(false);
+          return;
+        }
+        setWorkspaceId(ws[0].id);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load workspace");
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (workspaceId) fetchWebhooks();
   }, [workspaceId]);
 
   const fetchWebhooks = async () => {
+    if (!workspaceId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/workspaces/${workspaceId}/webhooks`);
-      if (!res.ok) throw new Error("Failed to fetch webhooks");
-      const data = await res.json();
+      const data = await apiInfra<{ webhooks?: Webhook[] }>(`/workspaces/${workspaceId}/webhooks`);
       setWebhooks(data.webhooks || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -57,19 +74,10 @@ export default function WebhooksPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!workspaceId) return;
     if (!confirm("Delete this webhook?")) return;
     try {
-      // Extract CSRF token from cookie
-      const csrfToken = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("csrf_token="))
-        ?.split("=")[1] || "";
-
-      const res = await fetch(`/workspaces/${workspaceId}/webhooks/${id}`, {
-        method: "DELETE",
-        headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
-      });
-      if (!res.ok) throw new Error("Failed to delete webhook");
+      await apiInfra(`/workspaces/${workspaceId}/webhooks/${id}`, { method: "DELETE" });
       await fetchWebhooks();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -129,7 +137,7 @@ export default function WebhooksPage() {
         </button>
       </div>
 
-      {showForm && (
+      {showForm && workspaceId && (
         <WebhookForm
           workspaceId={workspaceId}
           webhookId={editingId}

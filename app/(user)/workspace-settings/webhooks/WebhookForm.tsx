@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiInfra, ApiError } from "@/app/lib/api";
 
 interface WebhookFormProps {
   workspaceId: string;
@@ -21,6 +22,7 @@ const EVENT_FILTERS = [
   { value: "item.updated", label: "Item updated" },
   { value: "item.deleted", label: "Item deleted" },
   { value: "item.status_changed", label: "Item status changed" },
+  { value: "item.blocked", label: "Item blocked" },
   { value: "sprint.started", label: "Sprint started" },
   { value: "sprint.closed", label: "Sprint closed" },
 ];
@@ -41,9 +43,9 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
     if (!webhookId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/workspaces/${workspaceId}/webhooks/${webhookId}`);
-      if (!res.ok) throw new Error("Failed to fetch webhook");
-      const data = await res.json();
+      const data = await apiInfra<{ url: string; events: string | null; secret: string | null }>(
+        `/workspaces/${workspaceId}/webhooks/${webhookId}`
+      );
       setForm({
         url: data.url,
         events: data.events || null,
@@ -67,7 +69,7 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
 
     try {
       const method = webhookId ? "PATCH" : "POST";
-      const url = webhookId
+      const path = webhookId
         ? `/workspaces/${workspaceId}/webhooks/${webhookId}`
         : `/workspaces/${workspaceId}/webhooks`;
 
@@ -77,29 +79,16 @@ export default function WebhookForm({ workspaceId, webhookId, onSubmit, onCancel
       };
       if (form.secret) payload.secret = form.secret;
 
-      // Extract CSRF token from cookie
-      const csrfToken = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("csrf_token="))
-        ?.split("=")[1] || "";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          ...(csrfToken && { "X-CSRF-Token": csrfToken }),
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || `HTTP ${res.status}`);
-      }
-
+      await apiInfra(path, { method, body: JSON.stringify(payload) });
       onSubmit();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const msg =
+        err instanceof ApiError && err.body && typeof err.body === "object" && typeof (err.body as any).error === "string"
+          ? (err.body as any).error
+          : err instanceof Error
+          ? err.message
+          : "Unknown error";
+      setError(msg);
     } finally {
       setLoading(false);
     }
