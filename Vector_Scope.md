@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-09 (B21 added — Artefact-items substrate, PLA-0037; rename `workitemsv2` → `artefactitemsv2`, scope-parameterised; B15.2.5 sidecar wizard JSON pattern)
-**Doc version:** 2.0
+**Last updated:** 2026-05-09 (B1.8 plan link added — PLA-0038 blocked-state)
+**Doc version:** 2.1
 
 ---
 
@@ -321,6 +321,7 @@ Full lifecycle management for tasks, bugs, epics.
   >
 - **B1.7** Work item templates `[P4]`
 - **B1.8** Blocked-state — orthogonal stuck flag with provenance `[P2]`
+  > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
   > - `is_blocked` `BOOLEAN NOT NULL DEFAULT FALSE` — convenience flag for indexing/filters
   > - `blocked_id` `UUID` — surrogate id for the active blocker record (so history can be added later without schema churn)
@@ -819,6 +820,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -836,6 +838,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -843,6 +846,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -860,6 +864,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -867,6 +872,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -874,6 +880,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -881,6 +888,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -888,6 +896,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
 > Commit `0d2cfcc` (2026-05-09): chore: scope-hook annotations for prior B21 commits
 > Commit `1220476` (2026-05-09): chore: persist hook output
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -913,6 +922,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
 > Commit `e250fca` (2026-05-09): chore: scope-commit-note annotations for b65e06a [B21]
+> Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`

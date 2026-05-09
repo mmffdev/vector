@@ -36,13 +36,29 @@ esac
 COMMIT_HASH=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" log --oneline -1 --no-merges 2>/dev/null | awk '{print $1}' || true)
 COMMIT_MSG=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" log --format="%s" -1 2>/dev/null || true)
 COMMIT_DATE=$(date +%Y-%m-%d)
-CHANGED_FILES=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null || true)
+RAW_CHANGED_FILES=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null || true)
 
-# Strip self-references: Vector_Scope.md is the hook's destination, never a
-# source signal. Likewise scope-refs.map (the keyword catalogue) — without
-# this, every commit that touches either file matches its own keywords and
-# the hook annotates itself in an infinite loop.
-CHANGED_FILES=$(printf '%s\n' "$CHANGED_FILES" | grep -vE '^(Vector_Scope\.md|\.claude/scope-refs\.map)$' || true)
+# Strip self-references: scope-tracker plumbing files are destinations or
+# infrastructure for THIS hook, never a source signal. Without this, any
+# commit touching one of them matches its own catalogue keywords (e.g. the
+# word "scope" lives in B21's keyword list), and the hook annotates itself
+# in an infinite loop. Stripped paths:
+#   - Vector_Scope.md           (where notes are written)
+#   - .claude/scope-refs.map    (the keyword catalogue itself)
+#   - .claude/hooks/scope-*.sh  (the hook scripts; their paths leak "scope")
+#   - .claude/skills/scope/**   (the <scope> skill; same leak)
+SELF_REF_RE='^(Vector_Scope\.md|\.claude/scope-refs\.map|\.claude/hooks/scope-[^/]+\.sh|\.claude/skills/scope/.*)$'
+CHANGED_FILES=$(printf '%s\n' "$RAW_CHANGED_FILES" | grep -vE "$SELF_REF_RE" || true)
+
+# If the commit ONLY touched scope-tracker plumbing, exit silently — there is
+# no real source signal to map, and Priority 2/3 keyword matches against
+# COMMIT_MSG alone would be too noisy (a fix commit naturally describes the
+# hook by name and would re-trigger via "scope" / "hook" keywords).
+RAW_NONEMPTY=$(printf '%s\n' "$RAW_CHANGED_FILES" | grep -cv '^$' || true)
+STRIPPED_NONEMPTY=$(printf '%s\n' "$CHANGED_FILES" | grep -cv '^$' || true)
+if [[ "$RAW_NONEMPTY" -gt 0 && "$STRIPPED_NONEMPTY" -eq 0 ]]; then
+  exit 0
+fi
 
 [[ -z "$COMMIT_HASH" || -z "$COMMIT_MSG" ]] && exit 0
 
