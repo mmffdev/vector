@@ -124,7 +124,7 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 	var wsID, subID uuid.UUID
 	err := vec.QueryRow(ctx, `
 		SELECT id, subscription_id
-		  FROM workspace
+		  FROM master_record_workspaces
 		 WHERE archived_at IS NULL
 		 ORDER BY created_at
 		 LIMIT 1`,
@@ -238,7 +238,7 @@ func TestWorkspaceLayers_Forbidden_NonMember(t *testing.T) {
 	var wsID, subID uuid.UUID
 	err := vec.QueryRow(ctx, `
 		SELECT id, subscription_id
-		  FROM workspace
+		  FROM master_record_workspaces
 		 WHERE archived_at IS NULL
 		 ORDER BY created_at
 		 LIMIT 1`,
@@ -284,7 +284,7 @@ func TestWorkspaceLayers_NotFound_CrossTenant(t *testing.T) {
 	var wsID, subID uuid.UUID
 	err := vec.QueryRow(ctx, `
 		SELECT id, subscription_id
-		  FROM workspace
+		  FROM master_record_workspaces
 		 WHERE archived_at IS NULL
 		 ORDER BY created_at
 		 LIMIT 1`,

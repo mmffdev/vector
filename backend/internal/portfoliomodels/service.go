@@ -394,7 +394,7 @@ func (s *Service) AssertWorkspaceInTenant(
 	}
 	var got uuid.UUID
 	err := s.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM workspace WHERE id = $1`, workspaceID,
+		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`, workspaceID,
 	).Scan(&got)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrWorkspaceNotFound
