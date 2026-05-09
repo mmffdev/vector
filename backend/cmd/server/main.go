@@ -53,6 +53,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
+	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
@@ -858,15 +859,28 @@ func main() {
 
 	} // end mountSiteRoutes
 
+	// tagSite middleware annotates the request context with transport.Site so
+	// audit.Logger and any per-transport logic can read it without coupling to
+	// mount paths (PLA-0039 / B22.11).
+	tagSite := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			next.ServeHTTP(w, req.WithContext(transport.WithSiteContext(req.Context())))
+		})
+	}
+
 	// Canonical BFF mount: every site-only route lives under /_site.
 	// Frontend uses apiSite() (formerly apiInfra) to reach these.
-	r.Route("/_site", func(r chi.Router) { mountSiteRoutes(r) })
+	r.Route("/_site", func(r chi.Router) {
+		r.Use(tagSite)
+		mountSiteRoutes(r)
+	})
 
 	// Back-compat shim: mount the same routes at root with a Deprecation
 	// header pointing callers at /_site. Removed after ≤2 release cycles
 	// once apiSite() codemod has landed and gateway rules are in place.
 	// PLA-0039 / B22.1.
 	r.Group(func(r chi.Router) {
+		r.Use(tagSite)
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Header().Set("Deprecation", "true")
@@ -1012,6 +1026,11 @@ func main() {
 
 	// ---- /samantha/v2 — feature-gated v2 routes ----
 	r.Route("/samantha/v2", func(r chi.Router) {
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(transport.WithPublicContext(req.Context())))
+			})
+		})
 		r.Use(apikeys.Middleware(apiKeysSvc))
 
 		// ---- /work-items + /portfolio-items (B21 / PLA-0037) ----
