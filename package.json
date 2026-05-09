@@ -18,6 +18,7 @@
     "lint:scope-literals": "python3 dev/scripts/lint_scope_literals.py",
     "lint:public-helper-allowlist": "python3 dev/scripts/lint_public_helper_allowlist.py",
     "lint:no-db-in-handlers": "python3 dev/scripts/lint_no_db_in_handlers.py",
+    "lint:public-dto-mapper": "python3 dev/scripts/lint_public_dto_mapper.py",
     "api:snap": "bash dev/scripts/snap_api.sh",
     "api:check": "bash dev/scripts/check_routes.sh --all && python3 dev/scripts/check_callers.py --all",
     "api:check:v1": "bash dev/scripts/check_routes.sh --spec openapi.yaml && python3 dev/scripts/check_callers.py --spec openapi.yaml",

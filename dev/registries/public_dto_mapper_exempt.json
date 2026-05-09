@@ -1,0 +1,4 @@
+{
+  "description": "Exemption ledger for lint:public-dto-mapper (PLA-0039 / Story 00532). Each entry is a handler under a public-transport package (/samantha/v2) that currently serializes internal/models structs without a MapPublic* projection. End state: empty array → invariant enforced. New public-transport handlers MUST use MapPublic* from day one and never appear here.",
+  "exempt_paths": []
+}
