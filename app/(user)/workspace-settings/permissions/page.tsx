@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Table from "@/app/components/Table";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
 type AdminUserRole = string;
 
@@ -24,6 +27,16 @@ const DEFAULT_GRID: Record<AdminUserRole, Record<string, boolean>> = {
 };
 
 export default function PermissionsPage() {
+  const { user } = useAuth();
+  const canAccess = useHasPermission("workspace.archive");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && !canAccess) router.replace("/workspace-settings");
+  }, [user, canAccess, router]);
+
+  if (!user || !canAccess) return null;
+
   const columns = [
     { key: "label", header: "Capability", width: 220 },
     ...ROLES.map((role) => ({

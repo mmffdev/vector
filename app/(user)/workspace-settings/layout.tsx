@@ -64,15 +64,16 @@ const SUB_TAB_LABELS: Partial<Record<TabKey, Record<string, string>>> = {
 export default function WorkspaceSettingsLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const canAdminWorkspace = useHasPermission("workspace.archive");
+  const canAccessSettings = useHasPermission("workspace.create") || useHasPermission("workspace.archive");
   const canManageFlows    = useHasPermission("flows.manage");
   const router            = useRouter();
   const pathname          = usePathname();
 
   useEffect(() => {
-    if (user && !canAdminWorkspace) router.replace("/dashboard");
-  }, [user, canAdminWorkspace, router]);
+    if (user && !canAccessSettings) router.replace("/dashboard");
+  }, [user, canAccessSettings, router]);
 
-  if (!user || !canAdminWorkspace) return null;
+  if (!user || !canAccessSettings) return null;
 
   // Derive active tab from the segment immediately after `workspace-settings`.
   // (Reading the *last* segment would break when a tab adds its own sub-routes,
@@ -102,12 +103,14 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
         active={activeTab}
         onChange={handleTabChange}
         items={[
-          { key: "organization",    label: "Organization",    sortKey: "Organization" },
-          { key: "workspaces",      label: "Workspaces",      sortKey: "Workspaces" },
-          { key: "users",           label: "Users",           sortKey: "Users" },
-          { key: "permissions",     label: "Permissions",     sortKey: "Permissions" },
-          { key: "topology",        label: "Topology",        sortKey: "Topology" },
-          { key: "topology_map",    label: "Topology Map",    sortKey: "Topology Map" },
+          ...(canAdminWorkspace ? [
+            { key: "organization",    label: "Organization",    sortKey: "Organization" },
+            { key: "workspaces",      label: "Workspaces",      sortKey: "Workspaces" },
+            { key: "users",           label: "Users",           sortKey: "Users" },
+            { key: "permissions",     label: "Permissions",     sortKey: "Permissions" },
+            { key: "topology",        label: "Topology",        sortKey: "Topology" },
+            { key: "topology_map",    label: "Topology Map",    sortKey: "Topology Map" },
+          ] : []),
           { key: "portfolio_model", label: "Portfolio Model", sortKey: "Portfolio Model" },
           ...(canManageFlows ? [{ key: "work_items" as const, label: "Work Items", sortKey: "Work Items" }] : []),
           { key: "custom_fields",   label: "Custom Fields",   sortKey: "Custom Fields" },

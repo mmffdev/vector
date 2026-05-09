@@ -1,10 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Panel from "@/app/components/Panel";
 import { MapRelationship3D } from "@/app/components/MapRelationship3D";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { useTopologyRelationsPayload } from "@/app/hooks/useTopologyRelationsPayload";
 
 export default function WorkspaceSettingsTopologyMapPage() {
+  const { user } = useAuth();
+  const canAccess = useHasPermission("workspace.archive");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && !canAccess) router.replace("/workspace-settings");
+  }, [user, canAccess, router]);
+
+  if (!user || !canAccess) return null;
+
   const { data, loading, error, refetch } = useTopologyRelationsPayload();
 
   return (

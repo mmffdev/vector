@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
 const TopologyOverlayPage = dynamic(() => import("@/app/(overlay)/topology/page"), {
   ssr: false,
@@ -8,6 +11,16 @@ const TopologyOverlayPage = dynamic(() => import("@/app/(overlay)/topology/page"
 });
 
 export default function TopologyPage() {
+  const { user } = useAuth();
+  const canAccess = useHasPermission("workspace.archive");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && !canAccess) router.replace("/workspace-settings");
+  }, [user, canAccess, router]);
+
+  if (!user || !canAccess) return null;
+
   return (
     <div className="topology-tab-host">
       <TopologyOverlayPage />

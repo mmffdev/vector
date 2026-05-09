@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MdOutlineEdit } from "react-icons/md";
 import Table from "@/app/components/Table";
-import { useHasPermission } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
 import { Modal } from "../_shared";
@@ -312,6 +313,16 @@ function CreateWorkspaceModal({
 }
 
 export default function WorkspacesPage() {
+  const { user } = useAuth();
+  const canAccess = useHasPermission("workspace.archive");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && !canAccess) router.replace("/workspace-settings");
+  }, [user, canAccess, router]);
+
+  if (!user || !canAccess) return null;
+
   const canArchive      = useHasPermission("workspace.archive");
   const canViewArchived = useHasPermission("workspace.view_archived");
   const canRestore      = useHasPermission("workspace.restore");

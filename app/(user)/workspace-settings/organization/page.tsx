@@ -19,9 +19,10 @@
 //     mirrors the same rules so users get immediate feedback.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import {
@@ -296,6 +297,15 @@ function FeatureToggle({
 
 export default function OrganizationPage() {
   const { user } = useAuth();
+  const canAccess = useHasPermission("workspace.archive");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && !canAccess) router.replace("/workspace-settings");
+  }, [user, canAccess, router]);
+
+  if (!user || !canAccess) return null;
+
   const [original, setOriginal] = useState<FormState | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
