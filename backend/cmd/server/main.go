@@ -830,6 +830,41 @@ func main() {
 		})
 	})
 
+	// /topology (B22.16 — /_site mirror of /samantha/v2/topology)
+	// All topology I/O is internal-only (staff + padmin); there is no
+	// public customer surface for org-design operations.
+	r.Route("/topology", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+
+		wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+		r.Group(func(r chi.Router) {
+			r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+
+			r.Get("/tree", orgDesignH.Tree)
+			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
+			r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
+			r.Get("/preview-move", orgDesignH.PreviewMove)
+			r.Get("/disconnected", orgDesignH.Disconnected)
+			r.Get("/commit", orgDesignH.CommitStatus)
+			r.Put("/view-state", orgDesignH.ViewState)
+		})
+
+		r.Post("/nodes", orgDesignH.Create)
+		r.Patch("/nodes/{id}", orgDesignH.Patch)
+		r.Delete("/nodes/{id}", orgDesignH.Archive)
+		r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
+		r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
+		r.Post("/nodes/{id}/restore", orgDesignH.Restore)
+		r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
+		r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)
+		r.Delete("/roles/{grant_id}", orgDesignH.RevokeRole)
+		r.Post("/commit", orgDesignH.Commit)
+		r.Post("/reset", orgDesignH.Reset)
+	})
+
 	// /roles (PLA-0007 G3)
 	r.Route("/roles", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
