@@ -4,11 +4,14 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Panel from "@/app/components/Panel";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiV2 } from "@/app/lib/api";
-import ObjectTree, { type WorkItem } from "@/app/components/ObjectTree/p_ObjectTree";
+import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
+import { resolveWizardConfig } from "@/app/lib/wizardLoader";
+import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
+import workItemsWizardJson from "@/app/components/ObjectTree/p_wizard.json";
 
 export default function WorkItemsListPage() {
   const { user } = useAuth();
@@ -23,6 +26,16 @@ export default function WorkItemsListPage() {
     defects: number;
     blocked: number;
   } | null>(null);
+
+  // Load and resolve wizard config from p_wizard.json
+  const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
+    const resolved = resolveWizardConfig(workItemsWizardJson as any);
+    return {
+      ...resolved,
+      panelHeader: resolved.panelHeaderComponent === "WorkItemsPanelHeader" ? <WorkItemsPanelHeader /> : undefined,
+      filterChips: resolved.filterChipsComponent === "WorkItemsFilterChips" ? <WorkItemsFilterChips /> : undefined,
+    } as ObjectTreeDataConfig;
+  }, []);
 
   const refetchSummary = useCallback(() => {
     const params = new URLSearchParams();
@@ -80,7 +93,7 @@ export default function WorkItemsListPage() {
             const needsRefetch = "story_points" in body || "title" in body;
             if (needsRefetch) void refetch();
           }}
-          mode="work_items"
+          wizardConfig={wizardConfig}
         />
       </Panel>
     </>

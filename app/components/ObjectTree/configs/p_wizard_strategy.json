@@ -1,0 +1,49 @@
+{
+  "dataType": "strategy_items",
+  "label": "Strategy items",
+  "searchPlaceholder": "Search strategy items…",
+  "ariaLabel": "Strategy items dense grid",
+  "treeName": "strategyitems",
+  "summaryEndpoint": "/strategy-items/summary",
+  "columns": [
+    { "key": "number", "label": "ID", "width": 80, "sortable": true },
+    {
+      "key": "title",
+      "label": "Summary",
+      "width": 200,
+      "cellRenderer": "renderStrategyTitle"
+    },
+    {
+      "key": "type_name",
+      "label": "Type",
+      "width": 120,
+      "cellRenderer": "renderStrategyType"
+    },
+    { "key": "description", "label": "Description", "width": 300 },
+    { "key": "position", "label": "Position", "width": 80 }
+  ],
+  "dnd": {
+    "enabled": true,
+    "resourceType": "strategy_item"
+  },
+  "sort": {
+    "defaultKey": "position",
+    "defaultDir": "asc"
+  },
+  "selection": {
+    "multiSelect": true
+  },
+  "hierarchy": {
+    "getParentId": "row.parent_artefact_id",
+    "getChildrenCount": 0
+  },
+  "search": {
+    "accessor": "title and number"
+  },
+  "pagination": {
+    "options": [10, 25, 50],
+    "defaultPageSize": 25
+  },
+  "panelHeader": null,
+  "filterChips": null
+}

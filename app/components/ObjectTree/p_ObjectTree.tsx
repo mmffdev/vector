@@ -65,11 +65,13 @@ export default function ObjectTree({
   onSelect,
   onPatched,
   mode = "work_items",
+  wizardConfig,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
   onPatched?: (body: Record<string, unknown>) => void;
   mode?: "work_items" | "portfolio_items";
+  wizardConfig?: ObjectTreeDataConfig<WorkItem>;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -115,8 +117,11 @@ export default function ObjectTree({
     [setSort],
   );
 
-  // Build config based on mode — this is temporary until we have a registry.
+  // Build config based on mode or accept from wizardConfig (p_wizard.json).
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
+    if (wizardConfig) {
+      return wizardConfig;
+    }
     const isPortfolio = mode === "portfolio_items";
     return {
       label: isPortfolio ? "Portfolio items" : "Work items",
@@ -136,7 +141,7 @@ export default function ObjectTree({
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
     };
-  }, [mode, columns]);
+  }, [mode, columns, wizardConfig]);
 
   return (
     <div>

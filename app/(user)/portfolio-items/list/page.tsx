@@ -4,16 +4,18 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Panel from "@/app/components/Panel";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiV2 } from "@/app/lib/api";
-import ObjectTree, { type WorkItem } from "@/app/components/ObjectTree/p_ObjectTree";
+import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
+import { resolveWizardConfig } from "@/app/lib/wizardLoader";
+import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
+import workItemsWizardJson from "@/app/components/ObjectTree/p_wizard.json";
 
 export default function PortfolioItemsListPage() {
   const { user } = useAuth();
-  useHintOnce("PORTFOLIO_ITEMS_FIRST_VISIT");
-  const [filters] = useState({});
+  useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT");
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<{
     total: number;
@@ -21,6 +23,16 @@ export default function PortfolioItemsListPage() {
     objectives: number;
     features: number;
   } | null>(null);
+
+  // Load and resolve wizard config from p_wizard.json
+  const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
+    const resolved = resolveWizardConfig(workItemsWizardJson as any);
+    return {
+      ...resolved,
+      panelHeader: resolved.panelHeaderComponent === "WorkItemsPanelHeader" ? <WorkItemsPanelHeader /> : undefined,
+      filterChips: resolved.filterChipsComponent === "WorkItemsFilterChips" ? <WorkItemsFilterChips /> : undefined,
+    } as ObjectTreeDataConfig;
+  }, []);
 
   const refetchSummary = useCallback(() => {
     return apiV2<{
@@ -69,7 +81,7 @@ export default function PortfolioItemsListPage() {
             const needsRefetch = "title" in body;
             if (needsRefetch) void refetch();
           }}
-          mode="portfolio_items"
+          wizardConfig={wizardConfig}
         />
       </Panel>
     </>
