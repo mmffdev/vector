@@ -438,7 +438,7 @@ func main() {
 	// {code, context} pair; we validate the code against the cross-DB
 	// mmff_library.error_codes catalogue and append-only insert into
 	// mmff_vector.error_events.
-	errorsReportH := errorsreport.NewHandler(libPools.RO, pool)
+	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, pool))
 
 	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *models.User) {
 		var tier string

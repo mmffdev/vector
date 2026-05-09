@@ -16,33 +16,17 @@
 //     the column comment in db/schema/028_error_events.sql so a single
 //     misbehaving caller cannot bloat the table.
 //
-// Storage:
-//   - Insert into mmff_vector.error_events with subscription_id +
-//     user_id pulled from the auth context (every authenticated role
-//     is allowed — error reporting is generic across padmin/gadmin/user).
-//   - request_id is captured from chi middleware.RequestID so log
-//     correlation works without extra plumbing.
-//   - The table is append-only (trigger in migration 028 rejects
-//     UPDATE/DELETE). This handler issues a single INSERT — never a
-//     read-modify-write — so the trigger is never tripped.
-//
-// Why no entityrefs? entityrefs is the writer for the four polymorphic
-// FK relationships (entity_stakeholders, item_type_states,
-// item_state_history, page_entity_refs). error_events has plain UUID
-// FKs to subscriptions and users, plus an app-enforced cross-DB FK
-// by value to mmff_library.error_codes.code — no polymorphism, so a
-// plain pgx insert is the right tool. See docs/c_polymorphic_writes.md.
+// All DB I/O lives in errorsreport.Service (service.go); this handler
+// is parse + auth + svc.Method + render only — `lint:no-db-in-handlers`
+// enforces it.
 package errorsreport
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
@@ -51,20 +35,18 @@ import (
 
 // MaxContextBytes caps the encoded JSON size of the context payload.
 // Matches the "< ~4 KB" guidance documented on error_events.context in
-// db/schema/028_error_events.sql. Larger payloads belong in logs/traces,
-// not in this table.
+// db/schema/028_error_events.sql.
 const MaxContextBytes = 4096
 
-// Handler holds the two pools needed for the cross-DB validate-then-
-// write flow: libRO for the error_codes existence check (mmff_library),
-// vectorPool for the actual error_events insert (mmff_vector).
+// Handler is the chi-mountable HTTP surface; all DB access is delegated
+// to Svc.
 type Handler struct {
-	LibRO      *pgxpool.Pool
-	VectorPool *pgxpool.Pool
+	Svc *Service
 }
 
-func NewHandler(libRO, vectorPool *pgxpool.Pool) *Handler {
-	return &Handler{LibRO: libRO, VectorPool: vectorPool}
+// NewHandler wires the handler around an existing Service.
+func NewHandler(svc *Service) *Handler {
+	return &Handler{Svc: svc}
 }
 
 // reportRequest is the wire shape. context is captured as RawMessage so
@@ -80,7 +62,6 @@ type reportRequest struct {
 func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		// RequireAuth should have rejected this already; defensive guard.
 		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
 		return
 	}
@@ -94,76 +75,35 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, "missing_code")
 		return
 	}
-	// Reject oversize context payloads up front. The 4 KiB cap is
-	// documented on the column; enforce it here so the table can't be
-	// bloated by a single misbehaving caller.
 	if len(req.Context) > MaxContextBytes {
 		httperr.Write(w, r, http.StatusBadRequest, "context_too_large")
 		return
 	}
 
-	// Validate the code exists in mmff_library.error_codes. Single
-	// SELECT on the PK — cheap (~sub-ms with pool warm). We don't
-	// cache here: the catalogue churns rarely but reports are also
-	// rare relative to read traffic, and a stale cache would let a
-	// just-deleted code through, which is exactly the bug we're
-	// trying to prevent. Revisit if profiling shows this in the
-	// hot path (TD-LIB-007 already tracks the cross-DB FK gap).
-	if ok, err := h.codeExists(r.Context(), req.Code); err != nil {
+	ok, err := h.Svc.CodeExists(r.Context(), req.Code)
+	if err != nil {
+		if errors.Is(err, ErrLibPoolMissing) {
+			httperr.Write(w, r, http.StatusServiceUnavailable, messages.InternalError)
+			return
+		}
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
-	} else if !ok {
+	}
+	if !ok {
 		httperr.Write(w, r, http.StatusBadRequest, "unknown_error_code")
 		return
 	}
 
-	// Normalise empty context to NULL JSONB (instead of "null" literal)
-	// so dashboards can SELECT … WHERE context IS NULL without a string
-	// match. nil RawMessage encodes to NULL via pgx's JSONB codec.
-	var ctxPayload any
-	if len(req.Context) > 0 && string(req.Context) != "null" {
-		ctxPayload = req.Context
-	}
-
-	// request_id comes from chi middleware.RequestID — TEXT, not UUID
-	// (matches the column comment).
-	requestID := middleware.GetReqID(r.Context())
-
-	_, err := h.VectorPool.Exec(r.Context(), `
-		INSERT INTO error_events (subscription_id, user_id, code, context, request_id)
-		VALUES ($1, $2, $3, $4, $5)`,
-		u.SubscriptionID, u.ID, req.Code, ctxPayload, nullIfEmpty(requestID),
-	)
-	if err != nil {
+	if err := h.Svc.Record(r.Context(), Event{
+		SubscriptionID: u.SubscriptionID,
+		UserID:         u.ID,
+		Code:           req.Code,
+		Context:        req.Context,
+		RequestID:      middleware.GetReqID(r.Context()),
+	}); err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// codeExists returns true iff the given code is present in
-// mmff_library.error_codes. Errors are propagated as-is; the caller
-// distinguishes messages.NotFound (false, nil) from "lookup failed".
-func (h *Handler) codeExists(ctx context.Context, code string) (bool, error) {
-	var found int
-	err := h.LibRO.QueryRow(ctx,
-		`SELECT 1 FROM error_codes WHERE code = $1`, code,
-	).Scan(&found)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// nullIfEmpty maps "" to a typed nil so pgx writes SQL NULL rather than
-// an empty string.
-func nullIfEmpty(s string) any {
-	if s == "" {
-		return nil
-	}
-	return s
 }

@@ -50,7 +50,7 @@ func TestReport_OK(t *testing.T) {
 	vecPool, user := testVectorPool(t)
 	defer vecPool.Close()
 
-	h := NewHandler(libPool, vecPool)
+	h := NewHandler(NewService(libPool, vecPool))
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -90,7 +90,7 @@ func TestReport_UnknownCode(t *testing.T) {
 	vecPool, user := testVectorPool(t)
 	defer vecPool.Close()
 
-	h := NewHandler(libPool, vecPool)
+	h := NewHandler(NewService(libPool, vecPool))
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -115,7 +115,7 @@ func TestReport_UnknownCode(t *testing.T) {
 
 func TestReport_MissingCode(t *testing.T) {
 	// No DB needed — we reject before the lookup.
-	h := NewHandler(nil, nil)
+	h := NewHandler(NewService(nil, nil))
 	user := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser, IsActive: true}
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
@@ -132,7 +132,7 @@ func TestReport_MissingCode(t *testing.T) {
 
 func TestReport_OversizeContext(t *testing.T) {
 	// No DB needed — we reject before the lookup.
-	h := NewHandler(nil, nil)
+	h := NewHandler(NewService(nil, nil))
 	user := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser, IsActive: true}
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
