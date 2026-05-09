@@ -37,7 +37,8 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 	// than the entry naturally expiring).
 	res := permissions.NewResolver(pool, 5*time.Minute)
 	svc := New(pool, audit.New(pool))
-	h := NewHandler(svc, res, pool)
+	svc.Resolver = res
+	h := NewHandler(svc, res)
 
 	// Actor: gadmin so the route-level gate would pass; we bypass it
 	// here and exercise Handler.AssignPermissions directly.

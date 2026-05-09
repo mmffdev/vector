@@ -72,13 +72,57 @@ var (
 	ErrCodeTaken = errors.New("role code already exists in scope")
 )
 
+// PermissionResolver is the contract roles.Service consumes for
+// reading an actor's effective permission CODES as a flat string slice.
+// permissions.Resolver.PermissionCodesFor satisfies it; tests can pass
+// a small fake. Decoupling here avoids an import cycle with
+// internal/permissions and lets handler.go drop its direct DB lookup
+// (PLA-0039 / Story 00529, B22.9).
+type PermissionResolver interface {
+	PermissionCodesFor(ctx context.Context, userID uuid.UUID) ([]string, error)
+}
+
 type Service struct {
-	Pool  *pgxpool.Pool
-	Audit *audit.Logger
+	Pool     *pgxpool.Pool
+	Audit    *audit.Logger
+	Resolver PermissionResolver
 }
 
 func New(pool *pgxpool.Pool, a *audit.Logger) *Service {
 	return &Service{Pool: pool, Audit: a}
+}
+
+// ResolveActorPermissionIDs returns the set of permission row IDs for
+// the actor's effective code grid. Composes the cached resolver lookup
+// (codes) with a single DB round-trip (codes → ids). Returns an empty
+// set when the resolver is nil or the actor has no grid. Lives on the
+// service so handler.go does not touch the DB.
+func (s *Service) ResolveActorPermissionIDs(ctx context.Context, actorID uuid.UUID) (map[uuid.UUID]struct{}, error) {
+	if s.Resolver == nil {
+		return map[uuid.UUID]struct{}{}, nil
+	}
+	codes, err := s.Resolver.PermissionCodesFor(ctx, actorID)
+	if err != nil {
+		return nil, err
+	}
+	if len(codes) == 0 {
+		return map[uuid.UUID]struct{}{}, nil
+	}
+	rows, err := s.Pool.Query(ctx,
+		`SELECT id FROM permissions WHERE code = ANY($1)`, codes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[uuid.UUID]struct{}, len(codes))
+	for rows.Next() {
+		var pid uuid.UUID
+		if err := rows.Scan(&pid); err != nil {
+			return nil, err
+		}
+		out[pid] = struct{}{}
+	}
+	return out, rows.Err()
 }
 
 // IsSystemRole returns true if the given role id is one of the five

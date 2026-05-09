@@ -2,42 +2,36 @@
 //
 // Sole writer is Service; this file is a thin translation layer
 // (parse → call → map errors → JSON). Self-elevation guard for
-// AssignPermissions resolves the actor's permission CODES via the
-// permissions.Resolver, then translates those codes to permission
-// row IDs via a DB lookup (Service takes IDs, the resolver caches
-// codes — see PLA-0007 G3 for the rationale).
+// AssignPermissions delegates to Svc.ResolveActorPermissionIDs (PLA-0039 /
+// Story 00529, B22.9) — the handler no longer touches the DB.
 package roles
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/security"
 )
 
-// Handler fronts Service for the chi router. PermResolver + Pool are
-// only needed for the self-elevation gate on AssignPermissions and for
-// the /creatable endpoint, which both need to read the actor's effective
-// permission code set.
+// Handler fronts Service for the chi router. PermResolver is retained
+// only for the in-memory cache reads (Creatable's PermissionsFor) and
+// the cache-invalidation calls after Assign/Revoke — neither touches
+// the DB. The DB-bound codes→ids translation lives on Service.
 type Handler struct {
 	Svc          *Service
 	PermResolver *permissions.Resolver
-	Pool         *pgxpool.Pool
 }
 
-// NewHandler wires a roles handler. Pool is required for the codes→ids
-// translation that AssignPermissions needs (the resolver caches codes,
-// the service takes ids).
-func NewHandler(s *Service, res *permissions.Resolver, pool *pgxpool.Pool) *Handler {
-	return &Handler{Svc: s, PermResolver: res, Pool: pool}
+// NewHandler wires a roles handler. The Service must already have its
+// Resolver set (see main.go) — handler does not write Svc.Resolver.
+func NewHandler(s *Service, res *permissions.Resolver) *Handler {
+	return &Handler{Svc: s, PermResolver: res}
 }
 
 // ── endpoints ──────────────────────────────────────────────────
@@ -256,7 +250,7 @@ func (h *Handler) AssignPermissions(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	actorPermIDs, err := h.resolveActorPermissionIDs(r.Context(), actor.ID)
+	actorPermIDs, err := h.Svc.ResolveActorPermissionIDs(r.Context(), actor.ID)
 	if err != nil {
 		writeErrFromService(w, err)
 		return
@@ -301,39 +295,6 @@ func (h *Handler) RevokePermissions(w http.ResponseWriter, r *http.Request) {
 }
 
 // ── helpers ────────────────────────────────────────────────────
-
-// resolveActorPermissionIDs resolves the actor's effective permission
-// CODES (from the resolver cache) and translates them to permission row
-// IDs via a single DB lookup. Returns an empty set when the actor has
-// no role grid.
-func (h *Handler) resolveActorPermissionIDs(ctx context.Context, actorID uuid.UUID) (map[uuid.UUID]struct{}, error) {
-	codeSet, err := h.PermResolver.PermissionsFor(ctx, actorID)
-	if err != nil {
-		return nil, err
-	}
-	if len(codeSet) == 0 {
-		return map[uuid.UUID]struct{}{}, nil
-	}
-	codes := make([]string, 0, len(codeSet))
-	for c := range codeSet {
-		codes = append(codes, string(c))
-	}
-	rows, err := h.Pool.Query(ctx,
-		`SELECT id FROM permissions WHERE code = ANY($1)`, codes)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := make(map[uuid.UUID]struct{}, len(codes))
-	for rows.Next() {
-		var pid uuid.UUID
-		if err := rows.Scan(&pid); err != nil {
-			return nil, err
-		}
-		out[pid] = struct{}{}
-	}
-	return out, rows.Err()
-}
 
 // writeErrFromService maps roles sentinel errors to HTTP responses.
 func writeErrFromService(w http.ResponseWriter, err error) {

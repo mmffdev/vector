@@ -153,7 +153,8 @@ func newRouter(h *Handler, u *models.User) http.Handler {
 func newHandler(pool *pgxpool.Pool) *Handler {
 	svc := New(pool, audit.New(pool))
 	res := permissions.NewResolver(pool, 0) // ttl<=0 -> always hit DB
-	return NewHandler(svc, res, pool)
+	svc.Resolver = res
+	return NewHandler(svc, res)
 }
 
 // ----------------------------------------------------------------

@@ -4,7 +4,6 @@
     "backend/internal/portfolio/master_record_handler.go",
     "backend/internal/portfoliomodels/handler.go",
     "backend/internal/portfoliomodels/handler_layers.go",
-    "backend/internal/portfoliomodels/handler_workspace_layers.go",
-    "backend/internal/roles/handler.go"
+    "backend/internal/portfoliomodels/handler_workspace_layers.go"
   ]
 }

@@ -157,7 +157,8 @@ func main() {
 	// Roles HTTP surface (PLA-0007 G3). Service is sole writer for
 	// roles + role_permissions; the handler is a thin translation layer.
 	rolesSvc := roles.New(pool, auditLog)
-	rolesH := roles.NewHandler(rolesSvc, permResolver, pool)
+	rolesSvc.Resolver = permResolver
+	rolesH := roles.NewHandler(rolesSvc, permResolver)
 
 	// Page registry: cached DB-backed catalogue. 60s TTL trades a tiny
 	// window of staleness after an admin change for near-zero read cost.
