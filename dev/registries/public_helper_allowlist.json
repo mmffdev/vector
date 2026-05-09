@@ -1,0 +1,20 @@
+{
+  "description": "Allow-list for lint:public-helper-allowlist (PLA-0039 / Story 00523). Every callsite of `apiV2()` (the customer-public surface at `/samantha/v2`) MUST be in `allowed_paths`. New apiV2 callers require a vetted entry — that is the gate that keeps internal/admin features from accidentally routing through the public, deprecation-bound, billed customer surface. Adding a row implies: (a) the route exists in the OpenAPI v2 spec; (b) the response is a stable DTO with a `MapPublic` mapper (PLA-0039 / Story 00532); (c) the work has been considered for SOC 2 audit-event emission. Removing apiV2 from a file is always safe — that file should also drop off this list.",
+  "allowed_paths": [
+    "app/(user)/portfolio-items/list/page.tsx",
+    "app/(user)/portfolio-model/page.tsx",
+    "app/(user)/work-items/list/page.tsx",
+    "app/(user)/workspace-settings/work-items/page.tsx",
+    "app/components/ObjectTree/p_ObjectTree.tsx",
+    "app/components/TimeboxManager.tsx",
+    "app/components/WorkItemDetailPanel.tsx",
+    "app/components/useWorkItemFlowStates.ts",
+    "app/components/work-items-tree-config.tsx",
+    "app/hooks/useRelationsData.ts",
+    "app/hooks/useResourceRank.ts",
+    "app/hooks/useTimebox.ts",
+    "app/lib/api.ts",
+    "app/lib/fieldsApi.ts",
+    "app/lib/topologyApi.ts"
+  ]
+}
