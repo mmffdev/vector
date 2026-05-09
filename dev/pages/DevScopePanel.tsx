@@ -202,11 +202,8 @@ export default function DevScopePanel({ onTick }: DevScopePanelProps) {
     return <div className="dui-empty">{error ?? "Scope document not found."}</div>;
   }
 
-  return (
-    <div className="dui-panel">
-      <div className="dui-panel__body">
-        <ScopeContent sections={doc.sections} />
-      </div>
-    </div>
-  );
+  // No .dui-panel wrapper: its overflow:hidden creates a scroll container
+  // that breaks the TOC's position:sticky. The scope content is a doc,
+  // not a card surface, so render it inline against the page background.
+  return <ScopeContent sections={doc.sections} />;
 }
