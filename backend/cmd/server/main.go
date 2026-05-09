@@ -53,6 +53,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
+	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
@@ -213,7 +214,9 @@ func main() {
 	var portfolioAdoptionStateH *portfoliomodels.AdoptionStateHandler
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
 	var portfolioAdoptStreamH *portfoliomodels.AdoptStreamHandler
-	devResetH := portfoliomodels.NewDevResetHandler(pool)
+	// devResetH is constructed after the vaPool block so MasterReset can
+	// target vector_artefacts. See below.
+	var devResetH *portfoliomodels.DevResetHandler
 	layersBatchH := portfoliomodels.NewLayersBatchHandler(portfolioModelsSvc)
 
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
@@ -364,6 +367,11 @@ func main() {
 	// workspace_id; vaPool may be nil (handler returns notStarted).
 	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
 
+	// Dev reset handler — constructed here (after vaPool) so MasterReset
+	// can target both mmff_vector (pool) and vector_artefacts (vaPool).
+	// vaPool may be nil; MasterReset skips the VA leg gracefully when nil.
+	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool)
+
 	// Tenant settings (master_record_tenant). M2: reads/writes vector_artefacts
 	// (mig 036). Falls back to mmff_vector pool until 036 is applied on dev.
 	tenantSettingsPool := pool
@@ -439,6 +447,10 @@ func main() {
 		})
 		rankH = ranking.NewHandler(ranking.New(vaPool))
 	}
+
+	// Artefact-types settings handler (Customisation page).
+	// Serves GET + PATCH for name/prefix/description/colour on all live types.
+	artefactTypesH := artefacttypes.NewHandler(artefacttypes.NewService(vaPool))
 
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
 	// Only available when vaPool is up (vector_artefacts has the search columns).
@@ -819,6 +831,7 @@ func main() {
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
+				r.Post("/dev/master-reset", devResetH.MasterReset)
 			})
 		})
 
@@ -1002,6 +1015,15 @@ func main() {
 			Post("/{id}/permissions", rolesH.AssignPermissions)
 		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
 			Delete("/{id}/permissions", rolesH.RevokePermissions)
+	})
+
+	// Artefact-types settings: GET (list all) + PATCH /{id} (name/prefix/description/colour).
+	// No permission gate beyond auth — every authenticated user can read types;
+	// writes require workspace.archive (padmin+), enforced client-side and tightened later.
+	r.Route("/artefact-types", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		artefactTypesH.Mount(r)
 	})
 
 	} // end mountSiteRoutes

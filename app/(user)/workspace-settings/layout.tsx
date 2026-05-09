@@ -6,7 +6,7 @@ import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
-const TABS = ["organization", "workspaces", "users", "permissions", "topology", "topology_map", "portfolio_model", "work_items", "custom_fields", "webhooks"] as const;
+const TABS = ["organization", "workspaces", "users", "permissions", "topology", "topology_map", "portfolio_model", "work_items", "custom_fields", "webhooks", "customisation"] as const;
 type TabKey = typeof TABS[number];
 
 const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
@@ -20,6 +20,7 @@ const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
   work_items:      { title: "Work Items",      subtitle: "Flows for system, portfolio, and custom artefact types" },
   custom_fields:   { title: "Custom Fields",   subtitle: "Tenant-defined fields available on work items and portfolio artefacts" },
   webhooks:        { title: "Webhooks",        subtitle: "Manage webhook subscriptions for work item and sprint events" },
+  customisation:   { title: "Customisation",   subtitle: "Branding, themes, and display preferences for this workspace" },
 };
 
 // Tab key → URL path segment (only overrides where they differ)
@@ -42,6 +43,7 @@ const SEG_TO_KEY: Record<string, TabKey> = {
   "work-items":    "work_items",
   "custom-fields": "custom_fields",
   webhooks:        "webhooks",
+  customisation:   "customisation",
 };
 
 function segmentForKey(key: TabKey): string {
@@ -118,17 +120,18 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
         onChange={handleTabChange}
         items={[
           ...(canAdminWorkspace ? [
-            { key: "organization",    label: "Organization",    sortKey: "Organization" },
-            { key: "workspaces",      label: "Workspaces",      sortKey: "Workspaces" },
-            { key: "users",           label: "Users",           sortKey: "Users" },
-            { key: "permissions",     label: "Permissions",     sortKey: "Permissions" },
-            { key: "topology",        label: "Topology",        sortKey: "Topology" },
-            { key: "topology_map",    label: "Topology Map",    sortKey: "Topology Map" },
+            { key: "organization"    as const, label: "Organization",    sortKey: "Organization" },
+            { key: "workspaces"      as const, label: "Workspaces",      sortKey: "Workspaces" },
+            { key: "users"           as const, label: "Users",           sortKey: "Users" },
+            { key: "permissions"     as const, label: "Permissions",     sortKey: "Permissions" },
+            { key: "topology"        as const, label: "Topology",        sortKey: "Topology" },
+            { key: "topology_map"    as const, label: "Topology Map",    sortKey: "Topology Map" },
           ] : []),
-          { key: "portfolio_model", label: "Portfolio Model", sortKey: "Portfolio Model" },
+          { key: "portfolio_model"   as const, label: "Portfolio Model", sortKey: "Portfolio Model" },
           ...(canManageFlows ? [{ key: "work_items" as const, label: "Work Items", sortKey: "Work Items" }] : []),
-          { key: "custom_fields",   label: "Custom Fields",   sortKey: "Custom Fields" },
-          { key: "webhooks",        label: "Webhooks",        sortKey: "Webhooks" },
+          { key: "custom_fields"     as const, label: "Custom Fields",   sortKey: "Custom Fields" },
+          { key: "webhooks"          as const, label: "Webhooks",        sortKey: "Webhooks" },
+          { key: "customisation"     as const, label: "Customisation",   sortKey: "Customisation" },
         ]}
       />
       {children}
