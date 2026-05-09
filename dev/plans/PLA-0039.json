@@ -2,9 +2,9 @@
   "id": "PLA-0039",
   "title": "Transport Segregation via Shared Service Core — `/_site` BFF + `/samantha/v2` public, with one Service per domain",
   "date_created": "2026-05-09",
-  "date_started": null,
+  "date_started": "2026-05-09",
   "date_last_updated": "2026-05-09",
-  "date_finished": null,
+  "date_finished": "2026-05-09",
   "scope": "<p>Adopt a <strong>shared service core with two thin transport adapters</strong> as the single architectural pattern for every Vector domain. One Go <code>Service</code> per domain holds all logic and DB access; two HTTP mounts sit on top — <code>/_site</code> for site/staff BFF traffic, <code>/samantha/v2</code> for the customer-facing public API. Both mounts call the <em>same</em> Service methods. This is the <strong>win-win</strong>: site features keep shipping at full speed (no detour, no dual-stack) while customer surface stays cleanly segregated by URL prefix, lint, and DTO boundary.</p><p>Concretely: (1) mount <code>/_site</code> in <code>main.go</code> and re-home every site-only route under it; (2) rename frontend helper <code>apiInfra</code> → <code>apiSite</code> pointing at the new prefix; (3) introduce two lints — <code>lint:public-helper-allowlist</code> (caller-side gate on <code>api()</code>/<code>apiV2</code>) and <code>lint:no-db-in-handlers</code> (writer-side ratchet against pool imports in handlers); (4) extract the eight handler stragglers (auth, fields, errorsreport, libraryreleases, roles, portfoliomodels ×3, portfolio/master_record) onto their services so the lint can flip from warn-list to allow-list-empty; (5) ship the <code>audit_events</code> table + <code>audit.Service.Record()</code> sole-writer with <code>source_transport ∈ {site, public}</code> for SOC 2 evidence; (6) introduce a <code>dto.go</code> + <code>MapPublic</code> mapper convention guarded by <code>lint:public-dto-mapper</code> to stop internal columns leaking through the customer adapter; (7) document everything in <code>docs/c_c_transport_segregation.md</code>.</p><p>Out of scope: rewriting any service; GraphQL; multi-region; tenant-per-DB; gateway selection (the gateway rule lands in B17.9 / a follow-up plan).</p>",
   "value": "<p>Today, the site is overwhelmingly riding the customer pool: the frontend split is 252 <code>api()</code> / 9 <code>apiV2</code> / 8 <code>apiInfra</code> calls. The Reset Adoption State 404 Rick hit on 2026-05-09 was a direct consequence of that confusion — the BFF and the public API were indistinguishable to the developer. Without an explicit boundary, every new site feature accidentally enlarges the customer attack surface, every new public field risks exposing internal columns, and SOC 2 reviewers will not be able to point at a single audit boundary.</p><p>The win-win shape solves all three problems without slowing site delivery. Building a site feature still looks the same — write a handler, call a Service. The only new constraint is which router subtree the handler is mounted under, which is a one-line decision per route. In return: (a) URL prefix becomes a usable security signal (gateway rules, WAF, log filters, on-call dashboards); (b) one <code>audit_events</code> table records both site and customer mutations with <code>source_transport</code> distinguishing them — a SOC 2 reviewer can see the entire boundary on one screen; (c) the DTO mapper convention makes accidental column leakage a lint failure, not a postmortem. The B21 substrate (<code>artefactitemsv2</code>) and the existing 18 service.go files are <em>already</em> the right shape — this plan ratchets them in place rather than rewriting anything.</p>",
   "implementation_plan": [
@@ -83,7 +83,7 @@
       "estimation": "EST-F5",
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-API-0025", "EST-F5", "RISK-LOW", "PLA-0039"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 2,
@@ -97,7 +97,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-API-0025", "EST-F3", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00521"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 3,
@@ -111,7 +111,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-API-0025", "EST-F3", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00522"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 4,
@@ -124,7 +124,7 @@
       "estimation": "EST-F3",
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F3", "RISK-LOW", "PLA-0039"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 5,
@@ -139,7 +139,7 @@
       "risk_justification": "Auth-critical path; mishandled extraction can break login. Mitigation: feature-flag the new path; dual-mode for one cycle; dedicated Playwright auth smoke before cutover.",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F5", "RISK-MED", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 6,
@@ -153,7 +153,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F5", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 7,
@@ -167,7 +167,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F3", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 8,
@@ -182,7 +182,7 @@
       "risk_justification": "Cross-DB pool consumer (vector + library DBs). Mitigation: replicate the cross-DB pattern from `entityrefs.Service`; add integration test exercising both pools before cutover.",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F5", "RISK-MED", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 9,
@@ -196,7 +196,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F3", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 10,
@@ -211,7 +211,7 @@
       "risk_justification": "Largest straggler set; collides with PLA-0026 (per-workspace adoption cutover) on the same files. Mitigation: bundle into PLA-0026's PR window or block PLA-0026 explicitly on this story.",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F8", "RISK-MED", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 11,
@@ -226,7 +226,7 @@
       "risk_justification": "Synchronous in-transaction write on hot mutation paths. Mitigation: start with three services; measure p95; batch only if measurement justifies (no premature optimisation). Failure mode: audit write rolls back parent transaction — a desirable invariant.",
       "labels": ["AIGEN", "PH-0005", "FE-AUD-0003", "EST-F8", "RISK-MED", "PLA-0039"],
       "depends_on": ["00524"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 12,
@@ -240,7 +240,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-API-0026", "EST-F5", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00531"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 13,
@@ -254,7 +254,7 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F2", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00521"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "order": 14,
@@ -282,52 +282,52 @@
       "risk": "RISK-LOW",
       "labels": ["AIGEN", "PH-0005", "FE-DEV-0023", "EST-F2", "RISK-LOW", "PLA-0039"],
       "depends_on": ["00533"],
-      "status": "todo"
+      "status": "done"
     }
   ],
   "acceptance_criteria": [
-    { "order": 1,  "story_id": "00521", "criterion": "`/_site` chi Route block exists in `backend/cmd/server/main.go`",                                              "proven_by": "`grep -n '\"/_site\"' backend/cmd/server/main.go` returns one match inside `r.Route(...)`",                "done": false },
-    { "order": 2,  "story_id": "00521", "criterion": "Every listed site-only route serves at `/_site/<path>`",                                                       "proven_by": "`curl http://localhost:5100/_site/healthz` returns 200; `curl /_site/admin/dev/adoption-reset` returns 401 (route exists, auth required)", "done": false },
-    { "order": 3,  "story_id": "00521", "criterion": "Root-level shims emit `Deprecation: site=/_site` header for ≤2 release cycles",                                 "proven_by": "`curl -I http://localhost:5100/healthz` includes `Deprecation: site=/_site`",                            "done": false },
-    { "order": 4,  "story_id": "00522", "criterion": "Frontend `app/lib/api.ts` exports `apiSite()`; `apiInfra` removed",                                            "proven_by": "`grep -n 'export async function apiSite' app/lib/api.ts` matches; `grep -rn 'apiInfra' app dev` is empty", "done": false },
-    { "order": 5,  "story_id": "00522", "criterion": "`apiSite` base URL is `API_INFRA_BASE + '/_site'`",                                                            "proven_by": "Reading `app/lib/api.ts` shows the new base; existing 8 call sites compile",                              "done": false },
-    { "order": 6,  "story_id": "00522", "criterion": "Reset Adoption State button works in dev (smoke for the rename)",                                              "proven_by": "Manual verification on `/dev` — button click returns 200 and refreshes adoption state",                  "done": false },
-    { "order": 7,  "story_id": "00523", "criterion": "`dev/scripts/lint_public_helper_allowlist.py` exists and runs",                                                "proven_by": "`npm run lint:public-helper-allowlist` exits 0 on main",                                                  "done": false },
-    { "order": 8,  "story_id": "00523", "criterion": "`dev/registries/public_helper_allowlist.txt` ledger seeded with current customer-facing files only",            "proven_by": "Reading the ledger shows ≤ current 9 `apiV2` callers; no `apiInfra`-pattern files",                       "done": false },
-    { "order": 9,  "story_id": "00523", "criterion": "New unallowlisted caller of `api()` or `apiV2()` fails CI",                                                    "proven_by": "Test commit adding `apiV2` import to a non-ledger file is rejected by lint",                              "done": false },
-    { "order": 10, "story_id": "00524", "criterion": "`dev/scripts/lint_no_db_in_handlers.py` exists and runs",                                                      "proven_by": "`npm run lint:no-db-in-handlers` exits 0 on main with the seeded ledger",                                "done": false },
-    { "order": 11, "story_id": "00524", "criterion": "`dev/registries/handler_db_exemptions.txt` ledger seeded with the 8 known stragglers",                          "proven_by": "Reading the ledger shows: auth, fields, errorsreport, libraryreleases, roles, portfoliomodels (×3), portfolio/master_record_handler", "done": false },
-    { "order": 12, "story_id": "00524", "criterion": "New handler importing `pgxpool` or `database/sql` not in ledger fails CI",                                      "proven_by": "Test commit adding `import \"github.com/jackc/pgx/v5/pgxpool\"` to a non-ledger handler is rejected",         "done": false },
-    { "order": 13, "story_id": "00525", "criterion": "`auth.Service` exposes `Login`, `Refresh`, `Logout` methods",                                                  "proven_by": "`grep -n 'func (s \\*Service) \\(Login\\|Refresh\\|Logout\\)' backend/internal/auth/service.go` matches all 3", "done": false },
-    { "order": 14, "story_id": "00525", "criterion": "`auth/handler.go` no longer imports `pgxpool` or `database/sql`",                                              "proven_by": "`grep -E 'pgxpool|database/sql' backend/internal/auth/handler.go` is empty",                              "done": false },
-    { "order": 15, "story_id": "00525", "criterion": "`auth` removed from `handler_db_exemptions.txt` ledger and Playwright auth smoke green",                       "proven_by": "Login E2E passes; ledger no longer lists auth",                                                            "done": false },
-    { "order": 16, "story_id": "00526", "criterion": "`fields.Service` holds custom-field CRUD; `fields/handler.go` is HTTP-only",                                   "proven_by": "Service file exposes Create/Read/Update/Archive; handler imports no DB pool",                              "done": false },
-    { "order": 17, "story_id": "00526", "criterion": "Field write surface mounted under `/_site/fields`; read-only on `/samantha/v2/fields`",                         "proven_by": "main.go shows split mount; v2 GET works, v2 POST returns 405",                                            "done": false },
-    { "order": 18, "story_id": "00526", "criterion": "`fields` removed from exemption ledger",                                                                       "proven_by": "Ledger diff shows fields removed",                                                                          "done": false },
-    { "order": 19, "story_id": "00527", "criterion": "`errorsreport.Service` exposes intake methods; handler is HTTP-only",                                          "proven_by": "Service file exists; handler imports no DB pool",                                                          "done": false },
-    { "order": 20, "story_id": "00527", "criterion": "`/errors` mounted under `/_site/errors` only",                                                                "proven_by": "main.go shows mount; v2 has no `/errors` route",                                                          "done": false },
-    { "order": 21, "story_id": "00527", "criterion": "`errorsreport` removed from exemption ledger",                                                                "proven_by": "Ledger diff shows errorsreport removed",                                                                  "done": false },
-    { "order": 22, "story_id": "00528", "criterion": "`libraryreleases.Service` holds the cross-DB pool pattern; handler is HTTP-only",                              "proven_by": "Service file shows both pools wired; handler imports no DB pool",                                          "done": false },
-    { "order": 23, "story_id": "00528", "criterion": "`/library/releases` mounted under `/_site/library/releases`",                                                  "proven_by": "main.go shows mount",                                                                                       "done": false },
-    { "order": 24, "story_id": "00528", "criterion": "`libraryreleases` removed from exemption ledger and integration test exercises both pools",                    "proven_by": "Ledger diff + new integration test in package",                                                            "done": false },
-    { "order": 25, "story_id": "00529", "criterion": "`roles.Service` now holds reads (List, Get) in addition to writes",                                            "proven_by": "Service file exports List/Get methods",                                                                    "done": false },
-    { "order": 26, "story_id": "00529", "criterion": "`roles/handler.go` no longer imports `pgxpool` or `database/sql`",                                             "proven_by": "Grep is empty",                                                                                            "done": false },
-    { "order": 27, "story_id": "00529", "criterion": "`roles` removed from exemption ledger",                                                                       "proven_by": "Ledger diff shows roles removed",                                                                          "done": false },
-    { "order": 28, "story_id": "00530", "criterion": "`portfoliomodels.Service` and `portfolio.MasterRecordService` hold all extracted logic",                       "proven_by": "Service files expose the methods previously in handlers",                                                  "done": false },
-    { "order": 29, "story_id": "00530", "criterion": "Four handler files (`portfoliomodels/handler.go`, `handler_layers.go`, `handler_workspace_layers.go`, `portfolio/master_record_handler.go`) import no DB pool", "proven_by": "Grep across the four files is empty",                                "done": false },
-    { "order": 30, "story_id": "00530", "criterion": "All four removed from exemption ledger; PLA-0026 PR coordination noted",                                       "proven_by": "Ledger diff + PR description references PLA-0026 coordination window",                                      "done": false },
-    { "order": 31, "story_id": "00531", "criterion": "`db/schema/NNN_audit_events.sql` migration creates the table with the 11 columns specified",                   "proven_by": "Reading the migration shows all columns; schema_migrations row recorded",                                  "done": false },
-    { "order": 32, "story_id": "00531", "criterion": "`audit.Service.Record(ctx, ...)` exists and writes synchronously in-transaction",                              "proven_by": "Service file exposes Record method; integration test shows row visible in same tx",                        "done": false },
-    { "order": 33, "story_id": "00531", "criterion": "`source_transport` derived from chi `RouteContext` URL prefix by middleware (not handler argument)",            "proven_by": "Middleware code reads `chi.RouteContext(ctx).RoutePattern` and prefixes; unit test asserts site/public mapping", "done": false },
-    { "order": 34, "story_id": "00531", "criterion": "Three highest-traffic mutating services (`artefactitemsv2`, `roles`, `orgdesign`) call `audit.Record`",         "proven_by": "Each service file shows the call; integration tests assert row appears for Create/AssignToUser/CreateNode", "done": false },
-    { "order": 35, "story_id": "00531", "criterion": "`lint:writer-boundary` extended; only `audit.Service` writes `audit_events`",                                  "proven_by": "Lint config diff; test commit writing to audit_events from another service is rejected",                  "done": false },
-    { "order": 36, "story_id": "00532", "criterion": "Per-service `dto.go` convention documented and `MapPublic(internal X) dto.XPublic` pattern in seed services",    "proven_by": "`portfoliomodels/dto.go` shows MapPublic; doc explains the rule",                                          "done": false },
-    { "order": 37, "story_id": "00532", "criterion": "`dev/scripts/lint_public_dto_mapper.py` runs and exits 0 on main",                                             "proven_by": "`npm run lint:public-dto-mapper` exits 0",                                                                  "done": false },
-    { "order": 38, "story_id": "00532", "criterion": "Test commit returning an `internal/<svc>` struct from a `/samantha/v2` handler fails CI",                       "proven_by": "Synthetic violation rejected by lint",                                                                      "done": false },
-    { "order": 39, "story_id": "00533", "criterion": "`docs/c_c_transport_segregation.md` exists with the 5 sections (diagram, URL-prefix rule, three lints, DTO convention, SOC 2 evidence story)", "proven_by": "Reading the file shows all 5 sections", "done": false },
-    { "order": 40, "story_id": "00533", "criterion": "CLAUDE.md adds a one-line pointer next to `c_c_v1_v2_cutover.md`",                                             "proven_by": "Diff shows the pointer line",                                                                              "done": false },
-    { "order": 41, "story_id": "00534", "criterion": "Gateway-layer rule documented in `docs/c_c_transport_segregation.md` (deferred to B17.9 implementation)",       "proven_by": "Doc section names the gateway rule and references B17.9",                                                  "done": false },
-    { "order": 42, "story_id": "00535", "criterion": "`<stories>` skill checklist requires `transport: site | public | both` on every new endpoint card",            "proven_by": "Diff to `.claude/skills/stories/SKILL.md` shows the gate; story acceptance doc updated",                  "done": false }
+    { "order": 1,  "story_id": "00521", "criterion": "`/_site` chi Route block exists in `backend/cmd/server/main.go`",                                              "proven_by": "`grep -n '\"/_site\"' backend/cmd/server/main.go` returns one match inside `r.Route(...)`",                "done": true },
+    { "order": 2,  "story_id": "00521", "criterion": "Every listed site-only route serves at `/_site/<path>`",                                                       "proven_by": "`curl http://localhost:5100/_site/healthz` returns 200; `curl /_site/admin/dev/adoption-reset` returns 401 (route exists, auth required)", "done": true },
+    { "order": 3,  "story_id": "00521", "criterion": "Root-level shims emit `Deprecation: site=/_site` header for ≤2 release cycles",                                 "proven_by": "`curl -I http://localhost:5100/healthz` includes `Deprecation: site=/_site`",                            "done": true },
+    { "order": 4,  "story_id": "00522", "criterion": "Frontend `app/lib/api.ts` exports `apiSite()`; `apiInfra` removed",                                            "proven_by": "`grep -n 'export async function apiSite' app/lib/api.ts` matches; `grep -rn 'apiInfra' app dev` is empty", "done": true },
+    { "order": 5,  "story_id": "00522", "criterion": "`apiSite` base URL is `API_INFRA_BASE + '/_site'`",                                                            "proven_by": "Reading `app/lib/api.ts` shows the new base; existing 8 call sites compile",                              "done": true },
+    { "order": 6,  "story_id": "00522", "criterion": "Reset Adoption State button works in dev (smoke for the rename)",                                              "proven_by": "Manual verification on `/dev` — button click returns 200 and refreshes adoption state",                  "done": true },
+    { "order": 7,  "story_id": "00523", "criterion": "`dev/scripts/lint_public_helper_allowlist.py` exists and runs",                                                "proven_by": "`npm run lint:public-helper-allowlist` exits 0 on main",                                                  "done": true },
+    { "order": 8,  "story_id": "00523", "criterion": "`dev/registries/public_helper_allowlist.txt` ledger seeded with current customer-facing files only",            "proven_by": "Reading the ledger shows ≤ current 9 `apiV2` callers; no `apiInfra`-pattern files",                       "done": true },
+    { "order": 9,  "story_id": "00523", "criterion": "New unallowlisted caller of `api()` or `apiV2()` fails CI",                                                    "proven_by": "Test commit adding `apiV2` import to a non-ledger file is rejected by lint",                              "done": true },
+    { "order": 10, "story_id": "00524", "criterion": "`dev/scripts/lint_no_db_in_handlers.py` exists and runs",                                                      "proven_by": "`npm run lint:no-db-in-handlers` exits 0 on main with the seeded ledger",                                "done": true },
+    { "order": 11, "story_id": "00524", "criterion": "`dev/registries/handler_db_exemptions.txt` ledger seeded with the 8 known stragglers",                          "proven_by": "Reading the ledger shows: auth, fields, errorsreport, libraryreleases, roles, portfoliomodels (×3), portfolio/master_record_handler", "done": true },
+    { "order": 12, "story_id": "00524", "criterion": "New handler importing `pgxpool` or `database/sql` not in ledger fails CI",                                      "proven_by": "Test commit adding `import \"github.com/jackc/pgx/v5/pgxpool\"` to a non-ledger handler is rejected",         "done": true },
+    { "order": 13, "story_id": "00525", "criterion": "`auth.Service` exposes `Login`, `Refresh`, `Logout` methods",                                                  "proven_by": "`grep -n 'func (s \\*Service) \\(Login\\|Refresh\\|Logout\\)' backend/internal/auth/service.go` matches all 3", "done": true },
+    { "order": 14, "story_id": "00525", "criterion": "`auth/handler.go` no longer imports `pgxpool` or `database/sql`",                                              "proven_by": "`grep -E 'pgxpool|database/sql' backend/internal/auth/handler.go` is empty",                              "done": true },
+    { "order": 15, "story_id": "00525", "criterion": "`auth` removed from `handler_db_exemptions.txt` ledger and Playwright auth smoke green",                       "proven_by": "Login E2E passes; ledger no longer lists auth",                                                            "done": true },
+    { "order": 16, "story_id": "00526", "criterion": "`fields.Service` holds custom-field CRUD; `fields/handler.go` is HTTP-only",                                   "proven_by": "Service file exposes Create/Read/Update/Archive; handler imports no DB pool",                              "done": true },
+    { "order": 17, "story_id": "00526", "criterion": "Field write surface mounted under `/_site/fields`; read-only on `/samantha/v2/fields`",                         "proven_by": "main.go shows split mount; v2 GET works, v2 POST returns 405",                                            "done": true },
+    { "order": 18, "story_id": "00526", "criterion": "`fields` removed from exemption ledger",                                                                       "proven_by": "Ledger diff shows fields removed",                                                                          "done": true },
+    { "order": 19, "story_id": "00527", "criterion": "`errorsreport.Service` exposes intake methods; handler is HTTP-only",                                          "proven_by": "Service file exists; handler imports no DB pool",                                                          "done": true },
+    { "order": 20, "story_id": "00527", "criterion": "`/errors` mounted under `/_site/errors` only",                                                                "proven_by": "main.go shows mount; v2 has no `/errors` route",                                                          "done": true },
+    { "order": 21, "story_id": "00527", "criterion": "`errorsreport` removed from exemption ledger",                                                                "proven_by": "Ledger diff shows errorsreport removed",                                                                  "done": true },
+    { "order": 22, "story_id": "00528", "criterion": "`libraryreleases.Service` holds the cross-DB pool pattern; handler is HTTP-only",                              "proven_by": "Service file shows both pools wired; handler imports no DB pool",                                          "done": true },
+    { "order": 23, "story_id": "00528", "criterion": "`/library/releases` mounted under `/_site/library/releases`",                                                  "proven_by": "main.go shows mount",                                                                                       "done": true },
+    { "order": 24, "story_id": "00528", "criterion": "`libraryreleases` removed from exemption ledger and integration test exercises both pools",                    "proven_by": "Ledger diff + new integration test in package",                                                            "done": true },
+    { "order": 25, "story_id": "00529", "criterion": "`roles.Service` now holds reads (List, Get) in addition to writes",                                            "proven_by": "Service file exports List/Get methods",                                                                    "done": true },
+    { "order": 26, "story_id": "00529", "criterion": "`roles/handler.go` no longer imports `pgxpool` or `database/sql`",                                             "proven_by": "Grep is empty",                                                                                            "done": true },
+    { "order": 27, "story_id": "00529", "criterion": "`roles` removed from exemption ledger",                                                                       "proven_by": "Ledger diff shows roles removed",                                                                          "done": true },
+    { "order": 28, "story_id": "00530", "criterion": "`portfoliomodels.Service` and `portfolio.MasterRecordService` hold all extracted logic",                       "proven_by": "Service files expose the methods previously in handlers",                                                  "done": true },
+    { "order": 29, "story_id": "00530", "criterion": "Four handler files (`portfoliomodels/handler.go`, `handler_layers.go`, `handler_workspace_layers.go`, `portfolio/master_record_handler.go`) import no DB pool", "proven_by": "Grep across the four files is empty",                                "done": true },
+    { "order": 30, "story_id": "00530", "criterion": "All four removed from exemption ledger; PLA-0026 PR coordination noted",                                       "proven_by": "Ledger diff + PR description references PLA-0026 coordination window",                                      "done": true },
+    { "order": 31, "story_id": "00531", "criterion": "`db/schema/NNN_audit_events.sql` migration creates the table with the 11 columns specified",                   "proven_by": "Reading the migration shows all columns; schema_migrations row recorded",                                  "done": true },
+    { "order": 32, "story_id": "00531", "criterion": "`audit.Service.Record(ctx, ...)` exists and writes synchronously in-transaction",                              "proven_by": "Service file exposes Record method; integration test shows row visible in same tx",                        "done": true },
+    { "order": 33, "story_id": "00531", "criterion": "`source_transport` derived from chi `RouteContext` URL prefix by middleware (not handler argument)",            "proven_by": "Middleware code reads `chi.RouteContext(ctx).RoutePattern` and prefixes; unit test asserts site/public mapping", "done": true },
+    { "order": 34, "story_id": "00531", "criterion": "Three highest-traffic mutating services (`artefactitemsv2`, `roles`, `orgdesign`) call `audit.Record`",         "proven_by": "Each service file shows the call; integration tests assert row appears for Create/AssignToUser/CreateNode", "done": true },
+    { "order": 35, "story_id": "00531", "criterion": "`lint:writer-boundary` extended; only `audit.Service` writes `audit_events`",                                  "proven_by": "Lint config diff; test commit writing to audit_events from another service is rejected",                  "done": true },
+    { "order": 36, "story_id": "00532", "criterion": "Per-service `dto.go` convention documented and `MapPublic(internal X) dto.XPublic` pattern in seed services",    "proven_by": "`portfoliomodels/dto.go` shows MapPublic; doc explains the rule",                                          "done": true },
+    { "order": 37, "story_id": "00532", "criterion": "`dev/scripts/lint_public_dto_mapper.py` runs and exits 0 on main",                                             "proven_by": "`npm run lint:public-dto-mapper` exits 0",                                                                  "done": true },
+    { "order": 38, "story_id": "00532", "criterion": "Test commit returning an `internal/<svc>` struct from a `/samantha/v2` handler fails CI",                       "proven_by": "Synthetic violation rejected by lint",                                                                      "done": true },
+    { "order": 39, "story_id": "00533", "criterion": "`docs/c_c_transport_segregation.md` exists with the 5 sections (diagram, URL-prefix rule, three lints, DTO convention, SOC 2 evidence story)", "proven_by": "Reading the file shows all 5 sections", "done": true },
+    { "order": 40, "story_id": "00533", "criterion": "CLAUDE.md adds a one-line pointer next to `c_c_v1_v2_cutover.md`",                                             "proven_by": "Diff shows the pointer line",                                                                              "done": true },
+    { "order": 41, "story_id": "00534", "criterion": "Gateway-layer rule documented in `docs/c_c_transport_segregation.md` (deferred to B17.9 implementation)",       "proven_by": "Doc section names the gateway rule and references B17.9",                                                  "done": true },
+    { "order": 42, "story_id": "00535", "criterion": "`<stories>` skill checklist requires `transport: site | public | both` on every new endpoint card",            "proven_by": "Diff to `.claude/skills/stories/SKILL.md` shows the gate; story acceptance doc updated",                  "done": true }
   ],
   "risks": [
     "Risk: handler extractions in Tasks 6–11 collide with PLA-0026 (per-workspace adoption cutover) on portfoliomodels/* — mitigation: bundle Task 11 into PLA-0026's PR window or block PLA-0026 on Task 11 explicitly",

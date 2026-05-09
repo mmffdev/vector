@@ -1114,54 +1114,67 @@ Manage per-role access to pages and features. Control what each role (user, padm
 >
 > **Out of scope (deliberately):** rewriting any service; introducing GraphQL; multi-region; tenant-per-database; anything that does not directly enforce the adapter boundary.
 
-- **B22.1** Mount `/_site` BFF subtree in `main.go` `[P1]`
+- ✅ ~~**B22.1** Mount `/_site` BFF subtree in `main.go` `[P1]`~~
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `b896240` (2026-05-09): fix(B18): remove align-items:start that broke scope TOC sticky [B20]
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
 > Commit `5f85b87` (2026-05-09): feat(B22 PLA-0039): mount /_site BFF subtree + apiInfra→apiSite codemod [B22] [B22.1] [B22.2]
   > Re-home every site-only route under a single chi `Route("/_site", …)` block: `/admin/*`, `/me`, `/nav/*`, `/auth/refresh` + `/auth/logout`, `/dev/*`, `/healthz`, `/env*`, `/page-help/*`, `/library/releases/*`, `/custom-pages/*`, `/user/tab-order/*`, `/addressables/*`, `/errors/*`, `/workspaces/*`, `/status/pipeline`. Keep root-level shims for ≤2 release cycles emitting `Deprecation: site=/_site` header, then drop. After this lands, "is this route customer-facing?" is answered by `strings.HasPrefix(path, "/_site")` — usable in middleware, gateway rules, log filters.
 
-- **B22.2** Rename frontend helper `apiInfra` → `apiSite`; point at `/_site` `[P1]` `[ ]B22.1`
+- ✅ ~~**B22.2** Rename frontend helper `apiInfra` → `apiSite`; point at `/_site` `[P1]` `[ ]B22.1`~~
 > Commit `5f85b87` (2026-05-09): feat(B22 PLA-0039): mount /_site BFF subtree + apiInfra→apiSite codemod [B22] [B22.1] [B22.2]
   > Single rename + base-URL change in `app/lib/api.ts` (the file already documents the routes in its header — they just need a shorter name and the `/_site` prefix). Codemod the 8 call sites. After this, `apiSite()` for site code is the literal name of what it does; helper count stays at 3, semantics sharpen.
 
-- **B22.3** Lint `lint:public-helper-allowlist` — gate `api()` and `apiV2` to a vetted file allowlist `[P1]` `[ ]B22.2`
+- ✅ ~~**B22.3** Lint `lint:public-helper-allowlist` — gate `api()` and `apiV2` to a vetted file allowlist `[P1]` `[ ]B22.2`~~
+> Commit `c87990e` (2026-05-09): feat(B22 PLA-0039): lint:public-helper-allowlist + lint:no-db-in-handlers [B22] [B22.3] [B22.4]
   > New python lint under `dev/scripts/lint_public_helper_allowlist.py` + ledger `dev/registries/public_helper_allowlist.txt`. Default rule: any file under `app/` or `dev/` that calls `api(` or `apiV2(` must be in the ledger. CI fails on a new caller that isn't allowlisted. Forces deliberate decisions; converts the 252 / 9 split from drift into evidence.
 
-- **B22.4** Lint `lint:no-db-in-handlers` — fail CI on `pgxpool` / `database/sql` import in any non-test `handler*.go` `[P1]`
+- ✅ ~~**B22.4** Lint `lint:no-db-in-handlers` — fail CI on `pgxpool` / `database/sql` import in any non-test `handler*.go` `[P1]`~~
+> Commit `c87990e` (2026-05-09): feat(B22 PLA-0039): lint:public-helper-allowlist + lint:no-db-in-handlers [B22] [B22.3] [B22.4]
   > Python script under `dev/scripts/lint_no_db_in_handlers.py`; ledger `dev/registries/handler_db_exemptions.txt` seeded with the 8 known stragglers (auth, fields, errorsreport, libraryreleases, roles, portfoliomodels ×3, portfolio/master_record). Each removal from the ledger = one handler extracted to its service. The lint is the ratchet; the ledger is the migration tracker.
 
-- **B22.5** Extract `auth/handler.go` to `auth.Service` `[P2]` `[ ]B22.4`
+- ✅ ~~**B22.5** Extract `auth/handler.go` to `auth.Service` `[P2]` `[ ]B22.4`~~
+> Commit `79b0d37` (2026-05-09): feat(B22 PLA-0039): extract auth.Service.LoadRoleAndPermissions [B22] [B22.5]
   > First straggler. `Login`, `Refresh`, `Logout` move into `auth.Service`; handler holds only HTTP concerns. Removes auth from the lint ledger.
 
-- **B22.6** Extract `fields/handler.go` to `fields.Service` `[P2]` `[ ]B22.4`
+- ✅ ~~**B22.6** Extract `fields/handler.go` to `fields.Service` `[P2]` `[ ]B22.4`~~
+> Commit `7513242` (2026-05-09): feat(B22 PLA-0039): extract fields.Service from handler [B22] [B22.6]
   > Second straggler. Custom-field CRUD into service; ledger row removed.
 
-- **B22.7** Extract `errorsreport/handler.go` to `errorsreport.Service` `[P2]` `[ ]B22.4`
+- ✅ ~~**B22.7** Extract `errorsreport/handler.go` to `errorsreport.Service` `[P2]` `[ ]B22.4`~~
+> Commit `90664bc` (2026-05-09): feat(B22 PLA-0039): extract errorsreport.Service from handler [B22] [B22.7]
   > Site-only handler — moves under `/_site/errors`; service writes go through `audit.Service` once B22.11 lands.
 
-- **B22.8** Extract `libraryreleases/handler.go` to `libraryreleases.Service` `[P2]` `[ ]B22.4`
+- ✅ ~~**B22.8** Extract `libraryreleases/handler.go` to `libraryreleases.Service` `[P2]` `[ ]B22.4`~~
+> Commit `65b07a9` (2026-05-09): feat(B22 PLA-0039): extract libraryreleases.Service from handler [B22] [B22.8]
   > Library-DB-pool consumer; service holds the cross-DB read pattern.
 
-- **B22.9** Extract `roles/handler.go` to `roles.Service` `[P2]` `[ ]B22.4`
+- ✅ ~~**B22.9** Extract `roles/handler.go` to `roles.Service` `[P2]` `[ ]B22.4`~~
+> Commit `be174cb` (2026-05-09): feat(B22 PLA-0039): extract roles.Service.ResolveActorPermissionIDs [B22] [B22.9]
   > `roles.Service` already exists for writes (per `lint:writer-boundary`); reads still in handler — fold them in.
 
-- **B22.10** Extract `portfoliomodels/handler*.go` (×3) and `portfolio/master_record_handler.go` to services `[P2]` `[ ]B22.4`
+- ✅ ~~**B22.10** Extract `portfoliomodels/handler*.go` (×3) and `portfolio/master_record_handler.go` to services `[P2]` `[ ]B22.4`~~
+> Commit `f569af6` (2026-05-09): feat(B22 PLA-0039): extract portfoliomodels + portfolio.MasterRecord services [B22] [B22.10]
   > Largest straggler set. Bundle so PLA-0026 (per-workspace adoption cutover) and B22 stop colliding on the same files.
 
-- **B22.11** `audit_events` table + `audit.Service.Record()` sole-writer `[P1]` `[ ]B22.4`
+- ✅ ~~**B22.11** `audit_events` table + `audit.Service.Record()` sole-writer `[P1]` `[ ]B22.4`~~
+> Commit `f20f11d` (2026-05-09): feat(B22 PLA-0039): audit source_transport + transport context tagging [B22] [B22.11]
   > New migration `db/schema/NNN_audit_events.sql`: `(id, tenant_id, actor_user_id, action, resource_type, resource_id, request_id, source_transport, before_jsonb, after_jsonb, created_at)`. `source_transport` ∈ {`site`, `public`} so SOC 2 reviewers can distinguish staff actions from customer actions. Mutating service methods call `audit.Record(ctx, …)` synchronously; failure rolls back the transaction. `lint:writer-boundary` extended so only `audit.Service` writes the table.
 
-- **B22.12** DTO + mapper convention — every service exposing data via `apiV2` declares `dto.go` `[P2]` `[ ]B22.11`
+- ✅ ~~**B22.12** DTO + mapper convention — every service exposing data via `apiV2` declares `dto.go` `[P2]` `[ ]B22.11`~~
+> Commit `c8838ef` (2026-05-09): feat(B22 PLA-0039): lint:public-dto-mapper + MapPublic seams [B22] [B22.12]
   > Pattern: `MapPublic(internal Foo) dto.FooPublic`. Lint `lint:public-dto-mapper`: any handler under `/samantha/v2` returning a Go struct from `internal/<svc>` (i.e. not from `internal/<svc>/dto`) fails. Stops a future PR accidentally exposing a column added internally. `portfoliomodels/dto.go` is the seed example; document the pattern in `docs/c_c_transport_segregation.md`.
 
-- **B22.13** Docs — `docs/c_c_transport_segregation.md` `[P2]` `[ ]B22.1`
+- ✅ ~~**B22.13** Docs — `docs/c_c_transport_segregation.md` `[P2]` `[ ]B22.1`~~
+> Commit `d97a096` (2026-05-09): docs(B22 PLA-0039): add c_c_transport_segregation.md leaf [B22] [B22.13]
   > Single page: the diagram (handler → Service → audit), the URL-prefix rule (`/_site` vs `/samantha/v2`), the three lints (`lint:public-helper-allowlist`, `lint:no-db-in-handlers`, `lint:public-dto-mapper`), the DTO mapper convention, and the SOC 2 evidence story (one audit table, two transports, one boundary). Linked from CLAUDE.md alongside `c_c_v1_v2_cutover.md`.
 
-- **B22.14** Gateway-layer rule — drop `/_site` requests at the public ingress `[P3]` `[ ]B22.1`
+- ✅ ~~**B22.14** Gateway-layer rule — drop `/_site` requests at the public ingress `[P3]` `[ ]B22.1`~~
+> Commit `fed62c4` (2026-05-09): docs(B22 PLA-0039): add gateway freeze rule to c_security.md [B22] [B22.14]
   > Once a real gateway lands (B17.9), add a rule: requests to `/_site/*` from outside the staff VPN/SSO are 404'd. Before the gateway exists, document the intent in `docs/c_c_transport_segregation.md` so it ships when B17.9 ships.
 
-- **B22.15** Decision log — site-only vs customer-also for new endpoints `[P3]`
+- ✅ ~~**B22.15** Decision log — site-only vs customer-also for new endpoints `[P3]`~~
+> Commit `e76dd70` (2026-05-09): feat(B22 PLA-0039): add transport gate (Gate 8) to stories skill [B22] [B22.15]
   > One-line addition to the `<stories>` skill checklist: every new endpoint card declares `transport: site | public | both`. Forces the decision at story time, not at handler time. Keeps drift from re-emerging.
 
 ---
