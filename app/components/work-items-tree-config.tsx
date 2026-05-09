@@ -372,8 +372,8 @@ export function buildWorkItemsColumns(
     {
       key: "id",
       label: "ID",
-      width: 64,
-      minWidth: 64,
+      width: 160,
+      minWidth: 90,
       align: "mono",
       cellModifier: "id",
       render: (row, ctx) => <IdCell row={row} ctx={ctx} />,

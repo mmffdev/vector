@@ -289,11 +289,14 @@ function useColumnResize(
   );
   const minWidths = useRef<number[]>(minWidthsArr);
   const fixedRef = useRef<Array<number | null>>(fixedWidths);
-  // Keep refs in sync if the column config changes.
+  // Keep refs in sync and re-fit when column config changes (e.g. dynamic ID width).
   useEffect(() => {
     minWidths.current = minWidthsArr;
     fixedRef.current = fixedWidths;
-  }, [minWidthsArr, fixedWidths]);
+    const c = containerRef.current;
+    const w = c ? c.clientWidth : 1000;
+    setWidths(fitToContainer(fixedWidths, minWidthsArr, w > 0 ? w : 1000));
+  }, [minWidthsArr, fixedWidths, containerRef]);
 
   // Measure container on mount + on resize. Fixed columns stay at their
   // declared widths; the flex column absorbs the remainder.
@@ -821,7 +824,13 @@ function ResourceTreeImpl<T>({
   }, [roots, expanded, childMap, getId]);
 
   // depth*STEP + expander(16) + gaps(8) + text(~40px), capped at 240px.
-  const dynamicIdColWidth = Math.min(maxVisibleDepth * DEFAULT_STEP + 64, 240);
+  // Floor is the column's declared width (or 90px) so root-only views keep
+  // the consumer's preferred initial width.
+  const idColDeclared = columns[0]?.width ?? 90;
+  const dynamicIdColWidth = Math.min(
+    Math.max(maxVisibleDepth * DEFAULT_STEP + 64, idColDeclared),
+    240,
+  );
 
   const fixedWidths = useMemo<Array<number | null>>(() => {
     const userWidths = columns.map((c) => (c.width === undefined ? 100 : c.width));
