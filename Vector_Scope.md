@@ -114,9 +114,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 ### FLOW1.5 Reset to factory-default per artefact type
 
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
+> Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
+> Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
+> Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
+> Commit `ca9bbe4` (2026-05-10): fix(FLOW1.5): remount TypeSection on reload so map drops stale pills [FLOW1.5.3]
 
 ### FLOW1.4 Future — explicitly out of scope here
 
