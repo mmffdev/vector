@@ -65,8 +65,9 @@ fi
 NOTE="> Commit \`${COMMIT_HASH}\` (${COMMIT_DATE}): ${COMMIT_MSG}"
 
 # ── Priority 1: explicit ref tag in commit message ────────────────────────────
-# Accepts numeric (1.4) and letter-prefixed (B19.1.4, M3.1.1) refs.
-EXPLICIT_REFS=$(printf '%s' "$COMMIT_MSG" | grep -oE '\[([A-Z]?[0-9]+\.[0-9.]+)(,\s*[A-Z]?[0-9]+\.[0-9.]+)*\]' | tr -d '[]' | tr ',' '\n' | tr -d ' ' || true)
+# Accepts numeric (1.4) and letter-prefixed (B19.1.4, M3.1.1, FLOW1.1.1) refs.
+# Multi-letter prefixes (FLOW, F, B, M) supported.
+EXPLICIT_REFS=$(printf '%s' "$COMMIT_MSG" | grep -oE '\[([A-Z]+[0-9]+\.[0-9.]+|[0-9]+\.[0-9.]+)(,\s*([A-Z]+[0-9]+\.[0-9.]+|[0-9]+\.[0-9.]+))*\]' | tr -d '[]' | tr ',' '\n' | tr -d ' ' || true)
 
 # ── Priority 2: scope-refs.map lookup ─────────────────────────────────────────
 MAP_KEYWORDS=""
@@ -124,7 +125,7 @@ keywords = kw_string.split()
 with open(scope_file, "r") as f:
     lines = f.readlines()
 
-ref_pattern = re.compile(r"^-\s+(?:[✅\U0001F535⚠❌️]\s*)*\*\*([A-Z]?\d[\d.]*)\*\*\s+(.*)")
+ref_pattern = re.compile(r"^-\s+(?:[✅\U0001F535⚠❌️]\s*)*\*\*([A-Z]*\d[\d.]*)\*\*\s+(.*)")
 
 # Build full ref->line index
 ref_index = {}

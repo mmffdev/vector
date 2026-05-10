@@ -1,12 +1,16 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-10 (F series introduced; F1 added — Artefact Type and Flow State Customisation)
-**Doc version:** 2.5
+**Last updated:** 2026-05-10 (FLOW section added at top — flow-state primitives + pull-eligibility model)
+**Doc version:** 2.6
 
 ---
 
 ## Table of Contents
+
+**FLOW — Flow-State Primitives** *(canonical lifecycle model — quick reference)*
+
+- [FLOW1. Flow-State Kind &amp; Pull-Eligibility Model](#flow1-flow-state-kind--pull-eligibility-model)
 
 **F — Product Functionality** *(user-visible features currently being built)*
 
@@ -48,6 +52,45 @@
 
 ---
 
+## FLOW1. Flow-State Kind & Pull-Eligibility Model
+
+Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `flow_states`. Pill name and kind align in the seed (Backlog/To Do/Doing/Completed/Accepted) so the lifecycle vocabulary is self-evident. Two orthogonal axes: `kind` answers "where in the lifecycle?" (`backlog | todo | in_progress | done | accepted | cancelled`); `is_pullable` answers "can the team take this from this state right now?". Compliance-gated teams use multiple `kind='todo'` pills (e.g. To Do → In Review → Approved) where only the final pill carries `is_pullable=true`. Standard agile teams keep the seed default — `Backlog` is PO shaping (validation relaxed); `To Do` is the single pullable state. Per-artefact PO-readiness is explicitly a future concern, not bundled here. `[P1]` 🔵 IN FLIGHT
+
+### FLOW1.1 Schema — kind widening + is_pullable flag
+
+- **FLOW1.1.1** Widen `flow_states.kind` CHECK constraint to `('backlog','todo','in_progress','done','accepted','cancelled')` — adds `backlog` as 6th primitive `[P1]`
+> Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
+- **FLOW1.1.2** Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked `[P1]`
+> Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
+- **FLOW1.1.3** Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run `[P1]`
+> Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
+- **FLOW1.1.4** Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs) `[P1]`
+> Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
+- **FLOW1.1.5** Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point) `[P2]`
+
+### FLOW1.2 Backend — service surface
+
+- **FLOW1.2.1** Add `'backlog'` to `validKinds` map in `backend/internal/flows/service.go` `[P1]`
+- **FLOW1.2.2** Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag `[P1]`
+- **FLOW1.2.3** `listByScope` query selects `fs.is_pullable` and surfaces it in the `FlowState` DTO `[P1]`
+- **FLOW1.2.4** Pull-surface query helper — canonical filter `is_pullable=true OR kind IN ('in_progress','done','accepted')` for team boards `[P2]`
+- **FLOW1.2.5** PO-backlog query helper — `kind='backlog' OR (kind='todo' AND is_pullable=false)` for PO grooming views `[P2]`
+
+### FLOW1.3 Frontend — customisation page + KIND_LABEL
+
+- **FLOW1.3.1** Add `backlog → "Backlog"` to `KIND_LABEL` map; flow-map's left master-state column adds 6th row `[P1]`
+- **FLOW1.3.2** `is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState` `[P2]`
+- **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
+- **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
+
+### FLOW1.4 Future — explicitly out of scope here
+
+- **FLOW1.4.1** Per-artefact `po_ready` flag on `artefacts` table — visual aid for PO grooming, independent of flow state; sort-to-top/badge UI; optional DoR validation on toggle `[P3]`
+
+> Last checked: 2026-05-10
+
+---
+
 ## F1. Artefact Type and Flow State Customisation
 
 Workspace Settings > Customisation page — two sections. Section 1 (artefact type tags, prefix, name, description, colour) is already built. Section 2 adds a third-level tab nav (mirroring Custom Fields) for flow state management: one tab per artefact type, showing that type's flow states with colour editing. Covers data-correction migrations to fix wrong seeded states for all work types and missing states for strategy types. `[P2]` 🔵 IN FLIGHT
@@ -65,7 +108,27 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 ### F1.2 Backend — flow state colour PATCH API
 
 - **F1.2.1** Add `PATCH /_site/flow-states/{id}` handler (colour only for now) — validates `#RRGGBB`, returns updated state `[P1]`
+> Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
+> Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
+> Commit `8d4ab8e` (2026-05-10): refactor(F1): route flows + flowStates through apiSite registry [F1.2.1] [F1.2.2]
 - **F1.2.2** Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword` `[P1]`
+> Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
+> Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
+> Commit `e95608b` (2026-05-10): feat(F1): flow map SVG diagram above each flow's state table [F1.2.2]
+> Commit `8d4ab8e` (2026-05-10): refactor(F1): route flows + flowStates through apiSite registry [F1.2.1] [F1.2.2]
+> Commit `f0f0aa9` (2026-05-10): fix(F1): transitions not iterable — init empty slice, add null guard [F1.2.2]
+> Commit `4ba5bfc` (2026-05-10): fix(F1): flow map — transparent bg, 5px arrow gap from pill edges [F1.2.2]
+> Commit `96f9bd6` (2026-05-10): fix(F1): flow map pills — border-only style when no custom colour set [F1.2.2]
+> Commit `b471bea` (2026-05-10): fix(F1): flow map pills — always transparent fill, colour as border, square corners [F1.2.2]
+> Commit `5ee6c8b` (2026-05-10): fix(F1): flow map pills — text colour matches border colour [F1.2.2]
+> Commit `06966c7` (2026-05-10): fix(F1): flow map pills — standard ink text colour [F1.2.2]
+> Commit `71e8b2e` (2026-05-10): feat(F1): add state + transition matrix editor [F1.2.2]
+> Commit `d3c5b7f` (2026-05-10): feat(F1): drag-to-reorder states in flow table [F1.2.2]
+> Commit `990733a` (2026-05-10): fix(F1): all states draggable — fix dnd-kit handle registration [F1.2.2]
+> Commit `d9a54d7` (2026-05-10): feat(F1): inline flow map editor — insert/remove states with animation [F1.2.2]
+> Commit `9414010` (2026-05-10): feat(F1): drag-to-reorder pills in flow map — horizontal axis only [F1.2.2]
+> Commit `682f6b3` (2026-05-10): feat(F1): pill toolbar with position-aware drag handle + live drag movement [F1.2.2]
+> Commit `6f4b4b2` (2026-05-10): feat(F1): DragOverlay for live pill ghost + large always-visible toolbar buttons [F1.2.2]
 
 ### F1.3 Frontend — Customisation page flow states section
 
