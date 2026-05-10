@@ -6,11 +6,13 @@
 // the panel header, and the /api/work-items I/O hook. The wrapper in
 // WorkItemsTree.tsx wires these into ResourceTree props.
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag, MdClose } from "react-icons/md";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { safeInk, type TypeColourMap } from "@/app/lib/colourUtils";
+import { artefactTypesApi } from "@/app/lib/artefactTypesApi";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
@@ -22,6 +24,39 @@ import {
   type ColumnDef,
   type RenderCtx,
 } from "@/app/components/ResourceTree";
+
+// ─── Artefact-type colour map ─────────────────────────────────────────────────
+
+// Fetches artefact type colours once per mount (module-level cache so the
+// request fires at most once across all tree instances on the same page).
+let _colourCache: TypeColourMap | null = null;
+let _colourPromise: Promise<TypeColourMap> | null = null;
+
+async function fetchColourMap(): Promise<TypeColourMap> {
+  if (_colourCache) return _colourCache;
+  if (!_colourPromise) {
+    _colourPromise = artefactTypesApi.list().then((types) => {
+      const m: TypeColourMap = new Map();
+      for (const t of types) {
+        if (t.colour) m.set(t.prefix, { colour: t.colour, name: t.name });
+      }
+      _colourCache = m;
+      return m;
+    }).catch(() => new Map());
+  }
+  return _colourPromise;
+}
+
+export function useArtefactTypeColours(): TypeColourMap {
+  const [map, setMap] = useState<TypeColourMap>(_colourCache ?? new Map());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    fetchColourMap().then((m) => { if (mounted.current) setMap(m); });
+    return () => { mounted.current = false; };
+  }, []);
+  return map;
+}
 
 // ─── Public type ──────────────────────────────────────────────────────────────
 
@@ -180,12 +215,15 @@ function SummaryCell({
   row,
   ctx,
   onPatch,
+  colourMap,
 }: {
   row: WorkItem;
   ctx: RenderCtx<WorkItem>;
   onPatch: (id: string, body: Record<string, unknown>) => void;
+  colourMap?: TypeColourMap;
 }) {
   const isEpic = row.item_type === "epic";
+  const colourEntry = colourMap?.get(row.type_prefix);
   return (
     <span className="tree_accordion-dense__summary">
       <PrimaryCellTreeLines
@@ -197,8 +235,9 @@ function SummaryCell({
       <span
         className={
           "tree_accordion-dense__type-badge " +
-          (TYPE_VARIANT[row.item_type] ?? "")
+          (colourEntry ? "" : (TYPE_VARIANT[row.item_type] ?? ""))
         }
+        style={colourEntry ? { background: colourEntry.colour, color: safeInk(colourEntry.colour) } : undefined}
       >
         {row.type_prefix || row.item_type.slice(0, 2).toUpperCase()}
       </span>
@@ -367,6 +406,7 @@ function DueCell({
 export function buildWorkItemsColumns(
   flowStates: WorkItemFlowState[],
   patchAndApply: (id: string, body: Record<string, unknown>) => void,
+  colourMap?: TypeColourMap,
 ): ColumnDef<WorkItem>[] {
   return [
     {
@@ -386,7 +426,7 @@ export function buildWorkItemsColumns(
       cellModifier: "summary",
       stopClick: true,
       render: (row, ctx) => (
-        <SummaryCell row={row} ctx={ctx} onPatch={patchAndApply} />
+        <SummaryCell row={row} ctx={ctx} onPatch={patchAndApply} colourMap={colourMap} />
       ),
     },
     {

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
-import { tenantSettingsApi } from "@/app/lib/tenantSettingsApi";
+import { useTenantName } from "@/app/contexts/TenantContext";
 
 const TABS = ["tenant_details", "artefact_types", "flow_states"] as const;
 type TabKey = typeof TABS[number];
@@ -25,13 +24,9 @@ function segmentForKey(key: TabKey): string {
 }
 
 export default function CustomisationLayout({ children }: { children: React.ReactNode }) {
-  const router   = useRouter();
-  const pathname = usePathname();
-  const [tenantName, setTenantName] = useState<string>("");
-
-  useEffect(() => {
-    tenantSettingsApi.get().then((s) => setTenantName(s.tenant_name)).catch(() => {});
-  }, []);
+  const router     = useRouter();
+  const pathname   = usePathname();
+  const tenantName = useTenantName();
 
   const segments = pathname.split("/").filter(Boolean);
   const rootIdx  = segments.indexOf("customisation");
@@ -51,9 +46,9 @@ export default function CustomisationLayout({ children }: { children: React.Reac
         active={activeTab}
         onChange={handleTabChange}
         items={[
-          { key: "tenant_details" as const, label: detailsLabel,    sortKey: "Tenant Details" },
-          { key: "artefact_types" as const, label: "Artefact Types", sortKey: "Artefact Types" },
-          { key: "flow_states"    as const, label: "Flow States",    sortKey: "Flow States" },
+          { key: "tenant_details" as const, label: detailsLabel,     sortKey: "Tenant Details" },
+          { key: "artefact_types" as const, label: "Artefact Types",  sortKey: "Artefact Types" },
+          { key: "flow_states"    as const, label: "Flow States",     sortKey: "Flow States" },
         ]}
       />
       {children}

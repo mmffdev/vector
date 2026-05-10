@@ -12,6 +12,7 @@ import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
   buildWorkItemsColumns,
   useArtefactItemsWindow,
+  useArtefactTypeColours,
   useWorkItemsFilters,
   useWorkItemsSort,
   WorkItemsFilterChips,
@@ -84,6 +85,7 @@ export default function ObjectTree({
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
   const flowStates = useWorkItemFlowStates();
+  const colourMap = useArtefactTypeColours();
   const [pageSize, setPageSize] = useState<number | "all">(25);
   const [pageIndex, setPageIndex] = useState(0);
   const { filters } = useWorkItemsFilters();
@@ -129,8 +131,8 @@ export default function ObjectTree({
   );
 
   const columns = useMemo(
-    () => buildWorkItemsColumns(flowStates, patchAndApply),
-    [flowStates, patchAndApply],
+    () => buildWorkItemsColumns(flowStates, patchAndApply, colourMap),
+    [flowStates, patchAndApply, colourMap],
   );
 
   const handleSortChange = useCallback(

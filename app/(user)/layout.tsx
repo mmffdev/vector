@@ -13,6 +13,7 @@ import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
 import { DomRegistryProvider, ViewportSlot } from "@/app/contexts/DomRegistryContext";
+import { TenantProvider } from "@/app/contexts/TenantContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   if (loading || !user || user.force_password_change) return null;
 
   return (
+    <TenantProvider>
     <MasterDebugProvider>
     <LibraryReleasesProvider>
     <NavPrefsProvider>
@@ -58,5 +60,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     </NavPrefsProvider>
     </LibraryReleasesProvider>
     </MasterDebugProvider>
+    </TenantProvider>
   );
 }

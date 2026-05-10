@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useTenant } from "@/app/contexts/TenantContext";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import {
@@ -298,6 +299,7 @@ function FeatureToggle({
 export default function OrganizationPage() {
   const { user } = useAuth();
   const canAccess = useHasPermission("workspace.archive");
+  const { setSettings: setTenantCtx } = useTenant();
   const router = useRouter();
 
   useEffect(() => {
@@ -365,6 +367,7 @@ export default function OrganizationPage() {
     setSaving(true);
     try {
       const fresh = await tenantSettingsApi.patch(patch);
+      setTenantCtx(fresh);
       const seeded = fromServer(fresh);
       setOriginal(seeded);
       setForm(cloneState(seeded));

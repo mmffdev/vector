@@ -19,9 +19,7 @@ export default function PortfolioItemsListPage() {
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<{
     total: number;
-    themes: number;
-    objectives: number;
-    features: number;
+    by_type: Record<string, number>;
   } | null>(null);
 
   // Load and resolve wizard config from p_wizard.json
@@ -41,9 +39,7 @@ export default function PortfolioItemsListPage() {
   const refetchSummary = useCallback(() => {
     return apiSite<{
       total: number;
-      themes: number;
-      objectives: number;
-      features: number;
+      by_type: Record<string, number>;
     }>(`/portfolio-items/summary`)
       .then((r) => setSummary(r))
       .catch(() => setSummary(null));
@@ -64,13 +60,14 @@ export default function PortfolioItemsListPage() {
   useRefetchOnPush({ topic, refetch });
 
   const summaryCells = useMemo(() => {
-    const s = summary ?? { total: 0, themes: 0, objectives: 0, features: 0 };
-    return [
-      { label: "TOTAL ITEMS", value: s.total },
-      { label: "THEMES", value: s.themes },
-      { label: "OBJECTIVES", value: s.objectives },
-      { label: "FEATURES", value: s.features },
-    ];
+    const total = summary?.total ?? 0;
+    const byType = summary?.by_type ?? {};
+    const cells = [{ label: "TOTAL ITEMS", value: total }];
+    // Render one chip per artefact type returned by the backend, capitalised.
+    Object.entries(byType).forEach(([key, count]) => {
+      cells.push({ label: key.toUpperCase(), value: count });
+    });
+    return cells;
   }, [summary]);
 
   return (
