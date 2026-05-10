@@ -201,10 +201,8 @@ function FlowMap({
         {states.map((s, i) => {
           const x    = pillX(i);
           const y    = pillBaseY;
-          const hasCust = !!s.colour;
-          const fill   = hasCust ? s.colour! : "transparent";
-          const stroke = hasCust ? "transparent" : (KIND_STROKE[s.kind] ?? "var(--border)");
-          const ink    = hasCust ? safeInk(s.colour!) : (KIND_INK[s.kind] ?? "var(--ink-muted)");
+          const stroke = s.colour ?? (KIND_STROKE[s.kind] ?? "var(--border)");
+          const ink    = s.colour ? safeInk(s.colour) : (KIND_INK[s.kind] ?? "var(--ink-muted)");
           return (
             <g
               key={s.id}
@@ -217,8 +215,8 @@ function FlowMap({
                 y={y}
                 width={PILL_W}
                 height={PILL_H}
-                rx={PILL_R}
-                fill={fill}
+                rx={0}
+                fill="transparent"
                 stroke={stroke}
                 strokeWidth={1.5}
               />
