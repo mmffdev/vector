@@ -202,7 +202,7 @@ function FlowMap({
           const x    = pillX(i);
           const y    = pillBaseY;
           const stroke = s.colour ?? (KIND_STROKE[s.kind] ?? "var(--border)");
-          const ink    = s.colour ? safeInk(s.colour) : (KIND_INK[s.kind] ?? "var(--ink-muted)");
+          const ink    = s.colour ?? (KIND_INK[s.kind] ?? "var(--ink-muted)");
           return (
             <g
               key={s.id}
