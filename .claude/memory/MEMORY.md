@@ -37,6 +37,7 @@
 - [Portfolio layers are tenant-built & independent (max 10)](project_portfolio_layers_independent.md) — Each `portfolio_item_types` row = one layer with own flow; depth 2–10.
 - [Archive map flyout — live breadcrumb rows](project_archive_map_breadcrumbs.md) — `ArchiveMapFlyout` renders muted "live" intermediates; new callers MUST pass `liveAncestorsMap`.
 - [Flow-state construction across <Table> artefacts](project_flow_state_construction.md) — PLA-0015→PLA-0017 pickup record: hyphen fix in Table.tsx → spec-flag model.
+- [Flow-state seed model — kinds + is_pullable](project_flow_state_seed_model.md) — 6-kind primitive (backlog/todo/in_progress/done/accepted/cancelled) + is_pullable flag; seed names align with kinds; po_ready deferred (FLOW1.4.1).
 - [Work-items interaction perf — 2s sort block](project_workitems_perf.md) — Client-side sort hypothesis; fix = server-driven via ?sort=&dir=; observed 2026-05-06.
 - [Scan dev/plans/ descending for highest PLA-NNNN](feedback_scan_plans_descending.md) — Use `ls -r dev/plans/ | grep PLA | head -1` to find highest plan ID; ascending list buries it at the tail.
 - [Table names use domain prefix for transparency](feedback_table_naming_prefixes.md) — New tables MUST carry their substrate prefix (e.g. `artefact_*`); generic names like `field_library` or `workspace_fields` are rejected.

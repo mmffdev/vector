@@ -66,41 +66,64 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
+> Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
 
 ### FLOW1.2 Backend — service surface
 
 - ✅ **FLOW1.2.1** ~~Add `'backlog'` to `validKinds` map in `backend/internal/flows/service.go`~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 - ✅ **FLOW1.2.3** ~~`listByScope` query selects `fs.is_pullable` and surfaces it in the `FlowState` DTO~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
 - **FLOW1.2.4** Pull-surface query helper — canonical filter `is_pullable=true OR kind IN ('in_progress','done','accepted')` for team boards `[P2]`
 - **FLOW1.2.5** PO-backlog query helper — `kind='backlog' OR (kind='todo' AND is_pullable=false)` for PO grooming views `[P2]`
 > Last checked: 2026-05-10 — service.go validKinds includes "backlog"; types.go FlowState/PatchStateInput/CreateStateInput carry IsPullable; listByScope SELECT + scan + PatchFlowState UPDATE/RETURNING + CreateState INSERT/RETURNING all wire fs.is_pullable through. `go build ./internal/flows/... ./cmd/server/...` clean.
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 ### FLOW1.3 Frontend — customisation page + KIND_LABEL
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
 
 - ✅ **FLOW1.3.1** ~~Add `backlog → "Backlog"` to `KIND_LABEL` map; flow-map's left master-state column adds 6th row~~ `[P1]`
+> Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
+> Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
+> Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 
 ### FLOW1.4 Future — explicitly out of scope here
 
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 - **FLOW1.4.1** Per-artefact `po_ready` flag on `artefacts` table — visual aid for PO grooming, independent of flow state; sort-to-top/badge UI; optional DoR validation on toggle `[P3]`
 
 > Last checked: 2026-05-10
 
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 ---
 
 ## F1. Artefact Type and Flow State Customisation
 
 Workspace Settings > Customisation page — two sections. Section 1 (artefact type tags, prefix, name, description, colour) is already built. Section 2 adds a third-level tab nav (mirroring Custom Fields) for flow state management: one tab per artefact type, showing that type's flow states with colour editing. Covers data-correction migrations to fix wrong seeded states for all work types and missing states for strategy types. `[P2]` 🔵 IN FLIGHT
 
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 ### F1.1 Data Migrations — correct seeded flow states
 
 - ✅ **F1.1.1** ~~Migrate Task flow states to: Ready (todo), Doing (in_progress), Completed (done) — remove Cancelled~~ `[P1]`
@@ -114,10 +137,16 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 
 ### F1.2 Backend — flow state colour PATCH API
 
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 - ✅ **F1.2.1** ~~Add `PATCH /_site/flow-states/{id}` handler (colour only for now) — validates `#RRGGBB`, returns updated state~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
 > Commit `8d4ab8e` (2026-05-10): refactor(F1): route flows + flowStates through apiSite registry [F1.2.1] [F1.2.2]
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -137,6 +166,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `682f6b3` (2026-05-10): feat(F1): pill toolbar with position-aware drag handle + live drag movement [F1.2.2]
 > Commit `6f4b4b2` (2026-05-10): feat(F1): DragOverlay for live pill ghost + large always-visible toolbar buttons [F1.2.2]
 > Last checked: 2026-05-10 — `PATCH /_site/flow-states/{id}` registered at `backend/cmd/server/main.go` lines 921–927 with `RequireAuth` + `RequireFreshPassword`; handler `flowsH.PatchFlowState` in `backend/internal/flows/handler.go`. Confirmed wired through apiSite registry.
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -146,12 +181,24 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 ---
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 
 ## M1. Flows
 
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 Workflow definitions and states for work items. Currently reads from `obj_flow_tenant` in the old database (`mmff_vector`). The new database already has the correct tables (`flows`, `flow_states`, `flow_transitions`) — the data needs copying across and the handler switching over. Plan: [PLA-0031](dev/plans/PLA-0031.json)
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
 ### ✅ ~~M1.1 API — Register `/flows` on v2~~
 
 - ✅ **M1.1.1** Register `GET /flows` under `/samantha/v2` in `main.go` `[P2]`
@@ -533,6 +580,8 @@ Full lifecycle management for tasks, bugs, epics.
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -609,8 +658,16 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
 > Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
 
 - ✅ ~~**B9.1** Webhook subscriptions table — URL, event filter, secret~~
   > `db/artefacts_schema/037_webhooks.sql` — `webhook_subscriptions` + `webhook_deliveries` tables; CRUD API at `GET/POST /workspaces/{id}/webhooks` + `GET/PATCH/DELETE /workspaces/{id}/webhooks/{webhookId}`; secret auto-generated (32-byte random hex) if not supplied
@@ -642,6 +699,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
 > Commit `5d7e472` (2026-05-09): fix(auth): _bootstrapped flag prevents HMR re-runs from firing second refresh() on rotated rt cookie [B16]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -794,6 +852,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 ## B18. Developer Experience
 
 - ✅ ~~**B18.1** OpenAPI v2 spec (see B8.3)~~
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 - **B18.2** TypeScript SDK `[P4]`
 - **B18.3** Python SDK `[P5]`
 - **B18.4** Postman collection `[P4]`
@@ -974,6 +1034,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -983,6 +1047,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -991,6 +1059,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -1000,6 +1071,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -1025,6 +1101,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -1055,6 +1134,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
 > Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -1069,6 +1152,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -1081,6 +1167,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
 > Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -1107,6 +1200,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1129,6 +1223,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -1155,6 +1250,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
 > Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
 > Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -1201,6 +1297,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -1215,6 +1314,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
 > Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -1225,6 +1325,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `ef55b4f` (2026-05-10): chore(logger): introduce structured logger with optional Loki push
+> Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
+> Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -1233,6 +1338,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
 > Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -1242,6 +1348,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -1256,6 +1363,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
 > Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -1263,6 +1374,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `383c4a0` (2026-05-09): fix(hooks): scope-commit-note self-reference loop
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -1283,6 +1395,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -1297,12 +1410,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
+> Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
+> Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
+> Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`

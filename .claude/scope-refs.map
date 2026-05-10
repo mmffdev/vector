@@ -95,3 +95,18 @@ F1.3.5	useWorkItemFlowStates colours FlowStatePillRow tree
 B22.25	ObjectTree resourceUrl artefact-items site mount apiSite
 B22.26	allowlist public_helper_allowlist zero hard block lint
 B22.27	transport segregation docs _site inventory phase2
+FLOW1.1.1	flow_states kind check constraint backlog primitive widening
+FLOW1.1.2	flow_states is_pullable boolean column flag opt-in default false
+FLOW1.1.3	migration 042 seed kind aligned pills rename ready todo idempotent
+FLOW1.1.4	repair corruption defect story default junk pills delete reset
+FLOW1.1.5	backfill is_pullable defect QA strategy types BC BE PO SO
+FLOW1.2.1	validKinds backend service backlog kind map
+FLOW1.2.2	PatchStateInput CreateStateInput is_pullable propagate
+FLOW1.2.3	listByScope query select is_pullable FlowState DTO
+FLOW1.2.4	pull surface query helper team board canonical filter
+FLOW1.2.5	po backlog query helper grooming view filter
+FLOW1.3.1	KIND_LABEL backlog frontend flow-map left master-state column
+FLOW1.3.2	is_pullable toggle pill row settings flowStatesApi patch
+FLOW1.3.3	pullable visual indicator icon accent border distinct
+FLOW1.3.4	flow-map backlog zone boundary handoff line visual
+FLOW1.4.1	artefacts po_ready flag visual aid sort badge DoR future
