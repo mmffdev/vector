@@ -12272,77 +12272,73 @@ input[type="reset"] {
 }
 
 /* ─── FlowMap interactive editor (fs-map-*) ──────────────────────────────────
-   HTML flex-row pill editor. Pills sit in a scrollable row. + buttons sit
-   between pills and at both ends. Clicking + opens an inline insert card.
-   Animations: pills slide in on insert, slide out + collapse width on remove.
+   3-column row grid: [kind label] [pill cell] [drag handle].
+   Pill rows alternate with `+` slot rows that double as drop targets while
+   a drag is active.
 */
 .fs-map {
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
   margin-bottom: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   padding: var(--space-3) var(--space-2);
-  background: transparent;
 }
 
-.fs-map__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  min-height: 100px;
-}
-
-/* Arrows and plus-wraps align against the pill card (top of pill-wrap).
-   Pill card is ~28px tall; push arrows down so they sit at pill centre. */
-.fs-map__arrow,
-.fs-map__plus-wrap {
-  margin-top: 9px;
-}
-
-/* ── Pills ── */
-
-/* The sortable slot is the dnd-kit ref target — it becomes transparent when
-   dragging (the DragOverlay ghost floats above in its place). */
-.fs-map__sortable-slot {
-  flex-shrink: 0;
-}
-
-.fs-map__sortable-slot--dragging {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.fs-map__pill-wrap {
+.fs-map__col {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  animation: fs-pill-in 180ms ease-out both;
-  flex-shrink: 0;
+  align-items: stretch;
+  max-width: 480px;
+  margin: 0;
 }
 
-/* Overlay ghost — lifted, no animation */
-.fs-map__pill-wrap--overlay {
-  animation: none;
+/* Sortable wrapper must be a real DOM box so dnd-kit can measure it. */
+.fs-map__pill-slot {
+  display: block;
+}
+
+/* Every row (pill or plus) is a 3-cell flex line. Cells: kind | pill | handle. */
+.fs-map__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Kind label (left column) ── */
+.fs-map__kind-label {
+  flex: 0 0 110px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  padding-right: var(--space-1);
+}
+
+/* ── Pill cell (centre column) ── */
+.fs-map__pill-cell {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  min-height: 40px;
+  animation: fs-pill-in 180ms ease-out both;
+}
+
+/* Standalone overlay ghost — just the pill, lifted. */
+.fs-map__pill-overlay {
+  display: inline-flex;
+  align-items: center;
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
   cursor: grabbing;
+  z-index: 1000;
+  position: relative;
 }
 
 @keyframes fs-pill-in {
-  from { opacity: 0; transform: translateX(-6px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-.fs-map__pill-wrap--removing {
-  animation: fs-pill-out 200ms ease-in forwards;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-@keyframes fs-pill-out {
-  0%   { opacity: 1; max-width: 200px; }
-  60%  { opacity: 0; max-width: 200px; }
-  100% { opacity: 0; max-width: 0;     }
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .fs-map__pill {
@@ -12351,13 +12347,13 @@ input[type="reset"] {
   gap: var(--space-1);
   padding: 6px 12px;
   border: 1.5px solid var(--border);
-  background: transparent;
+  background: var(--surface);
   white-space: nowrap;
   font-size: 0.85rem;
   line-height: 1;
-  min-width: 90px;
-  width: 100%;
+  min-width: 180px;
   box-sizing: border-box;
+  flex: 1;
 }
 
 .fs-map__initial-dot {
@@ -12373,123 +12369,92 @@ input[type="reset"] {
 .fs-map__pill-label {
   color: var(--ink);
   flex: 1;
+  text-align: center;
 }
 
-/* Toolbar: drag handle + remove btn, centred below the pill, always visible */
-.fs-map__pill-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 6px 0 2px;
+/* Spacer occupies the remove-btn slot when the pill is initial (no remove btn). */
+.fs-map__toolbar-spacer {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .fs-map__drag-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: none;
-  background: #1d4ed8; /* solid blue — matches screenshot */
-  color: #ffffff;
+  background: transparent;
+  color: var(--ink-muted);
   cursor: grab;
   padding: 0;
   flex-shrink: 0;
-  transition: background 120ms;
+  transition: color 120ms;
 }
 
-.fs-map__drag-handle:hover {
-  background: #2563eb;
+.fs-map__drag-handle:hover { color: var(--ink); }
+.fs-map__drag-handle:active { cursor: grabbing; }
+
+/* ── + slot row (drop target while dragging) ── */
+.fs-map__plus-row .fs-map__pill-cell {
+  min-height: 32px;
+  border: 1.5px dashed transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color 140ms, background 140ms;
+  animation: none;
 }
 
-.fs-map__drag-handle:active {
-  cursor: grabbing;
-  background: #1e40af;
+.fs-map__plus-row--target .fs-map__pill-cell {
+  border-color: var(--accent);
 }
 
-/* ── Arrows ── */
-.fs-map__arrow {
-  color: var(--ink-subtle);
-  font-size: 0.85rem;
-  padding: 0 4px;
-  flex-shrink: 0;
-  user-select: none;
-}
-
-/* ── Plus buttons ── */
-.fs-map__plus-wrap {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.fs-map__plus-wrap--last .fs-map__arrow {
-  display: none; /* no arrow after last state */
+.fs-map__plus-row--over .fs-map__pill-cell {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .fs-map__plus-btn {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  border: 1.5px dashed #ffffff;
+  border: none;
   background: transparent;
-  color: #ffffff;
+  color: var(--ink-muted);
   cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   flex-shrink: 0;
-  transition: border-color 120ms, color 120ms, opacity 120ms;
+  transition: color 120ms, opacity 120ms;
 }
 
-.fs-map__plus-btn:hover:not(:disabled) {
-  opacity: 0.7;
-}
-
-.fs-map__plus-btn:disabled {
-  opacity: 0.2;
-  cursor: default;
-}
+.fs-map__plus-btn:hover:not(:disabled) { color: var(--ink); }
+.fs-map__plus-btn:disabled { opacity: 0.3; cursor: default; }
 
 .fs-map__remove-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  border: 2.5px dashed #ff0000;
+  border: none;
   background: transparent;
   color: #ff0000;
   cursor: pointer;
-  font-size: 1.4rem;
-  line-height: 1;
   padding: 0;
   flex-shrink: 0;
-  transition: background 120ms;
+  transition: opacity 120ms;
 }
 
-.fs-map__remove-btn:hover:not(:disabled) {
-  background: rgba(255, 0, 0, 0.12);
-}
+.fs-map__remove-btn:hover:not(:disabled) { background: rgba(255, 0, 0, 0.12); }
+.fs-map__remove-btn:disabled { opacity: 0.4; cursor: default; }
 
-.fs-map__remove-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-/* ── Insert card (inline name + kind + buttons) ── */
-.fs-map__slot {
-  display: flex;
-  align-items: center;
-  animation: fs-pill-in 150ms ease-out both;
-}
-
+/* ── Insert card (inline name input) ── */
 .fs-map__insert-card {
   display: flex;
   align-items: center;
@@ -12498,6 +12463,7 @@ input[type="reset"] {
   padding: 4px 6px;
   background: var(--surface-raised);
   min-width: 180px;
+  flex: 1;
 }
 
 .fs-map__insert-name {
@@ -12511,23 +12477,9 @@ input[type="reset"] {
   padding: 2px 4px;
 }
 
-.fs-map__insert-name::placeholder {
-  color: var(--ink-subtle);
-}
+.fs-map__insert-name::placeholder { color: var(--ink-subtle); }
 
-.fs-map__insert-kind {
-  font-size: 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: var(--radius-sm);
-  padding: 2px 4px;
-  max-width: 100px;
-}
-
-.fs-map__insert-ok {
-  white-space: nowrap;
-}
+.fs-map__insert-ok { white-space: nowrap; }
 
 /* ─── Transition matrix (fs-transition-matrix-*) ─────────────────────────────*/
 .fs-transition-matrix {
