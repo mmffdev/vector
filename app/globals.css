@@ -12288,22 +12288,31 @@ input[type="reset"] {
 
 .fs-map__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0;
-  min-height: 52px;
+  min-height: 60px;
+}
+
+/* Arrows and plus-wraps need to sit vertically centred against the pill card,
+   not the entire pill-wrap (which is taller due to toolbar). Offset them down
+   by half the toolbar height (~12px) so they align with the pill centre. */
+.fs-map__arrow,
+.fs-map__plus-wrap {
+  margin-top: 6px;
 }
 
 /* ── Pills ── */
 .fs-map__pill-wrap {
   display: flex;
-  align-items: center;
-  /* slide-in animation */
+  flex-direction: column;
+  align-items: stretch;
   animation: fs-pill-in 180ms ease-out both;
+  flex-shrink: 0;
 }
 
 @keyframes fs-pill-in {
-  from { opacity: 0; transform: scaleX(0.6); }
-  to   { opacity: 1; transform: scaleX(1); }
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .fs-map__pill-wrap--removing {
@@ -12318,18 +12327,21 @@ input[type="reset"] {
   100% { opacity: 0; max-width: 0;     }
 }
 
+.fs-map__pill-wrap--dragging {
+  opacity: 0.5;
+}
+
 .fs-map__pill {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 4px 10px;
+  padding: 5px 10px;
   border: 1.5px solid var(--border);
   background: transparent;
   white-space: nowrap;
   font-size: 0.8rem;
   line-height: 1;
-  position: relative;
-  min-width: 72px;
+  min-width: 80px;
 }
 
 .fs-map__initial-dot {
@@ -12345,6 +12357,41 @@ input[type="reset"] {
 .fs-map__pill-label {
   color: var(--ink);
   flex: 1;
+}
+
+/* Toolbar row: drag handle + remove btn, below the pill, right-aligned */
+.fs-map__pill-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 2px 2px 0;
+}
+
+.fs-map__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px dashed #ffffff;
+  background: transparent;
+  color: #ffffff;
+  cursor: grab;
+  padding: 0;
+  opacity: 0.5;
+  transition: opacity 120ms;
+  flex-shrink: 0;
+}
+
+.fs-map__pill-wrap:hover .fs-map__drag-handle {
+  opacity: 1;
+}
+
+.fs-map__drag-handle:active {
+  cursor: grabbing;
+  opacity: 1;
 }
 
 /* ── Arrows ── */
@@ -12413,7 +12460,7 @@ input[type="reset"] {
   flex-shrink: 0;
 }
 
-.fs-map__pill:hover .fs-map__remove-btn {
+.fs-map__pill-wrap:hover .fs-map__remove-btn {
   opacity: 1;
 }
 
@@ -12435,7 +12482,7 @@ input[type="reset"] {
   border: 1.5px solid var(--accent);
   padding: 4px 6px;
   background: var(--surface-raised);
-  min-width: 260px;
+  min-width: 180px;
 }
 
 .fs-map__insert-name {

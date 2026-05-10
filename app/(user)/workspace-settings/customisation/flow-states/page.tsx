@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import type { Modifier } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { BsArrowsExpandVertical, BsArrowBarLeft, BsArrowBarRight } from "react-icons/bs";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
@@ -92,22 +93,18 @@ function inferKind(left: FlowState | null, right: FlowState | null): string {
   return left.kind;
 }
 
-const KIND_OPTIONS = [
-  { value: "todo",        label: "To Do" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "done",        label: "Done" },
-  { value: "accepted",    label: "Accepted" },
-  { value: "cancelled",   label: "Cancelled" },
-];
-
 // ── SortablePill ──────────────────────────────────────────────────────────────
-// A single draggable pill within the FlowMap row. Drag is horizontal-only.
+// Wrapper: pill card on top, toolbar (drag handle + remove btn) below.
+// Only the drag handle icon carries dnd-kit listeners — the pill itself is inert.
+// position: "first" | "middle" | "last" drives which drag handle icon to show.
 function SortablePill({
   state,
+  position,
   removingId,
   onRemove,
 }: {
   state: FlowState;
+  position: "first" | "middle" | "last";
   removingId: string | null;
   onRemove: (s: FlowState) => void;
 }) {
@@ -116,40 +113,56 @@ function SortablePill({
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
   } = useSortable({ id: state.id });
 
   const stroke = state.colour ?? (KIND_STROKE[state.kind] ?? "var(--border)");
   const isRemoving = removingId === state.id;
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-    cursor: isDragging ? "grabbing" : "grab",
-    touchAction: "none",
+  // Use translate-only (no scale) so the pill moves live with the pointer.
+  const wrapperStyle: React.CSSProperties = {
+    transform: transform ? `translate3d(${transform.x}px, 0px, 0)` : undefined,
+    zIndex: isDragging ? 999 : undefined,
+    position: "relative",
   };
+
+  const DragIcon =
+    position === "first"  ? BsArrowBarRight :
+    position === "last"   ? BsArrowBarLeft  :
+    BsArrowsExpandVertical;
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={`fs-map__pill-wrap${isRemoving ? " fs-map__pill-wrap--removing" : ""}`}
-      {...attributes}
-      {...listeners}
+      style={wrapperStyle}
+      className={`fs-map__pill-wrap${isRemoving ? " fs-map__pill-wrap--removing" : ""}${isDragging ? " fs-map__pill-wrap--dragging" : ""}`}
     >
+      {/* Pill card */}
       <div className="fs-map__pill" style={{ borderColor: stroke }}>
         {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
         <span className="fs-map__pill-label">{state.name}</span>
+      </div>
+
+      {/* Toolbar: drag handle + remove, below the pill, aligned right */}
+      <div className="fs-map__pill-toolbar">
+        <button
+          type="button"
+          className="fs-map__drag-handle"
+          title="Drag to reorder"
+          aria-label="Drag to reorder"
+          style={{ touchAction: "none" }}
+          {...attributes}
+          {...listeners}
+        >
+          <DragIcon size={11} />
+        </button>
         {!state.is_initial && (
           <button
             type="button"
             className="fs-map__remove-btn"
             title={`Remove ${state.name}`}
             disabled={!!removingId}
-            onClick={(e) => { e.stopPropagation(); onRemove(state); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onRemove(state)}
             aria-label={`Remove state ${state.name}`}
           >
             −
@@ -228,7 +241,7 @@ function FlowMap({
     }
   }, [onDeleted]);
 
-  // Shared insert-card render (used for both mid and last-position slots).
+  // Shared insert-card render — name input only; kind is inferred from neighbours.
   const insertCard = (key: string, showArrowAfter: boolean) => (
     <div key={key} className="fs-map__slot">
       <div className="fs-map__insert-card">
@@ -244,15 +257,6 @@ function FlowMap({
             if (e.key === "Escape") cancelSlot();
           }}
         />
-        <select
-          className="fs-map__insert-kind"
-          value={pending!.kind}
-          onChange={(e) => setPending((p) => p ? { ...p, kind: e.target.value } : p)}
-        >
-          {KIND_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
         <button
           type="button"
           className="btn btn--xs btn--primary fs-map__insert-ok"
@@ -299,10 +303,14 @@ function FlowMap({
 
   states.forEach((s, i) => {
     const isLast = i === states.length - 1;
+    const position: "first" | "middle" | "last" =
+      i === 0 && isLast ? "middle" :  // only one state → treat as middle
+      i === 0           ? "first"  :
+      isLast            ? "last"   : "middle";
 
     // Draggable pill
     items.push(
-      <SortablePill key={s.id} state={s} removingId={removingId} onRemove={removeState} />
+      <SortablePill key={s.id} state={s} position={position} removingId={removingId} onRemove={removeState} />
     );
 
     // Slot after this pill
