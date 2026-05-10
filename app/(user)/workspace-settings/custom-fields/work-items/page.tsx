@@ -4,9 +4,8 @@ import { useState } from "react";
 import Table from "@/app/components/Table";
 import CustomFieldManager from "@/app/components/CustomFieldManager";
 
-// Source of truth for prefixes lives in app/components/work-items-tree-config.tsx
-// (TYPE_PREFIX). Mirrored here so this page can render the prefix without
-// importing tree-internal config.
+// Prefixes come from artefact_types.prefix on the wire (WorkItem.type_prefix);
+// mirrored here as a static label list for the per-type tab bar on this page.
 const ITEM_TYPES = [
   { key: "epic",   label: "Epic",   prefix: "EP" },
   { key: "story",  label: "Story",  prefix: "US" },
