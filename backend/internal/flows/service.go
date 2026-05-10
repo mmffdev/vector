@@ -17,7 +17,7 @@ var (
 	ErrTransitionExists   = errors.New("transition already exists")
 	reColour              = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 	validKinds            = map[string]bool{
-		"todo": true, "in_progress": true, "done": true,
+		"backlog": true, "todo": true, "in_progress": true, "done": true,
 		"accepted": true, "cancelled": true,
 	}
 )
@@ -63,6 +63,7 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 		    fs.kind        AS state_kind,
 		    fs.sort_order  AS state_sort_order,
 		    fs.is_initial  AS state_is_initial,
+		    fs.is_pullable AS state_is_pullable,
 		    fs.colour      AS state_colour
 		FROM flows f
 		JOIN artefact_types at ON at.id = f.artefact_type_id
@@ -90,7 +91,7 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 		)
 		if err := rows.Scan(
 			&flowID, &flowName, &isDefault, &typeID, &typeName, &typeScope,
-			&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
+			&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.IsPullable, &st.Colour,
 		); err != nil {
 			return nil, err
 		}
@@ -168,13 +169,18 @@ func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID st
 	if in.Name != nil && *in.Name == "" {
 		return nil, fmt.Errorf("flows: name must not be empty")
 	}
+	if in.Kind != nil && !validKinds[*in.Kind] {
+		return nil, fmt.Errorf("flows: invalid kind %q", *in.Kind)
+	}
 
 	const q = `
 		UPDATE flow_states fs
-		SET    colour     = COALESCE($1, colour),
-		       name       = COALESCE($4, name),
-		       sort_order = COALESCE($5, sort_order),
-		       is_initial = COALESCE($6, is_initial)
+		SET    colour      = COALESCE($1, fs.colour),
+		       name        = COALESCE($4, fs.name),
+		       sort_order  = COALESCE($5, fs.sort_order),
+		       is_initial  = COALESCE($6, fs.is_initial),
+		       kind        = COALESCE($7, fs.kind),
+		       is_pullable = COALESCE($8, fs.is_pullable)
 		FROM   flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
 		WHERE  fs.id      = $2
@@ -183,13 +189,13 @@ func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID st
 		  AND  at.archived_at IS NULL
 		  AND  f.archived_at  IS NULL
 		  AND  fs.archived_at IS NULL
-		RETURNING fs.id, fs.name, fs.kind, fs.sort_order, fs.is_initial, fs.colour`
+		RETURNING fs.id, fs.name, fs.kind, fs.sort_order, fs.is_initial, fs.is_pullable, fs.colour`
 
 	// Colour is the only nullable-to-clear field; the others use COALESCE.
 	// Pass nil colour as a signal to clear it; for other fields nil = no change.
 	var st FlowState
-	err := s.vaPool.QueryRow(ctx, q, in.Colour, stateID, subscriptionID, in.Name, in.SortOrder, in.IsInitial).Scan(
-		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
+	err := s.vaPool.QueryRow(ctx, q, in.Colour, stateID, subscriptionID, in.Name, in.SortOrder, in.IsInitial, in.Kind, in.IsPullable).Scan(
+		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.IsPullable, &st.Colour,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrStateNotFound
@@ -219,19 +225,19 @@ func (s *Service) CreateState(ctx context.Context, subscriptionID, flowID string
 	}
 
 	const q = `
-		INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial)
-		SELECT f.id, $3, $4, $5, $6
+		INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
+		SELECT f.id, $3, $4, $5, $6, $7
 		FROM   flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
 		WHERE  f.id = $1
 		  AND  at.subscription_id = $2
 		  AND  f.archived_at IS NULL
 		  AND  at.archived_at IS NULL
-		RETURNING id, name, kind, sort_order, is_initial, colour`
+		RETURNING id, name, kind, sort_order, is_initial, is_pullable, colour`
 
 	var st FlowState
-	err := s.vaPool.QueryRow(ctx, q, flowID, subscriptionID, in.Name, in.Kind, in.SortOrder, in.IsInitial).Scan(
-		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
+	err := s.vaPool.QueryRow(ctx, q, flowID, subscriptionID, in.Name, in.Kind, in.SortOrder, in.IsInitial, in.IsPullable).Scan(
+		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.IsPullable, &st.Colour,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrFlowNotFound

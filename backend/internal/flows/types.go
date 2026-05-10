@@ -2,28 +2,32 @@ package flows
 
 // FlowState is one state within a flow, read from vector_artefacts.flow_states.
 type FlowState struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	Kind      string  `json:"kind"`       // "todo" | "in_progress" | "done" | "accepted" | "cancelled"
-	SortOrder int     `json:"sort_order"`
-	IsInitial bool    `json:"is_initial"`
-	Colour    *string `json:"colour,omitempty"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Kind       string  `json:"kind"` // "backlog" | "todo" | "in_progress" | "done" | "accepted" | "cancelled"
+	SortOrder  int     `json:"sort_order"`
+	IsInitial  bool    `json:"is_initial"`
+	IsPullable bool    `json:"is_pullable"`
+	Colour     *string `json:"colour,omitempty"`
 }
 
 // PatchStateInput is the body accepted by PATCH /_site/flow-states/{id}.
 type PatchStateInput struct {
-	Colour    *string `json:"colour"`    // nil = clear; "#RRGGBB" = set
-	Name      *string `json:"name"`      // nil = no change
-	SortOrder *int    `json:"sort_order"` // nil = no change
-	IsInitial *bool   `json:"is_initial"` // nil = no change
+	Colour     *string `json:"colour"`      // nil = clear; "#RRGGBB" = set
+	Name       *string `json:"name"`        // nil = no change
+	Kind       *string `json:"kind"`        // nil = no change; otherwise one of validKinds
+	SortOrder  *int    `json:"sort_order"`  // nil = no change
+	IsInitial  *bool   `json:"is_initial"`  // nil = no change
+	IsPullable *bool   `json:"is_pullable"` // nil = no change
 }
 
 // CreateStateInput is the body accepted by POST /_site/flows/{flowId}/states.
 type CreateStateInput struct {
-	Name      string `json:"name"`
-	Kind      string `json:"kind"`       // "todo"|"in_progress"|"done"|"accepted"|"cancelled"
-	SortOrder int    `json:"sort_order"` // 0 = append after last
-	IsInitial bool   `json:"is_initial"`
+	Name       string `json:"name"`
+	Kind       string `json:"kind"`        // "backlog"|"todo"|"in_progress"|"done"|"accepted"|"cancelled"
+	SortOrder  int    `json:"sort_order"`  // 0 = append after last
+	IsInitial  bool   `json:"is_initial"`
+	IsPullable bool   `json:"is_pullable"`
 }
 
 // CreateTransitionInput is the body accepted by POST /_site/flows/{flowId}/transitions.
