@@ -1,43 +1,28 @@
-import { apiSite } from "@/app/lib/api";
+// Typed helpers for the flow states feature, backed by the apiSite registry.
+// Re-exports the registry types so callers import from one place.
+export type {
+  FlowState,
+  FlowTransition,
+  FlowGroup,
+  FlowsResponse,
+} from "@/app/lib/apiSite/index";
 
-export interface FlowState {
-  id: string;
-  name: string;
-  kind: "todo" | "in_progress" | "done" | "accepted" | "cancelled";
-  sort_order: number;
-  is_initial: boolean;
-  colour?: string | null;
-}
-
-export interface FlowTransition {
-  from: string; // flow_state id
-  to: string;   // flow_state id
-}
-
-export interface FlowGroup {
-  flow_id: string;
-  flow_name: string;
-  is_default: boolean;
-  type_id: string;
-  type_name: string;
-  type_scope: "work" | "strategy";
-  states: FlowState[];
-  transitions: FlowTransition[];
-}
-
-export interface FlowsResponse {
-  work: FlowGroup[];
-  strategy: FlowGroup[];
-}
+import { flows as flowsApi, flowStates as flowStatesApi_ } from "@/app/lib/apiSite/index";
+import type { FlowState, FlowsResponse } from "@/app/lib/apiSite/index";
 
 // Module-level cache so layout + page both resolve from the same in-flight request.
 let _cache: FlowsResponse | null = null;
 let _promise: Promise<FlowsResponse> | null = null;
 
+function invalidate() {
+  _cache = null;
+  _promise = null;
+}
+
 async function list(): Promise<FlowsResponse> {
   if (_cache) return _cache;
   if (!_promise) {
-    _promise = apiSite<FlowsResponse>("/flows/").then((r) => {
+    _promise = flowsApi.list().then((r) => {
       _cache = r;
       return r;
     });
@@ -45,17 +30,8 @@ async function list(): Promise<FlowsResponse> {
   return _promise;
 }
 
-function invalidate() {
-  _cache = null;
-  _promise = null;
-}
-
 async function patchState(stateId: string, colour: string | null): Promise<FlowState> {
-  const result = await apiSite<FlowState>(`/flow-states/${stateId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ colour }),
-  });
+  const result = await flowStatesApi_.patch(stateId, colour);
   invalidate();
   return result;
 }
