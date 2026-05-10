@@ -202,7 +202,6 @@ function FlowMap({
           const x    = pillX(i);
           const y    = pillBaseY;
           const stroke = s.colour ?? (KIND_STROKE[s.kind] ?? "var(--border)");
-          const ink    = s.colour ?? (KIND_INK[s.kind] ?? "var(--ink-muted)");
           return (
             <g
               key={s.id}
@@ -221,7 +220,7 @@ function FlowMap({
                 strokeWidth={1.5}
               />
               {s.is_initial && (
-                <circle cx={x + 8} cy={y + PILL_H / 2} r={3} fill={ink} opacity={0.5} />
+                <circle cx={x + 8} cy={y + PILL_H / 2} r={3} fill="var(--ink-muted)" opacity={0.5} />
               )}
               <text
                 x={x + PILL_W / 2}
@@ -231,7 +230,7 @@ function FlowMap({
                 fontSize={10}
                 fontFamily="inherit"
                 fontWeight={s.is_initial ? 600 : 400}
-                fill={ink}
+                fill="var(--ink)"
               >
                 {s.name}
               </text>
