@@ -29,13 +29,13 @@ const KIND_LABEL: Record<string, string> = {
   cancelled:   "Cancelled",
 };
 
-// Kind → fallback fill when no colour is set on the state.
-const KIND_FILL: Record<string, string> = {
-  todo:        "var(--surface-raised)",
-  in_progress: "#dbeafe",   // blue-100
-  done:        "#dcfce7",   // green-100
-  accepted:    "#f3e8ff",   // purple-100
-  cancelled:   "#fee2e2",   // red-100
+// Kind → border stroke colour when no custom colour is set on the state.
+const KIND_STROKE: Record<string, string> = {
+  todo:        "var(--border)",
+  in_progress: "#93c5fd",   // blue-300
+  done:        "#86efac",   // green-300
+  accepted:    "#d8b4fe",   // purple-300
+  cancelled:   "#fca5a5",   // red-300
 };
 
 const KIND_INK: Record<string, string> = {
@@ -201,8 +201,10 @@ function FlowMap({
         {states.map((s, i) => {
           const x    = pillX(i);
           const y    = pillBaseY;
-          const fill = s.colour ?? KIND_FILL[s.kind] ?? "var(--surface-raised)";
-          const ink  = s.colour ? safeInk(s.colour) : (KIND_INK[s.kind] ?? "var(--ink-muted)");
+          const hasCust = !!s.colour;
+          const fill   = hasCust ? s.colour! : "transparent";
+          const stroke = hasCust ? "transparent" : (KIND_STROKE[s.kind] ?? "var(--border)");
+          const ink    = hasCust ? safeInk(s.colour!) : (KIND_INK[s.kind] ?? "var(--ink-muted)");
           return (
             <g
               key={s.id}
@@ -217,8 +219,8 @@ function FlowMap({
                 height={PILL_H}
                 rx={PILL_R}
                 fill={fill}
-                stroke={s.colour ? "transparent" : "var(--border)"}
-                strokeWidth={1}
+                stroke={stroke}
+                strokeWidth={1.5}
               />
               {s.is_initial && (
                 <circle cx={x + 8} cy={y + PILL_H / 2} r={3} fill={ink} opacity={0.5} />
