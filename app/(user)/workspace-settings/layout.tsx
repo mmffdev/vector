@@ -61,6 +61,11 @@ const SUB_TAB_LABELS: Partial<Record<TabKey, Record<string, string>>> = {
     defects:           "Defects",
     risks:             "Risks",
   },
+  customisation: {
+    "tenant-details": "Tenant Details",
+    "artefact-types": "Artefact Types",
+    "flow-states":    "Flow States",
+  },
 };
 
 export default function WorkspaceSettingsLayout({ children }: { children: React.ReactNode }) {

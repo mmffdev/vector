@@ -1,12 +1,16 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-09 (B22.16–B22.27 added — Phase 2 `/_site` full coverage, 14 apiV2 callers → 0)
-**Doc version:** 2.4
+**Last updated:** 2026-05-10 (F series introduced; F1 added — Artefact Type and Flow State Customisation)
+**Doc version:** 2.5
 
 ---
 
 ## Table of Contents
+
+**F — Product Functionality** *(user-visible features currently being built)*
+
+- [F1. Artefact Type and Flow State Customisation](#f1-artefact-type-and-flow-state-customisation)
 
 **M — v2 Migration** *(build order: easiest → hardest)*
 
@@ -41,6 +45,35 @@
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 - [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
 - [B22. Transport Segregation via Shared Service Core (PLA-0039)](#b22-transport-segregation-via-shared-service-core-pla-0039)
+
+---
+
+## F1. Artefact Type and Flow State Customisation
+
+Workspace Settings > Customisation page — two sections. Section 1 (artefact type tags, prefix, name, description, colour) is already built. Section 2 adds a third-level tab nav (mirroring Custom Fields) for flow state management: one tab per artefact type, showing that type's flow states with colour editing. Covers data-correction migrations to fix wrong seeded states for all work types and missing states for strategy types. `[P2]` 🔵 IN FLIGHT
+
+### F1.1 Data Migrations — correct seeded flow states
+
+- **F1.1.1** Migrate Task flow states to: Ready (todo), Doing (in_progress), Completed (done) — remove Cancelled `[P1]`
+- **F1.1.2** Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled `[P1]`
+- **F1.1.3** Migrate Epic flow states to match Story (same 5-state set) `[P1]`
+- **F1.1.4** Migrate Defect work-execution flow states to match Story (same 5-state set) `[P1]`
+- **F1.1.5** Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type `[P1]`
+- **F1.1.6** Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) `[P1]`
+- **F1.1.7** Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it `[P2]`
+
+### F1.2 Backend — flow state colour PATCH API
+
+- **F1.2.1** Add `PATCH /_site/flow-states/{id}` handler (colour only for now) — validates `#RRGGBB`, returns updated state `[P1]`
+- **F1.2.2** Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword` `[P1]`
+
+### F1.3 Frontend — Customisation page flow states section
+
+- **F1.3.1** Move existing Work Items page (`/workspace-settings/work-items`) content into Customisation as third-level tab section `[P2]`
+- **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
+- **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
+- **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
+- **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 
 ---
 
@@ -499,15 +532,20 @@ Full lifecycle management for tasks, bugs, epics.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 - **B8.10** Per-tenant API keys with scoped permissions `[P2]`
+> Commit `761d7cd` (2026-05-09): fix(B22): DevPageHelpPanel — apiSite import + strip stale /api/ prefix
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
+> Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
+> Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
 Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 
 - ✅ ~~**B9.1** Webhook subscriptions table — URL, event filter, secret~~
   > `db/artefacts_schema/037_webhooks.sql` — `webhook_subscriptions` + `webhook_deliveries` tables; CRUD API at `GET/POST /workspaces/{id}/webhooks` + `GET/PATCH/DELETE /workspaces/{id}/webhooks/{webhookId}`; secret auto-generated (32-byte random hex) if not supplied
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   >
 - ✅ ~~**B9.2** Outbox delivery pattern~~
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
@@ -677,6 +715,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ ~~**B17.7** API snapshot toolchain — dual-spec, `api-snapshots/v1/` + `v2/`~~
 - **B17.8** Unused index audit `[P3]`
 - **B17.9** API gateway in front of public surface `[P3]`
+> Commit `761d7cd` (2026-05-09): fix(B22): DevPageHelpPanel — apiSite import + strip stale /api/ prefix
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 
 ---
@@ -688,6 +727,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - **B18.3** Python SDK `[P5]`
 - **B18.4** Postman collection `[P4]`
 - **B18.5** Rate limit response headers `[P3]`
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > No `X-RateLimit-*` headers found — rate limiting fires but doesn't expose headers to consumers
   > Last checked: 2026-05-08
   >
@@ -860,6 +900,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -867,11 +910,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -880,6 +928,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -902,6 +951,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -927,6 +979,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
+> Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -939,6 +996,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -947,6 +1006,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
+> Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -972,6 +1035,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -993,6 +1057,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -1014,6 +1079,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
+> Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
+> Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -1038,6 +1108,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1058,9 +1129,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `2b3eea5` (2026-05-09): fix(B18): scope TOC overscroll-behavior:contain prevents scroll chaining to page [B20]
 > Commit `1d492a9` (2026-05-09): fix(B18): widen scope TOC column 220px → 330px [B20]
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -1069,6 +1142,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
+> Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -1076,6 +1151,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -1083,6 +1161,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `9df45f8` (2026-05-09): fix(B22): add type_prefix to p_ObjectTree test fixture
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -1091,6 +1170,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
+> Commit `64a699f` (2026-05-09): docs(B22): mark B22.16-B22.27 done in scope; update transport segregation doc [B22] [B22.26] [B22.27]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -1101,6 +1181,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `2067438` (2026-05-09): fix(B18): drop .dui-panel wrapper from scope so TOC sticky works [B20]
 > Commit `b3defb3` (2026-05-09): fix(portfoliomodels): AssertWorkspaceInTenant queries master_record_workspaces
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
+> Commit `3f0dbbe` (2026-05-09): fix(B22): fix dynamic ID column — re-fit on width change, floor at declared width
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -1126,6 +1210,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b65e06a` (2026-05-09): docs(B21): add Artefact-Items Substrate plan, PLA-0037 [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -1138,6 +1224,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b65e06a` (2026-05-09): docs(B21): add Artefact-Items Substrate plan, PLA-0037 [B21]
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `bfc7279` (2026-05-09): test(B21 PLA-0037): scope-leak regression for artefactitemsv2
+> Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
+> Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -1283,6 +1371,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 
 ## Unmatched Commits
 
+> Commit `877ec30` (2026-05-09): fix(B22): move dynamicIdColWidth above fixedWidths — fix ReferenceError
 > Commit `4ebf82f` (2026-05-09): fix: resolve getParentId/getChildrenCount functions in wizard config
 > Commit `ca3e543` (2026-05-09): feat(PLA-0030 B19.7): wire p_wizard.json sidecar pattern to work-items and portfolio-items pages
 > Commit `5c8f97b` (2026-05-09): docs(B20): add User Access Rights & Navigation Control section [B20]

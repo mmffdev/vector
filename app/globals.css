@@ -12174,3 +12174,34 @@ input[type="reset"] {
 
 /* Saving state dim */
 .table__row--saving { opacity: 0.6; pointer-events: none; }
+
+/* ─── Flow States Customisation (fs-*) ────────────────────────────────────────
+   fs-state-dot    : coloured circle badge next to state name.
+   fs-state-initial: small indicator marking the initial state.
+   fs-flow-section : wraps one flow (default or non-default) within a type tab.
+*/
+.fs-state-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.fs-state-initial {
+  display: inline-block;
+  margin-left: var(--space-2);
+  font-size: 0.55rem;
+  color: var(--ink-muted);
+  vertical-align: middle;
+}
+
+.fs-flow-section + .fs-flow-section {
+  margin-top: var(--space-6);
+}
+
+.fs-flow-section__label {
+  margin-bottom: var(--space-3);
+}

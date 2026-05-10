@@ -78,6 +78,20 @@ B22.21	fields site mount apiSite fieldsApi workspace
 B22.22	rank move site mount apiSite useResourceRank
 B22.23	timeboxes sprints releases site mount apiSite TimeboxManager useTimebox kinds
 B22.24	relations work-items site mount apiSite useRelationsData
+F1.1.1	task flow states ready doing completed migration seed
+F1.1.2	story flow states backlog ready doing completed accepted migration seed
+F1.1.3	epic flow states backlog ready doing completed accepted migration seed
+F1.1.4	defect flow states backlog ready doing completed accepted migration seed
+F1.1.5	defect QA flow submitted open fixed test reproducible deferred seed
+F1.1.6	strategy flow states BC BE PO SO backlog ready doing completed accepted seed
+F1.1.7	accepted kind flow_states CHECK constraint migration
+F1.2.1	flow states PATCH handler colour site flowstates
+F1.2.2	flow states route mountSiteRoutes register
+F1.3.1	customisation work-items page move third-level nav
+F1.3.2	customisation flow states third-level tab nav work strategy defect
+F1.3.3	flow state colour picker ColourPicker patch site
+F1.3.4	flowStatesApi list patch frontend apiSite
+F1.3.5	useWorkItemFlowStates colours FlowStatePillRow tree
 B22.25	ObjectTree resourceUrl artefact-items site mount apiSite
 B22.26	allowlist public_helper_allowlist zero hard block lint
 B22.27	transport segregation docs _site inventory phase2

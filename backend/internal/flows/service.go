@@ -2,9 +2,17 @@ package flows
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"regexp"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrStateNotFound = errors.New("flow state not found")
+	reColour         = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 )
 
 // Service reads flows and their states from vector_artefacts, scoped per
@@ -38,6 +46,8 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 	const q = `
 		SELECT
 		    f.id,
+		    f.name         AS flow_name,
+		    f.is_default,
 		    f.artefact_type_id,
 		    at.name        AS type_name,
 		    at.scope       AS type_scope,
@@ -54,7 +64,7 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 		  AND at.scope = $2
 		  AND at.archived_at IS NULL
 		  AND f.archived_at IS NULL
-		ORDER BY at.name, fs.sort_order;`
+		ORDER BY at.name, f.is_default DESC, fs.sort_order;`
 
 	rows, err := s.vaPool.Query(ctx, q, subscriptionID, scope)
 	if err != nil {
@@ -67,11 +77,12 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 
 	for rows.Next() {
 		var (
-			flowID, typeID, typeName, typeScope string
-			st                                  FlowState
+			flowID, flowName, typeID, typeName, typeScope string
+			isDefault                                     bool
+			st                                            FlowState
 		)
 		if err := rows.Scan(
-			&flowID, &typeID, &typeName, &typeScope,
+			&flowID, &flowName, &isDefault, &typeID, &typeName, &typeScope,
 			&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
 		); err != nil {
 			return nil, err
@@ -82,6 +93,8 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 			groupIdx[flowID] = idx
 			groups = append(groups, FlowGroup{
 				FlowID:    flowID,
+				FlowName:  flowName,
+				IsDefault: isDefault,
 				TypeID:    typeID,
 				TypeName:  typeName,
 				TypeScope: typeScope,
@@ -94,4 +107,38 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 		return nil, err
 	}
 	return groups, nil
+}
+
+// PatchFlowState updates the colour of a single flow state, scoped to the
+// caller's subscription so tenants cannot mutate each other's states.
+// Returns ErrStateNotFound when the id doesn't exist in this subscription.
+func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID string, in PatchStateInput) (*FlowState, error) {
+	if in.Colour != nil && !reColour.MatchString(*in.Colour) {
+		return nil, fmt.Errorf("flows: colour must be #RRGGBB or null")
+	}
+
+	const q = `
+		UPDATE flow_states fs
+		SET    colour = $1
+		FROM   flows f
+		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		WHERE  fs.id      = $2
+		  AND  fs.flow_id = f.id
+		  AND  at.subscription_id = $3
+		  AND  at.archived_at IS NULL
+		  AND  f.archived_at  IS NULL
+		  AND  fs.archived_at IS NULL
+		RETURNING fs.id, fs.name, fs.kind, fs.sort_order, fs.is_initial, fs.colour`
+
+	var st FlowState
+	err := s.vaPool.QueryRow(ctx, q, in.Colour, stateID, subscriptionID).Scan(
+		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrStateNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("flows: patch state: %w", err)
+	}
+	return &st, nil
 }

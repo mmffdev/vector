@@ -909,6 +909,14 @@ func main() {
 			r.Use(httprate.LimitByIP(60, time.Minute))
 			r.Get("/", flowsH.List)
 		})
+		// F1.2.1/F1.2.2 — flow state colour PATCH (no flows.manage gate;
+		// same auth level as artefact-types: any authenticated gadmin/padmin).
+		r.Route("/flow-states", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Patch("/{id}", flowsH.PatchFlowState)
+		})
 	}
 
 	// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
