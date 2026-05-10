@@ -918,6 +918,9 @@ func main() {
 				r.Post("/", flowsH.CreateTransition)
 				r.Delete("/", flowsH.DeleteTransition)
 			})
+			// Reset to factory-default snapshot — diff/preview, then apply.
+			r.Post("/reset/preview", flowsH.ResetPreview)
+			r.Post("/reset/apply", flowsH.ResetApply)
 		})
 		// Flow state mutations — no flows.manage gate so padmin/gadmin can use.
 		r.Route("/flow-states", func(r chi.Router) {

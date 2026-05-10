@@ -110,3 +110,6 @@ FLOW1.3.2	is_pullable toggle pill row settings flowStatesApi patch
 FLOW1.3.3	pullable visual indicator icon accent border distinct
 FLOW1.3.4	flow-map backlog zone boundary handoff line visual
 FLOW1.4.1	artefacts po_ready flag visual aid sort badge DoR future
+FLOW1.5.1	flow_defaults flow_state_defaults flow_transition_defaults snapshot tables seed
+FLOW1.5.2	loadResetData PreviewReset ApplyReset pickSuccessor walk-back rebind reset_service reset_handler
+FLOW1.5.3	TypeSection Reset button preview banner artefact-rebind impact confirmation
