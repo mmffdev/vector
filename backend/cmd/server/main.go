@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
+	"github.com/mmffdev/vector-backend/internal/logger"
 	"github.com/mmffdev/vector-backend/internal/addressables"
 	"github.com/mmffdev/vector-backend/internal/apikeys"
 	"github.com/mmffdev/vector-backend/internal/audit"
@@ -74,6 +75,7 @@ func main() {
 		envFile = ".env." + e
 	}
 	_ = godotenv.Load(envFile)
+	logger.Init()
 
 	// Prod safety: APP_ENV MUST be set explicitly. In production,
 	// COOKIE_SECURE MUST be true and FRONTEND_ORIGIN MUST be https://.
@@ -89,7 +91,7 @@ func main() {
 			log.Fatal("APP_ENV=production requires FRONTEND_ORIGIN to start with https://")
 		}
 	case "staging", "development":
-		log.Printf("⚠ APP_ENV=%s — cookie/origin guards relaxed; DO NOT run this in production", appEnv)
+		logger.Warn("APP_ENV relaxed — DO NOT run in production", "app_env", appEnv)
 	default:
 		log.Fatalf("APP_ENV=%q invalid; must be development, staging, or production", appEnv)
 	}
@@ -110,7 +112,7 @@ func main() {
 	// switching env to one that lacks migration 088 makes the backend
 	// unstartable, which is the worst possible failure mode for a launcher.
 	if err := permissions.VerifyParity(ctx, pool); err != nil {
-		log.Printf("⚠ permissions parity FAILED — RBAC-gated routes will deny by default until fixed: %v", err)
+		logger.Warn("permissions parity FAILED — RBAC-gated routes will deny by default until fixed", "err", err)
 		bootstatus.Set("permissions_parity", false, err.Error())
 	} else {
 		bootstatus.Set("permissions_parity", true, "")
@@ -169,7 +171,7 @@ func main() {
 	// after the DB recovers will populate the cache without a restart.
 	navRegistry := nav.NewCachedRegistry(pool, 60*time.Second)
 	if _, err := navRegistry.Load(ctx); err != nil {
-		log.Printf("⚠ nav registry initial load failed — nav routes will retry on first request: %v", err)
+		logger.Warn("nav registry initial load failed — will retry on first request", "err", err)
 		bootstatus.Set("nav_registry", false, err.Error())
 	} else {
 		bootstatus.Set("nav_registry", true, "")
@@ -283,17 +285,17 @@ func main() {
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
 		if vaErr != nil {
-			log.Printf("⚠ vector_artefacts pool config error — v2 artefact-items will return empty: %v", vaErr)
+			logger.Warn("vector_artefacts pool config error — v2 artefact-items will return empty", "err", vaErr)
 			makeStubHandlers()
 		} else {
 			vaCfg.MinConns = 2
 			vaCfg.MaxConnIdleTime = 5 * time.Minute
 			p, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
 			if vaErr != nil {
-				log.Printf("⚠ vector_artefacts pool connect failed — v2 artefact-items will return empty: %v", vaErr)
+				logger.Warn("vector_artefacts pool connect failed — v2 artefact-items will return empty", "err", vaErr)
 				makeStubHandlers()
 			} else if vaErr = p.Ping(ctx); vaErr != nil {
-				log.Printf("⚠ vector_artefacts pool ping failed — v2 artefact-items will return empty: %v", vaErr)
+				logger.Warn("vector_artefacts pool ping failed — v2 artefact-items will return empty", "err", vaErr)
 				p.Close()
 				makeStubHandlers()
 			} else {
@@ -306,7 +308,7 @@ func main() {
 						maskedURL = vaURL[:j+1] + "***" + vaURL[i:]
 					}
 				}
-				log.Printf("vector_artefacts pool connected: %s", maskedURL)
+				logger.Info("vector_artefacts pool connected", "url", maskedURL)
 				webhookSvc = webhooks.New(vaPool)
 				notifier := webhooks.NewNotifier(webhookSvc)
 				wiSvc := artefactitemsv2.NewService(vaPool, pool, "work")
@@ -325,7 +327,7 @@ func main() {
 			}
 		}
 	} else {
-		log.Printf("⚠ VECTOR_ARTEFACTS_DB_URL unset — v2 artefact-items will return empty pages")
+		logger.Warn("VECTOR_ARTEFACTS_DB_URL unset — v2 artefact-items will return empty pages")
 		makeStubHandlers()
 	}
 
@@ -1465,13 +1467,13 @@ func main() {
 		// Start webhook delivery worker (B9). Reads webhook_deliveries (migration 037).
 		go webhooks.NewWorker(vaPool).Run(shutdownCtx)
 	} else {
-		log.Println("searchworker: vaPool not available — search indexing disabled")
-		log.Println("webhooks/worker: vaPool not available — webhook delivery disabled")
+		logger.Warn("searchworker: vaPool not available — search indexing disabled")
+		logger.Warn("webhooks/worker: vaPool not available — webhook delivery disabled")
 	}
 
 	serverErr := make(chan error, 1)
 	go func() {
-		log.Printf("listening on :%s", port)
+		logger.Info("listening", "port", port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -1481,7 +1483,7 @@ func main() {
 	case err := <-serverErr:
 		log.Fatalf("server error: %v", err)
 	case <-shutdownCtx.Done():
-		log.Println("shutdown signal received, draining...")
+		logger.Info("shutdown signal received, draining")
 		drainCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(drainCtx); err != nil {
