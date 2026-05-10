@@ -59,6 +59,9 @@ func (s *Service) PreviewReset(ctx context.Context, subscriptionID string, in Re
 		ArtefactTypeName: tdata.typeName,
 		FlowID:           tdata.flowID,
 		FlowName:         tdata.flowName,
+		Pills:            []ResetPillDelta{},
+		Transitions:      []ResetTransitionDelta{},
+		ArtefactImpacts:  []ResetArtefactImpact{},
 	}
 
 	// Build pill deltas.

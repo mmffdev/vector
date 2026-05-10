@@ -1016,11 +1016,14 @@ function ResetBanner({
   onCancel: () => void;
   onApply: () => void;
 }) {
-  const adds    = preview.pills.filter((p) => p.action === "add");
-  const updates = preview.pills.filter((p) => p.action === "update");
-  const removes = preview.pills.filter((p) => p.action === "remove");
-  const txAdds    = preview.transitions.filter((t) => t.action === "add");
-  const txRemoves = preview.transitions.filter((t) => t.action === "remove");
+  const pills       = preview.pills       ?? [];
+  const transitions = preview.transitions ?? [];
+  const impacts     = preview.artefact_impacts ?? [];
+  const adds      = pills.filter((p) => p.action === "add");
+  const updates   = pills.filter((p) => p.action === "update");
+  const removes   = pills.filter((p) => p.action === "remove");
+  const txAdds    = transitions.filter((t) => t.action === "add");
+  const txRemoves = transitions.filter((t) => t.action === "remove");
 
   if (preview.already_at_default) {
     return (
@@ -1047,14 +1050,14 @@ function ResetBanner({
         {txRemoves.length > 0 && <li>−{txRemoves.length} removed transitions</li>}
       </ul>
 
-      {preview.artefact_impacts.length > 0 && (
+      {impacts.length > 0 && (
         <>
           <p className="fs-reset-banner__warn">
-            <strong>{preview.artefact_impacts.reduce((n, i) => n + i.artefact_count, 0)}</strong> artefacts
+            <strong>{impacts.reduce((n, i) => n + i.artefact_count, 0)}</strong> artefacts
             will move to a new flow state:
           </p>
           <ul className="fs-reset-banner__impacts">
-            {preview.artefact_impacts.map((i) => (
+            {impacts.map((i) => (
               <li key={i.removed_state_id}>
                 {i.artefact_count} on <strong>{i.removed_state_name}</strong> →{" "}
                 <strong>{i.successor_state_name}</strong>
