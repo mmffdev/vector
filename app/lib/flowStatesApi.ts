@@ -5,10 +5,21 @@ export type {
   FlowTransition,
   FlowGroup,
   FlowsResponse,
+  ResetPreview,
+  ResetApplyResult,
+  ResetPillDelta,
+  ResetTransitionDelta,
+  ResetArtefactImpact,
 } from "@/app/lib/apiSite/index";
 
 import { flows as flowsApi, flowStates as flowStatesApi_ } from "@/app/lib/apiSite/index";
-import type { FlowState, FlowTransition, FlowsResponse } from "@/app/lib/apiSite/index";
+import type {
+  FlowState,
+  FlowTransition,
+  FlowsResponse,
+  ResetPreview,
+  ResetApplyResult,
+} from "@/app/lib/apiSite/index";
 
 // Module-level cache so layout + page both resolve from the same in-flight request.
 let _cache: FlowsResponse | null = null;
@@ -64,6 +75,16 @@ async function deleteTransition(flowId: string, from: string, to: string): Promi
   invalidate();
 }
 
+async function resetPreview(artefactTypeId: string): Promise<ResetPreview> {
+  return flowsApi.resetPreview(artefactTypeId);
+}
+
+async function resetApply(artefactTypeId: string): Promise<ResetApplyResult> {
+  const result = await flowsApi.resetApply(artefactTypeId);
+  invalidate();
+  return result;
+}
+
 export const flowStatesApi = {
   list,
   patchState,
@@ -71,4 +92,6 @@ export const flowStatesApi = {
   createState,
   createTransition,
   deleteTransition,
+  resetPreview,
+  resetApply,
 };

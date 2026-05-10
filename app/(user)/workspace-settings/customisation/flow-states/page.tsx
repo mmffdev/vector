@@ -34,6 +34,7 @@ import {
   type FlowState,
   type FlowTransition,
   type FlowsResponse,
+  type ResetPreview,
 } from "@/app/lib/flowStatesApi";
 
 // ── Colour palette ────────────────────────────────────────────────────────────
@@ -924,15 +925,74 @@ function FlowBlock({
 }
 
 // ── TypeSection ───────────────────────────────────────────────────────────────
-function TypeSection({ typeId, typeName, groups }: {
+function TypeSection({ typeId, typeName, groups, onReloaded }: {
   typeId: string;
   typeName: string;
   groups: FlowGroup[];
+  onReloaded: () => void;
 }) {
   const multiFlow = groups.length > 1;
+  const [preview, setPreview] = useState<ResetPreview | null>(null);
+  const [busy, setBusy]       = useState(false);
+  const [err, setErr]         = useState<string | null>(null);
+
+  async function handlePreview() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const p = await flowStatesApi.resetPreview(typeId);
+      setPreview(p);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to preview reset.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleApply() {
+    if (!preview) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await flowStatesApi.resetApply(typeId);
+      setPreview(null);
+      notify.success(
+        `${typeName} reset — +${r.pills_added}/~${r.pills_updated}/-${r.pills_removed} pills, ${r.artefacts_rebound} artefacts rebound.`
+      );
+      onReloaded();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to apply reset.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section id={`type-${typeId}`}>
-      <h3 className="fs-type-heading">{typeName}</h3>
+      <div className="fs-type-heading-row">
+        <h3 className="fs-type-heading">{typeName}</h3>
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={handlePreview}
+          disabled={busy || preview !== null}
+          title="Compare this flow to its factory default and offer to reset it."
+        >
+          Reset to default…
+        </button>
+      </div>
+
+      {err && <p className="form__error">{err}</p>}
+
+      {preview && (
+        <ResetBanner
+          preview={preview}
+          busy={busy}
+          onCancel={() => { setPreview(null); setErr(null); }}
+          onApply={handleApply}
+        />
+      )}
+
       {groups.map((g) => (
         <FlowBlock
           key={g.flow_id}
@@ -941,6 +1001,78 @@ function TypeSection({ typeId, typeName, groups }: {
         />
       ))}
     </section>
+  );
+}
+
+// ── ResetBanner ───────────────────────────────────────────────────────────────
+function ResetBanner({
+  preview,
+  busy,
+  onCancel,
+  onApply,
+}: {
+  preview: ResetPreview;
+  busy: boolean;
+  onCancel: () => void;
+  onApply: () => void;
+}) {
+  const adds    = preview.pills.filter((p) => p.action === "add");
+  const updates = preview.pills.filter((p) => p.action === "update");
+  const removes = preview.pills.filter((p) => p.action === "remove");
+  const txAdds    = preview.transitions.filter((t) => t.action === "add");
+  const txRemoves = preview.transitions.filter((t) => t.action === "remove");
+
+  if (preview.already_at_default) {
+    return (
+      <div className="fs-reset-banner fs-reset-banner--info">
+        <p>This flow already matches its factory default.</p>
+        <div className="fs-reset-banner__actions">
+          <button type="button" className="btn btn--ghost btn--small" onClick={onCancel}>Dismiss</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fs-reset-banner">
+      <p className="fs-reset-banner__lead">
+        Resetting will rewrite this flow to its factory default. Review the changes below before applying.
+      </p>
+
+      <ul className="fs-reset-banner__counts">
+        {adds.length    > 0 && <li>+{adds.length} new pills: {adds.map((p) => p.name).join(", ")}</li>}
+        {removes.length > 0 && <li>−{removes.length} removed pills: {removes.map((p) => p.name).join(", ")}</li>}
+        {updates.length > 0 && <li>~{updates.length} updated pills: {updates.map((p) => p.name).join(", ")}</li>}
+        {txAdds.length    > 0 && <li>+{txAdds.length} new transitions</li>}
+        {txRemoves.length > 0 && <li>−{txRemoves.length} removed transitions</li>}
+      </ul>
+
+      {preview.artefact_impacts.length > 0 && (
+        <>
+          <p className="fs-reset-banner__warn">
+            <strong>{preview.artefact_impacts.reduce((n, i) => n + i.artefact_count, 0)}</strong> artefacts
+            will move to a new flow state:
+          </p>
+          <ul className="fs-reset-banner__impacts">
+            {preview.artefact_impacts.map((i) => (
+              <li key={i.removed_state_id}>
+                {i.artefact_count} on <strong>{i.removed_state_name}</strong> →{" "}
+                <strong>{i.successor_state_name}</strong>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <div className="fs-reset-banner__actions">
+        <button type="button" className="btn btn--ghost btn--small" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button type="button" className="btn btn--primary btn--small" onClick={onApply} disabled={busy}>
+          {busy ? "Applying…" : "Apply reset"}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1014,7 +1146,7 @@ export default function FlowStatesPage() {
             <>
               <h2 className="eyebrow fs-scope-heading" id="section-work">Work Types</h2>
               {[...workByType.entries()].map(([typeId, { name, flows }]) => (
-                <TypeSection key={typeId} typeId={typeId} typeName={name} groups={flows} />
+                <TypeSection key={typeId} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
               ))}
             </>
           )}
@@ -1023,7 +1155,7 @@ export default function FlowStatesPage() {
             <>
               <h2 className="eyebrow fs-scope-heading" id="section-strategy">Strategy Types</h2>
               {[...strategyByType.entries()].map(([typeId, { name, flows }]) => (
-                <TypeSection key={typeId} typeId={typeId} typeName={name} groups={flows} />
+                <TypeSection key={typeId} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
               ))}
             </>
           )}

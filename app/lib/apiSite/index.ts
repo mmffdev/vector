@@ -521,6 +521,58 @@ export interface FlowsResponse {
   strategy: FlowGroup[];
 }
 
+// Reset-to-default surface — diff/preview, then apply.
+
+export interface ResetPillDelta {
+  action: "keep" | "update" | "add" | "remove";
+  live_state_id?: string;
+  name: string;
+  kind: string;
+  sort_order: number;
+  is_initial: boolean;
+  is_pullable: boolean;
+  successor_state_id?: string;
+  successor_state_name?: string;
+}
+
+export interface ResetTransitionDelta {
+  action: "add" | "remove";
+  from_state_id: string;
+  to_state_id: string;
+  from_name: string;
+  to_name: string;
+}
+
+export interface ResetArtefactImpact {
+  removed_state_id: string;
+  removed_state_name: string;
+  successor_state_id: string;
+  successor_state_name: string;
+  artefact_count: number;
+}
+
+export interface ResetPreview {
+  artefact_type_id: string;
+  artefact_type_name: string;
+  flow_id: string;
+  flow_name: string;
+  pills: ResetPillDelta[];
+  transitions: ResetTransitionDelta[];
+  artefact_impacts: ResetArtefactImpact[];
+  already_at_default: boolean;
+}
+
+export interface ResetApplyResult {
+  artefact_type_id: string;
+  flow_id: string;
+  pills_added: number;
+  pills_updated: number;
+  pills_removed: number;
+  transitions_added: number;
+  transitions_removed: number;
+  artefacts_rebound: number;
+}
+
 export const flows = {
   list: () =>
     apiSite<FlowsResponse>("/flows/"),
@@ -541,6 +593,18 @@ export const flows = {
     apiSite<void>(`/flows/${flowId}/transitions`, {
       method: "DELETE",
       body: JSON.stringify({ from_state_id, to_state_id }),
+    }),
+
+  resetPreview: (artefact_type_id: ID) =>
+    apiSite<ResetPreview>(`/flows/reset/preview`, {
+      method: "POST",
+      body: JSON.stringify({ artefact_type_id }),
+    }),
+
+  resetApply: (artefact_type_id: ID) =>
+    apiSite<ResetApplyResult>(`/flows/reset/apply`, {
+      method: "POST",
+      body: JSON.stringify({ artefact_type_id }),
     }),
 };
 
