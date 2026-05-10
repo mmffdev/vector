@@ -12271,46 +12271,200 @@ input[type="reset"] {
   margin-top: 0;
 }
 
-/* ─── FlowMap (fs-flow-map-*) ─────────────────────────────────────────────────
-   Inline SVG diagram above each flow's state table.
-   Horizontally scrollable so wide flows (e.g. 8-state QA) never clip.
+/* ─── FlowMap interactive editor (fs-map-*) ──────────────────────────────────
+   HTML flex-row pill editor. Pills sit in a scrollable row. + buttons sit
+   between pills and at both ends. Clicking + opens an inline insert card.
+   Animations: pills slide in on insert, slide out + collapse width on remove.
 */
-.fs-flow-map {
+.fs-map {
   overflow-x: auto;
   overflow-y: visible;
-  margin-bottom: var(--space-3);
-  background: transparent;
+  margin-bottom: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 4px 0;
+  padding: var(--space-3) var(--space-2);
+  background: transparent;
 }
 
-.fs-flow-map__svg {
-  display: block;
-  /* font inherits from the page so state labels match body text */
-  font-family: inherit;
-  overflow: visible;
-}
-
-/* ─── Add state form (fs-add-state-*) ────────────────────────────────────────*/
-.fs-add-state-btn {
-  margin-top: var(--space-2);
-}
-
-.fs-add-state-form {
+.fs-map__row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  gap: 0;
+  min-height: 52px;
 }
 
-.fs-add-state-form__name {
+/* ── Pills ── */
+.fs-map__pill-wrap {
+  display: flex;
+  align-items: center;
+  /* slide-in animation */
+  animation: fs-pill-in 180ms ease-out both;
+}
+
+@keyframes fs-pill-in {
+  from { opacity: 0; transform: scaleX(0.6); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+.fs-map__pill-wrap--removing {
+  animation: fs-pill-out 200ms ease-in forwards;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+@keyframes fs-pill-out {
+  0%   { opacity: 1; max-width: 200px; }
+  60%  { opacity: 0; max-width: 200px; }
+  100% { opacity: 0; max-width: 0;     }
+}
+
+.fs-map__pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 10px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  line-height: 1;
+  position: relative;
+  min-width: 72px;
+}
+
+.fs-map__initial-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.fs-map__pill-label {
+  color: var(--ink);
   flex: 1;
-  max-width: 220px;
 }
 
-.fs-add-state-form__kind {
-  width: 140px;
+/* ── Arrows ── */
+.fs-map__arrow {
+  color: var(--ink-subtle);
+  font-size: 0.85rem;
+  padding: 0 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ── Plus buttons ── */
+.fs-map__plus-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.fs-map__plus-wrap--last .fs-map__arrow {
+  display: none; /* no arrow after last state */
+}
+
+.fs-map__plus-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px dashed #ffffff;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: border-color 120ms, color 120ms, opacity 120ms;
+}
+
+.fs-map__plus-btn:hover:not(:disabled) {
+  opacity: 0.7;
+}
+
+.fs-map__plus-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.fs-map__remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px dashed #ff0000;
+  background: transparent;
+  color: #ff0000;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 120ms;
+  flex-shrink: 0;
+}
+
+.fs-map__pill:hover .fs-map__remove-btn {
+  opacity: 1;
+}
+
+.fs-map__remove-btn:hover {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+/* ── Insert card (inline name + kind + buttons) ── */
+.fs-map__slot {
+  display: flex;
+  align-items: center;
+  animation: fs-pill-in 150ms ease-out both;
+}
+
+.fs-map__insert-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1.5px solid var(--accent);
+  padding: 4px 6px;
+  background: var(--surface-raised);
+  min-width: 260px;
+}
+
+.fs-map__insert-name {
+  flex: 1;
+  min-width: 100px;
+  font-size: 0.8rem;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+  padding: 2px 4px;
+}
+
+.fs-map__insert-name::placeholder {
+  color: var(--ink-subtle);
+}
+
+.fs-map__insert-kind {
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  max-width: 100px;
+}
+
+.fs-map__insert-ok {
+  white-space: nowrap;
 }
 
 /* ─── Transition matrix (fs-transition-matrix-*) ─────────────────────────────*/

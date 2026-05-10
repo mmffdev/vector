@@ -57,196 +57,251 @@ const KIND_STROKE: Record<string, string> = {
 
 
 // ── FlowMap ───────────────────────────────────────────────────────────────────
-// Pure-SVG horizontal flow diagram. States are laid out left-to-right by
-// sort_order. Forward transitions (increasing sort_order) are rendered as
-// straight arrows on the top half; back-edges as curved arcs on the bottom.
-// No external library — just SVG path arithmetic.
+// Interactive inline flow editor. States render as HTML flex pills with + insert
+// buttons between them (and at the ends). Clicking + opens an inline name input
+// at that position; the new state is auto-assigned a kind based on neighbours.
+// Custom states (not seeded) show a − remove button.
 
-const PILL_W   = 90;
-const PILL_H   = 28;
-const GAP      = 36;         // horizontal gap between pills
-const ARROW_Y  = PILL_H / 2; // centre-line Y (within the pill row)
-const ARC_DIP  = 22;         // how far below centre back-arcs dip
-const PAD_X    = 12;
-const PAD_TOP  = 20;         // space above pills for forward arrows
-const PAD_BOT  = ARC_DIP + 14; // space below pills for back-arcs
-
-const SVG_H    = PAD_TOP + PILL_H + PAD_BOT;
-
-function pillX(idx: number): number {
-  return PAD_X + idx * (PILL_W + GAP);
+// A pending insert slot — not yet persisted.
+interface PendingInsert {
+  afterIndex: number; // -1 = before all; 0 = after index 0; etc.
+  name: string;
+  kind: string;
 }
 
-function pillCentreX(idx: number): number {
-  return pillX(idx) + PILL_W / 2;
+// Infer a sensible kind for a new state inserted between left/right neighbours.
+function inferKind(left: FlowState | null, right: FlowState | null): string {
+  if (!left)  return right?.kind ?? "todo";
+  if (!right) return left?.kind  ?? "in_progress";
+  const ORDER: Record<string, number> = { todo: 0, in_progress: 1, done: 2, accepted: 3, cancelled: 4 };
+  const l = ORDER[left.kind] ?? 1;
+  const r = ORDER[right.kind] ?? 1;
+  if (r > l) {
+    const mid = Math.round((l + r) / 2);
+    const KEY = ["todo", "in_progress", "done", "accepted", "cancelled"];
+    return KEY[mid] ?? left.kind;
+  }
+  return left.kind;
 }
 
-// Arrow marker id is unique per flow to avoid SVG defs collision when multiple
-// FlowMap instances share the page.
+const KIND_OPTIONS = [
+  { value: "todo",        label: "To Do" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "done",        label: "Done" },
+  { value: "accepted",    label: "Accepted" },
+  { value: "cancelled",   label: "Cancelled" },
+];
+
 function FlowMap({
   states,
-  transitions,
-  markerId,
-  onStateColourChange,
+  flowId,
+  onCreated,
+  onDeleted,
 }: {
   states: FlowState[];
-  transitions: FlowTransition[];
-  markerId: string;
-  onStateColourChange: (stateId: string, colour: string | null) => void;
+  flowId: string;
+  onCreated: (st: FlowState, afterIndex: number) => void;
+  onDeleted: (stateId: string) => void;
 }) {
-  // Index states by id for O(1) lookup.
-  const byId = new Map(states.map((s, i) => [s.id, { ...s, idx: i }]));
+  const [pending,    setPending]    = useState<PendingInsert | null>(null);
+  const [saving,     setSaving]     = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  const svgW = PAD_X * 2 + states.length * PILL_W + Math.max(0, states.length - 1) * GAP;
-  const pillBaseY = PAD_TOP; // top of pill row within SVG
+  // Focus the name input when a slot opens.
+  useEffect(() => {
+    if (pending) nameRef.current?.focus();
+  }, [pending?.afterIndex]);
 
-  // Split transitions into forward (happy path) and back (return arcs).
-  const fwdEdges: FlowTransition[] = [];
-  const backEdges: FlowTransition[] = [];
-  for (const t of (transitions ?? [])) {
-    const f = byId.get(t.from);
-    const to = byId.get(t.to);
-    if (!f || !to) continue;
-    if (to.idx > f.idx) fwdEdges.push(t);
-    else backEdges.push(t);
+  const openSlot = useCallback((afterIndex: number, left: FlowState | null, right: FlowState | null) => {
+    setPending({ afterIndex, name: "", kind: inferKind(left, right) });
+  }, []);
+
+  const cancelSlot = useCallback(() => setPending(null), []);
+
+  const commitSlot = useCallback(async () => {
+    if (!pending || !pending.name.trim() || saving) return;
+    setSaving(true);
+    try {
+      const insertAt = pending.afterIndex + 1;
+      const sort_order = (insertAt + 1) * 10;
+      const st = await flowStatesApi.createState(flowId, {
+        name: pending.name.trim(),
+        kind: pending.kind,
+        sort_order,
+      });
+      onCreated(st, pending.afterIndex);
+      setPending(null);
+    } catch (err) {
+      notify.apiError(err, "Failed to create state.");
+    } finally {
+      setSaving(false);
+    }
+  }, [pending, saving, flowId, onCreated]);
+
+  const removeState = useCallback(async (st: FlowState) => {
+    setRemovingId(st.id);
+    try {
+      await flowStatesApi.deleteState(st.id);
+      // Wait for CSS collapse animation (200ms) before parent removes from list.
+      setTimeout(() => {
+        onDeleted(st.id);
+        setRemovingId(null);
+      }, 220);
+    } catch (err) {
+      setRemovingId(null);
+      notify.apiError(err, "Failed to remove state.");
+    }
+  }, [onDeleted]);
+
+  // Shared insert-card render (used for both mid and last-position slots).
+  const insertCard = (key: string, showArrowAfter: boolean) => (
+    <div key={key} className="fs-map__slot">
+      <div className="fs-map__insert-card">
+        <input
+          ref={nameRef}
+          className="fs-map__insert-name"
+          placeholder="State name…"
+          value={pending!.name}
+          maxLength={60}
+          onChange={(e) => setPending((p) => p ? { ...p, name: e.target.value } : p)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitSlot();
+            if (e.key === "Escape") cancelSlot();
+          }}
+        />
+        <select
+          className="fs-map__insert-kind"
+          value={pending!.kind}
+          onChange={(e) => setPending((p) => p ? { ...p, kind: e.target.value } : p)}
+        >
+          {KIND_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn btn--xs btn--primary fs-map__insert-ok"
+          disabled={saving || !pending!.name.trim()}
+          onClick={commitSlot}
+        >
+          {saving ? "…" : "Add"}
+        </button>
+        <button type="button" className="btn btn--xs btn--ghost" onClick={cancelSlot}>✕</button>
+      </div>
+      {showArrowAfter && <div className="fs-map__arrow" aria-hidden="true">→</div>}
+    </div>
+  );
+
+  // Build layout: [+] → pill → [+] → pill → ... → pill → [+]
+  // Sequence of slots, indexed by afterIndex:
+  //   afterIndex -1  = before state[0]
+  //   afterIndex  i  = after state[i] (for i = 0..N-1)
+  //
+  // Arrows appear: after the first +, between each pair (after pill before next +),
+  // and after each mid + before its pill. NOT after the last +.
+  const items: React.ReactNode[] = [];
+
+  // Slot -1 (before all states)
+  if (pending?.afterIndex === -1) {
+    items.push(insertCard("slot--1", states.length > 0));
+  } else {
+    items.push(
+      <div key="plus--1" className="fs-map__plus-wrap">
+        <button
+          type="button"
+          className="fs-map__plus-btn"
+          disabled={!!pending}
+          title="Insert state before first"
+          onClick={() => openSlot(-1, null, states[0] ?? null)}
+          aria-label="Insert state before first"
+        >
+          +
+        </button>
+        {states.length > 0 && <div className="fs-map__arrow" aria-hidden="true">→</div>}
+      </div>
+    );
   }
 
-  // Arrow head: small filled triangle.
-  const markerSize = 7;
+  states.forEach((s, i) => {
+    const stroke     = s.colour ?? (KIND_STROKE[s.kind] ?? "var(--border)");
+    const isRemoving = removingId === s.id;
+    const isLast     = i === states.length - 1;
+
+    // Pill
+    items.push(
+      <div key={s.id} className={`fs-map__pill-wrap${isRemoving ? " fs-map__pill-wrap--removing" : ""}`}>
+        <div className="fs-map__pill" style={{ borderColor: stroke }}>
+          {s.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
+          <span className="fs-map__pill-label">{s.name}</span>
+          {!s.is_initial && (
+            <button
+              type="button"
+              className="fs-map__remove-btn"
+              title={`Remove ${s.name}`}
+              disabled={!!removingId}
+              onClick={() => removeState(s)}
+              aria-label={`Remove state ${s.name}`}
+            >
+              −
+            </button>
+          )}
+        </div>
+      </div>
+    );
+
+    // Slot after this pill
+    if (!isLast) {
+      // Arrow after pill, before mid +
+      items.push(<div key={`arr-${i}`} className="fs-map__arrow" aria-hidden="true">→</div>);
+      if (pending?.afterIndex === i) {
+        items.push(insertCard(`slot-${i}`, true));
+      } else {
+        items.push(
+          <div key={`plus-${i}`} className="fs-map__plus-wrap">
+            <button
+              type="button"
+              className="fs-map__plus-btn"
+              disabled={!!pending}
+              title="Insert state here"
+              onClick={() => openSlot(i, s, states[i + 1])}
+              aria-label="Insert state"
+            >
+              +
+            </button>
+            <div className="fs-map__arrow" aria-hidden="true">→</div>
+          </div>
+        );
+      }
+    } else {
+      // Last pill → final slot (no arrow after)
+      items.push(<div key="arr-last" className="fs-map__arrow" aria-hidden="true">→</div>);
+      if (pending?.afterIndex === i) {
+        items.push(insertCard("slot-last", false));
+      } else {
+        items.push(
+          <div key="plus-last" className="fs-map__plus-wrap">
+            <button
+              type="button"
+              className="fs-map__plus-btn"
+              disabled={!!pending}
+              title="Add state at end"
+              onClick={() => openSlot(i, s, null)}
+              aria-label="Add state at end"
+            >
+              +
+            </button>
+          </div>
+        );
+      }
+    }
+  });
 
   return (
-    <div className="fs-flow-map" aria-hidden="true">
-      <svg
-        width={svgW}
-        height={SVG_H}
-        viewBox={`0 0 ${svgW} ${SVG_H}`}
-        className="fs-flow-map__svg"
-      >
-        <defs>
-          {/* Forward arrow — dark */}
-          <marker
-            id={`${markerId}-fwd`}
-            markerWidth={markerSize}
-            markerHeight={markerSize}
-            refX={markerSize - 1}
-            refY={markerSize / 2}
-            orient="auto"
-          >
-            <path
-              d={`M0,0 L0,${markerSize} L${markerSize},${markerSize / 2} Z`}
-              fill="var(--ink-muted)"
-            />
-          </marker>
-          {/* Back arrow — subtler */}
-          <marker
-            id={`${markerId}-back`}
-            markerWidth={markerSize}
-            markerHeight={markerSize}
-            refX={markerSize - 1}
-            refY={markerSize / 2}
-            orient="auto"
-          >
-            <path
-              d={`M0,0 L0,${markerSize} L${markerSize},${markerSize / 2} Z`}
-              fill="var(--border)"
-            />
-          </marker>
-        </defs>
-
-        {/* ── Forward edges ── straight lines in the top zone */}
-        {fwdEdges.map((t) => {
-          const f  = byId.get(t.from)!;
-          const to = byId.get(t.to)!;
-          // Only draw non-adjacent edges as arcs above; adjacent ones as
-          // a simpler line connecting pill right-edge to pill left-edge.
-          const x1 = pillCentreX(f.idx)  + PILL_W / 2 + 5;
-          const x2 = pillCentreX(to.idx) - PILL_W / 2 - 5;
-          const y  = pillBaseY + ARROW_Y;
-          // Arc height scales with distance so crossing lines stay readable.
-          const span = to.idx - f.idx;
-          const lift = span === 1 ? 0 : 10 + (span - 2) * 6;
-          const mx   = (x1 + x2) / 2;
-          const my   = y - lift - 10;
-          const d    = lift === 0
-            ? `M${x1},${y} L${x2},${y}`
-            : `M${x1},${y} Q${mx},${my} ${x2},${y}`;
-          return (
-            <path
-              key={`fwd-${t.from}-${t.to}`}
-              d={d}
-              fill="none"
-              stroke="var(--ink-muted)"
-              strokeWidth={1.5}
-              markerEnd={`url(#${markerId}-fwd)`}
-            />
-          );
-        })}
-
-        {/* ── Back edges ── arcs dipping below the pill row */}
-        {backEdges.map((t) => {
-          const f  = byId.get(t.from)!;
-          const to = byId.get(t.to)!;
-          const x1 = pillX(f.idx)  - 5;
-          const x2 = pillX(to.idx) + PILL_W + 5;
-          const y  = pillBaseY + PILL_H;
-          const span = f.idx - to.idx;
-          const dip  = ARC_DIP + (span - 1) * 8;
-          const mx   = (x1 + x2) / 2;
-          const my   = y + dip;
-          return (
-            <path
-              key={`back-${t.from}-${t.to}`}
-              d={`M${x1},${y} Q${mx},${my} ${x2},${y}`}
-              fill="none"
-              stroke="var(--border)"
-              strokeWidth={1.2}
-              strokeDasharray="3 3"
-              markerEnd={`url(#${markerId}-back)`}
-            />
-          );
-        })}
-
-        {/* ── State pills ── */}
-        {states.map((s, i) => {
-          const x    = pillX(i);
-          const y    = pillBaseY;
-          const stroke = s.colour ?? (KIND_STROKE[s.kind] ?? "var(--border)");
-          return (
-            <g
-              key={s.id}
-              className="fs-flow-map__pill"
-              onClick={() => onStateColourChange(s.id, null)}
-              style={{ cursor: "default" }}
-            >
-              <rect
-                x={x}
-                y={y}
-                width={PILL_W}
-                height={PILL_H}
-                rx={0}
-                fill="transparent"
-                stroke={stroke}
-                strokeWidth={1.5}
-              />
-              {s.is_initial && (
-                <circle cx={x + 8} cy={y + PILL_H / 2} r={3} fill="var(--ink-muted)" opacity={0.5} />
-              )}
-              <text
-                x={x + PILL_W / 2}
-                y={y + PILL_H / 2 + 1}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={10}
-                fontFamily="inherit"
-                fontWeight={s.is_initial ? 600 : 400}
-                fill="var(--ink)"
-              >
-                {s.name}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+    <div className="fs-map" role="group" aria-label="Flow state map">
+      <div className="fs-map__row">
+        {items}
+      </div>
     </div>
   );
 }
@@ -424,80 +479,6 @@ function StateRow({
   );
 }
 
-// ── AddStateForm ──────────────────────────────────────────────────────────────
-const KIND_OPTIONS = [
-  { value: "todo",        label: "To Do" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "done",        label: "Done" },
-  { value: "accepted",    label: "Accepted" },
-  { value: "cancelled",   label: "Cancelled" },
-];
-
-function AddStateForm({
-  flowId,
-  onCreated,
-}: {
-  flowId: string;
-  onCreated: (state: FlowState) => void;
-}) {
-  const [open,    setOpen]    = useState(false);
-  const [name,    setName]    = useState("");
-  const [kind,    setKind]    = useState("todo");
-  const [saving,  setSaving]  = useState(false);
-
-  const submit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setSaving(true);
-    try {
-      const st = await flowStatesApi.createState(flowId, { name: name.trim(), kind });
-      onCreated(st);
-      setName("");
-      setKind("todo");
-      setOpen(false);
-    } catch (err) {
-      notify.apiError(err, "Failed to create state.");
-    } finally {
-      setSaving(false);
-    }
-  }, [flowId, name, kind, onCreated]);
-
-  if (!open) {
-    return (
-      <button type="button" className="btn btn--sm btn--ghost fs-add-state-btn" onClick={() => setOpen(true)}>
-        + Add state
-      </button>
-    );
-  }
-
-  return (
-    <form className="fs-add-state-form" onSubmit={submit}>
-      <input
-        className="form__input fs-add-state-form__name"
-        placeholder="State name"
-        value={name}
-        maxLength={60}
-        autoFocus
-        onChange={(e) => setName(e.target.value)}
-      />
-      <select
-        className="form__select fs-add-state-form__kind"
-        value={kind}
-        onChange={(e) => setKind(e.target.value)}
-      >
-        {KIND_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <button type="submit" className="btn btn--sm btn--primary" disabled={saving || !name.trim()}>
-        {saving ? "Adding…" : "Add"}
-      </button>
-      <button type="button" className="btn btn--sm btn--ghost" onClick={() => { setOpen(false); setName(""); }}>
-        Cancel
-      </button>
-    </form>
-  );
-}
 
 // ── TransitionMatrix ──────────────────────────────────────────────────────────
 // Grid where each cell represents a possible (from → to) transition.
@@ -589,30 +570,34 @@ function TransitionMatrix({
 }
 
 // ── FlowBlock ─────────────────────────────────────────────────────────────────
-// One flow within a type section — diagram header + state table.
 function FlowBlock({
   group,
-  markerId,
   showLabel,
 }: {
   group: FlowGroup;
-  markerId: string;
   showLabel: boolean;
 }) {
   const [states,      setStates]      = useState<FlowState[]>(group.states);
   const [transitions, setTransitions] = useState<FlowTransition[]>(group.transitions ?? []);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
   const onPatched = useCallback((updated: FlowState) => {
     setStates((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
-  const onCreated = useCallback((st: FlowState) => {
-    setStates((prev) => [...prev, st].sort((a, b) => a.sort_order - b.sort_order));
+  // Insert the new state at the correct position based on afterIndex.
+  const onMapCreated = useCallback((st: FlowState, afterIndex: number) => {
+    setStates((prev) => {
+      const insertAt = afterIndex + 1; // -1 → 0 (prepend), N → N+1
+      const next = [...prev];
+      next.splice(insertAt, 0, st);
+      return next;
+    });
   }, []);
 
-  const noopColourChange = useCallback(() => {}, []);
+  const onMapDeleted = useCallback((stateId: string) => {
+    setStates((prev) => prev.filter((s) => s.id !== stateId));
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -628,13 +613,11 @@ function FlowBlock({
       const newIdx = prev.findIndex((s) => s.id === over.id);
       const next = arrayMove(prev, oldIdx, newIdx);
 
-      // Debounce the persist — fire 250ms after the last drop.
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(async () => {
-        // Assign sort_order as multiples of 10 to leave gaps for future inserts.
         const changed = next.filter((s, i) => s.sort_order !== (i + 1) * 10);
         await Promise.all(
-          changed.map((s, _) => {
+          changed.map((s) => {
             const newOrder = (next.indexOf(s) + 1) * 10;
             return flowStatesApi
               .patchState(s.id, { sort_order: newOrder })
@@ -651,14 +634,12 @@ function FlowBlock({
     <div className="fs-flow-block">
       {showLabel && <p className="fs-flow-name">{group.flow_name}</p>}
 
-      {states.length > 0 && (
-        <FlowMap
-          states={states}
-          transitions={transitions}
-          markerId={markerId}
-          onStateColourChange={noopColourChange}
-        />
-      )}
+      <FlowMap
+        states={states}
+        flowId={group.flow_id}
+        onCreated={onMapCreated}
+        onDeleted={onMapDeleted}
+      />
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={states.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -681,8 +662,6 @@ function FlowBlock({
           </div>
         </SortableContext>
       </DndContext>
-
-      <AddStateForm flowId={group.flow_id} onCreated={onCreated} />
 
       <TransitionMatrix
         flowId={group.flow_id}
@@ -708,7 +687,6 @@ function TypeSection({ typeId, typeName, groups }: {
         <FlowBlock
           key={g.flow_id}
           group={g}
-          markerId={`flow-${g.flow_id.slice(0, 8)}`}
           showLabel={multiFlow}
         />
       ))}
