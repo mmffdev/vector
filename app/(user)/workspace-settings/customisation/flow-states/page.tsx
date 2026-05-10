@@ -397,7 +397,7 @@ function StateRow({
       style={style}
       className={`table__row${saving ? " table__row--saving" : ""}${isDragging ? " table__row--dragging" : ""}`}
     >
-      <td className="table__cell drag-handle-cell" {...attributes} {...listeners} aria-label="Drag to reorder">
+      <td className="table__cell drag-handle-cell" {...attributes} {...listeners} aria-label="Drag to reorder" style={{ cursor: "grab", touchAction: "none" }}>
         <span className="drag-handle" aria-hidden="true">⋮⋮</span>
       </td>
       <td className="table__cell">
@@ -603,7 +603,6 @@ function FlowBlock({
   const [transitions, setTransitions] = useState<FlowTransition[]>(group.transitions ?? []);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { setStates(group.states); }, [group.states]);
 
   const onPatched = useCallback((updated: FlowState) => {
     setStates((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
@@ -616,7 +615,7 @@ function FlowBlock({
   const noopColourChange = useCallback(() => {}, []);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
