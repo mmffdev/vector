@@ -12290,24 +12290,42 @@ input[type="reset"] {
   display: flex;
   align-items: flex-start;
   gap: 0;
-  min-height: 60px;
+  min-height: 100px;
 }
 
-/* Arrows and plus-wraps need to sit vertically centred against the pill card,
-   not the entire pill-wrap (which is taller due to toolbar). Offset them down
-   by half the toolbar height (~12px) so they align with the pill centre. */
+/* Arrows and plus-wraps align against the pill card (top of pill-wrap).
+   Pill card is ~28px tall; push arrows down so they sit at pill centre. */
 .fs-map__arrow,
 .fs-map__plus-wrap {
-  margin-top: 6px;
+  margin-top: 9px;
 }
 
 /* ── Pills ── */
+
+/* The sortable slot is the dnd-kit ref target — it becomes transparent when
+   dragging (the DragOverlay ghost floats above in its place). */
+.fs-map__sortable-slot {
+  flex-shrink: 0;
+}
+
+.fs-map__sortable-slot--dragging {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .fs-map__pill-wrap {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   animation: fs-pill-in 180ms ease-out both;
   flex-shrink: 0;
+}
+
+/* Overlay ghost — lifted, no animation */
+.fs-map__pill-wrap--overlay {
+  animation: none;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+  cursor: grabbing;
 }
 
 @keyframes fs-pill-in {
@@ -12327,21 +12345,19 @@ input[type="reset"] {
   100% { opacity: 0; max-width: 0;     }
 }
 
-.fs-map__pill-wrap--dragging {
-  opacity: 0.5;
-}
-
 .fs-map__pill {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 5px 10px;
+  padding: 6px 12px;
   border: 1.5px solid var(--border);
   background: transparent;
   white-space: nowrap;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   line-height: 1;
-  min-width: 80px;
+  min-width: 90px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .fs-map__initial-dot {
@@ -12359,39 +12375,38 @@ input[type="reset"] {
   flex: 1;
 }
 
-/* Toolbar row: drag handle + remove btn, below the pill, right-aligned */
+/* Toolbar: drag handle + remove btn, centred below the pill, always visible */
 .fs-map__pill-toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 2px 2px 0;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 0 2px;
 }
 
 .fs-map__drag-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 1.5px dashed #ffffff;
-  background: transparent;
+  border: none;
+  background: #1d4ed8; /* solid blue — matches screenshot */
   color: #ffffff;
   cursor: grab;
   padding: 0;
-  opacity: 0.5;
-  transition: opacity 120ms;
   flex-shrink: 0;
+  transition: background 120ms;
 }
 
-.fs-map__pill-wrap:hover .fs-map__drag-handle {
-  opacity: 1;
+.fs-map__drag-handle:hover {
+  background: #2563eb;
 }
 
 .fs-map__drag-handle:active {
   cursor: grabbing;
-  opacity: 1;
+  background: #1e40af;
 }
 
 /* ── Arrows ── */
@@ -12445,27 +12460,27 @@ input[type="reset"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 1.5px dashed #ff0000;
+  border: 2.5px dashed #ff0000;
   background: transparent;
   color: #ff0000;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.4rem;
   line-height: 1;
   padding: 0;
-  opacity: 0;
-  transition: opacity 120ms;
   flex-shrink: 0;
+  transition: background 120ms;
 }
 
-.fs-map__pill-wrap:hover .fs-map__remove-btn {
-  opacity: 1;
+.fs-map__remove-btn:hover:not(:disabled) {
+  background: rgba(255, 0, 0, 0.12);
 }
 
-.fs-map__remove-btn:hover {
-  background: rgba(255, 0, 0, 0.1);
+.fs-map__remove-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ── Insert card (inline name + kind + buttons) ── */

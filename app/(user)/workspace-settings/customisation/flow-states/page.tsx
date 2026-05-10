@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -93,10 +95,67 @@ function inferKind(left: FlowState | null, right: FlowState | null): string {
   return left.kind;
 }
 
+// ── PillCard ──────────────────────────────────────────────────────────────────
+// Pure visual pill + toolbar. Used both for the sortable item and the DragOverlay.
+function PillCard({
+  state,
+  position,
+  removingId,
+  onRemove,
+  dragHandleProps,
+  isOverlay = false,
+}: {
+  state: FlowState;
+  position: "first" | "middle" | "last";
+  removingId?: string | null;
+  onRemove?: (s: FlowState) => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  isOverlay?: boolean;
+}) {
+  const stroke = state.colour ?? (KIND_STROKE[state.kind] ?? "var(--border)");
+
+  const DragIcon =
+    position === "first"  ? BsArrowBarRight :
+    position === "last"   ? BsArrowBarLeft  :
+    BsArrowsExpandVertical;
+
+  return (
+    <div className={`fs-map__pill-wrap${isOverlay ? " fs-map__pill-wrap--overlay" : ""}`}>
+      <div className="fs-map__pill" style={{ borderColor: stroke }}>
+        {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
+        <span className="fs-map__pill-label">{state.name}</span>
+      </div>
+      <div className="fs-map__pill-toolbar">
+        <button
+          type="button"
+          className="fs-map__drag-handle"
+          title="Drag to reorder"
+          aria-label="Drag to reorder"
+          style={{ touchAction: "none" }}
+          {...dragHandleProps}
+        >
+          <DragIcon size={14} />
+        </button>
+        {!state.is_initial && onRemove && (
+          <button
+            type="button"
+            className="fs-map__remove-btn"
+            title={`Remove ${state.name}`}
+            disabled={!!removingId}
+            onClick={() => onRemove(state)}
+            aria-label={`Remove state ${state.name}`}
+          >
+            −
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── SortablePill ──────────────────────────────────────────────────────────────
-// Wrapper: pill card on top, toolbar (drag handle + remove btn) below.
-// Only the drag handle icon carries dnd-kit listeners — the pill itself is inert.
-// position: "first" | "middle" | "last" drives which drag handle icon to show.
+// Wraps PillCard with useSortable. When dragging, goes to opacity 0 (the
+// DragOverlay shows the ghost instead).
 function SortablePill({
   state,
   position,
@@ -112,63 +171,21 @@ function SortablePill({
     attributes,
     listeners,
     setNodeRef,
-    transform,
     isDragging,
   } = useSortable({ id: state.id });
-
-  const stroke = state.colour ?? (KIND_STROKE[state.kind] ?? "var(--border)");
-  const isRemoving = removingId === state.id;
-
-  // Use translate-only (no scale) so the pill moves live with the pointer.
-  const wrapperStyle: React.CSSProperties = {
-    transform: transform ? `translate3d(${transform.x}px, 0px, 0)` : undefined,
-    zIndex: isDragging ? 999 : undefined,
-    position: "relative",
-  };
-
-  const DragIcon =
-    position === "first"  ? BsArrowBarRight :
-    position === "last"   ? BsArrowBarLeft  :
-    BsArrowsExpandVertical;
 
   return (
     <div
       ref={setNodeRef}
-      style={wrapperStyle}
-      className={`fs-map__pill-wrap${isRemoving ? " fs-map__pill-wrap--removing" : ""}${isDragging ? " fs-map__pill-wrap--dragging" : ""}`}
+      className={`fs-map__sortable-slot${isDragging ? " fs-map__sortable-slot--dragging" : ""}`}
     >
-      {/* Pill card */}
-      <div className="fs-map__pill" style={{ borderColor: stroke }}>
-        {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
-        <span className="fs-map__pill-label">{state.name}</span>
-      </div>
-
-      {/* Toolbar: drag handle + remove, below the pill, aligned right */}
-      <div className="fs-map__pill-toolbar">
-        <button
-          type="button"
-          className="fs-map__drag-handle"
-          title="Drag to reorder"
-          aria-label="Drag to reorder"
-          style={{ touchAction: "none" }}
-          {...attributes}
-          {...listeners}
-        >
-          <DragIcon size={11} />
-        </button>
-        {!state.is_initial && (
-          <button
-            type="button"
-            className="fs-map__remove-btn"
-            title={`Remove ${state.name}`}
-            disabled={!!removingId}
-            onClick={() => onRemove(state)}
-            aria-label={`Remove state ${state.name}`}
-          >
-            −
-          </button>
-        )}
-      </div>
+      <PillCard
+        state={state}
+        position={position}
+        removingId={removingId}
+        onRemove={onRemove}
+        dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>}
+      />
     </div>
   );
 }
@@ -189,11 +206,21 @@ function FlowMap({
   const [pending,    setPending]    = useState<PendingInsert | null>(null);
   const [saving,     setSaving]     = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [activeId,   setActiveId]   = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
   const mapSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveId(null);
+    onReorder(event);
+  }, [onReorder]);
 
   // Focus the name input when a slot opens.
   useEffect(() => {
@@ -360,12 +387,20 @@ function FlowMap({
     }
   });
 
+  const activeState  = activeId ? states.find((s) => s.id === activeId) ?? null : null;
+  const activeIndex  = activeState ? states.indexOf(activeState) : -1;
+  const activePos: "first" | "middle" | "last" =
+    activeIndex === 0 && states.length === 1 ? "middle" :
+    activeIndex === 0                         ? "first"  :
+    activeIndex === states.length - 1         ? "last"   : "middle";
+
   return (
     <DndContext
       sensors={mapSensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToHorizontalAxis]}
-      onDragEnd={onReorder}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
       <SortableContext items={states.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
         <div className="fs-map" role="group" aria-label="Flow state map">
@@ -374,6 +409,16 @@ function FlowMap({
           </div>
         </div>
       </SortableContext>
+
+      <DragOverlay modifiers={[restrictToHorizontalAxis]} dropAnimation={null}>
+        {activeState && (
+          <PillCard
+            state={activeState}
+            position={activePos}
+            isOverlay
+          />
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }
