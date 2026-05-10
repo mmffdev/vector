@@ -1093,11 +1093,15 @@ function groupByType(groups: FlowGroup[]): Map<string, { name: string; flows: Fl
 export default function FlowStatesPage() {
   const [data, setData]       = useState<FlowsResponse | null>(null);
   const [loadError, setError] = useState<string | null>(null);
+  // Bumped on every successful (re)load so child sections remount and pick
+  // up fresh group props instead of holding their initial-prop state.
+  const [version, setVersion] = useState(0);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       setData(await flowStatesApi.list());
+      setVersion((v) => v + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load flow states.");
     }
@@ -1149,7 +1153,7 @@ export default function FlowStatesPage() {
             <>
               <h2 className="eyebrow fs-scope-heading" id="section-work">Work Types</h2>
               {[...workByType.entries()].map(([typeId, { name, flows }]) => (
-                <TypeSection key={typeId} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
+                <TypeSection key={`${typeId}-${version}`} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
               ))}
             </>
           )}
@@ -1158,7 +1162,7 @@ export default function FlowStatesPage() {
             <>
               <h2 className="eyebrow fs-scope-heading" id="section-strategy">Strategy Types</h2>
               {[...strategyByType.entries()].map(([typeId, { name, flows }]) => (
-                <TypeSection key={typeId} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
+                <TypeSection key={`${typeId}-${version}`} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
               ))}
             </>
           )}
