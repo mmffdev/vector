@@ -15,8 +15,10 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
+import type { Modifier } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
@@ -56,6 +58,12 @@ const KIND_STROKE: Record<string, string> = {
 };
 
 
+// Restrict drag movement to the horizontal axis only (no @dnd-kit/modifiers dep).
+const restrictToHorizontalAxis: Modifier = ({ transform }) => ({
+  ...transform,
+  y: 0,
+});
+
 // ── FlowMap ───────────────────────────────────────────────────────────────────
 // Interactive inline flow editor. States render as HTML flex pills with + insert
 // buttons between them (and at the ends). Clicking + opens an inline name input
@@ -92,21 +100,87 @@ const KIND_OPTIONS = [
   { value: "cancelled",   label: "Cancelled" },
 ];
 
+// ── SortablePill ──────────────────────────────────────────────────────────────
+// A single draggable pill within the FlowMap row. Drag is horizontal-only.
+function SortablePill({
+  state,
+  removingId,
+  onRemove,
+}: {
+  state: FlowState;
+  removingId: string | null;
+  onRemove: (s: FlowState) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: state.id });
+
+  const stroke = state.colour ?? (KIND_STROKE[state.kind] ?? "var(--border)");
+  const isRemoving = removingId === state.id;
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    cursor: isDragging ? "grabbing" : "grab",
+    touchAction: "none",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`fs-map__pill-wrap${isRemoving ? " fs-map__pill-wrap--removing" : ""}`}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="fs-map__pill" style={{ borderColor: stroke }}>
+        {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
+        <span className="fs-map__pill-label">{state.name}</span>
+        {!state.is_initial && (
+          <button
+            type="button"
+            className="fs-map__remove-btn"
+            title={`Remove ${state.name}`}
+            disabled={!!removingId}
+            onClick={(e) => { e.stopPropagation(); onRemove(state); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label={`Remove state ${state.name}`}
+          >
+            −
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FlowMap({
   states,
   flowId,
   onCreated,
   onDeleted,
+  onReorder,
 }: {
   states: FlowState[];
   flowId: string;
   onCreated: (st: FlowState, afterIndex: number) => void;
   onDeleted: (stateId: string) => void;
+  onReorder: (event: DragEndEvent) => void;
 }) {
   const [pending,    setPending]    = useState<PendingInsert | null>(null);
   const [saving,     setSaving]     = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+
+  const mapSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   // Focus the name input when a slot opens.
   useEffect(() => {
@@ -224,30 +298,11 @@ function FlowMap({
   }
 
   states.forEach((s, i) => {
-    const stroke     = s.colour ?? (KIND_STROKE[s.kind] ?? "var(--border)");
-    const isRemoving = removingId === s.id;
-    const isLast     = i === states.length - 1;
+    const isLast = i === states.length - 1;
 
-    // Pill
+    // Draggable pill
     items.push(
-      <div key={s.id} className={`fs-map__pill-wrap${isRemoving ? " fs-map__pill-wrap--removing" : ""}`}>
-        <div className="fs-map__pill" style={{ borderColor: stroke }}>
-          {s.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
-          <span className="fs-map__pill-label">{s.name}</span>
-          {!s.is_initial && (
-            <button
-              type="button"
-              className="fs-map__remove-btn"
-              title={`Remove ${s.name}`}
-              disabled={!!removingId}
-              onClick={() => removeState(s)}
-              aria-label={`Remove state ${s.name}`}
-            >
-              −
-            </button>
-          )}
-        </div>
-      </div>
+      <SortablePill key={s.id} state={s} removingId={removingId} onRemove={removeState} />
     );
 
     // Slot after this pill
@@ -298,11 +353,20 @@ function FlowMap({
   });
 
   return (
-    <div className="fs-map" role="group" aria-label="Flow state map">
-      <div className="fs-map__row">
-        {items}
-      </div>
-    </div>
+    <DndContext
+      sensors={mapSensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToHorizontalAxis]}
+      onDragEnd={onReorder}
+    >
+      <SortableContext items={states.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
+        <div className="fs-map" role="group" aria-label="Flow state map">
+          <div className="fs-map__row">
+            {items}
+          </div>
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 }
 
@@ -639,6 +703,7 @@ function FlowBlock({
         flowId={group.flow_id}
         onCreated={onMapCreated}
         onDeleted={onMapDeleted}
+        onReorder={handleDragEnd}
       />
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
