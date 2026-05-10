@@ -11,8 +11,15 @@ import (
 )
 
 var (
-	ErrStateNotFound = errors.New("flow state not found")
-	reColour         = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+	ErrStateNotFound      = errors.New("flow state not found")
+	ErrFlowNotFound       = errors.New("flow not found")
+	ErrTransitionNotFound = errors.New("flow transition not found")
+	ErrTransitionExists   = errors.New("transition already exists")
+	reColour              = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+	validKinds            = map[string]bool{
+		"todo": true, "in_progress": true, "done": true,
+		"accepted": true, "cancelled": true,
+	}
 )
 
 // Service reads flows and their states from vector_artefacts, scoped per
@@ -152,17 +159,22 @@ func (s *Service) loadTransitions(
 	return rows.Err()
 }
 
-// PatchFlowState updates the colour of a single flow state, scoped to the
-// caller's subscription so tenants cannot mutate each other's states.
-// Returns ErrStateNotFound when the id doesn't exist in this subscription.
+// PatchFlowState updates mutable fields on a single flow state, scoped to the
+// caller's subscription. Returns ErrStateNotFound when the id doesn't exist.
 func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID string, in PatchStateInput) (*FlowState, error) {
 	if in.Colour != nil && !reColour.MatchString(*in.Colour) {
 		return nil, fmt.Errorf("flows: colour must be #RRGGBB or null")
 	}
+	if in.Name != nil && *in.Name == "" {
+		return nil, fmt.Errorf("flows: name must not be empty")
+	}
 
 	const q = `
 		UPDATE flow_states fs
-		SET    colour = $1
+		SET    colour     = COALESCE($1, colour),
+		       name       = COALESCE($4, name),
+		       sort_order = COALESCE($5, sort_order),
+		       is_initial = COALESCE($6, is_initial)
 		FROM   flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
 		WHERE  fs.id      = $2
@@ -173,8 +185,10 @@ func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID st
 		  AND  fs.archived_at IS NULL
 		RETURNING fs.id, fs.name, fs.kind, fs.sort_order, fs.is_initial, fs.colour`
 
+	// Colour is the only nullable-to-clear field; the others use COALESCE.
+	// Pass nil colour as a signal to clear it; for other fields nil = no change.
 	var st FlowState
-	err := s.vaPool.QueryRow(ctx, q, in.Colour, stateID, subscriptionID).Scan(
+	err := s.vaPool.QueryRow(ctx, q, in.Colour, stateID, subscriptionID, in.Name, in.SortOrder, in.IsInitial).Scan(
 		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -184,4 +198,123 @@ func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID st
 		return nil, fmt.Errorf("flows: patch state: %w", err)
 	}
 	return &st, nil
+}
+
+// CreateState adds a new state to the given flow, scoped to subscription.
+func (s *Service) CreateState(ctx context.Context, subscriptionID, flowID string, in CreateStateInput) (*FlowState, error) {
+	if in.Name == "" {
+		return nil, fmt.Errorf("flows: name is required")
+	}
+	if !validKinds[in.Kind] {
+		return nil, fmt.Errorf("flows: invalid kind %q", in.Kind)
+	}
+
+	// If sort_order not supplied, append after the current max.
+	if in.SortOrder == 0 {
+		var max int
+		_ = s.vaPool.QueryRow(ctx,
+			`SELECT COALESCE(MAX(sort_order), 0) FROM flow_states WHERE flow_id = $1 AND archived_at IS NULL`,
+			flowID).Scan(&max)
+		in.SortOrder = max + 10
+	}
+
+	const q = `
+		INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial)
+		SELECT f.id, $3, $4, $5, $6
+		FROM   flows f
+		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		WHERE  f.id = $1
+		  AND  at.subscription_id = $2
+		  AND  f.archived_at IS NULL
+		  AND  at.archived_at IS NULL
+		RETURNING id, name, kind, sort_order, is_initial, colour`
+
+	var st FlowState
+	err := s.vaPool.QueryRow(ctx, q, flowID, subscriptionID, in.Name, in.Kind, in.SortOrder, in.IsInitial).Scan(
+		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.Colour,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrFlowNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("flows: create state: %w", err)
+	}
+	return &st, nil
+}
+
+// DeleteState soft-archives a flow state, scoped to subscription.
+func (s *Service) DeleteState(ctx context.Context, subscriptionID, stateID string) error {
+	const q = `
+		UPDATE flow_states fs
+		SET    archived_at = NOW()
+		FROM   flows f
+		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		WHERE  fs.id = $1
+		  AND  fs.flow_id = f.id
+		  AND  at.subscription_id = $2
+		  AND  fs.archived_at IS NULL`
+
+	tag, err := s.vaPool.Exec(ctx, q, stateID, subscriptionID)
+	if err != nil {
+		return fmt.Errorf("flows: delete state: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStateNotFound
+	}
+	return nil
+}
+
+// CreateTransition adds an allowed edge to a flow, scoped to subscription.
+func (s *Service) CreateTransition(ctx context.Context, subscriptionID, flowID string, in CreateTransitionInput) (*FlowTransition, error) {
+	const q = `
+		INSERT INTO flow_transitions (flow_id, from_state_id, to_state_id)
+		SELECT f.id, $3, $4
+		FROM   flows f
+		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		WHERE  f.id = $1
+		  AND  at.subscription_id = $2
+		  AND  f.archived_at IS NULL
+		  AND  at.archived_at IS NULL
+		ON CONFLICT (flow_id, from_state_id, to_state_id) DO NOTHING
+		RETURNING from_state_id, to_state_id`
+
+	var tr FlowTransition
+	err := s.vaPool.QueryRow(ctx, q, flowID, subscriptionID, in.FromStateID, in.ToStateID).Scan(&tr.From, &tr.To)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Either conflict (already exists) or flow not found — check which.
+		var exists bool
+		_ = s.vaPool.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM flow_transitions WHERE flow_id=$1 AND from_state_id=$2 AND to_state_id=$3)`,
+			flowID, in.FromStateID, in.ToStateID).Scan(&exists)
+		if exists {
+			return nil, ErrTransitionExists
+		}
+		return nil, ErrFlowNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("flows: create transition: %w", err)
+	}
+	return &tr, nil
+}
+
+// DeleteTransition removes an allowed edge from a flow, scoped to subscription.
+func (s *Service) DeleteTransition(ctx context.Context, subscriptionID, flowID string, in DeleteTransitionInput) error {
+	const q = `
+		DELETE FROM flow_transitions ft
+		USING  flows f
+		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		WHERE  ft.flow_id      = f.id
+		  AND  f.id            = $1
+		  AND  at.subscription_id = $2
+		  AND  ft.from_state_id   = $3
+		  AND  ft.to_state_id     = $4`
+
+	tag, err := s.vaPool.Exec(ctx, q, flowID, subscriptionID, in.FromStateID, in.ToStateID)
+	if err != nil {
+		return fmt.Errorf("flows: delete transition: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrTransitionNotFound
+	}
+	return nil
 }

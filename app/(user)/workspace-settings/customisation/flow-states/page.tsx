@@ -38,13 +38,6 @@ const KIND_STROKE: Record<string, string> = {
   cancelled:   "#fca5a5",   // red-300
 };
 
-const KIND_INK: Record<string, string> = {
-  todo:        "var(--ink-muted)",
-  in_progress: "#1e40af",
-  done:        "#166534",
-  accepted:    "#6b21a8",
-  cancelled:   "#991b1b",
-};
 
 // ── FlowMap ───────────────────────────────────────────────────────────────────
 // Pure-SVG horizontal flow diagram. States are laid out left-to-right by
@@ -54,7 +47,6 @@ const KIND_INK: Record<string, string> = {
 
 const PILL_W   = 90;
 const PILL_H   = 28;
-const PILL_R   = 6;
 const GAP      = 36;         // horizontal gap between pills
 const ARROW_Y  = PILL_H / 2; // centre-line Y (within the pill row)
 const ARC_DIP  = 22;         // how far below centre back-arcs dip
@@ -356,7 +348,7 @@ function StateRow({
     async (hex: string | null) => {
       setSaving(true);
       try {
-        const updated = await flowStatesApi.patchState(state.id, hex);
+        const updated = await flowStatesApi.patchState(state.id, { colour: hex });
         onPatched(updated);
       } catch (err) {
         notify.apiError(err, "Failed to update state colour.");
@@ -393,6 +385,170 @@ function StateRow({
   );
 }
 
+// ── AddStateForm ──────────────────────────────────────────────────────────────
+const KIND_OPTIONS = [
+  { value: "todo",        label: "To Do" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "done",        label: "Done" },
+  { value: "accepted",    label: "Accepted" },
+  { value: "cancelled",   label: "Cancelled" },
+];
+
+function AddStateForm({
+  flowId,
+  onCreated,
+}: {
+  flowId: string;
+  onCreated: (state: FlowState) => void;
+}) {
+  const [open,    setOpen]    = useState(false);
+  const [name,    setName]    = useState("");
+  const [kind,    setKind]    = useState("todo");
+  const [saving,  setSaving]  = useState(false);
+
+  const submit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const st = await flowStatesApi.createState(flowId, { name: name.trim(), kind });
+      onCreated(st);
+      setName("");
+      setKind("todo");
+      setOpen(false);
+    } catch (err) {
+      notify.apiError(err, "Failed to create state.");
+    } finally {
+      setSaving(false);
+    }
+  }, [flowId, name, kind, onCreated]);
+
+  if (!open) {
+    return (
+      <button type="button" className="btn btn--sm btn--ghost fs-add-state-btn" onClick={() => setOpen(true)}>
+        + Add state
+      </button>
+    );
+  }
+
+  return (
+    <form className="fs-add-state-form" onSubmit={submit}>
+      <input
+        className="form__input fs-add-state-form__name"
+        placeholder="State name"
+        value={name}
+        maxLength={60}
+        autoFocus
+        onChange={(e) => setName(e.target.value)}
+      />
+      <select
+        className="form__select fs-add-state-form__kind"
+        value={kind}
+        onChange={(e) => setKind(e.target.value)}
+      >
+        {KIND_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <button type="submit" className="btn btn--sm btn--primary" disabled={saving || !name.trim()}>
+        {saving ? "Adding…" : "Add"}
+      </button>
+      <button type="button" className="btn btn--sm btn--ghost" onClick={() => { setOpen(false); setName(""); }}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+// ── TransitionMatrix ──────────────────────────────────────────────────────────
+// Grid where each cell represents a possible (from → to) transition.
+// Click to toggle. From = rows, To = columns.
+function TransitionMatrix({
+  flowId,
+  states,
+  transitions,
+  onTransitionsChange,
+}: {
+  flowId: string;
+  states: FlowState[];
+  transitions: FlowTransition[];
+  onTransitionsChange: (t: FlowTransition[]) => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null); // "fromId-toId" while toggling
+
+  const edgeSet = new Set(transitions.map((t) => `${t.from}-${t.to}`));
+
+  const toggle = useCallback(async (from: FlowState, to: FlowState) => {
+    const key = `${from.id}-${to.id}`;
+    if (busy) return;
+    setBusy(key);
+    try {
+      if (edgeSet.has(key)) {
+        await flowStatesApi.deleteTransition(flowId, from.id, to.id);
+        onTransitionsChange(transitions.filter((t) => !(t.from === from.id && t.to === to.id)));
+      } else {
+        const tr = await flowStatesApi.createTransition(flowId, from.id, to.id);
+        onTransitionsChange([...transitions, tr]);
+      }
+    } catch (err) {
+      notify.apiError(err, "Failed to update transition.");
+    } finally {
+      setBusy(null);
+    }
+  }, [flowId, transitions, edgeSet, busy, onTransitionsChange]);
+
+  if (states.length < 2) return null;
+
+  return (
+    <div className="fs-transition-matrix">
+      <p className="fs-transition-matrix__label">Allowed transitions — click to toggle</p>
+      <div className="fs-transition-matrix__scroll">
+        <table className="fs-transition-matrix__table">
+          <thead>
+            <tr>
+              <th className="fs-transition-matrix__corner">From ↓ / To →</th>
+              {states.map((s) => (
+                <th key={s.id} className="fs-transition-matrix__col-head" title={s.name}>
+                  <span className="fs-transition-matrix__col-label">{s.name}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {states.map((from) => (
+              <tr key={from.id}>
+                <td className="fs-transition-matrix__row-head">{from.name}</td>
+                {states.map((to) => {
+                  if (from.id === to.id) {
+                    return <td key={to.id} className="fs-transition-matrix__cell fs-transition-matrix__cell--self" />;
+                  }
+                  const key = `${from.id}-${to.id}`;
+                  const active = edgeSet.has(key);
+                  const loading = busy === key;
+                  return (
+                    <td key={to.id} className="fs-transition-matrix__cell">
+                      <button
+                        type="button"
+                        className={`fs-transition-matrix__toggle${active ? " fs-transition-matrix__toggle--on" : ""}`}
+                        disabled={loading}
+                        onClick={() => toggle(from, to)}
+                        title={active ? `Remove ${from.name} → ${to.name}` : `Allow ${from.name} → ${to.name}`}
+                        aria-pressed={active}
+                      >
+                        {loading ? "…" : active ? "✓" : ""}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ── FlowBlock ─────────────────────────────────────────────────────────────────
 // One flow within a type section — diagram header + state table.
 function FlowBlock({
@@ -404,8 +560,8 @@ function FlowBlock({
   markerId: string;
   showLabel: boolean;
 }) {
-  const [states, setStates] = useState<FlowState[]>(group.states);
-  const [transitions]       = useState<FlowTransition[]>(group.transitions ?? []);
+  const [states,      setStates]      = useState<FlowState[]>(group.states);
+  const [transitions, setTransitions] = useState<FlowTransition[]>(group.transitions ?? []);
 
   useEffect(() => { setStates(group.states); }, [group.states]);
 
@@ -413,8 +569,10 @@ function FlowBlock({
     setStates((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
-  // Pass-through for map clicks (no-op for now — clicking a pill in the map
-  // doesn't open the colour picker since it's aria-hidden decoration).
+  const onCreated = useCallback((st: FlowState) => {
+    setStates((prev) => [...prev, st].sort((a, b) => a.sort_order - b.sort_order));
+  }, []);
+
   const noopColourChange = useCallback(() => {}, []);
 
   return (
@@ -446,6 +604,15 @@ function FlowBlock({
           </tbody>
         </table>
       </div>
+
+      <AddStateForm flowId={group.flow_id} onCreated={onCreated} />
+
+      <TransitionMatrix
+        flowId={group.flow_id}
+        states={states}
+        transitions={transitions}
+        onTransitionsChange={setTransitions}
+      />
     </div>
   );
 }

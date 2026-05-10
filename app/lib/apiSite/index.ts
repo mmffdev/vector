@@ -486,7 +486,8 @@ export const subscriptionLayers = {
     apiSite<void>("/subscription/layers/batch", { method: "PATCH", body: JSON.stringify(data) }),
 };
 
-// Pages: app/(user)/workspace-settings/work-items/page.tsx (flow assignment UI)
+// Pages: app/(user)/workspace-settings/customisation/flow-states/page.tsx
+// Lib:   app/lib/flowStatesApi.ts
 // ─── Flows  (/flows, /flow-states) ───────────────────────────────────────────
 
 export interface FlowState {
@@ -519,22 +520,39 @@ export interface FlowsResponse {
   strategy: FlowGroup[];
 }
 
-// Pages: app/(user)/workspace-settings/customisation/flow-states/page.tsx
-// Lib:   app/lib/flowStatesApi.ts
 export const flows = {
   list: () =>
     apiSite<FlowsResponse>("/flows/"),
+
+  createState: (flowId: ID, data: { name: string; kind: string; sort_order?: number; is_initial?: boolean }) =>
+    apiSite<FlowState>(`/flows/${flowId}/states`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  createTransition: (flowId: ID, from_state_id: ID, to_state_id: ID) =>
+    apiSite<FlowTransition>(`/flows/${flowId}/transitions`, {
+      method: "POST",
+      body: JSON.stringify({ from_state_id, to_state_id }),
+    }),
+
+  deleteTransition: (flowId: ID, from_state_id: ID, to_state_id: ID) =>
+    apiSite<void>(`/flows/${flowId}/transitions`, {
+      method: "DELETE",
+      body: JSON.stringify({ from_state_id, to_state_id }),
+    }),
 };
 
-// Pages: app/(user)/workspace-settings/customisation/flow-states/page.tsx
-// Lib:   app/lib/flowStatesApi.ts
 export const flowStates = {
-  patch: (stateId: ID, colour: string | null) =>
+  patch: (stateId: ID, patch: { colour?: string | null; name?: string; sort_order?: number; is_initial?: boolean }) =>
     apiSite<FlowState>(`/flow-states/${stateId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ colour }),
+      body: JSON.stringify(patch),
     }),
+
+  delete: (stateId: ID) =>
+    apiSite<void>(`/flow-states/${stateId}`, { method: "DELETE" }),
 };
 
 // Pages: app/lib/fieldsApi.ts (shared helper), app/(user)/workspace-settings/fields/ (field admin)

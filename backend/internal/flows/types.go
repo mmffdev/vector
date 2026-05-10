@@ -11,9 +11,31 @@ type FlowState struct {
 }
 
 // PatchStateInput is the body accepted by PATCH /_site/flow-states/{id}.
-// Only colour is mutable for now.
 type PatchStateInput struct {
-	Colour *string `json:"colour"` // nil = clear; "#RRGGBB" = set
+	Colour    *string `json:"colour"`    // nil = clear; "#RRGGBB" = set
+	Name      *string `json:"name"`      // nil = no change
+	SortOrder *int    `json:"sort_order"` // nil = no change
+	IsInitial *bool   `json:"is_initial"` // nil = no change
+}
+
+// CreateStateInput is the body accepted by POST /_site/flows/{flowId}/states.
+type CreateStateInput struct {
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`       // "todo"|"in_progress"|"done"|"accepted"|"cancelled"
+	SortOrder int    `json:"sort_order"` // 0 = append after last
+	IsInitial bool   `json:"is_initial"`
+}
+
+// CreateTransitionInput is the body accepted by POST /_site/flows/{flowId}/transitions.
+type CreateTransitionInput struct {
+	FromStateID string `json:"from_state_id"`
+	ToStateID   string `json:"to_state_id"`
+}
+
+// DeleteTransitionInput is the body accepted by DELETE /_site/flows/{flowId}/transitions.
+type DeleteTransitionInput struct {
+	FromStateID string `json:"from_state_id"`
+	ToStateID   string `json:"to_state_id"`
 }
 
 // FlowTransition is one allowed edge within a flow.

@@ -8,7 +8,7 @@ export type {
 } from "@/app/lib/apiSite/index";
 
 import { flows as flowsApi, flowStates as flowStatesApi_ } from "@/app/lib/apiSite/index";
-import type { FlowState, FlowsResponse } from "@/app/lib/apiSite/index";
+import type { FlowState, FlowTransition, FlowsResponse } from "@/app/lib/apiSite/index";
 
 // Module-level cache so layout + page both resolve from the same in-flight request.
 let _cache: FlowsResponse | null = null;
@@ -30,10 +30,45 @@ async function list(): Promise<FlowsResponse> {
   return _promise;
 }
 
-async function patchState(stateId: string, colour: string | null): Promise<FlowState> {
-  const result = await flowStatesApi_.patch(stateId, colour);
+async function patchState(
+  stateId: string,
+  patch: { colour?: string | null; name?: string; sort_order?: number; is_initial?: boolean },
+): Promise<FlowState> {
+  const result = await flowStatesApi_.patch(stateId, patch);
   invalidate();
   return result;
 }
 
-export const flowStatesApi = { list, patchState };
+async function deleteState(stateId: string): Promise<void> {
+  await flowStatesApi_.delete(stateId);
+  invalidate();
+}
+
+async function createState(
+  flowId: string,
+  data: { name: string; kind: string; sort_order?: number; is_initial?: boolean },
+): Promise<FlowState> {
+  const result = await flowsApi.createState(flowId, data);
+  invalidate();
+  return result;
+}
+
+async function createTransition(flowId: string, from: string, to: string): Promise<FlowTransition> {
+  const result = await flowsApi.createTransition(flowId, from, to);
+  invalidate();
+  return result;
+}
+
+async function deleteTransition(flowId: string, from: string, to: string): Promise<void> {
+  await flowsApi.deleteTransition(flowId, from, to);
+  invalidate();
+}
+
+export const flowStatesApi = {
+  list,
+  patchState,
+  deleteState,
+  createState,
+  createTransition,
+  deleteTransition,
+};

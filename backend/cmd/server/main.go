@@ -908,14 +908,22 @@ func main() {
 			r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
 			r.Use(httprate.LimitByIP(60, time.Minute))
 			r.Get("/", flowsH.List)
+			// Per-flow state + transition management.
+			r.Route("/{flowId}/states", func(r chi.Router) {
+				r.Post("/", flowsH.CreateFlowState)
+			})
+			r.Route("/{flowId}/transitions", func(r chi.Router) {
+				r.Post("/", flowsH.CreateTransition)
+				r.Delete("/", flowsH.DeleteTransition)
+			})
 		})
-		// F1.2.1/F1.2.2 — flow state colour PATCH (no flows.manage gate;
-		// same auth level as artefact-types: any authenticated gadmin/padmin).
+		// Flow state mutations — no flows.manage gate so padmin/gadmin can use.
 		r.Route("/flow-states", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Patch("/{id}", flowsH.PatchFlowState)
+			r.Delete("/{id}", flowsH.DeleteFlowState)
 		})
 	}
 
