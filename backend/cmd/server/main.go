@@ -499,7 +499,7 @@ func main() {
 	// every downstream consumer trust a header any client can forge.
 	// Removed; security.ClientIP is the sole, CIDR-gated point that
 	// honours XFF. See backend/internal/security/clientip.go.
-	r.Use(middleware.Logger)
+	r.Use(logger.HTTPLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   strings.Split(os.Getenv("FRONTEND_ORIGIN"), ","),
