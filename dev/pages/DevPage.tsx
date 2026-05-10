@@ -7,6 +7,7 @@ import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
 import { useDevTab } from "@/app/contexts/DevTabContext";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
 import { apiSite } from "@/app/lib/api";
+import { admin } from "@/app/lib/apiSite";
 import { getWorkspaceFields } from "@/app/lib/fieldsApi";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import Panel from "@/app/components/Panel";
@@ -96,6 +97,10 @@ export default function DevPage() {
   const [resetConfirm, setResetConfirm] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [masterResetLoading, setMasterResetLoading] = useState(false);
+  const [masterResetConfirm, setMasterResetConfirm] = useState(false);
+  const [masterResetConfirmText, setMasterResetConfirmText] = useState("");
+  const [masterResetResult, setMasterResetResult] = useState<{ success: boolean; message: string } | null>(null);
   const [fieldsProbe, setFieldsProbe] = useState<{ ok: boolean; message: string } | null>(null);
   const [fieldsProbeLoading, setFieldsProbeLoading] = useState(false);
   const [tickCount, setTickCount] = useState(0);
@@ -117,6 +122,7 @@ export default function DevPage() {
   }, []);
 
   const cancelReset = () => { setResetConfirm(false); setResetConfirmText(""); };
+  const cancelMasterReset = () => { setMasterResetConfirm(false); setMasterResetConfirmText(""); };
 
   // PLA-0026 / Story 00510 (F4) — smoke probe for GET
   // /api/workspace/{id}/fields. Picks the first live workspace in the
@@ -166,6 +172,28 @@ export default function DevPage() {
       });
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handleConfirmMasterReset = async () => {
+    setMasterResetConfirm(false);
+    setMasterResetConfirmText("");
+    setMasterResetLoading(true);
+    setMasterResetResult(null);
+
+    try {
+      const response = await admin.devMasterReset();
+      setMasterResetResult({
+        success: true,
+        message: response?.message || "Master reset complete.",
+      });
+    } catch (error: any) {
+      setMasterResetResult({
+        success: false,
+        message: error?.message || "Master reset failed.",
+      });
+    } finally {
+      setMasterResetLoading(false);
     }
   };
 
@@ -265,6 +293,44 @@ export default function DevPage() {
           {resetResult && (
             <div className={`dev-alert dev-alert--${resetResult.success ? "success" : "error"}`}>
               {resetResult.message}
+            </div>
+          )}
+        </Panel>
+
+        <Panel name="dev_master_reset" title="Master Reset">
+          <p className="dev-p">
+            Full testbed reset (gadmin only). Wipes <strong>all</strong> tenant data across both databases — artefacts, topology, workspaces, adoption state, and tenant settings — then re-seeds ACME Bank defaults with a single root topology node. Does <strong>not</strong> touch users, passwords, roles, permissions, pages, or nav prefs.
+          </p>
+          <div className="dev-btn-group">
+            <button
+              onClick={() => { setMasterResetConfirm(true); setMasterResetResult(null); }}
+              disabled={masterResetLoading || masterResetConfirm}
+              className="dev-btn dev-btn--danger"
+            >
+              {masterResetLoading ? "Resetting..." : "Master Reset"}
+            </button>
+            {masterResetConfirm && (
+              <>
+                <input
+                  autoFocus
+                  value={masterResetConfirmText}
+                  onChange={(e) => setMasterResetConfirmText(e.target.value)}
+                  className={`dev-confirm-input${masterResetConfirmText === "MASTER RESET" ? " dev-confirm-input--ready" : ""}`}
+                  placeholder="Type MASTER RESET"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && masterResetConfirmText === "MASTER RESET") handleConfirmMasterReset();
+                    if (e.key === "Escape") cancelMasterReset();
+                  }}
+                />
+                <span className="dev-confirm-hint">
+                  Type <strong>MASTER RESET</strong> and press ↵ to wipe all tenant data and re-seed testbed defaults. Esc to cancel.
+                </span>
+              </>
+            )}
+          </div>
+          {masterResetResult && (
+            <div className={`dev-alert dev-alert--${masterResetResult.success ? "success" : "error"}`}>
+              {masterResetResult.message}
             </div>
           )}
         </Panel>
