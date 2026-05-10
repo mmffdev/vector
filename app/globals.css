@@ -12205,3 +12205,141 @@ input[type="reset"] {
 .fs-flow-section__label {
   margin-bottom: var(--space-3);
 }
+
+/* Single-page flow states layout — additional primitives */
+.fs-scope-heading {
+  margin-bottom: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+/* Section heading for each artefact type */
+.fs-type-heading {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-3);
+}
+
+/* One flow block within a type section (used when a type has multiple flows) */
+.fs-flow-block {
+  margin-bottom: var(--space-5);
+}
+
+.fs-flow-block + .fs-flow-block {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/* Flow name label shown only when a type has >1 flow (e.g. Defect: Default / QA) */
+.fs-flow-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-subtle);
+  margin: 0 0 var(--space-2);
+}
+
+/* "start" badge marking the initial state */
+.fs-state-badge {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px 5px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--ink-muted);
+  vertical-align: middle;
+}
+
+/* Section spacing — breathing room between type blocks */
+.anav-content section + section {
+  margin-top: var(--space-8);
+}
+
+/* Scope heading spacing — separate work / strategy blocks */
+.anav-content .eyebrow.fs-scope-heading {
+  margin-top: var(--space-10);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.anav-content .eyebrow.fs-scope-heading:first-child {
+  margin-top: 0;
+}
+
+/* ─── PageAnchorNav (anav-*) ──────────────────────────────────────────────────
+   Reusable two-column "sticky TOC + scrolling content" layout.
+
+   anav-layout        : outer grid — 180px rail + 1fr content.
+   anav               : sticky nav rail; clings to the top of the scroll root.
+   anav__list         : unstyled item list.
+   anav__item         : one nav entry; --d1 indent for sub-items.
+   anav__link         : button styled as a quiet text link; --active is bold+accent.
+*/
+.anav-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.anav {
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.anav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.anav__item--d1 > .anav__link {
+  padding-left: var(--space-4);
+}
+
+.anav__link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  line-height: 1.35;
+  transition: color 0.1s, background 0.1s;
+}
+
+.anav__link:hover {
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+
+.anav__link--active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--surface-raised);
+}
+
+.anav-content {
+  min-width: 0;
+}
+
+/* Section heading anchor target — give a little breathing room when
+   scrolled to via the nav. */
+.anav-content section {
+  scroll-margin-top: 100px;
+}
