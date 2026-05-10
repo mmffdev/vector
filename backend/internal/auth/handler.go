@@ -107,7 +107,12 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
 		return
 	}
-	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
+	// Only overwrite the rt cookie when we issued a new token (normal rotation).
+	// Grace-window successor reuse returns RefreshRaw="" — the browser already
+	// holds the successor cookie so we leave it untouched.
+	if res.RefreshRaw != "" {
+		setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
+	}
 	issueCSRF(w)
 	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
@@ -203,7 +208,7 @@ func setRefreshCookie(w http.ResponseWriter, raw string, expAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "rt",
 		Value:    raw,
-		Path:     "/auth",
+		Path:     "/",
 		HttpOnly: true,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
@@ -220,9 +225,9 @@ func issueCSRF(w http.ResponseWriter) {
 }
 
 func clearRefreshCookie(w http.ResponseWriter) {
-	// Clear at the current path (/auth) and all legacy paths so stale cookies
-	// from older builds are evicted on logout/refresh-fail.
-	for _, p := range []string{"/auth", "/samantha/v1/auth", "/v1/api/auth", "/api/auth"} {
+	// Clear at "/" (current) and all legacy paths so stale cookies from
+	// older builds (which used /auth, /samantha/v1/auth, etc.) are evicted.
+	for _, p := range []string{"/", "/auth", "/samantha/v1/auth", "/v1/api/auth", "/api/auth"} {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "rt",
 			Value:    "",

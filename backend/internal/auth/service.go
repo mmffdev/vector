@@ -220,9 +220,12 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	var sessID, userID uuid.UUID
 	var expiresAt time.Time
 	var revoked bool
+	var rotatedAt *time.Time
+	var successorHash *string
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, revoked FROM sessions WHERE token_hash = $1`, hash,
-	).Scan(&sessID, &userID, &expiresAt, &revoked)
+		SELECT id, user_id, expires_at, revoked, rotated_at, successor_hash
+		FROM sessions WHERE token_hash = $1`, hash,
+	).Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash)
 	if err == pgx.ErrNoRows {
 		return nil, ErrTokenExpired
 	}
@@ -230,8 +233,15 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		return nil, err
 	}
 	if revoked {
-		// Reuse of a revoked token: possible theft. Nuke all sessions for this user
-		// and audit. The legitimate user will have to log in again.
+		// Grace-window check: duplicate tabs and HMR both send the same rt cookie
+		// immediately after rotation. If the old token was rotated within the grace
+		// window AND has a known successor, return the successor session instead of
+		// treating this as theft. Outside the window (or with no successor), it IS
+		// a reuse attack → nuke all sessions.
+		graceSecs := parseDurationEnv("REFRESH_GRACE_SECONDS", 30*time.Second)
+		if rotatedAt != nil && successorHash != nil && time.Since(*rotatedAt) <= graceSecs {
+			return s.refreshFromSuccessor(ctx, *successorHash, ip, ua)
+		}
 		_, _ = s.Pool.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID)
 		s.Audit.Log(ctx, audit.Entry{UserID: &userID, Action: "auth.refresh_token_reuse", IPAddress: &ip, Metadata: map[string]any{"session_id": sessID.String()}})
 		return nil, ErrTokenExpired
@@ -245,23 +255,26 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		return nil, err
 	}
 
-	// Rotate: revoke old, insert new.
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	if _, err := tx.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE id = $1`, sessID); err != nil {
-		return nil, err
-	}
-
+	// Rotate: revoke old (stamping rotation metadata), insert new.
 	raw, newHash, err := GenerateRefreshToken()
 	if err != nil {
 		return nil, err
 	}
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	newExp := time.Now().Add(refreshTTL)
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
+		WHERE id = $2`, newHash, sessID,
+	); err != nil {
+		return nil, err
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
 		VALUES ($1, $2, $3, $4, $5)`, u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
@@ -278,6 +291,38 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	}
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh", IPAddress: &ip})
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: newExp}, nil
+}
+
+// refreshFromSuccessor is called when a revoked token is reused within the
+// grace window. It finds the successor session and re-issues tokens from it
+// without rotating again, so concurrent tab bootstraps share one valid session.
+func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, ua string) (*LoginResult, error) {
+	var sessID, userID uuid.UUID
+	var expiresAt time.Time
+	var revoked bool
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, user_id, expires_at, revoked FROM sessions WHERE token_hash = $1`, successorHash,
+	).Scan(&sessID, &userID, &expiresAt, &revoked)
+	if err == pgx.ErrNoRows || revoked || expiresAt.Before(time.Now()) {
+		return nil, ErrTokenExpired
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.FindUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	access, err := SignAccessToken(u)
+	if err != nil {
+		return nil, err
+	}
+
+	// Re-set the successor cookie so the caller's browser holds the current token.
+	// We do NOT rotate again here — the successor is still live.
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh_grace", IPAddress: &ip})
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: "", RefreshExpAt: expiresAt}, nil
 }
 
 func (s *Service) Logout(ctx context.Context, rawRefresh, ip string) error {

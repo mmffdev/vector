@@ -50,16 +50,23 @@ interface AuthState {
 
 const Ctx = createContext<AuthState | null>(null);
 
-// Module-level dedup: StrictMode unmounts + remounts the component, which
-// would fire two sequential refresh() calls — each using the same one-time-use
-// rt cookie. The second call hits reuse-detection and revokes the session.
-// A ref inside the component resets to null on unmount, so it can't protect
-// across the remount. Module scope survives the full StrictMode cycle.
+// _bootstrapFlight deduplicates concurrent bootstrap calls within the same
+// JS runtime lifetime (StrictMode double-mount, HMR re-runs). It is a
+// module-level promise so it survives the unmount+remount cycle that a
+// component-level ref cannot.
 //
-// _bootstrapped also prevents HMR effect re-runs from firing a second
-// refresh() on an already-rotated token — which is the recurring "logout
-// on browser refresh" root cause. Once bootstrap succeeds, the flag stays
-// true for the lifetime of the module (i.e. the browser tab).
+// On a real browser refresh, the JS module reloads from scratch: all
+// module-level variables reset to null, _bootstrapFlight becomes null,
+// and bootstrap runs exactly once per page load — which is correct.
+//
+// On HMR hot-reload, the module is patched in-place without a full reload,
+// so module-level state persists. _bootstrapped (below) guards against
+// re-running bootstrap after it already succeeded in this JS runtime.
+//
+// On duplicate tab open: each tab gets its own JS module scope, so both
+// will attempt bootstrap. The backend grace-window (migration 145) handles
+// the race — if both tabs send the same rt cookie within 30 s, the second
+// gets the successor token rather than triggering reuse-detection.
 let _bootstrapFlight: Promise<void> | null = null;
 let _bootstrapped = false;
 

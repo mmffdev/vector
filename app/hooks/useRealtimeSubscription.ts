@@ -23,7 +23,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { getApiToken } from "@/app/lib/api";
+import { getApiToken, getRefreshCallback } from "@/app/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
@@ -55,18 +55,38 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
     let retry = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const wsURL = (() => {
-      // Convert http(s) → ws(s) and append the access token as a query
-      // param — browsers cannot set Authorization on WS upgrade.
+    // Build the WS URL fresh each time — captures the current access token
+    // so reconnects after token refresh carry the new JWT, not the expired one.
+    const buildWsURL = () => {
       const base = API_BASE.replace(/^http/i, "ws");
       const token = getApiToken();
       const tokenParam = token ? `?access_token=${encodeURIComponent(token)}` : "";
       return `${base}/ws${tokenParam}`;
-    })();
+    };
+
+    const scheduleReconnect = (wasAuthFailure: boolean) => {
+      if (cancelled) return;
+      const backoffBase = Math.min(500 * 2 ** retry, 30_000);
+      const jitter = backoffBase * (0.75 + Math.random() * 0.5);
+      retry++;
+      if (wasAuthFailure) {
+        // Token expired — refresh first, then reconnect immediately so we
+        // don't spin reconnects with the same dead token.
+        const refresh = getRefreshCallback();
+        if (refresh) {
+          reconnectTimer = setTimeout(() => {
+            if (cancelled) return;
+            refresh().finally(() => { if (!cancelled) connect(); });
+          }, jitter);
+          return;
+        }
+      }
+      reconnectTimer = setTimeout(connect, jitter);
+    };
 
     const connect = () => {
       if (cancelled) return;
-      ws = new WebSocket(wsURL);
+      ws = new WebSocket(buildWsURL());
 
       ws.addEventListener("open", () => {
         retry = 0;
@@ -83,15 +103,12 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
         }
       });
 
-      ws.addEventListener("close", () => {
+      ws.addEventListener("close", (ev) => {
         if (cancelled) return;
-        // Exponential backoff with jitter: 0.5, 1, 2, 4, 8, … capped
-        // at 30s. ±25% jitter avoids thundering herd on backend
-        // restart.
-        const base = Math.min(500 * 2 ** retry, 30_000);
-        const jitter = base * (0.75 + Math.random() * 0.5);
-        retry++;
-        reconnectTimer = setTimeout(connect, jitter);
+        // code 4401 = backend explicit auth rejection (set by WS upgrade handler).
+        // code 1006 = abnormal close (HTTP 401/403 during upgrade — no close frame).
+        const isAuthFailure = ev.code === 4401 || ev.code === 1006;
+        scheduleReconnect(isAuthFailure);
       });
 
       ws.addEventListener("error", () => {

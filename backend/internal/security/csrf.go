@@ -81,8 +81,11 @@ func CSRF(next http.Handler) http.Handler {
 }
 
 func isCSRFExempt(path string) bool {
-	switch path {
-	// Current infra auth paths (root-level, promoted in PLA-0030 T8).
+	// Strip /_site prefix so the same exempt list covers both the canonical
+	// BFF mount (/_site/auth/login) and the root back-compat shim (/auth/login).
+	// The global CSRF middleware sees the full path before chi strips prefixes.
+	bare := strings.TrimPrefix(path, "/_site")
+	switch bare {
 	case "/auth/login",
 		"/auth/refresh",
 		"/auth/password-reset",
@@ -95,7 +98,7 @@ func isCSRFExempt(path string) bool {
 		"/samantha/v1/addressables/build-reconcile":
 		return true
 	}
-	if strings.HasPrefix(path, "/samantha/v1/admin/api-keys") {
+	if strings.HasPrefix(bare, "/samantha/v1/admin/api-keys") {
 		return true
 	}
 	return false

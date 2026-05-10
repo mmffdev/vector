@@ -25,6 +25,10 @@ export function setRefreshCallback(fn: (() => Promise<void>) | null) {
   _refreshCallback = fn;
 }
 
+export function getRefreshCallback(): (() => Promise<void>) | null {
+  return _refreshCallback;
+}
+
 export type ApiViolation = { field: string; message: string };
 
 // RFC 9457 Problem Details fields surfaced from error responses.
