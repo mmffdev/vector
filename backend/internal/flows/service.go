@@ -92,13 +92,14 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 			idx = len(groups)
 			groupIdx[flowID] = idx
 			groups = append(groups, FlowGroup{
-				FlowID:    flowID,
-				FlowName:  flowName,
-				IsDefault: isDefault,
-				TypeID:    typeID,
-				TypeName:  typeName,
-				TypeScope: typeScope,
-				States:    []FlowState{},
+				FlowID:      flowID,
+				FlowName:    flowName,
+				IsDefault:   isDefault,
+				TypeID:      typeID,
+				TypeName:    typeName,
+				TypeScope:   typeScope,
+				States:      []FlowState{},
+				Transitions: []FlowTransition{},
 			})
 		}
 		groups[idx].States = append(groups[idx].States, st)

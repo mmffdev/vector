@@ -94,7 +94,7 @@ function FlowMap({
   // Split transitions into forward (happy path) and back (return arcs).
   const fwdEdges: FlowTransition[] = [];
   const backEdges: FlowTransition[] = [];
-  for (const t of transitions) {
+  for (const t of (transitions ?? [])) {
     const f = byId.get(t.from);
     const to = byId.get(t.to);
     if (!f || !to) continue;
@@ -406,7 +406,7 @@ function FlowBlock({
   showLabel: boolean;
 }) {
   const [states, setStates] = useState<FlowState[]>(group.states);
-  const [transitions]       = useState<FlowTransition[]>(group.transitions);
+  const [transitions]       = useState<FlowTransition[]>(group.transitions ?? []);
 
   useEffect(() => { setStates(group.states); }, [group.states]);
 
