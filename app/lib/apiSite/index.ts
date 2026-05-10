@@ -493,9 +493,10 @@ export const subscriptionLayers = {
 export interface FlowState {
   id: ID;
   name: string;
-  kind: "todo" | "in_progress" | "done" | "accepted" | "cancelled";
+  kind: "backlog" | "todo" | "in_progress" | "done" | "accepted" | "cancelled";
   sort_order: number;
   is_initial: boolean;
+  is_pullable: boolean;
   colour?: string | null;
 }
 
@@ -524,7 +525,7 @@ export const flows = {
   list: () =>
     apiSite<FlowsResponse>("/flows/"),
 
-  createState: (flowId: ID, data: { name: string; kind: string; sort_order?: number; is_initial?: boolean }) =>
+  createState: (flowId: ID, data: { name: string; kind: string; sort_order?: number; is_initial?: boolean; is_pullable?: boolean }) =>
     apiSite<FlowState>(`/flows/${flowId}/states`, {
       method: "POST",
       body: JSON.stringify(data),
@@ -544,7 +545,7 @@ export const flows = {
 };
 
 export const flowStates = {
-  patch: (stateId: ID, patch: { colour?: string | null; name?: string; sort_order?: number; is_initial?: boolean }) =>
+  patch: (stateId: ID, patch: { colour?: string | null; name?: string; kind?: string; sort_order?: number; is_initial?: boolean; is_pullable?: boolean }) =>
     apiSite<FlowState>(`/flow-states/${stateId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -32,7 +32,7 @@ async function list(): Promise<FlowsResponse> {
 
 async function patchState(
   stateId: string,
-  patch: { colour?: string | null; name?: string; sort_order?: number; is_initial?: boolean },
+  patch: { colour?: string | null; name?: string; kind?: string; sort_order?: number; is_initial?: boolean; is_pullable?: boolean },
 ): Promise<FlowState> {
   const result = await flowStatesApi_.patch(stateId, patch);
   invalidate();
@@ -46,7 +46,7 @@ async function deleteState(stateId: string): Promise<void> {
 
 async function createState(
   flowId: string,
-  data: { name: string; kind: string; sort_order?: number; is_initial?: boolean },
+  data: { name: string; kind: string; sort_order?: number; is_initial?: boolean; is_pullable?: boolean },
 ): Promise<FlowState> {
   const result = await flowsApi.createState(flowId, data);
   invalidate();

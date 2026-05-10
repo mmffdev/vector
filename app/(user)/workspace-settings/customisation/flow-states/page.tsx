@@ -7,22 +7,24 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
+  rectIntersection,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-  horizontalListSortingStrategy,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import type { Modifier } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { BsArrowsExpandVertical, BsArrowBarLeft, BsArrowBarRight } from "react-icons/bs";
+import { BsArrowsExpand, BsPlusCircleDotted, BsXCircle } from "react-icons/bs";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
@@ -44,6 +46,7 @@ const PALETTE = [
 ];
 
 const KIND_LABEL: Record<string, string> = {
+  backlog:     "Backlog",
   todo:        "To Do",
   in_progress: "In Progress",
   done:        "Done",
@@ -53,6 +56,7 @@ const KIND_LABEL: Record<string, string> = {
 
 // Kind → border stroke colour when no custom colour is set on the state.
 const KIND_STROKE: Record<string, string> = {
+  backlog:     "#cbd5e1",   // slate-300
   todo:        "var(--border)",
   in_progress: "#93c5fd",   // blue-300
   done:        "#86efac",   // green-300
@@ -61,10 +65,10 @@ const KIND_STROKE: Record<string, string> = {
 };
 
 
-// Restrict drag movement to the horizontal axis only (no @dnd-kit/modifiers dep).
-const restrictToHorizontalAxis: Modifier = ({ transform }) => ({
+// Restrict drag movement to the vertical axis only (no @dnd-kit/modifiers dep).
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({
   ...transform,
-  y: 0,
+  x: 0,
 });
 
 // ── FlowMap ───────────────────────────────────────────────────────────────────
@@ -84,59 +88,48 @@ interface PendingInsert {
 function inferKind(left: FlowState | null, right: FlowState | null): string {
   if (!left)  return right?.kind ?? "todo";
   if (!right) return left?.kind  ?? "in_progress";
-  const ORDER: Record<string, number> = { todo: 0, in_progress: 1, done: 2, accepted: 3, cancelled: 4 };
+  const ORDER: Record<string, number> = { backlog: 0, todo: 1, in_progress: 2, done: 3, accepted: 4, cancelled: 5 };
   const l = ORDER[left.kind] ?? 1;
   const r = ORDER[right.kind] ?? 1;
   if (r > l) {
     const mid = Math.round((l + r) / 2);
-    const KEY = ["todo", "in_progress", "done", "accepted", "cancelled"];
+    const KEY = ["backlog", "todo", "in_progress", "done", "accepted", "cancelled"];
     return KEY[mid] ?? left.kind;
   }
   return left.kind;
 }
 
-// ── PillCard ──────────────────────────────────────────────────────────────────
-// Pure visual pill + toolbar. Used both for the sortable item and the DragOverlay.
-function PillCard({
+// ── PillRow ───────────────────────────────────────────────────────────────────
+// 3-cell pill row: [kind-label] [pill cell] [drag handle]. Real flex row.
+function PillRow({
   state,
-  position,
   removingId,
   onRemove,
   dragHandleProps,
-  isOverlay = false,
+  dragging = false,
 }: {
   state: FlowState;
-  position: "first" | "middle" | "last";
   removingId?: string | null;
   onRemove?: (s: FlowState) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
-  isOverlay?: boolean;
+  dragging?: boolean;
 }) {
   const stroke = state.colour ?? (KIND_STROKE[state.kind] ?? "var(--border)");
-
-  const DragIcon =
-    position === "first"  ? BsArrowBarRight :
-    position === "last"   ? BsArrowBarLeft  :
-    BsArrowsExpandVertical;
+  const kindLabel = KIND_LABEL[state.kind] ?? state.kind;
+  const cellOpacity = dragging ? 0 : 1;
 
   return (
-    <div className={`fs-map__pill-wrap${isOverlay ? " fs-map__pill-wrap--overlay" : ""}`}>
-      <div className="fs-map__pill" style={{ borderColor: stroke }}>
-        {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
-        <span className="fs-map__pill-label">{state.name}</span>
-      </div>
-      <div className="fs-map__pill-toolbar">
-        <button
-          type="button"
-          className="fs-map__drag-handle"
-          title="Drag to reorder"
-          aria-label="Drag to reorder"
-          style={{ touchAction: "none" }}
-          {...dragHandleProps}
-        >
-          <DragIcon size={14} />
-        </button>
-        {!state.is_initial && onRemove && (
+    <div className="fs-map__row">
+      <span
+        className="fs-map__kind-label"
+        title={`Master kind: ${kindLabel}`}
+        style={{ opacity: cellOpacity }}
+      >
+        {kindLabel}
+      </span>
+
+      <div className="fs-map__pill-cell" style={{ opacity: cellOpacity }}>
+        {!state.is_initial && onRemove ? (
           <button
             type="button"
             className="fs-map__remove-btn"
@@ -145,25 +138,55 @@ function PillCard({
             onClick={() => onRemove(state)}
             aria-label={`Remove state ${state.name}`}
           >
-            −
+            <BsXCircle size={14} />
           </button>
+        ) : (
+          <span className="fs-map__toolbar-spacer" />
         )}
+        <div className="fs-map__pill" style={{ borderColor: stroke }}>
+          {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
+          <span className="fs-map__pill-label">{state.name}</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="fs-map__drag-handle"
+        title="Drag to reorder"
+        aria-label="Drag to reorder"
+        style={{ touchAction: "none", opacity: cellOpacity }}
+        {...dragHandleProps}
+      >
+        <BsArrowsExpand size={16} />
+      </button>
+    </div>
+  );
+}
+
+// ── PillOverlay ───────────────────────────────────────────────────────────────
+// Standalone ghost shown by DragOverlay. Renders just the pill (no kind label,
+// no drag handle) so the overlay's bounding rect matches the picked-up pill.
+function PillOverlay({ state }: { state: FlowState }) {
+  const stroke = state.colour ?? (KIND_STROKE[state.kind] ?? "var(--border)");
+  return (
+    <div className="fs-map__pill-overlay">
+      <div className="fs-map__pill" style={{ borderColor: stroke }}>
+        {state.is_initial && <span className="fs-map__initial-dot" aria-label="Initial state" />}
+        <span className="fs-map__pill-label">{state.name}</span>
       </div>
     </div>
   );
 }
 
 // ── SortablePill ──────────────────────────────────────────────────────────────
-// Wraps PillCard with useSortable. When dragging, goes to opacity 0 (the
-// DragOverlay shows the ghost instead).
+// Wraps PillRow with useSortable. The wrapper uses display: contents so its
+// three children land directly in the parent grid columns.
 function SortablePill({
   state,
-  position,
   removingId,
   onRemove,
 }: {
   state: FlowState;
-  position: "first" | "middle" | "last";
   removingId: string | null;
   onRemove: (s: FlowState) => void;
 }) {
@@ -175,17 +198,109 @@ function SortablePill({
   } = useSortable({ id: state.id });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`fs-map__sortable-slot${isDragging ? " fs-map__sortable-slot--dragging" : ""}`}
-    >
-      <PillCard
+    <div ref={setNodeRef} className="fs-map__pill-slot">
+      <PillRow
         state={state}
-        position={position}
         removingId={removingId}
         onRemove={onRemove}
         dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>}
+        dragging={isDragging}
       />
+    </div>
+  );
+}
+
+// ── PlusSlot ──────────────────────────────────────────────────────────────────
+// A `+` row that doubles as a drop target. `insertAt` is the index where a
+// dropped pill would land in the resulting array.
+function PlusSlot({
+  insertAt,
+  pending,
+  saving,
+  pendingName,
+  onPendingChange,
+  onCommit,
+  onCancel,
+  onOpen,
+  isDragActive,
+  isInsertOpen,
+  nameRef,
+}: {
+  insertAt: number;
+  pending: PendingInsert | null;
+  saving: boolean;
+  pendingName: string;
+  onPendingChange: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+  onOpen: () => void;
+  isDragActive: boolean;
+  isInsertOpen: boolean;
+  nameRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  const id = `slot-${insertAt}`;
+  const { setNodeRef, isOver } = useDroppable({ id, data: { type: "slot", insertAt } });
+
+  if (isInsertOpen) {
+    return (
+      <div className="fs-map__row fs-map__plus-row">
+        <span className="fs-map__kind-label" />
+        <div className="fs-map__pill-cell">
+          <span className="fs-map__toolbar-spacer" />
+          <div className="fs-map__insert-card">
+            <input
+              ref={nameRef as React.RefObject<HTMLInputElement>}
+              className="fs-map__insert-name"
+              placeholder="State name…"
+              value={pendingName}
+              maxLength={60}
+              onChange={(e) => onPendingChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter")  onCommit();
+                if (e.key === "Escape") onCancel();
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn--xs btn--primary fs-map__insert-ok"
+              disabled={saving || !pendingName.trim()}
+              onClick={onCommit}
+            >
+              {saving ? "…" : "Add"}
+            </button>
+            <button type="button" className="btn btn--xs btn--ghost" onClick={onCancel}>✕</button>
+          </div>
+        </div>
+        <span className="fs-map__toolbar-spacer" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={[
+        "fs-map__row",
+        "fs-map__plus-row",
+        isDragActive ? "fs-map__plus-row--target" : "",
+        isOver       ? "fs-map__plus-row--over"   : "",
+      ].filter(Boolean).join(" ")}
+    >
+      <span className="fs-map__kind-label" />
+      <div className="fs-map__pill-cell">
+        <span className="fs-map__toolbar-spacer" />
+        <button
+          type="button"
+          className="fs-map__plus-btn"
+          disabled={!!pending || isDragActive}
+          title="Insert state here"
+          onClick={onOpen}
+          aria-label="Insert state"
+        >
+          <BsPlusCircleDotted size={22} />
+        </button>
+      </div>
+      <span className="fs-map__toolbar-spacer" />
     </div>
   );
 }
@@ -201,7 +316,7 @@ function FlowMap({
   flowId: string;
   onCreated: (st: FlowState, afterIndex: number) => void;
   onDeleted: (stateId: string) => void;
-  onReorder: (event: DragEndEvent) => void;
+  onReorder: (params: { activeId: string; insertAt: number }) => void;
 }) {
   const [pending,    setPending]    = useState<PendingInsert | null>(null);
   const [saving,     setSaving]     = useState(false);
@@ -213,13 +328,40 @@ function FlowMap({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  const lastOverIdRef = useRef<string | null>(null);
+
+  // Custom collision: pointerWithin is most accurate, falls back to
+  // rectIntersection then closestCenter for edge cases.
+  const collisionDetection = useCallback((args: Parameters<typeof closestCenter>[0]) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) return rectCollisions;
+    return closestCenter(args);
+  }, []);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(String(event.active.id));
+    lastOverIdRef.current = null;
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    lastOverIdRef.current = event.over ? String(event.over.id) : null;
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveId(null);
-    onReorder(event);
+    const fallbackOverId = event.over ? String(event.over.id) : null;
+    const resolvedOverId = lastOverIdRef.current ?? fallbackOverId;
+    const activeIdStr = String(event.active.id);
+    lastOverIdRef.current = null;
+    if (!resolvedOverId) return;
+
+    // Drop targets are slots only — id format `slot-N`. Ignore anything else.
+    const m = /^slot-(\d+)$/.exec(resolvedOverId);
+    if (!m) return;
+    const insertAt = parseInt(m[1], 10);
+    onReorder({ activeId: activeIdStr, insertAt });
   }, [onReorder]);
 
   // Focus the name input when a slot opens.
@@ -268,156 +410,67 @@ function FlowMap({
     }
   }, [onDeleted]);
 
-  // Shared insert-card render — name input only; kind is inferred from neighbours.
-  const insertCard = (key: string, showArrowAfter: boolean) => (
-    <div key={key} className="fs-map__slot">
-      <div className="fs-map__insert-card">
-        <input
-          ref={nameRef}
-          className="fs-map__insert-name"
-          placeholder="State name…"
-          value={pending!.name}
-          maxLength={60}
-          onChange={(e) => setPending((p) => p ? { ...p, name: e.target.value } : p)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitSlot();
-            if (e.key === "Escape") cancelSlot();
-          }}
-        />
-        <button
-          type="button"
-          className="btn btn--xs btn--primary fs-map__insert-ok"
-          disabled={saving || !pending!.name.trim()}
-          onClick={commitSlot}
-        >
-          {saving ? "…" : "Add"}
-        </button>
-        <button type="button" className="btn btn--xs btn--ghost" onClick={cancelSlot}>✕</button>
-      </div>
-      {showArrowAfter && <div className="fs-map__arrow" aria-hidden="true">→</div>}
-    </div>
-  );
+  const isDragActive = activeId !== null;
 
-  // Build layout: [+] → pill → [+] → pill → ... → pill → [+]
-  // Sequence of slots, indexed by afterIndex:
-  //   afterIndex -1  = before state[0]
-  //   afterIndex  i  = after state[i] (for i = 0..N-1)
-  //
-  // Arrows appear: after the first +, between each pair (after pill before next +),
-  // and after each mid + before its pill. NOT after the last +.
-  const items: React.ReactNode[] = [];
+  // Build the alternating row sequence:
+  //   PlusSlot(0) → Pill(0) → PlusSlot(1) → Pill(1) → … → Pill(N-1) → PlusSlot(N)
+  // PlusSlot insertAt index N means "drop here = pill ends up at index N".
+  const rows: React.ReactNode[] = [];
 
-  // Slot -1 (before all states)
-  if (pending?.afterIndex === -1) {
-    items.push(insertCard("slot--1", states.length > 0));
-  } else {
-    items.push(
-      <div key="plus--1" className="fs-map__plus-wrap">
-        <button
-          type="button"
-          className="fs-map__plus-btn"
-          disabled={!!pending}
-          title="Insert state before first"
-          onClick={() => openSlot(-1, null, states[0] ?? null)}
-          aria-label="Insert state before first"
-        >
-          +
-        </button>
-        {states.length > 0 && <div className="fs-map__arrow" aria-hidden="true">→</div>}
-      </div>
+  for (let i = 0; i <= states.length; i++) {
+    const isInsertOpen = pending?.afterIndex === i - 1;
+    const left  = i === 0 ? null : states[i - 1];
+    const right = i === states.length ? null : states[i];
+    rows.push(
+      <PlusSlot
+        key={`slot-${i}`}
+        insertAt={i}
+        pending={pending}
+        saving={saving}
+        pendingName={pending?.name ?? ""}
+        onPendingChange={(v) => setPending((p) => (p ? { ...p, name: v } : p))}
+        onCommit={commitSlot}
+        onCancel={cancelSlot}
+        onOpen={() => openSlot(i - 1, left, right)}
+        isDragActive={isDragActive}
+        isInsertOpen={isInsertOpen}
+        nameRef={nameRef}
+      />
     );
+    if (i < states.length) {
+      const s = states[i];
+      rows.push(
+        <SortablePill
+          key={s.id}
+          state={s}
+          removingId={removingId}
+          onRemove={removeState}
+        />
+      );
+    }
   }
 
-  states.forEach((s, i) => {
-    const isLast = i === states.length - 1;
-    const position: "first" | "middle" | "last" =
-      i === 0 && isLast ? "middle" :  // only one state → treat as middle
-      i === 0           ? "first"  :
-      isLast            ? "last"   : "middle";
-
-    // Draggable pill
-    items.push(
-      <SortablePill key={s.id} state={s} position={position} removingId={removingId} onRemove={removeState} />
-    );
-
-    // Slot after this pill
-    if (!isLast) {
-      // Arrow after pill, before mid +
-      items.push(<div key={`arr-${i}`} className="fs-map__arrow" aria-hidden="true">→</div>);
-      if (pending?.afterIndex === i) {
-        items.push(insertCard(`slot-${i}`, true));
-      } else {
-        items.push(
-          <div key={`plus-${i}`} className="fs-map__plus-wrap">
-            <button
-              type="button"
-              className="fs-map__plus-btn"
-              disabled={!!pending}
-              title="Insert state here"
-              onClick={() => openSlot(i, s, states[i + 1])}
-              aria-label="Insert state"
-            >
-              +
-            </button>
-            <div className="fs-map__arrow" aria-hidden="true">→</div>
-          </div>
-        );
-      }
-    } else {
-      // Last pill → final slot (no arrow after)
-      items.push(<div key="arr-last" className="fs-map__arrow" aria-hidden="true">→</div>);
-      if (pending?.afterIndex === i) {
-        items.push(insertCard("slot-last", false));
-      } else {
-        items.push(
-          <div key="plus-last" className="fs-map__plus-wrap">
-            <button
-              type="button"
-              className="fs-map__plus-btn"
-              disabled={!!pending}
-              title="Add state at end"
-              onClick={() => openSlot(i, s, null)}
-              aria-label="Add state at end"
-            >
-              +
-            </button>
-          </div>
-        );
-      }
-    }
-  });
-
-  const activeState  = activeId ? states.find((s) => s.id === activeId) ?? null : null;
-  const activeIndex  = activeState ? states.indexOf(activeState) : -1;
-  const activePos: "first" | "middle" | "last" =
-    activeIndex === 0 && states.length === 1 ? "middle" :
-    activeIndex === 0                         ? "first"  :
-    activeIndex === states.length - 1         ? "last"   : "middle";
+  const activeState = activeId ? states.find((s) => s.id === activeId) ?? null : null;
 
   return (
     <DndContext
       sensors={mapSensors}
-      collisionDetection={closestCenter}
-      modifiers={[restrictToHorizontalAxis]}
+      collisionDetection={collisionDetection}
+      modifiers={[restrictToVerticalAxis]}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={states.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
+      <SortableContext items={states.map((s) => s.id)} strategy={verticalListSortingStrategy}>
         <div className="fs-map" role="group" aria-label="Flow state map">
-          <div className="fs-map__row">
-            {items}
+          <div className="fs-map__col">
+            {rows}
           </div>
         </div>
       </SortableContext>
 
-      <DragOverlay modifiers={[restrictToHorizontalAxis]} dropAnimation={null}>
-        {activeState && (
-          <PillCard
-            state={activeState}
-            position={activePos}
-            isOverlay
-          />
-        )}
+      <DragOverlay modifiers={[restrictToVerticalAxis]} dropAnimation={null}>
+        {activeState && <PillOverlay state={activeState} />}
       </DragOverlay>
     </DndContext>
   );
@@ -563,6 +616,21 @@ function StateRow({
     [state.id, onPatched],
   );
 
+  const handlePullable = useCallback(
+    async (next: boolean) => {
+      setSaving(true);
+      try {
+        const updated = await flowStatesApi.patchState(state.id, { is_pullable: next });
+        onPatched(updated);
+      } catch (err) {
+        notify.apiError(err, "Failed to update pull eligibility.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [state.id, onPatched],
+  );
+
   return (
     <tr
       ref={setNodeRef}
@@ -588,6 +656,23 @@ function StateRow({
       </td>
       <td className="table__cell table__cell--muted" style={{ fontSize: "0.75rem", width: 110 }}>
         {KIND_LABEL[state.kind] ?? state.kind}
+      </td>
+      <td className="table__cell" style={{ width: 110, textAlign: "center" }}>
+        <label
+          className="fs-pullable-toggle"
+          title={state.is_pullable
+            ? "Team can pull from this state"
+            : "Not pullable — passive/gate state"}
+          style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", cursor: saving ? "wait" : "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={state.is_pullable}
+            disabled={saving}
+            onChange={(e) => handlePullable(e.target.checked)}
+            aria-label={`Pullable: ${state.name}`}
+          />
+        </label>
       </td>
       <td className="table__cell" style={{ width: 150 }}>
         <ColourPicker value={state.colour} onChange={handleColour} />
@@ -721,31 +806,71 @@ function FlowBlock({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
+  // Slot-drop reorder. `insertAt` is the index where the pill should land in
+  // the resulting array (0..N where N = states.length). Kind inheritance:
+  // the dragged pill takes the kind of the pill that was above the target
+  // slot (or `todo` if dropped into the very top slot).
+  const handleSlotReorder = useCallback(({ activeId, insertAt }: { activeId: string; insertAt: number }) => {
     setStates((prev) => {
-      const oldIdx = prev.findIndex((s) => s.id === active.id);
-      const newIdx = prev.findIndex((s) => s.id === over.id);
-      const next = arrayMove(prev, oldIdx, newIdx);
+      const oldIdx = prev.findIndex((s) => s.id === activeId);
+      if (oldIdx === -1) return prev;
+
+      // Compute the kind to inherit BEFORE removing the dragged pill, using
+      // the pill that sits above the target slot in the original list.
+      // Slot 0 → no pill above → inherit `todo`.
+      // Slot N (after pill N-1) → inherit prev[N-1].kind. But if that pill
+      // *is* the dragged pill, climb up one more.
+      let inheritedKind: FlowState["kind"] = "todo";
+      for (let k = insertAt - 1; k >= 0; k--) {
+        if (prev[k].id !== activeId) { inheritedKind = prev[k].kind; break; }
+      }
+
+      // Remove dragged pill, then splice into target index. After removal,
+      // if the original index sat before insertAt, shift insertAt left by 1.
+      const without = prev.filter((s) => s.id !== activeId);
+      const adjusted = insertAt > oldIdx ? insertAt - 1 : insertAt;
+      const moved = [...without];
+      moved.splice(adjusted, 0, { ...prev[oldIdx], kind: inheritedKind });
+
+      const renumbered = moved.map((s, i) => ({ ...s, sort_order: (i + 1) * 10 }));
+
+      // No-op? Same index AND same kind — skip the round trip.
+      const noChange = adjusted === oldIdx && prev[oldIdx].kind === inheritedKind;
+      if (noChange) return prev;
 
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(async () => {
-        const changed = next.filter((s, i) => s.sort_order !== (i + 1) * 10);
+        const changed = renumbered.filter((s) => {
+          const before = prev.find((p) => p.id === s.id);
+          return !before || before.sort_order !== s.sort_order || before.kind !== s.kind;
+        });
         await Promise.all(
-          changed.map((s) => {
-            const newOrder = (next.indexOf(s) + 1) * 10;
-            return flowStatesApi
-              .patchState(s.id, { sort_order: newOrder })
-              .catch((err) => notify.apiError(err, "Failed to save order."));
-          }),
+          changed.map((s) =>
+            flowStatesApi
+              .patchState(s.id, { sort_order: s.sort_order, kind: s.kind })
+              .catch((err) => notify.apiError(err, "Failed to save order."))
+          ),
         );
       }, 250);
 
-      return next;
+      return renumbered;
     });
   }, []);
+
+  // Table drag-end (DndContext below the map) still uses the old shape.
+  const handleTableDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setStates((prev) => {
+      const oldIdx = prev.findIndex((s) => s.id === active.id);
+      const newIdx = prev.findIndex((s) => s.id === over.id);
+      if (oldIdx === -1 || newIdx === -1) return prev;
+      // Translate "drop on pill B" to slot-insert semantics.
+      const insertAt = newIdx > oldIdx ? newIdx + 1 : newIdx;
+      handleSlotReorder({ activeId: String(active.id), insertAt });
+      return prev; // handleSlotReorder updates state itself
+    });
+  }, [handleSlotReorder]);
 
   return (
     <div className="fs-flow-block">
@@ -756,10 +881,10 @@ function FlowBlock({
         flowId={group.flow_id}
         onCreated={onMapCreated}
         onDeleted={onMapDeleted}
-        onReorder={handleDragEnd}
+        onReorder={handleSlotReorder}
       />
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTableDragEnd}>
         <SortableContext items={states.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           <div className="table-scroll">
             <table className="table">
@@ -768,6 +893,13 @@ function FlowBlock({
                   <th className="table__cell drag-handle-cell" style={{ width: 36 }} />
                   <th className="table__cell">State</th>
                   <th className="table__cell" style={{ width: 110 }}>Kind</th>
+                  <th
+                    className="table__cell"
+                    style={{ width: 110, textAlign: "center" }}
+                    title="Can the team pull from this state?"
+                  >
+                    Pullable
+                  </th>
                   <th className="table__cell" style={{ width: 150 }}>Colour</th>
                 </tr>
               </thead>
