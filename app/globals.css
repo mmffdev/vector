@@ -12271,6 +12271,28 @@ input[type="reset"] {
   margin-top: 0;
 }
 
+/* ─── FlowMap (fs-flow-map-*) ─────────────────────────────────────────────────
+   Inline SVG diagram above each flow's state table.
+   Horizontally scrollable so wide flows (e.g. 8-state QA) never clip.
+*/
+.fs-flow-map {
+  overflow-x: auto;
+  overflow-y: visible;
+  margin-bottom: var(--space-3);
+  /* Subtle inset card feel */
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 0;
+}
+
+.fs-flow-map__svg {
+  display: block;
+  /* font inherits from the page so state labels match body text */
+  font-family: inherit;
+  overflow: visible;
+}
+
 /* ─── PageAnchorNav (anav-*) ──────────────────────────────────────────────────
    Reusable two-column "sticky TOC + scrolling content" layout.
 

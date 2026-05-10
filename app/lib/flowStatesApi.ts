@@ -9,6 +9,11 @@ export interface FlowState {
   colour?: string | null;
 }
 
+export interface FlowTransition {
+  from: string; // flow_state id
+  to: string;   // flow_state id
+}
+
 export interface FlowGroup {
   flow_id: string;
   flow_name: string;
@@ -17,6 +22,7 @@ export interface FlowGroup {
   type_name: string;
   type_scope: "work" | "strategy";
   states: FlowState[];
+  transitions: FlowTransition[];
 }
 
 export interface FlowsResponse {

@@ -16,15 +16,22 @@ type PatchStateInput struct {
 	Colour *string `json:"colour"` // nil = clear; "#RRGGBB" = set
 }
 
+// FlowTransition is one allowed edge within a flow.
+type FlowTransition struct {
+	From string `json:"from"` // flow_state.id
+	To   string `json:"to"`   // flow_state.id
+}
+
 // FlowGroup is one artefact type's complete flow with its ordered states.
 type FlowGroup struct {
-	FlowID    string      `json:"flow_id"`
-	FlowName  string      `json:"flow_name"`
-	IsDefault bool        `json:"is_default"`
-	TypeID    string      `json:"type_id"`
-	TypeName  string      `json:"type_name"`
-	TypeScope string      `json:"type_scope"` // "work" | "strategy"
-	States    []FlowState `json:"states"`
+	FlowID      string           `json:"flow_id"`
+	FlowName    string           `json:"flow_name"`
+	IsDefault   bool             `json:"is_default"`
+	TypeID      string           `json:"type_id"`
+	TypeName    string           `json:"type_name"`
+	TypeScope   string           `json:"type_scope"` // "work" | "strategy"
+	States      []FlowState      `json:"states"`
+	Transitions []FlowTransition `json:"transitions"`
 }
 
 // ListResponse is the wire shape of GET /samantha/v2/flows.

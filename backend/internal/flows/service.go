@@ -106,7 +106,49 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	// Fetch transitions for all groups in one query.
+	if len(groups) > 0 {
+		flowIDs := make([]string, len(groups))
+		for i, g := range groups {
+			flowIDs[i] = g.FlowID
+		}
+		if err := s.loadTransitions(ctx, groups, groupIdx, flowIDs); err != nil {
+			return nil, err
+		}
+	}
+
 	return groups, nil
+}
+
+func (s *Service) loadTransitions(
+	ctx context.Context,
+	groups []FlowGroup,
+	groupIdx map[string]int,
+	flowIDs []string,
+) error {
+	const q = `
+		SELECT flow_id, from_state_id, to_state_id
+		FROM   flow_transitions
+		WHERE  flow_id = ANY($1)
+		ORDER  BY flow_id, from_state_id, to_state_id;`
+
+	rows, err := s.vaPool.Query(ctx, q, flowIDs)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var flowID, from, to string
+		if err := rows.Scan(&flowID, &from, &to); err != nil {
+			return err
+		}
+		if idx, ok := groupIdx[flowID]; ok {
+			groups[idx].Transitions = append(groups[idx].Transitions, FlowTransition{From: from, To: to})
+		}
+	}
+	return rows.Err()
 }
 
 // PatchFlowState updates the colour of a single flow state, scoped to the

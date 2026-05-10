@@ -8,6 +8,7 @@ import {
   flowStatesApi,
   type FlowGroup,
   type FlowState,
+  type FlowTransition,
   type FlowsResponse,
 } from "@/app/lib/flowStatesApi";
 
@@ -27,6 +28,220 @@ const KIND_LABEL: Record<string, string> = {
   accepted:    "Accepted",
   cancelled:   "Cancelled",
 };
+
+// Kind → fallback fill when no colour is set on the state.
+const KIND_FILL: Record<string, string> = {
+  todo:        "var(--surface-raised)",
+  in_progress: "#dbeafe",   // blue-100
+  done:        "#dcfce7",   // green-100
+  accepted:    "#f3e8ff",   // purple-100
+  cancelled:   "#fee2e2",   // red-100
+};
+
+const KIND_INK: Record<string, string> = {
+  todo:        "var(--ink-muted)",
+  in_progress: "#1e40af",
+  done:        "#166534",
+  accepted:    "#6b21a8",
+  cancelled:   "#991b1b",
+};
+
+// ── FlowMap ───────────────────────────────────────────────────────────────────
+// Pure-SVG horizontal flow diagram. States are laid out left-to-right by
+// sort_order. Forward transitions (increasing sort_order) are rendered as
+// straight arrows on the top half; back-edges as curved arcs on the bottom.
+// No external library — just SVG path arithmetic.
+
+const PILL_W   = 90;
+const PILL_H   = 28;
+const PILL_R   = 6;
+const GAP      = 36;         // horizontal gap between pills
+const ARROW_Y  = PILL_H / 2; // centre-line Y (within the pill row)
+const ARC_DIP  = 22;         // how far below centre back-arcs dip
+const PAD_X    = 12;
+const PAD_TOP  = 20;         // space above pills for forward arrows
+const PAD_BOT  = ARC_DIP + 14; // space below pills for back-arcs
+
+const SVG_H    = PAD_TOP + PILL_H + PAD_BOT;
+
+function pillX(idx: number): number {
+  return PAD_X + idx * (PILL_W + GAP);
+}
+
+function pillCentreX(idx: number): number {
+  return pillX(idx) + PILL_W / 2;
+}
+
+// Arrow marker id is unique per flow to avoid SVG defs collision when multiple
+// FlowMap instances share the page.
+function FlowMap({
+  states,
+  transitions,
+  markerId,
+  onStateColourChange,
+}: {
+  states: FlowState[];
+  transitions: FlowTransition[];
+  markerId: string;
+  onStateColourChange: (stateId: string, colour: string | null) => void;
+}) {
+  // Index states by id for O(1) lookup.
+  const byId = new Map(states.map((s, i) => [s.id, { ...s, idx: i }]));
+
+  const svgW = PAD_X * 2 + states.length * PILL_W + Math.max(0, states.length - 1) * GAP;
+  const pillBaseY = PAD_TOP; // top of pill row within SVG
+
+  // Split transitions into forward (happy path) and back (return arcs).
+  const fwdEdges: FlowTransition[] = [];
+  const backEdges: FlowTransition[] = [];
+  for (const t of transitions) {
+    const f = byId.get(t.from);
+    const to = byId.get(t.to);
+    if (!f || !to) continue;
+    if (to.idx > f.idx) fwdEdges.push(t);
+    else backEdges.push(t);
+  }
+
+  // Arrow head: small filled triangle.
+  const markerSize = 7;
+
+  return (
+    <div className="fs-flow-map" aria-hidden="true">
+      <svg
+        width={svgW}
+        height={SVG_H}
+        viewBox={`0 0 ${svgW} ${SVG_H}`}
+        className="fs-flow-map__svg"
+      >
+        <defs>
+          {/* Forward arrow — dark */}
+          <marker
+            id={`${markerId}-fwd`}
+            markerWidth={markerSize}
+            markerHeight={markerSize}
+            refX={markerSize - 1}
+            refY={markerSize / 2}
+            orient="auto"
+          >
+            <path
+              d={`M0,0 L0,${markerSize} L${markerSize},${markerSize / 2} Z`}
+              fill="var(--ink-muted)"
+            />
+          </marker>
+          {/* Back arrow — subtler */}
+          <marker
+            id={`${markerId}-back`}
+            markerWidth={markerSize}
+            markerHeight={markerSize}
+            refX={markerSize - 1}
+            refY={markerSize / 2}
+            orient="auto"
+          >
+            <path
+              d={`M0,0 L0,${markerSize} L${markerSize},${markerSize / 2} Z`}
+              fill="var(--border)"
+            />
+          </marker>
+        </defs>
+
+        {/* ── Forward edges ── straight lines in the top zone */}
+        {fwdEdges.map((t) => {
+          const f  = byId.get(t.from)!;
+          const to = byId.get(t.to)!;
+          // Only draw non-adjacent edges as arcs above; adjacent ones as
+          // a simpler line connecting pill right-edge to pill left-edge.
+          const x1 = pillCentreX(f.idx)  + PILL_W / 2 - 2;
+          const x2 = pillCentreX(to.idx) - PILL_W / 2 + 2;
+          const y  = pillBaseY + ARROW_Y;
+          // Arc height scales with distance so crossing lines stay readable.
+          const span = to.idx - f.idx;
+          const lift = span === 1 ? 0 : 10 + (span - 2) * 6;
+          const mx   = (x1 + x2) / 2;
+          const my   = y - lift - 10;
+          const d    = lift === 0
+            ? `M${x1},${y} L${x2},${y}`
+            : `M${x1},${y} Q${mx},${my} ${x2},${y}`;
+          return (
+            <path
+              key={`fwd-${t.from}-${t.to}`}
+              d={d}
+              fill="none"
+              stroke="var(--ink-muted)"
+              strokeWidth={1.5}
+              markerEnd={`url(#${markerId}-fwd)`}
+            />
+          );
+        })}
+
+        {/* ── Back edges ── arcs dipping below the pill row */}
+        {backEdges.map((t) => {
+          const f  = byId.get(t.from)!;
+          const to = byId.get(t.to)!;
+          const x1 = pillCentreX(f.idx)  - PILL_W / 2 + 10;
+          const x2 = pillCentreX(to.idx) + PILL_W / 2 - 10;
+          const y  = pillBaseY + PILL_H;
+          const span = f.idx - to.idx;
+          const dip  = ARC_DIP + (span - 1) * 8;
+          const mx   = (x1 + x2) / 2;
+          const my   = y + dip;
+          return (
+            <path
+              key={`back-${t.from}-${t.to}`}
+              d={`M${x1},${y} Q${mx},${my} ${x2},${y}`}
+              fill="none"
+              stroke="var(--border)"
+              strokeWidth={1.2}
+              strokeDasharray="3 3"
+              markerEnd={`url(#${markerId}-back)`}
+            />
+          );
+        })}
+
+        {/* ── State pills ── */}
+        {states.map((s, i) => {
+          const x    = pillX(i);
+          const y    = pillBaseY;
+          const fill = s.colour ?? KIND_FILL[s.kind] ?? "var(--surface-raised)";
+          const ink  = s.colour ? safeInk(s.colour) : (KIND_INK[s.kind] ?? "var(--ink-muted)");
+          return (
+            <g
+              key={s.id}
+              className="fs-flow-map__pill"
+              onClick={() => onStateColourChange(s.id, null)}
+              style={{ cursor: "default" }}
+            >
+              <rect
+                x={x}
+                y={y}
+                width={PILL_W}
+                height={PILL_H}
+                rx={PILL_R}
+                fill={fill}
+                stroke={s.colour ? "transparent" : "var(--border)"}
+                strokeWidth={1}
+              />
+              {s.is_initial && (
+                <circle cx={x + 8} cy={y + PILL_H / 2} r={3} fill={ink} opacity={0.5} />
+              )}
+              <text
+                x={x + PILL_W / 2}
+                y={y + PILL_H / 2 + 1}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={10}
+                fontFamily="inherit"
+                fontWeight={s.is_initial ? 600 : 400}
+                fill={ink}
+              >
+                {s.name}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
 
 // ── ColourPicker ──────────────────────────────────────────────────────────────
 function ColourPicker({
@@ -179,55 +394,80 @@ function StateRow({
   );
 }
 
-// ── FlowTable ─────────────────────────────────────────────────────────────────
-function FlowTable({ group }: { group: FlowGroup }) {
+// ── FlowBlock ─────────────────────────────────────────────────────────────────
+// One flow within a type section — diagram header + state table.
+function FlowBlock({
+  group,
+  markerId,
+  showLabel,
+}: {
+  group: FlowGroup;
+  markerId: string;
+  showLabel: boolean;
+}) {
   const [states, setStates] = useState<FlowState[]>(group.states);
+  const [transitions]       = useState<FlowTransition[]>(group.transitions);
 
-  useEffect(() => { setStates(group.states); }, [group]);
+  useEffect(() => { setStates(group.states); }, [group.states]);
 
   const onPatched = useCallback((updated: FlowState) => {
     setStates((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
+  // Pass-through for map clicks (no-op for now — clicking a pill in the map
+  // doesn't open the colour picker since it's aria-hidden decoration).
+  const noopColourChange = useCallback(() => {}, []);
+
   return (
-    <div className="table-scroll">
-      <table className="table">
-        <thead className="table__head">
-          <tr>
-            <th className="table__cell">State</th>
-            <th className="table__cell" style={{ width: 110 }}>Kind</th>
-            <th className="table__cell" style={{ width: 150 }}>Colour</th>
-          </tr>
-        </thead>
-        <tbody>
-          {states.map((s) => (
-            <StateRow key={s.id} state={s} onPatched={onPatched} />
-          ))}
-        </tbody>
-      </table>
+    <div className="fs-flow-block">
+      {showLabel && <p className="fs-flow-name">{group.flow_name}</p>}
+
+      {states.length > 0 && (
+        <FlowMap
+          states={states}
+          transitions={transitions}
+          markerId={markerId}
+          onStateColourChange={noopColourChange}
+        />
+      )}
+
+      <div className="table-scroll">
+        <table className="table">
+          <thead className="table__head">
+            <tr>
+              <th className="table__cell">State</th>
+              <th className="table__cell" style={{ width: 110 }}>Kind</th>
+              <th className="table__cell" style={{ width: 150 }}>Colour</th>
+            </tr>
+          </thead>
+          <tbody>
+            {states.map((s) => (
+              <StateRow key={s.id} state={s} onPatched={onPatched} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 // ── TypeSection ───────────────────────────────────────────────────────────────
-// Renders all flows for one artefact type as a single section with an anchor id.
 function TypeSection({ typeId, typeName, groups }: {
   typeId: string;
   typeName: string;
   groups: FlowGroup[];
 }) {
   const multiFlow = groups.length > 1;
-
   return (
     <section id={`type-${typeId}`}>
       <h3 className="fs-type-heading">{typeName}</h3>
       {groups.map((g) => (
-        <div key={g.flow_id} className="fs-flow-block">
-          {multiFlow && (
-            <p className="fs-flow-name">{g.flow_name}</p>
-          )}
-          <FlowTable group={g} />
-        </div>
+        <FlowBlock
+          key={g.flow_id}
+          group={g}
+          markerId={`flow-${g.flow_id.slice(0, 8)}`}
+          showLabel={multiFlow}
+        />
       ))}
     </section>
   );
@@ -245,8 +485,8 @@ function groupByType(groups: FlowGroup[]): Map<string, { name: string; flows: Fl
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function FlowStatesPage() {
-  const [data, setData]         = useState<FlowsResponse | null>(null);
-  const [loadError, setError]   = useState<string | null>(null);
+  const [data, setData]       = useState<FlowsResponse | null>(null);
+  const [loadError, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -276,29 +516,24 @@ export default function FlowStatesPage() {
     );
   }
 
-  // Work types first (sorted by name), then strategy types (sorted by name).
   const workByType     = groupByType([...data.work].sort((a, b) => a.type_name.localeCompare(b.type_name)));
   const strategyByType = groupByType([...data.strategy].sort((a, b) => a.type_name.localeCompare(b.type_name)));
 
   const tocItems: AnchorNavItem[] = [
     ...(workByType.size > 0
       ? [{ id: "section-work",     label: "Work Types",     depth: 0 },
-         ...[...workByType.entries()].map(([id, { name }]) => ({
-           id: `type-${id}`, label: name, depth: 1,
-         }))]
+         ...[...workByType.entries()].map(([id, { name }]) => ({ id: `type-${id}`, label: name, depth: 1 }))]
       : []),
     ...(strategyByType.size > 0
       ? [{ id: "section-strategy", label: "Strategy Types", depth: 0 },
-         ...[...strategyByType.entries()].map(([id, { name }]) => ({
-           id: `type-${id}`, label: name, depth: 1,
-         }))]
+         ...[...strategyByType.entries()].map(([id, { name }]) => ({ id: `type-${id}`, label: name, depth: 1 }))]
       : []),
   ];
 
   return (
     <div className="settings-panel settings-panel--wide">
       <p className="form__hint" style={{ marginBottom: "var(--space-6)" }}>
-        Click a colour swatch to change it. Colours apply immediately and are reflected in work-item trees.
+        Click a colour swatch to change it. Colours update the flow map and work-item trees immediately.
       </p>
       <div className="anav-layout">
         <PageAnchorNav items={tocItems} />
