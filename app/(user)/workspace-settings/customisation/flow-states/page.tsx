@@ -1,6 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
@@ -344,6 +361,21 @@ function StateRow({
 }) {
   const [saving, setSaving] = useState(false);
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: state.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
   const handleColour = useCallback(
     async (hex: string | null) => {
       setSaving(true);
@@ -360,7 +392,14 @@ function StateRow({
   );
 
   return (
-    <tr className={`table__row${saving ? " table__row--saving" : ""}`}>
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`table__row${saving ? " table__row--saving" : ""}${isDragging ? " table__row--dragging" : ""}`}
+    >
+      <td className="table__cell drag-handle-cell" {...attributes} {...listeners} aria-label="Drag to reorder">
+        <span className="drag-handle" aria-hidden="true">⋮⋮</span>
+      </td>
       <td className="table__cell">
         <span
           className="fs-state-dot"
@@ -562,6 +601,7 @@ function FlowBlock({
 }) {
   const [states,      setStates]      = useState<FlowState[]>(group.states);
   const [transitions, setTransitions] = useState<FlowTransition[]>(group.transitions ?? []);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setStates(group.states); }, [group.states]);
 
@@ -574,6 +614,39 @@ function FlowBlock({
   }, []);
 
   const noopColourChange = useCallback(() => {}, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setStates((prev) => {
+      const oldIdx = prev.findIndex((s) => s.id === active.id);
+      const newIdx = prev.findIndex((s) => s.id === over.id);
+      const next = arrayMove(prev, oldIdx, newIdx);
+
+      // Debounce the persist — fire 250ms after the last drop.
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(async () => {
+        // Assign sort_order as multiples of 10 to leave gaps for future inserts.
+        const changed = next.filter((s, i) => s.sort_order !== (i + 1) * 10);
+        await Promise.all(
+          changed.map((s, _) => {
+            const newOrder = (next.indexOf(s) + 1) * 10;
+            return flowStatesApi
+              .patchState(s.id, { sort_order: newOrder })
+              .catch((err) => notify.apiError(err, "Failed to save order."));
+          }),
+        );
+      }, 250);
+
+      return next;
+    });
+  }, []);
 
   return (
     <div className="fs-flow-block">
@@ -588,22 +661,27 @@ function FlowBlock({
         />
       )}
 
-      <div className="table-scroll">
-        <table className="table">
-          <thead className="table__head">
-            <tr>
-              <th className="table__cell">State</th>
-              <th className="table__cell" style={{ width: 110 }}>Kind</th>
-              <th className="table__cell" style={{ width: 150 }}>Colour</th>
-            </tr>
-          </thead>
-          <tbody>
-            {states.map((s) => (
-              <StateRow key={s.id} state={s} onPatched={onPatched} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={states.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <div className="table-scroll">
+            <table className="table">
+              <thead className="table__head">
+                <tr>
+                  <th className="table__cell drag-handle-cell" style={{ width: 36 }} />
+                  <th className="table__cell">State</th>
+                  <th className="table__cell" style={{ width: 110 }}>Kind</th>
+                  <th className="table__cell" style={{ width: 150 }}>Colour</th>
+                </tr>
+              </thead>
+              <tbody>
+                {states.map((s) => (
+                  <StateRow key={s.id} state={s} onPatched={onPatched} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <AddStateForm flowId={group.flow_id} onCreated={onCreated} />
 
