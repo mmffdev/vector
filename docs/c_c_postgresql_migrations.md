@@ -10,7 +10,7 @@ The preferred apply path is the Go runner at `backend/cmd/migrate/main.go`, whic
 ## Apply via the runner (preferred)
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" \
+cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" \
   && go run ./backend/cmd/migrate -env backend/.env.dev -db vector -dry-run
 # review the pending list, then drop -dry-run to apply
 ```
@@ -22,7 +22,7 @@ The runner reads the **top level** of `db/schema/` and `db/schema/library_schema
 ## Apply pattern (from the laptop, via the tunnel)
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" \
+cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" \
   && PW=$(grep '^DB_PASSWORD' backend/.env.local | cut -d= -f2-) \
   && PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
        -h localhost -p 5434 -U mmff_dev -d mmff_vector \

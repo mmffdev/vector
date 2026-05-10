@@ -4,7 +4,7 @@ description: Where the design system lives, what font/color it specifies, and ho
 type: reference
 originSessionId: 984ee177-319a-47f4-84ab-55fd5b444b31
 ---
-**Design system:** `/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/MMFFDev - Vector Assets/Vector Design System/`
+**Design system:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/MMFFDev - Vector Assets/Vector Design System/`
 
 Accessible as skill: `/vector-design` (SKILL.md is the entry point)
 

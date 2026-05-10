@@ -46,7 +46,7 @@ When invoked through Claude, ask the user this question in chat instead of using
 ### 4. Verify the env file exists
 
 ```bash
-[ -f "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/$ENV_FILE" ] \
+[ -f "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/$ENV_FILE" ] \
   || { echo "missing $ENV_FILE — run setup or copy from .env.local"; exit 1; }
 ```
 
@@ -79,7 +79,7 @@ fi
 ### 7. Launch backend with new env
 
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend"
+cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/backend"
 : > /tmp/mmff-server.log
 BACKEND_ENV="$ENV" nohup go run ./cmd/server > /tmp/mmff-server.log 2>&1 &
 disown
@@ -114,7 +114,7 @@ done
 if [ -n "$found" ]; then
   echo "✓ frontend already running → $found"
 else
-  cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
+  cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector"
   : > /tmp/mmff-next.log
   nohup npm run dev -- -p 5101 >/tmp/mmff-next.log 2>&1 &
   disown
@@ -139,7 +139,7 @@ LINE="> **ACTIVE BACKEND ENV: \`$ENV\`** — set $TS by \`<server> $FLAG\` — D
 
 python3 - <<PY
 import re, sys
-path = "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/CLAUDE.md"
+path = "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/CLAUDE.md"
 new  = """$LINE"""
 src  = open(path).read()
 block = "<!-- ACTIVE_BACKEND_ENV:start -->\n" + new + "\n<!-- ACTIVE_BACKEND_ENV:end -->"

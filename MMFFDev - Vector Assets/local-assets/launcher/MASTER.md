@@ -12,7 +12,7 @@
 6. **Logged** — every agent maintains a running log at `local-assets/launcher/agents/<Name>.md`, updated as work progresses, not in one final dump.
 
 ## Repo facts (canonical — agents may rely on these)
-- Repo root: `/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector`
+- Repo root: `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector`
 - Existing AppleScript launcher: `MMFF Vector Dev.app` + source `MMFF Vector Dev.applescript`
 - Backend Go server: `backend/cmd/server`, runs on `:5100`, exposes `/healthz` and (newer builds) `/api/_meta/env` returning `{ env, db_host, backend_env, ... }`
 - Next.js frontend: runs on `:5101`, started via `npm run dev -- -p 5101`

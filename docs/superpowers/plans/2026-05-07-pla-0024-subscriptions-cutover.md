@@ -951,7 +951,7 @@ if __name__ == "__main__":
 - [ ] **Step 3: Run against the fixture and confirm it catches**
 
 ```bash
-cd /tmp/lint-fixture && python3 "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev/scripts/lint_no_subscription_id.py"
+cd /tmp/lint-fixture && python3 "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/scripts/lint_no_subscription_id.py"
 ```
 
 Expected: exit 1, listing `src/bad.ts:1`.

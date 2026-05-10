@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/push-backup-gate.sh'"
+            "command": "bash '/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.codex/hooks/push-backup-gate.sh'"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/backend-restart-reminder.sh'"
+            "command": "bash '/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.codex/hooks/backend-restart-reminder.sh'"
           }
         ]
       },
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/backend-restart-reminder.sh'"
+            "command": "bash '/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.codex/hooks/backend-restart-reminder.sh'"
           }
         ]
       }
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/session-start-digest.sh'"
+            "command": "bash '/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.codex/hooks/session-start-digest.sh'"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.codex/hooks/api-docs-reminder.sh'"
+            "command": "bash '/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.codex/hooks/api-docs-reminder.sh'"
           }
         ]
       }

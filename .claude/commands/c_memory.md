@@ -25,8 +25,8 @@ Run the relevant checks below, then write the report.
 ### -M — Memory
 
 ```bash
-ls "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/"
-cat "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/MEMORY.md"
+ls "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/memory/"
+cat "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/memory/MEMORY.md"
 ```
 
 **Checks:**
@@ -40,7 +40,7 @@ cat "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/MEMO
 
 ```bash
 find ~/.claude/skills -name "SKILL.md" 2>/dev/null
-find "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/skills" -name "SKILL.md" 2>/dev/null
+find "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills" -name "SKILL.md" 2>/dev/null
 ```
 
 **Checks:**
@@ -51,8 +51,8 @@ find "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/skills" -n
 ### -C — Commands
 
 ```bash
-ls "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/commands/"
-cat "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/CLAUDE.md"
+ls "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/commands/"
+cat "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/CLAUDE.md"
 ```
 
 **Checks:**
@@ -62,7 +62,7 @@ cat "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/CLAUDE.md"
 ### -H — Hooks
 
 ```bash
-cat "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/settings.json" 2>/dev/null || echo "{}"
+cat "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/settings.json" 2>/dev/null || echo "{}"
 cat ~/.claude/settings.json 2>/dev/null || echo "{}"
 ```
 

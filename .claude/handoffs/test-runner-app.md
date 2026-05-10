@@ -40,7 +40,7 @@ The app must run **offline**, ship as a **single binary** per platform, and have
 Create a new sibling directory: `/Users/rick/Documents/MMFFDev-Projects/MMFFDev-Vector-TestRunner/`. New git repo. Initial branch `main`. Do not commit until Rick has confirmed the scaffold.
 
 Reuse from Vector (copy files, do not import):
-- Design tokens — CSS variables from `/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector Assets/Vector Design System/`
+- Design tokens — CSS variables from `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector Assets/Vector Design System/`
 - `<Table>` primitive — `app/components/Table.tsx`
 - `<Toaster>` + `notify` — `app/components/Toaster.tsx` + `app/lib/toast.ts`
 - Catalog CSS classes — Vector's `app/globals.css` `.btn`, `.pill`, `.tree_accordion-dense__scroll`, etc.
@@ -183,7 +183,7 @@ If a feature isn't in the MVP list above, ask Rick before adding it.
 
 A new agent or Rick should be able to:
 
-1. Open the app, click `+ New suite`, fill in: name=`vector backend`, kind=`go`, working dir=`/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend`, command=`gotestsum --junitfile=$REPORTER_PATH ./...`. Save.
+1. Open the app, click `+ New suite`, fill in: name=`vector backend`, kind=`go`, working dir=`/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/backend`, command=`gotestsum --junitfile=$REPORTER_PATH ./...`. Save.
 2. Hit **Run**. See a "Running…" indicator within 100ms. See a toast on completion.
 3. Click the run in history. See a tree of packages → tests with green/red dots and per-test duration.
 4. Click a failed test. See its failure message and stack trace in a side panel.

@@ -294,7 +294,7 @@ After all cards in this batch are created, verify each card has its full label s
 ```bash
 TOKEN=$(python3 -c "
 import json,urllib.request,pathlib
-env=pathlib.Path('/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local').read_text()
+env=pathlib.Path('/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/backend/.env.local').read_text()
 creds={l.split('=')[0]:'='.join(l.split('=')[1:]).strip() for l in env.splitlines() if '=' in l}
 req=urllib.request.Request('http://localhost:3333/api/access-tokens',
   data=json.dumps({'emailOrUsername':creds['PLANKA_AGENT_USER'],'password':creds['PLANKA_AGENT_PASS']}).encode(),

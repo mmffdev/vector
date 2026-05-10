@@ -9,7 +9,7 @@
 
 set -u
 
-MEMORY_DIR="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory"
+MEMORY_DIR="/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/memory"
 FLAG="/tmp/boot-write-authorized"
 
 INPUT=$(cat)

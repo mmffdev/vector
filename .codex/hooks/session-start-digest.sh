@@ -4,7 +4,7 @@
 
 set -u
 
-PROJECT_ROOT="/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector"
+PROJECT_ROOT="/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector"
 DIGEST="$PROJECT_ROOT/dev/scripts/librarian-digest.sh"
 
 [[ ! -x "$DIGEST" ]] && exit 0

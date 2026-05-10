@@ -33,7 +33,7 @@ Project: **Vector Project** — Board: **Vector Main**
 
 ### `-view` behaviour
 
-Run: `code "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/dev/planning/c_backlog.md"`
+Run: `code "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/planning/c_backlog.md"`
 
 This file is **read-only context** — Claude does not act on its contents unless Rick explicitly points at an item by name.
 

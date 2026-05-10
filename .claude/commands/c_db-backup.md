@@ -13,7 +13,7 @@ Dumps both `mmff_vector` and `mmff_library` via the SSH tunnel to timestamped SQ
 
 ### Command
 ```bash
-cd "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" \
+cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" \
   && mkdir -p local-assets/backups \
   && SHA=$(git rev-parse --short main) \
   && TS=$(date +%Y%m%d_%H%M%S) \

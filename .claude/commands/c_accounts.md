@@ -20,7 +20,7 @@ Test-tier accounts (`claude@`, `claude_1_test@`, `claude_2_test@`, `claude_3_tes
 Requires tunnel on `:5435` (dev VPS via `vector-dev-pg`). Query:
 
 ```bash
-PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/backend/.env.local" | cut -d= -f2-) \
+PGPASSWORD=$(grep '^DB_PASSWORD=' "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/backend/.env.local" | cut -d= -f2-) \
 /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector \
   -c "SELECT email, role, is_active, force_password_change FROM users ORDER BY role, email;"
 ```

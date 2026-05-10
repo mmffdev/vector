@@ -26,7 +26,7 @@ _Agent: <skill-name> | <YYYY-MM-DD> | <git-branch>_
 Runtime values:
 ```bash
 DATE=$(date +%Y-%m-%d)
-BRANCH=$(git -C "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
+BRANCH=$(git -C "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
 ```
 
 ## Labels
