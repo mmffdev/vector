@@ -12279,8 +12279,7 @@ input[type="reset"] {
   overflow-x: auto;
   overflow-y: visible;
   margin-bottom: var(--space-3);
-  /* Subtle inset card feel */
-  background: var(--surface-sunken);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 4px 0;

@@ -150,8 +150,8 @@ function FlowMap({
           const to = byId.get(t.to)!;
           // Only draw non-adjacent edges as arcs above; adjacent ones as
           // a simpler line connecting pill right-edge to pill left-edge.
-          const x1 = pillCentreX(f.idx)  + PILL_W / 2 - 2;
-          const x2 = pillCentreX(to.idx) - PILL_W / 2 + 2;
+          const x1 = pillCentreX(f.idx)  + PILL_W / 2 + 5;
+          const x2 = pillCentreX(to.idx) - PILL_W / 2 - 5;
           const y  = pillBaseY + ARROW_Y;
           // Arc height scales with distance so crossing lines stay readable.
           const span = to.idx - f.idx;
@@ -177,8 +177,8 @@ function FlowMap({
         {backEdges.map((t) => {
           const f  = byId.get(t.from)!;
           const to = byId.get(t.to)!;
-          const x1 = pillCentreX(f.idx)  - PILL_W / 2 + 10;
-          const x2 = pillCentreX(to.idx) + PILL_W / 2 - 10;
+          const x1 = pillX(f.idx)  - 5;
+          const x2 = pillX(to.idx) + PILL_W + 5;
           const y  = pillBaseY + PILL_H;
           const span = f.idx - to.idx;
           const dip  = ARC_DIP + (span - 1) * 8;
