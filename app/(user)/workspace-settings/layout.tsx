@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useTenantName } from "@/app/contexts/TenantContext";
 
 const TABS = ["workspace_settings", "users", "permissions", "api_manager", "customisation"] as const;
 type TabKey = typeof TABS[number];
@@ -14,7 +15,7 @@ const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
   users:           { title: "Users",           subtitle: "Invite, manage, and assign roles to tenant members" },
   permissions:     { title: "Permissions",     subtitle: "Capabilities granted to each role in this tenant" },
   api_manager:     { title: "API Manager",     subtitle: "Webhooks and other outbound integrations" },
-  customisation:   { title: "Vector Admin",    subtitle: "Branding, themes, and display preferences for this workspace" },
+  customisation:   { title: "Vector Admin",    subtitle: "Global preferences for Vector and <%tenant_name%>" },
 };
 
 // Tab key → URL path segment (only overrides where they differ)
@@ -65,6 +66,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   const canAccessSettings = useHasPermission("workspace.create") || useHasPermission("workspace.archive");
   const router            = useRouter();
   const pathname          = usePathname();
+  const tenantName        = useTenantName();
 
   useEffect(() => {
     if (user && !canAccessSettings) {
@@ -104,13 +106,14 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   const subSeg    = rootIdx >= 0 ? segments[rootIdx + 2] ?? "" : "";
   const subLabel  = SUB_TAB_LABELS[activeTab]?.[subSeg];
   const fullTitle = subLabel ? `${header.title} // ${subLabel}` : header.title;
+  const subtitle  = header.subtitle.replace("<%tenant_name%>", tenantName || "this workspace");
 
   function handleTabChange(key: TabKey) {
     router.push(`/workspace-settings/${segmentForKey(key)}`);
   }
 
   return (
-    <PageShell title={fullTitle} subtitle={header.subtitle} barTitle="Vector Settings">
+    <PageShell title={fullTitle} subtitle={subtitle} barTitle="Vector Settings">
       <SecondaryNavigation<TabKey>
         ariaLabel="Workspace settings sections"
         pageId="workspace-settings"
