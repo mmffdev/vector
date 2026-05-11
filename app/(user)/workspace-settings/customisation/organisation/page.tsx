@@ -1,6 +1,6 @@
 "use client";
 
-// Organization settings page — single-record editor for master_record_tenant.
+// Organisation settings page — single-record editor for master_record_tenant.
 // Backend: backend/internal/tenantsettings (PATCH validates server-side
 // and returns 422 with violations[] on failure). Wire shape lives in
 // app/lib/tenantSettingsApi.ts.
@@ -296,7 +296,7 @@ function FeatureToggle({
   );
 }
 
-export default function OrganizationPage() {
+export default function OrganisationPage() {
   const { user } = useAuth();
   const canAccess = useHasPermission("workspace.archive");
   const { setSettings: setTenantCtx } = useTenant();
