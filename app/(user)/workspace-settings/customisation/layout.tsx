@@ -50,6 +50,7 @@ export default function CustomisationLayout({ children }: { children: React.Reac
     <>
       <SecondaryNavigation<TabKey>
         ariaLabel="Vector Admin sections"
+        reorderable
         active={activeTab}
         onChange={handleTabChange}
         items={[

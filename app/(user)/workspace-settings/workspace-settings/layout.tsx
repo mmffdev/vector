@@ -39,6 +39,7 @@ export default function WorkspaceSettingsSubLayout({ children }: { children: Rea
     <>
       <SecondaryNavigation<TabKey>
         ariaLabel="Workspace Settings sections"
+        reorderable
         active={activeTab}
         onChange={handleTabChange}
         items={[

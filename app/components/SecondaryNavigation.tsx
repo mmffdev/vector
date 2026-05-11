@@ -25,6 +25,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { usePathname } from "next/navigation";
 import { MdOutlineSwapVert } from "react-icons/md";
 import { apiSite as api } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -66,6 +67,30 @@ interface TabOrderResp {
 }
 
 const SAVE_DEBOUNCE_MS = 250;
+
+// Derive a stable pageId from the URL path for any reorderable nav that
+// doesn't pass one explicitly. The nav's *own* scope is the path minus
+// the segment corresponding to its currently-active tab. Works at any
+// depth (L2, L3, L4, ...): each layout's nav gets a unique stable key
+// because every level above it stays in the prefix.
+//
+// Example:
+//   path:        /workspace-settings/workspace-settings/custom-fields/work-items
+//   active key:  "work_items"  → segment match "work-items"
+//   derived id:  "workspace-settings__workspace-settings__custom-fields"
+function derivePageIdFromPath(pathname: string, activeKey: string): string {
+  const segs = pathname.split("/").filter(Boolean);
+  const normalisedActive = activeKey.replace(/_/g, "-");
+  // Strip the deepest segment matching the active tab key (handles
+  // tab_key ↔ tab-key URL convention).
+  for (let i = segs.length - 1; i >= 0; i--) {
+    if (segs[i] === normalisedActive || segs[i] === activeKey) {
+      segs.splice(i, 1);
+      break;
+    }
+  }
+  return segs.join("__");
+}
 
 // Default ordering: by sortKey ascending; fallback to label text or key.
 function labelText(label: React.ReactNode): string {
@@ -157,9 +182,18 @@ export default function SecondaryNavigation<K extends string = string>({
   onChange,
   ariaLabel,
   className,
-  pageId,
+  pageId: explicitPageId,
   reorderable = false,
 }: Props<K>) {
+  // Auto-derive a stable pageId from the URL path when none is supplied.
+  // This makes the reorderable nav self-building at any depth (L2/L3/L4/…)
+  // without each layout having to hand-pick a unique key. Explicit
+  // pageIds still take precedence for layouts with bespoke keys.
+  const pathname = usePathname() ?? "";
+  const pageId = useMemo(
+    () => explicitPageId ?? (reorderable ? derivePageIdFromPath(pathname, String(active)) : undefined),
+    [explicitPageId, reorderable, pathname, active],
+  );
   const cls = `navigation secondary tabular${className ? ` ${className}` : ""}`;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Map<K, HTMLButtonElement | null>>(new Map());

@@ -27,6 +27,7 @@ export default function ApiManagerLayout({ children }: { children: React.ReactNo
     <>
       <SecondaryNavigation<TabKey>
         ariaLabel="API Manager sections"
+        reorderable
         active={activeTab}
         onChange={handleTabChange}
         items={[
