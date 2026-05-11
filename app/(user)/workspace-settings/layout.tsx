@@ -6,38 +6,29 @@ import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
-const TABS = ["workspaces", "users", "permissions", "topology", "topology_map", "portfolio_model", "custom_fields", "webhooks", "customisation"] as const;
+const TABS = ["workspace_settings", "users", "permissions", "api_manager", "customisation"] as const;
 type TabKey = typeof TABS[number];
 
 const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
-  workspaces:      { title: "Workspaces",      subtitle: "Active and archived workspaces in this tenant" },
+  workspace_settings: { title: "Workspace Settings", subtitle: "Workspaces and other workspace-level admin" },
   users:           { title: "Users",           subtitle: "Invite, manage, and assign roles to tenant members" },
   permissions:     { title: "Permissions",     subtitle: "Capabilities granted to each role in this tenant" },
-  topology:        { title: "Topology",        subtitle: "Federated org canvas — offices, teams, and reporting lines" },
-  topology_map:    { title: "Topology Map",    subtitle: "3D map of how work items cluster across the tenant" },
-  portfolio_model: { title: "Portfolio Model", subtitle: "Adopt a model or preview your subscription's adopted bundle" },
-  custom_fields:   { title: "Custom Fields",   subtitle: "Tenant-defined fields available on work items and portfolio artefacts" },
-  webhooks:        { title: "Webhooks",        subtitle: "Manage webhook subscriptions for work item and sprint events" },
+  api_manager:     { title: "API Manager",     subtitle: "Webhooks and other outbound integrations" },
   customisation:   { title: "Vector Admin",    subtitle: "Branding, themes, and display preferences for this workspace" },
 };
 
 // Tab key → URL path segment (only overrides where they differ)
 const KEY_TO_SEG: Partial<Record<TabKey, string>> = {
-  topology_map:    "topology-map",
-  portfolio_model: "portfolio-model",
-  custom_fields:   "custom-fields",
+  workspace_settings: "workspace-settings",
+  api_manager:        "api-manager",
 };
 
 // URL path segment → tab key
 const SEG_TO_KEY: Record<string, TabKey> = {
-  workspaces:      "workspaces",
+  "workspace-settings": "workspace_settings",
   users:           "users",
   permissions:     "permissions",
-  topology:        "topology",
-  "topology-map":  "topology_map",
-  "portfolio-model": "portfolio_model",
-  "custom-fields": "custom_fields",
-  webhooks:        "webhooks",
+  "api-manager":   "api_manager",
   customisation:   "customisation",
 };
 
@@ -49,19 +40,22 @@ function segmentForKey(key: TabKey): string {
 // Used to extend the page title (e.g. "Custom Fields // Defects") when a
 // top-level tab introduces its own nested routes.
 const SUB_TAB_LABELS: Partial<Record<TabKey, Record<string, string>>> = {
-  custom_fields: {
-    "work-items":      "Work Items",
-    "portfolio-items": "Portfolio Items",
-    tasks:             "Tasks",
-    defects:           "Defects",
-    risks:             "Risks",
+  workspace_settings: {
+    organisation:      "Organisation",
+    workspaces:        "Workspaces",
+    "custom-fields":   "Custom Fields",
+    "portfolio-model": "Portfolio Model",
+  },
+  api_manager: {
+    webhooks: "Webhooks",
   },
   customisation: {
-    organisation:     "Organisation",
     "tenant-details": "Tenant Details",
     "artefact-types": "Artefact Types",
     "flow-states":    "Flow States",
     "work-items":     "Work Items",
+    topology:         "Topology",
+    "topology-map":   "Topology Map",
   },
 };
 
@@ -84,9 +78,13 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
     const tabSeg   = rootIdx >= 0 ? segments[rootIdx + 1] ?? "" : "";
 
     if (!tabSeg) {
-      // Determine first accessible tab for this user
-      const firstTab = canAdminWorkspace ? "customisation" : "portfolio_model";
-      router.replace(`/workspace-settings/${segmentForKey(firstTab)}`);
+      // Determine first accessible tab for this user. Non-admins land on the
+      // Portfolio Model surface (now nested under workspace_settings).
+      if (canAdminWorkspace) {
+        router.replace("/workspace-settings/customisation");
+      } else {
+        router.replace("/workspace-settings/workspace-settings/portfolio-model");
+      }
     }
   }, [user, canAccessSettings, canAdminWorkspace, pathname, router]);
 
@@ -98,7 +96,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   const segments = pathname.split("/").filter(Boolean);
   const rootIdx  = segments.indexOf("workspace-settings");
   const tabSeg   = rootIdx >= 0 ? segments[rootIdx + 1] ?? "" : "";
-  const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "portfolio_model";
+  const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "workspace_settings";
 
   const header = TAB_HEADERS[activeTab];
 
@@ -112,7 +110,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   }
 
   return (
-    <PageShell title={fullTitle} subtitle={header.subtitle} barTitle="Workspace Settings">
+    <PageShell title={fullTitle} subtitle={header.subtitle} barTitle="Vector Settings">
       <SecondaryNavigation<TabKey>
         ariaLabel="Workspace settings sections"
         pageId="workspace-settings"
@@ -121,15 +119,11 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
         onChange={handleTabChange}
         items={[
           ...(canAdminWorkspace ? [
-            { key: "workspaces"      as const, label: "Workspaces",      sortKey: "Workspaces" },
+            { key: "workspace_settings" as const, label: "Workspace Settings", sortKey: "Workspace Settings" },
             { key: "users"           as const, label: "Users",           sortKey: "Users" },
             { key: "permissions"     as const, label: "Permissions",     sortKey: "Permissions" },
-            { key: "topology"        as const, label: "Topology",        sortKey: "Topology" },
-            { key: "topology_map"    as const, label: "Topology Map",    sortKey: "Topology Map" },
           ] : []),
-          { key: "portfolio_model"   as const, label: "Portfolio Model", sortKey: "Portfolio Model" },
-          { key: "custom_fields"     as const, label: "Custom Fields",   sortKey: "Custom Fields" },
-          { key: "webhooks"          as const, label: "Webhooks",        sortKey: "Webhooks" },
+          { key: "api_manager"       as const, label: "API Manager",     sortKey: "API Manager" },
           { key: "customisation"     as const, label: "Vector Admin",    sortKey: "Vector Admin" },
         ]}
       />

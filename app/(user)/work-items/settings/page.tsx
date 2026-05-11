@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 export default function WorkItemsSettingsPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/workspace-settings/custom-fields/work-items");
+    router.replace("/workspace-settings/workspace-settings/custom-fields/work-items");
   }, [router]);
   return null;
 }

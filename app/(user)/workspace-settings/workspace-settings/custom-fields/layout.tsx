@@ -36,7 +36,7 @@ export default function CustomFieldsLayout({ children }: { children: React.React
   const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "work_items";
 
   function handleTabChange(key: TabKey) {
-    router.push(`/workspace-settings/custom-fields/${segmentForKey(key)}`);
+    router.push(`/workspace-settings/workspace-settings/custom-fields/${segmentForKey(key)}`);
   }
 
   return (

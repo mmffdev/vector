@@ -7,7 +7,7 @@ import Table from "@/app/components/Table";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
-import { Modal } from "../_shared";
+import { Modal } from "../../_shared";
 
 function ArchivedWorkspacesSection({
   rows,

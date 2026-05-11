@@ -3,10 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CustomisationRoot() {
+export default function WorkspaceSettingsRoot() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/workspace-settings/customisation/tenant-details");
+    router.replace("/workspace-settings/workspace-settings/workspaces");
   }, [router]);
   return null;
 }

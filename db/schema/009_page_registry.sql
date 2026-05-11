@@ -106,7 +106,7 @@ INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind, pinnable, defaul
     ('portfolio',          'Portfolio',          '/portfolio',          'briefcase', 'planning',          'static', TRUE,  TRUE,  2),
     ('favourites',         'Favourites',         '/favourites',         'star',      'personal',          'static', TRUE,  TRUE,  2),
     ('risk',               'Risk',               '/risk',               'warning',   'strategic',         'static', TRUE,  TRUE,  0),
-    ('workspace-settings', 'Workspace Settings', '/workspace-settings', 'cog',       'admin_settings',    'static', TRUE,  TRUE,  0),
+    ('workspace-settings', 'Vector Settings',    '/workspace-settings', 'cog',       'admin_settings',    'static', TRUE,  TRUE,  0),
     ('portfolio-settings', 'Portfolio Settings', '/portfolio-settings', 'briefcase', 'admin_settings',    'static', TRUE,  TRUE,  1),
     ('account-settings',   'Account Settings',   '/account-settings',   'user',      'personal_settings', 'static', TRUE,  TRUE,  0),
     ('dev',                'Dev Setup',          '/dev',                'wrench',    'personal',          'static', FALSE, FALSE, 99);
