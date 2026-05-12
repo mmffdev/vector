@@ -14,30 +14,32 @@
 // tree exactly. Lightweight port — no DnD, no inline rename, no
 // menu, no archive triangle (those belong on the topology page).
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { BsMap } from "react-icons/bs";
+import { MdOutlineArrowForwardIos } from "react-icons/md";
 import { useScope } from "@/app/contexts/ScopeContext";
 import type { MyGrant } from "@/app/lib/topologyApi";
 
-// Per-depth width of the SVG spine column. Smaller than the canvas
-// tree (24px) — the rail is tighter and node names are the focus.
-const STEP = 18;
+// Per-depth width of the SVG spine column. Matches ResourceTree's
+// DEFAULT_STEP so the rail's elbow vocabulary aligns with the canvas
+// (ObjectTree) tree exactly.
+const STEP = 20;
 
-// Row height — must match `.scope-flyout__item` line-height + padding.
-// 6px top + 6px bottom + (13px font * 1.3 line-height) ≈ 29px. Keep
-// in sync if the item padding changes.
+// Row height — must match `.scope-flyout__item` height in CSS so the
+// SVG geometry doesn't drift. Same as ResourceTree DEFAULT_ROW_H.
 const ROW_H = 28;
+
+// Horizontal offset of vertical spine lines within each STEP column.
+// Equals ResourceTree's CARET_OFFSET so the elbow's vertical sits
+// where the chevron's centre lands one column to its right.
+const CARET_OFFSET = 8;
 
 interface TreeRow {
   grant: MyGrant;
+  label: string;
   depth: number;
-  isFirst: boolean;
   isLast: boolean;
   hasChildren: boolean;
-  // ancestorMoreChildren[d] = true means the ancestor at depth d
-  // still has visible siblings below this row's subtree; we paint a
-  // pass-through vertical at column d*STEP + STEP/2 so disjoint
-  // sibling subtrees of that ancestor stay visually connected.
   // Length = depth; entry for the immediate parent (index depth-1)
   // is omitted because the row's own elbow handles that column.
   ancestorMoreChildren: boolean[];
@@ -47,21 +49,29 @@ function labelOf(g: MyGrant): string {
   return g.label_override?.trim() || g.name;
 }
 
-function buildTree(grants: MyGrant[]): TreeRow[] {
-  const byId = new Map<string, MyGrant>();
-  for (const g of grants) byId.set(g.node_id, g);
+type GrantWithLabel = MyGrant & { __label: string };
 
-  const childrenOf = new Map<string | null, MyGrant[]>();
+function buildChildrenOf(grants: MyGrant[]): Map<string | null, GrantWithLabel[]> {
+  const byId = new Set<string>();
+  for (const g of grants) byId.add(g.node_id);
+
+  const childrenOf = new Map<string | null, GrantWithLabel[]>();
   for (const g of grants) {
     const parentKey = g.parent_id && byId.has(g.parent_id) ? g.parent_id : null;
     const bucket = childrenOf.get(parentKey) ?? [];
-    bucket.push(g);
+    bucket.push({ ...g, __label: labelOf(g) });
     childrenOf.set(parentKey, bucket);
   }
   for (const bucket of childrenOf.values()) {
-    bucket.sort((a, b) => labelOf(a).localeCompare(labelOf(b)));
+    bucket.sort((a, b) => a.__label.localeCompare(b.__label));
   }
+  return childrenOf;
+}
 
+function flattenTree(
+  childrenOf: Map<string | null, GrantWithLabel[]>,
+  collapsed: Set<string>,
+): TreeRow[] {
   const rows: TreeRow[] = [];
   const walk = (
     parentId: string | null,
@@ -70,24 +80,18 @@ function buildTree(grants: MyGrant[]): TreeRow[] {
   ) => {
     const kids = childrenOf.get(parentId) ?? [];
     kids.forEach((g, idx) => {
-      const childKids = childrenOf.get(g.node_id) ?? [];
-      const hasChildren = childKids.length > 0;
-      const isFirst = idx === 0;
+      const hasChildren = (childrenOf.get(g.node_id) ?? []).length > 0;
       const isLast = idx === kids.length - 1;
       rows.push({
         grant: g,
+        label: g.__label,
         depth,
-        isFirst,
         isLast,
         hasChildren,
         ancestorMoreChildren: pathMoreChildren,
       });
-      if (hasChildren) {
-        // Mirror the canvas tree's path-building: root children
-        // (depth 1) get an empty array because the root spine is
-        // drawn separately; deeper children append `!isLast`.
-        const childPath = depth === 0 ? [] : [...pathMoreChildren, !isLast];
-        walk(g.node_id, depth + 1, childPath);
+      if (hasChildren && !collapsed.has(g.node_id)) {
+        walk(g.node_id, depth + 1, [...pathMoreChildren, !isLast]);
       }
     });
   };
@@ -98,8 +102,22 @@ function buildTree(grants: MyGrant[]): TreeRow[] {
 export default function ScopeRail() {
   const { grants, activeNodeId, loading, error } = useScope();
   const [open, setOpen] = useState(false);
+  // Collapsed-node IDs. In-memory only — refreshing or closing the
+  // flyout doesn't persist state, matching ObjectTree (the canvas
+  // tree doesn't persist either).
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const tree = useMemo(() => buildTree(grants), [grants]);
+  const toggleCollapsed = useCallback((nodeId: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }, []);
+
+  const childrenOf = useMemo(() => buildChildrenOf(grants), [grants]);
+  const tree = useMemo(() => flattenTree(childrenOf, collapsed), [childrenOf, collapsed]);
 
   return (
     <>
@@ -136,6 +154,8 @@ export default function ScopeRail() {
                 key={row.grant.grant_id}
                 row={row}
                 isActive={row.grant.node_id === activeNodeId}
+                isCollapsed={collapsed.has(row.grant.node_id)}
+                onToggleCollapsed={toggleCollapsed}
               />
             ))}
           </div>
@@ -145,38 +165,74 @@ export default function ScopeRail() {
   );
 }
 
-function ScopeRow({ row, isActive }: { row: TreeRow; isActive: boolean }) {
-  const { grant, depth, isFirst, isLast, hasChildren, ancestorMoreChildren } = row;
+const ScopeRow = memo(function ScopeRow({
+  row,
+  isActive,
+  isCollapsed,
+  onToggleCollapsed,
+}: {
+  row: TreeRow;
+  isActive: boolean;
+  isCollapsed: boolean;
+  onToggleCollapsed: (nodeId: string) => void;
+}) {
+  const { grant, label, depth, isLast, hasChildren, ancestorMoreChildren } = row;
+  const isExpanded = hasChildren && !isCollapsed;
+  // Dashed bottom rule closes any row that visually ends a subtree:
+  // a leaf (no expanded children below) OR the last sibling in its group.
+  const isSubtreeClose = !isExpanded || isLast;
   return (
     <div
-      className={`scope-flyout__item${isActive ? " is-active" : ""}`}
+      className={
+        "scope-flyout__item" +
+        (isActive ? " is-active" : "") +
+        (isSubtreeClose ? " divider-dashed" : "")
+      }
       aria-current={isActive ? "true" : undefined}
     >
       <Spine
         depth={depth}
-        isFirst={isFirst}
         isLast={isLast}
-        hasChildren={hasChildren}
+        hasChildren={isExpanded}
         ancestorMoreChildren={ancestorMoreChildren}
       />
-      <span className="scope-flyout__item-name">{labelOf(grant)}</span>
+      <button
+        type="button"
+        className={
+          "tree_accordion-dense__expander" +
+          (isExpanded ? " tree_accordion-dense__expander--open" : "") +
+          (!hasChildren ? " tree_accordion-dense__expander--leaf" : "")
+        }
+        aria-label={isCollapsed ? "Expand" : "Collapse"}
+        aria-expanded={hasChildren ? !isCollapsed : undefined}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (hasChildren) onToggleCollapsed(grant.node_id);
+        }}
+        tabIndex={hasChildren ? 0 : -1}
+      >
+        <MdOutlineArrowForwardIos
+          size={10}
+          className="tree_accordion-dense__expander-icon"
+        />
+      </button>
+      <span className="scope-flyout__item-name">{label}</span>
     </div>
   );
-}
+});
 
-// Renders the per-row spine cell. At depth 0 we draw only the root
-// spine verticals (so consecutive roots visually connect). At deeper
-// depths we draw any ancestor pass-throughs plus this row's own
-// elbow (└) or T (├) and an optional child stub.
+// Depth 0 renders flush against the panel's left padding (no spine column);
+// depth ≥ 1 paints ancestor pass-throughs plus this row's own elbow (└) or
+// T (├), with an optional child stub. Elbow vs T is decided by "more
+// siblings below" — not by whether this row has children — so an only-child
+// (isLast && hasChildren) still gets an elbow.
 function Spine({
   depth,
-  isFirst,
   isLast,
   hasChildren,
   ancestorMoreChildren,
 }: {
   depth: number;
-  isFirst: boolean;
   isLast: boolean;
   hasChildren: boolean;
   ancestorMoreChildren: boolean[];
@@ -184,35 +240,24 @@ function Spine({
   const H = ROW_H;
   const MID = H / 2;
   const STUB_GAP = 6;
-  const stroke = "var(--ink-3, #888)";
+  const stroke = "var(--surface-sunken)";
 
-  if (depth === 0) {
-    // Root rows render flush against the panel's left padding — no
-    // spine column. Children at depth 1 carry the elbow that points
-    // back to their root parent, and that elbow's starting column
-    // is what visually anchors the root's name above it. Returning
-    // null here is intentional: reserving a STEP-wide column for
-    // roots would push them out of alignment with their depth-1
-    // children's elbow column.
-    return null;
-  }
+  if (depth === 0) return null;
 
   const W = depth * STEP;
-  const lineX = (depth - 1) * STEP + STEP / 2;
-  const childLineX = depth * STEP + STEP / 2;
+  const lineX = (depth - 1) * STEP + CARET_OFFSET;
+  const childLineX = depth * STEP + CARET_OFFSET;
 
   const throughPaths: string[] = [];
   const paths: string[] = [];
 
-  // Pass-through verticals for ancestors with more siblings below.
   ancestorMoreChildren.forEach((cont, i) => {
-    if (cont) {
-      const x = i * STEP + STEP / 2;
+    if (cont && i < depth - 1) {
+      const x = i * STEP + CARET_OFFSET;
       throughPaths.push(`M${x} 0 L${x} ${H}`);
     }
   });
 
-  // Own connector — └ for last sibling, ├ otherwise.
   if (isLast) {
     paths.push(`M${lineX} 0 L${lineX} ${MID} L${W} ${MID}`);
   } else {
@@ -220,8 +265,6 @@ function Spine({
     paths.push(`M${lineX} ${MID} L${W} ${MID}`);
   }
   if (hasChildren) {
-    // Child stub — short vertical below MID that feeds into the
-    // first child's pass-through column.
     paths.push(`M${childLineX} ${MID + STUB_GAP} L${childLineX} ${H}`);
   }
 
@@ -238,7 +281,7 @@ function Spine({
           key={`t${i}`}
           d={d}
           stroke={stroke}
-          strokeWidth="1.5"
+          strokeWidth="1.25"
           fill="none"
           strokeLinecap="round"
         />
@@ -248,7 +291,7 @@ function Spine({
           key={`c${i}`}
           d={d}
           stroke={stroke}
-          strokeWidth="1.5"
+          strokeWidth="1.25"
           fill="none"
           strokeLinecap="round"
         />

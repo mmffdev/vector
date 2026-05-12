@@ -1052,7 +1052,10 @@ input[type="reset"] {
 .scope-flyout__item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  /* gap=8 matches CARET_OFFSET in Spine so the elbow's horizontal arm
+     ends exactly where the chevron's centre lands — same vocabulary as
+     ObjectTree's .tree_accordion-dense__row. */
+  gap: 8px;
   /* No left padding — the SVG spine cell owns indentation per row. */
   padding: 0 14px 0 6px;
   /* Fixed row height matches Spine ROW_H constant (28px) so the SVG
@@ -1079,6 +1082,15 @@ input[type="reset"] {
 .scope-flyout__spine {
   flex-shrink: 0;
   display: block;
+}
+
+/* Group-divider utility — dashed bottom rule in the warm parchment
+   tone (#EDEAE4 in light = --surface-sunken; the dark theme remaps
+   this token to its own muted divider value). Apply to the last
+   child of a tree group to visually close the subtree before the
+   next group begins. Generic class — reusable on any list. */
+.divider-dashed {
+  border-bottom: 2px dashed var(--surface-sunken);
 }
 
 /* ============================================================

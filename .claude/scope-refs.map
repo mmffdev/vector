@@ -153,3 +153,13 @@ FE-POR-0003.7.1	manual verification fixture artefacts nodes A B C grant picker 4
 FE-POR-0003.8.1	write-side node assignment topology_node_id create update move leave carry descendants PLA-0044
 FE-POR-0003.8.2	portfolio timebox sprint release scope clamps PLA-0045
 FE-POR-0003.8.3	un-assigned artefact ETL backfill topology_node_id workspace mapping PLA-0046
+FE-POR-0003.9.1	walkTopology shared topology walker traversal engine cross-runtime browser node TopologyNode rows visibleIds visibleEdges childrenOf
+FE-POR-0003.9.2	layoutWithDagre refactor canvas dagre visible-set edges walker
+FE-POR-0003.9.3	useTopologyTreeState refactor childrenOf hook destructure
+FE-POR-0003.9.4	TopologyTreeFlyout refactor buildTree walker spine
+FE-POR-0003.9.5	ScopeRail refactor flattenTree walker orphan drop spurious
+FE-POR-0003.9.6	walker test unit tests vitest fixtures shared topology orphan cycle collapse sort edges
+FE-POR-0003.9.7	walker Go backend shared topology WalkTopology mirror generic parity fixtures site BFF
+FE-POR-0003.9.8	MyGrant position field ListMyGrants sort canvas ScopeRail
+FE-POR-0003.9.9	visual smoke canvas topology flyout ScopeRail orphan screenshot
+FE-POR-0003.9.10	UserNodeAssignment gadmin user assign topology node picker checkbox tree multi-select

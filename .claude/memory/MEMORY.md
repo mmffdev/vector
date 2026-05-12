@@ -44,6 +44,7 @@
 - [Sanitise legacy DB gradually, drop as unused](feedback_gradual_db_sanitisation.md) — Never big-bang DB cutovers; drop legacy tables/columns one at a time as their last reader is migrated.
 - [Bracket-tag commits with scope ref](feedback_scope_commit_bracket_ref.md) — Always include `[B19.1.4]` in commit subject; otherwise scope-commit-note hook can't match → Unmatched (no growthbar tick).
 - [Helper icon — always wire through `<Panel>`](feedback_helper_icon.md) — Never render inline TbHelpHexagon + popover; wrap host block in `<Panel name="..." title="...">` so help ties into Page Help admin via the addressable substrate.
+- [Shared cross-runtime methods home (PLA-0045)](feedback_shared_methods_home.md) — `app/lib/shared/<domain>/` (TS) + `backend/internal/shared/<domain>/` (Go) + `dev/fixtures/shared/<domain>/` parity fixtures; catalogue in `docs/c_shared_methods.md`.
 
 ### Rules
 
