@@ -7,6 +7,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { OrgNode } from "@/app/lib/topologyApi";
+import { byPosition, walkTopology } from "@/app/lib/shared/topology/walker";
 
 export function useTopologyTreeState(tree: OrgNode[] | null) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -17,16 +18,17 @@ export function useTopologyTreeState(tree: OrgNode[] | null) {
   );
   const tenantName = root?.name ?? "Topology";
 
+  // PLA-0044: childrenOf is sourced from the shared walker so canvas,
+  // flyout, rail, and BFF all bucket children with the same orphan-drop
+  // and sibling-sort rules. Archived nodes are dropped via filter — the
+  // hook only needs the live tree.
   const childrenOf = useMemo(() => {
-    const map = new Map<string | null, OrgNode[]>();
-    for (const n of tree ?? []) {
-      if (n.archived_at !== null) continue;
-      const k = n.parent_id;
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(n);
-    }
-    for (const arr of map.values()) arr.sort((a, b) => a.position - b.position);
-    return map;
+    const { childrenOf: cof } = walkTopology(tree ?? [], {
+      collapsed: new Set(),
+      sort: byPosition,
+      filter: (n) => n.archived_at === null,
+    });
+    return cof;
   }, [tree]);
 
   const hasChildrenLive = useCallback(
