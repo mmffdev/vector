@@ -1,0 +1,20 @@
+{
+  "input": {
+    "nodes": [
+      { "id": "a", "parent_id": null, "position": 0, "name": "a" },
+      { "id": "b", "parent_id": null, "position": 1, "name": "b" },
+      { "id": "c", "parent_id": null, "position": 2, "name": "c" }
+    ],
+    "collapsed": [],
+    "sort": "byPosition"
+  },
+  "expected": {
+    "rows": [
+      { "id": "a", "depth": 0, "hasChildren": false, "collapsed": false, "isFirst": true, "isLast": false, "hasVisibleChildren": false, "ancestorMoreChildren": [] },
+      { "id": "b", "depth": 0, "hasChildren": false, "collapsed": false, "isFirst": false, "isLast": false, "hasVisibleChildren": false, "ancestorMoreChildren": [] },
+      { "id": "c", "depth": 0, "hasChildren": false, "collapsed": false, "isFirst": false, "isLast": true, "hasVisibleChildren": false, "ancestorMoreChildren": [] }
+    ],
+    "visibleIds": ["a", "b", "c"],
+    "visibleEdges": []
+  }
+}

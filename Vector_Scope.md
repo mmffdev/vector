@@ -105,6 +105,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -114,6 +115,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 - ✅ **FLOW1.2.3** ~~`listByScope` query selects `fs.is_pullable` and surfaces it in the `FlowState` DTO~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
@@ -202,6 +204,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -296,6 +299,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -437,6 +441,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 ---
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -875,6 +880,7 @@ Full lifecycle management for tasks, bugs, epics.
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -973,6 +979,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
@@ -1107,6 +1114,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `4679037` (2026-05-09): chore(B22 PLA-0039): mark all 15 stories done in plan + scope [B22]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `96b7f25` (2026-05-12): docs(research): R052 Rally scope mechanics + R053 Rally/Jira/ADO comparison; backfill PLA-0042.md
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Spec: `docs/c_c_diagram_canvas.md` — Vector-built Canvas2D + dagre layout + d3-zoom; 10px snap-to-grid default; pluggable node renderer; exposed via Samantha API as `samantha.diagram.canvas`
 - ✅ **B15.6** Drag-and-drop (`@dnd-kit`) `[P2]`
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
@@ -1410,6 +1418,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -1514,6 +1523,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -1573,6 +1583,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -1625,6 +1636,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -1671,6 +1683,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1710,6 +1723,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -1749,6 +1763,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -1791,6 +1806,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1830,6 +1846,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -1859,6 +1876,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -1883,6 +1901,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -1916,6 +1935,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -1950,6 +1970,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -1976,6 +1997,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6453099` (2026-05-12): docs(PLA-0043): topology scope clamp on artefact reads — plan + FE-POR-0003 scope items
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 

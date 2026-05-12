@@ -1,0 +1,26 @@
+{
+  "input": {
+    "nodes": [
+      { "id": "a", "parent_id": null, "position": 0, "name": "a" },
+      { "id": "b", "parent_id": "a", "position": 0, "name": "b" },
+      { "id": "c", "parent_id": "b", "position": 0, "name": "c" },
+      { "id": "d", "parent_id": "c", "position": 0, "name": "d" }
+    ],
+    "collapsed": [],
+    "sort": "byPosition"
+  },
+  "expected": {
+    "rows": [
+      { "id": "a", "depth": 0, "hasChildren": true, "collapsed": false, "isFirst": true, "isLast": true, "hasVisibleChildren": true, "ancestorMoreChildren": [] },
+      { "id": "b", "depth": 1, "hasChildren": true, "collapsed": false, "isFirst": true, "isLast": true, "hasVisibleChildren": true, "ancestorMoreChildren": [false] },
+      { "id": "c", "depth": 2, "hasChildren": true, "collapsed": false, "isFirst": true, "isLast": true, "hasVisibleChildren": true, "ancestorMoreChildren": [false, false] },
+      { "id": "d", "depth": 3, "hasChildren": false, "collapsed": false, "isFirst": true, "isLast": true, "hasVisibleChildren": false, "ancestorMoreChildren": [false, false, false] }
+    ],
+    "visibleIds": ["a", "b", "c", "d"],
+    "visibleEdges": [
+      { "source": "a", "target": "b" },
+      { "source": "b", "target": "c" },
+      { "source": "c", "target": "d" }
+    ]
+  }
+}

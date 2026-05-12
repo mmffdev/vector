@@ -1,0 +1,28 @@
+{
+  "input": {
+    "nodes": [
+      { "id": "r1", "parent_id": null, "position": 0, "name": "r1" },
+      { "id": "r1-a", "parent_id": "r1", "position": 0, "name": "r1-a" },
+      { "id": "r1-b", "parent_id": "r1", "position": 1, "name": "r1-b" },
+      { "id": "r2", "parent_id": null, "position": 1, "name": "r2" },
+      { "id": "r2-a", "parent_id": "r2", "position": 0, "name": "r2-a" }
+    ],
+    "collapsed": [],
+    "sort": "byPosition"
+  },
+  "expected": {
+    "rows": [
+      { "id": "r1", "depth": 0, "hasChildren": true, "collapsed": false, "isFirst": true, "isLast": false, "hasVisibleChildren": true, "ancestorMoreChildren": [] },
+      { "id": "r1-a", "depth": 1, "hasChildren": false, "collapsed": false, "isFirst": true, "isLast": false, "hasVisibleChildren": false, "ancestorMoreChildren": [true] },
+      { "id": "r1-b", "depth": 1, "hasChildren": false, "collapsed": false, "isFirst": false, "isLast": true, "hasVisibleChildren": false, "ancestorMoreChildren": [true] },
+      { "id": "r2", "depth": 0, "hasChildren": true, "collapsed": false, "isFirst": false, "isLast": true, "hasVisibleChildren": true, "ancestorMoreChildren": [] },
+      { "id": "r2-a", "depth": 1, "hasChildren": false, "collapsed": false, "isFirst": true, "isLast": true, "hasVisibleChildren": false, "ancestorMoreChildren": [false] }
+    ],
+    "visibleIds": ["r1", "r1-a", "r1-b", "r2", "r2-a"],
+    "visibleEdges": [
+      { "source": "r1", "target": "r1-a" },
+      { "source": "r1", "target": "r1-b" },
+      { "source": "r2", "target": "r2-a" }
+    ]
+  }
+}
