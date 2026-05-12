@@ -16,8 +16,10 @@ interface PageShellProps {
 }
 
 export default function PageShell({ title, subtitle, children, actions, breadcrumbs, barTitle }: PageShellProps) {
-  // Title, subtitle and actions are rendered outside the scroll container
-  // by PageTitleRow (in UserLayout) so they never scroll with the content.
+  // The route/leaf labels appear in the top header strip via PageHeaderBar;
+  // `actions` is promoted into the strip's action cluster. `subtitle` is no
+  // longer rendered — kept on the API for now in case a page wants to surface
+  // it elsewhere.
   usePageHeader({ title, subtitle, actions, breadcrumbs, barTitle });
   return (
     <div className="page-body">

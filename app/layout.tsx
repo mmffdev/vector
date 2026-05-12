@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import "./styles/typecase.css";
 import { AuthProvider } from "@/app/contexts/AuthContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
 import { Toaster } from "@/app/components/Toaster";

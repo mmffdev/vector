@@ -98,10 +98,13 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
 
   const header = TAB_HEADERS[activeTab];
 
-  // Extend title with the active tertiary sub-tab label when present.
+  // The leaf title in the top strip is the active tertiary sub-tab label
+  // when present, otherwise the tab label itself. The barTitle carries the
+  // tab label so the header renders as "Vector + <tab> + <sub>".
   const subSeg    = rootIdx >= 0 ? segments[rootIdx + 2] ?? "" : "";
   const subLabel  = SUB_TAB_LABELS[activeTab]?.[subSeg];
-  const fullTitle = subLabel ? `${header.title} // ${subLabel}` : header.title;
+  const leafTitle = subLabel ?? header.title;
+  const barTitle  = subLabel ? header.title : undefined;
   const subtitle  = header.subtitle.replace("<%tenant_name%>", tenantName || "this workspace");
 
   function handleTabChange(key: TabKey) {
@@ -109,7 +112,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
   }
 
   return (
-    <PageShell title={fullTitle} subtitle={subtitle} barTitle="Vector Settings">
+    <PageShell title={leafTitle} subtitle={subtitle} barTitle={barTitle}>
       <SecondaryNavigation<TabKey>
         ariaLabel="Workspace settings sections"
         pageId="workspace-settings"

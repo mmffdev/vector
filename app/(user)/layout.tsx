@@ -8,7 +8,6 @@ import AppSidebar_2 from "@/app/components/AppSidebar_2";
 import ScopeRail from "@/app/components/ScopeRail";
 import AppFooter from "@/app/components/AppFooter";
 import PageHeaderBar from "@/app/components/PageHeaderBar";
-import PageTitleRow from "@/app/components/PageTitleRow";
 import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
@@ -46,13 +45,12 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         <ScopeProvider>
         <DomRegistryProvider>
           <div className="app-root">
+            <ViewportSlot kind="header">
+              <PageHeaderBar />
+            </ViewportSlot>
             <ScopeRail />
             <ViewportSlot kind="side_bar"><AppSidebar_2 /></ViewportSlot>
             <div className="app-main-column">
-              <ViewportSlot kind="header">
-                <PageHeaderBar />
-                <PageTitleRow />
-              </ViewportSlot>
               <ViewportSlot kind="app">
                 <AppViewport className="app-viewport-container">
                   <PageWrapper className="page-wrapper">{children}</PageWrapper>

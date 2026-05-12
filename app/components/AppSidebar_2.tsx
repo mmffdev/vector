@@ -347,10 +347,6 @@ export default function AppSidebar_2() {
 
   const open = !collapsed || peeked;
 
-  const workspaceName = user.subscription_id === "00000000-0000-0000-0000-000000000001"
-    ? "MMFFDev"
-    : user.subscription_id.slice(0, 8).toUpperCase();
-
   return (
     <nav
       id="app-sidebar-nav"
@@ -363,19 +359,6 @@ export default function AppSidebar_2() {
       onFocus={() => { if (collapsed) setPeeked(true); }}
       onBlur={(e) => { if (peeked && !e.currentTarget.contains(e.relatedTarget as Node)) setPeeked(false); }}
     >
-      <div className="sidebar-brand" aria-label="Workspace">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo-vector.png"
-          alt="Vector"
-          className="sidebar-brand__logo"
-        />
-        <div className="sidebar-brand__label">
-          <small>Agency</small>
-          <strong>{workspaceName}</strong>
-        </div>
-      </div>
-
       <div className="sidebar-toolbar">
         <button
           type="button"
