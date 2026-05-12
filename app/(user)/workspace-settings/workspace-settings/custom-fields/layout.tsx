@@ -44,6 +44,7 @@ export default function CustomFieldsLayout({ children }: { children: React.React
       <SecondaryNavigation<TabKey>
         ariaLabel="Custom field artefact types"
         reorderable
+        level="l3"
         active={activeTab}
         onChange={handleTabChange}
         items={[

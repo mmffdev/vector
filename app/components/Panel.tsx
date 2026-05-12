@@ -34,13 +34,19 @@ interface PanelProps {
   title?: ReactNode;
   className?: string;
   children?: ReactNode;
+  // Call-site override: pass `helpable={false}` to suppress the help icon
+  // even if the substrate row says helpable=true. Use when a Panel is
+  // wrapping for heading/addressable semantics but parent context already
+  // owns the help (e.g. a repeater under a <PageDescription>).
+  helpable?: boolean;
 }
 
-export default function Panel({ name, title, className, children }: PanelProps) {
-  const { address, addressable_id, helpable, Provider } = useRegisterAddressable({
+export default function Panel({ name, title, className, children, helpable: helpableProp }: PanelProps) {
+  const { address, addressable_id, helpable: helpableFromRegistry, Provider } = useRegisterAddressable({
     kind: "panel",
     name,
   });
+  const helpable = helpableProp === false ? false : helpableFromRegistry;
   const sdk = useSamanthaSdk();
 
   const [open, setOpen] = useState(false);

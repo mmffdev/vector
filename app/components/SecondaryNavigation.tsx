@@ -29,6 +29,7 @@ import { usePathname } from "next/navigation";
 import { MdOutlineSwapVert } from "react-icons/md";
 import { apiSite as api } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useActiveNav } from "@/app/contexts/ActiveNavContext";
 
 export interface SecondaryNavigationItem<K extends string = string> {
   key: K;
@@ -55,6 +56,8 @@ interface Props<K extends string = string> {
   // and (in edit mode) tabs become drag-sortable with numbered position
   // chips. Sliding indicator is suppressed during edit to avoid chasing.
   reorderable?: boolean;
+  // Nav level. "l3" sticks directly below the L2 bar (lower z-index, no shadow, no gap).
+  level?: "l2" | "l3";
 }
 
 interface TabOrderRow {
@@ -184,6 +187,7 @@ export default function SecondaryNavigation<K extends string = string>({
   className,
   pageId: explicitPageId,
   reorderable = false,
+  level,
 }: Props<K>) {
   // Auto-derive a stable pageId from the URL path when none is supplied.
   // This makes the reorderable nav self-building at any depth (L2/L3/L4/…)
@@ -260,6 +264,20 @@ export default function SecondaryNavigation<K extends string = string>({
     for (const i of items) m.set(i.key, i);
     return m;
   }, [items]);
+
+  // Publish active label up to <ActiveNavContext> so <PageDescription>
+  // can default its title to the deepest active nav label. The publish
+  // level is derived from the URL depth (number of path segments) so
+  // multiple navs at the same `level` prop but different depths each
+  // get their own slot in the stack.
+  const { publish } = useActiveNav();
+  const navDepth = useMemo(() => pathname.split("/").filter(Boolean).length, [pathname]);
+  useEffect(() => {
+    const activeItem = itemsByKey.get(active);
+    const label = activeItem ? labelText(activeItem.label) : null;
+    publish(navDepth, label);
+    return () => publish(navDepth, null);
+  }, [active, itemsByKey, publish, navDepth]);
 
   const orderedItems = useMemo(() => {
     return order.map((k) => itemsByKey.get(k)).filter(Boolean) as SecondaryNavigationItem<K>[];
@@ -365,7 +383,7 @@ export default function SecondaryNavigation<K extends string = string>({
   const showReorderToggle = reorderable && !!pageId;
 
   return (
-    <div className="ui-sticky-subheader">
+    <div className={`ui-sticky-subheader${level === "l3" ? " ui-sticky-subheader--l3" : ""}`}>
     <div
       ref={containerRef}
       className={`${cls}${editMode ? " is-edit-mode" : ""}`}
