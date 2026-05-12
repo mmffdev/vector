@@ -1021,6 +1021,62 @@ func (s *Service) ArchivedDescendants(
 	return out, rows.Err()
 }
 
+// DescendantNodeIDs returns rootNodeID plus the IDs of every live
+// descendant reachable through topology_nodes.parent_id. Archived nodes
+// (and everything beneath them) are skipped, so a scope clamp built
+// from this set never reaches dead branches. The root itself must be
+// live and in the caller's tenant; ErrNodeNotFound is returned
+// otherwise.
+//
+// Used by readers that need the "this node + every descendant" set for
+// the PLA-0043 scope clamp on artefact reads.
+func (s *Service) DescendantNodeIDs(
+	ctx context.Context,
+	subscriptionID, rootNodeID uuid.UUID,
+) ([]uuid.UUID, error) {
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := s.loadNode(ctx, tx, rootNodeID, subscriptionID, false); err != nil {
+		return nil, err
+	}
+
+	wsClauseN, args, slot := workspaceClause(ctx, "n", []any{rootNodeID, subscriptionID})
+	wsClauseC := workspaceClauseAt("c", slot)
+	rows, err := tx.Query(ctx, `
+		WITH RECURSIVE live_down AS (
+		    SELECT n.id
+		      FROM topology_nodes n
+		     WHERE n.id = $1
+		       AND n.subscription_id = $2
+		       AND n.archived_at IS NULL`+wsClauseN+`
+		    UNION ALL
+		    SELECT c.id
+		      FROM topology_nodes c
+		      JOIN live_down ld ON c.parent_id = ld.id
+		     WHERE c.subscription_id = $2
+		       AND c.archived_at IS NULL`+wsClauseC+`
+		)
+		SELECT id FROM live_down
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // RestoreNode lifts a node out of limbo by clearing its archived_at.
 // When newParentID is non-nil it ALSO reparents to that node; pass nil
 // to leave the existing parent_id untouched.
