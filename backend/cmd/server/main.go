@@ -1009,6 +1009,10 @@ func main() {
 			r.Put("/view-state", orgDesignH.ViewState)
 		})
 
+		// PLA-0042 — scope picker. Not workspace-clamped: a user's
+		// grants may span workspaces inside their subscription.
+		r.Get("/grants/me", orgDesignH.MyGrants)
+
 		r.Post("/nodes", orgDesignH.Create)
 		r.Patch("/nodes/{id}", orgDesignH.Patch)
 		r.Delete("/nodes/{id}", orgDesignH.Archive)
@@ -1417,6 +1421,10 @@ func main() {
 				// workspace_id comes from WorkspaceClampMiddleware context.
 				r.Put("/view-state", orgDesignH.ViewState)
 			})
+
+			// PLA-0042 — scope picker. Not workspace-clamped: a user's
+			// grants may span workspaces inside their subscription.
+			r.Get("/grants/me", orgDesignH.MyGrants)
 
 			// Writes
 			r.Post("/nodes", orgDesignH.Create)

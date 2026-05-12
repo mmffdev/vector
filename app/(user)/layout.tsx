@@ -15,6 +15,7 @@ import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
 import { DomRegistryProvider, ViewportSlot } from "@/app/contexts/DomRegistryContext";
 import { TenantProvider } from "@/app/contexts/TenantContext";
 import { ActiveNavProvider } from "@/app/contexts/ActiveNavContext";
+import { ScopeProvider } from "@/app/contexts/ScopeContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     <NavPrefsProvider>
       <PageHeaderProvider>
         <ActiveNavProvider>
+        <ScopeProvider>
         <DomRegistryProvider>
           <div className="app-root">
             <ViewportSlot kind="side_bar"><AppSidebar_2 /></ViewportSlot>
@@ -58,6 +60,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </DomRegistryProvider>
+        </ScopeProvider>
         </ActiveNavProvider>
       </PageHeaderProvider>
     </NavPrefsProvider>

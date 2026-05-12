@@ -49,6 +49,21 @@ export interface ArchivedDescendant {
   parent_is_archived: boolean;
 }
 
+// PLA-0042 — one row of the user's own grant list, returned by
+// GET /api/topology/grants/me and consumed by the chrome scope picker.
+export interface MyGrant {
+  grant_id: string;
+  node_id: string;
+  workspace_id: string;
+  parent_id: string | null;
+  name: string;
+  label_override: string | null;
+  colour: string | null;
+  icon: string | null;
+  role: Role;
+  granted_at: string;
+}
+
 export interface CommitStatus {
   committed_at: string | null;
   committed_by: string | null;
@@ -106,6 +121,13 @@ export const topologyApi = {
 
   ancestors(nodeId: string) {
     return apiSite<OrgNode[]>(`/topology/nodes/${nodeId}/ancestors`);
+  },
+
+  // PLA-0042 — list every active grant on a live node held by the
+  // authenticated user. Used by the chrome scope picker; spans
+  // workspaces inside the subscription.
+  listMyGrants() {
+    return apiSite<MyGrant[]>(`/topology/grants/me`);
   },
 
   create(input: CreateNodeInput) {

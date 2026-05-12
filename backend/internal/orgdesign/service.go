@@ -37,6 +37,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/models"
 )
 
 // LayoutMode is the closed vocabulary for topology_nodes.layout_mode.
@@ -1103,6 +1104,109 @@ func (s *Service) RestoreNode(
 	}
 
 	return tx.Commit(ctx)
+}
+
+// MyGrant is one row of the user's own grant list — what the scope
+// picker shows. It pairs the grant identity + role with the node's
+// display fields so the chrome dropdown can render without a second
+// round trip.
+type MyGrant struct {
+	GrantID       uuid.UUID  `json:"grant_id"`
+	NodeID        uuid.UUID  `json:"node_id"`
+	WorkspaceID   uuid.UUID  `json:"workspace_id"`
+	ParentID      *uuid.UUID `json:"parent_id"`
+	Name          string     `json:"name"`
+	LabelOverride *string    `json:"label_override"`
+	Colour        *string    `json:"colour"`
+	Icon          *string    `json:"icon"`
+	Role          Role       `json:"role"`
+	GrantedAt     time.Time  `json:"granted_at"`
+}
+
+// ListMyGrants returns every active grant for the given (subscription,
+// user) joined to the underlying live topology_node. Archived nodes are
+// excluded — a grant on a node that was later archived has no useful
+// scope to switch into. Result is ordered by name for a stable dropdown.
+//
+// Gadmin override: gadmin is the platform-level support role and is
+// expected to be able to traverse the whole topology of any subscription
+// they're acting on. Rather than seeding real grant rows for them (which
+// would pollute the grant audit trail), we synthesise a "virtual admin
+// grant" on every live node. The synthetic GrantID is the node ID — it
+// is never read back as a real grant identifier (gadmin never revokes
+// its own synthetic grants), so this collision is safe; the picker only
+// uses it as a React key. GrantedAt is the node's created_at for stable
+// sort, and Role is fixed to "admin" so any role-coded UI affordance
+// (e.g. role pill in the picker) renders meaningfully.
+func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.UUID, actorRole string) ([]MyGrant, error) {
+	if actorRole == string(models.RoleGAdmin) {
+		return s.listMyGrantsGadmin(ctx, subscriptionID)
+	}
+	rows, err := s.vaPool.Query(ctx, `
+		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
+		       n.name, n.label_override, n.colour, n.icon,
+		       r.role_code, r.granted_at
+		  FROM topology_role_grants r
+		  JOIN topology_nodes n ON n.id = r.node_id
+		 WHERE r.subscription_id = $1
+		   AND r.user_id = $2
+		   AND r.revoked_at IS NULL
+		   AND n.archived_at IS NULL
+		 ORDER BY n.name
+	`, subscriptionID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []MyGrant{}
+	for rows.Next() {
+		var g MyGrant
+		if err := rows.Scan(
+			&g.GrantID, &g.NodeID, &g.WorkspaceID, &g.ParentID,
+			&g.Name, &g.LabelOverride, &g.Colour, &g.Icon,
+			&g.Role, &g.GrantedAt,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+// listMyGrantsGadmin returns a synthetic admin grant for every live
+// node in the subscription. See ListMyGrants doc for why this is
+// synthesised rather than seeded.
+func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UUID) ([]MyGrant, error) {
+	rows, err := s.vaPool.Query(ctx, `
+		SELECT n.id, n.workspace_id, n.parent_id,
+		       n.name, n.label_override, n.colour, n.icon,
+		       n.created_at
+		  FROM topology_nodes n
+		 WHERE n.subscription_id = $1
+		   AND n.archived_at IS NULL
+		 ORDER BY n.name
+	`, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []MyGrant{}
+	for rows.Next() {
+		var g MyGrant
+		if err := rows.Scan(
+			&g.NodeID, &g.WorkspaceID, &g.ParentID,
+			&g.Name, &g.LabelOverride, &g.Colour, &g.Icon,
+			&g.GrantedAt,
+		); err != nil {
+			return nil, err
+		}
+		g.GrantID = g.NodeID // synthetic — React-key only; see ListMyGrants doc.
+		g.Role = "admin"
+		out = append(out, g)
+	}
+	return out, rows.Err()
 }
 
 // ClampPredicate returns the set of live node IDs the user can see —

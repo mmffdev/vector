@@ -6,6 +6,7 @@ import UserAvatarMenu from "@/app/components/UserAvatarMenu";
 import SettingsIconMenu from "@/app/components/SettingsIconMenu";
 import EnvBadge from "@/app/components/EnvBadge";
 import ProfileBar from "@/app/components/ProfileBar";
+import ScopePicker from "@/app/components/ScopePicker";
 import { toTitleCase } from "@/app/lib/titleCase";
 
 export default function PageHeaderBar() {
@@ -28,6 +29,7 @@ export default function PageHeaderBar() {
             return label ? toTitleCase(label) : null;
           })()}
         </h1>
+        <ScopePicker />
         {header?.breadcrumbs && <div className="page-header__breadcrumbs">{header.breadcrumbs}</div>}
       </div>
 

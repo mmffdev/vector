@@ -577,6 +577,22 @@ func (h *Handler) Ancestors(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, nodes)
 }
 
+// GET /api/topology/grants/me — list every active grant for the
+// authenticated user, joined to the underlying live node. The chrome
+// scope picker (PLA-0042) uses this to render the user's switchable
+// node set without needing tree-read permission. No workspace clamp
+// is applied: a user may legitimately hold grants across workspaces
+// inside the same subscription.
+func (h *Handler) MyGrants(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	grants, err := h.Svc.ListMyGrants(r.Context(), u.SubscriptionID, u.ID, string(u.Role))
+	if err != nil {
+		writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, grants)
+}
+
 // POST /api/topology/nodes/{id}/roles
 func (h *Handler) GrantRole(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
