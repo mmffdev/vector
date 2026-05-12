@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0039`
+**Last issued:** `PLA-0043`
 
 ## Format
 
@@ -60,6 +60,10 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0037` | Artefact-Items Substrate — rename `workitemsv2` → `artefactitemsv2`, scope-parameterised (B21) | 2026-05-09 | reserved (plan file pending) |
 | `PLA-0038` | Blocked-state — orthogonal stuck flag with provenance for work items | 2026-05-09 | active |
 | `PLA-0039` | Transport Segregation via Shared Service Core — `/_site` BFF + `/samantha/v2` public, with one Service per domain | 2026-05-09 | active |
+| `PLA-0040` | (reserved — plan file on disk; entry to be filled) | 2026-05-10 | reserved |
+| `PLA-0041` | Flow-States v2 Orbit POC — radial state-machine layout for flow design | 2026-05-10 | active |
+| `PLA-0042` | Chrome scope picker (active topology scope) — top-left dropdown + ScopeContext + `?scope=<id>` URL persistence | 2026-05-11 | active (picker UI + ScopeContext only; read wiring deferred to PLA-0043) |
+| `PLA-0043` | Topology scope clamp on artefact reads — `topology_node_id` FK + descendants helper + grant-down inheritance + apiSite forwarding | 2026-05-12 | drafted |
 
 ## Scope linkage rule
 

@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-11 (`<scope> -u` — FE-GOV-0004 workstream A complete: page move + Orbit View components + CSS + matrix retired)
-**Doc version:** 2.12
+**Last updated:** 2026-05-12 (`<scope> -a` — FE-POR-0003 added: topology scope clamp on artefact reads (PLA-0043))
+**Doc version:** 2.15
 
 ---
 
@@ -20,6 +20,8 @@
 
 - [FE-GOV-0003. Flow-State Descriptions &amp; Per-State Exit Rules (PLA-0040)](#fe-gov-0003-flow-state-descriptions--per-state-exit-rules-pla-0040)
 - [FE-GOV-0004. Orbit View Transition Editor &amp; Artefact-Move Enforcement (PLA-0041)](#fe-gov-0004-orbit-view-transition-editor--artefact-move-enforcement-pla-0041)
+- [FE-POR-0002. Chrome Scope Picker (PLA-0042)](#fe-por-0002-chrome-scope-picker-pla-0042)
+- [FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)](#fe-por-0003-topology-scope-clamp-on-artefact-reads-pla-0043)
 
 **M — v2 Migration** *(build order: easiest → hardest)*
 
@@ -89,17 +91,20 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 - ✅ **FLOW1.2.3** ~~`listByScope` query selects `fs.is_pullable` and surfaces it in the `FlowState` DTO~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 - **FLOW1.2.4** Pull-surface query helper — canonical filter `is_pullable=true OR kind IN ('in_progress','done','accepted')` for team boards `[P2]`
 - **FLOW1.2.5** PO-backlog query helper — `kind='backlog' OR (kind='todo' AND is_pullable=false)` for PO grooming views `[P2]`
 > Last checked: 2026-05-10 — service.go validKinds includes "backlog"; types.go FlowState/PatchStateInput/CreateStateInput carry IsPullable; listByScope SELECT + scan + PatchFlowState UPDATE/RETURNING + CreateState INSERT/RETURNING all wire fs.is_pullable through. `go build ./internal/flows/... ./cmd/server/...` clean.
@@ -125,6 +130,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -142,6 +154,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -160,6 +174,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -178,17 +193,20 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 ---
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 
 ## F1. Artefact Type and Flow State Customisation
 
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 Workspace Settings > Customisation page — two sections. Section 1 (artefact type tags, prefix, name, description, colour) is already built. Section 2 adds a third-level tab nav (mirroring Custom Fields) for flow state management: one tab per artefact type, showing that type's flow states with colour editing. Covers data-correction migrations to fix wrong seeded states for all work types and missing states for strategy types. `[P2]` 🔵 IN FLIGHT
 
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -201,15 +219,20 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -219,13 +242,17 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 ### F1.2 Backend — flow state colour PATCH API
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -240,6 +267,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 - ✅ **F1.2.1** ~~Add `PATCH /_site/flow-states/{id}` handler (colour only for now) — validates `#RRGGBB`, returns updated state~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -271,6 +303,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -304,42 +339,54 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 
 ### F1.3 Frontend — Customisation page flow states section
 
 - **F1.3.1** Move existing Work Items page (`/workspace-settings/work-items`) content into Customisation as third-level tab section `[P2]`
+> Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 ---
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 ## M1. Flows
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -350,6 +397,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 Workflow definitions and states for work items. Currently reads from `obj_flow_tenant` in the old database (`mmff_vector`). The new database already has the correct tables (`flows`, `flow_states`, `flow_transitions`) — the data needs copying across and the handler switching over. Plan: [PLA-0031](dev/plans/PLA-0031.json)
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
@@ -640,6 +688,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -743,6 +793,8 @@ Full lifecycle management for tasks, bugs, epics.
 - **B5.7** `api_keys.manage` permission — not yet wired to API key routes `[P3]`
 - **B5.8** Capability matrix — single transparent view of role × permission grants `[P2]`
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -750,6 +802,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 > Commit `85b30e9` (2026-05-10): chore(scope): register FLOW1 entries + flow-state seed memory
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -841,6 +894,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 Backend + UI live; worker running. New event types under B9.7+ extend the catalogue.
 > Commit `fbeabab` (2026-05-09): fix(B18): scope TOC own scrollbar, hardened top offset [B20]
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
@@ -883,6 +941,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -985,6 +1044,14 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `d1b944e` (2026-05-09): feat(B15.2.5): split p_wizard.json into per-resource sidecar configs
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
   > Legacy `.table*` family deprecated 2026-05-05; migration to canonical classes bundled with file changes; `.tree_accordion-dense__*` is the canonical table family
+- ✅ **B15.10** Vertical nav primitive unification — `.sidebar-item` / `.sidebar-section` are sole-source for every vertical nav surface `[P2]`
+  > `app/globals.css` — `--nav-item-height`, `--nav-item-padding-x`, `--nav-section-padding`, `--nav-section-margin-top` CSS custom properties; defaults set on `.app-sidebar-container`; `.anav` ToC rail inherits the same primitives so a single edit propagates everywhere; bespoke `.anav__link` / `.anav__item` visual rules deleted. `PageAnchorNav.tsx` rewritten to emit `<p class="sidebar-section">` for depth-0 headers and `<button class="sidebar-item">` for depth-1+ links. HARD RULE documented in `docs/css-guide.md`.
+  > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
+- ✅ **B15.11** `<PageContent>` wrapper primitive — anchors sticky-nav top gap across L2/L3/L4+ stacks `[P2]`
+  > `app/components/PageContent.tsx` — every leaf `page.tsx` under `app/(user)/**` wraps body in `<PageContent>`; the 32px gap below the last sticky nav bar lives on `.page-content` (padding-top), scales to any nav depth without per-level CSS rules.
+  > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+  > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
+> Last checked: 2026-05-12
 
 ---
 
@@ -1045,6 +1112,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 - **B18.2** TypeScript SDK `[P4]`
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 - **B18.3** Python SDK `[P5]`
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 - **B18.4** Postman collection `[P4]`
@@ -1053,6 +1121,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `8941f45` (2026-05-09): feat: Customisation settings page — artefact type name/prefix/description/colour editor
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > No `X-RateLimit-*` headers found — rate limiting fires but doesn't expose headers to consumers
   > Last checked: 2026-05-08
   >
@@ -1239,6 +1308,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -1258,6 +1329,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -1272,6 +1344,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -1291,6 +1364,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -1326,6 +1401,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -1372,6 +1449,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -1394,6 +1474,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -1417,6 +1499,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -1452,6 +1536,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1482,6 +1568,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -1512,6 +1600,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `85b30e9` (2026-05-10): chore(scope): register FLOW1 entries + flow-state seed memory
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -1543,6 +1633,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1573,6 +1665,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -1615,6 +1709,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -1668,6 +1764,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -1678,6 +1776,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -1705,6 +1804,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -1712,6 +1812,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3464a1d` (2026-05-09): feat(B21 PLA-0037): scope-generic useArtefactItemsWindow + resourceUrl wizard sidecars
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -1724,6 +1825,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -1736,6 +1838,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -1743,6 +1846,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
+> Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
@@ -2007,6 +2112,85 @@ Governance surface: stand up a **new 3rd-level secondary-nav page** at `/workspa
 - **FE-GOV-0004.10.2** Portfolio enforcement — **decided: yes**, same enforcement as work items. Consistency over scope creep. `[P2]`
 - **FE-GOV-0004.10.3** Matrix coexistence — **decided: drop entirely** (no `?view=matrix` fallback). Matrix is internal-only with no muscle-memory users. `[P2]`
 - **FE-GOV-0004.10.4** Working-prototype reuse — confirm whether `Flow rule builders.html` + `m3-orbit.jsx` exist in the repo and whether to copy SVG math verbatim. If absent, treat the brief's math snippet as authoritative spec. `[P3]`
+
+---
+
+## FE-POR-0002. Chrome Scope Picker (PLA-0042)
+
+Chrome-level scope picker mounted at the start of `.page-header__left` (Rally / Linear convention; see research paper [R051](dev/research/R051.json)). Lets a logged-in user pick between the topology nodes they hold a live grant on — `admin | editor | viewer` rows from `topology_role_grants` — so the active scope follows them across pages. **Iteration 1 (this entry):** picker UI + `ScopeContext` + URL `?scope=<node_id>` + localStorage persistence; no read-path wiring yet (picking a scope persists the choice but does not narrow backlogs / portfolios / dashboards). **Iteration 2 (separate plan):** wire `activeNodeId` into work-items / portfolio-items / dashboard reads as a `?scope=` server filter — every consuming endpoint gets a clamp parameter, and the backend has to decide how scope clamps stack with workspace clamps. Plan: `dev/plans/PLA-0042.md`. `[P2]` 🔵 IN FLIGHT
+
+### FE-POR-0002.1 Backend — `GET /api/topology/grants/me`
+
+- 🔵 IN FLIGHT **FE-POR-0002.1.1** `Service.ListMyGrants(ctx, subscriptionID, userID)` in `backend/internal/orgdesign/service.go` — JOIN `topology_role_grants` + `topology_nodes`; filter `revoked_at IS NULL` AND `archived_at IS NULL`; return `MyGrant{grant_id, node_id, workspace_id, parent_id, name, label_override, colour, icon, role, granted_at}` ordered by node name. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.1.2** `Handler.MyGrants` in `backend/internal/orgdesign/handler.go` — thin wrapper; reads actor from `auth.UserFromCtx`. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.1.3** Register `GET /grants/me` on **both** `/_site` and `/samantha/v2` per PLA-0039 transport-segregation; **not** inside the workspace-clamped subrouter — a user's grants legitimately span workspaces inside the subscription. `[P2]`
+
+### FE-POR-0002.2 Frontend — ScopeContext + client
+
+- 🔵 IN FLIGHT **FE-POR-0002.2.1** `MyGrant` interface + `listMyGrants()` method on `topologyApi` (`app/lib/topologyApi.ts`) routed through `apiSite()`. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.2.2** New `app/contexts/ScopeContext.tsx` — provider holds `{grants, activeNodeId, activeGrant, loading, error, setActiveNodeId, reload}`; fetches on mount when authed; resolves active id from URL `?scope=` → localStorage `vector.scope.activeNodeId` → `null`; validates the candidate is still in the grant set (revoked / archived → falls back to `null`); `setActiveNodeId` writes both URL via `router.replace` and localStorage. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.2.3** Mount `<ScopeProvider>` in `app/(user)/layout.tsx` between `ActiveNavProvider` and `DomRegistryProvider`. `[P2]`
+
+### FE-POR-0002.3 Frontend — `<ScopePicker />` chrome component
+
+- 🔵 IN FLIGHT **FE-POR-0002.3.1** New `app/components/ScopePicker.tsx` — trigger button (`.btn.btn--ghost`) showing active scope label + chevron; outside-click + Escape close; auto-focus filter input on open. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.3.2** Dropdown panel: filter input (`.form__input`), indented tree of granted nodes reconstructed from flat list via `parent_id` walks inside the grant set, role pill per row, role-coded active state. Visual indent capped at depth 6 via `.scope-picker__item--d{0..6}` modifier classes (no inline `style={{}}`). `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.3.3** Edge states: zero grants → picker renders nothing (no disabled stub); filter no-match → "No matches."; load error → inline error row. `[P3]`
+- 🔵 IN FLIGHT **FE-POR-0002.3.4** Mount `<ScopePicker />` at the start of `.page-header__left` in `app/components/PageHeaderBar.tsx`, between the page title and any breadcrumbs row. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0002.3.5** CSS in `app/globals.css` under `.scope-picker*` namespace, appended after the `.avatar-menu` block; tokens only (`--surface`, `--border`, `--ink-1`, `--ink-3`, `--hover`); no shadow. `[P3]`
+
+### FE-POR-0002.4 Follow-up (deferred — separate plan)
+
+- ✅ ~~**FE-POR-0002.4.1** Read-path wiring — `?scope=<id>` becomes a server filter on `/work-items`, `/portfolio-items`, `/sprints`, `/releases`, dashboard endpoints. Each handler decides whether scope-clamp stacks with workspace-clamp or replaces it. Cards filed under a new plan when this lands.~~ `[P2]` — superseded by FE-POR-0003 (PLA-0043).
+- **FE-POR-0002.4.2** "Recent scopes" / "Pinned scopes" submenus (R051 nice-to-have; Linear / Jira pattern). `[P4]`
+- **FE-POR-0002.4.3** Cross-subscription scope picker (only if multi-sub support ships). Currently out of scope — grants are subscription-scoped by design. `[P5]`
+
+---
+
+## FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)
+
+Iteration-2 follow-up to PLA-0042: the chrome picker writes `?scope=<topology_node_id>` to the URL, this plan teaches the **read path** to honour it. Artefacts gain a nullable `topology_node_id` FK on `vector_artefacts.artefacts`; backend services clamp list reads to "this node + every descendant" via a recursive-CTE helper; grants inherit DOWN only (a grant on a parent reaches descendants; a grant on a child never reaches its parent); gadmin bypass preserved. Stacks with the existing workspace clamp — both must pass.
+
+Design validated against Rally / Jira / ADO via R052 + R053: single-FK ownership is universal across all three; adjacency-list + recursive-CTE matches Rally's storage model; grant-inherits-down matches ADO's permission convention. Move semantics (leave-vs-carry descendants) defer to PLA-0044.
+
+### FE-POR-0003.1 Schema — `topology_node_id` FK on artefacts
+
+- 🔵 IN FLIGHT **FE-POR-0003.1.1** Migration `db/artefacts_schema/NNN_artefacts_topology_node_id.sql` — add `topology_node_id UUID NULL REFERENCES topology_nodes(id) ON DELETE SET NULL` on `vector_artefacts.artefacts`; partial index `WHERE topology_node_id IS NOT NULL AND archived_at IS NULL`. NULL = un-assigned (visible in unscoped view, excluded from scoped view). `[P2]`
+
+### FE-POR-0003.2 Backend — `DescendantNodeIDs` helper
+
+- 🔵 IN FLIGHT **FE-POR-0003.2.1** `orgdesign.Service.DescendantNodeIDs(ctx, subscriptionID, rootNodeID) ([]uuid.UUID, error)` in `backend/internal/orgdesign/service.go` — recursive CTE walking `topology_nodes` children; skip `archived_at IS NOT NULL`; cycle-guard via depth cap (max 12 levels, matches portfolio convention). Returns root + all live descendants. Follows the same shape as existing `ArchivedDescendants` helper at line 960. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0003.2.2** Unit tests in `service_test.go` — single node, parent+children, multi-level tree, archived child excluded, cycle-safe (synthetic bad data). `[P3]`
+
+### FE-POR-0003.3 Backend — `CanReadScope` permission helper
+
+- 🔵 IN FLIGHT **FE-POR-0003.3.1** New `backend/internal/orgdesign/permissions.go` exporting `CanReadScope(ctx, userID, targetNodeID) (bool, error)` — gadmin bypass; otherwise check if any of user's grants are on `targetNodeID` itself OR on any **ancestor** of `targetNodeID` (grant-inherits-down). Grants on descendants of target do NOT count (no upward leakage). Uses adjacency-list walk via existing `parent_id` chain. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0003.3.2** Unit tests — grant on self passes; grant on parent passes; grant on grandparent passes; grant on child rejects parent; gadmin bypass; revoked grant rejects; archived target rejects. `[P3]`
+- 🔵 IN FLIGHT **FE-POR-0003.3.3** Audit-log code `scope_read_denied` emitted from list handlers when scope clamp filters out everything (signal: misconfigured grant or stale URL). `[P3]`
+
+### FE-POR-0003.4 Backend — `artefactitemsv2.List` scope clamp
+
+- 🔵 IN FLIGHT **FE-POR-0003.4.1** `artefactitemsv2.Service.ListWorkItems` (backend/internal/artefactitemsv2/service.go:83) — accept optional `scopeNodeID *uuid.UUID`; when non-nil: call `CanReadScope` (403 if false), then `DescendantNodeIDs`, then add `WHERE topology_node_id = ANY($N::uuid[])` to the existing workspace-clamped query. Workspace clamp + scope clamp BOTH applied. `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0003.4.2** Handler — parse `?scope=<uuid>` from query in `backend/internal/artefactitemsv2/handler.go`; validate UUID format (400 on parse fail); pass to service. Unset/empty → unscoped (existing behaviour). `[P2]`
+- 🔵 IN FLIGHT **FE-POR-0003.4.3** Handler tests — unscoped (no `?scope=`) returns all artefacts in workspace as today; scoped to leaf returns only that node's artefacts; scoped to parent returns parent + descendants; scoped to node user has no grant on → 403; un-assigned artefacts excluded from scoped view, included in unscoped view. `[P3]`
+
+### FE-POR-0003.5 Frontend — `apiSite` scope forwarding
+
+- 🔵 IN FLIGHT **FE-POR-0003.5.1** `app/lib/api.ts` — extend `apiSite()` to auto-append `?scope=<activeNodeId>` (read from current `window.location.search`) on GET requests when the URL already carries `scope`. POST/PATCH/DELETE remain unchanged (writes addressed in PLA-0044). Single touch-point replaces per-page wiring. `[P2]`
+
+### FE-POR-0003.6 Public API — OpenAPI
+
+- 🔵 IN FLIGHT **FE-POR-0003.6.1** `dev/openapi/openapi-v2.yaml` — document `?scope=<uuid>` query parameter on `/work-items` (and any other artefact-list route promoted to v2). Note grant requirement: scope node must be in caller's grant set or an ancestor of one. `[P3]`
+
+### FE-POR-0003.7 Verification
+
+- 🔵 IN FLIGHT **FE-POR-0003.7.1** Manual verification — seed fixture artefacts on nodes A, A/B, A/B/C; grant role on A/B; verify: picker on B shows B+C artefacts; picker on A → 403 (no grant); picker cleared → all artefacts in workspace (including A and un-assigned). `[P3]`
+
+### FE-POR-0003.8 Follow-ups (deferred)
+
+- **FE-POR-0003.8.1** Write-side node assignment — `topology_node_id` on artefact create/update; "leave vs carry descendants" radio on topology node move (industry-divergent option, default = leave per Rally/Jira/ADO). Deferred to PLA-0044. `[P2]`
+- **FE-POR-0003.8.2** Portfolio + timebox (sprint/release) scope clamps. Deferred to PLA-0045. `[P3]`
+- **FE-POR-0003.8.3** Un-assigned artefact ETL — backfill `topology_node_id` for existing rows where workspace → topology mapping is unambiguous. Deferred to PLA-0046. `[P3]`
 
 ---
 

@@ -138,3 +138,18 @@ FE-GOV-0004.7	go-test PatchWorkItem allowed blocked no-op empty-flow subscriptio
 FE-GOV-0004.8	notify apiError toast transition not permitted handler friendly copy
 FE-GOV-0004.9	verification go build typecheck lint browser orbit canvas rail keyboard portfolio parity
 FE-GOV-0004.10	open decisions empty-flow default portfolio enforcement matrix coexist prototype reuse
+FE-POR-0003.1.1	migration artefacts_schema topology_node_id artefacts vector_artefacts partial index ON DELETE SET NULL
+FE-POR-0003.2.1	DescendantNodeIDs orgdesign service recursive CTE topology_nodes archived cycle-guard depth
+FE-POR-0003.2.2	DescendantNodeIDs tests service_test single node parent children archived cycle
+FE-POR-0003.3.1	CanReadScope permissions orgdesign gadmin bypass grant ancestor descendant grant-inherits-down
+FE-POR-0003.3.2	CanReadScope tests grant self parent grandparent child reject gadmin revoked archived
+FE-POR-0003.3.3	scope_read_denied audit-log code list handlers clamp empty
+FE-POR-0003.4.1	artefactitemsv2 ListWorkItems scopeNodeID service clamp topology_node_id workspace
+FE-POR-0003.4.2	artefactitemsv2 handler parse scope query uuid validate 400
+FE-POR-0003.4.3	artefactitemsv2 handler tests scoped leaf parent 403 un-assigned unscoped
+FE-POR-0003.5.1	apiSite api.ts scope forward GET window location search frontend
+FE-POR-0003.6.1	openapi-v2.yaml document scope query parameter work-items grant
+FE-POR-0003.7.1	manual verification fixture artefacts nodes A B C grant picker 403
+FE-POR-0003.8.1	write-side node assignment topology_node_id create update move leave carry descendants PLA-0044
+FE-POR-0003.8.2	portfolio timebox sprint release scope clamps PLA-0045
+FE-POR-0003.8.3	un-assigned artefact ETL backfill topology_node_id workspace mapping PLA-0046
