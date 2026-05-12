@@ -206,19 +206,43 @@
   color: var(--ink);
 }
 .rd-rail__user {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: transparent;
-  border: 0;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--ink);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-top: 4px;
+  transition: background 150ms ease, border-color 150ms ease;
 }
-.rd-rail__user:hover { color: var(--ink); opacity: 0.85; }
+.rd-rail__user:hover { background: var(--surface); }
+.rd-rail__user.is-active {
+  background: var(--surface);
+  border-color: var(--ink);
+}
+.rd-rail__user .rd-rail__indicator {
+  /* The user button is round so the indicator hugs the rail's left edge
+     rather than the button itself. */
+  top: 4px;
+  bottom: 4px;
+}
+
+.rd-rail__util-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
 
 /* -------- Flyout -------- */
 .rd-flyout {
@@ -350,3 +374,76 @@
   background: var(--ink);
   color: var(--canvas);
 }
+
+/* -------- Account flyout extras -------- */
+.rd-flyout__account-card {
+  margin: 0 22px 12px;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--rd-radius-sm);
+}
+.rd-flyout__account-email {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  word-break: break-all;
+}
+.rd-flyout__account-role {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+.rd-flyout__row--button {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.rd-flyout__row--danger { color: var(--ink-muted); }
+.rd-flyout__row--danger:hover {
+  color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+/* -------- Top bar (per redesign mockup: breadcrumb only) -------- */
+.rd-shell__main {
+  display: flex;
+  flex-direction: column;
+}
+.rd-shell__main-body { flex: 1; min-height: 0; }
+
+.rd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 32px 0;
+}
+.rd-topbar__crumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.rd-topbar__crumb { color: var(--ink-muted); }
+.rd-topbar__crumb--current { color: var(--ink); font-weight: 500; }
+.rd-topbar__crumb-sep { color: var(--ink-faint); }
+.rd-topbar__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 150ms ease;
+}
+.rd-topbar__action:hover { background: var(--surface-sunken); }

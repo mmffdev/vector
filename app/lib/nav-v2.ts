@@ -7,6 +7,11 @@
  */
 
 export type IconKey =
+  | "TbHome"
+  | "MdOutlinePersonOutline"
+  | "MdOutlineAdminPanelSettings"
+  | "MdOutlineViewTimeline"
+  | "BsGraphUpArrow"
   | "LayoutDashboard"
   | "Compass"
   | "ListTree"
@@ -67,17 +72,54 @@ export const PERSPECTIVES: Perspective[] = [
       {
         id: "home",
         name: "Home",
-        icon: "LayoutDashboard",
+        icon: "TbHome",
         pages: [
-          { id: "dashboard", name: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+          { id: "dashboard", name: "Dashboard", href: "/dashboard", icon: "TbHome" },
           { id: "my-vista", name: "My Vista", href: "/my-vista", icon: "Compass" },
           { id: "favourites", name: "Favourites", href: "/favourites", icon: "Star" },
         ],
       },
       {
-        id: "work",
-        name: "Work",
-        icon: "Kanban",
+        id: "personal",
+        name: "Personal",
+        icon: "MdOutlinePersonOutline",
+        pages: [
+          { id: "account-settings", name: "Account settings", href: "/account-settings", icon: "MdOutlinePersonOutline" },
+          { id: "preferences", name: "Preferences", href: "/preferences", icon: "Settings" },
+          { id: "favourites", name: "Favourites", href: "/favourites", icon: "Star" },
+        ],
+      },
+      {
+        id: "admin",
+        name: "Admin settings",
+        icon: "MdOutlineAdminPanelSettings",
+        groups: [
+          {
+            id: "workspace",
+            name: "Workspace",
+            pages: [
+              { id: "tenant-details", name: "Tenant details", href: "/workspace-settings/tenant-details", icon: "Settings" },
+              { id: "topology-map", name: "Topology map", href: "/workspace-settings/topology-map", icon: "Network" },
+              { id: "portfolio-model", name: "Portfolio model", href: "/portfolio-model", icon: "FolderTree" },
+            ],
+          },
+          {
+            id: "library",
+            name: "Library",
+            pages: [
+              { id: "library-releases", name: "Library releases", href: "/library-releases", icon: "Library" },
+              { id: "artefact-types", name: "Artefact types", href: "/workspace-settings/artefact-types", icon: "ListTree" },
+              { id: "flow-states", name: "Flow states", href: "/workspace-settings/flow-states", icon: "GitBranch" },
+              { id: "custom-fields", name: "Custom fields", href: "/workspace-settings/custom-fields", icon: "ListTree" },
+              { id: "api-manager", name: "API manager", href: "/workspace-settings/api-manager", icon: "Wrench" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "planning",
+        name: "Planning",
+        icon: "MdOutlineViewTimeline",
         groups: [
           {
             id: "execution",
@@ -85,7 +127,7 @@ export const PERSPECTIVES: Perspective[] = [
             pages: [
               { id: "work-items", name: "Work items", href: "/work-items", icon: "ListTree" },
               { id: "backlog", name: "Backlog", href: "/backlog", icon: "ListTree" },
-              { id: "planning", name: "Planning", href: "/planning", icon: "Kanban" },
+              { id: "planning", name: "Planning", href: "/planning", icon: "MdOutlineViewTimeline" },
             ],
           },
           {
@@ -100,12 +142,13 @@ export const PERSPECTIVES: Perspective[] = [
         ],
       },
       {
-        id: "insight",
-        name: "Insight",
-        icon: "BarChart3",
+        id: "strategic",
+        name: "Strategic",
+        icon: "BsGraphUpArrow",
         pages: [
           { id: "scope", name: "Scope", href: "/scope", icon: "Activity" },
           { id: "risk", name: "Risk", href: "/risk", icon: "ShieldCheck" },
+          { id: "my-vista", name: "My Vista", href: "/my-vista", icon: "Compass" },
         ],
       },
     ],

@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useShell } from "../ShellContext";
-import { PERSPECTIVES, flattenSectionPages, type NavPage } from "@/app/lib/nav-v2";
+import { useNavOrderedPerspectives } from "../useNavOrderedPerspectives";
+import { flattenSectionPages, type NavPage } from "@/app/lib/nav-v2";
 import Icon from "./Icon";
 
 export default function SectionFlyout() {
   const { perspective, activeSection, setPerspectiveId } = useShell();
+  const filteredPerspectives = useNavOrderedPerspectives();
   const pathname = usePathname() ?? "";
   const [query, setQuery] = useState("");
 
@@ -65,7 +67,7 @@ export default function SectionFlyout() {
       </div>
 
       <div className="rd-flyout__seg" role="tablist" aria-label="Switch perspective">
-        {PERSPECTIVES.map((p) => {
+        {filteredPerspectives.map((p) => {
           const active = p.id === perspective.id;
           return (
             <button

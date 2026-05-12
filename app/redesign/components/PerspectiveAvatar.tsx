@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PERSPECTIVES } from "@/app/lib/nav-v2";
 import { useShell } from "../ShellContext";
+import { useNavOrderedPerspectives } from "../useNavOrderedPerspectives";
 
 export default function PerspectiveAvatar() {
   const { perspective, setPerspectiveId } = useShell();
+  const PERSPECTIVES = useNavOrderedPerspectives();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
