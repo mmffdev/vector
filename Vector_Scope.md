@@ -87,6 +87,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 
 - ✅ **FLOW1.2.1** ~~Add `'backlog'` to `validKinds` map in `backend/internal/flows/service.go`~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
@@ -252,6 +254,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -273,6 +276,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -411,6 +415,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -1090,6 +1095,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `3dc9cdd` (2026-05-09): chore(plans): normalise unicode escapes in PLA plan files
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -1206,6 +1212,16 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   > `error_code` field referenced in `errorsreport/handler.go` and `portfoliomodels/adopt.go` / `adopt_stream.go` — exists on adoption error paths but not consistently on all 4xx/5xx handlers
   > Last checked: 2026-05-08
   >
+
+### B18.7 Shared methods catalogue (PLA-0045)
+
+Persistent home, naming convention, and discoverability surface for cross-runtime shared methods — logic re-used across Frontend React ↔ BFF Route Handler ↔ Public Go API. Directory contract: `app/lib/shared/<domain>/` (TS, cross-runtime: browser bundle + Next.js Node route handler), `backend/internal/shared/<domain>/` (Go), `dev/fixtures/shared/<domain>/` (parity golden fixtures consumed by both Vitest and Go test suites). Catalogue at `docs/c_shared_methods.md` is the single index of every shared method with TS path, Go path, fixtures path, consumers, status. PostToolUse hook nudges shared placement on new `app/api/**/route.ts` or `backend/internal/**/handler.go` files. PLA-0044 topology walker is the first cataloguer.
+
+- 🔵 IN FLIGHT **B18.7.1** Directory scaffolds — `app/lib/shared/`, `backend/internal/shared/`, `dev/fixtures/shared/` with `.gitkeep` so paths exist before walker lands. `[P2]`
+- 🔵 IN FLIGHT **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P2]`
+- 🔵 IN FLIGHT **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P2]`
+- 🔵 IN FLIGHT **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P3]`
+- 🔵 IN FLIGHT **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P3]`
 
 ---
 
@@ -1654,6 +1670,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1773,6 +1790,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1840,6 +1858,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -1896,6 +1915,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -1955,6 +1975,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `6453099` (2026-05-12): docs(PLA-0043): topology scope clamp on artefact reads — plan + FE-POR-0003 scope items
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 

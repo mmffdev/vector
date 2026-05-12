@@ -4,7 +4,7 @@
   "date_created": "2026-05-12",
   "date_started": "2026-05-12",
   "date_last_updated": "2026-05-12",
-  "date_finished": null,
+  "date_finished": "2026-05-12",
   "scope": "<p>Establish a persistent home, naming convention, and discoverability surface for <strong>shared methods</strong> — logic re-used across more than one call surface (Frontend React ↔ BFF Route Handler ↔ Public Go API).</p><p>Three deliverables:</p><ol><li><strong>Directory contract</strong> — <code>app/lib/shared/&lt;domain&gt;/</code> (TS, cross-runtime: browser bundle + Next.js Node route handler), <code>backend/internal/shared/&lt;domain&gt;/</code> (Go), <code>dev/fixtures/shared/&lt;domain&gt;/</code> (parity golden fixtures).</li><li><strong><code>docs/c_shared_methods.md</code> catalogue</strong> — single index of every shared method with domain, TS path, Go path, fixtures path, consumers, status (stable / evolving / experimental).</li><li><strong>Soft-reminder hook</strong> — <code>.claude/hooks/shared-methods-reminder.sh</code> firing on Write/Edit against <code>app/api/**/route.ts</code> or <code>backend/internal/**/handler.go</code> emitting a one-line nudge to check the catalogue.</li></ol><p>Out of scope: retrofitting historical shared methods (separate audit). This plan establishes the substrate + first entry (PLA-0044's topology walker).</p>",
   "value": "<p>PLA-0044 is the first time the project deliberately writes one method that runs in three places (React browser, Next.js Node BFF, Go public API). Without a catalogue the second occurrence drifts: someone writes a parallel utility, fixtures get skipped, the PLA-0039 lint trio catches the symptom not the cause.</p><p>The catalogue exists so the <em>third</em> occurrence finds the pattern and the fourth extends it. Future PRs adding a new <code>route.ts</code> or Go handler get a chat-time nudge to consider shared placement before duplicating. Reviewers have one file to scan to know whether a primitive already exists. Memory has one rule pointing at one doc.</p>",
   "implementation_plan": [
@@ -45,7 +45,7 @@
       "title": "Establish app/lib/shared/, backend/internal/shared/, dev/fixtures/shared/ directories with .gitkeep scaffolds",
       "story_id": "00546",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F1 RISK-LOW FE-DEV-0026. Creates three .gitkeep files so the substrate exists before PLA-0044's walker lands."
     },
     {
@@ -53,7 +53,7 @@
       "title": "Seed dev/registries/shared_methods.json lint allow-list",
       "story_id": "00547",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F2 RISK-LOW FE-DEV-0027. JSON allow-list permitting app/lib/shared/** to be cross-imported from app/components/** and app/api/**/route.ts; consumed by lint:writer-boundary + lint:transport-segregation."
     },
     {
@@ -61,7 +61,7 @@
       "title": "Verify PLA-0045 shipped substrate end-to-end (catalogue, hook, memory, CLAUDE.md pointer)",
       "story_id": "00548",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F2 RISK-LOW FE-DEV-0028. Runs the 6 acceptance proofs against the items already shipped during planning: catalogue exists with walker row, CLAUDE.md links to it, hook fires on new route.ts and stays quiet on other files, memory loads at session start."
     },
     {
@@ -69,7 +69,7 @@
       "title": "Update Vector_Scope.md + .claude/scope-refs.map for PLA-0045 catalogue keywords",
       "story_id": "00549",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F1 RISK-LOW FE-DEV-0029. Adds scope items for shared-methods catalogue under DEV; registers keywords in scope-refs.map so future commits annotating shared methods land on the right scope row."
     }
   ],
@@ -80,7 +80,7 @@
       "proven_by": "ls app/lib/shared/.gitkeep backend/internal/shared/.gitkeep dev/fixtures/shared/.gitkeep returns all three paths",
       "story_id": "00546",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 2,
@@ -88,7 +88,7 @@
       "proven_by": "grep 'app/lib/shared' dev/registries/shared_methods.json returns the entry; lint:writer-boundary + lint:transport-segregation pass when a component imports from app/lib/shared/topology/walker",
       "story_id": "00547",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -96,7 +96,7 @@
       "proven_by": "grep -l 'topology walker' docs/c_shared_methods.md finds the file",
       "story_id": "00548",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 4,
@@ -104,7 +104,7 @@
       "proven_by": "grep 'c_shared_methods.md' .claude/CLAUDE.md returns the pointer line",
       "story_id": "00548",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 5,
@@ -112,7 +112,7 @@
       "proven_by": "manual test: create throwaway app/api/_test_shared/route.ts; hook fires in additionalContext containing 'shared'; delete test file after",
       "story_id": "00548",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -120,7 +120,7 @@
       "proven_by": "same manual test against a component file → no hook output",
       "story_id": "00548",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 7,
@@ -128,7 +128,7 @@
       "proven_by": ".claude/memory/MEMORY.md contains line for feedback_shared_methods_home.md; ~/.claude/projects/.../memory/MEMORY.md mirrored",
       "story_id": "00548",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -136,7 +136,7 @@
       "proven_by": "grep 'shared methods' Vector_Scope.md returns the row; grep 'shared methods catalogue' .claude/scope-refs.map returns the keyword line",
       "story_id": "00549",
       "card_url": null,
-      "done": false
+      "done": true
     }
   ],
   "risks": [

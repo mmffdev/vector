@@ -163,3 +163,8 @@ FE-POR-0003.9.7	walker Go backend shared topology WalkTopology mirror generic pa
 FE-POR-0003.9.8	MyGrant position field ListMyGrants sort canvas ScopeRail
 FE-POR-0003.9.9	visual smoke canvas topology flyout ScopeRail orphan screenshot
 FE-POR-0003.9.10	UserNodeAssignment gadmin user assign topology node picker checkbox tree multi-select
+B18.7.1	shared methods catalogue gitkeep scaffold app lib backend internal dev fixtures directory
+B18.7.2	shared methods catalogue docs c_shared_methods topology walker first row CLAUDE pointer
+B18.7.3	shared methods catalogue lint allow-list registry writer-boundary transport-segregation cross-import
+B18.7.4	shared methods catalogue PostToolUse hook reminder route handler nudge
+B18.7.5	shared methods catalogue feedback memory MEMORY index session start
