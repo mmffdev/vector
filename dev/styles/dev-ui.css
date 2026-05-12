@@ -496,11 +496,11 @@
 /* ─── 8. TOC sidebar (scroll-spy) ──────────────────────────── */
 
 /*
- * Default `align-items: stretch` (omitted) is required for the TOC's
- * position:sticky to work — sticky needs its containing block (the grid
- * cell) to extend the full row height. With align-items:start the cell
- * collapses to TOC content height, leaving sticky no scroll runway and
- * the TOC scrolls away with the page.
+ * Default `align-items: stretch` (omitted) gives the TOC's grid cell the
+ * full row height, which is the scroll runway sticky needs. Combined with
+ * `align-self: start` on .dui-toc itself (so the sticky element keeps
+ * shrink-to-content height instead of being stretched to fill the cell),
+ * sticky has both the runway and the size it needs to actually stick.
  */
 .dui-toc-layout {
   display: grid;
@@ -512,14 +512,16 @@
 /*
  * Sticks below the .dui-sticky-subheader. top/max-height use a generous
  * 140px estimate for the two-row subheader (tabs + growthbar) plus page
- * padding. overflow-y:scroll keeps the scrollbar permanently visible so
- * users can see the TOC is scrollable even before they try.
+ * padding. `align-self: start` prevents the grid from stretching the TOC
+ * to fill its cell (which would defeat sticky). overflow-y:auto shows the
+ * scrollbar only when the TOC actually overflows the viewport.
  */
 .dui-toc {
   position: sticky;
   top: 140px;
+  align-self: start;
   max-height: calc(100vh - 140px - var(--space-6));
-  overflow-y: scroll;
+  overflow-y: auto;
   overscroll-behavior: contain;
   border-right: 1px solid var(--border);
   padding-right: var(--space-4);
