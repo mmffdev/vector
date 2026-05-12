@@ -1177,6 +1177,10 @@ type MyGrant struct {
 	Icon          *string    `json:"icon"`
 	Role          Role       `json:"role"`
 	GrantedAt     time.Time  `json:"granted_at"`
+	// PLA-0044: sibling order from topology_nodes.sort_order. Lets the
+	// ScopeRail / picker run the shared walkTopology() walker with
+	// byPosition sort and render in canvas order.
+	Position int `json:"position"`
 }
 
 // ListMyGrants returns every active grant for the given (subscription,
@@ -1201,14 +1205,14 @@ func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.
 	rows, err := s.vaPool.Query(ctx, `
 		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
 		       n.name, n.label_override, n.colour, n.icon,
-		       r.role_code, r.granted_at
+		       r.role_code, r.granted_at, n.sort_order
 		  FROM topology_role_grants r
 		  JOIN topology_nodes n ON n.id = r.node_id
 		 WHERE r.subscription_id = $1
 		   AND r.user_id = $2
 		   AND r.revoked_at IS NULL
 		   AND n.archived_at IS NULL
-		 ORDER BY n.name
+		 ORDER BY n.sort_order, n.name
 	`, subscriptionID, userID)
 	if err != nil {
 		return nil, err
@@ -1221,7 +1225,7 @@ func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.
 		if err := rows.Scan(
 			&g.GrantID, &g.NodeID, &g.WorkspaceID, &g.ParentID,
 			&g.Name, &g.LabelOverride, &g.Colour, &g.Icon,
-			&g.Role, &g.GrantedAt,
+			&g.Role, &g.GrantedAt, &g.Position,
 		); err != nil {
 			return nil, err
 		}
@@ -1237,11 +1241,11 @@ func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UU
 	rows, err := s.vaPool.Query(ctx, `
 		SELECT n.id, n.workspace_id, n.parent_id,
 		       n.name, n.label_override, n.colour, n.icon,
-		       n.created_at
+		       n.created_at, n.sort_order
 		  FROM topology_nodes n
 		 WHERE n.subscription_id = $1
 		   AND n.archived_at IS NULL
-		 ORDER BY n.name
+		 ORDER BY n.sort_order, n.name
 	`, subscriptionID)
 	if err != nil {
 		return nil, err
@@ -1254,7 +1258,7 @@ func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UU
 		if err := rows.Scan(
 			&g.NodeID, &g.WorkspaceID, &g.ParentID,
 			&g.Name, &g.LabelOverride, &g.Colour, &g.Icon,
-			&g.GrantedAt,
+			&g.GrantedAt, &g.Position,
 		); err != nil {
 			return nil, err
 		}

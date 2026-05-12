@@ -62,6 +62,11 @@ export interface MyGrant {
   icon: string | null;
   role: Role;
   granted_at: string;
+  // PLA-0044: sibling order from topology_nodes.sort_order. Required by
+  // walkTopology's byPosition comparator so the ScopeRail / picker
+  // render in canvas order (which is the user's mental model from the
+  // topology page) rather than alphabetical.
+  position: number;
 }
 
 export interface CommitStatus {
