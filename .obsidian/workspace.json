@@ -178,17 +178,18 @@
   },
   "active": "0f49d6199bf31706",
   "lastOpenFiles": [
+    "dev/scripts/lint_scope_literals.py",
+    "docs/c_c_wizard_sidecar.md",
+    "backend/internal/artefactitemsv2/types.go",
+    "backend/internal/artefactitemsv2/service_test.go",
+    "backend/internal/artefactitemsv2/service.go",
+    "backend/internal/artefactitemsv2/handler_test.go",
+    "backend/internal/artefactitemsv2/handler.go",
+    "backend/internal/artefactitemsv2/doc.go",
+    "backend/internal/artefactitemsv2",
     "dev/plans/PLA-0038.json",
     "app/components/ObjectTree/configs/p_wizard_portfolio.json",
     "app/components/ObjectTree/configs/p_wizard_workitems.json",
-    "db/schema/142_grant_padmin_workspace_permissions.sql",
-    "db/schema/142_padmin_all_permissions.sql",
-    "node_modules/next/dist/lib/typescript/required-packages.d.ts",
-    "node_modules/next/dist/server/lib/is-rsc-request.d.ts",
-    "node_modules/next/dist/shared/lib/htmlescape.d.ts",
-    "node_modules/next/dist/lib/typescript/required-packages.js.map",
-    "node_modules/next/dist/esm/lib/typescript/required-packages.js.map",
-    "node_modules/next/dist/server/lib/is-rsc-request.js.map",
     "node_modules/iconoir/icons/regular/zoom-out.svg",
     "node_modules/iconoir/icons/regular/zoom-in.svg",
     "node_modules/iconoir/icons/regular/youtube.svg",
@@ -222,7 +223,6 @@
     "node_modules/d3-array/README.md",
     "node_modules/ngraph.forcelayout/demo/README.md",
     "node_modules/kapsule/README.md",
-    "node_modules/tinycolor2/README.md",
-    "node_modules/accessor-fn/README.md"
+    "node_modules/tinycolor2/README.md"
   ]
 }
