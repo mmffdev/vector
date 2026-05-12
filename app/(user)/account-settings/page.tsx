@@ -18,7 +18,6 @@
 
 import { useState } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function AccountSettingsPage() {
@@ -32,10 +31,6 @@ export default function AccountSettingsPage() {
 
   return (
     <PageContent>
-    <PageShell
-      title="Account Settings"
-      subtitle="Your profile, password, and personal preferences"
-    >
       <h3 className="eyebrow">Profile</h3>
       <form
         className="form u-mb-8"
@@ -132,7 +127,6 @@ export default function AccountSettingsPage() {
           onChange={setDigestNotif}
         />
       </div>
-    </PageShell>
     </PageContent>
   );
 }

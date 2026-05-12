@@ -14,7 +14,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -110,10 +109,6 @@ export default function LibraryReleasesPage() {
   return (
     <PageContent>
     <StrictRoute>
-    <PageShell
-      title="Library Releases"
-      subtitle="Acknowledge updates published to the MMFF library on behalf of your subscription"
-    >
       <Panel name="library_releases_outstanding" title="Outstanding releases">
         {state.kind === "loading" && (
           <div className="placeholder">
@@ -203,7 +198,6 @@ export default function LibraryReleasesPage() {
           />
         )}
       </Panel>
-    </PageShell>
     </StrictRoute>
     </PageContent>
   );

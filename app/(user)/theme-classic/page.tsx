@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
-import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 type Status = "exposed" | "new-token" | "future";
@@ -417,7 +416,7 @@ export default function ThemePage() {
   );
 
   return (
-    <PageShell title="Theme" subtitle="Choose how Vector looks for you">
+    <>
       <MakerPanel seed={seed} setSeed={setSeed} mode={mode} setMode={setMode} />
 
       <div className="theme-panels">
@@ -479,6 +478,6 @@ export default function ThemePage() {
           </div>
         </div>
       ))}
-    </PageShell>
+    </>
   );
 }

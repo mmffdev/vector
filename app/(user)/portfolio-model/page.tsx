@@ -31,7 +31,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -290,18 +289,13 @@ export default function PortfolioModelPage() {
   return (
     <PageContent>
     <StrictRoute>
-      <PageShell
-        title="Portfolio Model"
-        subtitle="Adopt a model or preview your subscription's adopted bundle"
-      >
-        <PortfolioRouterBody
-          view={view}
-          subscriptionId={user.subscription_id}
-          onAdoptStarted={handleAdoptStarted}
-          onOverlayDone={handleOverlayDone}
-          onOverlayFail={handleOverlayFail}
-        />
-      </PageShell>
+      <PortfolioRouterBody
+        view={view}
+        subscriptionId={user.subscription_id}
+        onAdoptStarted={handleAdoptStarted}
+        onOverlayDone={handleOverlayDone}
+        onOverlayFail={handleOverlayFail}
+      />
     </StrictRoute>
     </PageContent>
   );

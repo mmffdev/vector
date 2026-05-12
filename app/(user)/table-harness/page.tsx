@@ -7,7 +7,6 @@
 
 import { useMemo, useState } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -57,7 +56,6 @@ export default function TableHarnessPage() {
 
   return (
     <PageContent>
-    <PageShell title="Table harness" subtitle="Visual proof for every <Table> prop combination — PLA-0015">
       <StrictRoute>
         <Panel name="harness_minimal" title="1. Minimal — text only, no toolbar">
           <Table<DemoRow>
@@ -232,7 +230,6 @@ export default function TableHarnessPage() {
           />
         </Panel>
       </StrictRoute>
-    </PageShell>
     </PageContent>
   );
 }

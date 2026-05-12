@@ -22,7 +22,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { NavIcon } from "@/app/components/NavIcon";
@@ -1584,14 +1583,6 @@ export default function NavPreferencesPage() {
 
   return (
     <PageContent>
-    <PageShell
-      title="Navigation preferences"
-      subtitle={
-        activeProfile
-          ? `Editing "${activeProfile.label}" — pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
-          : `Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
-      }
-    >
       <StrictRoute>
       <div className="nav-prefs__quick-bar">
         <Panel
@@ -1798,7 +1789,6 @@ export default function NavPreferencesPage() {
 
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
       </StrictRoute>
-    </PageShell>
     </PageContent>
   );
 }

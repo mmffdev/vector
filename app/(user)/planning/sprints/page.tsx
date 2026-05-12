@@ -4,7 +4,6 @@
 // Visible to users with role 'user' or 'padmin' (page_roles in DB).
 
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import TimeboxManager from "@/app/components/TimeboxManager";
@@ -16,14 +15,9 @@ export default function SprintsPage() {
   return (
     <PageContent>
     <StrictRoute>
-      <PageShell
-        title="Sprints"
-        subtitle="Plan and manage your sprint timeboxes"
-      >
-        {workspaceId && (
-          <TimeboxManager kind="sprint" workspaceId={workspaceId} />
-        )}
-      </PageShell>
+      {workspaceId && (
+        <TimeboxManager kind="sprint" workspaceId={workspaceId} />
+      )}
     </StrictRoute>
     </PageContent>
   );
