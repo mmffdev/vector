@@ -1362,7 +1362,7 @@ export default function ThemePage() {
           <h3 className="theme-section__title">{section}</h3>
           <Table<Artefact>
             pageId="theme"
-            slot={`artefacts__${section.toLowerCase().replace(/\s+/g, "_")}`}
+            slot={`artefacts__${section.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`}
             ariaLabel={`Theme artefacts — ${section}`}
             rows={ARTEFACTS.filter((a) => a.section === section)}
             rowKey={(a) => `${a.section}-${a.control}`}

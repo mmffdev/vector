@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "whisper-local": {
+      "type": "stdio",
       "command": "node",
       "args": [
         "${CLAUDE_PROJECT_DIR}/.claude/bin/whisper-mcp.js"
