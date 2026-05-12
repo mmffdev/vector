@@ -172,7 +172,7 @@ function HelpRow({
     setSaving(true);
     setError(null);
     try {
-      const url = `/api/page-help/admin/${encodeURIComponent(row.addressable_id)}?locale=${encodeURIComponent(row.locale)}`;
+      const url = `/page-help/admin/${encodeURIComponent(row.addressable_id)}?locale=${encodeURIComponent(row.locale)}`;
       await api(url, { method: "DELETE" });
       onArchived(row.help_id);
     } catch (e: any) {
@@ -440,7 +440,7 @@ export default function DevPageHelpPanel() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api<Array<Partial<AdminRow> & Record<string, unknown>>>("/api/page-help/admin/");
+      const data = await api<Array<Partial<AdminRow> & Record<string, unknown>>>("/page-help/admin/");
       setRows((data ?? []).map(normalizeRow));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load page_help rows.");
