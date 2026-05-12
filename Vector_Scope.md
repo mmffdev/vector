@@ -86,6 +86,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 
 - ✅ **FLOW1.2.1** ~~Add `'backlog'` to `validKinds` map in `backend/internal/flows/service.go`~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
@@ -271,6 +272,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -408,6 +410,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -1089,6 +1092,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > `app/components/TimeboxManager.tsx` (369 LOC) — generic `kind` system (sprint/release); table-per-kind via `kinds.ts` registry; spec: `docs/c_c_timebox_manager.md`
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
 - ✅ **B15.5** `<DiagramCanvas>` — Canvas2D + dagre + d3-zoom `[P3]`
@@ -1552,6 +1556,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -1648,6 +1653,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1766,6 +1772,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1832,6 +1839,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `96b7f25` (2026-05-12): docs(research): R052 Rally scope mechanics + R053 Rally/Jira/ADO comparison; backfill PLA-0042.md
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -1887,6 +1895,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -1920,6 +1929,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
+> Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
