@@ -32,7 +32,7 @@ See [`docs/c_c_transport_segregation.md`](c_c_transport_segregation.md) for the 
 
 | # | Domain | TS path | Go path | Fixtures | Status | Consumers | Plan |
 |---|---|---|---|---|---|---|---|
-| 1 | topology — walk & flatten | `app/lib/shared/topology/walker.ts` | `backend/internal/shared/topology/walker.go` | `dev/fixtures/shared/topology/` | drafted | `app/components/ScopeRail.tsx`, `app/components/TopologyTreeFlyout.tsx`, `app/topology/useTopologyTreeState.ts`, `app/topology/canvas/dagre-layout.ts`, `app/components/UserNodeAssignment.tsx` (plus BFF `app/api/_site/topology/tree/route.ts`) | [PLA-0044](../dev/plans/PLA-0044.md) |
+| 1 | topology — walk & flatten | `app/lib/shared/topology/walker.ts` | `backend/internal/shared/topology/walker.go` | `dev/fixtures/shared/topology/` | live | `app/components/topology/layoutWithDagre.ts`, `app/components/topology/useTopologyTreeState.ts`, `app/components/TopologyTreeFlyout.tsx`, `app/components/ScopeRail.tsx`, `app/components/topology/UserNodeAssignment.tsx` (plus BFF `backend/internal/orgdesign/handler.go::Tree`) | [PLA-0044](../dev/plans/PLA-0044.md) |
 
 ---
 

@@ -2,9 +2,9 @@
   "id": "PLA-0044",
   "title": "Unified topology-traversal engine",
   "date_created": "2026-05-12",
-  "date_started": null,
+  "date_started": "2026-05-12",
   "date_last_updated": "2026-05-12",
-  "date_finished": null,
+  "date_finished": "2026-05-12",
   "scope": "<p>Extract a single <code>walkTopology()</code> engine that drives every existing topology consumer (canvas dagre map, table state, flyout, scope rail) plus a new fifth surface (gadmin user-to-node assignment picker) with one walk, one orphan policy, one sort knob.</p><p>Engine ships in TypeScript at <code>app/lib/shared/topology/walker.ts</code> and is mirrored in Go at <code>backend/internal/shared/topology/walker.go</code>. Parity locked via golden-fixture JSON tests under <code>dev/fixtures/shared/topology/</code> read byte-identically by both Vitest and Go test suites.</p><p>Iteration 1 powers BFF reads via <code>orgdesign.Service.Tree()</code> calling the shared walker; <code>/samantha/v2/topology/tree</code> public exposure deferred to a follow-up plan. <code>MyGrant.position</code> is added to the Go struct + <code>ListMyGrants</code> query so ScopeRail can switch from byLabel to byPosition and match canvas order.</p>",
   "value": "<p>Topology data is currently walked <strong>four times independently</strong> (canvas dagre, useTopologyTreeState, TopologyTreeFlyout, ScopeRail) with subtle drift between each walk producing user-visible bugs — notably the phantom orphan \"D\" row in ScopeRail. A fifth surface (user-to-node assignment) is about to land and would have been a fifth re-write.</p><p>R052 + R053 research confirmed the data model is universal (single-FK ownership, recursive-CTE walks); the duplication is purely an artefact of incremental delivery. Extracting now removes a structural bottleneck before any further topology UI work (move semantics, ancestor breadcrumbs, materialised paths).</p><p>Locks UI↔BFF↔public-API parity at the algorithm level, not at the HTTP boundary. Future changes touch one function, not five.</p>",
   "implementation_plan": [
@@ -61,7 +61,7 @@
       "title": "walkTopology TS engine + Vitest suite + 6 golden fixtures",
       "story_id": "00536",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F8 RISK-MED FE-POR-API-0006. Adds app/lib/shared/topology/walker.ts + walker.test.ts + README.md + 6 fixtures under dev/fixtures/shared/topology/. No consumer changes. Depends on PLA-0045 substrate."
     },
     {
@@ -69,7 +69,7 @@
       "title": "walkTopology Go mirror + parity tests",
       "story_id": "00537",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F8 RISK-MED FE-POR-API-0007. backend/internal/shared/topology/walker.go + walker_test.go + README.md reading same fixture JSON. Parallel-safe with 00536."
     },
     {
@@ -77,7 +77,7 @@
       "title": "MyGrant.position field + ListMyGrants ORDER BY position, name",
       "story_id": "00538",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F3 RISK-LOW FE-API-0025. Transport: site. backend/internal/orgdesign/service.go MyGrant struct + SELECT/ORDER change. Frontend rail sort change comes later (00542)."
     },
     {
@@ -85,7 +85,7 @@
       "title": "Refactor layoutWithDagre to use walkTopology",
       "story_id": "00539",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F3 RISK-LOW FE-POR-0003.9.2. Replaces walk(roots) + visibleEdges loop with single walker call. Visual smoke: canvas card map unchanged."
     },
     {
@@ -93,7 +93,7 @@
       "title": "Refactor useTopologyTreeState to destructure childrenOf from walker",
       "story_id": "00540",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F2 RISK-LOW FE-POR-0003.9.3. Replaces inline childrenOf useMemo. Visual smoke: table view + canvas unchanged."
     },
     {
@@ -101,7 +101,7 @@
       "title": "Refactor TopologyTreeFlyout to use walkTopology",
       "story_id": "00541",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F3 RISK-LOW FE-POR-0003.9.4. Replaces local flatten(); depth-0 quirk removed. Visual smoke: flyout SVG geometry identical."
     },
     {
@@ -109,7 +109,7 @@
       "title": "Refactor ScopeRail to use walkTopology + sort by position (fixes phantom D orphan)",
       "story_id": "00542",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F3 RISK-MED FE-POR-0003.9.5. Replaces buildTree(); orphan-drop active; sort byPosition. Visual smoke: no phantom D, rail order matches canvas. Depends on 00538 (MyGrant.position)."
     },
     {
@@ -117,7 +117,7 @@
       "title": "BFF /_site/topology/tree calls shared WalkTopology for scope-clamped responses",
       "story_id": "00543",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F5 RISK-MED FE-POR-API-0008. Transport: site. orgdesign.Service.Tree() refactored to call shared/topology.WalkTopology when scope present. Un-clamped responses unchanged. /samantha/v2/topology/tree deferred (R9)."
     },
     {
@@ -125,7 +125,7 @@
       "title": "UserNodeAssignment picker (gadmin tree-shaped multi-select with checkbox rows)",
       "story_id": "00544",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F8 RISK-MED FE-POR-0003.9.10. New gadmin-only surface at app/components/topology/UserNodeAssignment.tsx. Reuses walker output with checkbox row renderer. Wired into user-management page."
     },
     {
@@ -133,7 +133,7 @@
       "title": "PLA-0044 docs catalogue row + tech-debt close-out + CLAUDE.md pointer",
       "story_id": "00545",
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "notes": "EST-F2 RISK-LOW FE-DEV-0025. Append walkTopology row to docs/c_shared_methods.md; close S3 row in docs/c_tech_debt.md; add CLAUDE.md one-liner under Topology pointing to shared topology README."
     }
   ],
@@ -144,7 +144,7 @@
       "proven_by": "TS file present + npm run typecheck clean + named exports resolvable from app/components/topology/* via @/app/lib/shared/topology/walker",
       "story_id": "00536",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 2,
@@ -152,7 +152,7 @@
       "proven_by": "npm test app/lib/shared/topology/walker.test.ts → 9 specs pass",
       "story_id": "00536",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -160,7 +160,7 @@
       "proven_by": "ls dev/fixtures/shared/topology/*.json returns 6 files; each parses; expected.rows non-empty",
       "story_id": "00536",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 4,
@@ -168,7 +168,7 @@
       "proven_by": "go build ./backend/... clean; gopls finds symbol",
       "story_id": "00537",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 5,
@@ -176,7 +176,7 @@
       "proven_by": "go test ./backend/internal/shared/topology/... → all pass; diff of TS JSON output vs Go JSON output = 0 bytes for every fixture",
       "story_id": "00537",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -184,7 +184,7 @@
       "proven_by": "grep 'Position int' backend/internal/orgdesign/service.go returns the field; grep 'ORDER BY position' returns the query; ListMyGrants response includes position key",
       "story_id": "00538",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 7,
@@ -192,7 +192,7 @@
       "proven_by": "curl /_site/scope/mygrants → each row has numeric position field",
       "story_id": "00538",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -200,7 +200,7 @@
       "proven_by": "grep 'walkTopology' app/components/topology/layoutWithDagre.ts present; grep 'function walk(' absent; canvas card map renders identically pre/post on Acme+4 children fixture",
       "story_id": "00539",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 9,
@@ -208,7 +208,7 @@
       "proven_by": "grep 'walkTopology' app/components/topology/useTopologyTreeState.ts present; topology page table view renders unchanged",
       "story_id": "00540",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 10,
@@ -216,7 +216,7 @@
       "proven_by": "grep 'walkTopology' app/components/TopologyTreeFlyout.tsx present; grep 'pathMoreChildren = \\[\\]' absent; flyout SVG identical pre/post screenshot",
       "story_id": "00541",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 11,
@@ -224,7 +224,7 @@
       "proven_by": "grep 'walkTopology' app/components/ScopeRail.tsx present; grep 'buildTree' absent in same file; rail renders rows in position order matching canvas; orphan rows absent on seed data",
       "story_id": "00542",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 12,
@@ -232,7 +232,7 @@
       "proven_by": "curl /_site/topology/tree without scope param → response shape unchanged from baseline (diff = 0)",
       "story_id": "00543",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 13,
@@ -240,7 +240,7 @@
       "proven_by": "curl /_site/topology/tree?scope=<node-id> → response.rows all have ancestor path through <node-id>; visibleEdges restricted to that subtree",
       "story_id": "00543",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 14,
@@ -248,7 +248,7 @@
       "proven_by": "gadmin opens user-management → user row → assignment picker; tree renders matching scope rail; checking a node + save persists to backend; reload shows same selection",
       "story_id": "00544",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 15,
@@ -256,7 +256,7 @@
       "proven_by": "grep 'walkTopology' app/components/topology/UserNodeAssignment.tsx present; no local flatten/buildTree/childrenOf logic in the file",
       "story_id": "00544",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 16,
@@ -264,7 +264,7 @@
       "proven_by": "grep 'walkTopology' docs/c_shared_methods.md returns the row; columns include both paths and 4+ consumers (canvas, table, flyout, rail, BFF tree)",
       "story_id": "00545",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 17,
@@ -272,7 +272,7 @@
       "proven_by": "grep -A 2 'four independent topology walks' docs/c_tech_debt.md shows status=closed with PR/commit reference",
       "story_id": "00545",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 18,
@@ -280,7 +280,7 @@
       "proven_by": "grep 'shared/topology/README' .claude/CLAUDE.md returns the line under Topology",
       "story_id": "00545",
       "card_url": null,
-      "done": false
+      "done": true
     }
   ],
   "risks": [

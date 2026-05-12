@@ -64,7 +64,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0041` | Flow-States v2 Orbit POC — radial state-machine layout for flow design | 2026-05-10 | active |
 | `PLA-0042` | Chrome scope picker (active topology scope) — top-left dropdown + ScopeContext + `?scope=<id>` URL persistence | 2026-05-11 | active (picker UI + ScopeContext only; read wiring deferred to PLA-0043) |
 | `PLA-0043` | Topology scope clamp on artefact reads — `topology_node_id` FK + descendants helper + grant-down inheritance + apiSite forwarding | 2026-05-12 | drafted |
-| `PLA-0044` | Unified topology-traversal engine — single `walkTopology()` walker shared by canvas dagre layout, topology tree state hook, topology flyout, scope rail; Go mirror for BFF + public API parity | 2026-05-12 | drafted |
+| `PLA-0044` | Unified topology-traversal engine — single `walkTopology()` walker shared by canvas dagre layout, topology tree state hook, topology flyout, scope rail; Go mirror for BFF + public API parity | 2026-05-12 | complete (2026-05-12) |
 | `PLA-0045` | Shared Methods Catalogue + Soft-Reminder Hook — `app/lib/shared/` + `backend/internal/shared/` + `dev/fixtures/shared/` directory contract; `docs/c_shared_methods.md` index; PostToolUse hook nudges shared placement on new handler routes | 2026-05-12 | complete (2026-05-12) |
 
 ## Scope linkage rule
