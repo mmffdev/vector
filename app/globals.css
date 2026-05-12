@@ -237,6 +237,59 @@ a:hover {
   opacity: 0.8;
 }
 
+/* ---------- Scrollbars — single canonical Vector style ----------
+   Use `.vector-scroll` on any scrollable container to opt in. Also
+   applied globally to `html`/`body` so the page chrome matches without
+   per-component wiring. Slim, transparent track; thumb is Vector
+   orange (#ff6600), with a darker hover for affordance. Firefox uses
+   `scrollbar-color` (thumb | track); WebKit uses pseudo-elements. */
+:root {
+  --scrollbar-thumb: #ff6600;
+  --scrollbar-thumb-hover: #cc5200;
+}
+
+html,
+body,
+.vector-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.vector-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+.vector-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+.vector-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+.vector-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+.vector-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 button {
   font-family: inherit;
   font-size: inherit;
@@ -952,7 +1005,11 @@ input[type="reset"] {
   top: 0;
   bottom: 0;
   left: var(--scope-rail-w, 44px);
-  width: var(--scope-flyout-w, 240px);
+  /* Auto-size width to the longest node label, bounded so very long
+     names don't push the flyout off-screen. */
+  width: max-content;
+  min-width: var(--scope-flyout-w, 240px);
+  max-width: var(--scope-flyout-max-w, 480px);
   background: var(--surface-1, #fff);
   border-right: 1px solid var(--border-1, rgba(0, 0, 0, 0.08));
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
@@ -995,9 +1052,12 @@ input[type="reset"] {
 .scope-flyout__item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 14px 6px var(--scope-flyout-indent, 14px);
+  gap: 6px;
+  /* No left padding — the SVG spine cell owns indentation per row. */
+  padding: 0 14px 0 6px;
+  /* Fixed row height matches Spine ROW_H constant (28px) so the SVG
+     geometry lands flush; do not change one without the other. */
+  height: 28px;
   font-size: 13px;
   color: var(--ink-1);
   line-height: 1.3;
@@ -1011,25 +1071,15 @@ input[type="reset"] {
 
 .scope-flyout__item-name {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  /* Allow the longest name to define the panel's intrinsic width
+     (via the parent's width: max-content). */
 }
 
-.scope-flyout__item-role {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
+.scope-flyout__spine {
+  flex-shrink: 0;
+  display: block;
 }
-
-.scope-flyout__item--d0 { --scope-flyout-indent: 14px; }
-.scope-flyout__item--d1 { --scope-flyout-indent: 26px; }
-.scope-flyout__item--d2 { --scope-flyout-indent: 38px; }
-.scope-flyout__item--d3 { --scope-flyout-indent: 50px; }
-.scope-flyout__item--d4 { --scope-flyout-indent: 62px; }
-.scope-flyout__item--d5 { --scope-flyout-indent: 74px; }
-.scope-flyout__item--d6 { --scope-flyout-indent: 86px; }
 
 /* ============================================================
    Page body shell (Vector kit)
