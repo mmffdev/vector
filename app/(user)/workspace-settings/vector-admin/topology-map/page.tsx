@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import Panel from "@/app/components/Panel";
 import { MapRelationship3D } from "@/app/components/MapRelationship3D";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
@@ -21,6 +22,7 @@ export default function WorkspaceSettingsTopologyMapPage() {
   const { data, loading, error, refetch } = useTopologyRelationsPayload();
 
   return (
+    <PageContent>
     <Panel name="workspace_settings_topology_map" title="Topology map">
       {loading && !data ? (
         <div className="placeholder">
@@ -47,5 +49,6 @@ export default function WorkspaceSettingsTopologyMapPage() {
         <MapRelationship3D name="workspace_topology_map" payload={data} />
       ) : null}
     </Panel>
+    </PageContent>
   );
 }

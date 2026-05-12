@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import PageContent from "@/app/components/PageContent";
 import Table from "@/app/components/Table";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import { apiSite as api, ApiError } from "@/app/lib/api";
@@ -392,6 +393,7 @@ export default function UsersPage() {
       : { pageSize, page: safePage - 1, onPageChange: (n: number) => setPage(n + 1) };
 
   return (
+    <PageContent>
     <div>
       {err && <div className="form__error">{err}</div>}
 
@@ -555,5 +557,6 @@ export default function UsersPage() {
         />
       )}
     </div>
+    </PageContent>
   );
 }

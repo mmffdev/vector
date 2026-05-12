@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { useTabState } from "@/app/hooks/useTabState";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -32,6 +33,7 @@ export default function Backlog() {
   );
 
   return (
+    <PageContent>
     <StrictRoute>
     <PageShell
       title="Backlog"
@@ -94,6 +96,7 @@ export default function Backlog() {
       </Panel>
     </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }
 

@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -265,6 +266,7 @@ export default function AdminRolesPage() {
   if (!user || !canList) return null;
 
   return (
+    <PageContent>
     <StrictRoute>
       <PageShell
         title="Roles"
@@ -494,6 +496,7 @@ export default function AdminRolesPage() {
         </div>
       </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }
 

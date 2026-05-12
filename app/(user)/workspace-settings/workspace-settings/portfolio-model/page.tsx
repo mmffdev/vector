@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import PageContent from "@/app/components/PageContent";
 
 const PortfolioModelPage = dynamic(() => import("@/app/(user)/portfolio-model/page"), {
   ssr: false,
@@ -9,8 +10,10 @@ const PortfolioModelPage = dynamic(() => import("@/app/(user)/portfolio-model/pa
 
 export default function PortfolioModelTabPage() {
   return (
+    <PageContent>
     <div className="ws-tab-embed">
       <PortfolioModelPage />
     </div>
+    </PageContent>
   );
 }

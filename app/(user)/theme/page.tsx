@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTabState } from "@/app/hooks/useTabState";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import Table from "@/app/components/Table";
@@ -1312,6 +1313,7 @@ export default function ThemePage() {
   );
 
   return (
+    <PageContent>
     <PageShell title="Theme" subtitle="Choose how Vector looks for you">
       <SecondaryNavigation<"themes" | "maker">
         ariaLabel="Theme sections"
@@ -1398,5 +1400,6 @@ export default function ThemePage() {
         </>
       )}
     </PageShell>
+    </PageContent>
   );
 }

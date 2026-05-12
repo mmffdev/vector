@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import Table from "@/app/components/Table";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
@@ -51,6 +52,7 @@ export default function PermissionsPage() {
   ];
 
   return (
+    <PageContent>
     <Table<{ key: string; label: string }>
       pageId="workspace-settings"
       slot="permissions"
@@ -67,5 +69,6 @@ export default function PermissionsPage() {
         ),
       }}
     />
+    </PageContent>
   );
 }

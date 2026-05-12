@@ -1,7 +1,10 @@
 "use client";
 
+import PageContent from "@/app/components/PageContent";
+
 export default function CustomFieldsPortfolioItemsPage() {
   return (
+    <PageContent>
     <div className="settings-panel">
       <h3 className="eyebrow">Custom fields — Portfolio Items</h3>
       <p className="form__hint">
@@ -10,5 +13,6 @@ export default function CustomFieldsPortfolioItemsPage() {
       </p>
       <div className="empty-state">No custom fields defined yet for Portfolio Items.</div>
     </div>
+    </PageContent>
   );
 }

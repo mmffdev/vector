@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { apiSite as api } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -46,6 +47,7 @@ export default function ProductDetailPage() {
   const title = name ? `Product: ${name}` : "Product";
 
   return (
+    <PageContent>
     <PageShell title={title} subtitle="Product detail view — placeholder.">
       {loading && (
         <div className="placeholder">
@@ -75,5 +77,6 @@ export default function ProductDetailPage() {
         </div>
       )}
     </PageShell>
+    </PageContent>
   );
 }

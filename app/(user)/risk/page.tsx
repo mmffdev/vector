@@ -3,6 +3,7 @@
 // /risk — risk register. Body uses <Table> (PLA-0015); severity column
 // is `kind: "pill"` with HIGH=danger, MEDIUM=warning, LOW=neutral.
 
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Table from "@/app/components/Table";
 
@@ -56,6 +57,7 @@ const RISKS: Risk[] = [
 
 export default function Risk() {
   return (
+    <PageContent>
     <PageShell
       title="Risk"
       subtitle="Risk identification, analysis, and mitigation"
@@ -101,5 +103,6 @@ export default function Risk() {
         ]}
       />
     </PageShell>
+    </PageContent>
   );
 }

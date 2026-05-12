@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import PageContent from "@/app/components/PageContent";
 import Panel from "@/app/components/Panel";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiSite } from "@/app/lib/api";
@@ -86,6 +87,7 @@ export default function WorkItemsListPage() {
   }, [summary]);
 
   return (
+    <PageContent>
     <>
       <PageSummaryHeader cells={summaryCells} />
 
@@ -101,5 +103,6 @@ export default function WorkItemsListPage() {
         />
       </Panel>
     </>
+    </PageContent>
   );
 }

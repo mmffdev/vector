@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Table from "@/app/components/Table";
 import CustomFieldManager from "@/app/components/CustomFieldManager";
+import PageContent from "@/app/components/PageContent";
+import Table from "@/app/components/Table";
 
 // Prefixes come from artefact_types.prefix on the wire (WorkItem.type_prefix);
 // mirrored here as a static label list for the per-type tab bar on this page.
@@ -40,6 +41,7 @@ export default function CustomFieldsWorkItemsPage() {
   const active = ITEM_TYPES.find((t) => t.key === selected) ?? ITEM_TYPES[1];
 
   return (
+    <PageContent>
     <div className="settings-panel settings-panel--wide">
       {/* ── Type selector ───────────────────────────────────────── */}
       <div className="settings-panel__header">
@@ -100,5 +102,6 @@ export default function CustomFieldsWorkItemsPage() {
         />
       </div>
     </div>
+    </PageContent>
   );
 }

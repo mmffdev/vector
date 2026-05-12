@@ -17,6 +17,7 @@
  */
 
 import { useState } from "react";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
 
@@ -30,6 +31,7 @@ export default function AccountSettingsPage() {
   if (!user) return null;
 
   return (
+    <PageContent>
     <PageShell
       title="Account Settings"
       subtitle="Your profile, password, and personal preferences"
@@ -131,6 +133,7 @@ export default function AccountSettingsPage() {
         />
       </div>
     </PageShell>
+    </PageContent>
   );
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -10,6 +11,7 @@ export default function ReleasesPage() {
   const workspaceId = user?.subscription_id ?? "";
 
   return (
+    <PageContent>
     <StrictRoute>
       <PageShell
         title="Releases"
@@ -20,5 +22,6 @@ export default function ReleasesPage() {
         )}
       </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }

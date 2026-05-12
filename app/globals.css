@@ -13,8 +13,7 @@
   --content-max-width: 100%;
   --row-height: 48px;
   --input-height: 40px;
-  /* Height of a single sticky nav bar (L2, L3). Stacked subheaders consume
-     2x this height; .anav rail and section scroll-margin compensate for it. */
+  /* Height of a single sticky nav bar (L2, L3, L4...). */
   --nav-bar-h: 44px;
 
   /* ---------- Foundation: warm neutrals ---------- */
@@ -2063,14 +2062,14 @@ input[type="reset"] {
   margin-bottom: 0;
 }
 
-/* Page-content top gap: 32px between the LAST sticky subheader and the
-   page content that follows it. Sibling-combinator means pages with no
-   nav match nothing and sit flush at the top — no per-page rule needed.
-   The :not(.ui-sticky-subheader) on the sibling keeps stacked nav bars
-   (L2 + L3, or L3 + L3) flush against each other — the margin only
-   lands on real page content. */
-.ui-sticky-subheader + *:not(.ui-sticky-subheader) {
-  margin-top: var(--space-8);
+/* Page-content wrapper. Every leaf page.tsx renders <PageContent> which
+   emits .page-content as the FINAL sibling inside .page-body__inner —
+   after any sticky SecondaryNavigation bars (L2, L3, L4, …). The 32px
+   top gap below the last sticky bar lives here (padding-top), not as a
+   sibling-margin on the first child, so the gap stays put regardless of
+   nav-stack depth and never scrolls away with content. */
+.page-content {
+  padding-top: var(--space-8);
 }
 
 /* PageDescription — page-top description panel rendered via the helper-icon

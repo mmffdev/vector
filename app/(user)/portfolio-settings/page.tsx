@@ -14,6 +14,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -31,6 +32,7 @@ export default function PortfolioSettingsPage() {
   if (!user || !canViewSettings) return null;
 
   return (
+    <PageContent>
     <StrictRoute>
     <PageShell
       title="Portfolio Settings"
@@ -103,5 +105,6 @@ export default function PortfolioSettingsPage() {
       </form>
     </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }

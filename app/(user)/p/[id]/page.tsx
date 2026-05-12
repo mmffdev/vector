@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
@@ -74,15 +75,17 @@ export default function CustomContainerPage() {
   if (!user) return null;
 
   if (loading) {
-    return <PageShell title="Loading…" subtitle=""><div /></PageShell>;
+    return <PageContent><PageShell title="Loading…" subtitle=""><div /></PageShell></PageContent>;
   }
   if (err || !page) {
     return (
+      <PageContent>
       <PageShell title="Not found" subtitle="">
         <div className="placeholder">
           <p className="placeholder__body">{err ?? "This page no longer exists."}</p>
         </div>
       </PageShell>
+      </PageContent>
     );
   }
 
@@ -115,6 +118,7 @@ export default function CustomContainerPage() {
   }
 
   return (
+    <PageContent>
     <PageShell title={page.label} subtitle="">
       <div className="custom-page">
         <div className="custom-page__heading-row">
@@ -173,5 +177,6 @@ export default function CustomContainerPage() {
         </div>
       </div>
     </PageShell>
+    </PageContent>
   );
 }

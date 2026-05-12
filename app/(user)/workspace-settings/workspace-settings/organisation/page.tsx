@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
@@ -395,26 +396,31 @@ export default function OrganisationPage() {
 
   if (loading) {
     return (
+      <PageContent>
       <div className="settings-panel">
         <p className="form__hint">Loading tenant settings…</p>
       </div>
+      </PageContent>
     );
   }
 
   if (loadError || !form || !original) {
     return (
+      <PageContent>
       <div className="settings-panel">
         <p className="form__error">{loadError ?? "Could not load tenant settings."}</p>
         <div className="form__actions">
           <button type="button" className="btn btn--ghost" onClick={load}>Retry</button>
         </div>
       </div>
+      </PageContent>
     );
   }
 
   const subId = subscriptionId.current ?? user?.subscription_id ?? "";
 
   return (
+    <PageContent>
     <div className="settings-panel">
 
       {/* ── Color Code Work Items (placeholder) ──────────────── */}
@@ -665,6 +671,7 @@ export default function OrganisationPage() {
         onDiscard={onDiscard}
       />
     </div>
+    </PageContent>
   );
 }
 

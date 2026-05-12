@@ -10,6 +10,7 @@
 // state uses .placeholder.
 
 import { useEffect, useRef } from "react";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 
 function TimelineBar({ start, end }: { start: number; end: number }) {
@@ -63,6 +64,7 @@ interface PlanCard {
 
 export default function Planning() {
   return (
+    <PageContent>
     <PageShell
       title="Planning"
       subtitle="Timeline, capacity, and release planning"
@@ -110,5 +112,6 @@ export default function Planning() {
         </ul>
       </div>
     </PageShell>
+    </PageContent>
   );
 }

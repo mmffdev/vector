@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import PageContent from "@/app/components/PageContent";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
 const TopologyOverlayPage = dynamic(() => import("@/app/(overlay)/topology/page"), {
@@ -22,8 +23,10 @@ export default function TopologyPage() {
   if (!user || !canAccess) return null;
 
   return (
+    <PageContent>
     <div className="topology-tab-host">
       <TopologyOverlayPage />
     </div>
+    </PageContent>
   );
 }

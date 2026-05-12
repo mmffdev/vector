@@ -21,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -1582,6 +1583,7 @@ export default function NavPreferencesPage() {
   const customBucketIds = draft.bucketOrder.map(groupHeaderDragId);
 
   return (
+    <PageContent>
     <PageShell
       title="Navigation preferences"
       subtitle={
@@ -1797,5 +1799,6 @@ export default function NavPreferencesPage() {
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
       </StrictRoute>
     </PageShell>
+    </PageContent>
   );
 }

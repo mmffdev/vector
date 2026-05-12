@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
+import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import OrbitView from "@/app/components/flow-rules/OrbitView";
@@ -139,6 +140,7 @@ export default function TransitionRulesPage() {
   }
 
   return (
+    <PageContent>
     <div className="settings-panel settings-panel--wide">
       <div className="anav-layout">
         <PageAnchorNav items={tocItems} />
@@ -191,5 +193,6 @@ export default function TransitionRulesPage() {
         </div>
       </div>
     </div>
+    </PageContent>
   );
 }

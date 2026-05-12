@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 
@@ -17,6 +18,7 @@ export default function PortfolioModelCustomPage() {
   if (!user || !canEditModel) return null;
 
   return (
+    <PageContent>
     <PageShell
       title="Portfolio Model"
       subtitle="Custom hierarchy"
@@ -26,5 +28,6 @@ export default function PortfolioModelCustomPage() {
         <p className="placeholder__body">Coming soon.</p>
       </div>
     </PageShell>
+    </PageContent>
   );
 }

@@ -3,6 +3,7 @@
 // PLA-0027 / Story 00517+00518 — Sprint timebox management page.
 // Visible to users with role 'user' or 'padmin' (page_roles in DB).
 
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -13,6 +14,7 @@ export default function SprintsPage() {
   const workspaceId = user?.subscription_id ?? "";
 
   return (
+    <PageContent>
     <StrictRoute>
       <PageShell
         title="Sprints"
@@ -23,5 +25,6 @@ export default function SprintsPage() {
         )}
       </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }

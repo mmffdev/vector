@@ -8,6 +8,7 @@
 // .pill--neutral. Empty state uses .placeholder; no .empty-state,
 // no .tag classes, no lime-green.
 
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 
 const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: string }> = [
@@ -19,6 +20,7 @@ const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: 
 export default function Favourites() {
   const empty = PINS.length === 0;
   return (
+    <PageContent>
     <PageShell title="Favourites" subtitle="Your starred items">
       {empty ? (
         <div className="placeholder">
@@ -45,5 +47,6 @@ export default function Favourites() {
         </ul>
       )}
     </PageShell>
+    </PageContent>
   );
 }

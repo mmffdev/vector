@@ -10,6 +10,7 @@
 // fills, no decorative colour.
 
 import { useEffect, useState } from "react";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import { SkeletonFade } from "@/app/components/Skeleton";
 import { ListRowSkeleton } from "@/app/components/SkeletonCompositions";
@@ -75,6 +76,7 @@ export default function MyVista() {
 
   const empty = ASSIGNED.length === 0;
   return (
+    <PageContent>
     <PageShell title="My Vista" subtitle="Your personalised view">
       <h3 className="eyebrow">Assigned to you</h3>
       <SkeletonFade
@@ -112,5 +114,6 @@ export default function MyVista() {
       )}
       </SkeletonFade>
     </PageShell>
+    </PageContent>
   );
 }

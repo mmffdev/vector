@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
@@ -107,6 +108,7 @@ export default function LibraryReleasesPage() {
   if (!user || !canViewReleases) return null;
 
   return (
+    <PageContent>
     <StrictRoute>
     <PageShell
       title="Library Releases"
@@ -203,6 +205,7 @@ export default function LibraryReleasesPage() {
       </Panel>
     </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }
 

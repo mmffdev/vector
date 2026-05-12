@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import PageContent from "@/app/components/PageContent";
 import Table from "@/app/components/Table";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
 import { apiSite } from "@/app/lib/api";
@@ -126,6 +127,7 @@ export default function WebhooksPage() {
   }));
 
   return (
+    <PageContent>
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -158,5 +160,6 @@ export default function WebhooksPage() {
         <UnsavedChangesBar onSave={() => {}} onDiscard={() => setUnsavedChanges(false)} />
       )}
     </div>
+    </PageContent>
   );
 }

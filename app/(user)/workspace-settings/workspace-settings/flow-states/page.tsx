@@ -29,6 +29,7 @@ import { safeInk } from "@/app/lib/colourUtils";
 import { useAuth } from "@/app/contexts/AuthContext";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
 import Panel from "@/app/components/Panel";
+import PageContent from "@/app/components/PageContent";
 import {
   flowStatesApi,
   type FlowExitRule,
@@ -1549,18 +1550,22 @@ export default function FlowStatesPage() {
 
   if (loadError) {
     return (
+      <PageContent>
       <div className="settings-panel">
         <p className="form__error">{loadError}</p>
         <button type="button" className="btn btn--ghost" onClick={load}>Retry</button>
       </div>
+      </PageContent>
     );
   }
 
   if (!data) {
     return (
+      <PageContent>
       <div className="settings-panel">
         <p className="form__hint">Loading flow states…</p>
       </div>
+      </PageContent>
     );
   }
 
@@ -1579,6 +1584,7 @@ export default function FlowStatesPage() {
   ];
 
   return (
+    <PageContent>
     <div className="settings-panel settings-panel--wide">
       <p className="form__hint" style={{ marginBottom: "var(--space-6)" }}>
         Click a colour swatch to change it. Colours update the flow map and work-item trees immediately.
@@ -1610,5 +1616,6 @@ export default function FlowStatesPage() {
         </div>
       </div>
     </div>
+    </PageContent>
   );
 }

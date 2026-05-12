@@ -1,7 +1,10 @@
 "use client";
 
+import PageContent from "@/app/components/PageContent";
+
 export default function CustomFieldsDefectsPage() {
   return (
+    <PageContent>
     <div className="settings-panel">
       <h3 className="eyebrow">Custom fields — Defects</h3>
       <p className="form__hint">
@@ -10,5 +13,6 @@ export default function CustomFieldsDefectsPage() {
       </p>
       <div className="empty-state">No custom fields defined yet for Defects.</div>
     </div>
+    </PageContent>
   );
 }

@@ -30,6 +30,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageContent from "@/app/components/PageContent";
 import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
@@ -287,6 +288,7 @@ export default function PortfolioModelPage() {
   if (authLoading || !user || !canEditModel) return null;
 
   return (
+    <PageContent>
     <StrictRoute>
       <PageShell
         title="Portfolio Model"
@@ -301,6 +303,7 @@ export default function PortfolioModelPage() {
         />
       </PageShell>
     </StrictRoute>
+    </PageContent>
   );
 }
 

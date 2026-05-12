@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MdOutlineEdit } from "react-icons/md";
+import PageContent from "@/app/components/PageContent";
 import Table from "@/app/components/Table";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
@@ -378,6 +379,7 @@ export default function WorkspacesPage() {
   }
 
   return (
+    <PageContent>
     <div>
       <div className="toolbar">
         <div className="toolbar__meta">
@@ -456,5 +458,6 @@ export default function WorkspacesPage() {
         />
       )}
     </div>
+    </PageContent>
   );
 }

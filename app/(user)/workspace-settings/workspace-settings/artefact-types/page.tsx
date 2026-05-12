@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import InlineEditField from "@/app/components/InlineEditField";
+import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import { notify } from "@/app/lib/toast";
@@ -252,20 +253,24 @@ export default function CustomisationPage() {
 
   if (loadError) {
     return (
+      <PageContent>
       <div className="settings-panel settings-panel--wide">
         <p className="form__error">{loadError}</p>
         <div className="form__actions">
           <button type="button" className="btn btn--ghost" onClick={load}>Retry</button>
         </div>
       </div>
+      </PageContent>
     );
   }
 
   if (!types) {
     return (
+      <PageContent>
       <div className="settings-panel settings-panel--wide">
         <p className="form__hint">Loading artefact types…</p>
       </div>
+      </PageContent>
     );
   }
 
@@ -273,6 +278,7 @@ export default function CustomisationPage() {
   const strategyTypes = types.filter((t) => t.scope === "strategy");
 
   return (
+    <PageContent>
     <div className="settings-panel settings-panel--wide">
       <PageDescription>
         Click any cell to edit inline. Colour changes apply immediately. Prefix
@@ -291,6 +297,7 @@ export default function CustomisationPage() {
         </Panel>
       )}
     </div>
+    </PageContent>
   );
 }
 

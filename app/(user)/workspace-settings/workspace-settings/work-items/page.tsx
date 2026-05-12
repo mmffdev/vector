@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import PageContent from "@/app/components/PageContent";
 import Table from "@/app/components/Table";
 import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -51,8 +52,8 @@ export default function WorkItemsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <div className="empty-state">Loading flows…</div>;
-  if (error)   return <div className="empty-state">Could not load flows — reload the page to try again.</div>;
+  if (loading) return <PageContent><div className="empty-state">Loading flows…</div></PageContent>;
+  if (error)   return <PageContent><div className="empty-state">Could not load flows — reload the page to try again.</div></PageContent>;
   if (!data)   return null;
 
   const sections: Array<{ title: string; subtitle: string; groups: FlowGroup[] }> = [
@@ -69,6 +70,7 @@ export default function WorkItemsPage() {
   ];
 
   return (
+    <PageContent>
     <div>
       <div className="toolbar">
         <div className="toolbar__meta">
@@ -124,5 +126,6 @@ export default function WorkItemsPage() {
         </section>
       ))}
     </div>
+    </PageContent>
   );
 }
