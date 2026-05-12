@@ -242,6 +242,8 @@ When a new counter is needed, propose the next sequential number; user confirms,
 | SEC | `FE-SEC-0010` | 10/? | `1767390552992515379` | Active | Seed workspace permission codes (workspace.create / .rename / .archive / .restore / .view_archived) into RBAC catalogue (PLA-0006) |
 | GOV | `FE-GOV-0001` | 1/? | `1765771317497300684` | Active | Gadmin `/dev/pane-help` editor page (list, edit, preview, save) |
 | GOV | `FE-GOV-0002` | 2/? | `1765963211997185964` | Active | Federated handoff governance — single-level delegation gate (PLA-0006) |
+| GOV | `FE-GOV-0003` | 3/? | — | Active | Flow-state descriptions + per-state exit rules (PLA-0040) — `flow_state_exit_rules` table, drag-reorderable checklist, self-attest model |
+| GOV | `FE-GOV-0004` | 4/? | — | Active | Transition Rules page + Workspace-Settings move + artefact-move enforcement (PLA-0041) — new Orbit View editor at `/workspace-settings/workspace-settings/transition-rules`; Flow States + Work Items relocate from Customisation L3 to Workspace Settings L3 (siblings of Custom Fields / Portfolio Model); replaces N×N matrix on Flow States; `flow_transitions` enforced in `artefactitemsv2`/`portfolioitemsv2` PATCH |
 | AUD | `FE-AUD0001` | 1/? | `1762012948181550696` | Active | Layer change audit logging |
 | AUD | `FE-AUD-0002` | 2/? | `1765963209455437738` | Active | Topology mutation audit logging (PLA-0006) |
 | RED | — | 0/? | — | Ready | Redundancy / HA / backup |

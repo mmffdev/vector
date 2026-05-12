@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import InlineEditField from "@/app/components/InlineEditField";
+import PageDescription from "@/app/components/PageDescription";
+import Panel from "@/app/components/Panel";
 import { notify } from "@/app/lib/toast";
 import { ApiError } from "@/app/lib/api";
 import {
@@ -223,12 +225,6 @@ function TypeRow({
       <td className="table__cell">
         <ColourPicker value={type.colour} onChange={onColourChange} />
       </td>
-      <td className="table__cell table__cell--muted" style={{ fontSize: "0.75rem" }}>
-        {type.scope}
-      </td>
-      <td className="table__cell table__cell--muted" style={{ fontSize: "0.75rem" }}>
-        {type.source}
-      </td>
     </tr>
   );
 }
@@ -256,7 +252,7 @@ export default function CustomisationPage() {
 
   if (loadError) {
     return (
-      <div className="settings-panel">
+      <div className="settings-panel settings-panel--wide">
         <p className="form__error">{loadError}</p>
         <div className="form__actions">
           <button type="button" className="btn btn--ghost" onClick={load}>Retry</button>
@@ -267,7 +263,7 @@ export default function CustomisationPage() {
 
   if (!types) {
     return (
-      <div className="settings-panel">
+      <div className="settings-panel settings-panel--wide">
         <p className="form__hint">Loading artefact types…</p>
       </div>
     );
@@ -277,24 +273,22 @@ export default function CustomisationPage() {
   const strategyTypes = types.filter((t) => t.scope === "strategy");
 
   return (
-    <div className="settings-panel">
-      <p className="form__hint">
+    <div className="settings-panel settings-panel--wide">
+      <PageDescription>
         Click any cell to edit inline. Colour changes apply immediately. Prefix
         must be 1–4 uppercase characters, unique within scope.
-      </p>
+      </PageDescription>
 
       {workTypes.length > 0 && (
-        <>
-          <h3 className="eyebrow">Work types</h3>
+        <Panel name="work_types" title="Work types" helpable={false}>
           <TypeTable types={workTypes} onPatched={onPatched} />
-        </>
+        </Panel>
       )}
 
       {strategyTypes.length > 0 && (
-        <>
-          <h3 className="eyebrow" style={{ marginTop: "var(--space-6)" }}>Strategy types</h3>
+        <Panel name="strategy_types" title="Strategy types" helpable={false}>
           <TypeTable types={strategyTypes} onPatched={onPatched} />
-        </>
+        </Panel>
       )}
     </div>
   );
@@ -316,8 +310,6 @@ function TypeTable({
             <th className="table__cell">Name</th>
             <th className="table__cell">Description</th>
             <th className="table__cell" style={{ width: 140 }}>Colour</th>
-            <th className="table__cell" style={{ width: 80 }}>Scope</th>
-            <th className="table__cell" style={{ width: 80 }}>Source</th>
           </tr>
         </thead>
         <tbody>

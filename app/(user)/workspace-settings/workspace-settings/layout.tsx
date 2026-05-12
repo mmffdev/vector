@@ -2,20 +2,27 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
+import { useHasPermission } from "@/app/contexts/AuthContext";
 
-const TABS = ["organisation", "workspaces", "custom_fields", "portfolio_model"] as const;
+const TABS = ["organisation", "workspaces", "artefact_types", "custom_fields", "flow_states", "transition_rules", "portfolio_model"] as const;
 type TabKey = typeof TABS[number];
 
 const KEY_TO_SEG: Partial<Record<TabKey, string>> = {
-  custom_fields:   "custom-fields",
-  portfolio_model: "portfolio-model",
+  artefact_types:   "artefact-types",
+  custom_fields:    "custom-fields",
+  flow_states:      "flow-states",
+  transition_rules: "transition-rules",
+  portfolio_model:  "portfolio-model",
 };
 
 const SEG_TO_KEY: Record<string, TabKey> = {
-  organisation:      "organisation",
-  workspaces:        "workspaces",
-  "custom-fields":   "custom_fields",
-  "portfolio-model": "portfolio_model",
+  organisation:       "organisation",
+  workspaces:         "workspaces",
+  "artefact-types":   "artefact_types",
+  "custom-fields":    "custom_fields",
+  "flow-states":      "flow_states",
+  "transition-rules": "transition_rules",
+  "portfolio-model":  "portfolio_model",
 };
 
 function segmentForKey(key: TabKey): string {
@@ -23,8 +30,9 @@ function segmentForKey(key: TabKey): string {
 }
 
 export default function WorkspaceSettingsSubLayout({ children }: { children: React.ReactNode }) {
-  const router   = useRouter();
-  const pathname = usePathname();
+  const router         = useRouter();
+  const pathname       = usePathname();
+  const canManageFlows = useHasPermission("flows.manage");
 
   const segments = pathname.split("/").filter(Boolean);
   const rootIdx  = segments.indexOf("workspace-settings");
@@ -40,12 +48,20 @@ export default function WorkspaceSettingsSubLayout({ children }: { children: Rea
       <SecondaryNavigation<TabKey>
         ariaLabel="Workspace Settings sections"
         reorderable
+        level="l3"
         active={activeTab}
         onChange={handleTabChange}
         items={[
           { key: "organisation"    as const, label: "Organisation",    sortKey: "Organisation" },
           { key: "workspaces"      as const, label: "Workspaces",      sortKey: "Workspaces" },
+          { key: "artefact_types"  as const, label: "Artefact Types",  sortKey: "Artefact Types" },
           { key: "custom_fields"   as const, label: "Custom Fields",   sortKey: "Custom Fields" },
+          ...(canManageFlows
+            ? [
+                { key: "flow_states"      as const, label: "Flow States",      sortKey: "Flow States" },
+                { key: "transition_rules" as const, label: "Transition Rules", sortKey: "Transition Rules" },
+              ]
+            : []),
           { key: "portfolio_model" as const, label: "Portfolio Model", sortKey: "Portfolio Model" },
         ]}
       />

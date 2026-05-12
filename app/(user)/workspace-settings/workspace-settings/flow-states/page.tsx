@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
   PointerSensor,
   closestCenter,
   pointerWithin,
@@ -18,24 +17,42 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Modifier } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { BsArrowsExpand, BsPlusCircleDotted, BsXCircle } from "react-icons/bs";
+import { BsArrowsExpand, BsPencilSquare, BsPlusCircleDotted, BsXCircle } from "react-icons/bs";
+import { FaRegTrashCan } from "react-icons/fa6";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
+import { useAuth } from "@/app/contexts/AuthContext";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
+import Panel from "@/app/components/Panel";
 import {
   flowStatesApi,
+  type FlowExitRule,
   type FlowGroup,
   type FlowState,
-  type FlowTransition,
   type FlowsResponse,
   type ResetPreview,
 } from "@/app/lib/flowStatesApi";
+
+type ExpanderMode = "edit";
+interface ExpanderSlot {
+  stateId: string;
+  mode: ExpanderMode;
+}
+
+// Friendly workspace label — mirrors the derivation used in the sidebar so the
+// help copy matches the chrome the user already sees.
+function useWorkspaceName(): string {
+  const { user } = useAuth();
+  if (!user) return "this workspace";
+  return user.subscription_id === "00000000-0000-0000-0000-000000000001"
+    ? "MMFFDev"
+    : user.subscription_id.slice(0, 8).toUpperCase();
+}
 
 // ── Colour palette ────────────────────────────────────────────────────────────
 const PALETTE = [
@@ -581,26 +598,25 @@ function ColourPicker({
 function StateRow({
   state,
   onPatched,
+  expander,
+  onToggleExpander,
 }: {
   state: FlowState;
   onPatched: (updated: FlowState) => void;
+  expander: ExpanderSlot | null;
+  onToggleExpander: (stateId: string, mode: ExpanderMode) => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const isEditOpen = expander?.stateId === state.id && expander.mode === "edit";
+  const ruleCount = state.exit_rule_count ?? 0;
+  const hasDescription = !!(state.description && state.description.trim().length > 0);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: state.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
+  // Inline-edit state for the Description text cell (click → input, Enter saves, Escape cancels)
+  const [descEditing, setDescEditing] = useState(false);
+  const [descDraft, setDescDraft] = useState(state.description ?? "");
+  useEffect(() => {
+    if (!descEditing) setDescDraft(state.description ?? "");
+  }, [state.description, descEditing]);
 
   const handleColour = useCallback(
     async (hex: string | null) => {
@@ -632,16 +648,39 @@ function StateRow({
     [state.id, onPatched],
   );
 
+  const handleDescription = useCallback(
+    async (next: string) => {
+      const trimmed = next.trim();
+      const current = (state.description ?? "").trim();
+      if (trimmed === current) return;
+      setSaving(true);
+      try {
+        const updated = await flowStatesApi.patchState(state.id, {
+          description: trimmed === "" ? null : trimmed,
+        });
+        onPatched(updated);
+      } catch (err) {
+        notify.apiError(err, "Failed to update description.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [state.id, state.description, onPatched],
+  );
+
+  const commitDesc = () => {
+    setDescEditing(false);
+    void handleDescription(descDraft);
+  };
+  const cancelDesc = () => {
+    setDescEditing(false);
+    setDescDraft(state.description ?? "");
+  };
+
   return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={`table__row${saving ? " table__row--saving" : ""}${isDragging ? " table__row--dragging" : ""}`}
-    >
-      <td className="table__cell drag-handle-cell" {...attributes} {...listeners} aria-label="Drag to reorder" style={{ cursor: "grab", touchAction: "none" }}>
-        <span className="drag-handle" aria-hidden="true">⋮⋮</span>
-      </td>
-      <td className="table__cell">
+    <tr className={`table__row${saving ? " table__row--saving" : ""}`}>
+      {/* 1. State */}
+      <td className="table__cell fs-table__cell--nowrap">
         <span
           className="fs-state-dot"
           style={{
@@ -655,10 +694,63 @@ function StateRow({
           <span className="fs-state-badge" title="Initial state">start</span>
         )}
       </td>
-      <td className="table__cell table__cell--muted" style={{ fontSize: "0.75rem", width: 110 }}>
+      {/* 3. Default State (was 'Kind') */}
+      <td className="table__cell table__cell--muted fs-table__cell--nowrap" style={{ fontSize: "0.75rem" }}>
         {KIND_LABEL[state.kind] ?? state.kind}
       </td>
-      <td className="table__cell" style={{ width: 110, textAlign: "center" }}>
+      {/* 4. Description (inline-edit text — EXPANDER column) */}
+      <td
+        className="table__cell fs-table__cell--expander"
+        onClick={() => { if (!descEditing) setDescEditing(true); }}
+      >
+        {descEditing ? (
+          <input
+            autoFocus
+            className="form__input fs-desc-inline-input"
+            value={descDraft}
+            disabled={saving}
+            onChange={(e) => setDescDraft(e.target.value)}
+            onBlur={commitDesc}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitDesc(); }
+              else if (e.key === "Escape") { e.preventDefault(); cancelDesc(); }
+            }}
+            aria-label={`Description for ${state.name}`}
+          />
+        ) : (
+          <span
+            className={hasDescription ? "fs-desc-text" : "fs-desc-text fs-desc-text--placeholder"}
+            title={hasDescription ? state.description! : "Click to add a description"}
+          >
+            {hasDescription ? state.description : "Click to add a description"}
+          </span>
+        )}
+      </td>
+      {/* 5. Edit (pencil → opens combined description + exit-rules flyout) */}
+      <td className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }}>
+        <button
+          type="button"
+          className={`btn btn--ghost btn--icon${isEditOpen ? " is-active" : ""}`}
+          aria-label={`Edit description and exit rules for ${state.name}`}
+          aria-pressed={isEditOpen}
+          title="Edit description and exit rules"
+          onClick={(e) => { e.stopPropagation(); onToggleExpander(state.id, "edit"); }}
+        >
+          <BsPencilSquare size={14} aria-hidden />
+        </button>
+      </td>
+      {/* 7. Exit Rules (count) */}
+      <td className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title={`${ruleCount} exit rule(s)`}>
+        {ruleCount > 0
+          ? <span className="pill pill--neutral">{ruleCount}</span>
+          : <span style={{ opacity: 0.4 }}>—</span>}
+      </td>
+      {/* 8. Colour */}
+      <td className="table__cell fs-table__cell--nowrap">
+        <ColourPicker value={state.colour} onChange={handleColour} />
+      </td>
+      {/* 9. Pullable */}
+      <td className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }}>
         <label
           className="fs-pullable-toggle"
           title={state.is_pullable
@@ -675,117 +767,416 @@ function StateRow({
           />
         </label>
       </td>
-      <td className="table__cell" style={{ width: 150 }}>
-        <ColourPicker value={state.colour} onChange={handleColour} />
+    </tr>
+  );
+}
+
+// ── DescriptionExpander ───────────────────────────────────────────────────────
+// Inline expander for one flow-state's description. Debounced autosave (250ms).
+function DescriptionExpander({
+  state,
+  colSpan,
+  typeName,
+  workspaceName,
+  onPatched,
+  onClose,
+}: {
+  state: FlowState;
+  colSpan: number;
+  typeName: string;
+  workspaceName: string;
+  onPatched: (s: FlowState) => void;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState<string>(state.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const baselineRef = useRef<string>(state.description ?? "");
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { taRef.current?.focus(); }, []);
+
+  const persist = useCallback(async (next: string) => {
+    if (next === baselineRef.current) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const trimmed = next.trim();
+      const sendValue = trimmed.length === 0 ? "" : next; // "" → clear, else set
+      const updated = await flowStatesApi.patchState(state.id, { description: sendValue });
+      baselineRef.current = updated.description ?? "";
+      onPatched(updated);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to save description.");
+    } finally {
+      setSaving(false);
+    }
+  }, [state.id, onPatched]);
+
+  const onChange = (v: string) => {
+    setValue(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => persist(v), 250);
+  };
+
+  return (
+    <tr className="flow-editor__expander-row">
+      <td colSpan={colSpan} className="flow-editor__expander-cell">
+        <div className="flow-editor__expander">
+          <div className="flow-editor__expander-header">
+            <h4 className="flow-editor__expander-title">
+              Description for <strong>{state.name}</strong>
+            </h4>
+            <span className="flow-editor__expander-status">
+              {saving ? "Saving…" : err ? err : "Autosaves as you type"}
+            </span>
+            <button
+              type="button"
+              className="btn btn--ghost btn--small"
+              onClick={onClose}
+              aria-label="Close description editor"
+            >
+              Close
+            </button>
+          </div>
+          <p className="fs-form-help">
+            Write a clear description for the <strong>{typeName}</strong> state{" "}
+            <strong>{state.name}</strong> in the <strong>{workspaceName}</strong> workspace.
+            Use it to explain what work in this state means, what entry conditions apply,
+            and how it should pass through your system of work. Your team will see this
+            description on every artefact that sits in this state.
+          </p>
+          <textarea
+            ref={taRef}
+            className="form__input flow-editor__description"
+            value={value}
+            placeholder="Explain what this state means in this workspace."
+            rows={4}
+            maxLength={2000}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
       </td>
     </tr>
   );
 }
 
-
-// ── TransitionMatrix ──────────────────────────────────────────────────────────
-// Grid where each cell represents a possible (from → to) transition.
-// Click to toggle. From = rows, To = columns.
-function TransitionMatrix({
-  flowId,
-  states,
-  transitions,
-  onTransitionsChange,
+// ── ExitRulesExpander ─────────────────────────────────────────────────────────
+// Inline expander for one flow-state's exit-rule checklist. Supports add,
+// inline-edit name, colour, drag-reorder (@dnd-kit), soft-delete.
+function ExitRulesExpander({
+  state,
+  colSpan,
+  typeName,
+  workspaceName,
+  onCountChange,
+  onClose,
 }: {
-  flowId: string;
-  states: FlowState[];
-  transitions: FlowTransition[];
-  onTransitionsChange: (t: FlowTransition[]) => void;
+  state: FlowState;
+  colSpan: number;
+  typeName: string;
+  workspaceName: string;
+  onCountChange: (n: number) => void;
+  onClose: () => void;
 }) {
-  const [busy, setBusy] = useState<string | null>(null); // "fromId-toId" while toggling
+  const [rules, setRules] = useState<FlowExitRule[]>(state.exit_rules ?? []);
+  const [hydrating, setHydrating] = useState(rules.length === 0 && (state.exit_rule_count ?? 0) > 0);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const edgeSet = new Set(transitions.map((t) => `${t.from}-${t.to}`));
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const toggle = useCallback(async (from: FlowState, to: FlowState) => {
-    const key = `${from.id}-${to.id}`;
-    if (busy) return;
-    setBusy(key);
+  useEffect(() => {
+    if (!hydrating) return;
+    let cancelled = false;
+    flowStatesApi.listExitRules(state.id)
+      .then((rs) => { if (!cancelled) { setRules(rs); setHydrating(false); } })
+      .catch((e) => { if (!cancelled) { setErr(e instanceof Error ? e.message : "Failed to load rules."); setHydrating(false); } });
+    return () => { cancelled = true; };
+  }, [hydrating, state.id]);
+
+  const updateCount = useCallback((rs: FlowExitRule[]) => onCountChange(rs.length), [onCountChange]);
+
+  const addRule = useCallback(async () => {
+    const trimmed = name.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    setErr(null);
     try {
-      if (edgeSet.has(key)) {
-        await flowStatesApi.deleteTransition(flowId, from.id, to.id);
-        onTransitionsChange(transitions.filter((t) => !(t.from === from.id && t.to === to.id)));
-      } else {
-        const tr = await flowStatesApi.createTransition(flowId, from.id, to.id);
-        onTransitionsChange([...transitions, tr]);
-      }
-    } catch (err) {
-      notify.apiError(err, "Failed to update transition.");
+      const created = await flowStatesApi.createExitRule(state.id, { name: trimmed, colour: state.colour ?? null });
+      const next = [...rules, created].sort((a, b) => a.sort_order - b.sort_order);
+      setRules(next);
+      updateCount(next);
+      setName("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to add rule.");
     } finally {
-      setBusy(null);
+      setSaving(false);
     }
-  }, [flowId, transitions, edgeSet, busy, onTransitionsChange]);
+  }, [name, saving, state.id, state.colour, rules, updateCount]);
 
-  if (states.length < 2) return null;
+  const patchRule = useCallback(async (ruleId: string, patch: { name?: string; colour?: string | null; sort_order?: number }) => {
+    try {
+      const updated = await flowStatesApi.patchExitRule(ruleId, patch);
+      setRules((prev) => prev.map((r) => (r.id === ruleId ? updated : r)));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to update rule.");
+    }
+  }, []);
+
+  const removeRule = useCallback(async (ruleId: string) => {
+    try {
+      await flowStatesApi.deleteExitRule(ruleId);
+      setRules((prev) => {
+        const next = prev.filter((r) => r.id !== ruleId);
+        updateCount(next);
+        return next;
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to delete rule.");
+    }
+  }, [updateCount]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const onDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setRules((prev) => {
+      const oldIdx = prev.findIndex((r) => r.id === active.id);
+      const newIdx = prev.findIndex((r) => r.id === over.id);
+      if (oldIdx === -1 || newIdx === -1) return prev;
+      const moved = [...prev];
+      const [picked] = moved.splice(oldIdx, 1);
+      moved.splice(newIdx, 0, picked);
+      const renumbered = moved.map((r, i) => ({ ...r, sort_order: (i + 1) * 10 }));
+      if (reorderTimer.current) clearTimeout(reorderTimer.current);
+      reorderTimer.current = setTimeout(() => {
+        const changed = renumbered.filter((r) => {
+          const before = prev.find((p) => p.id === r.id);
+          return !before || before.sort_order !== r.sort_order;
+        });
+        Promise.all(changed.map((r) =>
+          flowStatesApi.patchExitRule(r.id, { sort_order: r.sort_order })
+            .catch((e) => setErr(e instanceof Error ? e.message : "Failed to save order.")),
+        ));
+      }, 250);
+      return renumbered;
+    });
+  }, []);
 
   return (
-    <div className="fs-transition-matrix">
-      <p className="fs-transition-matrix__label">Allowed transitions — click to toggle</p>
-      <div className="fs-transition-matrix__scroll">
-        <table className="fs-transition-matrix__table">
-          <thead>
-            <tr>
-              <th className="fs-transition-matrix__corner">From ↓ / To →</th>
-              {states.map((s) => (
-                <th key={s.id} className="fs-transition-matrix__col-head" title={s.name}>
-                  <span className="fs-transition-matrix__col-label">{s.name}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {states.map((from) => (
-              <tr key={from.id}>
-                <td className="fs-transition-matrix__row-head">{from.name}</td>
-                {states.map((to) => {
-                  if (from.id === to.id) {
-                    return <td key={to.id} className="fs-transition-matrix__cell fs-transition-matrix__cell--self" />;
-                  }
-                  const key = `${from.id}-${to.id}`;
-                  const active = edgeSet.has(key);
-                  const loading = busy === key;
-                  return (
-                    <td key={to.id} className="fs-transition-matrix__cell">
-                      <button
-                        type="button"
-                        className={`fs-transition-matrix__toggle${active ? " fs-transition-matrix__toggle--on" : ""}`}
-                        disabled={loading}
-                        onClick={() => toggle(from, to)}
-                        title={active ? `Remove ${from.name} → ${to.name}` : `Allow ${from.name} → ${to.name}`}
-                        aria-pressed={active}
-                      >
-                        {loading ? "…" : active ? "✓" : ""}
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <tr className="flow-editor__expander-row">
+      <td colSpan={colSpan} className="flow-editor__expander-cell">
+        <div className="flow-editor__expander">
+          <div className="flow-editor__expander-header">
+            <h4 className="flow-editor__expander-title">
+              Exit rules for <strong>{state.name}</strong>
+            </h4>
+            <span className="flow-editor__expander-status">
+              The system does not enforce these — they surface as a self-attestation checklist.
+            </span>
+            <button
+              type="button"
+              className="btn btn--ghost btn--small"
+              onClick={onClose}
+              aria-label="Close exit-rule editor"
+            >
+              Close
+            </button>
+          </div>
+
+          <p className="fs-form-help">
+            Exit rules are a checklist your team confirms before an artefact leaves the{" "}
+            <strong>{typeName}</strong> state <strong>{state.name}</strong> in the{" "}
+            <strong>{workspaceName}</strong> workspace. They are not enforced by the system —
+            they prompt the person moving the work to self-check that each item is done.
+            Add a rule with the form below, drag rules to reorder them, click a rule&rsquo;s
+            name to rename it inline, change its colour with the swatch, or remove a rule
+            with the trash icon. Removed rules are kept in the audit log but no longer appear
+            in the checklist.
+          </p>
+
+          {err && <p className="form__error">{err}</p>}
+
+          {hydrating ? (
+            <p className="form__hint">Loading rules…</p>
+          ) : rules.length === 0 ? (
+            <p className="form__hint">No rules yet. Add the first one below.</p>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={rules.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+                <ul className="flow-editor__rules">
+                  {rules.map((r, i) => (
+                    <SortableExitRule
+                      key={r.id}
+                      rule={r}
+                      index={i}
+                      defaultColour={state.colour ?? null}
+                      onPatch={(patch) => patchRule(r.id, patch)}
+                      onRemove={() => removeRule(r.id)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          <div className="flow-editor__rule-add">
+            <input
+              ref={inputRef}
+              type="text"
+              className="form__input"
+              placeholder="New exit rule, e.g. ‘Acceptance criteria reviewed’"
+              value={name}
+              maxLength={200}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addRule(); }}
+            />
+            <button
+              type="button"
+              className="btn btn--primary btn--small"
+              disabled={saving || !name.trim()}
+              onClick={addRule}
+            >
+              {saving ? "Adding…" : "Add exit rule"}
+            </button>
+          </div>
+        </div>
+      </td>
+    </tr>
   );
 }
+
+// ── SortableExitRule ──────────────────────────────────────────────────────────
+function SortableExitRule({
+  rule,
+  index,
+  defaultColour,
+  onPatch,
+  onRemove,
+}: {
+  rule: FlowExitRule;
+  index: number;
+  defaultColour: string | null;
+  onPatch: (patch: { name?: string; colour?: string | null }) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState(rule.name);
+  useEffect(() => { setDraftName(rule.name); }, [rule.name]);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  const swatchColour = rule.colour ?? defaultColour;
+  const swatchBg = swatchColour ?? "var(--surface-sunken)";
+  const swatchInk = swatchColour ? safeInk(swatchColour) : "var(--ink-muted)";
+
+  const commitName = () => {
+    const trimmed = draftName.trim();
+    if (!trimmed || trimmed === rule.name) { setEditing(false); setDraftName(rule.name); return; }
+    onPatch({ name: trimmed });
+    setEditing(false);
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} className="flow-editor__rule">
+      <button
+        type="button"
+        className="flow-editor__rule-grip drag-handle-cell"
+        title="Drag to reorder"
+        aria-label="Drag to reorder"
+        style={{ touchAction: "none", cursor: "grab", background: "transparent", border: 0, padding: 0 }}
+        {...attributes}
+        {...listeners}
+      >
+        <span className="drag-handle" aria-hidden="true">⋮⋮</span>
+      </button>
+      <span className="flow-editor__rule-index" aria-hidden>{index + 1}</span>
+      <span
+        className="flow-editor__rule-swatch"
+        style={{ background: swatchBg, color: swatchInk }}
+        aria-hidden
+      />
+      {editing ? (
+        <input
+          autoFocus
+          className="form__input flow-editor__rule-name-input"
+          value={draftName}
+          maxLength={200}
+          onChange={(e) => setDraftName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitName();
+            if (e.key === "Escape") { setEditing(false); setDraftName(rule.name); }
+          }}
+        />
+      ) : (
+        <span
+          className="flow-editor__rule-name"
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditing(true)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditing(true); }}
+        >
+          {rule.name}
+        </span>
+      )}
+      <span className="flow-editor__rule-actions">
+        <ColourPicker value={rule.colour} onChange={(hex) => onPatch({ colour: hex })} />
+        <button
+          type="button"
+          className="btn btn--ghost btn--icon"
+          aria-label={`Edit name for ${rule.name}`}
+          title="Edit name"
+          onClick={() => setEditing(true)}
+        >
+          <BsPencilSquare size={14} />
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--icon flow-editor__rule-delete"
+          aria-label={`Delete ${rule.name}`}
+          title="Delete"
+          onClick={onRemove}
+        >
+          <FaRegTrashCan size={13} />
+        </button>
+      </span>
+    </li>
+  );
+}
+
 
 // ── FlowBlock ─────────────────────────────────────────────────────────────────
 function FlowBlock({
   group,
-  showLabel,
 }: {
   group: FlowGroup;
-  showLabel: boolean;
 }) {
+  const workspaceName = useWorkspaceName();
   const [states,      setStates]      = useState<FlowState[]>(group.states);
-  const [transitions, setTransitions] = useState<FlowTransition[]>(group.transitions ?? []);
+  const [expander,    setExpander]    = useState<ExpanderSlot | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onPatched = useCallback((updated: FlowState) => {
-    setStates((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setStates((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+  }, []);
+
+  const toggleExpander = useCallback((stateId: string, mode: ExpanderMode) => {
+    setExpander((prev) => (prev && prev.stateId === stateId && prev.mode === mode ? null : { stateId, mode }));
+  }, []);
+
+  const onCountChange = useCallback((stateId: string, n: number) => {
+    setStates((prev) => prev.map((s) => (s.id === stateId ? { ...s, exit_rule_count: n } : s)));
   }, []);
 
   // Insert the new state at the correct position based on afterIndex.
@@ -801,11 +1192,6 @@ function FlowBlock({
   const onMapDeleted = useCallback((stateId: string) => {
     setStates((prev) => prev.filter((s) => s.id !== stateId));
   }, []);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   // Slot-drop reorder. `insertAt` is the index where the pill should land in
   // the resulting array (0..N where N = states.length). Kind inheritance:
@@ -858,24 +1244,42 @@ function FlowBlock({
     });
   }, []);
 
-  // Table drag-end (DndContext below the map) still uses the old shape.
-  const handleTableDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setStates((prev) => {
-      const oldIdx = prev.findIndex((s) => s.id === active.id);
-      const newIdx = prev.findIndex((s) => s.id === over.id);
-      if (oldIdx === -1 || newIdx === -1) return prev;
-      // Translate "drop on pill B" to slot-insert semantics.
-      const insertAt = newIdx > oldIdx ? newIdx + 1 : newIdx;
-      handleSlotReorder({ activeId: String(active.id), insertAt });
-      return prev; // handleSlotReorder updates state itself
-    });
-  }, [handleSlotReorder]);
-
   return (
     <div className="fs-flow-block">
-      {showLabel && <p className="fs-flow-name">{group.flow_name}</p>}
+      <div className="fs-flow-map-help">
+        <p>
+          The system below lets you create custom transition states for your work items.
+          States are grouped by item type &mdash; we call each type an <em>artefact</em>.
+        </p>
+        <p>
+          These states are scoped to this workspace. If you use more than one workspace,
+          each one can have its own pattern of states.
+        </p>
+        <p>The map below shows three things:</p>
+        <ol className="fs-flow-map-help__list">
+          <li>
+            <strong>Default state.</strong> The labels on the left are the stages the app uses
+            to track work. They cannot be changed.
+          </li>
+          <li>
+            <strong>Custom state.</strong> The boxes on the right are the states you control.
+            When you add a new state, you map it to a default state on the left by dragging the box
+            up or down. As you drag, the default state it lines up with is shown on the left.
+          </li>
+          <li>
+            <strong>New states.</strong> Click the <em>new artefact state</em> button
+            (a circle with a <strong>+</strong>) to add a state of your choice &mdash; one that
+            matches how your team works. Once it is added, move it up or down to line it up
+            with the default state you want to map it to.
+          </li>
+          <li>
+            <strong>Edit, move, or remove.</strong> States can be renamed, repositioned, or removed.
+            <em> Note:</em> if you remove a state that has artefacts attached, those artefacts move
+            to the previous state in the list. If there is no previous state, they move to the first
+            state under the same default stage, so no work is left disconnected from the system.
+          </li>
+        </ol>
+      </div>
 
       <FlowMap
         states={states}
@@ -885,41 +1289,77 @@ function FlowBlock({
         onReorder={handleSlotReorder}
       />
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTableDragEnd}>
-        <SortableContext items={states.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          <div className="table-scroll">
-            <table className="table">
-              <thead className="table__head">
-                <tr>
-                  <th className="table__cell drag-handle-cell" style={{ width: 36 }} />
-                  <th className="table__cell">State</th>
-                  <th className="table__cell" style={{ width: 110 }}>Kind</th>
-                  <th
-                    className="table__cell"
-                    style={{ width: 110, textAlign: "center" }}
-                    title="Can the team pull from this state?"
-                  >
-                    Pullable
-                  </th>
-                  <th className="table__cell" style={{ width: 150 }}>Colour</th>
-                </tr>
-              </thead>
-              <tbody>
-                {states.map((s) => (
-                  <StateRow key={s.id} state={s} onPatched={onPatched} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SortableContext>
-      </DndContext>
+      <div className="fs-flow-table-help">
+        <p>
+          The table below lists every <strong>{group.type_name}</strong> state in the{" "}
+          <strong>{workspaceName}</strong> workspace, one row per state.
+          Each row shows the state&rsquo;s name, the default stage it maps to, its description,
+          its colour, and how many exit rules it has.
+        </p>
+        <p>
+          Click the pencil in the <em>Edit</em> column to open a panel where you can write a
+          description for the state and add exit rules. Click straight on the description text
+          to edit it inline. Use the colour swatch to change the state&rsquo;s colour, and the
+          pullable toggle to control whether a team can pull work into the state.
+        </p>
+      </div>
 
-      <TransitionMatrix
-        flowId={group.flow_id}
-        states={states}
-        transitions={transitions}
-        onTransitionsChange={setTransitions}
-      />
+      <div className="table-scroll">
+        <table className="table table--auto-expander">
+          <thead className="table__head">
+            <tr>
+              <th className="table__cell fs-table__cell--nowrap">State</th>
+              <th className="table__cell fs-table__cell--nowrap" title="Underlying default state (lifecycle stage)">Default State</th>
+              <th className="table__cell fs-table__cell--expander" title="Description for this state — click cell to edit inline">Description</th>
+              <th className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title="Open the description + exit-rules editor">Edit</th>
+              <th className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title="Number of exit rules">Exit Rules</th>
+              <th className="table__cell fs-table__cell--nowrap">Colour</th>
+              <th
+                className="table__cell fs-table__cell--nowrap"
+                style={{ textAlign: "center" }}
+                title="Can the team pull from this state?"
+              >
+                Pullable
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {states.map((s) => {
+              const isEditOpen = expander?.stateId === s.id && expander.mode === "edit";
+              return (
+                <React.Fragment key={s.id}>
+                  <StateRow
+                    state={s}
+                    onPatched={onPatched}
+                    expander={expander}
+                    onToggleExpander={toggleExpander}
+                  />
+                  {isEditOpen && (
+                    <>
+                      <DescriptionExpander
+                        state={s}
+                        colSpan={7}
+                        typeName={group.type_name}
+                        workspaceName={workspaceName}
+                        onPatched={onPatched}
+                        onClose={() => setExpander(null)}
+                      />
+                      <ExitRulesExpander
+                        state={s}
+                        colSpan={7}
+                        typeName={group.type_name}
+                        workspaceName={workspaceName}
+                        onCountChange={(n) => onCountChange(s.id, n)}
+                        onClose={() => setExpander(null)}
+                      />
+                    </>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -931,7 +1371,6 @@ function TypeSection({ typeId, typeName, groups, onReloaded }: {
   groups: FlowGroup[];
   onReloaded: () => void;
 }) {
-  const multiFlow = groups.length > 1;
   const [preview, setPreview] = useState<ResetPreview | null>(null);
   const [busy, setBusy]       = useState(false);
   const [err, setErr]         = useState<string | null>(null);
@@ -997,7 +1436,6 @@ function TypeSection({ typeId, typeName, groups, onReloaded }: {
         <FlowBlock
           key={g.flow_id}
           group={g}
-          showLabel={multiFlow}
         />
       ))}
     </section>
@@ -1150,21 +1588,23 @@ export default function FlowStatesPage() {
         <div className="anav-content">
 
           {workByType.size > 0 && (
-            <>
-              <h2 className="eyebrow fs-scope-heading" id="section-work">Work Types</h2>
-              {[...workByType.entries()].map(([typeId, { name, flows }]) => (
-                <TypeSection key={`${typeId}-${version}`} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
-              ))}
-            </>
+            <section id="section-work">
+              <Panel name="work_types" title="Work Types" helpable={false}>
+                {[...workByType.entries()].map(([typeId, { name, flows }]) => (
+                  <TypeSection key={`${typeId}-${version}`} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
+                ))}
+              </Panel>
+            </section>
           )}
 
           {strategyByType.size > 0 && (
-            <>
-              <h2 className="eyebrow fs-scope-heading" id="section-strategy">Strategy Types</h2>
-              {[...strategyByType.entries()].map(([typeId, { name, flows }]) => (
-                <TypeSection key={`${typeId}-${version}`} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
-              ))}
-            </>
+            <section id="section-strategy">
+              <Panel name="strategy_types" title="Strategy Types" helpable={false}>
+                {[...strategyByType.entries()].map(([typeId, { name, flows }]) => (
+                  <TypeSection key={`${typeId}-${version}`} typeId={typeId} typeName={name} groups={flows} onReloaded={load} />
+                ))}
+              </Panel>
+            </section>
           )}
 
         </div>
