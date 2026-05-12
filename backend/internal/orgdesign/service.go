@@ -212,6 +212,19 @@ type Node struct {
 	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
+// GetID / GetParentID satisfy topology.Node so Subtree results can flow
+// straight through the shared walker (PLA-0044 / story 00543). Parent is
+// stringified to "" for roots so the walker's empty-string root key
+// matches TS's null sentinel.
+func (n Node) GetID() string { return n.ID.String() }
+func (n Node) GetParentID() *string {
+	if n.ParentID == nil {
+		return nil
+	}
+	s := n.ParentID.String()
+	return &s
+}
+
 // ArchivedDescendant is one entry in the archive map returned by
 // ArchivedDescendants. It is the closure of archived nodes reachable
 // from a live root, including transitively-archived branches: an

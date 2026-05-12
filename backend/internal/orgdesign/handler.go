@@ -13,6 +13,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/messages"
 	"github.com/mmffdev/vector-backend/internal/security"
+	sharedtopology "github.com/mmffdev/vector-backend/internal/shared/topology"
 )
 
 // Handler exposes Service over HTTP under /api/topology. The router
@@ -493,7 +494,34 @@ func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, nodes)
+	// PLA-0044 / story 00543: run the response through the shared walker
+	// before serialising. Subtree's recursive CTE already orders by
+	// sort_order path and filters archived rows, but the walker enforces
+	// the orphan-drop contract — when WorkspaceClampMiddleware narrows
+	// scope mid-flight, a node whose parent is no longer in the result
+	// set must be dropped, not silently re-rooted. visibleIDs filters
+	// the original Node slice so we keep the rich fields (descendant
+	// counts, layout, archive metadata) while emitting in the walker's
+	// canonical sort order.
+	walk := sharedtopology.Walk(nodes, sharedtopology.Opts[Node]{
+		Less: func(a, b Node) bool {
+			if a.SortOrder != b.SortOrder {
+				return a.SortOrder < b.SortOrder
+			}
+			return a.Name < b.Name
+		},
+	})
+	out := make([]Node, 0, len(walk.Rows))
+	byID := make(map[string]Node, len(nodes))
+	for _, n := range nodes {
+		byID[n.ID.String()] = n
+	}
+	for _, row := range walk.Rows {
+		if n, ok := byID[row.ID]; ok {
+			out = append(out, n)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // GET /api/topology/nodes/{id}/archived-descendants
