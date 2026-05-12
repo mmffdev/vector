@@ -17,6 +17,12 @@ var (
 	ErrConflict         = errors.New("conflict: resource already exists or constraint violated")
 	ErrInvalidInput     = errors.New("invalid input")
 	ErrWrongValueColumn = errors.New("value column does not match field type")
+	// ErrScopeForbidden — caller asked for ?scope=<id> but does not hold
+	// a grant that reaches that node. Handler maps to 403 (PLA-0043).
+	ErrScopeForbidden = errors.New("scope read denied")
+	// ErrScopeNodeNotFound — ?scope=<id> points at a node missing or in
+	// another tenant. Handler maps to 404 (PLA-0043).
+	ErrScopeNodeNotFound = errors.New("scope node not found")
 )
 
 // WorkItem is the wire representation of obj_work_items.
@@ -118,10 +124,19 @@ type Filters struct {
 	Priority *string
 	SprintID *string
 	OwnerID  *string
-	Limit    int
-	Offset   int
-	Sort     string
-	Dir      string
+	// ScopeNodeID, when set, clamps the read to artefacts whose
+	// topology_node_id is `ScopeNodeID` or any live descendant of it
+	// (PLA-0043). NULL topology_node_id rows are excluded when scope is
+	// active. The service calls CanReadScope before executing the
+	// query; ActorUserID and ActorRole MUST be set whenever ScopeNodeID
+	// is, otherwise the service returns ErrInvalidInput.
+	ScopeNodeID  *string
+	ActorUserID  *string // required when ScopeNodeID is set
+	ActorRole    string  // required when ScopeNodeID is set (e.g. "user", "padmin", "gadmin")
+	Limit       int
+	Offset      int
+	Sort        string
+	Dir         string
 }
 
 // CreateWorkItemInput holds fields required to create a work item.
