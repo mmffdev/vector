@@ -60,6 +60,22 @@ These are the canonical components. If you need something similar, extend with a
 - `.app-sidebar-container`, `.sidebar-item`, `.sidebar-section`, `.sidebar-dev-group`
 - `.topbar`, `.topbar__brand`, `.topbar__actions`
 - `.footer`, `.footer__link`
+- `.anav`, `.anav__list`, `.anav-layout`, `.anav-content` (layout scaffolding only — no visual rules)
+
+**HARD RULE — vertical nav primitives:** Every vertical navigation surface (sidebar, in-page ToC rails, menus, any vertical list of links) MUST use `.sidebar-section` for group headers and `.sidebar-item` for row links. No bespoke nav selector may carry visual styling — only layout properties (position, overflow, grid columns).
+
+**Identical sizing across all vertical navs** — every vertical nav surface inherits the same dimensions. `.sidebar-item` and `.sidebar-section` consume four CSS custom properties whose defaults are set on `.app-sidebar-container`. Any wrapping element MAY override them, but the default rule is: **don't**. The ToC rail (`.anav`) deliberately sets no overrides, so it looks identical to the app sidebar.
+
+| Property | Default | Purpose |
+| --- | --- | --- |
+| `--nav-item-height` | `36px` | Row height of `.sidebar-item` |
+| `--nav-item-padding-x` | `24px` | Horizontal padding of `.sidebar-item` |
+| `--nav-section-padding` | `14px 24px 6px` | Padding of `.sidebar-section` header |
+| `--nav-section-margin-top` | `14px` | Top margin of `.sidebar-section` |
+
+A single edit to `.app-sidebar-container`'s defaults propagates to every vertical nav surface in the app.
+
+Never use `--surface-raised` — it has no `:root` definition and resolves to transparent. Hover state always uses `--surface-sunken`.
 
 ### Buttons
 
@@ -224,6 +240,16 @@ The legacy `.table` / `.table-wrap` / `.table__head` / `.table__row` / `.table__
 - `.role-badge` (existing)
 - `.tag`, `.tag--muted`, `.tag--warn`
 - `.code-block` (monospace pre-style)
+
+## Typography rules
+
+| Rule | Value |
+|---|---|
+| **Minimum font size** | `13px` — no element on any user-facing page may use a smaller size unless explicitly overridden by the user |
+| Body / default | Inherits from theme (`--font-sans`, approx 14–15px) |
+| Eyebrow labels | `11px`, `font-weight: 600`, uppercase — the only sanctioned exception below 13px |
+
+When writing a new component, default to `13px` if no larger size fits the context. Never use `0.7rem`, `0.75rem`, or similar values that may compute below 13px without checking.
 
 ## Tokens (CSS variables)
 

@@ -310,6 +310,10 @@ input[type="reset"] {
    No shadow on the rail. Use BEM-lite app-sidebar-* class names.
    ============================================================= */
 .app-sidebar-container {
+  --nav-item-height: 36px;
+  --nav-item-padding-x: 24px;
+  --nav-section-padding: 14px 24px 6px;
+  --nav-section-margin-top: 14px;
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-x: hidden;
@@ -858,11 +862,11 @@ input[type="reset"] {
 .sidebar-item {
   box-sizing: border-box;
   width: 100%;
-  height: 36px;
+  height: var(--nav-item-height, 36px);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 24px;
+  padding: 0 var(--nav-item-padding-x, 24px);
   color: var(--ink-muted);
   font-family: var(--font-sans);
   font-size: 13px;
@@ -1031,8 +1035,8 @@ input[type="reset"] {
 }
 
 .sidebar-section {
-  margin-top: 14px;
-  padding: 14px 24px 6px;
+  margin-top: var(--nav-section-margin-top, 14px);
+  padding: var(--nav-section-padding, 14px 24px 6px);
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
@@ -2035,13 +2039,48 @@ input[type="reset"] {
    lives INSIDE the wrapper (not as a sibling margin) so it stays opaque
    and stable at every scroll position — sibling margins would scroll
    under the sticky band at scroll-max and visually collapse. */
+/* Both nav bars share an explicit height so the L3's `top` can pin
+   exactly to the L1's bottom edge — no gap, no overlap. Change
+   --nav-bar-h once and both bars (and the L3 top offset) stay in sync. */
 .ui-sticky-subheader {
+  --nav-bar-h: 44px;
   position: sticky;
   top: 0;
   z-index: 50;
   background: var(--bg);
-  margin-bottom: var(--space-5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  height: var(--nav-bar-h);
+  margin-bottom: 0;
+}
+
+/* L3 nav bar — sits flush under the L2 bar with no gap or shadow.
+   Lower z-index lets the L2 shadow render on top of it. */
+.ui-sticky-subheader--l3 {
+  top: var(--nav-bar-h);
+  z-index: 40;
+  margin-bottom: 0;
+}
+
+/* Page-content top gap: 32px between the LAST sticky subheader and the
+   page content that follows it. Sibling-combinator means pages with no
+   nav match nothing and sit flush at the top — no per-page rule needed.
+   The :not(.ui-sticky-subheader) on the sibling keeps stacked nav bars
+   (L2 + L3, or L3 + L3) flush against each other — the margin only
+   lands on real page content. */
+.ui-sticky-subheader + *:not(.ui-sticky-subheader) {
+  margin-top: var(--space-8);
+}
+
+/* PageDescription — page-top description panel rendered via the helper-icon
+   <Panel> primitive (HARD RULE). 30px gap below before page content. */
+.page-description {
+  margin-bottom: 30px;
+}
+
+/* Centre the tab row inside the fixed-height bar so vertical padding
+   is symmetrical regardless of font metrics. */
+.ui-sticky-subheader > .navigation.secondary.tabular {
+  height: 100%;
+  align-items: center;
 }
 
 .navigation.secondary.tabular .navigation__item {
@@ -2854,7 +2893,7 @@ input[type="reset"] {
   border-radius: 0;
   box-shadow: none;
   padding: var(--space-2) 0;
-  z-index: 50;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
 }
@@ -9955,6 +9994,168 @@ input[type="reset"] {
 .flow-editor__section + .flow-editor__section { margin-top: var(--space-4); }
 .flow-editor__section-title    { margin: 0 0 var(--space-1) 0; }
 .flow-editor__section-subtitle { margin: 0 0 var(--space-3) 0; color: var(--ink-muted); }
+.flow-editor__footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-top: 0;
+  background: var(--surface-sunken);
+}
+.flow-editor__footer-label {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Flow-state inline expander — full-span <tr> rendered under a state
+   row to host either the description editor or the exit-rules editor.
+   Only one expander is open at a time per FlowBlock. */
+.flow-editor__expander-row     { background: var(--surface-sunken); }
+.flow-editor__expander-cell    { padding: 0 !important; }
+.flow-editor__expander {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+  background: var(--surface-sunken);
+}
+.flow-editor__expander-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.flow-editor__expander-title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.flow-editor__expander-status {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+.flow-editor__description {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font: inherit;
+  resize: vertical;
+}
+.flow-editor__rules {
+  list-style: none;
+  margin: 0 0 var(--space-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.flow-editor__rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.flow-editor__rule-grip {
+  cursor: grab;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  user-select: none;
+}
+.flow-editor__rule-grip:active { cursor: grabbing; }
+.flow-editor__rule-index {
+  min-width: 1.5em;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+.flow-editor__rule-swatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.flow-editor__rule-name {
+  flex: 1;
+  cursor: text;
+  font-size: var(--text-sm);
+}
+.flow-editor__rule-name-input {
+  flex: 1;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  font: inherit;
+}
+.flow-editor__rule-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+.flow-editor__rule-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.flow-editor__rule-add input {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font: inherit;
+}
+.flow-editor__rule-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.flow-editor__rule-count {
+  font-size: var(--text-xs);
+}
+.flow-editor__rule-delete { color: var(--danger, #b91c1c); }
+
+/* Auto-expander table layout: every non-expander cell shrink-wraps to
+   its content (via white-space: nowrap on .fs-table__cell--nowrap),
+   while the expander column (.fs-table__cell--expander) absorbs the
+   remaining horizontal space via width: 100% + word-break wrapping.
+   Works under table-layout: auto because the browser allocates leftover
+   width to the only non-nowrap column. */
+.table--auto-expander                            { table-layout: auto; width: 100%; }
+.table--auto-expander .fs-table__cell--nowrap    { white-space: nowrap; width: 1%; }
+.table--auto-expander .fs-table__cell--expander  {
+  white-space: normal;
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Flow-states inline-edit description cell */
+.fs-desc-text {
+  display: block;
+  font-size: var(--text-sm);
+  cursor: text;
+  min-height: 1.4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fs-desc-text--placeholder {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+.fs-desc-inline-input {
+  width: 100%;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  font: inherit;
+}
 
 /* Embedded mode → expand button toggles is-expanded; the overlay's
    absolute positioning anchors to the viewport instead of the tab host
@@ -12206,9 +12407,44 @@ input[type="reset"] {
   margin-bottom: var(--space-3);
 }
 
-/* Single-page flow states layout — additional primitives */
+/* Page description shown inside .anav-content above the first scope
+   heading. Spans the full content width; first line aligns with the
+   rail's first .sidebar-section label via padding-top:14px. */
+.fs-page-description {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin: 0 0 var(--space-6);
+  padding-top: 14px;
+}
+
+.fs-page-description ol {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-5);
+}
+
+.fs-page-description ol li {
+  margin-bottom: var(--space-1);
+}
+
+.fs-page-description strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Scope heading — large h2 (Work Types / Strategy Types). Mixed-case,
+   weight 600, --ink-muted so it reads as a section title without
+   competing with the page chrome above it. */
 .fs-scope-heading {
-  margin-bottom: var(--space-4);
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink-muted);
+  text-transform: none;
+  margin: 0 0 var(--space-4);
   padding-top: var(--space-2);
 }
 
@@ -12294,6 +12530,90 @@ input[type="reset"] {
   margin: 0 0 var(--space-2);
 }
 
+/* Plain-language help block shown above the FlowMap pill grid.
+   Sits under the flow name and explains what the map does in AAA-grade copy. */
+.fs-flow-map-help {
+  width: 100%;
+  max-width: none;
+  margin: 0 0 var(--space-4);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.fs-flow-map-help p {
+  margin: 0 0 var(--space-2);
+}
+
+.fs-flow-map-help strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.fs-flow-map-help em {
+  font-style: italic;
+  color: var(--ink);
+}
+
+.fs-flow-map-help__list {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+.fs-flow-map-help__list > li {
+  margin-bottom: var(--space-2);
+}
+
+.fs-flow-map-help__list > li:last-child {
+  margin-bottom: 0;
+}
+
+/* Help paragraph shown above the state table inside each FlowBlock.
+   Explains what the table lists and how to interact with it. Full-span. */
+.fs-flow-table-help {
+  width: 100%;
+  margin: 0 0 var(--space-3);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.fs-flow-table-help p {
+  margin: 0 0 var(--space-2);
+}
+
+.fs-flow-table-help p:last-child {
+  margin-bottom: 0;
+}
+
+.fs-flow-table-help strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.fs-flow-table-help em {
+  font-style: italic;
+  color: var(--ink);
+}
+
+/* Help paragraph shown inside a row flyout, above the form it describes.
+   Used by both the description editor and the exit-rules editor. */
+.fs-form-help {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-left: 3px solid var(--accent, var(--border));
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.fs-form-help strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* "start" badge marking the initial state */
 .fs-state-badge {
   display: inline-block;
@@ -12315,14 +12635,18 @@ input[type="reset"] {
 }
 
 /* Scope heading spacing — separate work / strategy blocks */
-.anav-content .eyebrow.fs-scope-heading {
+.anav-content .fs-scope-heading {
   margin-top: var(--space-10);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 
-.anav-content .eyebrow.fs-scope-heading:first-child {
+/* First heading aligns with the rail's first .sidebar-section label so the
+   eye follows a single horizontal line across both columns. The rail's
+   :first-child has margin-top:0 + padding-top:14px; mirror that here. */
+.anav-content .fs-scope-heading:first-child {
   margin-top: 0;
+  padding-top: 14px;
 }
 
 /* ─── FlowMap interactive editor (fs-map-*) ──────────────────────────────────
@@ -12358,15 +12682,7 @@ input[type="reset"] {
 
 /* ── Kind label (left column) ── */
 .fs-map__kind-label {
-  flex: 0 0 110px;
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-  text-align: right;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  user-select: none;
-  padding-right: var(--space-1);
+  display: none;
 }
 
 /* ── Pill cell (centre column) ── */
@@ -12535,98 +12851,17 @@ input[type="reset"] {
 
 .fs-map__insert-ok { white-space: nowrap; }
 
-/* ─── Transition matrix (fs-transition-matrix-*) ─────────────────────────────*/
-.fs-transition-matrix {
-  margin-top: var(--space-5);
-}
-
-.fs-transition-matrix__label {
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-  margin: 0 0 var(--space-2);
-}
-
-.fs-transition-matrix__scroll {
-  overflow-x: auto;
-}
-
-.fs-transition-matrix__table {
-  border-collapse: collapse;
-  font-size: 0.75rem;
-}
-
-.fs-transition-matrix__corner,
-.fs-transition-matrix__col-head,
-.fs-transition-matrix__row-head {
-  padding: var(--space-1) var(--space-2);
-  color: var(--ink-muted);
-  font-weight: 500;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-  background: var(--surface-sunken);
-}
-
-.fs-transition-matrix__col-head {
-  text-align: center;
-  max-width: 90px;
-  overflow: hidden;
-}
-
-.fs-transition-matrix__col-label {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80px;
-}
-
-.fs-transition-matrix__row-head {
-  text-align: right;
-}
-
-.fs-transition-matrix__cell {
-  border: 1px solid var(--border);
-  text-align: center;
-  padding: 2px;
-}
-
-.fs-transition-matrix__cell--self {
-  background: var(--surface-sunken);
-}
-
-.fs-transition-matrix__toggle {
-  width: 32px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  color: var(--ink-muted);
-  font-size: 0.7rem;
-  transition: background 120ms;
-}
-
-.fs-transition-matrix__toggle:hover {
-  background: var(--surface-raised);
-}
-
-.fs-transition-matrix__toggle--on {
-  background: var(--accent-subtle);
-  color: var(--accent);
-  font-weight: 700;
-}
-
 /* ─── PageAnchorNav (anav-*) ──────────────────────────────────────────────────
    Reusable two-column "sticky TOC + scrolling content" layout.
 
-   anav-layout        : outer grid — 180px rail + 1fr content.
-   anav               : sticky nav rail; clings to the top of the scroll root.
-   anav__list         : unstyled item list.
-   anav__item         : one nav entry; --d1 indent for sub-items.
-   anav__link         : button styled as a quiet text link; --active is bold+accent.
+   anav-layout  : outer grid — 180px rail + 1fr content.
+   anav         : sticky nav rail; sets compact --nav-item-* properties so .sidebar-item
+                  and .sidebar-section auto-adapt inside it.
+   anav__list   : unstyled item list (layout only — no visual rules).
 */
 .anav-layout {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: 220px 1fr;
   gap: var(--space-6);
   align-items: start;
 }
@@ -12637,6 +12872,9 @@ input[type="reset"] {
   max-height: calc(100vh - 160px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* No --nav-* overrides: the ToC rail inherits the sidebar's defaults
+     (36px height, 24px padding, 14px 24px 6px section padding) so every
+     vertical nav surface in the app looks identical. */
 }
 
 .anav__list {
@@ -12648,36 +12886,6 @@ input[type="reset"] {
   gap: 2px;
 }
 
-.anav__item--d1 > .anav__link {
-  padding-left: var(--space-4);
-}
-
-.anav__link {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 5px var(--space-2);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  color: var(--ink-muted);
-  line-height: 1.35;
-  transition: color 0.1s, background 0.1s;
-}
-
-.anav__link:hover {
-  color: var(--ink);
-  background: var(--surface-raised);
-}
-
-.anav__link--active {
-  color: var(--accent);
-  font-weight: 600;
-  background: var(--surface-raised);
-}
-
 .anav-content {
   min-width: 0;
 }
@@ -12686,4 +12894,577 @@ input[type="reset"] {
    scrolled to via the nav. */
 .anav-content section {
   scroll-margin-top: 100px;
+}
+
+/* ============================================================
+   Transition Rules — Orbit View
+   Page: /workspace-settings/workspace-settings/transition-rules
+   Components: OrbitView, StateRail, OrbitCanvas
+   ============================================================ */
+
+.fs-type-section + .fs-type-section {
+  margin-top: var(--space-7);
+}
+
+.fs-type-section__title {
+  font-size: 1rem;
+  font-weight: 400 !important;
+  color: var(--ink);
+  margin: 0 0 var(--space-4);
+}
+
+.fs-flow-block__title {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin: 0 0 var(--space-3);
+  display: flex;
+  align-items: center;
+}
+
+.flow-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: var(--space-4);
+  overflow: visible;
+}
+
+.flow-rules__title {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0;
+}
+
+.flow-rules__subtitle {
+  font-size: var(--text-md);
+  font-weight: 400;
+  color: var(--ink-muted);
+  margin: calc(var(--space-2) * -1) 0 0;
+}
+
+.flow-rules__body {
+  display: grid;
+  grid-template-columns: 220px auto 1fr;
+  gap: 15px;
+  align-items: stretch;
+}
+
+.flow-rules__rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-sunken, var(--surface-2, var(--surface)));
+  border-radius: var(--radius-2);
+  padding: var(--space-3);
+  min-height: 320px;
+}
+
+.flow-rules__eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin: 0 0 var(--space-2);
+}
+
+.flow-rules__rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flow-rules__rail-footer {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  display: flex;
+  justify-content: stretch;
+}
+
+.flow-rules__rail-footer > .btn {
+  width: 100%;
+}
+
+.flow-rules__rail-row {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 13px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.flow-rules__rail-row:hover {
+  background: var(--surface-sunken);
+}
+
+.flow-rules__rail-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.flow-rules__rail-row.is-focused {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.flow-rules__rail-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--border-strong);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.flow-rules__rail-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-rules__rail-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  color: var(--ink-subtle);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 var(--space-2);
+  min-width: 22px;
+  text-align: center;
+}
+
+.flow-rules__rail-row.is-focused .flow-rules__rail-count {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.flow-rules__canvas-wrap {
+  background: var(--surface-sunken, var(--surface-2, var(--surface)));
+  border-radius: var(--radius-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-self: stretch;
+  padding: var(--space-3) 60px 30px;
+}
+
+/* Root container — SVG arrows + HTML nodes share the same coordinate space */
+.flow-rules__canvas-root {
+  position: relative;
+  width: 480px;
+  height: 480px;
+}
+
+.flow-rules__canvas-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Shared node shell — positioned by inline left/top, centred via transform */
+.flow-rules__node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 150ms ease;
+}
+
+/* Default (unselected) */
+.flow-rules__node--raised {
+  box-shadow: none;
+}
+
+/* Selected (allowed) */
+.flow-rules__node--inset {
+  box-shadow: none;
+}
+
+/* Inner circle — opposite state to parent, 80% size, filled with state colour */
+.flow-rules__node-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20%;
+  padding-bottom: 20%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.flow-rules__node--centre {
+  cursor: default;
+  pointer-events: none;
+}
+
+.flow-rules__node:focus {
+  outline: none;
+}
+
+.flow-rules__node:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.flow-rules__node.is-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Label row — positioned around each node. Default is below-centre (used for top quadrant). */
+.flow-rules__node-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1;
+  color: var(--ink);
+  pointer-events: none;
+  user-select: none;
+  top: calc(100% + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Top of canvas — label sits above the circle, centred */
+.flow-rules__node-label--top {
+  top: auto;
+  bottom: calc(100% + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Right of canvas — label sits to the right of the circle, left-aligned, vertically centred */
+.flow-rules__node-label--right {
+  top: 50%;
+  left: calc(100% + 20px);
+  transform: translateY(-50%);
+}
+
+/* Bottom of canvas — label sits below the circle, centred (default position) */
+.flow-rules__node-label--bottom {
+  top: calc(100% + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Left of canvas — label sits to the left of the circle, right-aligned, vertically centred */
+.flow-rules__node-label--left {
+  top: 50%;
+  left: auto;
+  right: calc(100% + 20px);
+  transform: translateY(-50%);
+}
+
+.flow-rules__node-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* FROM eyebrow — shown below the centre label */
+.flow-rules__from-eyebrow {
+  position: absolute;
+  top: calc(100% + 38px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.flow-rules__arrow {
+  transition: opacity 120ms ease;
+}
+
+.flow-rules__footer {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.flow-rules__footer-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.flow-rules__footer-count {
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.flow-rules__footer-empty {
+  color: var(--ink-subtle);
+  font-size: 0.85rem;
+  align-self: center;
+}
+
+.flow-rules__footer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.flow-rules__footer-item {
+  font-size: 0.75rem;
+  color: var(--ink);
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-rules__footer-paths {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-rules__footer-path-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.flow-rules__footer-path-label {
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.flow-rules__footer-path-label--happy {
+  color: #fff;
+}
+
+.flow-rules__footer-path-label--unhappy {
+  color: #fff;
+}
+
+
+/* Routes & lines — read-only mirror of the orbit canvas */
+.flow-rules__routes-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-sunken, var(--surface-2, var(--surface)));
+  border-radius: var(--radius-2);
+  padding: var(--space-3);
+  min-height: 320px;
+  min-width: 0;
+}
+
+.routes-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.routes-lines__grid {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.routes-lines__groups {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.routes-lines__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.routes-lines__group-label:empty {
+  display: none;
+}
+
+.routes-lines__group-label--happy {
+  color: var(--success, #4caf50);
+}
+
+.routes-lines__group-label--unhappy {
+  color: var(--danger, #e05252);
+}
+
+.routes-lines__states {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+
+.routes-lines__state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.routes-lines__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.routes-lines__count-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.routes-lines__state-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.routes-lines__state-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.routes-lines__tracks {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.routes-lines__empty {
+  font-size: 0.8rem;
+  color: var(--ink-subtle);
+  margin: 0;
+}
+
+.routes-lines__track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.routes-lines__segment-v {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  opacity: 0.7;
+}
+
+.routes-lines__stop {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.routes-lines__stop--source {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.routes-lines__arrow-v {
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid currentColor;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.routes-lines__arrow-v--up {
+  border-top: none;
+  border-bottom: 7px solid currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-rules__rail-row,
+  .flow-rules__node,
+  .flow-rules__arrow {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .flow-rules__body {
+    grid-template-columns: 1fr;
+  }
+  .flow-rules__rail {
+    min-height: 0;
+  }
 }

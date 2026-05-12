@@ -94,14 +94,18 @@ export default function PageAnchorNav({
     <nav className="anav" aria-label="Page sections">
       <ul className="anav__list" role="list">
         {items.map((item) => (
-          <li key={item.id} className={`anav__item${item.depth ? ` anav__item--d${item.depth}` : ""}`}>
-            <button
-              type="button"
-              className={`anav__link${active === item.id ? " anav__link--active" : ""}`}
-              onClick={() => scrollTo(item.id)}
-            >
-              {item.label}
-            </button>
+          <li key={item.id}>
+            {item.depth === 0 ? (
+              <p className="sidebar-section">{item.label}</p>
+            ) : (
+              <button
+                type="button"
+                className={`sidebar-item${active === item.id ? " active" : ""}`}
+                onClick={() => scrollTo(item.id)}
+              >
+                {item.label}
+              </button>
+            )}
           </li>
         ))}
       </ul>
