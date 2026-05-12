@@ -1093,6 +1093,59 @@ input[type="reset"] {
   border-bottom: 2px dashed var(--surface-sunken);
 }
 
+/* PLA-0044 / story 00544 — gadmin checkbox tree for user-to-node
+   assignment. Same row geometry / spine vocabulary as ScopeRail and
+   TopologyTreeFlyout (28px row height, 8px gap = CARET_OFFSET) so the
+   SVG paths painted by the shared Spine component land flush. */
+.user-node-assignment {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.user-node-assignment__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 0 6px;
+  height: 28px;
+  font-size: 13px;
+  color: var(--ink-1);
+  line-height: 1.3;
+}
+
+.user-node-assignment__row.is-selected {
+  background: var(--accent-soft, rgba(64, 120, 255, 0.08));
+}
+
+.user-node-assignment__spine {
+  flex-shrink: 0;
+  display: block;
+}
+
+.user-node-assignment__cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.user-node-assignment__checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+.user-node-assignment__checkbox:disabled {
+  cursor: not-allowed;
+}
+
+.user-node-assignment__name {
+  flex: 1;
+}
+
 /* ============================================================
    Page body shell (Vector kit)
    - Outer .page-body provides the canvas padding (8px top, 32px sides
