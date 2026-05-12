@@ -7,21 +7,20 @@ import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { useTenantName } from "@/app/contexts/TenantContext";
 
-const TABS = ["workspace_settings", "users", "permissions", "api_manager", "customisation"] as const;
+const TABS = ["workspace_settings", "users", "permissions", "vector_admin"] as const;
 type TabKey = typeof TABS[number];
 
 const TAB_HEADERS: Record<TabKey, { title: string; subtitle: string }> = {
   workspace_settings: { title: "Workspace Settings", subtitle: "Workspaces and other workspace-level admin" },
   users:           { title: "Users",           subtitle: "Invite, manage, and assign roles to tenant members" },
   permissions:     { title: "Permissions",     subtitle: "Capabilities granted to each role in this tenant" },
-  api_manager:     { title: "API Manager",     subtitle: "Webhooks and other outbound integrations" },
-  customisation:   { title: "Vector Admin",    subtitle: "Global preferences for Vector and <%tenant_name%>" },
+  vector_admin:    { title: "Vector Admin",    subtitle: "Global preferences for Vector and <%tenant_name%>" },
 };
 
 // Tab key → URL path segment (only overrides where they differ)
 const KEY_TO_SEG: Partial<Record<TabKey, string>> = {
   workspace_settings: "workspace-settings",
-  api_manager:        "api-manager",
+  vector_admin:       "vector-admin",
 };
 
 // URL path segment → tab key
@@ -29,8 +28,7 @@ const SEG_TO_KEY: Record<string, TabKey> = {
   "workspace-settings": "workspace_settings",
   users:           "users",
   permissions:     "permissions",
-  "api-manager":   "api_manager",
-  customisation:   "customisation",
+  "vector-admin":  "vector_admin",
 };
 
 function segmentForKey(key: TabKey): string {
@@ -47,16 +45,14 @@ const SUB_TAB_LABELS: Partial<Record<TabKey, Record<string, string>>> = {
     "custom-fields":   "Custom Fields",
     "portfolio-model": "Portfolio Model",
   },
-  api_manager: {
-    webhooks: "Webhooks",
-  },
-  customisation: {
+  vector_admin: {
     "tenant-details": "Tenant Details",
     "artefact-types": "Artefact Types",
     "flow-states":    "Flow States",
     "work-items":     "Work Items",
     topology:         "Topology",
     "topology-map":   "Topology Map",
+    "api-manager":    "API Manager",
   },
 };
 
@@ -83,7 +79,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
       // Determine first accessible tab for this user. Non-admins land on the
       // Portfolio Model surface (now nested under workspace_settings).
       if (canAdminWorkspace) {
-        router.replace("/workspace-settings/customisation");
+        router.replace("/workspace-settings/vector-admin");
       } else {
         router.replace("/workspace-settings/workspace-settings/portfolio-model");
       }
@@ -126,8 +122,7 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
             { key: "users"           as const, label: "Users",           sortKey: "Users" },
             { key: "permissions"     as const, label: "Permissions",     sortKey: "Permissions" },
           ] : []),
-          { key: "api_manager"       as const, label: "API Manager",     sortKey: "API Manager" },
-          { key: "customisation"     as const, label: "Vector Admin",    sortKey: "Vector Admin" },
+          { key: "vector_admin"      as const, label: "Vector Admin",    sortKey: "Vector Admin" },
         ]}
       />
       {children}

@@ -1,0 +1,10 @@
+{
+  "_note": "lint:h2-panel-only exemptions — files that legitimately render <h2> outside <Panel>. Modal headers, wizard headers, and the theme showcase use bespoke heading systems and are not section titles in the Panel sense. Add a tech-debt entry before extending this list.",
+  "exemptions": [
+    { "path": "app/(user)/portfolio-model/AdoptionOverlay.tsx", "reason": "overlay header — modal-class title, not a page section" },
+    { "path": "app/(user)/portfolio-model/WizardModelCardList.tsx", "reason": "wizard step header — modal-class title, not a page section" },
+    { "path": "app/(user)/theme/page.tsx", "reason": "design-system showcase using bespoke theme-panel family for demo" },
+    { "path": "app/(user)/workspace-settings/_shared.tsx", "reason": "modal__title used by settings modal shells, not a page section" },
+    { "path": "app/(user)/workspace-settings/vector-admin/api-manager/webhooks/page.tsx", "reason": "pending PageDescription migration — page heading + subtitle should move into <PageDescription>; on page_description_exempt.json" }
+  ]
+}

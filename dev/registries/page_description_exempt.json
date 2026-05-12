@@ -1,0 +1,209 @@
+{
+  "_note": "lint:page-description exemptions \u2014 pages without <PageDescription>. Pay down by adding the primitive or justifying why the page is descriptionless.",
+  "exemptions": [
+    {
+      "path": "app/(user)/account-settings/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/admin/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/admin/roles/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/backlog/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/dashboard/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/dev/library/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/dev/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/favourites/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/library-releases/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/my-vista/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/p/[id]/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/planning/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/planning/releases/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/planning/sprints/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-items/list/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-items/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-items/relations/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-items/settings/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-model/custom/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-model/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/portfolio-settings/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/preferences/navigation/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/product/[id]/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/risk/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/scope/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/table-harness/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/theme/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/work-items/list/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/work-items/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/work-items/settings/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/work-items/work-item-relations/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/vector-admin/api-manager/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/vector-admin/api-manager/webhooks/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/vector-admin/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/vector-admin/tenant-details/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/vector-admin/topology-map/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/vector-admin/topology/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/permissions/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/users/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/custom-fields/defects/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/custom-fields/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/custom-fields/portfolio-items/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/custom-fields/risks/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/custom-fields/tasks/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/custom-fields/work-items/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/flow-states/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/organisation/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/portfolio-model/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-settings/workspace-settings/workspaces/page.tsx",
+      "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
+    }
+  ]
+}

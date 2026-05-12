@@ -20,7 +20,7 @@ export default function ApiManagerLayout({ children }: { children: React.ReactNo
   const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "webhooks";
 
   function handleTabChange(key: TabKey) {
-    router.push(`/workspace-settings/api-manager/${key}`);
+    router.push(`/workspace-settings/vector-admin/api-manager/${key}`);
   }
 
   return (
@@ -28,6 +28,7 @@ export default function ApiManagerLayout({ children }: { children: React.ReactNo
       <SecondaryNavigation<TabKey>
         ariaLabel="API Manager sections"
         reorderable
+        level="l3"
         active={activeTab}
         onChange={handleTabChange}
         items={[
