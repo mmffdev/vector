@@ -13074,6 +13074,13 @@ input[type="reset"] {
   padding: var(--space-3) 60px 30px;
 }
 
+/* Pull the canvas-wrap eyebrow back to the rail's 12px column so the two
+   section labels (SOURCE STATE, TRANSITION SELECTOR) sit on the same
+   vertical line as eyebrows on the other workspace-settings tabs. */
+.flow-rules__canvas-wrap > .flow-rules__eyebrow {
+  margin-left: calc(var(--space-3) - 60px);
+}
+
 /* Root container — SVG arrows + HTML nodes share the same coordinate space */
 .flow-rules__canvas-root {
   position: relative;
