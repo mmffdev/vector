@@ -32,6 +32,7 @@ func (c Code) String() string { return string(c) }
 //   - portfolio_items.*       — portfolio items reader gate (migration 104)
 //   - portfolio_settings.*— portfolio settings reader gate (migration 104)
 //   - work_items.*        — work_items configuration surface (migration 104)
+//   - topology.*          — topology grants admin (PLA-0046 / B6.8)
 const (
 	// menu visibility
 	MenuAdminView Code = "menu.admin.view"
@@ -84,6 +85,9 @@ const (
 
 	// flows editor (migration 112)
 	FlowsManage Code = "flows.manage"
+
+	// topology grants admin (PLA-0046 / B6.8)
+	TopologyGrantsManageOthers Code = "topology.grants.manage_others"
 )
 
 // All is the canonical set of permission codes the Go side knows about.
@@ -130,6 +134,8 @@ var All = []Code{
 	WorkItemsSettingsEdit,
 
 	FlowsManage,
+
+	TopologyGrantsManageOthers,
 }
 
 // VerifyParity compares the DB permissions table against the Go All set.

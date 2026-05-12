@@ -114,6 +114,14 @@ var (
 	ErrNotArchived    = errors.New("orgdesign: node is not archived")
 	ErrParentArchived = errors.New("orgdesign: target parent is archived — pick a live new_parent_id")
 	ErrParentMissing  = errors.New("orgdesign: target parent does not exist")
+
+	// ErrForbidden is returned when a service-level role/permission gate
+	// blocks the caller. Mapped to HTTP 403 by the handler (the handler
+	// checks errors.Is(err, ErrForbidden) explicitly so writeErr does
+	// not need to know about it). Used by ListGrantsByUser (PLA-0046)
+	// to refuse non-gadmin actors as defence-in-depth alongside the
+	// route-level RequirePermission gate.
+	ErrForbidden = errors.New("orgdesign: forbidden")
 )
 
 // GrantNotifier receives a one-shot notification each time a new
@@ -1277,6 +1285,55 @@ func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UU
 		}
 		g.GrantID = g.NodeID // synthetic — React-key only; see ListMyGrants doc.
 		g.Role = "admin"
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+// ListGrantsByUser returns every active grant for the given target
+// user, joined to the underlying live node. Unlike ListMyGrants which
+// is self-pivot (the caller views their own grants), this method is
+// the admin-pivot read used by the Topology Permissions page (PLA-0046,
+// B6.8) — a gadmin actor enumerates any user's grants in the same
+// subscription. Non-gadmin actors are refused with ErrForbidden; the
+// underlying permission gate (topology.grants.manage_others) is also
+// enforced upstream at the handler, but service-side enforcement is
+// the authoritative defence-in-depth.
+//
+// Result is ordered by node sort_order then name for a stable list.
+// Archived nodes are excluded — a grant on a node that was later
+// archived has no useful scope to display.
+func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUserID uuid.UUID, actorRole string) ([]MyGrant, error) {
+	if actorRole != string(models.RoleGAdmin) {
+		return nil, ErrForbidden
+	}
+	rows, err := s.vaPool.Query(ctx, `
+		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
+		       n.name, n.label_override, n.colour, n.icon,
+		       r.role_code, r.granted_at, n.sort_order
+		  FROM topology_role_grants r
+		  JOIN topology_nodes n ON n.id = r.node_id
+		 WHERE r.subscription_id = $1
+		   AND r.user_id = $2
+		   AND r.revoked_at IS NULL
+		   AND n.archived_at IS NULL
+		 ORDER BY n.sort_order, n.name
+	`, subscriptionID, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []MyGrant{}
+	for rows.Next() {
+		var g MyGrant
+		if err := rows.Scan(
+			&g.GrantID, &g.NodeID, &g.WorkspaceID, &g.ParentID,
+			&g.Name, &g.LabelOverride, &g.Colour, &g.Icon,
+			&g.Role, &g.GrantedAt, &g.Position,
+		); err != nil {
+			return nil, err
+		}
 		out = append(out, g)
 	}
 	return out, rows.Err()

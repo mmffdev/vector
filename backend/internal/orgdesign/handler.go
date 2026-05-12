@@ -621,6 +621,28 @@ func (h *Handler) MyGrants(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, grants)
 }
 
+// GET /api/topology/users/{userId}/grants — list every active grant
+// for the target user (admin-pivot). Gated by topology.grants.manage_others
+// at the route, and re-checked service-side via actorRole (PLA-0046 / B6.8).
+func (h *Handler) ListGrantsByUser(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	targetID, err := uuid.Parse(chi.URLParam(r, "userId"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		return
+	}
+	grants, err := h.Svc.ListGrantsByUser(r.Context(), u.SubscriptionID, targetID, string(u.Role))
+	if err != nil {
+		if errors.Is(err, ErrForbidden) {
+			httperr.Write(w, r, http.StatusForbidden, "topology.grants.manage_others required")
+			return
+		}
+		writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, grants)
+}
+
 // POST /api/topology/nodes/{id}/roles
 func (h *Handler) GrantRole(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())

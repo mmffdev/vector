@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-12 (simplify-review fixes — FE-POR-0003.9 paths rewritten to `app/lib/shared/topology/`; FE-POR-0003.9.10 added for user-to-node assignment picker (5th walker consumer); .8.1 cross-ref + .9.7 iteration-1 scope corrected)
-**Doc version:** 2.17
+**Last updated:** 2026-05-12 (R054 Rally scope-model research integration — B6.8–B6.12 added for per-user grant grid, workspace default-access setting, copy-grants on child-create, CSV bulk import, re-parent policy; FE-POR-0003 R054 validation note added)
+**Doc version:** 2.18
 
 ---
 
@@ -72,6 +72,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -79,6 +80,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
+> Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 
 ### FLOW1.2 Backend — service surface
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -90,6 +94,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 
 - ✅ **FLOW1.2.1** ~~Add `'backlog'` to `validKinds` map in `backend/internal/flows/service.go`~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
@@ -109,6 +118,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -169,6 +180,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -195,11 +213,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 
 ### FLOW1.5 Reset to factory-default per artefact type
 
@@ -236,6 +256,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 ---
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
@@ -288,6 +309,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -309,6 +338,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -373,6 +403,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -409,6 +440,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -429,6 +461,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -444,6 +478,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -771,6 +810,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -877,6 +917,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -892,6 +933,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -918,6 +960,24 @@ Full lifecycle management for tasks, bugs, epics.
 - ✅ ~~**B6.7** Fix padmin role access to workspace-settings~~
   > padmin role was unable to save navigation preferences due to workspace-settings being gadmin-only but default_pinned=TRUE. Fixed via: (1) Migration 140 grants padmin access to workspace-settings in roles_pages table, (2) Migration 141 restores workspace-settings.default_pinned = TRUE so padmin sees it in defaults. The earlier migration 139 (default_pinned=FALSE) was the wrong approach and is now superseded.
   > Last checked: 2026-05-09
+  >
+- ✅ ~~**B6.8** Per-user node-permission grid page — gadmin "Topology Permissions" surface `[P2]`~~
+  > Rally-validated user-pivot pattern (R054 §user-detail): pick one user → see every node they hold a grant on, edit role per row in one place. `UserNodeAssignment` (PLA-0044 / FE-POR-0003.9.10) is the row primitive; this entry is the page that hosts it. Two-pane: left = workspaces the user has any grant in, right = nodes within the selected workspace (checkbox + role dropdown per row). Quick filters across roles (admin / editor / viewer / no access). Single visible-tree indent — no inline `style={{}}` (use depth modifier classes per .scope-picker pattern). Persistence calls `POST /api/topology/nodes/{id}/roles` to grant and `DELETE /api/topology/roles/{grant_id}` to revoke; row writes are atomic, no batching.
+  > Last checked: 2026-05-12
+  >
+  > Plan `PLA-0046` (2026-05-12): Topology Permissions page — gadmin user-pivot surface hosting UserNodeAssignment (B6.8) — shipped: backend `ListGrantsByUser` + dual-mount handler, `topology.grants.manage_others` permission (migration 147 on gadmin), frontend page at `/workspace-settings/users/[userId]/topology-permissions` reached via entry button on the Users row-expand. Single-role MVP; per-row role dropdown deferred.
+  >
+- **B6.9** Workspace setting — "Default node access for new users" `[P3]`
+  > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
+  >
+- **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
+  > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
+  >
+- **B6.11** Bulk grant CSV import/export `[P4]`
+  > Rally-validated bulk pattern (R054 §bulk): in-product UI does per-user grant only; bulk lives in CSV templates consumed by an external toolkit. Vector ships the same: a per-user CSV download on the B6.8 page (current grant set across the active workspace), plus a gadmin-only `/dev` panel that accepts a CSV (cols: `user_email,workspace_id,node_id,role`) and runs it through `Service.GrantRoleBatch`. Validation rules: caller is gadmin or workspace-admin; reject row if user doesn't exist or node is archived; report row-level success/fail in the response. Distinct from `RallyTools/Rally-User-Management` (Rally's external Ruby toolkit, R054 §sources [5]): Vector keeps the bulk path inside the app to avoid the "drives the web UI under the hood" hack Rally's toolkit had to adopt because the WSAPI never opened permission writes (R054 §CORRECTION C1).
+  >
+- **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
+  > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
   >
 
 ---
@@ -961,6 +1021,10 @@ Full lifecycle management for tasks, bugs, epics.
 - **B8.10** Per-tenant API keys with scoped permissions `[P2]`
 > Commit `761d7cd` (2026-05-09): fix(B22): DevPageHelpPanel — apiSite import + strip stale /api/ prefix
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -969,6 +1033,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
@@ -1118,6 +1185,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -1201,11 +1269,17 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - **B17.9** API gateway in front of public surface `[P3]`
 > Commit `761d7cd` (2026-05-09): fix(B22): DevPageHelpPanel — apiSite import + strip stale /api/ prefix
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
+> Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
+> Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 
@@ -1438,6 +1512,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -1462,6 +1539,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -1478,6 +1557,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -1500,6 +1580,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -1545,6 +1626,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -1605,6 +1689,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -1630,6 +1715,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -1659,6 +1745,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -1707,6 +1795,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1747,6 +1837,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -1787,6 +1878,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -1831,6 +1923,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1871,6 +1965,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3963bbb` (2026-05-12): feat(PLA-0043): scope rail polish — auto-width, spine elbows, vector scrollbar [FE-POR-0003.1]
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -1903,6 +1998,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -1930,6 +2026,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -1966,6 +2064,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -2028,6 +2127,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -2090,6 +2190,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -2403,6 +2504,8 @@ Chrome-level scope picker mounted at the start of `.page-header__left` (Rally / 
 Iteration-2 follow-up to PLA-0042: the chrome picker writes `?scope=<topology_node_id>` to the URL, this plan teaches the **read path** to honour it. Artefacts gain a nullable `topology_node_id` FK on `vector_artefacts.artefacts`; backend services clamp list reads to "this node + every descendant" via a recursive-CTE helper; grants inherit DOWN only (a grant on a parent reaches descendants; a grant on a child never reaches its parent); gadmin bypass preserved. Stacks with the existing workspace clamp — both must pass.
 
 Design validated against Rally / Jira / ADO via R052 + R053: single-FK ownership is universal across all three; adjacency-list + recursive-CTE matches Rally's storage model; grant-inherits-down matches ADO's permission convention. Move semantics (leave-vs-carry descendants) defer to PLA-0044.
+
+> R054 (Rally user-to-project assignment UX, 2026-05-12) further validates the PLA-0042 / PLA-0043 direction: Rally's only built-in dynamic inheritance is the grant-inherits-down read clamp Vector ships in FE-POR-0003.3 (`CanReadScope`); all other Rally cascades are opt-in one-shot copies (workspace default-grant at user-create, copy-users on child-project-create). The R054-driven user-management surfaces (per-user grid page, workspace default-access setting, copy-grants on child create, CSV bulk import, re-parent policy) are scoped under B6.8–B6.12, not under PLA-0042/PLA-0043, since those plans cover the picker + read clamp respectively. Rally pattern confirms Vector should keep the per-user view as primary; per-node roster view (Rally's "Project Setup → Users tab") is a future P4 add.
 
 ### FE-POR-0003.1 Schema — `topology_node_id` FK on artefacts
 

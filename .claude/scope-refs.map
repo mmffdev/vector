@@ -168,3 +168,8 @@ B18.7.2	shared methods catalogue docs c_shared_methods topology walker first row
 B18.7.3	shared methods catalogue lint allow-list registry writer-boundary transport-segregation cross-import
 B18.7.4	shared methods catalogue PostToolUse hook reminder route handler nudge
 B18.7.5	shared methods catalogue feedback memory MEMORY index session start
+B6.8	user node permission grid gadmin topology assignment per-user pivot UserNodeAssignment two-pane checkbox role dropdown filters
+B6.9	workspace default node access new users seed master_record_tenant grant user-create viewer editor
+B6.10	copy grants child node creation opt-in one-shot CopyGrantsToNode topology canvas create dialog
+B6.11	bulk grant CSV import export GrantRoleBatch user_email node_id role gadmin batch
+B6.12	node re-parent permission policy preserve replace merge move grants parent_id design decision

@@ -135,6 +135,16 @@ export const topologyApi = {
     return apiSite<MyGrant[]>(`/topology/grants/me`);
   },
 
+  // PLA-0046 / story 00554 — list every active grant on a live node held
+  // by another user. Gadmin-only on the backend (permission
+  // `topology.grants.manage_others`). Drives the Topology Permissions
+  // page so an admin can pre-select the checkbox tree against
+  // <UserNodeAssignment>. Returns the same `MyGrant` row shape used by
+  // the scope picker so downstream walkers / mappers compose.
+  listGrantsByUser(userId: string) {
+    return apiSite<MyGrant[]>(`/topology/users/${userId}/grants`);
+  },
+
   create(input: CreateNodeInput) {
     return apiSite<OrgNode>(`/topology/nodes`, {
       method: "POST",
@@ -275,3 +285,12 @@ export const topologyApi = {
     return apiSite<{ archived: number }>(`/topology/reset`, { method: "POST" });
   },
 };
+
+// PLA-0046 / story 00554 — also exposed as a named function export to
+// match the brief signature and the calling convention used by the new
+// Topology Permissions page. Mirrors topologyApi.listGrantsByUser; kept
+// in sync intentionally so the two-call-sites (page + future hooks)
+// don't drift.
+export async function listGrantsByUser(userId: string): Promise<MyGrant[]> {
+  return apiSite<MyGrant[]>(`/topology/users/${userId}/grants`);
+}

@@ -193,6 +193,16 @@ Built on top of the MVP foundation. Every UI surface below mounts inside `app/(u
 
 `ErrInvalidName` (empty patch / blank name), `ErrCommitForbidden`, `ErrResetForbidden` (non-gadmin), `ErrCycleDetected` (existing). Handlers map to 400 / 403 respectively.
 
+## Topology Permissions admin page (PLA-0046 / B6.8)
+
+A gadmin-only user-pivot surface at `/workspace-settings/users/[userId]/topology-permissions`, reached via a "Manage topology permissions" button on the Users row-expand panel. Hosts the `UserNodeAssignment` primitive shipped by PLA-0044 — pick one user, see every topology node, checkbox-toggle node-level grants in place.
+
+- **Service entry point.** `orgdesign.Service.ListGrantsByUser(ctx, subscriptionID, targetUserID, actorRole)` returns every active grant for the target user across the subscription, gated by `ErrForbidden` for non-gadmin actors (mapped to HTTP 403 by the handler). Mirrors the gadmin branch of `ListMyGrants` but parameterised on `target_user_id` rather than the request actor.
+- **Endpoint.** `GET /api/topology/users/{userId}/grants` on both `/_site` and `/samantha/v2` per PLA-0039, mounted **outside** the workspace-clamp middleware group since grants span workspaces. Gated by `RequirePermission(TopologyGrantsManageOthers)` route-level + the service-level role check as defence-in-depth.
+- **Permission code.** `topology.grants.manage_others` — seeded by migration `147_topology_grants_manage_others_permission.sql` and granted to the gadmin system role (`ad30…`) only. Padmin is **not** granted: this surface enumerates grants across users, which exceeds the workspace-bounded authority of padmin. A future story can open it to padmin via a follow-up migration.
+- **Frontend wiring.** Page composes from existing primitives — `<PageDescription>` for the title, `<Panel name="topology_permissions_picker" title="Node grants">` hosting `<UserNodeAssignment>`. Parallel fetch on mount: `/admin/users` list + `topologyApi.tree()` + `topologyApi.listGrantsByUser(userId)`. Toggle handler does optimistic update + `topologyApi.grantRole` / `topologyApi.revokeRole`, with refetch on grant to bind the real `grant_id`. On error the inline `.form__error` panel surfaces the cause and the toggle reverts. No browser `alert`/`confirm`/`prompt`.
+- **What is deferred.** Single-role MVP — every grant uses the same default role. Per-row role dropdown (admin / editor / viewer), workspace-pane scoping (the page renders the full tree, no left-rail workspace filter), and the CSV export/import surface (B6.11) all wait on follow-up stories.
+
 ## Phase X (deferred)
 
 These ship after MVP — schema is ready, UI is not:

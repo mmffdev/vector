@@ -1035,6 +1035,12 @@ func main() {
 		// grants may span workspaces inside their subscription.
 		r.Get("/grants/me", orgDesignH.MyGrants)
 
+		// PLA-0046 / B6.8 — admin-pivot grant listing for the
+		// Topology Permissions page. Not workspace-clamped: target
+		// user's grants may span workspaces inside the subscription.
+		r.With(auth.RequirePermission(permResolver, permissions.TopologyGrantsManageOthers)).
+			Get("/users/{userId}/grants", orgDesignH.ListGrantsByUser)
+
 		r.Post("/nodes", orgDesignH.Create)
 		r.Patch("/nodes/{id}", orgDesignH.Patch)
 		r.Delete("/nodes/{id}", orgDesignH.Archive)
@@ -1447,6 +1453,12 @@ func main() {
 			// PLA-0042 — scope picker. Not workspace-clamped: a user's
 			// grants may span workspaces inside their subscription.
 			r.Get("/grants/me", orgDesignH.MyGrants)
+
+			// PLA-0046 / B6.8 — admin-pivot grant listing for the
+			// Topology Permissions page. Not workspace-clamped: target
+			// user's grants may span workspaces inside the subscription.
+			r.With(auth.RequirePermission(permResolver, permissions.TopologyGrantsManageOthers)).
+				Get("/users/{userId}/grants", orgDesignH.ListGrantsByUser)
 
 			// Writes
 			r.Post("/nodes", orgDesignH.Create)

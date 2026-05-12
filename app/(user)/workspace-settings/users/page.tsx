@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import PageContent from "@/app/components/PageContent";
 import Table from "@/app/components/Table";
 import ToggleBtn from "@/app/components/ToggleBtn";
+import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "../_shared";
 
@@ -31,6 +33,10 @@ function UserEditPanel({
   const [resetBusy,   setResetBusy]   = useState(false);
   const [err,         setErr]         = useState<string | null>(null);
   const [info,        setInfo]        = useState<string | null>(null);
+  // PLA-0046 / story 00556 — gates the "Manage topology permissions"
+  // entry button. Gadmin only; the per-user page also re-checks so
+  // direct deep-links still surface the in-page Forbidden panel.
+  const hasManageGrants = useHasPermission("topology.grants.manage_others");
 
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +145,14 @@ function UserEditPanel({
             >
               {resetBusy ? "Sending…" : "Send password reset"}
             </button>
+            {hasManageGrants && (
+              <Link
+                href={`/workspace-settings/users/${u.id}/topology-permissions`}
+                className="btn btn--secondary"
+              >
+                Manage topology permissions
+              </Link>
+            )}
           </div>
           <div className="users-edit-panel__actions-right">
             {isActive !== u.is_active && (
