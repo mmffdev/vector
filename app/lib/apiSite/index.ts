@@ -486,9 +486,16 @@ export const subscriptionLayers = {
     apiSite<void>("/subscription/layers/batch", { method: "PATCH", body: JSON.stringify(data) }),
 };
 
-// Pages: app/(user)/workspace-settings/customisation/flow-states/page.tsx
+// Pages: app/(user)/workspace-settings/workspace-settings/flow-states/page.tsx
 // Lib:   app/lib/flowStatesApi.ts
 // ─── Flows  (/flows, /flow-states) ───────────────────────────────────────────
+
+export interface FlowExitRule {
+  id: ID;
+  sort_order: number;
+  name: string;
+  colour?: string | null;
+}
 
 export interface FlowState {
   id: ID;
@@ -498,6 +505,9 @@ export interface FlowState {
   is_initial: boolean;
   is_pullable: boolean;
   colour?: string | null;
+  description?: string | null;
+  exit_rules?: FlowExitRule[];
+  exit_rule_count: number;
 }
 
 export interface FlowTransition {
@@ -609,7 +619,18 @@ export const flows = {
 };
 
 export const flowStates = {
-  patch: (stateId: ID, patch: { colour?: string | null; name?: string; kind?: string; sort_order?: number; is_initial?: boolean; is_pullable?: boolean }) =>
+  patch: (
+    stateId: ID,
+    patch: {
+      colour?: string | null;
+      name?: string;
+      kind?: string;
+      sort_order?: number;
+      is_initial?: boolean;
+      is_pullable?: boolean;
+      description?: string | null;
+    },
+  ) =>
     apiSite<FlowState>(`/flow-states/${stateId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -618,6 +639,29 @@ export const flowStates = {
 
   delete: (stateId: ID) =>
     apiSite<void>(`/flow-states/${stateId}`, { method: "DELETE" }),
+
+  listExitRules: (stateId: ID) =>
+    apiSite<{ exit_rules: FlowExitRule[] }>(`/flow-states/${stateId}/exit-rules`),
+
+  createExitRule: (stateId: ID, data: { name: string; colour?: string | null }) =>
+    apiSite<FlowExitRule>(`/flow-states/${stateId}/exit-rules`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+export const flowStateExitRules = {
+  patch: (
+    ruleId: ID,
+    patch: { name?: string; colour?: string | null; sort_order?: number },
+  ) =>
+    apiSite<FlowExitRule>(`/flow-state-exit-rules/${ruleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  delete: (ruleId: ID) =>
+    apiSite<void>(`/flow-state-exit-rules/${ruleId}`, { method: "DELETE" }),
 };
 
 // Pages: app/lib/fieldsApi.ts (shared helper), app/(user)/workspace-settings/fields/ (field admin)

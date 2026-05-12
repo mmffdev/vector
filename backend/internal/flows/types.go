@@ -2,23 +2,50 @@ package flows
 
 // FlowState is one state within a flow, read from vector_artefacts.flow_states.
 type FlowState struct {
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	Kind       string  `json:"kind"` // "backlog" | "todo" | "in_progress" | "done" | "accepted" | "cancelled"
-	SortOrder  int     `json:"sort_order"`
-	IsInitial  bool    `json:"is_initial"`
-	IsPullable bool    `json:"is_pullable"`
-	Colour     *string `json:"colour,omitempty"`
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Kind          string         `json:"kind"` // "backlog" | "todo" | "in_progress" | "done" | "accepted" | "cancelled"
+	SortOrder     int            `json:"sort_order"`
+	IsInitial     bool           `json:"is_initial"`
+	IsPullable    bool           `json:"is_pullable"`
+	Colour        *string        `json:"colour,omitempty"`
+	Description   *string        `json:"description,omitempty"`
+	ExitRules     []FlowExitRule `json:"exit_rules,omitempty"`
+	ExitRuleCount int            `json:"exit_rule_count"`
+}
+
+// FlowExitRule is one entry in the ordered, named checklist that surfaces
+// before an artefact leaves the parent flow_state. The system does not
+// enforce these - they are surfaced for in-band user self-attestation only.
+type FlowExitRule struct {
+	ID        string  `json:"id"`
+	SortOrder int     `json:"sort_order"`
+	Name      string  `json:"name"`
+	Colour    *string `json:"colour,omitempty"`
 }
 
 // PatchStateInput is the body accepted by PATCH /_site/flow-states/{id}.
 type PatchStateInput struct {
-	Colour     *string `json:"colour"`      // nil = clear; "#RRGGBB" = set
-	Name       *string `json:"name"`        // nil = no change
-	Kind       *string `json:"kind"`        // nil = no change; otherwise one of validKinds
-	SortOrder  *int    `json:"sort_order"`  // nil = no change
-	IsInitial  *bool   `json:"is_initial"`  // nil = no change
-	IsPullable *bool   `json:"is_pullable"` // nil = no change
+	Colour      *string `json:"colour"`      // nil = clear; "#RRGGBB" = set
+	Name        *string `json:"name"`        // nil = no change
+	Kind        *string `json:"kind"`        // nil = no change; otherwise one of validKinds
+	SortOrder   *int    `json:"sort_order"`  // nil = no change
+	IsInitial   *bool   `json:"is_initial"`  // nil = no change
+	IsPullable  *bool   `json:"is_pullable"` // nil = no change
+	Description *string `json:"description"` // nil = no change; "" = clear to NULL
+}
+
+// CreateExitRuleInput is the body accepted by POST /_site/flow-states/{stateID}/exit-rules.
+type CreateExitRuleInput struct {
+	Name   string  `json:"name"`
+	Colour *string `json:"colour,omitempty"`
+}
+
+// PatchExitRuleInput is the body accepted by PATCH /_site/flow-state-exit-rules/{id}.
+type PatchExitRuleInput struct {
+	Name      *string `json:"name"`       // nil = no change
+	Colour    *string `json:"colour"`     // nil = no change; pointer to "" = clear to NULL
+	SortOrder *int    `json:"sort_order"` // nil = no change
 }
 
 // CreateStateInput is the body accepted by POST /_site/flows/{flowId}/states.

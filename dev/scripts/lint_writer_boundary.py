@@ -38,13 +38,14 @@ EXEMPT_REGISTRY = ROOT / "dev" / "registries" / "writer_boundary_exempt.json"
 
 # table_name -> allowed package directory (relative to repo root)
 WRITER_BOUNDARY: dict[str, str] = {
-    "roles":                   "backend/internal/roles",
-    "permissions":             "backend/internal/roles",
-    "role_permissions":        "backend/internal/roles",
-    "page_addressables":       "backend/internal/addressables",
-    "workspaces":              "backend/internal/workspaces",
-    "workspace_roles":         "backend/internal/workspaces",
-    "master_record_portfolio": "backend/internal/portfolio",
+    "roles":                    "backend/internal/roles",
+    "permissions":              "backend/internal/roles",
+    "role_permissions":         "backend/internal/roles",
+    "page_addressables":        "backend/internal/addressables",
+    "workspaces":               "backend/internal/workspaces",
+    "workspace_roles":          "backend/internal/workspaces",
+    "master_record_portfolio":  "backend/internal/portfolio",
+    "flow_state_exit_rules":    "backend/internal/flows",
 }
 
 # Match `INSERT INTO <table>`, `UPDATE <table>`, `DELETE FROM <table>` —

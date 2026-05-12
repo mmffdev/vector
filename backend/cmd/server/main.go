@@ -929,6 +929,17 @@ func main() {
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Patch("/{id}", flowsH.PatchFlowState)
 			r.Delete("/{id}", flowsH.DeleteFlowState)
+			// Per-state exit-rule checklist (FE-GOV-0003).
+			r.Get("/{id}/exit-rules", flowsH.ListExitRules)
+			r.Post("/{id}/exit-rules", flowsH.CreateExitRule)
+		})
+		// Single exit-rule mutations (FE-GOV-0003).
+		r.Route("/flow-state-exit-rules", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Patch("/{id}", flowsH.PatchExitRule)
+			r.Delete("/{id}", flowsH.DeleteExitRule)
 		})
 	}
 

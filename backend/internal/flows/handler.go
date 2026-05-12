@@ -149,6 +149,92 @@ func (h *Handler) DeleteTransition(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// GET /_site/flow-states/{id}/exit-rules
+//
+// Returns the ordered list of active exit rules for one flow state.
+func (h *Handler) ListExitRules(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	stateID := chi.URLParam(r, "id")
+
+	rules, err := h.Svc.ListExitRules(r.Context(), u.SubscriptionID.String(), stateID)
+	if errors.Is(err, ErrStateNotFound) {
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, rules)
+}
+
+// POST /_site/flow-states/{id}/exit-rules
+//
+// Appends a new exit rule to a flow state at max(sort_order)+10.
+func (h *Handler) CreateExitRule(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	stateID := chi.URLParam(r, "id")
+
+	var in CreateExitRuleInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	rule, err := h.Svc.CreateExitRule(r.Context(), u.SubscriptionID.String(), stateID, in)
+	if errors.Is(err, ErrStateNotFound) {
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, rule)
+}
+
+// PATCH /_site/flow-state-exit-rules/{id}
+//
+// Updates name, colour, or sort_order on one exit rule.
+func (h *Handler) PatchExitRule(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	ruleID := chi.URLParam(r, "id")
+
+	var in PatchExitRuleInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	rule, err := h.Svc.PatchExitRule(r.Context(), u.SubscriptionID.String(), ruleID, in)
+	if errors.Is(err, ErrExitRuleNotFound) {
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, rule)
+}
+
+// DELETE /_site/flow-state-exit-rules/{id}
+func (h *Handler) DeleteExitRule(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	ruleID := chi.URLParam(r, "id")
+
+	err := h.Svc.DeleteExitRule(r.Context(), u.SubscriptionID.String(), ruleID)
+	if errors.Is(err, ErrExitRuleNotFound) {
+		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

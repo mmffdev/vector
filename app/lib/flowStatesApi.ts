@@ -2,6 +2,7 @@
 // Re-exports the registry types so callers import from one place.
 export type {
   FlowState,
+  FlowExitRule,
   FlowTransition,
   FlowGroup,
   FlowsResponse,
@@ -12,9 +13,14 @@ export type {
   ResetArtefactImpact,
 } from "@/app/lib/apiSite/index";
 
-import { flows as flowsApi, flowStates as flowStatesApi_ } from "@/app/lib/apiSite/index";
+import {
+  flows as flowsApi,
+  flowStates as flowStatesApi_,
+  flowStateExitRules as flowStateExitRulesApi_,
+} from "@/app/lib/apiSite/index";
 import type {
   FlowState,
+  FlowExitRule,
   FlowTransition,
   FlowsResponse,
   ResetPreview,
@@ -43,7 +49,15 @@ async function list(): Promise<FlowsResponse> {
 
 async function patchState(
   stateId: string,
-  patch: { colour?: string | null; name?: string; kind?: string; sort_order?: number; is_initial?: boolean; is_pullable?: boolean },
+  patch: {
+    colour?: string | null;
+    name?: string;
+    kind?: string;
+    sort_order?: number;
+    is_initial?: boolean;
+    is_pullable?: boolean;
+    description?: string | null;
+  },
 ): Promise<FlowState> {
   const result = await flowStatesApi_.patch(stateId, patch);
   invalidate();
@@ -85,6 +99,34 @@ async function resetApply(artefactTypeId: string): Promise<ResetApplyResult> {
   return result;
 }
 
+async function listExitRules(stateId: string): Promise<FlowExitRule[]> {
+  const r = await flowStatesApi_.listExitRules(stateId);
+  return r.exit_rules ?? [];
+}
+
+async function createExitRule(
+  stateId: string,
+  data: { name: string; colour?: string | null },
+): Promise<FlowExitRule> {
+  const rule = await flowStatesApi_.createExitRule(stateId, data);
+  invalidate();
+  return rule;
+}
+
+async function patchExitRule(
+  ruleId: string,
+  patch: { name?: string; colour?: string | null; sort_order?: number },
+): Promise<FlowExitRule> {
+  const rule = await flowStateExitRulesApi_.patch(ruleId, patch);
+  invalidate();
+  return rule;
+}
+
+async function deleteExitRule(ruleId: string): Promise<void> {
+  await flowStateExitRulesApi_.delete(ruleId);
+  invalidate();
+}
+
 export const flowStatesApi = {
   list,
   patchState,
@@ -94,4 +136,8 @@ export const flowStatesApi = {
   deleteTransition,
   resetPreview,
   resetApply,
+  listExitRules,
+  createExitRule,
+  patchExitRule,
+  deleteExitRule,
 };
