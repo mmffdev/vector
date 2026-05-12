@@ -1,15 +1,11 @@
 "use client";
 
 // /favourites — pinned portfolios, products, and custom pages.
-// Story 00098 restyle: header (28px / --ink-muted) from PageShell.
-// Each pinned item is a .backlog-row (surface card on --canvas with
-// 1px --border, --radius-md, 14px 20px padding) for consistency
-// with /backlog and /my-vista. Type labels render as
-// .pill--neutral. Empty state uses .placeholder; no .empty-state,
-// no .tag classes, no lime-green.
+// Each pinned item is a .backlog-row for consistency with /backlog and
+// /my-vista. Type labels render as .pill--neutral; empty state uses
+// .placeholder.
 
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 
 const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: string }> = [
   { kind: "Portfolio", name: "MMFF Standard", href: "/portfolio-model" },
@@ -21,7 +17,6 @@ export default function Favourites() {
   const empty = PINS.length === 0;
   return (
     <PageContent>
-    <PageShell title="Favourites" subtitle="Your starred items">
       {empty ? (
         <div className="placeholder">
           <h3 className="placeholder__title">Nothing pinned yet</h3>
@@ -46,7 +41,6 @@ export default function Favourites() {
           ))}
         </ul>
       )}
-    </PageShell>
     </PageContent>
   );
 }

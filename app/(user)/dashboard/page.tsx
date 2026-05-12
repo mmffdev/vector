@@ -1,7 +1,6 @@
 "use client";
 
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -35,7 +34,6 @@ const TILES: Array<{ label: string; value: string; hint?: string }> = [
 export default function Dashboard() {
   return (
     <PageContent>
-    <PageShell title="Dashboard" subtitle="Your workspace overview">
       <StrictRoute>
         <Panel name="overview" title="Overview">
           <div className="dashboard-grid">
@@ -233,7 +231,6 @@ export default function Dashboard() {
           />
         </Panel>
       </StrictRoute>
-    </PageShell>
     </PageContent>
   );
 }

@@ -447,3 +447,9 @@
   transition: background 150ms ease;
 }
 .rd-topbar__action:hover { background: var(--surface-sunken); }
+
+.rd-topbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

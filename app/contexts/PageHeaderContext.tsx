@@ -29,7 +29,7 @@ interface PageHeaderContextValue {
   root: PageHeaderState | null;
 }
 
-const PageHeaderContext = createContext<PageHeaderContextValue | null>(null);
+export const PageHeaderContext = createContext<PageHeaderContextValue | null>(null);
 
 // Stack model: every PageShell pushes its header on mount and pops on unmount.
 // The visible header is the top of the stack. This survives nested PageShells

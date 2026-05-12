@@ -1,17 +1,12 @@
 "use client";
 
 // /my-vista — personal work view.
-// Story 00095 restyle: header (28px / --ink + --ink-muted subtitle)
-// comes from PageShell + .page__head. The body shows the user's
-// assigned items as a .backlog-list — keeps the Vector list spec
-// consistent across /backlog and /my-vista. Status and priority use
-// the .pill family (no legacy .tag classes); empty state uses the
-// Vector .placeholder kit (story 00079) on --canvas. No flat grey
-// fills, no decorative colour.
+// Body shows the user's assigned items as a .backlog-list — keeps the
+// Vector list spec consistent across /backlog and /my-vista. Status and
+// priority use the .pill family; empty state uses .placeholder.
 
 import { useEffect, useState } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import { SkeletonFade } from "@/app/components/Skeleton";
 import { ListRowSkeleton } from "@/app/components/SkeletonCompositions";
 
@@ -77,7 +72,6 @@ export default function MyVista() {
   const empty = ASSIGNED.length === 0;
   return (
     <PageContent>
-    <PageShell title="My Vista" subtitle="Your personalised view">
       <h3 className="eyebrow">Assigned to you</h3>
       <SkeletonFade
         loaded={!loading}
@@ -113,7 +107,6 @@ export default function MyVista() {
         </ul>
       )}
       </SkeletonFade>
-    </PageShell>
     </PageContent>
   );
 }

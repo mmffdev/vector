@@ -1,14 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import { useContext } from "react";
 import { usePathname } from "next/navigation";
-import { Plus } from "lucide-react";
 import { useShell } from "../ShellContext";
 import { flattenSectionPages } from "@/app/lib/nav-v2";
+import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
 
 export default function RedesignTopBar() {
   const { perspective, activeSection, isAccountActive } = useShell();
   const pathname = usePathname() ?? "";
+  const headerCtx = useContext(PageHeaderContext);
+  const pageHeader = headerCtx?.top ?? null;
 
   const currentPage = activeSection
     ? flattenSectionPages(activeSection).find(
@@ -37,10 +39,9 @@ export default function RedesignTopBar() {
           </>
         )}
       </nav>
-      <Link href="#" className="rd-topbar__action" aria-disabled>
-        <Plus size={16} strokeWidth={1.75} />
-        <span>New</span>
-      </Link>
+      {pageHeader?.actions && (
+        <div className="rd-topbar__actions">{pageHeader.actions}</div>
+      )}
     </div>
   );
 }
