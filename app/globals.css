@@ -13,6 +13,9 @@
   --content-max-width: 100%;
   --row-height: 48px;
   --input-height: 40px;
+  /* Height of a single sticky nav bar (L2, L3). Stacked subheaders consume
+     2x this height; .anav rail and section scroll-margin compensate for it. */
+  --nav-bar-h: 44px;
 
   /* ---------- Foundation: warm neutrals ---------- */
   --canvas:         #FFFFFF;
@@ -2040,10 +2043,10 @@ input[type="reset"] {
    and stable at every scroll position — sibling margins would scroll
    under the sticky band at scroll-max and visually collapse. */
 /* Both nav bars share an explicit height so the L3's `top` can pin
-   exactly to the L1's bottom edge — no gap, no overlap. Change
-   --nav-bar-h once and both bars (and the L3 top offset) stay in sync. */
+   exactly to the L1's bottom edge — no gap, no overlap. --nav-bar-h
+   is defined at :root so .anav rail and section scroll-margin can
+   compensate for the stacked subheaders. */
 .ui-sticky-subheader {
-  --nav-bar-h: 44px;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -12867,9 +12870,13 @@ input[type="reset"] {
 }
 
 .anav {
+  /* Clear the L2 + L3 sticky nav stack above. --nav-bar-h is a :root
+     token (44px) — two stacked nav bars = 88px, plus breathing room.
+     If a page only has an L2 (no L3), the rail still pins below it
+     because the offset reserves space for both. */
   position: sticky;
-  top: var(--space-4);
-  max-height: calc(100vh - 160px);
+  top: calc(var(--nav-bar-h) * 2 + var(--space-4));
+  max-height: calc(100vh - var(--nav-bar-h) * 2 - var(--space-8));
   overflow-y: auto;
   overscroll-behavior: contain;
   /* No --nav-* overrides: the ToC rail inherits the sidebar's defaults
@@ -12890,10 +12897,11 @@ input[type="reset"] {
   min-width: 0;
 }
 
-/* Section heading anchor target — give a little breathing room when
-   scrolled to via the nav. */
+/* Section heading anchor target — when the ToC scrolls a section into
+   view, push the section below the L2+L3 sticky nav stack so it isn't
+   hidden behind the bars. */
 .anav-content section {
-  scroll-margin-top: 100px;
+  scroll-margin-top: calc(var(--nav-bar-h) * 2 + var(--space-4));
 }
 
 /* ============================================================
