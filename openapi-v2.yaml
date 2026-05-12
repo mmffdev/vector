@@ -61,6 +61,21 @@ paths:
           schema:
             type: string
             enum: [asc, desc]
+        - name: scope
+          in: query
+          description: |
+            PLA-0043 — Topology scope clamp. When set to a topology_node UUID,
+            the list is filtered to artefacts owned by that node OR any live
+            descendant in the topology tree. Artefacts with no
+            topology_node_id are excluded when scope is active. Grant
+            inheritance: a grant on a node reaches the node and every
+            descendant; gadmin bypasses the check entirely.
+            Errors: 400 if not a UUID; 403 if the caller has no grant
+            covering the node; 404 if the node does not exist in this
+            tenant.
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Work items
@@ -75,8 +90,14 @@ paths:
                       type: object
                   total:
                     type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Scope read denied — caller has no grant on the requested topology node.
+        '404':
+          description: Scope node not found in this tenant.
     post:
       tags: [work-items]
       summary: Create work item

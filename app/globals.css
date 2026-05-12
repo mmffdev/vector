@@ -237,6 +237,59 @@ a:hover {
   opacity: 0.8;
 }
 
+/* ---------- Scrollbars — single canonical Vector style ----------
+   Use `.vector-scroll` on any scrollable container to opt in. Also
+   applied globally to `html`/`body` so the page chrome matches without
+   per-component wiring. Slim, transparent track; thumb is Vector
+   orange (#ff6600), with a darker hover for affordance. Firefox uses
+   `scrollbar-color` (thumb | track); WebKit uses pseudo-elements. */
+:root {
+  --scrollbar-thumb: #ff6600;
+  --scrollbar-thumb-hover: #cc5200;
+}
+
+html,
+body,
+.vector-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.vector-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+.vector-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+.vector-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+.vector-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+.vector-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 button {
   font-family: inherit;
   font-size: inherit;
@@ -261,11 +314,13 @@ input[type="reset"] {
 
 .app-root {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: var(--scope-rail-w, 44px) var(--sidebar-width) 1fr;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
   transition: grid-template-columns 0.25s ease;
+  /* Anchor for the absolutely-positioned .scope-flyout panel. */
+  position: relative;
   /* Smooth the snap-in after auth resolves. `both` holds opacity:0
      before the animation runs so there's no single-frame flash. */
   animation: app-root-fade-in 220ms ease-out both;
@@ -775,6 +830,267 @@ input[type="reset"] {
 .page-header-subtitle {
   font-size: 14px;
   color: var(--ink-3);
+}
+
+/* ============================================================
+   Scope picker (PLA-0042) — sits in .page-header__left next to
+   the title. Trigger is a ghost button; panel is an absolutely
+   positioned dropdown. Tree rows stack vertically with 14px
+   indent per depth level (capped at d6).
+   ============================================================ */
+.scope-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.scope-picker__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+}
+
+.scope-picker__trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.scope-picker--loading .scope-picker__trigger-label {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.scope-picker__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 280px;
+  max-width: 420px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+}
+
+.scope-picker__search {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-1);
+}
+
+.scope-picker__search .form__input {
+  width: 100%;
+}
+
+.scope-picker__list {
+  overflow-y: auto;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scope-picker__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font-size: 13px;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+
+.scope-picker__item:hover {
+  background: var(--surface-2);
+}
+
+.scope-picker__item.is-active {
+  background: var(--surface-2);
+  color: var(--ink-1);
+  font-weight: 600;
+}
+
+.scope-picker__item-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-picker__item-role {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scope-picker__item--d0 { padding-left: 12px; }
+.scope-picker__item--d1 { padding-left: 26px; }
+.scope-picker__item--d2 { padding-left: 40px; }
+.scope-picker__item--d3 { padding-left: 54px; }
+.scope-picker__item--d4 { padding-left: 68px; }
+.scope-picker__item--d5 { padding-left: 82px; }
+.scope-picker__item--d6 { padding-left: 96px; }
+
+.scope-picker__error,
+.scope-picker__empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.scope-picker__error {
+  color: var(--danger-1, #e35);
+}
+
+/* ============================================================
+   Scope rail + flyout (PLA-0042/0043 PoC)
+   - Permanent vertical rail in column 1 of .app-root, 44px wide.
+   - Single BsMap icon toggles a full-height flyout that slides
+     over the existing sidebar (column 2). Same width as the
+     sidebar so it visually replaces it while open.
+   - z-index 60: above sticky subheaders (40/50), below modals (100).
+   ============================================================ */
+.scope-rail {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  background: var(--surface-1, #fff);
+  border-right: 1px solid var(--border-1, rgba(0, 0, 0, 0.08));
+  z-index: 30;
+}
+
+.scope-rail__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.scope-rail__icon:hover {
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+  color: var(--ink-1);
+}
+
+.scope-rail__icon.is-open {
+  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+  color: var(--ink-1);
+}
+
+.scope-flyout {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--scope-rail-w, 44px);
+  /* Auto-size width to the longest node label, bounded so very long
+     names don't push the flyout off-screen. */
+  width: max-content;
+  min-width: var(--scope-flyout-w, 240px);
+  max-width: var(--scope-flyout-max-w, 480px);
+  background: var(--surface-1, #fff);
+  border-right: 1px solid var(--border-1, rgba(0, 0, 0, 0.08));
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scope-flyout__header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-1, rgba(0, 0, 0, 0.08));
+}
+
+.scope-flyout__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.scope-flyout__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.scope-flyout__status {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.scope-flyout__status--error {
+  color: var(--danger-1, #e35);
+}
+
+.scope-flyout__item {
+  display: flex;
+  align-items: center;
+  /* gap=8 matches CARET_OFFSET in Spine so the elbow's horizontal arm
+     ends exactly where the chevron's centre lands — same vocabulary as
+     ObjectTree's .tree_accordion-dense__row. */
+  gap: 8px;
+  /* No left padding — the SVG spine cell owns indentation per row. */
+  padding: 0 14px 0 6px;
+  /* Fixed row height matches Spine ROW_H constant (28px) so the SVG
+     geometry lands flush; do not change one without the other. */
+  height: 28px;
+  font-size: 13px;
+  color: var(--ink-1);
+  line-height: 1.3;
+}
+
+.scope-flyout__item.is-active {
+  background: var(--accent-soft, rgba(64, 120, 255, 0.08));
+  color: var(--accent-1, #3a6dff);
+  font-weight: 600;
+}
+
+.scope-flyout__item-name {
+  flex: 1;
+  white-space: nowrap;
+  /* Allow the longest name to define the panel's intrinsic width
+     (via the parent's width: max-content). */
+}
+
+.scope-flyout__spine {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Group-divider utility — dashed bottom rule in the warm parchment
+   tone (#EDEAE4 in light = --surface-sunken; the dark theme remaps
+   this token to its own muted divider value). Apply to the last
+   child of a tree group to visually close the subtree before the
+   next group begins. Generic class — reusable on any list. */
+.divider-dashed {
+  border-bottom: 2px dashed var(--surface-sunken);
 }
 
 /* ============================================================

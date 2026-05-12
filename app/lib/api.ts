@@ -59,6 +59,23 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+// PLA-0043 — When a GET targets an artefact-list route (work-items or
+// portfolio-items) and the browser URL carries ?scope=<uuid>, forward
+// it onto the API call so the backend can clamp reads to that
+// topology subtree. Non-GET requests and non-artefact paths are
+// untouched. If the caller already specified ?scope= in the path we
+// don't double up. SSR (no window) is a no-op.
+function withForwardedScope(path: string, method: string): string {
+  if (method !== "GET") return path;
+  if (typeof window === "undefined") return path;
+  if (!/(^|\/)(work-items|portfolio-items)(\?|\/|$)/.test(path)) return path;
+  const scope = new URLSearchParams(window.location.search).get("scope");
+  if (!scope) return path;
+  if (path.includes("scope=")) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return path + sep + "scope=" + encodeURIComponent(scope);
+}
+
 async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> {
   const headers = new Headers(opts.headers);
   if (!headers.has("Content-Type") && opts.body && typeof opts.body === "string") {
@@ -73,7 +90,9 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
-  const res = await fetch(base + path, {
+  const finalPath = withForwardedScope(path, method);
+
+  const res = await fetch(base + finalPath, {
     ...opts,
     headers,
     credentials: "include",
@@ -94,6 +113,7 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
     }
     await _refreshPromise;
     if (_accessToken) {
+      // pass the original path; finalPath is re-derived inside the retry.
       return _fetch<T>(base, path, { ...opts, _retried: true });
     }
   }

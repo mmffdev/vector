@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AppViewport from "@/app/components/AppViewport";
 import PageWrapper from "@/app/components/PageWrapper";
 import AppSidebar_2 from "@/app/components/AppSidebar_2";
+import ScopeRail from "@/app/components/ScopeRail";
 import AppFooter from "@/app/components/AppFooter";
 import PageHeaderBar from "@/app/components/PageHeaderBar";
 import PageTitleRow from "@/app/components/PageTitleRow";
@@ -45,6 +46,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         <ScopeProvider>
         <DomRegistryProvider>
           <div className="app-root">
+            <ScopeRail />
             <ViewportSlot kind="side_bar"><AppSidebar_2 /></ViewportSlot>
             <div className="app-main-column">
               <ViewportSlot kind="header">

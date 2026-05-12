@@ -12,6 +12,16 @@ import (
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
+// TopologyScopeResolver answers "may this user read scope X" and "what
+// nodes are in scope X's subtree." Implemented by orgdesign.Service —
+// declared here as an interface so artefactitemsv2 does not import
+// orgdesign (which would create a cycle once orgdesign starts reading
+// artefacts). Wired by main.go after both services exist.
+type TopologyScopeResolver interface {
+	CanReadScope(ctx context.Context, subscriptionID, userID, targetNodeID uuid.UUID, actorRole string) (bool, error)
+	DescendantNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error)
+}
+
 // Service owns all DB operations for the v2 artefacts domain.
 // vectorArtefactsPool reads from vector_artefacts; mainPool reads from
 // mmff_vector (owner decoration cross-DB lookup). Either may be nil.
@@ -26,6 +36,7 @@ type Service struct {
 	mainPool            *pgxpool.Pool
 	notifier            *webhooks.Notifier
 	scope               string
+	topology            TopologyScopeResolver
 }
 
 // NewService creates a Service backed by the given pools, scoped to the
@@ -43,6 +54,12 @@ func (s *Service) Scope() string { return s.scope }
 
 // WithNotifier attaches a webhook notifier. Safe to call with nil.
 func (s *Service) WithNotifier(n *webhooks.Notifier) { s.notifier = n }
+
+// WithTopologyResolver wires the PLA-0043 scope clamp dependency. When
+// nil (or unset) every Filters.ScopeNodeID is rejected as
+// ErrInvalidInput — callers cannot bypass scope by simply omitting the
+// resolver. Pass a *orgdesign.Service.
+func (s *Service) WithTopologyResolver(t TopologyScopeResolver) { s.topology = t }
 
 // rollupCTE is the WITH RECURSIVE expression retargeted to
 // vector_artefacts.artefacts. Structure is identical to v1's
@@ -98,6 +115,50 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	args := []any{subscriptionID, s.scope}
 	n := 3
 	var extra []string
+
+	// PLA-0043 — Topology scope clamp on artefact reads. When the caller
+	// passed ?scope=<id> we resolve the user's reachable subtree and
+	// limit artefacts to that set. NULL topology_node_id rows are
+	// excluded when scope is active (un-assigned items are visible only
+	// in unscoped reads).
+	if filters.ScopeNodeID != nil {
+		if s.topology == nil {
+			return nil, 0, ErrInvalidInput
+		}
+		if filters.ActorUserID == nil || filters.ActorRole == "" {
+			return nil, 0, ErrInvalidInput
+		}
+		scopeNodeID, parseErr := uuid.Parse(*filters.ScopeNodeID)
+		if parseErr != nil {
+			return nil, 0, ErrInvalidInput
+		}
+		actorUserID, parseErr := uuid.Parse(*filters.ActorUserID)
+		if parseErr != nil {
+			return nil, 0, ErrInvalidInput
+		}
+		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, filters.ActorRole)
+		if permErr != nil {
+			if errors.Is(permErr, ErrNotFound) {
+				return nil, 0, ErrScopeNodeNotFound
+			}
+			// orgdesign returns its own ErrNodeNotFound; translate via string match
+			// to avoid importing orgdesign here (cycle risk).
+			if strings.Contains(permErr.Error(), "node not found") {
+				return nil, 0, ErrScopeNodeNotFound
+			}
+			return nil, 0, permErr
+		}
+		if !ok {
+			return nil, 0, ErrScopeForbidden
+		}
+		ids, descErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
+		if descErr != nil {
+			return nil, 0, descErr
+		}
+		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
+		args = append(args, ids)
+		n++
+	}
 
 	if filters.ParentID != nil {
 		extra = append(extra, fmt.Sprintf("a.parent_artefact_id = $%d::uuid", n))

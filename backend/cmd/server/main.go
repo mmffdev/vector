@@ -278,6 +278,12 @@ func main() {
 	var workItemsV2H *artefactitemsv2.Handler
 	var portfolioItemsV2H *artefactitemsv2.Handler
 	var webhookSvc *webhooks.Service
+	// v2ScopeAttach is captured inside the vaPool branch below so the
+	// PLA-0043 scope clamp can be wired onto both v2 services once
+	// orgDesignSvc is constructed further down. Nil when v2 is stubbed
+	// (no vaPool) — scope reads then fall through to ErrInvalidInput
+	// inside the service.
+	var v2ScopeAttach func(artefactitemsv2.TopologyScopeResolver)
 	makeStubHandlers := func() {
 		workItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "work"))
 		portfolioItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "strategy"))
@@ -317,6 +323,13 @@ func main() {
 				piSvc := artefactitemsv2.NewService(vaPool, pool, "strategy")
 				piSvc.WithNotifier(notifier)
 				portfolioItemsV2H = artefactitemsv2.NewHandler(piSvc)
+				// PLA-0043 — defer wiring orgDesignSvc until after it is
+				// constructed below; assign back through closures so the
+				// scope clamp is available on both v2 services.
+				v2ScopeAttach = func(t artefactitemsv2.TopologyScopeResolver) {
+					wiSvc.WithTopologyResolver(t)
+					piSvc.WithTopologyResolver(t)
+				}
 				// PLA-0026 / story 00502 (B13): attach the VA pool to the
 				// workspaces service so DELETE /api/workspaces/{id} can
 				// scan vector_artefacts for orphan rows BEFORE deletion.
@@ -346,6 +359,15 @@ func main() {
 	// "topology-handoff" event (story 00283).
 	orgDesignSvc = orgdesign.New(pool, vaPool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
 	orgDesignH = orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
+
+	// PLA-0043 — attach the topology resolver to the v2 work/portfolio
+	// services so ?scope=<id> on /work-items can resolve to "this node
+	// + every descendant" and emit 403 when the caller has no grant.
+	// v2ScopeAttach is nil when vaPool is unset (stub handlers) — scope
+	// reads then fall through to ErrInvalidInput inside the service.
+	if v2ScopeAttach != nil {
+		v2ScopeAttach(orgDesignSvc)
+	}
 
 	// Portfolio adopt handler — wired AFTER vaPool so PLA-0026 dual-
 	// writes target vector_artefacts when the pool is available.

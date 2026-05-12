@@ -79,9 +79,40 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("dir"); v != "" {
 		f.Dir = v
 	}
+	// PLA-0043 — ?scope=<uuid> clamps reads to the artefacts owned by
+	// this topology node and every live descendant. Invalid UUID is 400
+	// before reaching the service; permission/existence is checked
+	// inside the service and surfaced as 403/404.
+	if v := q.Get("scope"); v != "" {
+		if _, perr := uuid.Parse(v); perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid scope"}`))
+			return
+		}
+		f.ScopeNodeID = &v
+		actor := auth.UserFromCtx(r.Context())
+		userIDStr := actor.ID.String()
+		f.ActorUserID = &userIDStr
+		f.ActorRole = string(actor.Role)
+	}
 
 	items, total, err := h.svc.ListWorkItems(r.Context(), subID, f)
 	if err != nil {
+		if errors.Is(err, ErrScopeForbidden) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"scope_read_denied"}`))
+			return
+		}
+		if errors.Is(err, ErrScopeNodeNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"scope node not found"}`))
+			return
+		}
+		if errors.Is(err, ErrInvalidInput) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(jsonErrBody(err))
+			return
+		}
 		log.Printf("artefactitemsv2.List: subID=%s err=%v", subID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
