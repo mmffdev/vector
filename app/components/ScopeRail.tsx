@@ -19,6 +19,7 @@ import { BsMap } from "react-icons/bs";
 import { MdOutlineArrowForwardIos } from "react-icons/md";
 import { useScope } from "@/app/contexts/ScopeContext";
 import type { MyGrant } from "@/app/lib/topologyApi";
+import { byPosition, walkTopology } from "@/app/lib/shared/topology/walker";
 
 // Per-depth width of the SVG spine column. Matches ResourceTree's
 // DEFAULT_STEP so the rail's elbow vocabulary aligns with the canvas
@@ -34,6 +35,9 @@ const ROW_H = 28;
 // where the chevron's centre lands one column to its right.
 const CARET_OFFSET = 8;
 
+// PLA-0044: row payload used by ScopeRow + Spine. Keeps the original
+// shape so the renderer code below is unchanged; the walker output is
+// translated into this shape in flattenGrants.
 interface TreeRow {
   grant: MyGrant;
   label: string;
@@ -49,54 +53,42 @@ function labelOf(g: MyGrant): string {
   return g.label_override?.trim() || g.name;
 }
 
-type GrantWithLabel = MyGrant & { __label: string };
+// Wraps a MyGrant in the {id, parent_id} contract the shared walker
+// expects (MyGrant's identity field is `node_id`, not `id`). `__label`
+// is consumed by byLabel — kept for future label sort if we change
+// scope ordering away from canvas-position. position is forwarded from
+// MyGrant.position (PLA-0044 / story 00538) so byPosition works.
+type GrantNode = {
+  id: string;
+  parent_id: string | null;
+  __label: string;
+  position: number;
+  grant: MyGrant;
+};
 
-function buildChildrenOf(grants: MyGrant[]): Map<string | null, GrantWithLabel[]> {
-  const byId = new Set<string>();
-  for (const g of grants) byId.add(g.node_id);
-
-  const childrenOf = new Map<string | null, GrantWithLabel[]>();
-  for (const g of grants) {
-    const parentKey = g.parent_id && byId.has(g.parent_id) ? g.parent_id : null;
-    const bucket = childrenOf.get(parentKey) ?? [];
-    bucket.push({ ...g, __label: labelOf(g) });
-    childrenOf.set(parentKey, bucket);
-  }
-  for (const bucket of childrenOf.values()) {
-    bucket.sort((a, b) => a.__label.localeCompare(b.__label));
-  }
-  return childrenOf;
-}
-
-function flattenTree(
-  childrenOf: Map<string | null, GrantWithLabel[]>,
-  collapsed: Set<string>,
-): TreeRow[] {
-  const rows: TreeRow[] = [];
-  const walk = (
-    parentId: string | null,
-    depth: number,
-    pathMoreChildren: boolean[],
-  ) => {
-    const kids = childrenOf.get(parentId) ?? [];
-    kids.forEach((g, idx) => {
-      const hasChildren = (childrenOf.get(g.node_id) ?? []).length > 0;
-      const isLast = idx === kids.length - 1;
-      rows.push({
-        grant: g,
-        label: g.__label,
-        depth,
-        isLast,
-        hasChildren,
-        ancestorMoreChildren: pathMoreChildren,
-      });
-      if (hasChildren && !collapsed.has(g.node_id)) {
-        walk(g.node_id, depth + 1, [...pathMoreChildren, !isLast]);
-      }
-    });
-  };
-  walk(null, 0, []);
-  return rows;
+function flattenGrants(grants: MyGrant[], collapsed: Set<string>): TreeRow[] {
+  const wrapped: GrantNode[] = grants.map((g) => ({
+    id: g.node_id,
+    parent_id: g.parent_id,
+    __label: labelOf(g),
+    position: g.position,
+    grant: g,
+  }));
+  // PLA-0044: walkTopology drops orphans (was the phantom-D bug —
+  // unreachable grants used to re-root under null). byPosition matches
+  // canvas sibling order from topology_nodes.sort_order.
+  const { rows } = walkTopology(wrapped, {
+    collapsed,
+    sort: byPosition,
+  });
+  return rows.map((r) => ({
+    grant: r.node.grant,
+    label: r.node.__label,
+    depth: r.depth,
+    isLast: r.isLast,
+    hasChildren: r.hasChildren,
+    ancestorMoreChildren: r.ancestorMoreChildren,
+  }));
 }
 
 export default function ScopeRail() {
@@ -116,8 +108,7 @@ export default function ScopeRail() {
     });
   }, []);
 
-  const childrenOf = useMemo(() => buildChildrenOf(grants), [grants]);
-  const tree = useMemo(() => flattenTree(childrenOf, collapsed), [childrenOf, collapsed]);
+  const tree = useMemo(() => flattenGrants(grants, collapsed), [grants, collapsed]);
 
   return (
     <>
