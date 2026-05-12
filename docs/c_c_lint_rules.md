@@ -18,6 +18,8 @@ All lints share the same shape:
 | `lint:secondary-nav` | `dev/scripts/lint_secondary_nav.py` | `secondary_nav_exempt.json` | every `<SecondaryNavigation reorderable …>` carries a `pageId="…"` so per-user tab order can persist (PLA-0014 / 00420) |
 | `lint:portfolio-library-read` | `dev/scripts/lint_portfolio_library_read.py` | `lint_portfolio_library_read_exemptions.json` | tenant-side code MUST NOT read `/api/library/`, `/api/portfolio-templates/`, or `mmff_library` outside the adoption saga + library admin surface — post-cutover invariant: tenant runtime reads `vector_artefacts` only, library is consulted once at adoption (PLA-0026 / 00512) |
 | `lint:scope-literals` | `dev/scripts/lint_scope_literals.py` | `scope_literals_exempt.json` | inside `backend/internal/artefactitemsv2/`, `'work'` / `'strategy'` MUST NOT appear as SQL literals — bind via `$N` + `s.scope` (PLA-0037 / B21) |
+| `lint:page-description` | `dev/scripts/lint_page_description.py` | `page_description_exempt.json` | every `page.tsx` under `app/(user)/` must render `<PageDescription>` so the helper-icon Panel + 30px bottom gap land consistently |
+| `lint:h2-panel-only` | `dev/scripts/lint_h2_panel_only.py` | `h2_panel_only_exempt.json` | raw `<h2>` in `app/(user)/**/*.tsx` is forbidden — section titles must go through `<Panel title="…">` (which renders `<h2 class="panel__title">`) |
 | `api:check` | `dev/scripts/check_routes.sh` + `dev/scripts/check_callers.py` | `dev/registries/dead-api-exemptions.txt` | Go chi router routes must be documented in `openapi.yaml`; frontend `api(...)` callers must reference a spec path; `apiInfra` and `apiV2` tracked but not hard-failed (PLA-0029) |
 
 ---
@@ -106,6 +108,47 @@ The detector skips the component implementation file itself (`app/components/Sec
 1. Pick a stable string `pageId` (lowercase + dashes; mirrors the route segment — e.g. `"workspace-settings"`, `"theme"`, `"work-items"`).
 2. Pass `pageId={…}` and `reorderable` together — never one without the other.
 3. Run `npm run lint:secondary-nav` — must exit 0.
+
+---
+
+## `lint:page-description` — detail
+
+Walks every `page.tsx` under `app/(user)/**` and requires the text `<PageDescription` to appear somewhere in the file. The primitive lives at `app/components/PageDescription.tsx` and wraps a `<Panel name="page_description" title={…}>` so the help-icon contract from `feedback_helper_icon.md` is wired automatically; the wrapper carries a `.page-description` class for the standardised 30px bottom margin. Title defaults to the deepest active secondary-nav tab label, published via `ActiveNavContext` from `app/components/SecondaryNavigation.tsx`.
+
+**Adoption playbook** when adding (or pulling out of exemption) a page:
+
+1. Add `import PageDescription from "@/app/components/PageDescription";` to the page.
+2. Render `<PageDescription>` once at the top of the page's return tree. Pass `title="…"` only when you want to override the active-nav default.
+3. Remove the path from `dev/registries/page_description_exempt.json`.
+4. Run `npm run lint:page-description` — must exit 0.
+
+The exemption registry is seeded with the 51 pre-existing pages that lacked the primitive on 2026-05-12; each is a pay-down debt entry, not a permanent exemption.
+
+---
+
+## `lint:h2-panel-only` — detail
+
+The `<Panel>` primitive already renders its title as `<h2 class="panel__title">`. So any `<h2>` JSX in a user-facing file is a missed opportunity to route the section through `<Panel>` — meaning no help-icon, no addressable registration, and inconsistent heading semantics. The lint scans every `*.tsx` under `app/(user)/**` and fails on any line containing `<h2`. The Panel component itself (`app/components/Panel.tsx`) is the canonical emitter and is hard-skipped.
+
+Anchor-target section headings (e.g. `<h2 id="section-work">Work Types</h2>` used by `PageAnchorNav` scroll targets) migrate to the pattern:
+
+```tsx
+<section id="section-work">
+  <Panel name="work_types" title="Work Types">
+    {/* … */}
+  </Panel>
+</section>
+```
+
+The wrapping `<section id="…">` preserves the scroll anchor; the `<Panel>` carries the heading, helper-icon, and addressable address. `<Panel>` does not yet expose an `id` prop, so this pattern remains the canonical wrapper.
+
+**Adoption playbook** when introducing a new section heading:
+
+1. Decide: is this a page section title (→ `<Panel title="…">`) or a sub-label inside an existing panel (→ keep `<h3 className="eyebrow">`)?
+2. If it needs a scroll anchor, wrap the `<Panel>` in `<section id="…">`.
+3. Run `npm run lint:h2-panel-only` — must exit 0.
+
+The exemption registry seeded on 2026-05-12 carries 5 paths: two modal/wizard overlays, the `_shared` settings modal, the theme showcase (bespoke `theme-panel` family), and the webhooks page (queued for `PageDescription` migration).
 
 ---
 
