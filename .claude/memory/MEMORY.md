@@ -43,6 +43,7 @@
 - [Table names use domain prefix for transparency](feedback_table_naming_prefixes.md) — New tables MUST carry their substrate prefix (e.g. `artefact_*`); generic names like `field_library` or `workspace_fields` are rejected.
 - [Sanitise legacy DB gradually, drop as unused](feedback_gradual_db_sanitisation.md) — Never big-bang DB cutovers; drop legacy tables/columns one at a time as their last reader is migrated.
 - [Bracket-tag commits with scope ref](feedback_scope_commit_bracket_ref.md) — Always include `[B19.1.4]` in commit subject; otherwise scope-commit-note hook can't match → Unmatched (no growthbar tick).
+- [Helper icon — always wire through `<Panel>`](feedback_helper_icon.md) — Never render inline TbHelpHexagon + popover; wrap host block in `<Panel name="..." title="...">` so help ties into Page Help admin via the addressable substrate.
 
 ### Rules
 

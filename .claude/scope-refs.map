@@ -113,3 +113,28 @@ FLOW1.4.1	artefacts po_ready flag visual aid sort badge DoR future
 FLOW1.5.1	flow_defaults flow_state_defaults flow_transition_defaults snapshot tables seed
 FLOW1.5.2	loadResetData PreviewReset ApplyReset pickSuccessor walk-back rebind reset_service reset_handler
 FLOW1.5.3	TypeSection Reset button preview banner artefact-rebind impact confirmation
+FE-GOV-0003	flow-state description exit rules governance checklist self-attest
+FE-GOV-0003.1	migration flow_states description column flow_state_exit_rules table 045 schema
+FE-GOV-0003.2	flows package types service handler dto exit rule patch description route
+FE-GOV-0003.3	lint writer boundary flow_state_exit_rules registry register
+FE-GOV-0003.4	flow states page icon column expander description exit rule editor dnd colour
+FE-GOV-0003.5	work items page read only description exit rules count column glyph mirror
+FE-GOV-0003.6	flow-editor expander css globals row span sunken background style
+FE-GOV-0003.7	verification go build typecheck lint migrate browser test exit rule crud
+FE-GOV-0004	orbit view transition editor matrix replacement artefact move enforcement journey kanban transition-rules new page secondary-nav
+FE-GOV-0004.0	transition-rules new page workspace-settings route layout SecondaryNavigation tab L3 page.tsx flowStatesApi.list permission gate help move customisation
+FE-GOV-0004.0.1	transition-rules workspace-settings page.tsx route flowStatesApi PageAnchorNav OrbitView per flow useTenantName useHasPermission help paragraph
+FE-GOV-0004.0.2	customisation layout.tsx remove flow_states work_items TABS KEY_TO_SEG SEG_TO_KEY items canManageFlows tenant-details artefact-types topology
+FE-GOV-0004.0.3	workspace-settings layout.tsx add flow_states transition_rules work_items TABS KEY_TO_SEG SEG_TO_KEY items custom_fields portfolio_model useHasPermission flows.manage
+FE-GOV-0004.0.4	move route folders mv flow-states work-items customisation workspace-settings router.push apiSite index.ts docstring
+FE-GOV-0004.0.5	remove TransitionMatrix flow-states page lines 1159 1246 fs-transition-matrix css globals pointer link transition-rules
+FE-GOV-0004.1	StateRail OrbitCanvas OrbitView rules.ts component flow-rules svg orbit positioning marker arrow node radius accent-soft
+FE-GOV-0004.2	accessibility aria-pressed aria-label keyboard tab space enter arrow keys clockwise focus ring
+FE-GOV-0004.3	empty zero rules orbit footer rule count scale radius self-transition edge cases
+FE-GOV-0004.4	replace TransitionMatrix swap call-site flow-states page fs-orbit globals css drop matrix
+FE-GOV-0004.5	artefactitemsv2 service PatchWorkItem flow_transitions enforcement empty-flow exemption no-op move ErrInvalidInput transition not permitted
+FE-GOV-0004.6	portfolioitemsv2 audit bulk-move kanban-move v1 routes writer enforcement gap parallel
+FE-GOV-0004.7	go-test PatchWorkItem allowed blocked no-op empty-flow subscription isolation portfolio parity
+FE-GOV-0004.8	notify apiError toast transition not permitted handler friendly copy
+FE-GOV-0004.9	verification go build typecheck lint browser orbit canvas rail keyboard portfolio parity
+FE-GOV-0004.10	open decisions empty-flow default portfolio enforcement matrix coexist prototype reuse
