@@ -2,6 +2,10 @@
 
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useAuth } from "@/app/contexts/AuthContext";
+import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 type Status = "exposed" | "new-token" | "future";
 
@@ -398,6 +402,7 @@ function MakerPanel({
 
 export default function ThemePage() {
   const { user } = useAuth();
+  const { full } = usePageTitle();
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
 
@@ -416,7 +421,14 @@ export default function ThemePage() {
   );
 
   return (
-    <>
+    <PageContent>
+      <PageHeading level={1} title={full} subtitle="Legacy token reference for the classic Vector theme." />
+      <Panel
+        name="panel_theme_classic_header"
+        className="page-panel-heading"
+        title="Theme Classic"
+        description="Reference documentation for the legacy Vector theme tokens, their current values, and migration status."
+      />
       <MakerPanel seed={seed} setSeed={setSeed} mode={mode} setMode={setMode} />
 
       <div className="theme-panels">
@@ -478,6 +490,6 @@ export default function ThemePage() {
           </div>
         </div>
       ))}
-    </>
+    </PageContent>
   );
 }

@@ -31,7 +31,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
@@ -141,6 +143,7 @@ type StateView =
   | { kind: "preview"; bundle: BundleDTO; workspaceId: string };
 
 export default function PortfolioModelPage() {
+  const { full } = usePageTitle();
   const { user, loading: authLoading } = useAuth();
   const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
@@ -288,6 +291,13 @@ export default function PortfolioModelPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Review and configure the portfolio layer model." />
+      <Panel
+        name="panel_portfolio_model_header"
+        className="page-panel-heading"
+        title="Portfolio Model"
+        description="View and manage the portfolio layer model that structures items in this workspace."
+      />
     <StrictRoute>
       <PortfolioRouterBody
         view={view}

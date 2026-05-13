@@ -8,6 +8,9 @@ import Table from "@/app/components/Table";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
 import { useTheme } from "@/app/hooks/useTheme";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 // PLA-0011/00393 — replaces inline style attributes on theme swatches.
 // Sets the dynamic colour via ref.style.setProperty rather than inline style.
@@ -1296,6 +1299,7 @@ export default function ThemePage() {
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
   const [topTab, setTopTab] = useTabState(["themes", "maker"] as const, "themes");
+  const { full } = usePageTitle();
 
   const shades = useMemo(() => shadesFromSeed(seed), [seed]);
   const seedName = useMemo(() => {
@@ -1313,6 +1317,13 @@ export default function ThemePage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure and manage workspace theme packs and colour tokens." />
+      <Panel
+        name="panel_theme_header"
+        className="page-panel-heading"
+        title="Theme"
+        description="Create and manage theme packs that control the visual appearance and colour tokens of the workspace."
+      />
       <SecondaryNavigation<"themes" | "maker">
         ariaLabel="Theme sections"
         pageId="theme"

@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { apiSite as api } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 interface EntityRow {
   kind: "portfolio" | "product";
@@ -18,6 +21,7 @@ interface EntitiesResp {
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
+  const { full } = usePageTitle();
   const id = params?.id ?? "";
   const [name, setName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +49,13 @@ export default function ProductDetailPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="View and manage this portfolio entity." />
+      <Panel
+        name="panel_product_detail_header"
+        className="page-panel-heading"
+        title="Product"
+        description="View and manage the details, relationships, and configuration for this portfolio entity."
+      />
       {loading && (
         <div className="placeholder">
           <h3 className="placeholder__title">Loading</h3>

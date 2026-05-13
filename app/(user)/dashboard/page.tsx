@@ -1,7 +1,9 @@
 "use client";
 
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import ChartWidget from "@/app/components/ChartWidget";
@@ -32,8 +34,16 @@ const TILES: Array<{ label: string; value: string; hint?: string }> = [
 ];
 
 export default function Dashboard() {
+  const { full } = usePageTitle();
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Overview of portfolio health, activity, and key metrics." />
+      <Panel
+        name="panel_dashboard_header"
+        className="page-panel-heading"
+        title="Dashboard"
+        description="Monitor portfolio health, track activity, and review key performance metrics across the workspace."
+      />
       <StrictRoute>
         <Panel name="overview" title="Overview">
           <div className="dashboard-grid">

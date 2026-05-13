@@ -3,7 +3,10 @@
 import { useState } from "react";
 import CustomFieldManager from "@/app/components/CustomFieldManager";
 import PageContent from "@/app/components/PageContent";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
+import PageHeading from "@/app/components/PageHeading";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 // Prefixes come from artefact_types.prefix on the wire (WorkItem.type_prefix);
 // mirrored here as a static label list for the per-type tab bar on this page.
@@ -37,11 +40,19 @@ const CORE_FIELDS: CoreField[] = [
 ];
 
 export default function CustomFieldsWorkItemsPage() {
+  const { full } = usePageTitle();
   const [selected, setSelected] = useState<ItemTypeKey>("story");
   const active = ITEM_TYPES.find((t) => t.key === selected) ?? ITEM_TYPES[1];
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure work item type definitions and workflow settings." />
+      <Panel
+        name="panel_custom_fields_work_items_header"
+        className="page-panel-heading"
+        title="Work Item Fields"
+        description="Configure custom fields that appear on all work items in this workspace."
+      />
     <div className="settings-panel settings-panel--wide">
       {/* ── Type selector ───────────────────────────────────────── */}
       <div className="settings-panel__header">

@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
+import PageHeading from "@/app/components/PageHeading";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
@@ -29,6 +32,7 @@ interface FlowsResponse {
 }
 
 export default function WorkItemsPage() {
+  const { full } = usePageTitle();
   const [data,    setData]    = useState<FlowsResponse | null>(null);
   const [error,   setError]   = useState(false);
   const [loading, setLoading] = useState(true);
@@ -71,6 +75,13 @@ export default function WorkItemsPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure work item types and their workflow settings." />
+      <Panel
+        name="panel_work_items_settings_header"
+        className="page-panel-heading"
+        title="Work Items"
+        description="Manage work item type definitions, default fields, and workflow configuration."
+      />
     <div>
       <div className="toolbar">
         <div className="toolbar__meta">

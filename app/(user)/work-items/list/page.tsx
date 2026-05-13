@@ -3,6 +3,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import PageContent from "@/app/components/PageContent";
 import Panel from "@/app/components/Panel";
+import PageHeading from "@/app/components/PageHeading";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiSite } from "@/app/lib/api";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
@@ -15,6 +17,7 @@ import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/wor
 import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_workitems.json";
 
 export default function WorkItemsListPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
@@ -89,6 +92,13 @@ export default function WorkItemsListPage() {
   return (
     <PageContent>
     <>
+      <PageHeading level={1} title={full} subtitle="Browse and manage work items across the workspace." />
+      <Panel
+        name="panel_work_items_header"
+        className="page-panel-heading"
+        title="Work Items"
+        description="View, filter, sort, and manage all work items tracked in this workspace."
+      />
       <PageSummaryHeader cells={summaryCells} />
 
       <Panel name="work_items_grid_tree_ll" title="Work items">

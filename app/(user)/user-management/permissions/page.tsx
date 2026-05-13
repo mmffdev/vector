@@ -3,8 +3,11 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 type AdminUserRole = string;
 
@@ -28,6 +31,7 @@ const DEFAULT_GRID: Record<AdminUserRole, Record<string, boolean>> = {
 };
 
 export default function PermissionsPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const canAccess = useHasPermission("workspace.archive");
   const router = useRouter();
@@ -53,6 +57,13 @@ export default function PermissionsPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Review role capabilities and permission assignments." />
+      <Panel
+        name="panel_permissions_header"
+        className="page-panel-heading"
+        title="Permissions"
+        description="View and understand the capabilities assigned to each role within the workspace."
+      />
     <Table<{ key: string; label: string }>
       pageId="workspace-settings"
       slot="permissions"

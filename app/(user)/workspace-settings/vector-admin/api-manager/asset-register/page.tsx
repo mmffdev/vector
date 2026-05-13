@@ -1,13 +1,13 @@
 "use client";
 
 import PageContent from "@/app/components/PageContent";
-import Panel from "@/app/components/Panel";
-import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function AssetRegisterPage() {
   const { full } = usePageTitle();
+
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Registry of API assets and endpoint definitions." />
@@ -17,7 +17,6 @@ export default function AssetRegisterPage() {
         title="Asset Register"
         description="Browse and manage the register of API assets and endpoint definitions for this workspace."
       />
-      <PageDescription title="Asset Register" />
 
       <section id="panel">
         <Panel name="asset_register_panel" title="Panel">

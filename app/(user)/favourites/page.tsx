@@ -6,6 +6,9 @@
 // .placeholder.
 
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: string }> = [
   { kind: "Portfolio", name: "MMFF Standard", href: "/portfolio-model" },
@@ -14,9 +17,17 @@ const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: 
 ];
 
 export default function Favourites() {
+  const { full } = usePageTitle();
   const empty = PINS.length === 0;
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Quick access to your pinned items and saved views." />
+      <Panel
+        name="panel_favourites_header"
+        className="page-panel-heading"
+        title="Favourites"
+        description="Access your pinned items, saved views, and frequently visited pages."
+      />
       {empty ? (
         <div className="placeholder">
           <h3 className="placeholder__title">Nothing pinned yet</h3>

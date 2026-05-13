@@ -23,9 +23,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { NavIcon } from "@/app/components/NavIcon";
+import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { BsPinAngle } from "react-icons/bs";
 import ProfileBar, { MAX_PROFILES } from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
@@ -42,6 +43,7 @@ import { createCustomPage, patchCustomPage, deleteCustomPage } from "@/app/lib/c
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useDraft } from "@/app/hooks/useDraft";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const MAX_PINNED = 50;
 const MAX_CUSTOM_GROUPS = 10;
@@ -1031,6 +1033,7 @@ function PoolItem({
 }
 
 export default function NavPreferencesPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const {
     prefs, customGroups, save, catalogue, refetch, patchCatalogueEntry,
@@ -1891,6 +1894,13 @@ export default function NavPreferencesPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Personalise your navigation layout and section order." />
+      <Panel
+        name="panel_navigation_preferences_header"
+        className="page-panel-heading"
+        title="Navigation"
+        description="Customise the navigation rail order, visibility, and default section preferences for your account."
+      />
       <StrictRoute>
       <div className="nav-prefs__quick-bar">
         <Panel

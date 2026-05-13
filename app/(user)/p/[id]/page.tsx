@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
   type CustomPage,
   type CustomView,
@@ -28,6 +31,7 @@ function ViewBody({ view }: { view: CustomView }) {
 
 export default function CustomContainerPage() {
   const { user } = useAuth();
+  const { full } = usePageTitle();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -116,6 +120,13 @@ export default function CustomContainerPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Custom page view." />
+      <Panel
+        name="panel_custom_page_header"
+        className="page-panel-heading"
+        title="Custom Page"
+        description="Renders a custom page or view configured for this workspace."
+      />
       <div className="custom-page">
         <div className="custom-page__heading-row">
           {editing ? (

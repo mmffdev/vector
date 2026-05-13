@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "../_shared";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
 
@@ -309,6 +312,7 @@ function ResetLinkModal({ email, url, onClose }: { email: string; url: string; o
 }
 
 export default function UsersPage() {
+  const { full } = usePageTitle();
   const [users,        setUsers]        = useState<AdminUser[] | null>(null);
   const [visibleRoles, setVisibleRoles] = useState<RoleSummary[] | null>(null);
   const [err,          setErr]          = useState<string | null>(null);
@@ -408,6 +412,13 @@ export default function UsersPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Manage workspace users, roles, and access settings." />
+      <Panel
+        name="panel_user_management_header"
+        className="page-panel-heading"
+        title="User Management"
+        description="Create and manage user accounts, assign roles, and control workspace access."
+      />
     <div>
       {err && <div className="form__error">{err}</div>}
 

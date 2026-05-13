@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MdOutlineEdit } from "react-icons/md";
 import PageContent from "@/app/components/PageContent";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
+import PageHeading from "@/app/components/PageHeading";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
@@ -314,6 +317,7 @@ function CreateWorkspaceModal({
 }
 
 export default function WorkspacesPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const canAccess = useHasPermission("workspace.archive");
   const router = useRouter();
@@ -380,6 +384,13 @@ export default function WorkspacesPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Create and manage workspaces within this tenant." />
+      <Panel
+        name="panel_workspaces_header"
+        className="page-panel-heading"
+        title="Workspaces"
+        description="Create new workspaces, rename existing ones, and manage archived workspaces."
+      />
     <div>
       <div className="toolbar">
         <div className="toolbar__meta">

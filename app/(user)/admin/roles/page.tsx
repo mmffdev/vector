@@ -15,10 +15,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite as api } from "@/app/lib/api";
 
 interface Role {
@@ -44,6 +45,7 @@ interface Permission {
 }
 
 export default function AdminRolesPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const router = useRouter();
   const canList = useHasPermission("roles.list");
@@ -268,23 +270,30 @@ export default function AdminRolesPage() {
   return (
     <PageContent>
     <StrictRoute>
-      <PageShell
+      <PageHeading
+        level={1}
+        title={full}
+        subtitle="Manage system and tenant-custom roles and their permissions."
+      />
+      <Panel
+        name="panel_roles_header"
+        className="page-panel-heading"
         title="Roles"
-        subtitle="Manage system and tenant-custom roles, and the permissions assigned to them"
-        actions={
-          canCreate ? (
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => setCreating((v) => !v)}
-              disabled={busy}
-            >
-              {creating ? "Cancel new role" : "+ New role"}
-            </button>
-          ) : null
-        }
-      >
-        {err && (
+        description="Create and manage roles, assign permissions, and control access across the workspace."
+      />
+      {canCreate && (
+        <div className="page-actions">
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => setCreating((v) => !v)}
+            disabled={busy}
+          >
+            {creating ? "Cancel new role" : "+ New role"}
+          </button>
+        </div>
+      )}
+      {err && (
           <Panel name="admin_roles_error" title="Error">
             <p className="form__hint">{err}</p>
           </Panel>
@@ -494,7 +503,6 @@ export default function AdminRolesPage() {
             )}
           </Panel>
         </div>
-      </PageShell>
     </StrictRoute>
     </PageContent>
   );

@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import InlineEditField from "@/app/components/InlineEditField";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { notify } from "@/app/lib/toast";
 import { ApiError } from "@/app/lib/api";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
   artefactTypesApi,
   type ArtefactType,
@@ -232,6 +234,7 @@ function TypeRow({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function CustomisationPage() {
+  const { full } = usePageTitle();
   const [types, setTypes] = useState<ArtefactType[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -279,6 +282,13 @@ export default function CustomisationPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Manage artefact type definitions for the workspace." />
+      <Panel
+        name="panel_artefact_types_header"
+        className="page-panel-heading"
+        title="Artefact Types"
+        description="Create and manage the artefact type definitions used to categorise items across the workspace."
+      />
     <div className="settings-panel settings-panel--wide">
       <PageDescription>
         Click any cell to edit inline. Colour changes apply immediately. Prefix

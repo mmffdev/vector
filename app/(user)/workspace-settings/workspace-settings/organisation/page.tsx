@@ -21,12 +21,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { useTenant } from "@/app/contexts/TenantContext";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
   tenantSettingsApi,
   type DayCode,
@@ -302,6 +305,7 @@ export default function OrganisationPage() {
   const canAccess = useHasPermission("workspace.archive");
   const { setSettings: setTenantCtx } = useTenant();
   const router = useRouter();
+  const { full } = usePageTitle();
 
   useEffect(() => {
     if (user && !canAccess) router.replace("/workspace-settings");
@@ -421,6 +425,13 @@ export default function OrganisationPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure organisation structure and tenant master record settings." />
+      <Panel
+        name="panel_organisation_header"
+        className="page-panel-heading"
+        title="Organisation"
+        description="Manage the tenant organisation record, including name, address, and structural configuration."
+      />
     <div className="settings-panel">
 
       {/* ── Color Code Work Items (placeholder) ──────────────── */}

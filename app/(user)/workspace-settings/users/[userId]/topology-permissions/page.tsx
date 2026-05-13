@@ -19,14 +19,17 @@ import { useParams } from "next/navigation";
 
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import UserNodeAssignment from "@/app/components/topology/UserNodeAssignment";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import type { AdminUser } from "../../../_shared";
 
 export default function TopologyPermissionsPage() {
+  const { full } = usePageTitle();
   const params = useParams<{ userId: string }>();
   const userId = params?.userId ?? "";
   const canManageGrants = useHasPermission("topology.grants.manage_others");
@@ -170,6 +173,13 @@ export default function TopologyPermissionsPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Manage topology access grants for this user." />
+      <Panel
+        name="panel_topology_permissions_header"
+        className="page-panel-heading"
+        title="Topology Permissions"
+        description="View and manage the organisation topology nodes this user has been granted access to."
+      />
       <PageDescription title={headerTitle}>
         <p className="form__hint">
           Tick a node to grant this user admin rights on it. Untick to revoke. Changes save immediately.

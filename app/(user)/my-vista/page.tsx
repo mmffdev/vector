@@ -7,8 +7,11 @@
 
 import { useEffect, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { SkeletonFade } from "@/app/components/Skeleton";
 import { ListRowSkeleton } from "@/app/components/SkeletonCompositions";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const ASSIGNED: Array<{
   id: string;
@@ -63,6 +66,7 @@ const ICONS: Record<"story" | "epic" | "task", React.ReactNode> = {
 };
 
 export default function MyVista() {
+  const { full } = usePageTitle();
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 2000);
@@ -72,6 +76,13 @@ export default function MyVista() {
   const empty = ASSIGNED.length === 0;
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Your personal view of work items, goals, and activity." />
+      <Panel
+        name="panel_my_vista_header"
+        className="page-panel-heading"
+        title="My Vista"
+        description="A personalised view of your assigned work, goals, and recent activity."
+      />
       <h3 className="eyebrow">Assigned to you</h3>
       <SkeletonFade
         loaded={!loading}

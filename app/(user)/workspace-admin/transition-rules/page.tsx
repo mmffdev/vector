@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import OrbitView from "@/app/components/flow-rules/OrbitView";
 import { flowStatesApi, type FlowGroup, type FlowTransition, type FlowsResponse } from "@/app/lib/flowStatesApi";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { useTenantName } from "@/app/contexts/TenantContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 function groupByType(groups: FlowGroup[]): Map<string, { name: string; flows: FlowGroup[] }> {
   const map = new Map<string, { name: string; flows: FlowGroup[] }>();
@@ -76,6 +78,7 @@ export default function TransitionRulesPage() {
   const canManageFlows = useHasPermission("flows.manage");
   const router = useRouter();
   const workspaceName = useTenantName() || "ACME Bank Workspace";
+  const { full } = usePageTitle();
 
   useEffect(() => {
     if (user && !canManageFlows) router.replace("/workspace-settings");
@@ -141,6 +144,13 @@ export default function TransitionRulesPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Define and manage flow-state transition rules for work items." />
+      <Panel
+        name="panel_transition_rules_header"
+        className="page-panel-heading"
+        title="Transition Rules"
+        description="Configure which flow-state transitions are permitted and any conditions that govern them."
+      />
     <div className="settings-panel settings-panel--wide">
       <div className="anav-layout">
         <PageAnchorNav items={tocItems} />

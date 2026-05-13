@@ -4,8 +4,10 @@
 // is `kind: "pill"` with HIGH=danger, MEDIUM=warning, LOW=neutral.
 
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 type PillVariant = "success" | "warning" | "danger" | "info" | "neutral";
 
@@ -56,15 +58,17 @@ const RISKS: Risk[] = [
 ];
 
 export default function Risk() {
+  const { full } = usePageTitle();
   return (
     <PageContent>
-    <PageShell
-      title="Risk"
-      subtitle="Risk identification, analysis, and mitigation"
-      actions={
-        <button type="button" className="btn btn--primary">New risk</button>
-      }
-    >
+      <PageHeading level={1} title={full} subtitle="Risk identification, analysis, and mitigation." />
+      <Panel
+        name="panel_risk_header"
+        className="page-panel-heading"
+        title="Risk"
+        description="Identify, analyse, and track mitigation actions for risks across the workspace."
+      />
+
       <h3 className="eyebrow">Active risks</h3>
       <Table<Risk>
         pageId="risk"
@@ -102,7 +106,6 @@ export default function Risk() {
           },
         ]}
       />
-    </PageShell>
     </PageContent>
   );
 }

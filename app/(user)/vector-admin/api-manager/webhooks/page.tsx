@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
 import { apiSite } from "@/app/lib/api";
 import { workspacesApi } from "@/app/lib/workspacesApi";
@@ -19,6 +22,7 @@ interface Webhook {
 }
 
 export default function WebhooksPage() {
+  const { full } = usePageTitle();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,15 +132,20 @@ export default function WebhooksPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure webhook endpoints for workspace event notifications." />
+      <Panel
+        name="panel_webhooks_header"
+        className="page-panel-heading"
+        title="Webhooks"
+        description="Manage webhook endpoints that receive event notifications from this workspace."
+      />
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Webhooks</h2>
-          <p className="text-sm text-neutral-600">Manage webhook subscriptions for work item and sprint events</p>
+          <button className="btn btn--primary" onClick={handleCreate}>
+            New Webhook
+          </button>
         </div>
-        <button className="btn btn--primary" onClick={handleCreate}>
-          New Webhook
-        </button>
       </div>
 
       {showForm && workspaceId && (

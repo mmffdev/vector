@@ -3,6 +3,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import PageContent from "@/app/components/PageContent";
 import Panel from "@/app/components/Panel";
+import PageHeading from "@/app/components/PageHeading";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiSite } from "@/app/lib/api";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
@@ -15,6 +17,7 @@ import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/wor
 import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_portfolio.json";
 
 export default function PortfolioItemsListPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT");
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
@@ -74,6 +77,13 @@ export default function PortfolioItemsListPage() {
   return (
     <PageContent>
     <>
+      <PageHeading level={1} title={full} subtitle="Browse and manage portfolio items across all model layers." />
+      <Panel
+        name="panel_portfolio_items_header"
+        className="page-panel-heading"
+        title="Portfolio Items"
+        description="View, filter, and manage portfolio items organised by the workspace portfolio model."
+      />
       <PageSummaryHeader cells={summaryCells} />
 
       <Panel name="portfolio_items_grid_tree" title="Portfolio items">
