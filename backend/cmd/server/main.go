@@ -139,6 +139,10 @@ func main() {
 	bootstatus.Set("library_db", true, "")
 	defer libPools.Close()
 
+	// audit_log moved to vector_artefacts 2026-05-13 (mmff_vector → VA consolidation P1).
+	// Constructed early with `pool` so service constructors can capture the reference;
+	// repointed to vaPool below via SetPool once vaPool is initialised. If
+	// VECTOR_ARTEFACTS_DB_URL is unset (legacy path), writes continue against pool.
 	auditLog := audit.New(pool)
 	mailer := email.NewFromEnv()
 
@@ -307,6 +311,11 @@ func main() {
 			} else {
 				vaPool = p
 				defer vaPool.Close()
+				// PLA-0023 / mmff_vector → vector_artefacts consolidation (P1):
+				// audit_log lives on vaPool from 2026-05-13. Repoint the
+				// early-bound Logger so every service that captured it now
+				// writes against vector_artefacts.
+				auditLog.SetPool(vaPool)
 				// Mask password in log: strip :password@ from the URL.
 				maskedURL := vaURL
 				if i := strings.Index(vaURL, "@"); i > 0 {
