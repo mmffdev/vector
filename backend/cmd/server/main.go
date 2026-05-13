@@ -1176,27 +1176,6 @@ func main() {
 		mountSiteRoutes(r)
 	})
 
-	// ---- /samantha/v1 — data routes (infra moved to root above) ----
-	r.Route("/samantha/v1", func(r chi.Router) {
-		// API key validation middleware (story 00443).
-		// Validates Bearer token API keys; falls through to JWT auth if not present.
-		r.Use(apikeys.Middleware(apiKeysSvc))
-
-		// PLA-0030 Task 9: Deprecation + Sunset headers on every v1 response.
-		// Sunset date = 2026-08-07 (90 days from 2026-05-09 cutover start).
-		// RFC 8594 Sunset header uses IMF-fixdate format.
-		r.Use(func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				w.Header().Set("Deprecation", "true")
-				w.Header().Set("Sunset", "Fri, 07 Aug 2026 00:00:00 GMT")
-				w.Header().Set("Link", `</samantha/v2>; rel="successor-version"`)
-				next.ServeHTTP(w, req)
-			})
-		})
-
-
-	}) // end /samantha/v1
-
 	// ---- /samantha/v2 — feature-gated v2 routes ----
 	r.Route("/samantha/v2", func(r chi.Router) {
 		r.Use(func(next http.Handler) http.Handler {
