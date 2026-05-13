@@ -92,7 +92,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 23 | `obj_portfolio_items` | DROP (verify) | ⚠ | P5 | Superseded by `artefacts` on VA |
 | 24 | `obj_strategy_types` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_types` + `strategy_layers_adopted` on VA |
 | 25 | `obj_strategy_types_layers` | DROP (verify) | ⚠ | P5 | Same as 24 |
-| 26 | `org_node_view_state` | `topology_view_state_legacy` then DROP | ⚠ | P5 | `vector_artefacts.topology_view_state` is the canonical version (post-M6.2.7) |
+| 26 | ~~`org_node_view_state`~~ | DROPPED 2026-05-13 (mig 174) | ✅ | P5 done | 0 rows; 0 Go/TS readers; 0 inbound FKs. Superseded by `vector_artefacts.topology_view_state` (post-M6.2.7 orgdesign cutover). |
 | 27 | `page_addressables` | `addressable_page_addressables` | ✅ | P3 | `addressables.New(pool, …)` main.go:189 |
 | 28 | `page_entity_refs` | `addressable_page_entity_refs` | ✅ | P3 | `entityrefs.Service` |
 | 29 | `page_help` | `addressable_page_help` | ✅ | P3 | Help-icon contract via `<Panel>` |
@@ -109,14 +109,14 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 40 | `roles_workspaces` | `authz_role_workspaces` | ✅ | P4 | `workspaces.New(pool, …)` |
 | 41 | `schema_migrations` | (per-DB — exists on both already) | ✅ | — | Runner table; not migrated, owned by `backend/cmd/migrate` |
 | 42 | `sessions` | `auth_sessions` | ✅ | P6 | `auth.NewService(pool, …)` |
-| 43 | `sprints` | DROP (verify) | ⚠ | P5 | Superseded by `timebox_sprints` on VA |
-| 44 | `subscription_artifacts` | `legacy_subscription_artefacts` then DROP | ⚠ | P5 | Pre-cutover PoC |
+| 43 | `sprints` | DROP (blocked) | ⛔ | P5-blocked | 10 rows; `workspaces/crossdb.go:79` reads it live (archive-check scan). Must stay until that reader is migrated to `timebox_sprints` on VA. |
+| 44 | `subscription_artifacts` | DROP (blocked) | ⛔ | P5-blocked | 0 rows; `portfoliomodels/dev_reset.go:115` issues DELETE against it. Must stay until dev-reset is updated or removed. |
 | 45 | `subscription_item_type_icons` | KEEP (placeholder for in-flight icon-picker feature) | 🟡 | P5-defer | 0 rows; 0 Go/TS refs; 0 inbound FKs — BUT `docs/c_scope.md` line 14 flags it as part of an underway padmin icon-picker feature. Keep table standing rather than churn create-drop-recreate cycle. Re-evaluate after the icon-picker feature lands or is abandoned. |
-| 46 | `subscription_portfolio_model_state` | `legacy_subscription_portfolio_state` then DROP | ⚠ | P5 | Pre-cutover |
-| 47 | `subscription_sequence` | `legacy_subscription_sequence` then DROP | ⚠ | P5 | Pre-cutover |
-| 48 | `subscription_terminology` | `legacy_subscription_terminology` then DROP | ⚠ | P5 | Pre-cutover |
-| 49 | `subscription_workflow_transitions` | DROP (verify) | ⚠ | P5 | Superseded by `flow_transitions` on VA |
-| 50 | `subscription_workflows` | DROP (verify) | ⚠ | P5 | Superseded by `flows` on VA |
+| 46 | `subscription_portfolio_model_state` | DROP (blocked) | ⛔ | P5-blocked | 0 rows; `portfoliomodels/dev_reset.go:120` + `adopt_test.go:112,175,205` issue DELETE/UPDATE against it. Blocked until portfoliomodels migrated to VA. |
+| 47 | `subscription_sequence` | DROP (blocked) | ⛔ | P5-blocked | 2 rows; `roles/handler_test.go:80` + `workspaces/handler_test.go:102` teardown DELETE. Blocked on test teardown update. |
+| 48 | `subscription_terminology` | DROP (blocked) | ⛔ | P5-blocked | 0 rows; `portfoliomodels/dev_reset.go:116` issues DELETE. Blocked until dev-reset updated. |
+| 49 | `subscription_workflow_transitions` | DROP (blocked) | ⛔ | P5-blocked | 0 rows; `portfoliomodels/dev_reset.go:117` + `adopt_test.go:192` issue DELETE. Blocked until portfoliomodels migrated to VA. |
+| 50 | `subscription_workflows` | DROP (blocked) | ⛔ | P5-blocked | 0 rows; `portfoliomodels/dev_reset.go:118,261` + `adopt_test.go:193` issue DELETE. Blocked until portfoliomodels migrated to VA. |
 | 51 | `subscriptions` | `legacy_subscriptions` then DROP | ⚠ | P5 | Pre-cutover root — high inbound FK count, verify drop order |
 | 52 | `user_custom_page_views` | `nav_user_custom_page_views` | ✅ | P3 | `custompages.New(pool)` |
 | 53 | `user_custom_pages` | `nav_user_custom_pages` | ✅ | P3 | `custompages.New(pool)` |
@@ -124,11 +124,11 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 55 | `user_nav_prefs` | `nav_user_prefs` | ⏸ HOLD | P3 | Same service |
 | 56 | `user_nav_profile_groups` | `nav_user_profile_groups` | ⏸ HOLD | P3 | Same service |
 | 57 | `user_nav_profiles` | `nav_user_profiles` | ⏸ HOLD | P3 | Same service |
-| 58 | `user_stories` | DROP (verify) | ⚠ | P5 | Story-tracker artefact — may be dead since Planka suspended |
+| 58 | ~~`user_stories`~~ | DROPPED 2026-05-13 (mig 174) | ✅ | P5 done | 0 rows; 0 Go/TS readers; pre-Planka story-tracker table, never part of cutover substrate. |
 | 59 | `user_tab_order` | `user_tab_order` (keep) | ✅ | P2 | `usertaborder.New(pool)` main.go:201 |
 | 60 | `users` | `auth_users` | ✅ | P6 | The FK root of the whole DB — moves LAST |
-| 61 | `vector_icons` | `legacy_vector_icons` ⚠ verify | ⚠ | P5 | Per `docs/c_c_db_routing.md` line 81: "live in mmff_vector — predate the cutover, not migrated yet" |
-| 62 | `workspace` | DROP (verify) | ⚠ | P5 | Singular `workspace` (not `master_record_workspaces`) — likely legacy singleton |
+| 61 | `vector_icons` | KEEP (blocked by icon-picker) | 🟡 | P5-defer | 4 rows (default artefact-type icons); inbound FK from `subscription_item_type_icons` (in-flight padmin icon-picker). Cannot drop while `subscription_item_type_icons` stands. |
+| 62 | `workspace` | DROP (blocked) | ⛔ | P5-blocked | 0 rows; `entityrefs/service_test.go` (multiple) + `dbcheck/dispatch_triggers_test.go` + `roles/handler_test.go` + teardowns query it live. Blocked until entityrefs dispatch-trigger cluster is migrated. |
 
 ---
 
