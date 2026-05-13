@@ -69,7 +69,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 |---|---|---|---|---|---|
 | 1 | `api_keys` | `auth_api_keys` | ✅ | P6 | `apikeys.New(pool)` main.go:149 |
 | 2 | ~~`audit_log`~~ | `audit_log` on `vaPool` | ✅ | P1 done 2026-05-13 | mig 047 (VA create) + mig 163 (mmff_vector drop); `audit.Logger.SetPool(vaPool)` swap inside vaPool init; 3676 rows copied, post-restart write verified on VA |
-| 3 | `canonical_states` | DROP | ❌ | P0 | Zero refs (backend scan) |
+| 3 | `canonical_states` | DROP (blocked) | ⛔ | P0-blocked | 5 rows; 0 Go/TS refs at app layer — BUT inbound FKs from `obj_flow_system` (dropped 2026-05-13) and `obj_flow_tenant`. Once `obj_flow_tenant` is dropped, this becomes a clean leaf. |
 | 4 | `company_roadmap` | `artefact_company_roadmap` ⚠ verify-live | ⚠ | P5 | Check if any rows / readers |
 | 5 | ~~`defects`~~ | DROPPED 2026-05-13 (mig 165) | ✅ | P0′ done | 0 rows + 0 backend writers/readers + 0 incoming FKs → dead leaf; dropped with custom enum `defect_severity` (only used by this table). Revived defect tracking will use `artefact_types` on VA. |
 | 6 | `entity_stakeholders` | `artefact_stakeholders` (cluster move) | 🔵 | P5 reclassified 2026-05-13 | NOT a P1 leaf — one of FOUR polymorphic-FK tables (`entity_stakeholders`, `item_type_states`, `item_state_history`, `page_entity_refs`) sharing `trg_*_dispatch` triggers (mig 013) that query parent tables (`company_roadmap`, `workspace`, `portfolio`, `product`) in the SAME DB. Migrating alone breaks dispatch trigger (cross-DB SELECT). Must move with the polymorphic cluster + parents OR accept app-only FK enforcement (drop trigger first). Currently 0 rows. `entityrefs.Service` is the sole writer — `internal/entityrefs/service.go`. |
@@ -79,15 +79,15 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 10 | `library_help_defaults` | `addressable_help_defaults` | ✅ | P3 | Page-help seed data |
 | 11 | `master_record_tenant` | `master_record_tenant` (merge) | ⚠ | P2 | **EXISTS IN BOTH DBs.** Tenant settings already split. Resolve which is canonical — `tenantsettings.New(tenantSettingsPool)` uses `vaPool if available, else pool`. Drop mmff_vector copy after confirming. |
 | 12 | `master_record_workspaces` | `master_record_workspaces` (keep) | ✅ | P2 | `workspaces.New(pool, …)` main.go:263 |
-| 13 | `o_artefact_visibility_levels` | DROP | ❌ | P0 | Zero refs |
+| 13 | ~~`o_artefact_visibility_levels`~~ | DROPPED 2026-05-13 (mig 171) | ✅ | P0 done | 4 legacy rows; 0 Go/TS refs; 0 inbound FKs |
 | 14 | ~~`o_search_index_outbox`~~ | DROPPED 2026-05-13 (mig 170) | ✅ | P1 done | 0 rows + 0 backend writers/readers (only a historical-context comment in `searchworker/worker.go:11`) + 0 incoming FKs → dead leaf. Replaced by `vector_artefacts.artefacts_search_outbox` (artefacts_schema/035, applied this date along with image-swap to `pgvector/pgvector:0.8.0-pg16` since the previous `postgres:16-alpine` image lacked pgvector). Trigger `artefacts_search_enqueue` now lives on `vector_artefacts.artefacts`. Outgoing FK to `obj_execution_types` (itself a P5 drop target) vanished with the table. |
 | 15 | `obj_custom_field_lib` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_field_library` on VA |
-| 16 | `obj_execution_types` | DROP | ❌ | P0 | Zero refs |
+| 16 | `obj_execution_types` | DROP (blocked) | ⛔ | P0-blocked | 7 rows; 0 Go/TS refs — BUT inbound FKs from `obj_flow_tenant` and `obj_execution_types_tenant`. Drop after both blockers are gone. |
 | 17 | ~~`obj_execution_types_overrides`~~ | DROPPED 2026-05-13 (mig 161) | ✅ | P0′ done | Zero rows + zero non-history refs confirmed |
-| 18 | `obj_execution_types_tenant` | DROP | ❌ | P0 | Zero refs |
+| 18 | `obj_execution_types_tenant` | DROP (blocked) | ⛔ | P0-blocked | 0 rows; 0 Go/TS refs — BUT inbound FK from `obj_flow_tenant`. Drop after `obj_flow_tenant` is dropped. |
 | 19 | `obj_field_template_fields` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_type_fields` on VA |
 | 20 | `obj_field_templates` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_types` on VA |
-| 21 | `obj_flow_system` | DROP | ❌ | P0 | Zero refs |
+| 21 | ~~`obj_flow_system`~~ | DROPPED 2026-05-13 (mig 171) | ✅ | P0 done | 34 legacy rows; 0 Go/TS refs; 0 inbound FKs. Superseded by `vector_artefacts.flows` / `flow_states` / `flow_transitions` |
 | 22 | `obj_flow_tenant` | DROP (verify) | ⚠ | P5 | Superseded by `flows` on VA |
 | 23 | `obj_portfolio_items` | DROP (verify) | ⚠ | P5 | Superseded by `artefacts` on VA |
 | 24 | `obj_strategy_types` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_types` + `strategy_layers_adopted` on VA |
@@ -111,7 +111,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 42 | `sessions` | `auth_sessions` | ✅ | P6 | `auth.NewService(pool, …)` |
 | 43 | `sprints` | DROP (verify) | ⚠ | P5 | Superseded by `timebox_sprints` on VA |
 | 44 | `subscription_artifacts` | `legacy_subscription_artefacts` then DROP | ⚠ | P5 | Pre-cutover PoC |
-| 45 | `subscription_item_type_icons` | DROP | ❌ | P0 | Zero refs (per scan; user-mentioned exemption — verify) |
+| 45 | `subscription_item_type_icons` | KEEP (placeholder for in-flight icon-picker feature) | 🟡 | P5-defer | 0 rows; 0 Go/TS refs; 0 inbound FKs — BUT `docs/c_scope.md` line 14 flags it as part of an underway padmin icon-picker feature. Keep table standing rather than churn create-drop-recreate cycle. Re-evaluate after the icon-picker feature lands or is abandoned. |
 | 46 | `subscription_portfolio_model_state` | `legacy_subscription_portfolio_state` then DROP | ⚠ | P5 | Pre-cutover |
 | 47 | `subscription_sequence` | `legacy_subscription_sequence` then DROP | ⚠ | P5 | Pre-cutover |
 | 48 | `subscription_terminology` | `legacy_subscription_terminology` then DROP | ⚠ | P5 | Pre-cutover |
@@ -120,15 +120,27 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 51 | `subscriptions` | `legacy_subscriptions` then DROP | ⚠ | P5 | Pre-cutover root — high inbound FK count, verify drop order |
 | 52 | `user_custom_page_views` | `nav_user_custom_page_views` | ✅ | P3 | `custompages.New(pool)` |
 | 53 | `user_custom_pages` | `nav_user_custom_pages` | ✅ | P3 | `custompages.New(pool)` |
-| 54 | `user_nav_groups` | `nav_user_groups` | ✅ | P3 | `nav.New(pool, navRegistry)` main.go:179 |
-| 55 | `user_nav_prefs` | `nav_user_prefs` | ✅ | P3 | Same service |
-| 56 | `user_nav_profile_groups` | `nav_user_profile_groups` | ✅ | P3 | Same service |
-| 57 | `user_nav_profiles` | `nav_user_profiles` | ✅ | P3 | Same service |
+| 54 | `user_nav_groups` | `nav_user_groups` | ⏸ HOLD | P3 | `nav.New(pool, navRegistry)` main.go:179 — see hold note below |
+| 55 | `user_nav_prefs` | `nav_user_prefs` | ⏸ HOLD | P3 | Same service |
+| 56 | `user_nav_profile_groups` | `nav_user_profile_groups` | ⏸ HOLD | P3 | Same service |
+| 57 | `user_nav_profiles` | `nav_user_profiles` | ⏸ HOLD | P3 | Same service |
 | 58 | `user_stories` | DROP (verify) | ⚠ | P5 | Story-tracker artefact — may be dead since Planka suspended |
 | 59 | `user_tab_order` | `user_tab_order` (keep) | ✅ | P2 | `usertaborder.New(pool)` main.go:201 |
 | 60 | `users` | `auth_users` | ✅ | P6 | The FK root of the whole DB — moves LAST |
 | 61 | `vector_icons` | `legacy_vector_icons` ⚠ verify | ⚠ | P5 | Per `docs/c_c_db_routing.md` line 81: "live in mmff_vector — predate the cutover, not migrated yet" |
 | 62 | `workspace` | DROP (verify) | ⚠ | P5 | Singular `workspace` (not `master_record_workspaces`) — likely legacy singleton |
+
+---
+
+### Hold note — `user_nav_*` cluster (rows 54–57)
+
+**Status:** explicit user decision 2026-05-13 — keep `user_nav_profiles` / `user_nav_prefs` / `user_nav_groups` / `user_nav_profile_groups` on `mmff_vector` for now. User is actively working in this area; move scheduled for later.
+
+**Why deferred (technical):** the `nav.Service` (`backend/internal/nav/{service,profiles,bookmarks}.go`) issues ~37 SQL statements across these four tables that deep-join with `pages`, `page_tags`, `roles_pages`, `users` — all of which stay on `mmff_vector` until P3 / P4 / P6. Moving `user_nav_*` alone would require rewriting every joined statement to query the two pools separately and stitch in Go (lazy-seed Default profile, bookmark-cap, ResolveProfile, EnsureDefaultProfile, group/placement seeders, the `roles_pages` / `pages` admin-seed CTE in `service.go:130-242`). High blast radius for zero functional unblock while user works in the same area.
+
+**Move strategy when un-held:** migrate the substrate-nav cluster (`pages`, `page_tags`, `roles_pages`, `user_custom_pages`, `user_custom_page_views`, all four `user_nav_*`) together in a single P3 step so the joins stay same-DB. The only residual cross-DB join is `ResolveProfile`'s `users.active_nav_profile_id` lookup — that one query is simple to split.
+
+**Un-hold trigger:** when user signals the nav area is stable and we're ready to consolidate substrate.
 
 ---
 
