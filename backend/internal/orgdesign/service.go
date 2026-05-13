@@ -19,13 +19,13 @@
 // SQL migrations are exempt from the boundary (the test scopes to
 // .go files).
 //
-// M6.2.7 cutover (PLA-0006): topology_nodes, topology_role_grants and
-// topology_view_state live in the vector_artefacts database. Every
-// topology read/write goes through s.vaPool. The legacy s.pool
-// (mmff_vector) is retained for membership/auth checks (e.g. the
-// PoolWorkspaceLookup adapter) and for non-topology helpers like
-// GetCommitStatus which still reads `subscriptions.topology_committed_*`
-// from mmff_vector.
+// M6.2.7 cutover (PLA-0006): topology_nodes, topology_role_grants,
+// topology_view_state, and topology_commits all live in the
+// vector_artefacts database. Every topology read/write goes through
+// s.vaPool. The legacy s.pool (mmff_vector) is retained only for
+// membership/auth checks (e.g. the PoolWorkspaceLookup adapter) —
+// no topology I/O touches it after PLA-0023 P6 (2026-05-13, mig 180
+// + VA mig 053).
 package orgdesign
 
 import (

@@ -6,12 +6,13 @@ package orgdesign
 // Lives alongside service.go inside the sole-writer boundary —
 // every INSERT/UPDATE here counts toward the package's monopoly
 // on writes to topology_nodes / topology_role_grants /
-// topology_view_state (vector_artefacts) and the legacy
-// subscriptions.topology_committed_* columns (mmff_vector).
+// topology_view_state / topology_commits (all vector_artefacts).
 //
-// Topology reads/writes go through s.vaPool. The
-// subscriptions.topology_committed_* checkpoint still lives in
-// mmff_vector and is read/written via s.pool.
+// PLA-0023 P6 (2026-05-13): the commit-checkpoint moved from
+// subscriptions.topology_committed_at/_by (mmff_vector, dropped
+// in mig 180) into vector_artefacts.topology_commits. Every
+// topology read/write now goes through s.vaPool; s.pool is
+// retained on the Service only for membership/auth lookups.
 
 import (
 	"context"
@@ -210,19 +211,22 @@ type CommitStatus struct {
 // computes whether the working model is dirty (any node updated
 // after the commit timestamp, or never committed).
 //
-// Cross-DB: subscriptions.topology_committed_* still lives in
-// mmff_vector (s.pool); MAX(updated_at) is taken from
-// topology_nodes in vector_artefacts (s.vaPool).
+// PLA-0023 P6: checkpoint moved from mmff_vector.subscriptions
+// (topology_committed_at/_by columns, dropped in mig 180) to
+// vector_artefacts.topology_commits. Both the checkpoint read and
+// the MAX(updated_at) freshness probe now go through vaPool, so
+// orgdesign no longer reads from mmff_vector for topology I/O.
 func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID) (CommitStatus, error) {
 	var st CommitStatus
-	err := s.pool.QueryRow(ctx, `
-		SELECT topology_committed_at, topology_committed_by
-		  FROM subscriptions
-		 WHERE id = $1
+	err := s.vaPool.QueryRow(ctx, `
+		SELECT committed_at, committed_by
+		  FROM topology_commits
+		 WHERE subscription_id = $1
 	`, subscriptionID).Scan(&st.CommittedAt, &st.CommittedBy)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return CommitStatus{}, err
 	}
+	// pgx.ErrNoRows is the "never committed" path — leave both fields nil.
 
 	var lastUpdate *time.Time
 	if err := s.vaPool.QueryRow(ctx, `
@@ -240,24 +244,27 @@ func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID)
 	return st, nil
 }
 
-// Commit stamps the topology working-model commit checkpoint on
-// the subscription row. Only gadmin may call — actorRole is the
-// caller's user.role string. Returns the new CommitStatus so the
-// frontend can swap the banner immediately.
+// Commit stamps the topology working-model commit checkpoint into
+// topology_commits (vector_artefacts). Only gadmin may call —
+// actorRole is the caller's user.role string. Returns the new
+// CommitStatus so the frontend can swap the banner immediately.
 //
-// Cross-DB: writes to subscriptions in mmff_vector (s.pool); the
-// follow-up GetCommitStatus reads MAX(updated_at) from
-// vector_artefacts (s.vaPool).
+// PLA-0023 P6: checkpoint moved from mmff_vector.subscriptions to
+// vector_artefacts.topology_commits. Single-row-per-subscription
+// upsert; subsequent Commits overwrite committed_at + committed_by
+// and bump updated_at.
 func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID, actorRole string) (CommitStatus, error) {
 	if actorRole != "gadmin" {
 		return CommitStatus{}, ErrCommitForbidden
 	}
-	if _, err := s.pool.Exec(ctx, `
-		UPDATE subscriptions
-		   SET topology_committed_at = NOW(),
-		       topology_committed_by = $1
-		 WHERE id = $2
-	`, actorID, subscriptionID); err != nil {
+	if _, err := s.vaPool.Exec(ctx, `
+		INSERT INTO topology_commits (subscription_id, committed_at, committed_by)
+		VALUES ($1, NOW(), $2)
+		ON CONFLICT (subscription_id) DO UPDATE
+		   SET committed_at = EXCLUDED.committed_at,
+		       committed_by = EXCLUDED.committed_by,
+		       updated_at   = NOW()
+	`, subscriptionID, actorID); err != nil {
 		return CommitStatus{}, err
 	}
 	return s.GetCommitStatus(ctx, subscriptionID)
