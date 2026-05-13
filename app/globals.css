@@ -67,6 +67,12 @@
   --weight-semibold: 600;
   --weight-bold:     700;
 
+  /* ---------- Block rhythm (independent — may diverge) ---------- */
+  --gap-block-top:    20px;
+  --gap-block-right:  20px;
+  --gap-block-bottom: 20px;
+  --gap-block-left:   20px;
+
   /* ---------- Spacing (4px base) ---------- */
   --space-0: 0;
   --space-1: 4px;
@@ -4949,8 +4955,10 @@ input[type="reset"] {
 }
 .nav-prefs__picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  grid-template-columns: repeat(10, 32px);
   gap: var(--space-1);
+  max-height: 320px;
+  overflow-y: auto;
 }
 .nav-prefs__picker-btn {
   display: inline-flex;
@@ -9434,7 +9442,7 @@ input[type="reset"] {
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-sm);
 }
 
@@ -13357,18 +13365,12 @@ input[type="reset"] {
 }
 
 .anav {
-  /* Clear the L2 + L3 sticky nav stack above. --nav-bar-h is a :root
-     token (44px) — two stacked nav bars = 88px, plus breathing room.
-     If a page only has an L2 (no L3), the rail still pins below it
-     because the offset reserves space for both. */
   position: sticky;
-  top: calc(var(--nav-bar-h) * 2 + var(--space-4));
-  max-height: calc(100vh - var(--nav-bar-h) * 2 - var(--space-8));
+  top: 30px;
+  align-self: start;
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* No --nav-* overrides: the ToC rail inherits the sidebar's defaults
-     (36px height, 24px padding, 14px 24px 6px section padding) so every
-     vertical nav surface in the app looks identical. */
 }
 
 .anav__list {
@@ -13377,7 +13379,6 @@ input[type="reset"] {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .anav-content {
@@ -13388,7 +13389,7 @@ input[type="reset"] {
    view, push the section below the L2+L3 sticky nav stack so it isn't
    hidden behind the bars. */
 .anav-content section {
-  scroll-margin-top: calc(var(--nav-bar-h) * 2 + var(--space-4));
+  scroll-margin-top: var(--space-4);
 }
 
 /* ============================================================
