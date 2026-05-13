@@ -152,6 +152,10 @@
   gap: 4px;
   width: 100%;
   align-items: center;
+  /* Anchor for .rd-rail__travel-indicator which uses offsetTop/offsetHeight
+     of the section buttons. Without position: relative the bar resolves
+     against .rd-rail (or further up) and the top/height numbers are wrong. */
+  position: relative;
 }
 
 .rd-rail__section {
