@@ -92,14 +92,15 @@ const (
 // stepOrder is the canonical step list. 00010's sim harness will iterate
 // this slice and may inject a "fail at step name" hook; 00009's SSE
 // stream will emit one event per step boundary. Keep it in sync with
-// the switch in runSteps.
+// the vaSteps slice in Adopt().
+// SA1 (PLA-0026 2026-05-13): stepTerminology removed — no VA writer
+// exists and the legacy mirror table is being dropped (story 00486).
 var stepOrder = []string{
 	stepValidate,
 	stepLayers,
 	stepWorkflows,
 	stepTransitions,
 	stepArtifacts,
-	stepTerminology,
 	stepFinalize,
 }
 
@@ -348,64 +349,41 @@ func (o *Orchestrator) Adopt(
 		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
 	}
 
-	// ── Steps 2..6: mirror writes, each in its own tenant tx ────
-	libVersion := bundle.Model.Version
-	mirrorSteps := []struct {
+	// ── Steps 2..6: VA writers, each in its own vector_artefacts tx ─
+	// SA1 (PLA-0026 2026-05-13): legacy mmff_vector mirror writes
+	// (obj_strategy_types_layers, subscription_workflows,
+	// subscription_workflow_transitions, subscription_artifacts,
+	// subscription_terminology) removed. VA is now the sole write path.
+	vaSteps := []struct {
 		name string
-		fn   func(ctx context.Context, tx pgx.Tx) error
+		fn   func(ctx context.Context, vaTx pgx.Tx) error
 	}{
-		{stepLayers, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeLayers(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepWorkflows, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeWorkflows(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepTransitions, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeTransitions(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepArtifacts, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeArtifacts(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepTerminology, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeTerminology(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-	}
-
-	// Per-step VA writers (PLA-0026). Each writer runs in its OWN
-	// vector_artefacts tenant tx, AFTER the legacy mirror tx commits.
-	// A nil entry (or no entry) means "no VA write for this step yet"
-	// — subagents fill these in for B4 (flows/transitions),
-	// B5 (work-scope artefact_types), B6 (master_record_portfolio
-	// upsert in stepFinalize). The dispatcher is no-op when VAPool is
-	// nil or workspaceID is uuid.Nil (orphan-sub fixtures).
-	vaSteps := map[string]func(ctx context.Context, vaTx pgx.Tx) error{
-		stepLayers: func(ctx context.Context, vaTx pgx.Tx) error {
-			// PLA-0026 / 00497 (B8): re-adoption pre-step. Before
-			// minting the new strategy chain, insert the placeholder
-			// type + artefact, repoint orphan work artefacts, delete
-			// old strategy artefacts, and archive old strategy types.
-			// Runs in the same vaTx as the strategy writer so the
-			// transition is atomic — a partial failure rolls the
-			// whole pre-step + writer back together.
+		{stepLayers, func(ctx context.Context, vaTx pgx.Tx) error {
+			// B8: re-adoption pre-step inserts placeholder type + artefact,
+			// repoints orphan work artefacts, deletes old strategy artefacts,
+			// and archives old strategy types — atomically in the same vaTx.
 			if isReadoption {
 				if _, _, err := runReadoption(ctx, vaTx, subscriptionID, workspaceID, userID); err != nil {
 					return err
 				}
 			}
 			return writeStrategyArtefactTypes(ctx, vaTx, subscriptionID, workspaceID, bundle)
-		},
-		stepWorkflows: func(ctx context.Context, vaTx pgx.Tx) error {
+		}},
+		{stepWorkflows, func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeFlowsAndStates(ctx, vaTx, subscriptionID, workspaceID, bundle)
-		},
-		stepTransitions: func(ctx context.Context, vaTx pgx.Tx) error {
+		}},
+		{stepTransitions, func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeFlowTransitions(ctx, vaTx, subscriptionID, workspaceID, bundle)
-		},
-		stepArtifacts: func(ctx context.Context, vaTx pgx.Tx) error {
+		}},
+		{stepArtifacts, func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeWorkArtefactTypes(ctx, vaTx, subscriptionID, workspaceID)
-		},
+		}},
+		// stepTerminology has no VA writer yet; the legacy table is being
+		// dropped (PLA-0026 S1 story 00486). Skip silently for now — no
+		// terminology data is stored on the VA substrate.
 	}
 
-	for i, step := range mirrorSteps {
+	for i, step := range vaSteps {
 		idx := i + 1 // stepValidate is index 0
 
 		hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "start"})
@@ -416,17 +394,8 @@ func (o *Orchestrator) Adopt(
 			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
 		}
 
-		if err := o.runMirrorStep(ctx, step.fn); err != nil {
-			hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
-			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
-		}
-
-		// PLA-0026 dual-write: after the legacy mirror commits, run
-		// the corresponding VA writer in its own tx. On VA failure,
-		// fail the saga — retry semantics are safe (both sides are
-		// idempotent on natural keys).
-		if vaFn, ok := vaSteps[step.name]; ok && o.VAPool != nil && workspaceID != uuid.Nil {
-			if err := o.runVAStep(ctx, vaFn); err != nil {
+		if o.VAPool != nil && workspaceID != uuid.Nil {
+			if err := o.runVAStep(ctx, step.fn); err != nil {
 				hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
 				return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
 			}
@@ -518,23 +487,6 @@ func (o *Orchestrator) runVAStep(ctx context.Context, fn func(ctx context.Contex
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit va tx: %w", err)
-	}
-	return nil
-}
-
-// runMirrorStep wraps one mirror-table write in a fresh SERIALIZABLE
-// tenant tx. Per AC: each step commits atomically.
-func (o *Orchestrator) runMirrorStep(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
-	tx, err := o.VectorPool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
-	if err != nil {
-		return fmt.Errorf("begin tenant tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-	if err := fn(ctx, tx); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tenant tx: %w", err)
 	}
 	return nil
 }
@@ -682,273 +634,6 @@ func (o *Orchestrator) markFailed(ctx context.Context, stateID uuid.UUID) {
 		   AND archived_at IS NULL`,
 		stateID,
 	)
-}
-
-// ──────────────────────────────────────────────────────────────────
-// Mirror-table writers
-//
-// Each writer:
-//   - inserts every live (archived_at IS NULL) library row's mirror
-//   - uses ON CONFLICT … DO NOTHING on the natural-key unique index so
-//     a retry after partial failure is a no-op for already-landed rows
-//   - returns a map of library_id → mirror_id for the next step's FK
-//     resolution (only needed for layers and workflows whose ids feed
-//     transitions and workflows respectively)
-// ──────────────────────────────────────────────────────────────────
-
-// loadLayerMap returns library_id → mirror_id for every live mirror
-// layer in this subscription. Used by the workflows step to resolve
-// `layer_id` from the bundle's library uuid into the mirror uuid.
-func loadLayerMap(ctx context.Context, tx pgx.Tx, subscriptionID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT source_library_id, id
-		  FROM obj_strategy_types_layers
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL`,
-		subscriptionID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("load layer map: %w", err)
-	}
-	defer rows.Close()
-	m := make(map[uuid.UUID]uuid.UUID)
-	for rows.Next() {
-		var libID, mirID uuid.UUID
-		if err := rows.Scan(&libID, &mirID); err != nil {
-			return nil, fmt.Errorf("scan layer map: %w", err)
-		}
-		m[libID] = mirID
-	}
-	return m, rows.Err()
-}
-
-// loadWorkflowMap returns library_id → mirror_id for every live mirror
-// workflow in this subscription. Used by the transitions step to
-// resolve from_state_id / to_state_id.
-func loadWorkflowMap(ctx context.Context, tx pgx.Tx, subscriptionID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT source_library_id, id
-		  FROM subscription_workflows
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL`,
-		subscriptionID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("load workflow map: %w", err)
-	}
-	defer rows.Close()
-	m := make(map[uuid.UUID]uuid.UUID)
-	for rows.Next() {
-		var libID, mirID uuid.UUID
-		if err := rows.Scan(&libID, &mirID); err != nil {
-			return nil, fmt.Errorf("scan workflow map: %w", err)
-		}
-		m[libID] = mirID
-	}
-	return m, rows.Err()
-}
-
-func (o *Orchestrator) writeLayers(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	// Topological insert: sort layers parents-before-children in memory,
-	// then insert in that order. After all inserts, load the lib→mirror
-	// map once and update parent_layer_id via a follow-up UPDATE for each
-	// child row. This avoids the chicken-and-egg problem of needing a
-	// mirror id (from RETURNING) before the parent row exists.
-	//
-	// Two-phase approach:
-	//   Phase 1 — insert every live layer with parent_layer_id = NULL.
-	//   Phase 2 — for each layer that had a library parent, UPDATE its
-	//             mirror row to set the correct mirror parent_layer_id.
-	//
-	// ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL
-	// matches `idx_obj_strategy_types_layers_name_unique` (migration 029) —
-	// idempotent on retry.
-
-	// Phase 1: insert all live layers without the FK column set.
-	for _, l := range bundle.Layers {
-		if l.ArchivedAt != nil {
-			continue
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO obj_strategy_types_layers
-			    (subscription_id, source_library_id, source_library_version,
-			     name, tag, sort_order, parent_layer_id,
-			     icon, colour, description_md, help_md,
-			     allows_children, is_leaf)
-			VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12)
-			ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, l.ID, libVersion,
-			l.Name, l.Tag, l.SortOrder,
-			l.Icon, l.Colour, l.DescriptionMD, l.HelpMD,
-			l.AllowsChildren, l.IsLeaf,
-		); err != nil {
-			return fmt.Errorf("insert layer %q: %w", l.Name, err)
-		}
-	}
-
-	// Phase 2: load the lib→mirror map (all rows now exist in the tx),
-	// then UPDATE parent_layer_id for each child layer.
-	layerMap, err := loadLayerMap(ctx, tx, subscriptionID)
-	if err != nil {
-		return err
-	}
-
-	for _, l := range bundle.Layers {
-		if l.ArchivedAt != nil || l.ParentLayerID == nil {
-			continue
-		}
-		mirParent, ok := layerMap[*l.ParentLayerID]
-		if !ok {
-			return fmt.Errorf("layer %q references unknown parent_layer_id %s", l.Name, l.ParentLayerID)
-		}
-		mirSelf, ok := layerMap[l.ID]
-		if !ok {
-			// ON CONFLICT DO NOTHING silently skipped this layer (already
-			// existed with the correct parent from a prior run).
-			continue
-		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE obj_strategy_types_layers
-			   SET parent_layer_id = $1
-			 WHERE id = $2
-			   AND archived_at IS NULL`,
-			mirParent, mirSelf,
-		); err != nil {
-			return fmt.Errorf("set parent for layer %q: %w", l.Name, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeWorkflows(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	layerMap, err := loadLayerMap(ctx, tx, subscriptionID)
-	if err != nil {
-		return err
-	}
-	for _, wf := range bundle.Workflows {
-		if wf.ArchivedAt != nil {
-			continue
-		}
-		mirLayer, ok := layerMap[wf.LayerID]
-		if !ok {
-			return fmt.Errorf("workflow state %q references unknown layer_id %s", wf.StateKey, wf.LayerID)
-		}
-		// ON CONFLICT (subscription_id, layer_id, state_key) matches
-		// `idx_subscription_workflows_state_unique` (migration 029).
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_workflows
-			    (subscription_id, source_library_id, source_library_version,
-			     layer_id, state_key, state_label, sort_order,
-			     is_initial, is_terminal, colour)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			ON CONFLICT (subscription_id, layer_id, state_key) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, wf.ID, libVersion,
-			mirLayer, wf.StateKey, wf.StateLabel, wf.SortOrder,
-			wf.IsInitial, wf.IsTerminal, wf.Colour,
-		); err != nil {
-			return fmt.Errorf("insert workflow %q: %w", wf.StateKey, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeTransitions(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	wfMap, err := loadWorkflowMap(ctx, tx, subscriptionID)
-	if err != nil {
-		return err
-	}
-	for _, tr := range bundle.Transitions {
-		if tr.ArchivedAt != nil {
-			continue
-		}
-		mirFrom, ok := wfMap[tr.FromStateID]
-		if !ok {
-			return fmt.Errorf("transition references unknown from_state_id %s", tr.FromStateID)
-		}
-		mirTo, ok := wfMap[tr.ToStateID]
-		if !ok {
-			return fmt.Errorf("transition references unknown to_state_id %s", tr.ToStateID)
-		}
-		// ON CONFLICT (subscription_id, from_state_id, to_state_id)
-		// matches `idx_subscription_workflow_transitions_pair_unique`.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_workflow_transitions
-			    (subscription_id, source_library_id, source_library_version,
-			     from_state_id, to_state_id)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (subscription_id, from_state_id, to_state_id) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, tr.ID, libVersion,
-			mirFrom, mirTo,
-		); err != nil {
-			return fmt.Errorf("insert transition %s→%s: %w", mirFrom, mirTo, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeArtifacts(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	for _, a := range bundle.Artifacts {
-		if a.ArchivedAt != nil {
-			continue
-		}
-		var configJSON any
-		if len(a.Config) == 0 {
-			configJSON = []byte("{}")
-		} else {
-			configJSON = a.Config
-		}
-		// ON CONFLICT (subscription_id, artifact_key) matches
-		// `idx_subscription_artifacts_key_unique`.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_artifacts
-			    (subscription_id, source_library_id, source_library_version,
-			     artifact_key, enabled, config)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (subscription_id, artifact_key) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, a.ID, libVersion,
-			a.ArtifactKey, a.Enabled, configJSON,
-		); err != nil {
-			return fmt.Errorf("insert artifact %q: %w", a.ArtifactKey, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeTerminology(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	for _, t := range bundle.Terminology {
-		if t.ArchivedAt != nil {
-			continue
-		}
-		// ON CONFLICT (subscription_id, key) matches
-		// `idx_subscription_terminology_key_unique`.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_terminology
-			    (subscription_id, source_library_id, source_library_version,
-			     key, value)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (subscription_id, key) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, t.ID, libVersion,
-			t.Key, t.Value,
-		); err != nil {
-			return fmt.Errorf("insert terminology %q: %w", t.Key, err)
-		}
-	}
-	return nil
 }
 
 // ──────────────────────────────────────────────────────────────────

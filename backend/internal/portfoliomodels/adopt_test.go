@@ -33,21 +33,40 @@ const seededMMFFModelID = "00000000-0000-0000-0000-00000000aa01"
 // TestOrchestrator_HappyPath runs the full saga against the seeded
 // MMFF Standard bundle. It cleans up before + after so re-runs are
 // safe.
+// SA1 update (PLA-0026 2026-05-13): now uses a real VA pool and asserts
+// artefact_types on vector_artefacts instead of the removed legacy mirror.
 func TestOrchestrator_HappyPath(t *testing.T) {
 	libRO := testRoPool(t)
 	defer libRO.Close()
 	vec, user := testVectorPoolPadmin(t)
 	defer vec.Close()
+	va := vaTestPool(t)
+	defer va.Close()
 
 	ctx := context.Background()
 	modelID := uuid.MustParse(seededMMFFModelID)
 
+	var workspaceID uuid.UUID
+	if err := vec.QueryRow(ctx, `
+		SELECT id FROM master_record_workspaces
+		 WHERE subscription_id = $1 AND archived_at IS NULL
+		 ORDER BY id LIMIT 1`,
+		user.SubscriptionID,
+	).Scan(&workspaceID); err != nil {
+		t.Skipf("no live workspace for padmin subscription: %v", err)
+	}
+
 	if err := resetAdoptionFixture(ctx, vec, user.SubscriptionID); err != nil {
-		t.Skipf("reset fixture failed (mirror tables not deployed?): %v", err)
+		t.Skipf("reset fixture failed: %v", err)
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
+	defer func() {
+		c := context.Background()
+		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, workspaceID)
+		_, _ = va.Exec(c, `DELETE FROM artefact_types WHERE workspace_id = $1`, workspaceID)
+	}()
 
-	o := NewOrchestrator(libRO, vec, nil, nil)
+	o := NewOrchestrator(libRO, vec, va, nil)
 	res, err := o.Adopt(ctx, user.SubscriptionID, user.ID, modelID, "test-req-happy", AdoptOptions{})
 	if err != nil {
 		t.Fatalf("Adopt: %v", err)
@@ -59,16 +78,16 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 		t.Errorf("model_id: want %s, got %s", modelID, res.ModelID)
 	}
 
-	// At least one mirror layer row should now exist.
-	var layerCount int
-	if err := vec.QueryRow(ctx, `
-		SELECT COUNT(*) FROM obj_strategy_types_layers
-		 WHERE subscription_id = $1 AND archived_at IS NULL`,
-		user.SubscriptionID).Scan(&layerCount); err != nil {
-		t.Fatalf("count layers: %v", err)
+	// At least one strategy artefact_type should now exist on VA.
+	var atCount int
+	if err := va.QueryRow(ctx, `
+		SELECT COUNT(*) FROM artefact_types
+		 WHERE workspace_id = $1 AND scope = 'strategy' AND archived_at IS NULL`,
+		workspaceID).Scan(&atCount); err != nil {
+		t.Fatalf("count artefact_types: %v", err)
 	}
-	if layerCount == 0 {
-		t.Errorf("obj_strategy_types_layers: want >0 rows after happy-path adopt, got 0")
+	if atCount == 0 {
+		t.Errorf("artefact_types: want >0 strategy rows after happy-path adopt, got 0")
 	}
 }
 
