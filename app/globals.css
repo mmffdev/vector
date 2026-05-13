@@ -758,184 +758,6 @@ input[type="reset"] {
   background: transparent;
 }
 
-.page-header {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  padding: 0 24px 0 22px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-shrink: 0;
-  position: relative;          /* anchor for centered .page-header__center */
-  height: var(--app-header-wrapper-height, 77px);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  z-index: 40;
-}
-
-.page-header__brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.page-header__brand-logo {
-  width: 28px;
-  height: 28px;
-  display: block;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.page-header__brand-label {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-}
-
-/* When the sidebar collapses, the AGENCY/tenant text stack would overlap
-   the title cell (which now slides leftwards with the viewport canvas).
-   Hide the labels — the logo remains visible at its sidebar-anchored x. */
-:root[data-sidebar-collapsed="true"] .page-header__brand-label {
-  display: none;
-}
-
-.page-header__brand-label small {
-  font-family: var(--font-sans);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-subtle);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.page-header__brand-label strong {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Centered ProfileBar wrapper — absolutely positioned so the pills stay
-   anchored to the screen midline regardless of left-title / right-actions
-   width. Acts as a standalone navigation element. */
-.page-header__center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, calc(-50% + 3px));
-  pointer-events: auto;
-  z-index: 1;
-}
-
-.page-header__left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  /* Anchor the title/breadcrumb stack to the app viewport canvas left
-     edge so it slides with the sidebar collapse/expand. Canvas left =
-     scope rail + sidebar + page-body canvas padding (10px). Subtract the
-     header's own padding-left so the absolute origin lines up. */
-  position: absolute;
-  left: calc(var(--scope-rail-w, 44px) + var(--sidebar-width) + 10px);
-  top: 20px;
-  right: auto;
-  margin-right: 0;
-  /* Clamp so the title never crosses the absolutely-centered ProfileBar
-     pill cluster. */
-  max-width: calc(50vw - var(--page-header-center-clearance, 220px));
-  overflow: hidden;
-  /* Smooth the slide when sidebar toggles, matching .app-root's transition. */
-  transition: left 0.25s ease;
-}
-
-.page-header__title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink-1);
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  margin: 0;
-}
-
-.page-header__page {
-  color: var(--ink-1);
-}
-
-/* Breadcrumb row under the title — segments are .text-link (12px) joined
-   by a muted "/" separator. Left-anchored under the title. */
-.page-header__breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.page-header__breadcrumbs .text-link {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.page-header__breadcrumbs__sep {
-  color: var(--ink-faint);
-  font-size: 12px;
-  user-select: none;
-}
-
-.page-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* Mirror the left-side clearance so action icons never overlap the
-     absolutely-centered ProfileBar pill cluster. */
-  max-width: calc(50vw - var(--page-header-center-clearance, 220px));
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-/* Per-page action buttons promoted into the top strip from PageShell `actions`.
-   Sits left of the global icon cluster with a divider. */
-.page-header__page-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-right: 10px;
-  margin-right: 2px;
-  border-right: 1px solid var(--border);
-  min-width: 0;
-}
-
-/* ProfileBar inside the page header — centered standalone nav element.
-   Hide the "+" and inline edit/delete chrome; those live on
-   /preferences/navigation. */
-.page-header .profile-bar {
-  gap: 6px;
-  flex-wrap: nowrap;
-  max-width: 60vw;
-}
-.page-header .profile-bar__cell-actions { display: none; }
-.page-header .profile-bar__add { display: none; }
-
 .prefix {
   font-family: var(--font-display), 'Impact', sans-serif;
   font-weight: 400;
@@ -951,10 +773,6 @@ input[type="reset"] {
   color: var(--hot-pink);
 }
 
-.page-header-subtitle {
-  font-size: 14px;
-  color: var(--ink-3);
-}
 
 /* ============================================================
    Scope picker (PLA-0042) — sits in .page-header__left next to
@@ -1282,9 +1100,9 @@ input[type="reset"] {
      used as section sub-headings throughout the kit.
    ============================================================ */
 .page-body {
-  /* Title row was removed (PLA-0043) — uniform 10px padding so content
-     sits flush with the chrome on every side. */
-  padding: 10px;
+  /* Padding now provided by the shell viewport (.rd-shell__main-body:
+     30px). Keep this wrapper as a structural anchor only. */
+  padding: 0;
 }
 
 .page-body__inner {
@@ -13359,16 +13177,16 @@ input[type="reset"] {
 */
 .anav-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: max-content 1fr;
   gap: var(--space-6);
   align-items: start;
 }
 
 .anav {
   position: sticky;
-  top: 30px;
+  top: 0;
   align-self: start;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - 90px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -13379,6 +13197,24 @@ input[type="reset"] {
   padding: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Group title in the TOC — matches the page's <Panel> .panel__title so the
+   TOC and content headings align horizontally. Top padding matches Panel's
+   var(--space-4) so first heading baseline lines up; no horizontal padding
+   so the column hugs the text. */
+.anav__group-title {
+  padding: var(--space-4) 0 var(--space-3);
+}
+
+.anav__list > li:not(:first-child) > .anav__group-title {
+  padding-top: var(--space-6);
+}
+
+/* Inside the TOC, remove the flyout row's horizontal padding so the
+   column hugs the longest label. */
+.anav .rd-flyout__row {
+  padding: 0;
 }
 
 .anav-content {

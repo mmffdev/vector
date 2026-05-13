@@ -22,10 +22,8 @@ interface PageHeaderContextValue {
   push: (id: string, h: PageHeaderState) => void;
   pop: (id: string) => void;
   top: PageHeaderState | null;
-  // First push on the stack — the route-level header. Used by
-  // PageHeaderBar so the "Vector + …" label keeps showing the
-  // route the user navigated to, even when nested PageShells (e.g.
-  // an embedded tab) push a more specific section header on top.
+  // First push on the stack — the route-level header; the top of the stack
+  // is the active leaf (e.g. an embedded tab's PageShell).
   root: PageHeaderState | null;
 }
 
