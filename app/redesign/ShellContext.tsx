@@ -152,7 +152,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
         out.push({
           id: `tag:${tag.enum}`,
           name: tag.label,
-          icon: TAG_ICON_DEFAULTS[tag.enum] ?? "folder",
+          icon: p.icon_override ?? TAG_ICON_DEFAULTS[tag.enum] ?? "folder",
           pages: pagesForTag(tag.enum, prefs, catalogueByKey),
         });
       } else if (p.group_id) {

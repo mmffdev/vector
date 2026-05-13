@@ -61,6 +61,7 @@ export interface ProfileGroupPlacement {
   group_id: string | null;
   tag_enum: string | null;
   position: number;
+  icon_override?: string | null;
 }
 
 interface PrefsResp {

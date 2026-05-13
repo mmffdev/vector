@@ -81,6 +81,8 @@ interface DraftState {
   startPageKey: string | null;
   // Per-item icon override; missing key means "use catalogue default".
   iconOverrides: Record<string, string>;
+  // Per-tag-bucket icon override; key is tag_enum (e.g. "admin_settings").
+  tagIconOverrides: Record<string, string>;
 }
 
 // Icons the user can pick. Mirrors the cases in app/components/NavIcon.tsx
@@ -589,20 +591,40 @@ function BucketBlock({
         ) : (
           <h3 className="nav-prefs__group-heading">{heading}</h3>
         )}
-        {isCustom && !editing && (
+        {!editing && onPickGroupIcon && (
           <div className="nav-prefs__group-actions">
-            {onPickGroupIcon && (
-              <button
-                type="button"
-                className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
-                onClick={onPickGroupIcon}
-                aria-label={`Choose icon for ${heading} group`}
-                aria-pressed={!!groupPickerOpen}
-                title="Choose group icon"
-              >
-                <NavIcon iconKey={groupIcon ?? "folder"} />
-              </button>
+            <button
+              type="button"
+              className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
+              onClick={onPickGroupIcon}
+              aria-label={`Choose icon for ${heading} section`}
+              aria-pressed={!!groupPickerOpen}
+              title="Choose section icon"
+            >
+              <NavIcon iconKey={groupIcon ?? "folder"} />
+            </button>
+            {isCustom && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
+                  onClick={() => setEditing(true)}
+                  aria-label={`Rename ${heading} group`}
+                  title="Rename group"
+                >✎</button>
+                <button
+                  type="button"
+                  className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--danger"
+                  onClick={onRemoveGroup}
+                  aria-label={`Remove ${heading} group`}
+                  title="Remove group (items move to their tag groups)"
+                >×</button>
+              </>
             )}
+          </div>
+        )}
+        {isCustom && !editing && !onPickGroupIcon && (
+          <div className="nav-prefs__group-actions">
             <button
               type="button"
               className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
@@ -620,7 +642,7 @@ function BucketBlock({
           </div>
         )}
       </div>
-      {isCustom && groupPickerOpen && onSetGroupIcon && (
+      {groupPickerOpen && onSetGroupIcon && (
         <IconPicker
           currentIcon={groupIcon ?? "folder"}
           hasOverride={!!groupIcon}
@@ -933,6 +955,7 @@ export default function NavPreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const [groupPickerId, setGroupPickerId] = useState<string | null>(null);
+  const [tagPickerEnum, setTagPickerEnum] = useState<string | null>(null);
   const [newPageLabel, setNewPageLabel] = useState("");
   const [creatingPage, setCreatingPage] = useState(false);
   const [newGroupLabel, setNewGroupLabel] = useState("");
@@ -1043,18 +1066,23 @@ export default function NavPreferencesPage() {
       if (p.icon_override) iconOverrides[p.item_key] = p.icon_override;
     }
 
+    const tagIconOverrides: Record<string, string> = {};
     // If the active profile has persisted placements, use them to drive
     // bucketOrder. Buckets not covered by placements (e.g. a custom group
     // that exists but has no placement row yet) keep their current relative
-    // position at the tail.
+    // position at the tail. Also hydrate tag icon overrides from placements.
     if (profileGroups.length > 0) {
       const placed: BucketKey[] = [];
       const placedSet = new Set<BucketKey>();
       const ordered = [...profileGroups].sort((a, b) => a.position - b.position);
       for (const p of ordered) {
         let key: BucketKey | null = null;
-        if (p.tag_enum) key = tagBucket(p.tag_enum);
-        else if (p.group_id) key = groupBucket(p.group_id);
+        if (p.tag_enum) {
+          key = tagBucket(p.tag_enum);
+          if (p.icon_override) tagIconOverrides[p.tag_enum] = p.icon_override;
+        } else if (p.group_id) {
+          key = groupBucket(p.group_id);
+        }
         if (!key) continue;
         if (placedSet.has(key)) continue;
         if (!orderSeen.includes(key)) continue;
@@ -1073,6 +1101,7 @@ export default function NavPreferencesPage() {
       customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position, icon: g.icon })),
       startPageKey,
       iconOverrides,
+      tagIconOverrides,
     };
     setDraft(hydrated);
     setBaseline(hydrated);
@@ -1232,6 +1261,10 @@ export default function NavPreferencesPage() {
     setGroupPickerId((cur) => (cur === id ? null : id));
   };
 
+  const toggleTagPicker = (tagEnum: string) => {
+    setTagPickerEnum((cur) => (cur === tagEnum ? null : tagEnum));
+  };
+
   const setGroupIcon = (id: string, icon: string) => {
     setDraft({
       ...draft,
@@ -1248,6 +1281,19 @@ export default function NavPreferencesPage() {
         g.id === id ? { ...g, icon: null } : g,
       ),
     });
+  };
+
+  const setTagIconOverride = (tagEnum: string, icon: string) => {
+    setDraft({
+      ...draft,
+      tagIconOverrides: { ...draft.tagIconOverrides, [tagEnum]: icon },
+    });
+  };
+
+  const clearTagIconOverride = (tagEnum: string) => {
+    const next = { ...draft.tagIconOverrides };
+    delete next[tagEnum];
+    setDraft({ ...draft, tagIconOverrides: next });
   };
 
   const addCustomGroup = (rawLabel?: string): { ok: true } | { ok: false; reason: string } => {
@@ -1668,10 +1714,12 @@ export default function NavPreferencesPage() {
         const placements: ProfileGroupPlacement[] = [];
         for (const b of draft.bucketOrder) {
           if (b.startsWith("tag:")) {
+            const tagEnum = b.slice("tag:".length);
             placements.push({
-              tag_enum: b.slice("tag:".length),
+              tag_enum: tagEnum,
               group_id: null,
               position: placements.length,
+              icon_override: draft.tagIconOverrides[tagEnum] ?? null,
             });
           } else if (b.startsWith("group:")) {
             const localId = b.slice("group:".length);
@@ -1810,6 +1858,7 @@ export default function NavPreferencesPage() {
                   const groupRow = isCustom && groupId
                     ? draft.customGroups.find((g) => g.id === groupId) ?? null
                     : null;
+                  const tagEnum = !isCustom && b.startsWith("tag:") ? b.slice("tag:".length) : null;
                   // Render every bucket — including empty tag buckets — so they
                   // remain valid drop targets when dragging from Available.
                   return (
@@ -1833,11 +1882,11 @@ export default function NavPreferencesPage() {
                         onRenameCustom={handleRenameCustomPage}
                         onDeleteCustom={handleDeleteCustomPage}
                         isCustom={isCustom}
-                        groupIcon={groupRow?.icon ?? null}
-                        groupPickerOpen={!!groupId && groupPickerId === groupId}
-                        onPickGroupIcon={groupId ? () => toggleGroupPicker(groupId) : undefined}
-                        onSetGroupIcon={groupId ? (icon) => setGroupIcon(groupId, icon) : undefined}
-                        onClearGroupIcon={groupId ? () => clearGroupIcon(groupId) : undefined}
+                        groupIcon={isCustom ? (groupRow?.icon ?? null) : (tagEnum ? (draft.tagIconOverrides[tagEnum] ?? null) : null)}
+                        groupPickerOpen={isCustom ? (!!groupId && groupPickerId === groupId) : (!!tagEnum && tagPickerEnum === tagEnum)}
+                        onPickGroupIcon={isCustom ? (groupId ? () => toggleGroupPicker(groupId) : undefined) : (tagEnum ? () => toggleTagPicker(tagEnum) : undefined)}
+                        onSetGroupIcon={isCustom ? (groupId ? (icon) => setGroupIcon(groupId, icon) : undefined) : (tagEnum ? (icon) => setTagIconOverride(tagEnum, icon) : undefined)}
+                        onClearGroupIcon={isCustom ? (groupId ? () => clearGroupIcon(groupId) : undefined) : (tagEnum ? () => clearTagIconOverride(tagEnum) : undefined)}
                       />
                       {activeDragId?.startsWith("gheader:") && <GroupDropSlot index={i + 1} />}
                     </Fragment>

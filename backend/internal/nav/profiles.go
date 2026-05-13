@@ -433,9 +433,10 @@ func (s *Service) ResolveProfile(ctx context.Context, userID, subscriptionID uui
 // profile (partial unique indexes + xor check enforce both invariants).
 // Callers send a contiguous 0..N-1 sequence.
 type ProfileGroupPlacement struct {
-	GroupID  *uuid.UUID `json:"group_id"`
-	TagEnum  *string    `json:"tag_enum"`
-	Position int        `json:"position"`
+	GroupID      *uuid.UUID `json:"group_id"`
+	TagEnum      *string    `json:"tag_enum"`
+	Position     int        `json:"position"`
+	IconOverride *string    `json:"icon_override,omitempty"`
 }
 
 // ListProfileGroups returns the placements inside a specific profile,
@@ -447,7 +448,7 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 		return nil, err
 	}
 	rows, err := s.Pool.Query(ctx, `
-		SELECT group_id, tag_enum, position
+		SELECT group_id, tag_enum, position, icon_override
 		  FROM user_nav_profile_groups
 		 WHERE profile_id = $1
 		 ORDER BY position
@@ -459,7 +460,7 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 	out := make([]ProfileGroupPlacement, 0, 4)
 	for rows.Next() {
 		var g ProfileGroupPlacement
-		if err := rows.Scan(&g.GroupID, &g.TagEnum, &g.Position); err != nil {
+		if err := rows.Scan(&g.GroupID, &g.TagEnum, &g.Position, &g.IconOverride); err != nil {
 			return nil, err
 		}
 		out = append(out, g)
@@ -573,9 +574,9 @@ func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, 
 		batch := &pgx.Batch{}
 		for _, p := range placements {
 			batch.Queue(`
-				INSERT INTO user_nav_profile_groups (profile_id, group_id, tag_enum, position)
-				VALUES ($1, $2, $3, $4)
-			`, profileID, p.GroupID, p.TagEnum, p.Position)
+				INSERT INTO user_nav_profile_groups (profile_id, group_id, tag_enum, position, icon_override)
+				VALUES ($1, $2, $3, $4, $5)
+			`, profileID, p.GroupID, p.TagEnum, p.Position, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range placements {
