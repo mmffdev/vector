@@ -5,16 +5,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Bell, Pencil } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
-import { useNavOrderedPerspectives } from "../useNavOrderedPerspectives";
-import Icon from "./Icon";
-import PerspectiveAvatar from "./PerspectiveAvatar";
+import { NavIcon } from "@/app/components/NavIcon";
+import ProfilePillStack from "./ProfilePillStack";
 import EnvBadge from "@/app/components/EnvBadge";
 
-// Travelling indicator phases
-//   idle    — bar sits at the active icon's vertical slot
-//   stretch — bar extends from previous-active extents to new-target extents
-//             (so it visually "bridges" the journey on click)
-//   settle  — bar contracts to just the new target, with an elastic ease
 type IndicatorPhase = "idle" | "stretch" | "settle";
 
 interface IndicatorBox {
@@ -23,19 +17,11 @@ interface IndicatorBox {
 }
 
 export default function IconRail() {
-  const { perspective, activeSectionId, setActiveSectionId } = useShell();
-  const orderedPerspectives = useNavOrderedPerspectives();
+  const { sections, activeSectionId, setActiveSectionId } = useShell();
   const { user } = useAuth();
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const initials = user ? user.email.slice(0, 2).toUpperCase() : "??";
-  // Use the NavPrefs-ordered version of the active perspective so the rail
-  // honours both role gating and the user's `/preferences/navigation` order.
-  const visiblePerspective =
-    orderedPerspectives.find((p) => p.id === perspective.id) ?? perspective;
 
-  // Section button refs keyed by section id so we can measure their offsetTop
-  // when the active section changes, and animate a single travelling indicator
-  // between them.
   const listRef = useRef<HTMLUListElement>(null);
   const buttonRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
   const [indicator, setIndicator] = useState<IndicatorBox | null>(null);
@@ -43,8 +29,6 @@ export default function IconRail() {
   const settleTimerRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
-    // Skip the rail indicator when the account flyout is active — the round
-    // user button at the bottom owns its own indicator in that state.
     if (accountActive) {
       setIndicator(null);
       setPhase("idle");
@@ -55,9 +39,6 @@ export default function IconRail() {
     const list = listRef.current;
     if (!target || !list) return;
 
-    // Match the original .rd-rail__indicator inset (8px top + bottom on the
-    // 44px section button) so the bar sits flush with the icon centre rather
-    // than overshooting the rounded corners.
     const INSET = 8;
     const newBox: IndicatorBox = {
       top: target.offsetTop + INSET,
@@ -65,15 +46,11 @@ export default function IconRail() {
     };
 
     if (indicator === null) {
-      // First mount / first activation — drop the bar in place without
-      // animating from somewhere arbitrary.
       setIndicator(newBox);
       setPhase("idle");
       return;
     }
 
-    // Compute the bridge between old and new extents so the bar visually
-    // stretches across the gap before contracting to the target.
     const oldTop = indicator.top;
     const oldBottom = indicator.top + indicator.height;
     const newTop = newBox.top;
@@ -85,9 +62,6 @@ export default function IconRail() {
     setIndicator({ top: bridgeTop, height: bridgeBottom - bridgeTop });
     setPhase("stretch");
 
-    // After the stretch transition completes, snap into settle phase with
-    // just the target's dimensions; the elastic easing on .is-settle handles
-    // the bounce-in.
     if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
     settleTimerRef.current = window.setTimeout(() => {
       setIndicator(newBox);
@@ -110,7 +84,7 @@ export default function IconRail() {
         V
       </Link>
 
-      <PerspectiveAvatar />
+      <ProfilePillStack />
 
       <div className="rd-rail__divider" aria-hidden />
 
@@ -122,7 +96,7 @@ export default function IconRail() {
             aria-hidden
           />
         )}
-        {visiblePerspective.sections.map((s) => {
+        {sections.map((s) => {
           const active = s.id === activeSectionId;
           return (
             <li key={s.id} className="rd-rail__section-item">
@@ -138,7 +112,7 @@ export default function IconRail() {
                 aria-pressed={active}
                 onClick={() => setActiveSectionId(s.id)}
               >
-                <Icon name={s.icon} />
+                <NavIcon iconKey={s.icon} />
               </button>
             </li>
           );
@@ -154,7 +128,7 @@ export default function IconRail() {
         >
           <Pencil size={18} strokeWidth={1.75} />
         </Link>
-        <div className="rd-rail__util-slot" title="Environment">
+<div className="rd-rail__util-slot" title="Environment">
           <EnvBadge />
         </div>
         <button type="button" className="rd-rail__util-btn" title="Notifications" aria-label="Notifications">
