@@ -53,6 +53,11 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   );
 
   const urlSection = sectionForPath(perspective, pathname);
+
+  // Track the section the rail is currently "showing". Defaults to the URL's
+  // section, but rail clicks override (so a user can browse one section's
+  // flyout while staying on another section's page). When the URL changes to
+  // a page in a different section, the override resets to follow the URL.
   const [manualSectionId, setManualSectionId] = useState<string>(
     urlSection?.id ?? perspective.sections[0]?.id ?? "",
   );
@@ -61,8 +66,8 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     if (urlSection) setManualSectionId(urlSection.id);
   }, [urlSection]);
 
-  const activeSectionId = urlSection?.id ?? manualSectionId;
-  const isAccountActive = manualSectionId === ACCOUNT_SECTION_ID && !urlSection;
+  const activeSectionId = manualSectionId || urlSection?.id || perspective.sections[0]?.id || "";
+  const isAccountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const activeSection = isAccountActive
     ? undefined
     : perspective.sections.find((s) => s.id === activeSectionId) ?? perspective.sections[0];
@@ -84,7 +89,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     <ShellContext.Provider
       value={{
         perspective,
-        activeSectionId: isAccountActive ? ACCOUNT_SECTION_ID : activeSection?.id ?? "",
+        activeSectionId,
         setPerspectiveId: switchPerspective,
         setActiveSectionId,
         activeSection,

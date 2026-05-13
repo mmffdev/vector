@@ -32,6 +32,12 @@
   align-items: center;
   gap: 4px;
   padding: 16px 0;
+  /* min-height: 100vh ensures the rail always has enough vertical room for
+     `margin-top: auto` on `.rd-rail__util` to push it to the viewport bottom,
+     even when the page body is short. Without this the util cluster collapses
+     up against the section list. */
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .rd-rail__brand {
