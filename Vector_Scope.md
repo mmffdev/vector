@@ -1,12 +1,16 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-12 (R054 Rally scope-model research integration — B6.8–B6.12 added for per-user grant grid, workspace default-access setting, copy-grants on child-create, CSV bulk import, re-parent policy; FE-POR-0003 R054 validation note added)
-**Doc version:** 2.18
+**Last updated:** 2026-05-13 (RF1 Codebase Recovery added — PLA-0048 seven-phase recovery plan: conventions → drift gates → sql.go consolidation → per-DB migration dirs → naming sweep → cross-DB writer hardening → docs pass)
+**Doc version:** 2.19
 
 ---
 
 ## Table of Contents
+
+**RF — Codebase Recovery** *(structural refactor — PLA-0048, top priority)*
+
+- [RF1. Codebase Recovery (PLA-0048)](#rf1-codebase-recovery-pla-0048)
 
 **FLOW — Flow-State Primitives** *(canonical lifecycle model — quick reference)*
 
@@ -56,6 +60,132 @@
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 - [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
 - [B22. Transport Segregation via Shared Service Core (PLA-0039)](#b22-transport-segregation-via-shared-service-core-pla-0039)
+
+---
+
+## RF1. Codebase Recovery (PLA-0048)
+
+Drag the codebase from its current state (SQL scattered across 56 of 137 backend files, inconsistent table/route naming, CI gates that only fire on PR-to-main) into a shape a DBA or fresh engineer can read at first glance. Built from four parallel Opus audits run 2026-05-13 — not from memory. Audit findings: 42 backend packages, 32,877 lines non-test Go, 461 raw SQL string literals embedded in service files, **zero `sql.go` files**, 10 packages touching >1 database, 22 cross-DB function paths (5 high-risk). Master plan: [`docs/c_c_the_state_of_the_codebase.md`](docs/c_c_the_state_of_the_codebase.md). Plan card: [`dev/plans/PLA-0048.json`](dev/plans/PLA-0048.json). Hard stop gates between every phase; no improvisation; every commit reversible. `[P1]` 🔵 IN FLIGHT
+
+### RF1.0 Phase 0 — Codify conventions (no code changes)
+
+- 🔵 IN FLIGHT **RF1.0.1** Write `docs/c_c_naming_conventions.md` as a leaf doc capturing every rule from §2 of the master plan (Go packages, tables, routes, file layout, migrations). `[P1]`
+- 🔵 IN FLIGHT **RF1.0.2** Add one-line pointer to `CLAUDE.md` index. `[P1]`
+- 🔵 IN FLIGHT **RF1.0.3** Stop gate: user reviews the conventions doc before any code change happens. `[P1]`
+
+### RF1.1 Phase 1 — Install drift-prevention lints BEFORE the rewrite
+
+- **RF1.1.1** `lint:sql-in-sqlfile-only` — forbids raw SQL outside `sql.go` files. Seeded with wide allow-list from current state; shrinks one package per Phase 2 step. `[P1]`
+- **RF1.1.2** `lint:no-empty-route-block` — fails any `r.Route(...)` with no verb registrations inside. `[P1]`
+- **RF1.1.3** `lint:exemption-ratchet` — `*_exempt.json` files cannot grow commit-to-commit. `[P1]`
+- **RF1.1.4** `lint:deferral-needs-td-id` — commit messages containing deferral phrases must reference `TD-*`. `[P1]`
+- **RF1.1.5** `lint:package-naming-convention` — fails any `*v\d+` package without a register entry naming the predecessor. `[P1]`
+- **RF1.1.6** New CI workflow `tests.yml` running `npm test`, `npx tsc --noEmit`, `go test ./...`, `go vet ./...` on every push (not just PR-to-main). `[P1]`
+- **RF1.1.7** Tighten `dev/scripts/check_callers.py` regex to skip files with `import { apiSite as api }` (closes TD-API-003). `[P2]`
+- **RF1.1.8** Stop gate: all five lints pass against HEAD. `[P1]`
+
+### RF1.2 Phase 2 — sql.go consolidation, one package at a time
+
+Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape identical for all 20: create `sql.go`, move every SQL literal to a named const (`sqlVerbResource`), update functions, build, test, smoke, commit, shrink lint allow-list. Stop gate after EVERY package.
+
+- **RF1.2.1** `topology` (post-tonight; includes `orgdesign` → `topology` rename for Section-1 consistency). `[P1]`
+- **RF1.2.2** `auth` — 21 SQL strings, single-DB, foundational. `[P1]`
+- **RF1.2.3** `users` — 15 SQL strings, single-DB. `[P1]`
+- **RF1.2.4** `roles` — 10 SQL strings, single-DB. `[P1]`
+- **RF1.2.5** `permissions` — 3 SQL strings, single-DB, foundational. `[P2]`
+- **RF1.2.6** `addressables` — 21 SQL strings, single-DB. `[P2]`
+- **RF1.2.7** `nav` — 53 SQL strings, single-DB. `[P2]`
+- **RF1.2.8** `flows` — 30 SQL strings, single-DB. `[P2]`
+- **RF1.2.9** `webhooks` — 11 SQL strings, single-DB. `[P3]`
+- **RF1.2.10** `timeboxsprints` + `timeboxreleases` — small, single-DB. `[P3]`
+- **RF1.2.11** `workspaces` — 18 SQL strings, 2 DBs. `[P2]`
+- **RF1.2.12** `tenantsettings` — 4 SQL strings, 2 DBs. `[P3]`
+- **RF1.2.13** `fields` — 5 SQL strings, 2 DBs. `[P3]`
+- **RF1.2.14** `searchworker` — 7 SQL strings, 2 DBs. `[P3]`
+- **RF1.2.15** `errorsreport` — 2 SQL strings, 3 DBs. `[P3]`
+- **RF1.2.16** `libraryreleases` — 1 SQL string (rest delegated), 3 DBs. `[P3]`
+- **RF1.2.17** `librarydb` — 15 SQL strings, 3 DBs (library access layer). `[P2]`
+- **RF1.2.18** `portfolio` — 6 SQL strings, 2 DBs. `[P2]`
+- **RF1.2.19** `artefactitemsv2` — 26 SQL strings, 1 DB (rename deferred to Phase 4). `[P2]`
+- **RF1.2.20** `portfoliomodels` — 51 SQL strings, 3 DBs. **Hardest. Last.** `[P1]`
+
+### RF1.3 Phase 3 — Per-DB migration directories
+
+- **RF1.3.1** `git mv db/schema/` → `db/mmff_vector/schema/`. `[P1]`
+- **RF1.3.2** `git mv db/artefacts_schema/` → `db/vector_artefacts/schema/`. `[P1]`
+- **RF1.3.3** `git mv db/library_schema/` → `db/mmff_library/schema/`. `[P1]`
+- **RF1.3.4** Update `backend/cmd/migrate/main.go`, `c_db-backup.md`, `backup-on-push.sh`, any tooling that walks `db/`. `[P1]`
+- **RF1.3.5** Stop gate: `go run ./cmd/migrate -dry-run -db <each>` reports zero pending. `[P1]`
+
+### RF1.4 Phase 4 — Naming-convention sweep, one rename at a time
+
+#### RF1.4.1 — Go package renames
+
+- **RF1.4.1.1** `artefactitemsv2` → `artefactitems`. `[P1]`
+- **RF1.4.1.2** `wsperms` → `workspacepermissions` (if package still exists; check first). `[P3]`
+- **RF1.4.1.3** `entityrefs` → `polymorphicrefs`. `[P3]`
+- **RF1.4.1.4** `dbcheck` → `dbinvariants`. `[P3]`
+- **RF1.4.1.5** `models` → `roletypes`. `[P3]`
+- **RF1.4.1.6** `messages` → `usermessages`. `[P3]`
+- **RF1.4.1.7** `tenantsettings` → `tenantmasterrecord`. `[P3]`
+
+#### RF1.4.2 — Table renames
+
+- **RF1.4.2.1** `topology_view_state` → `topology_view_states`. `[P2]`
+- **RF1.4.2.2** `audit_log` → `audit_logs`. `[P2]`
+- **RF1.4.2.3** `artefacts_search_outbox` → `artefact_search_outbox`. `[P2]`
+- **RF1.4.2.4** `artefact_number_sequence` → `artefact_number_sequences`. `[P2]`
+- **RF1.4.2.5** `master_record_portfolio` → `master_record_portfolios`. `[P2]`
+- **RF1.4.2.6** `master_record_tenant` → `master_record_tenants`. `[P3]`
+- **RF1.4.2.7** `library_release_log` → `library_release_logs`. `[P3]`
+- **RF1.4.2.8** `portfolio_template_layer_definitions` → `portfolio_template_layers`. `[P2]`
+- **RF1.4.2.9** `portfolio_templates` → `portfolio_models` (align with public route). `[P1]`
+- **RF1.4.2.10** `master_record_workspaces` → `workspaces` (align with package name; legacy singular `workspace` already on a drop path). `[P1]`
+- **RF1.4.2.11** `subscription_sequence` → `subscriptions_sequence`. `[P3]`
+- **RF1.4.2.12** Drop legacy `workspace` (singular) table — last reader migrated. `[P2]`
+- **RF1.4.2.13** Drop legacy `mmff_vector.sprints` — superseded by `vector_artefacts.timebox_sprints`. `[P2]`
+- **RF1.4.2.14** Drop / rename remaining `obj_*` family as last readers migrate. `[P3]`
+
+#### RF1.4.3 — Route renames
+
+- **RF1.4.3.1** `/workspace/{id}/fields` → `/workspaces/{id}/fields`. `[P1]`
+- **RF1.4.3.2** `/workspace/{id}/portfolio/layers` → `/workspaces/{id}/portfolio/layers`. `[P1]`
+- **RF1.4.3.3** `/portfolio` → `/portfolios`. `[P2]`
+- **RF1.4.3.4** `/nav/bookmark` → `/nav/bookmarks`. `[P3]`
+- **RF1.4.3.5** `/user/tab-order/{pageId}` → `/me/tab-order/{pageId}`. `[P3]`
+- **RF1.4.3.6** `POST /admin/api-keys/issue` → `POST /admin/api-keys` (REST canonical). `[P3]`
+- **RF1.4.3.7** `POST /admin/api-keys/revoke` → `DELETE /admin/api-keys/{id}` (REST canonical). `[P3]`
+- **RF1.4.3.8** `/flow-states/{id}` → `/flows/{flowId}/states/{id}` (and exit-rules nested). `[P3]`
+- **RF1.4.3.9** `POST /errors/report` → `POST /error-reports`. `[P3]`
+- **RF1.4.3.10** `/admin/dev/adoption-reset` → `/admin/dev/reset-adoption-state`. `[P3]`
+- **RF1.4.3.11** `/tenant-settings` → `/workspace-settings` (verify what the table actually keys by first). `[P2]`
+
+### RF1.5 Phase 5 — Cross-DB writer hardening
+
+Each of the 5 high-risk cross-DB writers gets an explicit `*_crossdb_test.go` regression test plus partial-failure documentation. File TD entries for any actual partial-failure bugs uncovered.
+
+- **RF1.5.1** `portfoliomodels.Orchestrator.Adopt` (3 DBs). `[P1]`
+- **RF1.5.2** `portfoliomodels.DevResetHandler.MasterReset` (2 DBs). `[P2]`
+- **RF1.5.3** `artefactitemsv2.Service.CreateWorkItem` (cross-DB read inside write tx). `[P1]`
+- **RF1.5.4** `libraryreleases.Handler.Ack` (validate L, write A; no shared tx). `[P2]`
+- **RF1.5.5** `errorsreport.Handler.Report` (validate L, write A or V; no shared tx). `[P3]`
+- **RF1.5.6** Add `lint:cross-db-writer-test` — every cross-DB writer must have a sibling `_crossdb_test.go`. `[P1]`
+
+### RF1.6 Phase 6 — Documentation pass
+
+- **RF1.6.1** Regenerate `docs/c_c_db_routing.md` from code reality post-rewrite. `[P1]`
+- **RF1.6.2** Update `docs/c_schema.md` with renamed table names + DB locations. `[P1]`
+- **RF1.6.3** Finalise `docs/c_c_naming_conventions.md` post-Phase-4 (anything learned during rename sweep folded back into the spec). `[P2]`
+- **RF1.6.4** Reduce CLAUDE.md index to one-line-only entries per the standing rule. `[P2]`
+- **RF1.6.5** Stop gate: user reads the regenerated docs. `[P1]`
+
+### RF1.7 Completion tests (from master doc §6)
+
+- **RF1.7.1** Open `backend/internal/<any-package>/` and find `doc.go` + `service.go` + `handler.go` + `sql.go` + tests, in that order. `[P1]`
+- **RF1.7.2** Read `docs/c_c_naming_conventions.md` once and predict every future name. `[P1]`
+- **RF1.7.3** Run `go run ./cmd/migrate -dry-run` against each DB and see zero pending migrations. `[P1]`
+- **RF1.7.4** Run `npm run api:check && npm test && go test ./...` and see zero failures. `[P1]`
+- **RF1.7.5** Open `docs/c_c_db_routing.md` and find every service mapped to its DB and tables — and trust that it matches the code. `[P1]`
 
 ---
 
@@ -163,6 +293,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -219,6 +352,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -338,6 +472,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -379,6 +515,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
 > Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
 > Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -441,6 +578,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 ---
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
@@ -648,6 +786,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -681,6 +820,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -804,6 +944,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
+> Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -840,6 +981,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -1496,6 +1638,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -1565,6 +1709,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -1655,6 +1800,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 > Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -2095,6 +2241,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -2137,6 +2284,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -2259,6 +2407,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -2369,6 +2518,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
+> Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -2417,6 +2567,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -2711,6 +2862,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -2758,6 +2910,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -2807,6 +2960,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -2897,6 +3051,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 > Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -2926,6 +3081,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -2969,6 +3125,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -3005,6 +3162,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
