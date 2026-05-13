@@ -173,7 +173,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		),
 		seed AS (
 			SELECT * FROM (VALUES
-				('Workspace Admin', 0, 'cog',    ARRAY['workspace-admin','workspace-settings','portfolio-settings','library-releases']),
+				('Workspace Admin', 0, 'cog',    ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
 				('User Management', 1, 'users',  ARRAY['user-management','um-permissions']),
 				('Vector Admin',    2, 'shield', ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 			) AS t(label, pos, icon, pages)
@@ -189,7 +189,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		SET group_id = ins.id
 		FROM inserted ins
 		JOIN (VALUES
-			('workspace admin', ARRAY['workspace-admin','workspace-settings','portfolio-settings','library-releases']),
+			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
 			('user management', ARRAY['user-management','um-permissions']),
 			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 		) AS mapping(lbl, pages) ON mapping.lbl = ins.lbl
