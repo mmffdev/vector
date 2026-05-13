@@ -55,6 +55,7 @@ export interface LayerDTO {
   tag: string;
   sort_order: number;
   description_md: string | null;
+  is_placeholder?: boolean;
 }
 
 // Post-R010: portfolio_templates are flat — no family, no version. The

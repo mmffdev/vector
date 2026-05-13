@@ -90,15 +90,10 @@ func isCSRFExempt(path string) bool {
 		"/auth/refresh",
 		"/auth/password-reset",
 		"/auth/password-reset/confirm",
-		// Legacy paths kept so any in-flight cookies from old builds don't 403.
-		"/samantha/v1/auth/login",
-		"/samantha/v1/auth/refresh",
-		"/samantha/v1/auth/password-reset",
-		"/samantha/v1/auth/password-reset/confirm",
-		"/samantha/v1/addressables/build-reconcile":
+		"/addressables/build-reconcile":
 		return true
 	}
-	if strings.HasPrefix(bare, "/samantha/v1/admin/api-keys") {
+	if strings.HasPrefix(bare, "/admin/api-keys") {
 		return true
 	}
 	return false

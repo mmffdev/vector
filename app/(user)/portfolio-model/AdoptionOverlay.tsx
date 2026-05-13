@@ -14,13 +14,13 @@
  *   box to complete.
  *
  * SSE lifecycle: the component owns its EventSource (open on mount, close on
- * unmount). It listens to events at GET /samantha/v1/portfolio-models/{modelId}/adopt/stream.
+ * unmount). It listens to events at GET /_site/portfolio-models/{modelId}/adopt/stream.
  *
  * Error / retry (card 00018):
  *   - On `event: fail` the failing step flips to `--failed`, an error banner
  *     renders the `error_code` + `message` from the SSE payload, and an
  *     auto-retry kicks in after a backoff (see ADOPTION_RETRY_BACKOFF_MS).
- *   - A retry re-POSTs /samantha/v1/portfolio-models/{modelId}/adopt and re-opens the
+ *   - A retry re-POSTs /_site/portfolio-models/{modelId}/adopt and re-opens the
  *     SSE stream — the orchestrator's saga is idempotent on
  *     (subscription_id, source_library_id) and resumes from the failed step.
  *   - After ADOPTION_MAX_RETRIES (5) we stop auto-retrying, surface the
@@ -357,7 +357,7 @@ export default function AdoptionOverlay({
     void (async () => {
       try {
         const API_BASE =
-          (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v1";
+          (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/_site";
         const res = await fetch(API_BASE + adoptStreamPath(modelId), {
           headers,
           credentials: "include",
