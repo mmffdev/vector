@@ -19,7 +19,7 @@ interface Pair {
 const PAIRS: Pair[] = [
   { id: "work-items",      label: "Work Items",      prod: "/work-items",                              v2: "/v2/work-items"      },
   { id: "portfolio-model", label: "Portfolio Model", prod: "/portfolio-model",                         v2: "/v2/portfolio-model" },
-  { id: "custom-fields",   label: "Custom Fields",   prod: "/workspace-settings/workspace-settings/custom-fields/work-items", v2: "/v2/custom-fields"   },
+  { id: "custom-fields",   label: "Custom Fields",   prod: "/workspace-admin/custom-fields/work-items", v2: "/v2/custom-fields"   },
 ];
 
 export default function CompareV2Page() {

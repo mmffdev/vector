@@ -79,9 +79,9 @@ export default function WorkspaceSettingsLayout({ children }: { children: React.
       // Determine first accessible tab for this user. Non-admins land on the
       // Portfolio Model surface (now nested under workspace_settings).
       if (canAdminWorkspace) {
-        router.replace("/workspace-settings/vector-admin");
+        router.replace("/vector-admin");
       } else {
-        router.replace("/workspace-settings/workspace-settings/portfolio-model");
+        router.replace("/workspace-admin/portfolio-model");
       }
     }
   }, [user, canAccessSettings, canAdminWorkspace, pathname, router]);

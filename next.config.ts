@@ -40,11 +40,24 @@ const securityHeaders = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   turbopack: {
     root: __dirname,
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return [
+      // Workspace Admin — /workspace-settings/workspace-settings/* → /workspace-admin/*
+      { source: "/workspace-settings/workspace-settings/:path*", destination: "/workspace-admin/:path*", permanent: true },
+      // User Management — /workspace-settings/users/* → /user-management/*
+      { source: "/workspace-settings/users/:path*", destination: "/user-management/:path*", permanent: true },
+      // User Management — /workspace-settings/permissions → /user-management/permissions
+      { source: "/workspace-settings/permissions", destination: "/user-management/permissions", permanent: true },
+      // Vector Admin — /workspace-settings/vector-admin/* → /vector-admin/*
+      { source: "/workspace-settings/vector-admin/:path*", destination: "/vector-admin/:path*", permanent: true },
+    ];
   },
 };
 

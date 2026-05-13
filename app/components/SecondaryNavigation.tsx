@@ -78,7 +78,7 @@ const SAVE_DEBOUNCE_MS = 250;
 // because every level above it stays in the prefix.
 //
 // Example:
-//   path:        /workspace-settings/workspace-settings/custom-fields/work-items
+//   path:        /workspace-admin/custom-fields/work-items
 //   active key:  "work_items"  → segment match "work-items"
 //   derived id:  "workspace-settings__workspace-settings__custom-fields"
 function derivePageIdFromPath(pathname: string, activeKey: string): string {

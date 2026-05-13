@@ -21,7 +21,7 @@ export default function ApiManagerLayout({ children }: { children: React.ReactNo
   const activeTab: TabKey = SEG_TO_KEY[tabSeg] ?? "webhooks";
 
   function handleTabChange(key: TabKey) {
-    router.push(`/workspace-settings/vector-admin/api-manager/${key}`);
+    router.push(`/vector-admin/api-manager/${key}`);
   }
 
   return (
