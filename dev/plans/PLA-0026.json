@@ -3,7 +3,7 @@
   "title": "Per-Workspace Portfolio Adoption Cutover to vector_artefacts",
   "date_created": "2026-05-07",
   "date_started": "2026-05-07",
-  "date_last_updated": "2026-05-07",
+  "date_last_updated": "2026-05-13",
   "date_finished": null,
   "scope": "<p>Cut the portfolio-adoption pipeline over from the legacy <code>mmff_vector.obj_*</code> tables to the per-workspace <code>vector_artefacts</code> substrate. The cutover introduces an explicit scope discriminator on the renamed <code>artefact_field_library</code> table (<code>global</code> / <code>tenant</code> / <code>workspace</code>), a deny-by-default <code>artefact_workspace_fields</code> whitelist, and a <code>master_record_portfolio</code> row per adopted workspace so that BundleView and the adoption-state handler stop reading from <code>mmff_library</code> at request time.</p><p>The adoption saga is rewritten to write strategy + work types into <code>artefact_types</code> (scope = strategy or work, with <code>library_layer_id</code>/<code>library_layer_tag</code> provenance), workflows + transitions into <code>flows</code> + <code>flow_transitions</code>, and the model prose into <code>master_record_portfolio</code>. Re-adoption preserves the <code>parent_artefact_id NOT NULL</code> invariant by inserting a placeholder strategy artefact before deleting old strategy rows, then repointing orphaned work artefacts onto the placeholder.</p><p>Sanitisation of the legacy <code>obj_*</code> + <code>subscription_*</code> tables is gradual per CLAUDE.md hard rule: each drop is its own follow-up PR triggered by 7 days of zero observed reads after its replacement ships. The five sanitisation cards (S1–S5) are filed on the same plan but tracked as deferred.</p>",
   "value": "<p>Closes the residual cross-DB read coupling between tenant pages and <code>mmff_library</code> (BundleView, layer list, field schema, adoption-state) and provides a clean per-workspace scoping substrate for portfolio metadata. Removes the post-reset 404 on the adoption-state endpoint observed today, fixes the animation hang on adoption stream, and gives the team a stable foundation to retire <code>obj_strategy_types_layers</code>, <code>subscription_artifacts</code>, <code>subscription_workflows</code> + transitions, and <code>strategy_layers_adopted</code> in subsequent gradual drops.</p>",
@@ -296,6 +296,41 @@
       "story_id": "00512",
       "card_url": "http://localhost:3333/cards/1769517147186267438",
       "status": "completed"
+    },
+    {
+      "order": 38,
+      "title": "SA1: Remove legacy vectorPool writes from adoption saga (adopt.go dual-write teardown)",
+      "story_id": "00559",
+      "card_url": "",
+      "status": "done"
+    },
+    {
+      "order": 39,
+      "title": "SA2: Create artefact_adoption_state table on vector_artefacts (replaces subscription_portfolio_model_state)",
+      "story_id": "00560",
+      "card_url": "",
+      "status": "todo"
+    },
+    {
+      "order": 40,
+      "title": "SA3: Retarget adoption state reads/writes to VA artefact_adoption_state",
+      "story_id": "00561",
+      "card_url": "",
+      "status": "todo"
+    },
+    {
+      "order": 41,
+      "title": "SA4: Drop subscription_portfolio_model_state from mmff_vector",
+      "story_id": "00562",
+      "card_url": "",
+      "status": "todo"
+    },
+    {
+      "order": 42,
+      "title": "SA5: Extend cross-DB canary to cover adoption state table and verify saga tables retired",
+      "story_id": "00563",
+      "card_url": "",
+      "status": "todo"
     }
   ],
   "acceptance_criteria": [
@@ -594,6 +629,46 @@
       "story_id": "00512",
       "card_url": "http://localhost:3333/cards/1769517147186267438",
       "done": true
+    },
+    {
+      "order": 38,
+      "criterion": "adopt.go contains zero writes to subscription_portfolio_model_state, obj_strategy_types_layers, subscription_workflows, subscription_workflow_transitions, subscription_artifacts via VectorPool after SA1",
+      "proven_by": "grep + code review confirms no VectorPool.Exec or VectorPool.Begin in saga write paths",
+      "story_id": "00559",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 39,
+      "criterion": "artefact_adoption_state table exists on vector_artefacts with subscription_id, workspace_id, model_id, status, partial unique index, timestamps; schema_migrations row present; DOWN script exists",
+      "proven_by": "migration commit + psql \\d artefact_adoption_state",
+      "story_id": "00560",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 40,
+      "criterion": "loadActiveState and all state UPDATE helpers reference artefact_adoption_state via vaPool; zero VectorPool references in adopt.go state helpers",
+      "proven_by": "grep confirms no VectorPool in state helper functions",
+      "story_id": "00561",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 41,
+      "criterion": "subscription_portfolio_model_state dropped from mmff_vector; dev_reset.go DELETE step removed; schema_migrations row for drop migration present",
+      "proven_by": "psql \\dt mmff_vector confirms table absent; dev_reset.go grep returns no reference",
+      "story_id": "00562",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 42,
+      "criterion": "cross_db_canary_test.go covers artefact_adoption_state row counts on VA; canary passes after all SA drops land",
+      "proven_by": "go test ./... -run TestCrossDBCanary passes",
+      "story_id": "00563",
+      "card_url": "",
+      "done": false
     }
   ],
   "risks": [
