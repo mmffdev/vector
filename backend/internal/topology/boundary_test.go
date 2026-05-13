@@ -1,4 +1,4 @@
-package orgdesign_test
+package topology_test
 
 import (
 	"bytes"
@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-// TestPackageBoundary asserts that orgdesign is the SOLE writer for
-// topology_nodes, topology_role_grants, and topology_view_state.
-// It fails CI if any .go file outside backend/internal/orgdesign/
-// contains an INSERT/UPDATE/DELETE SQL string targeting one of those
-// tables.
+// TestPackageBoundary asserts that the topology package is the SOLE
+// writer for topology_nodes, topology_role_grants, topology_view_state,
+// and topology_commits. It fails CI if any .go file outside
+// backend/internal/topology/ contains an INSERT/UPDATE/DELETE SQL string
+// targeting one of those tables.
 //
 // M6.2.7 cutover (PLA-0006): the three boundary tables moved from
 // mmff_vector (org_nodes / roles_org_nodes / org_node_view_state /
@@ -36,7 +36,7 @@ func TestPackageBoundary(t *testing.T) {
 		t.Skip("ripgrep not installed; CI runs the boundary check via the lint step")
 	}
 
-	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(topology_nodes|topology_role_grants|topology_view_state)\b`
+	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(topology_nodes|topology_role_grants|topology_view_state|topology_commits)\b`
 
 	cmd := exec.Command("rg",
 		"--no-heading", "--line-number",
@@ -56,7 +56,7 @@ func TestPackageBoundary(t *testing.T) {
 		t.Fatalf("rg failed: %v\n%s", err, out.String())
 	}
 
-	allowed := filepath.Join(repoRoot, "backend", "internal", "orgdesign") + string(filepath.Separator)
+	allowed := filepath.Join(repoRoot, "backend", "internal", "topology") + string(filepath.Separator)
 	var violations []string
 	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
 		if line == "" {
@@ -71,7 +71,7 @@ func TestPackageBoundary(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Fatalf("orgdesign write boundary violated — these files write topology_nodes/topology_role_grants/topology_view_state directly instead of going through backend/internal/orgdesign/:\n%s",
+		t.Fatalf("topology write boundary violated — these files write topology_nodes/topology_role_grants/topology_view_state/topology_commits directly instead of going through backend/internal/topology/:\n%s",
 			strings.Join(violations, "\n"))
 	}
 }

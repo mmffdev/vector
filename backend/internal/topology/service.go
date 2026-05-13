@@ -26,7 +26,7 @@
 // membership/auth checks (e.g. the PoolWorkspaceLookup adapter) —
 // no topology I/O touches it after PLA-0023 P6 (2026-05-13, mig 180
 // + VA mig 053).
-package orgdesign
+package topology
 
 import (
 	"context"

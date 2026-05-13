@@ -37,7 +37,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/nav"
-	"github.com/mmffdev/vector-backend/internal/orgdesign"
+	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/search"
@@ -244,21 +244,21 @@ func main() {
 	// in db/schema/069) to subscribed clients.
 	//
 	// Constructed early so other services can inject it as a notifier
-	// (e.g. orgdesign GrantNotifier for story 00283 handoff inbox).
+	// (e.g. topology GrantNotifier for story 00283 handoff inbox).
 	rtHub := realtime.NewHub()
 	realtime.StartRankListener(context.Background(), pool, rtHub)
 
-	// Topology / federated org canvas (PLA-0006). orgdesign is the SOLE
+	// Topology / federated org canvas (PLA-0006). topology is the SOLE
 	// writer for topology_nodes, topology_role_grants, and
-	// topology_view_state — see backend/internal/orgdesign/boundary_test.go
+	// topology_view_state — see backend/internal/topology/boundary_test.go
 	// for the CI gate.
 	//
 	// M6.2.7 cutover: those three tables now live in vector_artefacts,
-	// so orgdesign needs vaPool. Construction is deferred until after
+	// so topology needs vaPool. Construction is deferred until after
 	// the vaPool block runs (further down this file). orgDesignSvc /
 	// orgDesignH are declared here so handler wiring can reference them.
-	var orgDesignSvc *orgdesign.Service
-	var orgDesignH *orgdesign.Handler
+	var orgDesignSvc *topology.Service
+	var orgDesignH *topology.Handler
 
 	// Workspaces (PLA-0006 / story 00377). workspaces is the SOLE
 	// writer for the workspaces and workspace_roles tables — see
@@ -375,8 +375,8 @@ func main() {
 	// call until vaPool is provisioned. WithNotifier wires the
 	// realtime hub so a fresh role grant publishes a per-user
 	// "topology-handoff" event (story 00283).
-	orgDesignSvc = orgdesign.New(pool, vaPool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
-	orgDesignH = orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
+	orgDesignSvc = topology.New(pool, vaPool).WithNotifier(topology.HubNotifier{Hub: rtHub})
+	orgDesignH = topology.NewHandler(orgDesignSvc).WithAudit(auditLog)
 
 	// PLA-0043 — attach the topology resolver to the v2 work/portfolio
 	// services so ?scope=<id> on /work-items can resolve to "this node
@@ -1043,9 +1043,9 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 
-		wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+		wsLookup := topology.PoolWorkspaceLookup{Pool: pool}
 		r.Group(func(r chi.Router) {
-			r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+			r.Use(topology.WorkspaceClampMiddleware(wsLookup))
 
 			r.Get("/tree", orgDesignH.Tree)
 			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
@@ -1342,7 +1342,7 @@ func main() {
 		// the tree (clamp predicate trims what each user sees at consuming
 		// endpoints). Mutations require padmin OR an admin grant on the
 		// affected node; node-grant authorisation is checked inside
-		// orgdesign.Service. Registered on v2 because all topology I/O now
+		// topology.Service. Registered on v2 because all topology I/O now
 		// targets vector_artefacts via vaPool (M6.2.7).
 		r.Route("/topology", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
@@ -1353,9 +1353,9 @@ func main() {
 			// Workspace clamp: every list-style read narrows to one
 			// workspace resolved from ?ws=<slug|uuid>. Middleware stashes
 			// workspace_id on context; service reads splice it into WHERE.
-			wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+			wsLookup := topology.PoolWorkspaceLookup{Pool: pool}
 			r.Group(func(r chi.Router) {
-				r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+				r.Use(topology.WorkspaceClampMiddleware(wsLookup))
 
 				r.Get("/tree", orgDesignH.Tree)
 				r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)

@@ -1,4 +1,4 @@
-package orgdesign_test
+package topology_test
 
 // Tests for the workspace clamp middleware (PLA-0006 / story 00378).
 //
@@ -52,7 +52,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/models"
-	"github.com/mmffdev/vector-backend/internal/orgdesign"
+	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
@@ -77,7 +77,7 @@ func (f *fakeWorkspaceLookup) FirstLiveWorkspace(_ context.Context, sub uuid.UUI
 	}
 	id, ok := f.firstLive[sub]
 	if !ok || id == uuid.Nil {
-		return uuid.Nil, orgdesign.ErrNoWorkspace
+		return uuid.Nil, topology.ErrNoWorkspace
 	}
 	return id, nil
 }
@@ -89,7 +89,7 @@ func (f *fakeWorkspaceLookup) ResolveSlug(_ context.Context, sub uuid.UUID, slug
 	key := sub.String() + "|" + slug
 	id, ok := f.bySlug[key]
 	if !ok {
-		return uuid.Nil, orgdesign.ErrWorkspaceNotFound
+		return uuid.Nil, topology.ErrWorkspaceNotFound
 	}
 	return id, nil
 }
@@ -102,7 +102,7 @@ func (f *fakeWorkspaceLookup) ResolveRef(ctx context.Context, sub uuid.UUID, ref
 		key := sub.String() + "|" + id.String()
 		got, ok := f.byID[key]
 		if !ok {
-			return uuid.Nil, orgdesign.ErrWorkspaceNotFound
+			return uuid.Nil, topology.ErrWorkspaceNotFound
 		}
 		return got, nil
 	}
@@ -129,19 +129,19 @@ type seenCtx struct {
 
 func runClamp(
 	t *testing.T,
-	lookup orgdesign.WorkspaceLookup,
+	lookup topology.WorkspaceLookup,
 	user *models.User,
 	queryString string,
 ) (*httptest.ResponseRecorder, *seenCtx) {
 	t.Helper()
 	seen := &seenCtx{}
 	terminal := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id, ok := orgdesign.WorkspaceIDFromCtx(r.Context())
+		id, ok := topology.WorkspaceIDFromCtx(r.Context())
 		seen.workspaceID = id
 		seen.hasClamp = ok
 		w.WriteHeader(http.StatusOK)
 	})
-	clamp := orgdesign.WorkspaceClampMiddleware(lookup)(terminal)
+	clamp := topology.WorkspaceClampMiddleware(lookup)(terminal)
 
 	url := "/api/topology/tree"
 	if queryString != "" {
@@ -498,7 +498,7 @@ func TestPoolWorkspaceLookup_FirstLive_OrdersByCreatedAtAndIgnoresArchived(t *te
 	// ws-3 (live, newer) — order check: created_at ASC means ws1 wins.
 	_ = seedWorkspace(t, pool, subID, userID, "Finance", "finance", false)
 
-	got, err := orgdesign.PoolWorkspaceLookup{Pool: pool}.FirstLiveWorkspace(context.Background(), subID)
+	got, err := topology.PoolWorkspaceLookup{Pool: pool}.FirstLiveWorkspace(context.Background(), subID)
 	if err != nil {
 		t.Fatalf("FirstLiveWorkspace: %v", err)
 	}
@@ -518,8 +518,8 @@ func TestPoolWorkspaceLookup_FirstLive_NoLive_ReturnsErr(t *testing.T) {
 	// Only archived workspaces in this tenant.
 	_ = seedWorkspace(t, pool, subID, userID, "Old", "old", true)
 
-	_, err := orgdesign.PoolWorkspaceLookup{Pool: pool}.FirstLiveWorkspace(context.Background(), subID)
-	if !errors.Is(err, orgdesign.ErrNoWorkspace) {
+	_, err := topology.PoolWorkspaceLookup{Pool: pool}.FirstLiveWorkspace(context.Background(), subID)
+	if !errors.Is(err, topology.ErrNoWorkspace) {
 		t.Fatalf("FirstLiveWorkspace: want ErrNoWorkspace, got %v", err)
 	}
 }
@@ -536,7 +536,7 @@ func TestPoolWorkspaceLookup_ResolveSlug_TenantScoped(t *testing.T) {
 
 	wsA := seedWorkspace(t, pool, subA, userA, "Finance", "finance", false)
 
-	lookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+	lookup := topology.PoolWorkspaceLookup{Pool: pool}
 
 	// Subscription A sees its own "finance" slug.
 	got, err := lookup.ResolveSlug(context.Background(), subA, "finance")
@@ -550,7 +550,7 @@ func TestPoolWorkspaceLookup_ResolveSlug_TenantScoped(t *testing.T) {
 	// Subscription B does NOT — cross-tenant query must surface
 	// ErrWorkspaceNotFound (which the middleware translates to 404).
 	_, err = lookup.ResolveSlug(context.Background(), subB, "finance")
-	if !errors.Is(err, orgdesign.ErrWorkspaceNotFound) {
+	if !errors.Is(err, topology.ErrWorkspaceNotFound) {
 		t.Fatalf("ResolveSlug(B, finance): want ErrWorkspaceNotFound, got %v", err)
 	}
 }
@@ -572,7 +572,7 @@ func TestPoolWorkspaceLookup_ResolveSlug_IgnoresArchived(t *testing.T) {
 	// for a live row in the same tenant.
 	live := seedWorkspace(t, pool, subID, userID, "New", "finance", false)
 
-	got, err := orgdesign.PoolWorkspaceLookup{Pool: pool}.ResolveSlug(context.Background(), subID, "finance")
+	got, err := topology.PoolWorkspaceLookup{Pool: pool}.ResolveSlug(context.Background(), subID, "finance")
 	if err != nil {
 		t.Fatalf("ResolveSlug: %v", err)
 	}
@@ -592,7 +592,7 @@ func TestPoolWorkspaceLookup_HasActiveRole_RevokedExcluded(t *testing.T) {
 	wsID := seedWorkspace(t, pool, subID, userID, "Default", "default", false)
 	seedWorkspaceRole(t, pool, subID, wsID, userID, userID, "admin", false)
 
-	lookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+	lookup := topology.PoolWorkspaceLookup{Pool: pool}
 
 	got, err := lookup.HasActiveRole(context.Background(), wsID, userID)
 	if err != nil {
@@ -642,7 +642,7 @@ func TestWorkspaceClamp_LiveDB_PassesThrough(t *testing.T) {
 	seedWorkspaceRole(t, pool, subID, wsID, userID, userID, "admin", false)
 
 	user := &models.User{ID: userID, SubscriptionID: subID}
-	lookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+	lookup := topology.PoolWorkspaceLookup{Pool: pool}
 
 	rec, seen := runClamp(t, lookup, user, "")
 	if rec.Code != http.StatusOK {

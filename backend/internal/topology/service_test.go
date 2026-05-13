@@ -1,4 +1,4 @@
-package orgdesign
+package topology
 
 import (
 	"context"
