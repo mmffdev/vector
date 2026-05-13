@@ -122,6 +122,64 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 // rather than inheriting the union of "every default-pinned page ever shipped"
 // from Default.
 func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) ([]PrefRow, error) {
+	// Non-default profiles with zero prefs are seeded from Default on first
+	// read. This covers profiles created before the CreateProfile clone was
+	// added, and any profile whose prefs were wiped externally. One-time per
+	// profile: once the clone lands, subsequent reads see existing rows.
+	if _, err := s.Pool.Exec(ctx, `
+		WITH this_profile AS (
+			SELECT id FROM user_nav_profiles
+			WHERE id = $3 AND is_default = FALSE
+		),
+		is_empty AS (
+			SELECT 1 FROM this_profile
+			WHERE NOT EXISTS (
+				SELECT 1 FROM user_nav_prefs
+				WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
+			)
+		),
+		default_profile AS (
+			SELECT id FROM user_nav_profiles
+			WHERE user_id = $1 AND subscription_id = $2 AND is_default = TRUE
+		)
+		INSERT INTO user_nav_prefs (
+			user_id, subscription_id, profile_id, item_key, position,
+			is_start_page, parent_item_key, group_id, icon_override
+		)
+		SELECT
+			src.user_id, src.subscription_id, $3, src.item_key, src.position,
+			FALSE, src.parent_item_key, src.group_id, src.icon_override
+		FROM user_nav_prefs src
+		JOIN default_profile dp ON dp.id = src.profile_id
+		WHERE EXISTS (SELECT 1 FROM is_empty)
+		ON CONFLICT DO NOTHING
+	`, userID, subscriptionID, profileID); err != nil {
+		return nil, fmt.Errorf("nav prefs clone-from-default: %w", err)
+	}
+
+	// Also seed per-profile group placements from Default when this profile
+	// has none yet (mirrors the prefs clone above). Uses WHERE NOT EXISTS
+	// rather than ON CONFLICT because the position unique constraint is
+	// deferrable and ON CONFLICT cannot use deferrable arbiters.
+	if _, err := s.Pool.Exec(ctx, `
+		WITH default_profile AS (
+			SELECT id FROM user_nav_profiles
+			WHERE user_id = $2 AND subscription_id = $3 AND is_default = TRUE
+		)
+		INSERT INTO user_nav_profile_groups (profile_id, group_id, tag_enum, position, icon_override)
+		SELECT $1, src.group_id, src.tag_enum, src.position, src.icon_override
+		FROM user_nav_profile_groups src
+		JOIN default_profile dp ON dp.id = src.profile_id
+		WHERE NOT EXISTS (
+			SELECT 1 FROM user_nav_profile_groups WHERE profile_id = $1
+		)
+		  AND NOT EXISTS (
+			SELECT 1 FROM user_nav_profiles WHERE id = $1 AND is_default = TRUE
+		)
+	`, profileID, userID, subscriptionID); err != nil {
+		return nil, fmt.Errorf("nav profile-groups clone-from-default: %w", err)
+	}
+
 	// Default-page auto-pin only fires for the user's Default profile.
 	// Custom profiles start with whatever the user explicitly puts on
 	// them — auto-pinning every new system page across every profile
@@ -160,7 +218,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
-	// Lazy-seed the three admin nav groups (Workspace Admin, User Management,
+	// Lazy-seed the three admin nav groups (Workspace Admin, User Admin,
 	// Vector Admin) for the Default profile if they're missing. This makes
 	// group seeding self-healing after resets and for new users — the one-off
 	// migration backfills are idempotent but only ran once.
@@ -174,7 +232,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		seed AS (
 			SELECT * FROM (VALUES
 				('Workspace Admin', 0, 'cog',    ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-				('User Management', 1, 'users',  ARRAY['user-management','um-permissions']),
+				('User Admin',      1, 'users',  ARRAY['user-management','um-permissions']),
 				('Vector Admin',    2, 'shield', ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 			) AS t(label, pos, icon, pages)
 			WHERE LOWER(t.label) NOT IN (SELECT lbl FROM existing)
@@ -197,7 +255,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		FROM all_groups ag
 		JOIN (VALUES
 			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-			('user management', ARRAY['user-management','um-permissions']),
+			('user admin',      ARRAY['user-management','um-permissions']),
 			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 		) AS mapping(lbl, pages) ON mapping.lbl = ag.lbl
 		WHERE unp.user_id = $1
