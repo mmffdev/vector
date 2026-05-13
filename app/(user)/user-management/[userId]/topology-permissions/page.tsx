@@ -24,7 +24,7 @@ import UserNodeAssignment from "@/app/components/topology/UserNodeAssignment";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
-import type { AdminUser } from "../../../_shared";
+import type { AdminUser } from "@/app/(user)/workspace-settings/_shared";
 
 export default function TopologyPermissionsPage() {
   const params = useParams<{ userId: string }>();

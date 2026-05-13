@@ -7,7 +7,7 @@ import Table from "@/app/components/Table";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
-import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "../_shared";
+import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/app/(user)/workspace-settings/_shared";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
 
