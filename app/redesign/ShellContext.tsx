@@ -14,6 +14,7 @@ const TAG_ICON_DEFAULTS: Record<string, string> = {
   planning: "clipboard",
   strategic: "star",
   bookmarks: "pin",
+  dev_tools: "terminal-square",
 };
 
 /** A page row resolved from a pref + catalogue lookup. */
