@@ -1600,8 +1600,18 @@ export default function NavPreferencesPage() {
       // server validates top-level contiguity and per-parent uniqueness
       // separately, and a single shared counter would leave gaps at the top
       // level whenever any parent has children.
-      const pinned: PutPrefsPinnedRow[] = [];
-      let topPos = 0;
+      //
+      // Backend constraint: catalogue items (kind !== user_custom) may NOT
+      // carry a group_id and must be contiguous per tag_enum in position order.
+      // User-custom items may carry a group_id and also must be contiguous per
+      // group. We satisfy both by emitting catalogue items grouped by tag_enum
+      // (in the order their tag bucket first appears in bucketOrder), then
+      // user_custom items grouped by their group bucket.
+      type PendingRow = { item_key: string; group_id: string | null; icon_override: string | null; children: Array<{ key: string; icon: string | null }> };
+      const catalogueByTag = new Map<string, PendingRow[]>();
+      const tagOrder: string[] = [];
+      const customRows: PendingRow[] = [];
+
       for (const bucket of draft.bucketOrder) {
         const items = draft.itemsByBucket[bucket] ?? [];
         const isCustom = bucket.startsWith("group:");
@@ -1609,27 +1619,31 @@ export default function NavPreferencesPage() {
         for (const it of items) {
           const entry = findEntry(it.key);
           if (!entry) continue;
-          pinned.push({
-            item_key: it.key,
-            position: topPos++,
-            parent_item_key: null,
-            group_id: entry.kind === "user_custom" ? groupId : null,
-            icon_override: draft.iconOverrides[it.key] ?? null,
-          });
-          let childPos = 0;
-          for (const ck of draft.childrenByParent[it.key] ?? []) {
-            const childEntry = findEntry(ck);
-            if (!childEntry) continue;
-            pinned.push({
-              item_key: ck,
-              position: childPos++,
-              parent_item_key: it.key,
-              group_id: null,
-              icon_override: draft.iconOverrides[ck] ?? null,
-            });
+          const children: Array<{ key: string; icon: string | null }> = (draft.childrenByParent[it.key] ?? [])
+            .map((ck) => ({ key: ck, icon: draft.iconOverrides[ck] ?? null }))
+            .filter(({ key }) => !!findEntry(key));
+          const row: PendingRow = { item_key: it.key, group_id: entry.kind === "user_custom" ? groupId : null, icon_override: draft.iconOverrides[it.key] ?? null, children };
+          if (entry.kind === "user_custom") {
+            customRows.push(row);
+          } else {
+            const tag = entry.tagEnum || "personal";
+            if (!catalogueByTag.has(tag)) { catalogueByTag.set(tag, []); tagOrder.push(tag); }
+            catalogueByTag.get(tag)!.push(row);
           }
         }
       }
+
+      const pinned: PutPrefsPinnedRow[] = [];
+      let topPos = 0;
+      const addRow = (r: PendingRow) => {
+        pinned.push({ item_key: r.item_key, position: topPos++, parent_item_key: null, group_id: r.group_id, icon_override: r.icon_override });
+        let childPos = 0;
+        for (const c of r.children) {
+          pinned.push({ item_key: c.key, position: childPos++, parent_item_key: r.item_key, group_id: null, icon_override: c.icon });
+        }
+      };
+      for (const tag of tagOrder) { for (const r of catalogueByTag.get(tag)!) addRow(r); }
+      for (const r of customRows) addRow(r);
       const groups: PutPrefsGroupRow[] = draft.customGroups.map((g, i) => ({
         id: g.id,
         label: g.label,
