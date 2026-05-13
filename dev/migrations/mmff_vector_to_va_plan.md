@@ -73,7 +73,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 4 | `company_roadmap` | `artefact_company_roadmap` ⚠ verify-live | ⚠ | P5 | Check if any rows / readers |
 | 5 | `defects` | `error_defects` | ✅ | P1 | Defect register |
 | 6 | `entity_stakeholders` | `artefact_stakeholders` | ✅ | P1 | Verify writer service |
-| 7 | `error_events` | `error_events` (keep) | ✅ | P1 | `errorsreport.NewService(libPools.RO, pool)` |
+| 7 | ~~`error_events`~~ | `error_events` on `vaPool` | ✅ | P1 done 2026-05-13 | mig 048 (VA create) + mig 164 (mmff_vector drop); `errorsreport.NewService(libPools.RO, errorsReportPool)` + `Orchestrator.ErrorsPool` (saga); 18 rows copied; cross-DB FKs (subscriptions, users) app-enforced; append-only trigger preserved on VA |
 | 8 | `execution_item_types` | DROP (verify) | ⚠ | P5 | Likely superseded by `artefact_types` |
 | 9 | `library_acknowledgements` | `library_acknowledgements` (keep) | ✅ | P1 | `libraryreleases.NewService(libPools.RO, pool)` |
 | 10 | `library_help_defaults` | `addressable_help_defaults` | ✅ | P3 | Page-help seed data |

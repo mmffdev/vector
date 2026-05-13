@@ -495,8 +495,14 @@ func main() {
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
 	// mmff_library.error_codes catalogue and append-only insert into
-	// mmff_vector.error_events.
-	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, pool))
+	// vector_artefacts.error_events (moved from mmff_vector 2026-05-13,
+	// PLA-0023 P1). Falls back to `pool` when vaPool is unavailable so
+	// pre-cutover environments keep working.
+	errorsReportPool := pool
+	if vaPool != nil {
+		errorsReportPool = vaPool
+	}
+	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, errorsReportPool))
 
 	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *models.User) {
 		var tier string

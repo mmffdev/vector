@@ -47,6 +47,7 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 | `searchworker` | `searchworker.New(vaPool, swCfg)` (L1522) | indexer consumer; reads outbox, writes index |
 | `webhooks` | `webhooks.New(vaPool)` (L318) | `webhook_subscriptions`, `webhook_deliveries` |
 | `audit` | `audit.New(pool)` (L146) + `auditLog.SetPool(vaPool)` (L316) | `audit_log` — early-bound on `pool` so service constructors capture the reference; pool atomically swapped to `vaPool` after vaPool init (PLA-0023 P1, 2026-05-13) |
+| `errorsreport` (writes) | `errorsreport.NewService(libPools.RO, errorsReportPool)` (L505) — `errorsReportPool = vaPool` when available, else `pool` | `error_events` — moved to vaPool 2026-05-13 (PLA-0023 P1); `libPools.RO` still reads `error_codes` from mmff_library |
 | `orgdesign` | `orgdesign.New(pool, vaPool)` (L360) — **vaPool is the canonical write target post-M6.2.7** | `org_nodes`, `topology_role_grants`, `topology_view_state` (all moved to VA) |
 | `portfolio` (master record) | `portfolio.NewService(vaPool).WithVectorPool(pool)` (L383) | `master_record_*` tables |
 | `tenantsettings` | `tenantsettings.New(tenantSettingsPool)` (L405) — **vaPool if available, else falls back to `pool`** | `master_record_tenant` (mig 036 lives on VA) |
@@ -63,7 +64,8 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 | Service | Pools | Notes |
 |---|---|---|
 | `portfoliomodels` | `libPools.RO` + `pool` | Reads adoption catalogue from library; dual-writes adoption state to `mmff_vector` (with optional `vaPool` PLA-0026 mirror) |
-| `errorsreport` | `libPools.RO` + `pool` | Reads error catalogue from library; writes reports to `mmff_vector` |
+| `errorsreport` | `libPools.RO` + `vaPool` (fallback `pool`) | Reads error catalogue from library; writes `error_events` to `vector_artefacts` post-PLA-0023 P1 (2026-05-13); falls back to `pool` only when `vaPool` is unavailable |
+| `portfoliomodels` (errors writer) | `vaPool` (fallback `vectorPool`) via `Orchestrator.ErrorsPool` | `appendErrorEvent` saga writes `error_events` to vaPool; other saga writes (adoption_state, etc.) stay on `vectorPool` until their tables migrate |
 | `portfoliomodels.NewDevResetHandler` | `pool` + `vaPool` (L397) | Cross-DB reset; tolerates `vaPool == nil` |
 
 ## How to verify a feature's DB before querying

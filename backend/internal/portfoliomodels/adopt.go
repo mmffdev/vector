@@ -146,6 +146,13 @@ type Orchestrator struct {
 	// exactly like the pre-PLA-0026 path. Lets dev/staging configs
 	// run without the artefacts DB while production cuts over.
 	VAPool *pgxpool.Pool
+	// ErrorsPool is the destination for appendErrorEvent INSERTs into
+	// error_events. PLA-0023 P1 (2026-05-13) moved error_events from
+	// mmff_vector to vector_artefacts; NewOrchestrator sets this to
+	// VAPool when available, falling back to VectorPool. Kept as a
+	// separate field (not just VAPool) so the saga's other writes
+	// against VectorPool — adoption_state, etc. — are unaffected.
+	ErrorsPool *pgxpool.Pool
 	// MasterRecordSvc is the sole-writer for master_record_portfolio
 	// (PLA-0026 B6). Optional — when nil the saga skips the finalize-
 	// step master_record upsert. Pair with VAPool: a non-nil VAPool
@@ -157,10 +164,15 @@ type Orchestrator struct {
 // (and/or masterRecordSvc) to disable the PLA-0026 dual-writes
 // (legacy-only behaviour).
 func NewOrchestrator(libRO, vectorPool, vaPool *pgxpool.Pool, masterRecordSvc *portfolio.Service) *Orchestrator {
+	errorsPool := vectorPool
+	if vaPool != nil {
+		errorsPool = vaPool
+	}
 	return &Orchestrator{
 		LibRO:           libRO,
 		VectorPool:      vectorPool,
 		VAPool:          vaPool,
+		ErrorsPool:      errorsPool,
 		MasterRecordSvc: masterRecordSvc,
 	}
 }
@@ -993,8 +1005,9 @@ func (o *Orchestrator) reportInternal(
 	return adoptionError{Code: codeAdoptInternal, Step: stepName, Cause: cause}
 }
 
-// appendErrorEvent inserts one row into mmff_vector.error_events with
-// the ADOPT_* code + step / model_id context. Best-effort: if this
+// appendErrorEvent inserts one row into error_events with the ADOPT_*
+// code + step / model_id context. Writes go to o.ErrorsPool, which is
+// vector_artefacts post-PLA-0023-P1 (2026-05-13). Best-effort: if this
 // insert fails too, the saga still returns the original error to the
 // caller — we don't want a logging failure to mask the real bug.
 func (o *Orchestrator) appendErrorEvent(
@@ -1024,7 +1037,11 @@ func (o *Orchestrator) appendErrorEvent(
 	if requestID != "" {
 		rid = requestID
 	}
-	_, _ = o.VectorPool.Exec(ctx, `
+	pool := o.ErrorsPool
+	if pool == nil {
+		pool = o.VectorPool // back-compat for callers that bypass NewOrchestrator
+	}
+	_, _ = pool.Exec(ctx, `
 		INSERT INTO error_events (subscription_id, user_id, code, context, request_id)
 		VALUES ($1, $2, $3, $4, $5)`,
 		subscriptionID, userID, code, ctxJSON, rid,
