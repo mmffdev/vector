@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Bell, Pencil } from "lucide-react";
+import { Bell, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
 import { NavIcon } from "@/app/components/NavIcon";
@@ -128,7 +128,15 @@ export default function IconRail() {
         >
           <Pencil size={18} strokeWidth={1.75} />
         </Link>
-<div className="rd-rail__util-slot" title="Environment">
+        <Link
+          href="/dev/research"
+          className="rd-rail__util-btn"
+          title="Dev Tools"
+          aria-label="Dev Tools"
+        >
+          <Settings size={20} strokeWidth={1.75} />
+        </Link>
+        <div className="rd-rail__util-slot" title="Environment">
           <EnvBadge />
         </div>
         <button type="button" className="rd-rail__util-btn" title="Notifications" aria-label="Notifications">
