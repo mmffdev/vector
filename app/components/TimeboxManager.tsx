@@ -173,7 +173,7 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
             header: "Name",
             kind: "custom",
             render: (r) => (
-              <span style={{ fontWeight: 500, color: "var(--ink-2)" }}>
+              <span style={{ fontWeight: 500, color: "var(--ink-muted)" }}>
                 {cfg.namePrefix} {nextNumber + r._idx}
               </span>
             ),
@@ -277,7 +277,7 @@ function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerPro
         const suffix = r[`${p}_suffix`] as string | null;
         const name = r[`${p}_name`] as string;
         return suffix
-          ? <>{name} <span style={{ color: "var(--ink-3)" }}>({suffix})</span></>
+          ? <>{name} <span style={{ color: "var(--ink-subtle)" }}>({suffix})</span></>
           : <>{name}</>;
       },
     },

@@ -1,0 +1,187 @@
+/* =============================================================
+   Vector Design System — Primitive Token Set
+   Universal fallback values. Theme packs override by scoping
+   to a class on <html> (e.g. .theme-ocean { --accent: #2B7FD4; }).
+   These are the defaults — every component downstream resolves
+   through these tokens; never hardcode a value that lives here.
+   ============================================================= */
+
+:root {
+
+  /* ── 1. CANVAS ─────────────────────────────────────────────
+     Page surfaces — what everything sits on. */
+  --canvas:          #FFFFFF;
+  --surface:         #FFFFFF;
+  --surface-sunken:  #EDEAE4;
+  --surface-raised:  #FFFFFF;
+
+  /* ── 2. INK ────────────────────────────────────────────────
+     All text and icon colours. */
+  --ink:          #1A1A1A;
+  --ink-muted:    #5C5C5C;
+  --ink-subtle:   #8A8A8A;
+  --ink-faint:    #B8B5AF;
+  --ink-inverse:  #FFFFFF;
+  --ink-contrast: #FFFFFF;
+
+  /* ── 3. BORDER ─────────────────────────────────────────────
+     Dividers, outlines, separators. */
+  --border:        #E5E1DA;
+  --border-strong: #D4CFC5;
+  --border-panel:  #C8C3BB;
+  --border-width:  1px;
+
+  /* ── 4. ACCENT ─────────────────────────────────────────────
+     Single interactive colour — buttons, links, active states.
+     Defaults to ink so Vector ships monochrome until a theme overrides. */
+  --accent:        #1A1A1A;
+  --accent-ink:    #FFFFFF;
+  --accent-muted:  rgba(26, 26, 26, 0.06);
+  --accent-border: rgba(26, 26, 26, 0.20);
+
+  /* ── 5. BRAND ──────────────────────────────────────────────
+     Tenant + product identity slots. Themeable independently. */
+  --brand-tenant:           #1A1A1A;
+  --brand-tenant-contrast:  #FFFFFF;
+  --brand-product:          #1A1A1A;
+  --brand-product-contrast: #FFFFFF;
+
+  /* ── 6. STATUS ─────────────────────────────────────────────
+     Semantic signal colours. Always paired with icon + label. */
+  --status-success:      #2F7D54;
+  --status-success-ink:  #FFFFFF;
+  --status-success-bg:   #E5F0E9;
+  --status-warning:      #B7791F;
+  --status-warning-ink:  #FFFFFF;
+  --status-warning-bg:   #FBEFD4;
+  --status-danger:       #B23B3B;
+  --status-danger-ink:   #FFFFFF;
+  --status-danger-bg:    #F5E1DE;
+  --status-info:         #2F5F8A;
+  --status-info-ink:     #FFFFFF;
+  --status-info-bg:      #E1ECF5;
+
+  /* ── 7. TYPE ───────────────────────────────────────────────
+     Typefaces and scale. */
+  --font-sans:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-numeric: 'Inter', system-ui, sans-serif;
+
+  --text-xs:   11px;  --leading-xs:   16px;
+  --text-sm:   13px;  --leading-sm:   20px;
+  --text-base: 14px;  --leading-base: 22px;
+  --text-md:   16px;  --leading-md:   24px;
+  --text-lg:   20px;  --leading-lg:   28px;
+  --text-xl:   28px;  --leading-xl:   36px;
+  --text-2xl:  36px;  --leading-2xl:  44px;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* ── 8. RADIUS ─────────────────────────────────────────────
+     Corner rounding. Defaults to 0 — Vector ships sharp until
+     a theme overrides. */
+  --radius-sm:   0;
+  --radius-md:   0;
+  --radius-lg:   0;
+  --radius-xl:   0;
+  --radius-full: 9999px;
+
+  /* ── 9. SPACING ────────────────────────────────────────────
+     4px base grid. */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Block rhythm (independent — may diverge from space scale) */
+  --gap-block-top:    20px;
+  --gap-block-right:  20px;
+  --gap-block-bottom: 20px;
+  --gap-block-left:   20px;
+
+  /* ── 10. MOTION ────────────────────────────────────────────
+     Transitions and animation feel. */
+  --duration-fast:   100ms;
+  --duration-base:   150ms;
+  --duration-slow:   250ms;
+  --easing-default:  ease;
+  --easing-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── 11. ELEVATION ─────────────────────────────────────────
+     Shadow depth. Defaults to none — Vector ships flat until
+     a theme overrides. */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+
+  /* ── LAYOUT ────────────────────────────────────────────────
+     Structural dimensions — not themeable, but live here as
+     single source of truth for layout constants. */
+  --sidebar-width:            240px;
+  --sidebar-width-collapsed:  64px;
+  --app-header-wrapper-height: 77px;
+  --content-max-width:        100%;
+  --row-height:               48px;
+  --input-height:             40px;
+  --nav-bar-h:                44px;
+
+  /* ── COMPONENT TOKENS ──────────────────────────────────────
+     Specific component defaults derived from primitives above. */
+  --nav-item-hover-bg:  var(--surface-sunken);
+  --nav-item-active-bg: var(--surface-sunken);
+
+  /* Grid-Tree type-badge tokens */
+  --tree_accordion-dense-type-epic:   #5C5C5C;
+  --tree_accordion-dense-type-story:  #8A8A8A;
+  --tree_accordion-dense-type-task:   #B8B5AF;
+  --tree_accordion-dense-type-defect: #b91c1c;
+}
+
+/* ── DARK THEME ──────────────────────────────────────────────
+   Warm dark palette — overrides canvas, ink, border primitives. */
+:root[data-theme="dark"] {
+  --canvas:          #1A1816;
+  --surface:         #232120;
+  --surface-sunken:  #1F1D1B;
+  --surface-raised:  #2A2826;
+
+  --ink:          #F4F2EE;
+  --ink-muted:    #B0ADA6;
+  --ink-subtle:   #8A8780;
+  --ink-faint:    #4A4744;
+  --ink-inverse:  #1A1816;
+  --ink-contrast: #1A1816;
+
+  --border:        #2E2B28;
+  --border-strong: #3D3A36;
+  --border-panel:  #4A4744;
+
+  --accent:        #F4F2EE;
+  --accent-ink:    #1A1816;
+  --accent-muted:  rgba(244, 242, 238, 0.06);
+  --accent-border: rgba(244, 242, 238, 0.20);
+}
+
+/* ── COLLAPSED SIDEBAR ───────────────────────────────────────  */
+:root[data-sidebar-collapsed="true"] {
+  --sidebar-width: var(--sidebar-width-collapsed);
+}
+
+/* ── REDUCED MOTION ──────────────────────────────────────────  */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
