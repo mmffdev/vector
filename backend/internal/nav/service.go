@@ -26,6 +26,7 @@ const (
 	MaxCustomGroups     = 10
 	MaxChildrenPerParent = 8
 	MaxGroupLabelLen     = 64
+	MaxGroupIconLen      = 64
 )
 
 var (
@@ -40,11 +41,14 @@ var (
 	ErrBadNesting           = errors.New("invalid parent/child nesting")
 	ErrCatalogueItemLocked  = errors.New("catalogue items cannot be nested or moved into custom groups")
 	ErrUnknownGroup         = errors.New("unknown group_id")
+	ErrUnknownTag           = errors.New("unknown tag_enum")
+	ErrPlacementKind        = errors.New("placement must set exactly one of group_id, tag_enum")
 	ErrEmptyGroupLabel      = errors.New("group label must not be empty")
 	ErrDuplicateGroupLabel  = errors.New("duplicate group label")
 	ErrTooManyGroups        = errors.New("too many custom groups")
 	ErrTooManyChildren      = errors.New("too many children for parent")
 	ErrGroupLabelTooLong    = errors.New("group label too long")
+	ErrGroupIconTooLong     = errors.New("group icon too long")
 )
 
 type Service struct {
@@ -74,10 +78,13 @@ type PinnedInput struct {
 }
 
 // CustomGroup is the wire shape for a user-created primary group.
+// Icon is nil = "no override picked"; consumers fall back to a generic
+// group icon. The string vocabulary matches user_nav_prefs.icon_override.
 type CustomGroup struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Position int    `json:"position"`
+	ID       string  `json:"id"`
+	Label    string  `json:"label"`
+	Position int     `json:"position"`
+	Icon     *string `json:"icon"`
 }
 
 // CustomGroupInput is the inbound shape on PUT /api/nav/prefs.
@@ -85,9 +92,10 @@ type CustomGroup struct {
 // created rows. The service mints fresh UUIDs for "new:" rows and
 // returns the id mapping via refetch (no separate response shape).
 type CustomGroupInput struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Position int    `json:"position"`
+	ID       string  `json:"id"`
+	Label    string  `json:"label"`
+	Position int     `json:"position"`
+	Icon     *string `json:"icon,omitempty"`
 }
 
 // GetPrefs returns the user's prefs for the resolved profile (active
@@ -185,7 +193,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 // GetCustomGroups returns the user's custom primary groups, in user-defined order.
 func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]CustomGroup, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, label, position
+		SELECT id, label, position, icon
 		FROM user_nav_groups
 		WHERE user_id = $1
 		ORDER BY position`, userID)
@@ -197,7 +205,7 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 	for rows.Next() {
 		var g CustomGroup
 		var id uuid.UUID
-		if err := rows.Scan(&id, &g.Label, &g.Position); err != nil {
+		if err := rows.Scan(&id, &g.Label, &g.Position, &g.Icon); err != nil {
 			return nil, err
 		}
 		g.ID = id.String()
@@ -327,6 +335,17 @@ func (s *Service) ReplacePrefsForProfile(
 		}
 		labelSeen[lower] = struct{}{}
 
+		var icon *string
+		if g.Icon != nil {
+			trimmed := strings.TrimSpace(*g.Icon)
+			if trimmed != "" {
+				if len(trimmed) > MaxGroupIconLen {
+					return fmt.Errorf("%w: %d > %d", ErrGroupIconTooLong, len(trimmed), MaxGroupIconLen)
+				}
+				icon = &trimmed
+			}
+		}
+
 		var canonical string
 		if strings.HasPrefix(g.ID, "new:") {
 			canonical = uuid.NewString()
@@ -343,6 +362,7 @@ func (s *Service) ReplacePrefsForProfile(
 			ID:       canonical,
 			Label:    label,
 			Position: g.Position,
+			Icon:     icon,
 		})
 	}
 	for i := 0; i < len(normalisedGroups); i++ {
@@ -453,11 +473,11 @@ func (s *Service) ReplacePrefsForProfile(
 		batch := &pgx.Batch{}
 		for _, g := range normalisedGroups {
 			batch.Queue(`
-				INSERT INTO user_nav_groups (id, user_id, label, position)
-				VALUES ($1, $2, $3, $4)
+				INSERT INTO user_nav_groups (id, user_id, label, position, icon)
+				VALUES ($1, $2, $3, $4, $5)
 				ON CONFLICT (id) DO UPDATE
-				SET label = EXCLUDED.label, position = EXCLUDED.position`,
-				g.ID, userID, g.Label, g.Position)
+				SET label = EXCLUDED.label, position = EXCLUDED.position, icon = EXCLUDED.icon`,
+				g.ID, userID, g.Label, g.Position, g.Icon)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range normalisedGroups {

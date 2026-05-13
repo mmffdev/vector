@@ -428,23 +428,26 @@ func (s *Service) ResolveProfile(ctx context.Context, userID, subscriptionID uui
 }
 
 // ProfileGroupPlacement is the wire shape for per-profile group
-// placement. Position is unique within the profile (DEFERRABLE) —
-// callers send a contiguous 0..N-1 sequence.
+// placement. Each row sets exactly one of GroupID (a custom group) or
+// TagEnum (a built-in tag bucket). Position is unique within the
+// profile (partial unique indexes + xor check enforce both invariants).
+// Callers send a contiguous 0..N-1 sequence.
 type ProfileGroupPlacement struct {
-	GroupID  uuid.UUID `json:"group_id"`
-	Position int       `json:"position"`
+	GroupID  *uuid.UUID `json:"group_id"`
+	TagEnum  *string    `json:"tag_enum"`
+	Position int        `json:"position"`
 }
 
-// ListProfileGroups returns the placements of shared groups inside a
-// specific profile, in display order. The shared groups themselves
-// stay user-scoped — this surface is purely about "which of my groups
-// does this profile show, and where".
+// ListProfileGroups returns the placements inside a specific profile,
+// in display order. Each row is either a custom-group placement or a
+// tag-bucket placement (discriminated by which of GroupID/TagEnum is
+// set). The shared group pool itself stays user-scoped.
 func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) ([]ProfileGroupPlacement, error) {
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return nil, err
 	}
 	rows, err := s.Pool.Query(ctx, `
-		SELECT group_id, position
+		SELECT group_id, tag_enum, position
 		  FROM user_nav_profile_groups
 		 WHERE profile_id = $1
 		 ORDER BY position
@@ -456,7 +459,7 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 	out := make([]ProfileGroupPlacement, 0, 4)
 	for rows.Next() {
 		var g ProfileGroupPlacement
-		if err := rows.Scan(&g.GroupID, &g.Position); err != nil {
+		if err := rows.Scan(&g.GroupID, &g.TagEnum, &g.Position); err != nil {
 			return nil, err
 		}
 		out = append(out, g)
@@ -465,37 +468,52 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 }
 
 // SetProfileGroups replaces the placements for one profile atomically.
-// All group_ids must be owned by the same user (we re-verify against
-// user_nav_groups, never trusting client-supplied IDs). Positions must
-// form a contiguous 0..N-1 sequence; duplicates rejected. Uses the
-// DEFERRABLE position-unique constraint so the wipe + re-insert can
-// run in any order inside the txn.
+// Each placement must set exactly one of GroupID (custom group) or
+// TagEnum (built-in tag bucket); ErrPlacementKind otherwise. Custom
+// group_ids must be owned by the user; tag_enums must exist in
+// page_tags. Positions must form a contiguous 0..N-1 sequence;
+// duplicates rejected. Uses the DEFERRABLE position-unique constraint
+// so the wipe + re-insert can run in any order inside the txn.
 //
 // SHARED-POOL INVARIANT: this endpoint never inserts/updates/deletes
 // rows in user_nav_groups itself. Groups are created/renamed/deleted
 // only via the legacy PUT /api/nav/prefs path (Default profile) until
 // that surface is split off — so a user's group pool is the union of
 // what they author from Default, and per-profile placement just decides
-// which of those each profile shows.
+// which of those each profile shows. Likewise, page_tags is read-only
+// from this surface — tag enums must already exist.
 func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, profileID uuid.UUID, placements []ProfileGroupPlacement) error {
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return err
 	}
 
 	posSeen := make(map[int]struct{}, len(placements))
-	idSeen := make(map[uuid.UUID]struct{}, len(placements))
+	groupSeen := make(map[uuid.UUID]struct{}, len(placements))
+	tagSeen := make(map[string]struct{}, len(placements))
 	for _, p := range placements {
 		if p.Position < 0 {
 			return ErrBadPositions
 		}
+		hasGroup := p.GroupID != nil
+		hasTag := p.TagEnum != nil
+		if hasGroup == hasTag {
+			return ErrPlacementKind
+		}
 		if _, dup := posSeen[p.Position]; dup {
 			return ErrBadPositions
 		}
-		if _, dup := idSeen[p.GroupID]; dup {
-			return ErrBadPositions
-		}
 		posSeen[p.Position] = struct{}{}
-		idSeen[p.GroupID] = struct{}{}
+		if hasGroup {
+			if _, dup := groupSeen[*p.GroupID]; dup {
+				return ErrBadPositions
+			}
+			groupSeen[*p.GroupID] = struct{}{}
+		} else {
+			if _, dup := tagSeen[*p.TagEnum]; dup {
+				return ErrBadPositions
+			}
+			tagSeen[*p.TagEnum] = struct{}{}
+		}
 	}
 	for i := 0; i < len(placements); i++ {
 		if _, ok := posSeen[i]; !ok {
@@ -503,10 +521,10 @@ func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, 
 		}
 	}
 
-	if len(placements) > 0 {
-		ids := make([]uuid.UUID, 0, len(placements))
-		for _, p := range placements {
-			ids = append(ids, p.GroupID)
+	if len(groupSeen) > 0 {
+		ids := make([]uuid.UUID, 0, len(groupSeen))
+		for id := range groupSeen {
+			ids = append(ids, id)
 		}
 		var owned int
 		err := s.Pool.QueryRow(ctx, `
@@ -518,6 +536,24 @@ func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, 
 		}
 		if owned != len(ids) {
 			return ErrUnknownGroup
+		}
+	}
+
+	if len(tagSeen) > 0 {
+		tags := make([]string, 0, len(tagSeen))
+		for t := range tagSeen {
+			tags = append(tags, t)
+		}
+		var known int
+		err := s.Pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM page_tags
+			 WHERE tag_enum = ANY($1)
+		`, tags).Scan(&known)
+		if err != nil {
+			return err
+		}
+		if known != len(tags) {
+			return ErrUnknownTag
 		}
 	}
 
@@ -537,9 +573,9 @@ func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, 
 		batch := &pgx.Batch{}
 		for _, p := range placements {
 			batch.Queue(`
-				INSERT INTO user_nav_profile_groups (profile_id, group_id, position)
-				VALUES ($1, $2, $3)
-			`, profileID, p.GroupID, p.Position)
+				INSERT INTO user_nav_profile_groups (profile_id, group_id, tag_enum, position)
+				VALUES ($1, $2, $3, $4)
+			`, profileID, p.GroupID, p.TagEnum, p.Position)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range placements {

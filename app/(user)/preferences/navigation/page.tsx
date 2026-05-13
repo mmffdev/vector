@@ -35,6 +35,7 @@ import {
   type PutPrefsBody,
   type PutPrefsPinnedRow,
   type PutPrefsGroupRow,
+  type ProfileGroupPlacement,
 } from "@/app/contexts/NavPrefsContext";
 import { createCustomPage, patchCustomPage, deleteCustomPage } from "@/app/lib/customPages";
 import { ApiError } from "@/app/lib/api";
@@ -65,6 +66,7 @@ interface DraftGroup {
   id: string; // canonical UUID, or "new:<uuid>" for unsaved
   label: string;
   position: number;
+  icon: string | null;
 }
 
 interface DraftState {
@@ -109,6 +111,39 @@ function GroupDropSlot({ index }: { index: number }) {
       className={`nav-prefs__slot${isOver ? " nav-prefs__slot--over" : ""}`}
       aria-hidden="true"
     />
+  );
+}
+
+// Available-pane mirror of a user-created custom group. Renders an empty
+// droppable slot so a user can drag a custom page directly into that group
+// (skips the "unpin then re-pin into group" two-step). Catalogue (non
+// user_custom) pages are silently rejected by onDragEnd to match the
+// tag-bucket lock rule.
+function AvailableGroupSlot({
+  groupId,
+  label,
+  iconKey,
+}: {
+  groupId: string;
+  label: string;
+  iconKey: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `available-group:${groupId}` });
+  return (
+    <div className="nav-prefs__group nav-prefs__group--available-custom">
+      <div className="nav-prefs__group-heading-row">
+        <NavIcon iconKey={iconKey} />
+        <h3 className="nav-prefs__group-heading">{label}</h3>
+      </div>
+      <ul
+        ref={setNodeRef}
+        className={`nav-prefs__list nav-prefs__list--empty-slot${isOver ? " nav-prefs__list--over" : ""}`}
+      >
+        <li className="nav-prefs__children-empty">
+          Drop a custom page here to pin it into this group.
+        </li>
+      </ul>
+    </div>
   );
 }
 
@@ -464,6 +499,11 @@ function BucketBlock({
   onRenameCustom,
   onDeleteCustom,
   isCustom,
+  groupIcon,
+  groupPickerOpen,
+  onPickGroupIcon,
+  onSetGroupIcon,
+  onClearGroupIcon,
 }: {
   bucketId: BucketKey;
   heading: string;
@@ -483,6 +523,11 @@ function BucketBlock({
   onRenameCustom?: (key: string, label: string) => void;
   onDeleteCustom?: (key: string) => void;
   isCustom: boolean;
+  groupIcon?: string | null;
+  groupPickerOpen?: boolean;
+  onPickGroupIcon?: () => void;
+  onSetGroupIcon?: (icon: string) => void;
+  onClearGroupIcon?: () => void;
 }) {
   const headerSortable = useSortable({
     id: groupHeaderDragId(bucketId),
@@ -546,6 +591,18 @@ function BucketBlock({
         )}
         {isCustom && !editing && (
           <div className="nav-prefs__group-actions">
+            {onPickGroupIcon && (
+              <button
+                type="button"
+                className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
+                onClick={onPickGroupIcon}
+                aria-label={`Choose icon for ${heading} group`}
+                aria-pressed={!!groupPickerOpen}
+                title="Choose group icon"
+              >
+                <NavIcon iconKey={groupIcon ?? "folder"} />
+              </button>
+            )}
             <button
               type="button"
               className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
@@ -563,6 +620,15 @@ function BucketBlock({
           </div>
         )}
       </div>
+      {isCustom && groupPickerOpen && onSetGroupIcon && (
+        <IconPicker
+          currentIcon={groupIcon ?? "folder"}
+          hasOverride={!!groupIcon}
+          onChoose={(icon) => onSetGroupIcon(icon)}
+          onClear={onClearGroupIcon}
+          onClose={() => onPickGroupIcon && onPickGroupIcon()}
+        />
+      )}
       <SortableContext items={items.map((it) => itemDragId(it.key))} strategy={verticalListSortingStrategy}>
         <ul
           ref={dropZone.setNodeRef}
@@ -631,6 +697,7 @@ function AvailablePanel({
   poolTags,
   poolByTag,
   libraryEntries,
+  customGroups,
   atCap,
   customPagesTotal,
   profileLabel,
@@ -642,6 +709,7 @@ function AvailablePanel({
   poolTags: import("@/app/contexts/NavPrefsContext").NavTagGroup[];
   poolByTag: Map<string, import("@/app/contexts/NavPrefsContext").NavCatalogEntry[]>;
   libraryEntries: import("@/app/contexts/NavPrefsContext").NavCatalogEntry[];
+  customGroups: DraftGroup[];
   atCap: boolean;
   customPagesTotal: number;
   profileLabel: string;
@@ -675,7 +743,10 @@ function AvailablePanel({
       )}
     </Fragment>
   );
-  const empty = poolTags.length === 0 && libraryEntries.length === 0;
+  const empty =
+    poolTags.length === 0 &&
+    libraryEntries.length === 0 &&
+    customGroups.length === 0;
   return (
     <div
       ref={setNodeRef}
@@ -705,6 +776,17 @@ function AvailablePanel({
               <ul className="nav-prefs__list">{libraryEntries.map(renderItem)}</ul>
             )}
           </div>
+          {customGroups
+            .slice()
+            .sort((a, b) => a.position - b.position)
+            .map((g) => (
+              <AvailableGroupSlot
+                key={g.id}
+                groupId={g.id}
+                label={g.label}
+                iconKey={g.icon ?? "folder"}
+              />
+            ))}
           {poolTags.map((tag) => (
             <div key={tag.enum} className="nav-prefs__group">
               <div className="nav-prefs__group-heading-row">
@@ -835,7 +917,7 @@ export default function NavPreferencesPage() {
   const { user } = useAuth();
   const {
     prefs, customGroups, save, catalogue, refetch, patchCatalogueEntry,
-    defaultPinned, findEntry, tagByEnum, tags,
+    defaultPinned, findEntry, tagByEnum, tags, profileGroups,
     profiles, activeProfileId, setProfileGroups,
   } = useNavPrefs();
   const activeProfile = useMemo(
@@ -850,6 +932,7 @@ export default function NavPreferencesPage() {
   const [baseline, setBaseline] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const [groupPickerId, setGroupPickerId] = useState<string | null>(null);
   const [newPageLabel, setNewPageLabel] = useState("");
   const [creatingPage, setCreatingPage] = useState(false);
   const [newGroupLabel, setNewGroupLabel] = useState("");
@@ -880,6 +963,7 @@ export default function NavPreferencesPage() {
   const prefsHash = useMemo(() => JSON.stringify(prefs), [prefs]);
   const customGroupsHash = useMemo(() => JSON.stringify(customGroups), [customGroups]);
   const tagsHash = useMemo(() => JSON.stringify(tags), [tags]);
+  const profileGroupsHash = useMemo(() => JSON.stringify(profileGroups), [profileGroups]);
 
   // Hydrate draft from server state. Both tag buckets and custom buckets
   // are produced in first-appearance order (matching sidebar logic), with
@@ -959,23 +1043,46 @@ export default function NavPreferencesPage() {
       if (p.icon_override) iconOverrides[p.item_key] = p.icon_override;
     }
 
+    // If the active profile has persisted placements, use them to drive
+    // bucketOrder. Buckets not covered by placements (e.g. a custom group
+    // that exists but has no placement row yet) keep their current relative
+    // position at the tail.
+    if (profileGroups.length > 0) {
+      const placed: BucketKey[] = [];
+      const placedSet = new Set<BucketKey>();
+      const ordered = [...profileGroups].sort((a, b) => a.position - b.position);
+      for (const p of ordered) {
+        let key: BucketKey | null = null;
+        if (p.tag_enum) key = tagBucket(p.tag_enum);
+        else if (p.group_id) key = groupBucket(p.group_id);
+        if (!key) continue;
+        if (placedSet.has(key)) continue;
+        if (!orderSeen.includes(key)) continue;
+        placed.push(key);
+        placedSet.add(key);
+      }
+      const tail = orderSeen.filter((b) => !placedSet.has(b));
+      orderSeen.length = 0;
+      orderSeen.push(...placed, ...tail);
+    }
+
     const hydrated: DraftState = {
       bucketOrder: orderSeen,
       itemsByBucket,
       childrenByParent,
-      customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position })),
+      customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position, icon: g.icon })),
       startPageKey,
       iconOverrides,
     };
     setDraft(hydrated);
     setBaseline(hydrated);
     // Intentionally key on content hashes, not array refs. `prefs/customGroups/
-    // tags` get fresh array identities on every refetch — including refetches
-    // triggered by save/delete/create — even when content is identical. Hashing
-    // makes the rebuild fire only when server state truly changed, so unsaved
-    // local pin/order edits survive a sibling refetch.
+    // tags/profileGroups` get fresh array identities on every refetch — including
+    // refetches triggered by save/delete/create — even when content is identical.
+    // Hashing makes the rebuild fire only when server state truly changed, so
+    // unsaved local pin/order edits survive a sibling refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefsHash, customGroupsHash, tagsHash]);
+  }, [prefsHash, customGroupsHash, tagsHash, profileGroupsHash]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -1121,6 +1228,28 @@ export default function NavPreferencesPage() {
     setDraft({ ...draft, iconOverrides: next });
   };
 
+  const toggleGroupPicker = (id: string) => {
+    setGroupPickerId((cur) => (cur === id ? null : id));
+  };
+
+  const setGroupIcon = (id: string, icon: string) => {
+    setDraft({
+      ...draft,
+      customGroups: draft.customGroups.map((g) =>
+        g.id === id ? { ...g, icon } : g,
+      ),
+    });
+  };
+
+  const clearGroupIcon = (id: string) => {
+    setDraft({
+      ...draft,
+      customGroups: draft.customGroups.map((g) =>
+        g.id === id ? { ...g, icon: null } : g,
+      ),
+    });
+  };
+
   const addCustomGroup = (rawLabel?: string): { ok: true } | { ok: false; reason: string } => {
     if (groupsAtCap) return { ok: false, reason: `Cap of ${MAX_CUSTOM_GROUPS} groups reached.` };
     const id = nextSyntheticId();
@@ -1141,7 +1270,7 @@ export default function NavPreferencesPage() {
     const position = draft.customGroups.length;
     const next: DraftState = {
       ...draft,
-      customGroups: [...draft.customGroups, { id, label, position }],
+      customGroups: [...draft.customGroups, { id, label, position, icon: null }],
       itemsByBucket: { ...draft.itemsByBucket, [groupBucket(id)]: [] },
       bucketOrder: [...draft.bucketOrder, groupBucket(id)],
     };
@@ -1364,6 +1493,21 @@ export default function NavPreferencesPage() {
     if (!aEntry) return;
     const aOwner = findOwner(aKey);
 
+    // 2a-0a) Drop onto an Available-side custom-group slot → pin straight
+    // into that group. Catalogue (non-user_custom) pages are silently
+    // rejected (locked to their tag bucket).
+    if (overId.startsWith("available-group:")) {
+      const groupId = overId.slice("available-group:".length);
+      const targetBucket = groupBucket(groupId);
+      if (aEntry.kind !== "user_custom") return;
+      if (atCap && !aOwner.bucket && !aOwner.parent) return;
+      const toIndex = (draft.itemsByBucket[targetBucket] ?? []).length;
+      if (aOwner.bucket) moveTopLevel(aKey, aOwner.bucket, targetBucket, toIndex);
+      else if (aOwner.parent) promoteChildToTopLevel(aKey, aOwner.parent, targetBucket, toIndex);
+      else pinFromPool(aKey, targetBucket, toIndex);
+      return;
+    }
+
     // 2a-0) Drop onto the available panel → unpin.
     if (overId === "pool:available") {
       const owner = findOwner(aKey);
@@ -1490,6 +1634,7 @@ export default function NavPreferencesPage() {
         id: g.id,
         label: g.label,
         position: i,
+        icon: g.icon,
       }));
       const body: PutPrefsBody = { pinned, start_page_key: draft.startPageKey, groups };
       const canonical = await save(body);
@@ -1503,19 +1648,30 @@ export default function NavPreferencesPage() {
           const c = canonical[i];
           if (c) localToCanonical.set(g.id, c.id);
         });
-        const groupBuckets = draft.bucketOrder.filter((b) => b.startsWith("group:"));
-        const placements = groupBuckets
-          .map((b, position) => {
+        // bucketOrder mixes tag buckets ("tag:<enum>") and custom-group
+        // buckets ("group:<id>"). Persist BOTH kinds so the rail honours
+        // the user's drag order across the full list.
+        const placements: ProfileGroupPlacement[] = [];
+        for (const b of draft.bucketOrder) {
+          if (b.startsWith("tag:")) {
+            placements.push({
+              tag_enum: b.slice("tag:".length),
+              group_id: null,
+              position: placements.length,
+            });
+          } else if (b.startsWith("group:")) {
             const localId = b.slice("group:".length);
-            if (localId.startsWith("new:")) {
-              const remapped = localToCanonical.get(localId);
-              return remapped ? { group_id: remapped, position } : null;
-            }
-            return { group_id: localId, position };
-          })
-          .filter((p): p is { group_id: string; position: number } => p !== null)
-          // Re-number positions to stay contiguous after any drops.
-          .map((p, i) => ({ ...p, position: i }));
+            const canonicalId = localId.startsWith("new:")
+              ? localToCanonical.get(localId)
+              : localId;
+            if (!canonicalId) continue;
+            placements.push({
+              group_id: canonicalId,
+              tag_enum: null,
+              position: placements.length,
+            });
+          }
+        }
         await setProfileGroups(activeProfileId, placements);
         await refetch();
       }
@@ -1588,6 +1744,7 @@ export default function NavPreferencesPage() {
         <Panel
           name="nav_prefs_custom_nav"
           title={<>Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span></>}
+          margin={["var(--gap-block-top)", "var(--gap-block-right)", "var(--gap-block-bottom)", "var(--gap-block-left)"]}
         >
           <ProfileBar />
         </Panel>
@@ -1636,6 +1793,9 @@ export default function NavPreferencesPage() {
                 {draft.bucketOrder.map((b, i) => {
                   const { heading, isCustom, groupId } = bucketHeading(b);
                   const items = draft.itemsByBucket[b] ?? [];
+                  const groupRow = isCustom && groupId
+                    ? draft.customGroups.find((g) => g.id === groupId) ?? null
+                    : null;
                   // Render every bucket — including empty tag buckets — so they
                   // remain valid drop targets when dragging from Available.
                   return (
@@ -1659,6 +1819,11 @@ export default function NavPreferencesPage() {
                         onRenameCustom={handleRenameCustomPage}
                         onDeleteCustom={handleDeleteCustomPage}
                         isCustom={isCustom}
+                        groupIcon={groupRow?.icon ?? null}
+                        groupPickerOpen={!!groupId && groupPickerId === groupId}
+                        onPickGroupIcon={groupId ? () => toggleGroupPicker(groupId) : undefined}
+                        onSetGroupIcon={groupId ? (icon) => setGroupIcon(groupId, icon) : undefined}
+                        onClearGroupIcon={groupId ? () => clearGroupIcon(groupId) : undefined}
                       />
                       {activeDragId?.startsWith("gheader:") && <GroupDropSlot index={i + 1} />}
                     </Fragment>
@@ -1673,6 +1838,7 @@ export default function NavPreferencesPage() {
             poolTags={poolTags}
             poolByTag={poolByTag}
             libraryEntries={libraryEntries}
+            customGroups={draft.customGroups}
             atCap={atCap}
             customPagesTotal={customPagesTotal}
             profileLabel={activeProfile?.label ?? "this profile"}

@@ -36,10 +36,13 @@ export interface PrefRow {
 }
 
 // User-created primary group (Phase: sub-pages + custom groups).
+// icon is null = "no override picked"; the rail consumer falls back to a
+// generic group icon. Vocabulary matches user_nav_prefs.icon_override.
 export interface NavCustomGroup {
   id: string;
   label: string;
   position: number;
+  icon: string | null;
 }
 
 // Phase 5 — navigation profile (named layout slot per subscription).
@@ -51,9 +54,12 @@ export interface NavProfile {
   start_page_key: string | null;
 }
 
-// Per-profile group placement (junction row).
+// Per-profile placement (junction row). Each row sets exactly one of
+// group_id (a user custom group) or tag_enum (a built-in tag bucket).
+// Position is unique within the profile (contiguous 0..N-1).
 export interface ProfileGroupPlacement {
-  group_id: string;
+  group_id: string | null;
+  tag_enum: string | null;
   position: number;
 }
 
@@ -64,6 +70,7 @@ interface PrefsResp {
 }
 interface CatalogueResp { catalogue: NavCatalogEntry[]; tags: NavTagGroup[]; }
 interface ProfilesResp { profiles: NavProfile[]; active_profile_id: string | null; }
+interface ProfileGroupsResp { placements: ProfileGroupPlacement[]; }
 
 export interface PutPrefsPinnedRow {
   item_key: string;
@@ -79,6 +86,7 @@ export interface PutPrefsGroupRow {
   id: string;
   label: string;
   position: number;
+  icon?: string | null;
 }
 
 export interface PutPrefsBody {
@@ -94,6 +102,15 @@ interface NavPrefsState {
   customGroups: NavCustomGroup[];
   catalogue: NavCatalogEntry[];
   tags: NavTagGroup[];
+  /**
+   * Per-profile placements for the active profile, in display order
+   * (position-sorted). Each row is either a custom-group placement
+   * (group_id set) or a tag-bucket placement (tag_enum set). Consumers
+   * use this list to render sections in user-defined order; falls back
+   * to canonical order (tags by defaultOrder, customs by their pool
+   * position) when the list is empty.
+   */
+  profileGroups: ProfileGroupPlacement[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -138,6 +155,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   const [tags, setTags] = useState<NavTagGroup[]>([]);
   const [profiles, setProfiles] = useState<NavProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [profileGroups, setProfileGroupsState] = useState<ProfileGroupPlacement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,6 +167,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       setTags([]);
       setProfiles([]);
       setActiveProfileId(null);
+      setProfileGroupsState([]);
       setLoading(false);
       return;
     }
@@ -180,7 +199,24 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       setCustomGroups(prefsRes.groups ?? []);
       // Server returns the resolved profile_id — trust it as the source of truth
       // (it accounts for lazy-seed of Default on first load).
-      setActiveProfileId(prefsRes.profile_id ?? targetId);
+      const resolvedProfileId = prefsRes.profile_id ?? targetId;
+      setActiveProfileId(resolvedProfileId);
+
+      // Per-profile placements (tag-bucket + custom-group order). Best-
+      // effort: if the call fails we fall back to canonical order rather
+      // than blocking the whole prefs load.
+      if (resolvedProfileId) {
+        try {
+          const groupsRes = await api<ProfileGroupsResp>(
+            `/nav/profiles/${encodeURIComponent(resolvedProfileId)}/groups`,
+          );
+          setProfileGroupsState(groupsRes.placements ?? []);
+        } catch {
+          setProfileGroupsState([]);
+        }
+      } else {
+        setProfileGroupsState([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load nav");
       setPrefs([]);
@@ -189,6 +225,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       setTags([]);
       setProfiles([]);
       setActiveProfileId(null);
+      setProfileGroupsState([]);
     } finally {
       setLoading(false);
     }
@@ -354,7 +391,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value: NavPrefsState = {
-    prefs, customGroups, catalogue, tags, loading, error,
+    prefs, customGroups, catalogue, tags, profileGroups, loading, error,
     refetch, patchCatalogueEntry, save, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
     isBookmarked, bookmark, unbookmark,
@@ -370,4 +407,8 @@ export function useNavPrefs(): NavPrefsState {
   const v = useContext(Ctx);
   if (!v) throw new Error("useNavPrefs must be used inside NavPrefsProvider");
   return v;
+}
+
+export function useOptionalNavPrefs(): NavPrefsState | null {
+  return useContext(Ctx);
 }

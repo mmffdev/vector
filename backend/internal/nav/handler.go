@@ -548,6 +548,8 @@ func (h *Handler) SetProfileGroups(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrProfileNotFound):
 			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
 		case errors.Is(err, ErrUnknownGroup),
+			errors.Is(err, ErrUnknownTag),
+			errors.Is(err, ErrPlacementKind),
 			errors.Is(err, ErrBadPositions):
 			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
 		default:

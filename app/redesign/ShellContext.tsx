@@ -2,33 +2,110 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { PERSPECTIVES, type Perspective, type NavSection, flattenSectionPages } from "@/app/lib/nav-v2";
+import { useNavPrefs, type NavCatalogEntry, type NavTagGroup, type PrefRow } from "@/app/contexts/NavPrefsContext";
 
-/** Sentinel ID for the account flyout slot — not a real PERSPECTIVES section. */
+/** Sentinel ID for the account flyout slot — not a real customGroup. */
 export const ACCOUNT_SECTION_ID = "__account";
 
+/** Default rail icons per tag bucket. page_tags has no icon column. */
+const TAG_ICON_DEFAULTS: Record<string, string> = {
+  personal: "home",
+  admin_settings: "cog",
+  planning: "clipboard",
+  strategic: "star",
+  bookmarks: "pin",
+};
+
+/** A page row resolved from a pref + catalogue lookup. */
+export interface ShellPage {
+  itemKey: string;
+  name: string;
+  href: string;
+  icon: string;
+  parentItemKey: string | null;
+  position: number;
+}
+
+/**
+ * A "section" in the redesigned shell. Backed by a row in user_nav_groups
+ * (customGroups). The icon falls back to "folder" when no override is set.
+ */
+export interface ShellSection {
+  id: string;
+  name: string;
+  icon: string;
+  pages: ShellPage[];
+}
+
 interface ShellState {
-  perspective: Perspective;
+  sections: ShellSection[];
   activeSectionId: string;
-  setPerspectiveId: (id: string) => void;
   setActiveSectionId: (id: string) => void;
-  activeSection: NavSection | undefined;
+  activeSection: ShellSection | undefined;
   /** True when the account flyout should render instead of the section flyout. */
   isAccountActive: boolean;
 }
 
 const ShellContext = createContext<ShellState | null>(null);
 
-const PERSPECTIVE_LS_KEY = "vector:redesign:perspective";
+/**
+ * Build the page list for a group: prefs whose group_id matches, joined with
+ * the catalogue for label/href/icon, sorted by position. Catalogue lookup
+ * failures (e.g. a stale pref referencing a removed page) are dropped.
+ */
+function projectPref(p: PrefRow, catalogueByKey: Map<string, NavCatalogEntry>): ShellPage | null {
+  const entry = catalogueByKey.get(p.item_key);
+  if (!entry) return null;
+  return {
+    itemKey: p.item_key,
+    name: entry.label,
+    href: entry.href,
+    icon: p.icon_override ?? entry.icon,
+    parentItemKey: p.parent_item_key,
+    position: p.position,
+  };
+}
+
+function pagesForGroup(
+  groupId: string,
+  prefs: PrefRow[],
+  catalogueByKey: Map<string, NavCatalogEntry>,
+): ShellPage[] {
+  return prefs
+    .filter((p) => p.group_id === groupId)
+    .map((p) => projectPref(p, catalogueByKey))
+    .filter((p): p is ShellPage => p !== null)
+    .sort((a, b) => a.position - b.position);
+}
 
 /**
- * Find the section in a perspective whose page set contains the given pathname
- * (longest prefix match). Returns undefined when nothing matches.
+ * Pages bound to a tag bucket: prefs with no custom group_id whose catalogue
+ * entry's tagEnum matches.
  */
-function sectionForPath(perspective: Perspective, pathname: string): NavSection | undefined {
-  let best: { section: NavSection; len: number } | undefined;
-  for (const s of perspective.sections) {
-    for (const p of flattenSectionPages(s)) {
+function pagesForTag(
+  tagEnum: string,
+  prefs: PrefRow[],
+  catalogueByKey: Map<string, NavCatalogEntry>,
+): ShellPage[] {
+  return prefs
+    .filter((p) => {
+      if (p.group_id != null) return false;
+      const e = catalogueByKey.get(p.item_key);
+      return e ? (e.tagEnum || "personal") === tagEnum : false;
+    })
+    .map((p) => projectPref(p, catalogueByKey))
+    .filter((p): p is ShellPage => p !== null)
+    .sort((a, b) => a.position - b.position);
+}
+
+/**
+ * Find the section whose page set contains the given pathname (longest prefix
+ * match). Returns undefined when nothing matches.
+ */
+function sectionForPath(sections: ShellSection[], pathname: string): ShellSection | undefined {
+  let best: { section: ShellSection; len: number } | undefined;
+  for (const s of sections) {
+    for (const p of s.pages) {
       if (pathname === p.href || pathname.startsWith(p.href + "/")) {
         if (!best || p.href.length > best.len) best = { section: s, len: p.href.length };
       }
@@ -39,47 +116,106 @@ function sectionForPath(perspective: Perspective, pathname: string): NavSection 
 
 export function ShellProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
+  const { prefs, customGroups, catalogue, tags, profileGroups } = useNavPrefs();
 
-  const [perspectiveId, setPerspectiveId] = useState<string>(() => {
-    if (typeof window === "undefined") return PERSPECTIVES[0]!.id;
-    const stored = window.localStorage.getItem(PERSPECTIVE_LS_KEY);
-    if (stored && PERSPECTIVES.some((p) => p.id === stored)) return stored;
-    return PERSPECTIVES[0]!.id;
-  });
+  const catalogueByKey = useMemo(() => {
+    const m = new Map<string, NavCatalogEntry>();
+    for (const e of catalogue) m.set(e.key, e);
+    return m;
+  }, [catalogue]);
 
-  const perspective = useMemo(
-    () => PERSPECTIVES.find((p) => p.id === perspectiveId) ?? PERSPECTIVES[0]!,
-    [perspectiveId],
-  );
+  const tagByEnum = useMemo(() => {
+    const m = new Map<string, NavTagGroup>();
+    for (const t of tags) m.set(t.enum, t);
+    return m;
+  }, [tags]);
 
-  const urlSection = sectionForPath(perspective, pathname);
+  const customGroupById = useMemo(() => {
+    const m = new Map<string, typeof customGroups[number]>();
+    for (const g of customGroups) m.set(g.id, g);
+    return m;
+  }, [customGroups]);
+
+  const sections = useMemo<ShellSection[]>(() => {
+    const out: ShellSection[] = [];
+    const placedTags = new Set<string>();
+    const placedGroups = new Set<string>();
+
+    // Walk per-profile placements first — this is the user-defined
+    // order across both tag buckets and custom groups.
+    const ordered = [...profileGroups].sort((a, b) => a.position - b.position);
+    for (const p of ordered) {
+      if (p.tag_enum) {
+        const tag = tagByEnum.get(p.tag_enum);
+        if (!tag || tag.isAdminMenu) continue;
+        placedTags.add(tag.enum);
+        out.push({
+          id: `tag:${tag.enum}`,
+          name: tag.label,
+          icon: TAG_ICON_DEFAULTS[tag.enum] ?? "folder",
+          pages: pagesForTag(tag.enum, prefs, catalogueByKey),
+        });
+      } else if (p.group_id) {
+        const g = customGroupById.get(p.group_id);
+        if (!g) continue;
+        placedGroups.add(g.id);
+        out.push({
+          id: `group:${g.id}`,
+          name: g.label,
+          icon: g.icon ?? "folder",
+          pages: pagesForGroup(g.id, prefs, catalogueByKey),
+        });
+      }
+    }
+
+    // Fallback: anything not yet placed (e.g. a freshly added tag bucket
+    // before the profile junction is back-filled, or a profile that has
+    // no placements at all). Tag buckets in canonical order, then customs
+    // by pool position. Empty tag buckets are skipped here — but a tag
+    // that IS in profileGroups is rendered even when empty so the rail
+    // honours the user's choice.
+    for (const t of [...tags].filter((tt) => !tt.isAdminMenu).sort((a, b) => a.defaultOrder - b.defaultOrder)) {
+      if (placedTags.has(t.enum)) continue;
+      const pages = pagesForTag(t.enum, prefs, catalogueByKey);
+      if (pages.length === 0) continue;
+      out.push({
+        id: `tag:${t.enum}`,
+        name: t.label,
+        icon: TAG_ICON_DEFAULTS[t.enum] ?? "folder",
+        pages,
+      });
+    }
+    for (const g of [...customGroups].sort((a, b) => a.position - b.position)) {
+      if (placedGroups.has(g.id)) continue;
+      out.push({
+        id: `group:${g.id}`,
+        name: g.label,
+        icon: g.icon ?? "folder",
+        pages: pagesForGroup(g.id, prefs, catalogueByKey),
+      });
+    }
+
+    return out;
+  }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById]);
+
+  const urlSection = sectionForPath(sections, pathname);
 
   // Track the section the rail is currently "showing". Defaults to the URL's
   // section, but rail clicks override (so a user can browse one section's
   // flyout while staying on another section's page). When the URL changes to
   // a page in a different section, the override resets to follow the URL.
-  const [manualSectionId, setManualSectionId] = useState<string>(
-    urlSection?.id ?? perspective.sections[0]?.id ?? "",
-  );
+  const [manualSectionId, setManualSectionId] = useState<string>("");
 
   useEffect(() => {
     if (urlSection) setManualSectionId(urlSection.id);
   }, [urlSection]);
 
-  const activeSectionId = manualSectionId || urlSection?.id || perspective.sections[0]?.id || "";
+  const activeSectionId =
+    manualSectionId || urlSection?.id || sections[0]?.id || "";
   const isAccountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const activeSection = isAccountActive
     ? undefined
-    : perspective.sections.find((s) => s.id === activeSectionId) ?? perspective.sections[0];
-
-  const switchPerspective = useCallback((id: string) => {
-    setPerspectiveId(id);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(PERSPECTIVE_LS_KEY, id);
-    }
-    const next = PERSPECTIVES.find((p) => p.id === id);
-    if (next?.sections[0]) setManualSectionId(next.sections[0].id);
-  }, []);
+    : sections.find((s) => s.id === activeSectionId) ?? sections[0];
 
   const setActiveSectionId = useCallback((id: string) => {
     setManualSectionId(id);
@@ -88,9 +224,8 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   return (
     <ShellContext.Provider
       value={{
-        perspective,
+        sections,
         activeSectionId,
-        setPerspectiveId: switchPerspective,
         setActiveSectionId,
         activeSection,
         isAccountActive,
