@@ -88,8 +88,86 @@ interface DraftState {
 // Icons the user can pick. Mirrors the cases in app/components/NavIcon.tsx
 // (excluding "default", which is the fallback the catalogue can't choose).
 const ICON_CHOICES: string[] = [
-  "home", "eye", "briefcase", "star", "clipboard", "list",
-  "warning", "cog", "wrench", "pin", "folder", "package", "pencil",
+  // Navigation & Home
+  "home", "compass", "map", "pin", "pin-push", "navigation",
+  "arrow-up-right", "arrow-right", "arrow-left", "arrow-down",
+  "arrow-up", "chevron-right", "chevron-down", "external-link",
+  "corner-up-right", "corner-down-right", "skip-back", "skip-forward",
+  "rewind", "fast-forward",
+  // People & Users
+  "user", "users", "user-plus", "user-check", "user-x", "user-minus",
+  "person-pin", "team", "contact", "face", "award", "badge",
+  "id-card", "briefcase-check",
+  // Work & Tasks
+  "briefcase", "clipboard", "checklist", "check", "check-circle", "task",
+  "list", "list-ordered", "list-checks", "kanban", "sprint", "milestone",
+  "roadmap", "backlog", "inbox", "archive", "drag",
+  "sticky-note", "note", "comment", "layers-check",
+  "priority-high", "priority-med", "priority-low", "blocked",
+  "recurring", "dependencies",
+  // Planning & Strategy
+  "star", "target", "flag", "flag-check", "calendar", "calendar-check",
+  "clock", "timer", "timeline", "gantt", "chart-bar", "chart-line",
+  "trend-up", "activity", "layers",
+  "chart-area", "chart-scatter", "report", "forecast", "kpi",
+  "velocity", "compass-rose", "telescope", "binoculars",
+  // Portfolio & Projects
+  "folder", "folder-open", "folder-plus", "package", "grid", "layout",
+  "apps", "sitemap", "hierarchy", "git-branch", "git-merge",
+  "diagram", "network", "flow", "collection", "template",
+  "workspace", "kanban-board", "tree", "mindmap",
+  // Settings & Config
+  "cog", "sliders", "wrench", "tool", "filter", "sort", "search",
+  "zoom-in", "adjust", "toggle", "lock", "unlock", "key", "shield",
+  "eye", "eye-off",
+  "cog-play", "terminal-square", "switch", "equalizer",
+  "palette-swatch", "magic",
+  // Communication
+  "bell", "bell-off", "message", "message-circle", "mail", "send",
+  "phone", "share", "link", "link-off", "campaign", "rss",
+  "at-sign", "inbox-arrow", "broadcast", "chat-dots",
+  "reply", "forward-msg",
+  // Data & Analytics
+  "database", "server", "hard-drive", "cpu", "pie-chart", "bar-chart",
+  "table", "scan", "binary", "hash", "percent", "lan",
+  "funnel", "sigma", "function", "variable", "regex",
+  "schema", "query", "api-key",
+  // Documents & Content
+  "file", "file-text", "file-plus", "file-check", "book", "book-open",
+  "bookmark", "tag", "label", "paste", "cut", "indent", "align-left",
+  "type", "code", "terminal",
+  "file-code", "file-lock", "file-search", "newspaper",
+  "draft", "archive-box", "changelog",
+  // Media & Design
+  "image", "camera", "video", "music", "mic", "palette", "pencil",
+  "pen", "crop", "layers-alt",
+  "brush", "eraser", "ruler", "vector-pen", "color-fill",
+  "contrast", "artboard",
+  // Finance & Business
+  "dollar", "credit-card", "shopping", "box", "truck", "building",
+  "office", "corporate",
+  "coin", "bank", "invoice", "receipt", "warehouse", "growth", "contract",
+  // Status & Alerts
+  "warning", "alert-circle", "alert-octagon", "crisis", "info", "help",
+  "block", "x-circle", "minus-circle", "plus-circle",
+  "pulse", "dot", "circle-check", "status-online", "status-off", "version",
+  // Actions
+  "play", "pause", "stop", "refresh", "auto-mode", "upload", "download",
+  "plus", "minus", "x", "trash", "edit", "copy", "move", "compress",
+  "expand", "merge", "split",
+  "undo", "redo", "cut-action", "import", "export", "save",
+  "print", "restore", "purge",
+  // Infrastructure & Tech
+  "computer", "laptop", "smartphone", "cloud", "cloud-upload", "wifi",
+  "cable", "login", "logout", "api", "webhook",
+  "docker", "kubernetes", "git-commit", "git-pull", "code-fork",
+  "monitor", "desktop-tower", "storage", "pipeline",
+  // Misc & Utility
+  "sparkle", "zap", "sun", "moon", "globe", "language", "scale",
+  "accessibility", "focus", "maximize", "minimize", "linear-scale",
+  "density-large", "density-small", "favorite", "location", "location-search",
+  "QR", "barcode", "fingerprint", "swap", "sort-asc", "sort-desc",
+  "tag-multiple", "fire", "snowflake", "diamond", "hourglass", "infinity",
 ];
 
 const itemDragId = (k: string) => `item:${k}`;
@@ -1901,7 +1979,9 @@ export default function NavPreferencesPage() {
             poolTags={poolTags}
             poolByTag={poolByTag}
             libraryEntries={libraryEntries}
-            customGroups={draft.customGroups}
+            customGroups={draft.customGroups.filter(
+              (g) => !draft.bucketOrder.includes(groupBucket(g.id))
+            )}
             atCap={atCap}
             customPagesTotal={customPagesTotal}
             profileLabel={activeProfile?.label ?? "this profile"}
