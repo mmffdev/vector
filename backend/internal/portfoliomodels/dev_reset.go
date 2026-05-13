@@ -263,7 +263,6 @@ func (h *DevResetHandler) masterResetVector(ctx context.Context, subscriptionID 
 		`DELETE FROM subscription_terminology         WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
 		`DELETE FROM subscription_artifacts           WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
 		`DELETE FROM subscription_portfolio_model_state WHERE subscription_id = $1`,
-		`DELETE FROM o_flow_tenant                    WHERE subscription_id = $1`,
 	}
 	for _, sql := range steps {
 		if _, err = tx.Exec(ctx, sql, subscriptionID); err != nil {
