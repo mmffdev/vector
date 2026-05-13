@@ -4,6 +4,32 @@ import { useEffect, useRef, useState } from "react";
 import "@dev/styles/dev.css";
 import ServiceHealthPanel from "./ServiceHealthPanel";
 import { useServiceHealth } from "./useServiceHealth";
+import { apiRoot } from "@/app/lib/api";
+
+type EnvName = "dev" | "staging" | "production" | "unknown";
+type Letter = "D" | "S" | "P" | "?";
+type PipelineStatus = { env: EnvName; letter: Letter; healthy: boolean };
+
+const POLL_MS = 10_000;
+
+function useEnvStatus() {
+  const [info, setInfo] = useState<PipelineStatus | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const tick = async () => {
+      try {
+        const data = await apiRoot<PipelineStatus>("/status/pipeline", { skipAuth: true });
+        if (!cancelled) setInfo(data);
+      } catch { /* ignore */ } finally {
+        if (!cancelled) timer = setTimeout(tick, POLL_MS);
+      }
+    };
+    tick();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, []);
+  return info;
+}
 
 // Dead-code eliminated in production build — returns null if not dev.
 export default function DevStatusFloat() {
@@ -13,21 +39,25 @@ export default function DevStatusFloat() {
 
 function FloatPanel() {
   const [open, setOpen] = useState(false);
-  const rootRef         = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const { result, loading } = useServiceHealth();
+  const envInfo = useEnvStatus();
 
   const services  = result?.services ?? [];
   const downCount = services.filter((s) => s.status === "down").length;
-  const dotStatus =
-    loading && !result   ? "checking"
-    : downCount > 0      ? "down"
+  const healthStatus =
+    loading && !result    ? "checking"
+    : downCount > 0       ? "down"
     : services.length > 0 ? "up"
     : "checking";
 
+  const env    = envInfo?.env ?? "unknown";
+  const letter = envInfo?.letter ?? "?";
+
   useEffect(() => {
     if (!open) return;
-    const onKey   = (e: KeyboardEvent)  => { if (e.key === "Escape") setOpen(false); };
-    const onClick = (e: MouseEvent)     => {
+    const onKey   = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onClick = (e: MouseEvent)    => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("keydown", onKey);
@@ -47,30 +77,14 @@ function FloatPanel() {
       )}
 
       <button
-        className={`devf__trigger devf__trigger--${dotStatus}`}
+        className={`devf__trigger devf__trigger--${healthStatus}`}
         onClick={() => setOpen((o) => !o)}
-        title="Dev service health"
+        title={`Backend: ${env} — ${healthStatus === "down" ? `${downCount} service(s) down` : healthStatus}`}
         aria-label="Toggle service health panel"
         aria-expanded={open}
       >
-        <ServerIcon />
-        <span className={`devf__dot devf__dot--${dotStatus}`} aria-hidden />
+        <span className={`devf__env-letter devf__env-letter--${env}`}>{letter}</span>
       </button>
     </div>
-  );
-}
-
-function ServerIcon() {
-  return (
-    <svg
-      width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor"
-      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
-    >
-      <rect x="2" y="3" width="20" height="8" rx="2" />
-      <rect x="2" y="13" width="20" height="8" rx="2" />
-      <circle cx="18" cy="7"  r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="18" cy="17" r="1.5" fill="currentColor" stroke="none" />
-    </svg>
   );
 }

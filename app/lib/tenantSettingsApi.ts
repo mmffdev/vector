@@ -10,7 +10,7 @@
 // to NULL). Validation failures come back as 422 with `violations[]` on
 // ApiError, matching the workspaces handler shape.
 
-import { api } from "@/app/lib/api";
+import { apiSite as api } from "@/app/lib/api";
 
 export type DayCode = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type WeekStart = "mon" | "sun";

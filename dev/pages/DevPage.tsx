@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import "@dev/styles/dev.css";
 import "@dev/styles/dev-ui.css";
 import { useMasterDebug } from "@/app/contexts/MasterDebugContext";
-import { useDevTab } from "@/app/contexts/DevTabContext";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
 import { apiSite } from "@/app/lib/api";
 import { admin } from "@/app/lib/apiSite";
@@ -13,82 +12,10 @@ import { workspacesApi } from "@/app/lib/workspacesApi";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
-import DevShortcutsPanel from "./DevShortcutsPanel";
-import DevReportsPanel from "./DevReportsPanel";
-import DevResearchPanel from "./DevResearchPanel";
-import DevOperationsPanel from "./DevOperationsPanel";
-import DevPlansPanel from "./DevPlansPanel";
-import DevRetrosPanel from "./DevRetrosPanel";
-import DevPageHelpPanel from "./DevPageHelpPanel";
-import DevUiCatalogPanel from "./DevUiCatalogPanel";
-import DevApiV2TestsPanel from "./DevApiV2TestsPanel";
-import DevApiChangelogPanel from "./DevApiChangelogPanel";
-import DevScopePanel from "./DevScopePanel";
-import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
-import DevTabNav, { type DevTab } from "@dev/components/DevTabNav";
 
-const GROWTHBAR_MAX = 100;
-const GROWTHBAR_KEY = "dev.scope.growthbar.v1";
-
-function formatGrowthbarTime(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} : ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-type GrowthbarSnapshot = { count: number; at: number | null };
-
-function readGrowthbar(): GrowthbarSnapshot {
-  if (typeof window === "undefined") return { count: 0, at: null };
-  try {
-    const raw = window.localStorage.getItem(GROWTHBAR_KEY);
-    if (!raw) return { count: 0, at: null };
-    const parsed = JSON.parse(raw) as Partial<GrowthbarSnapshot>;
-    const count =
-      typeof parsed.count === "number" && parsed.count >= 0 && parsed.count <= GROWTHBAR_MAX
-        ? parsed.count
-        : 0;
-    const at = typeof parsed.at === "number" ? parsed.at : null;
-    return { count, at };
-  } catch {
-    return { count: 0, at: null };
-  }
-}
-
-function writeGrowthbar(snap: GrowthbarSnapshot) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(GROWTHBAR_KEY, JSON.stringify(snap));
-  } catch {
-    // quota exceeded / private mode — non-fatal
-  }
-}
-
-const DEV_TABS: readonly DevTab[] = [
-  { key: "plans",         label: "Plans" },
-  { key: "retros",        label: "Retros" },
-  { key: "setup",         label: "Setup" },
-  { key: "shortcuts",     label: "Shortcuts" },
-  { key: "reports",       label: "Reports" },
-  { key: "research",      label: "Research" },
-  { key: "operations",    label: "Operations" },
-  { key: "icons",         label: "Icons" },
-  { key: "page-help",     label: "Page Help" },
-  { key: "ui-catalog",    label: "UI Catalog" },
-  { key: "api-v2-tests",  label: "API v2 Tests" },
-  { key: "api-changelog", label: "API Changelog" },
-  { key: "scope",         label: "Scope" },
-] as const;
-
-const TAB_LABELS: Record<string, string> = Object.fromEntries(
-  DEV_TABS.map((t) => [t.key, t.label])
-);
-
-export default function DevPage() {
-  const { activeTab: tab, setActiveTab: setTab } = useDevTab();
-  // Drives the global PageHeaderBar ("Vector + <tab>") and PageTitleRow.
-  // Replaces the old inline <header className="dev-page-header">.
+export default function DevSetupPage() {
   usePageHeader({
-    title: `Dev Setup · ${TAB_LABELS[tab] ?? "Setup"}`,
+    title: "Dev Setup · Setup",
     subtitle: "Standalone diagnostic tool for monitoring and managing the local and remote development environment",
   });
   const [copied, setCopied] = useState(false);
@@ -103,31 +30,10 @@ export default function DevPage() {
   const [masterResetResult, setMasterResetResult] = useState<{ success: boolean; message: string } | null>(null);
   const [fieldsProbe, setFieldsProbe] = useState<{ ok: boolean; message: string } | null>(null);
   const [fieldsProbeLoading, setFieldsProbeLoading] = useState(false);
-  const [tickCount, setTickCount] = useState(0);
-  const [tickAt, setTickAt] = useState<Date | null>(null);
-
-  useEffect(() => {
-    const snap = readGrowthbar();
-    setTickCount(snap.count);
-    setTickAt(snap.at != null ? new Date(snap.at) : null);
-  }, []);
-
-  const handleScopeTick = useCallback((at: Date) => {
-    setTickCount((n) => {
-      const next = n >= GROWTHBAR_MAX ? 1 : n + 1;
-      writeGrowthbar({ count: next, at: at.getTime() });
-      return next;
-    });
-    setTickAt(at);
-  }, []);
 
   const cancelReset = () => { setResetConfirm(false); setResetConfirmText(""); };
   const cancelMasterReset = () => { setMasterResetConfirm(false); setMasterResetConfirmText(""); };
 
-  // PLA-0026 / Story 00510 (F4) — smoke probe for GET
-  // /api/workspace/{id}/fields. Picks the first live workspace in the
-  // caller's tenant, calls getWorkspaceFields, reports the row count.
-  // Diagnostic only; no consumer wiring yet.
   const probeWorkspaceFields = async () => {
     setFieldsProbeLoading(true);
     setFieldsProbe(null);
@@ -140,8 +46,8 @@ export default function DevPage() {
       const ws = workspaces[0];
       const fields = await getWorkspaceFields(ws.id);
       setFieldsProbe({ ok: true, message: `${fields.length} field(s) admitted for workspace "${ws.name}".` });
-    } catch (error: any) {
-      setFieldsProbe({ ok: false, message: error?.message || "Probe failed." });
+    } catch (error: unknown) {
+      setFieldsProbe({ ok: false, message: error instanceof Error ? error.message : "Probe failed." });
     } finally {
       setFieldsProbeLoading(false);
     }
@@ -158,18 +64,11 @@ export default function DevPage() {
     setResetConfirmText("");
     setResetLoading(true);
     setResetResult(null);
-
     try {
       const response = (await apiSite("/admin/dev/adoption-reset", { method: "POST" })) as { message?: string };
-      setResetResult({
-        success: true,
-        message: response.message || "Adoption state reset successfully.",
-      });
-    } catch (error: any) {
-      setResetResult({
-        success: false,
-        message: error?.message || "Failed to reset adoption state.",
-      });
+      setResetResult({ success: true, message: response.message || "Adoption state reset successfully." });
+    } catch (error: unknown) {
+      setResetResult({ success: false, message: error instanceof Error ? error.message : "Failed to reset adoption state." });
     } finally {
       setResetLoading(false);
     }
@@ -180,18 +79,11 @@ export default function DevPage() {
     setMasterResetConfirmText("");
     setMasterResetLoading(true);
     setMasterResetResult(null);
-
     try {
       const response = await admin.devMasterReset();
-      setMasterResetResult({
-        success: true,
-        message: response?.message || "Master reset complete.",
-      });
-    } catch (error: any) {
-      setMasterResetResult({
-        success: false,
-        message: error?.message || "Master reset failed.",
-      });
+      setMasterResetResult({ success: true, message: response?.message || "Master reset complete." });
+    } catch (error: unknown) {
+      setMasterResetResult({ success: false, message: error instanceof Error ? error.message : "Master reset failed." });
     } finally {
       setMasterResetLoading(false);
     }
@@ -200,47 +92,7 @@ export default function DevPage() {
   return (
     <StrictRoute>
     <div className="dev-root">
-      <div className="dui-sticky-subheader">
-        <DevTabNav
-          tabs={DEV_TABS}
-          active={tab}
-          onChange={(key) => setTab(key as Parameters<typeof setTab>[0])}
-          storageKey="dev.tabs"
-        />
-        {tab === "scope" && (
-          <div className="dui-sticky-subheader__row">
-            <span className="dui-growthbar" aria-label={`Live updates: ${tickCount}`}>
-              {Array.from({ length: tickCount }, (_, i) => (
-                <span key={i} className="dui-growthbar__tick" />
-              ))}
-              <span className="dui-growthbar__time">
-                {tickAt
-                  ? `Updated ${formatGrowthbarTime(tickAt)}`
-                  : "Waiting for first update…"}
-              </span>
-            </span>
-          </div>
-        )}
-      </div>
-
-      {tab === "shortcuts" && <DevShortcutsPanel />}
-      {tab === "reports" && <DevReportsPanel />}
-      {tab === "research" && <DevResearchPanel />}
-      {tab === "operations" && <DevOperationsPanel />}
-      {tab === "plans" && <DevPlansPanel />}
-      {tab === "retros" && <DevRetrosPanel />}
-      {tab === "page-help" && <DevPageHelpPanel />}
-      {tab === "ui-catalog" && <DevUiCatalogPanel />}
-      {tab === "api-v2-tests" && <DevApiV2TestsPanel />}
-      {tab === "api-changelog" && <DevApiChangelogPanel />}
-      {tab === "scope" && <DevScopePanel onTick={handleScopeTick} />}
-      {tab === "icons" && (
-        <div className="dui-icons-host">
-          <UiAppIconbrowser />
-        </div>
-      )}
-
-      {tab === "setup" && <div className="dev-doc">
+      <div className="dev-doc">
         <Panel name="dev_health" title="Service health">
           <ServiceHealthPanel />
         </Panel>
@@ -338,8 +190,7 @@ export default function DevPage() {
         <Panel name="dev_field_schema_probe" title="Field schema probe">
           <p className="dev-p">
             Calls <code>GET /api/workspace/{"{id}"}/fields</code> for the first workspace in
-            your tenant and reports the admitted-field count. Verifies the F4 client
-            wiring for PLA-0026.
+            your tenant and reports the admitted-field count.
           </p>
           <div className="dev-btn-group">
             <button
@@ -358,12 +209,8 @@ export default function DevPage() {
         </Panel>
 
         <Panel name="dev_ssh_tunnel" title="SSH Tunnel Setup">
-          <p className="dev-p">
-            Run the setup script to configure your laptop for server access:
-          </p>
-
+          <p className="dev-p">Run the setup script to configure your laptop for server access:</p>
           <code className="dev-cmd">bash dev/scripts/ssh_manager.sh</code>
-
           <button onClick={copyCommand} className="dev-btn dev-btn--primary">
             {copied ? "Copied!" : "Copy Command"}
           </button>
@@ -388,7 +235,7 @@ export default function DevPage() {
             <li>Server password (will be prompted)</li>
           </ul>
         </Panel>
-      </div>}
+      </div>
     </div>
     </StrictRoute>
   );

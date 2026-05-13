@@ -483,3 +483,58 @@ func (s *Service) ListWorkspaceArtefactLayers(
 	}
 	return out, nil
 }
+
+// PatchWorkspaceArtefactLayerInput is the per-row update payload from the
+// frontend LayersTable batch confirm.
+type PatchWorkspaceArtefactLayerInput struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Tag         string    `json:"tag"`
+	SortOrder   int32     `json:"sort_order"`
+	Description *string   `json:"description_md"`
+}
+
+// PatchWorkspaceArtefactLayers applies a batch update to strategy
+// artefact_types rows owned by the workspace. Each row is updated
+// individually inside a single transaction; the full updated set is
+// returned so the frontend can replace its local state.
+func (s *Service) PatchWorkspaceArtefactLayers(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	inputs []PatchWorkspaceArtefactLayerInput,
+) ([]WorkspaceLayer, error) {
+	if s.vaPool == nil {
+		return nil, ErrVAUnavailable
+	}
+
+	tx, err := s.vaPool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, inp := range inputs {
+		_, err := tx.Exec(ctx, `
+			UPDATE artefact_types
+			   SET name        = $1,
+			       prefix      = $2,
+			       sort_order  = $3,
+			       description = $4
+			 WHERE id           = $5
+			   AND workspace_id = $6
+			   AND scope        = 'strategy'
+			   AND archived_at IS NULL`,
+			inp.Name, inp.Tag, inp.SortOrder, inp.Description,
+			inp.ID, workspaceID,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return s.ListWorkspaceArtefactLayers(ctx, workspaceID)
+}

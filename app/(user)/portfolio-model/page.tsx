@@ -37,7 +37,9 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { api, apiSite, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
+import { portfolio as portfolioApi } from "@/app/lib/apiSite/index";
+import { notify } from "@/app/lib/toast";
 import { useHintOnce } from "@/app/lib/hints";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import WizardModelCardList from "./WizardModelCardList";
@@ -165,7 +167,7 @@ export default function PortfolioModelPage() {
   const fetchAdoptionState = useCallback(async () => {
     setView({ kind: "loading" });
     try {
-      const res = await api<AdoptionStateDTO>(
+      const res = await apiSite<AdoptionStateDTO>(
         "/portfolio-models/adoption-state"
       );
       if (res.adopted && res.model_id) {
@@ -425,15 +427,27 @@ function BundleView({ bundle, workspaceId }: { bundle: BundleDTO; workspaceId: s
                 const trimmed = next.trim();
                 if (field === "tag" && (trimmed.length < 2 || trimmed.length > 4)) return false;
                 if (field === "name" && trimmed.length === 0) return false;
-                setLocalLayers((prev) =>
-                  prev === null
-                    ? prev
-                    : prev.map((l) =>
-                        l.id === id
-                          ? { ...l, [field]: field === "description_md" ? (trimmed || null) : trimmed }
-                          : l
-                      )
-                );
+                const prev = localLayers;
+                if (prev === null) return false;
+                const target = prev.find((l) => l.id === id);
+                if (!target) return false;
+                const updated: LayerDTO = {
+                  ...target,
+                  [field]: field === "description_md" ? (trimmed || null) : trimmed,
+                };
+                setLocalLayers(prev.map((l) => (l.id === id ? updated : l)));
+                portfolioApi
+                  .batchPatchWorkspaceLayers(workspaceId, [{
+                    id: updated.id,
+                    name: updated.name,
+                    tag: updated.tag,
+                    sort_order: updated.sort_order,
+                    description_md: updated.description_md,
+                  }])
+                  .catch((err) => {
+                    setLocalLayers(prev);
+                    notify.error(err instanceof ApiError ? `Save failed (${err.status})` : "Save failed");
+                  });
                 return true;
               }}
             />

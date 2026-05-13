@@ -11,7 +11,7 @@ BEGIN;
 
 INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind, pinnable, default_pinned, default_order)
 VALUES
-    ('planning/releases', 'Releases', '/planning/releases', 'rocket', 'planning', 'static', TRUE, TRUE, 8)
+    ('planning/releases', 'Releases', '/releases', 'rocket', 'planning', 'static', TRUE, TRUE, 8)
 ON CONFLICT (key_enum) WHERE created_by IS NULL AND subscription_id IS NULL DO NOTHING;
 
 INSERT INTO roles_pages (page_id, role_id, role)

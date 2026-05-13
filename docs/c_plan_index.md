@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0046`
+**Last issued:** `PLA-0047`
 
 ## Format
 
@@ -67,6 +67,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0044` | Unified topology-traversal engine — single `walkTopology()` walker shared by canvas dagre layout, topology tree state hook, topology flyout, scope rail; Go mirror for BFF + public API parity | 2026-05-12 | complete (2026-05-12) |
 | `PLA-0045` | Shared Methods Catalogue + Soft-Reminder Hook — `app/lib/shared/` + `backend/internal/shared/` + `dev/fixtures/shared/` directory contract; `docs/c_shared_methods.md` index; PostToolUse hook nudges shared placement on new handler routes | 2026-05-12 | complete (2026-05-12) |
 | `PLA-0046` | Topology Permissions page — gadmin user-pivot surface hosting UserNodeAssignment (B6.8) | 2026-05-12 | complete (2026-05-12) |
+| `PLA-0047` | Samantha SDK v2 — Fluent Declarative Mount API (`_viewport` → `_app` → `_panel` chain) | 2026-05-13 | drafted |
 
 ## Scope linkage rule
 

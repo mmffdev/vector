@@ -73,9 +73,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -84,7 +86,76 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
+> Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
+> Commit `0bf13ed` (2026-05-13): feat(001_redesign): bounce-in animation for rail active indicator [FE-POR-0003.1]
+> Commit `fee4481` (2026-05-13): feat(001_redesign): slide-down bounce for rail active indicator [FE-POR-0003.1]
+> Commit `b5c4831` (2026-05-13): feat(001_redesign): travelling rail indicator — stretch then elastic settle [FE-POR-0003.1]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `495b81c` (2026-05-13): feat(PLA-0043): kill admin_settings tag bucket — all admin pages live in named groups [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `96b7f25` (2026-05-12): docs(research): R052 Rally scope mechanics + R053 Rally/Jira/ADO comparison; backfill PLA-0042.md
@@ -100,6 +171,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 
 - ✅ **FLOW1.2.1** ~~Add `'backlog'` to `validKinds` map in `backend/internal/flows/service.go`~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
@@ -121,6 +195,18 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -131,6 +217,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - ✅ **FLOW1.2.3** ~~`listByScope` query selects `fs.is_pullable` and surfaces it in the `FlowState` DTO~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `cf7bc75` (2026-05-10): feat(logger): structured HTTP request middleware + Grafana dashboard
@@ -138,6 +225,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 - **FLOW1.2.4** Pull-surface query helper — canonical filter `is_pullable=true OR kind IN ('in_progress','done','accepted')` for team boards `[P2]`
 - **FLOW1.2.5** PO-backlog query helper — `kind='backlog' OR (kind='todo' AND is_pullable=false)` for PO grooming views `[P2]`
 > Last checked: 2026-05-10 — service.go validKinds includes "backlog"; types.go FlowState/PatchStateInput/CreateStateInput carry IsPullable; listByScope SELECT + scan + PatchFlowState UPDATE/RETURNING + CreateState INSERT/RETURNING all wire fs.is_pullable through. `go build ./internal/flows/... ./cmd/server/...` clean.
@@ -188,6 +276,51 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
+> Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
+> Commit `0bf13ed` (2026-05-13): feat(001_redesign): bounce-in animation for rail active indicator [FE-POR-0003.1]
+> Commit `fee4481` (2026-05-13): feat(001_redesign): slide-down bounce for rail active indicator [FE-POR-0003.1]
+> Commit `b5c4831` (2026-05-13): feat(001_redesign): travelling rail indicator — stretch then elastic settle [FE-POR-0003.1]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `495b81c` (2026-05-13): feat(PLA-0043): kill admin_settings tag bucket — all admin pages live in named groups [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -210,46 +343,73 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
+> Commit `495b81c` (2026-05-13): feat(PLA-0043): kill admin_settings tag bucket — all admin pages live in named groups [FE-POR-0003.1]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `0bf13ed` (2026-05-13): feat(001_redesign): bounce-in animation for rail active indicator [FE-POR-0003.1]
+> Commit `fee4481` (2026-05-13): feat(001_redesign): slide-down bounce for rail active indicator [FE-POR-0003.1]
+> Commit `b5c4831` (2026-05-13): feat(001_redesign): travelling rail indicator — stretch then elastic settle [FE-POR-0003.1]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
 ### FLOW1.5 Reset to factory-default per artefact type
 
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
 > Commit `ca9bbe4` (2026-05-10): fix(FLOW1.5): remount TypeSection on reload so map drops stale pills [FLOW1.5.3]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
 
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
 > Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - **FLOW1.4.1** Per-artefact `po_ready` flag on `artefacts` table — visual aid for PO grooming, independent of flow state; sort-to-top/badge UI; optional DoR validation on toggle `[P3]`
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -258,13 +418,17 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 ---
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 
 ## F1. Artefact Type and Flow State Customisation
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
 
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
 Workspace Settings > Customisation page — two sections. Section 1 (artefact type tags, prefix, name, description, colour) is already built. Section 2 adds a third-level tab nav (mirroring Custom Fields) for flow state management: one tab per artefact type, showing that type's flow states with colour editing. Covers data-correction migrations to fix wrong seeded states for all work types and missing states for strategy types. `[P2]` 🔵 IN FLIGHT
 
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -275,26 +439,107 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 - ✅ **F1.1.1** ~~Migrate Task flow states to: Ready (todo), Doing (in_progress), Completed (done) — remove Cancelled~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -319,6 +564,55 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
+> Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
+> Commit `0bf13ed` (2026-05-13): feat(001_redesign): bounce-in animation for rail active indicator [FE-POR-0003.1]
+> Commit `fee4481` (2026-05-13): feat(001_redesign): slide-down bounce for rail active indicator [FE-POR-0003.1]
+> Commit `b5c4831` (2026-05-13): feat(001_redesign): travelling rail indicator — stretch then elastic settle [FE-POR-0003.1]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `495b81c` (2026-05-13): feat(PLA-0043): kill admin_settings tag bucket — all admin pages live in named groups [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -341,6 +635,17 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -406,6 +711,13 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -443,11 +755,49 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
 ### F1.3 Frontend — Customisation page flow states section
 
 - **F1.3.1** Move existing Work Items page (`/workspace-settings/work-items`) content into Customisation as third-level tab section `[P2]`
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `495b81c` (2026-05-13): feat(PLA-0043): kill admin_settings tag bucket — all admin pages live in named groups [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -456,6 +806,41 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -467,6 +852,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -487,6 +877,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -496,6 +889,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 ---
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -815,6 +1209,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -922,6 +1319,13 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -931,6 +1335,14 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `06883fd` (2026-05-12): feat(PLA-0043): orgdesign DescendantNodeIDs + CanReadScope helpers [FE-POR-API-0002]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -938,6 +1350,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -974,21 +1390,72 @@ Full lifecycle management for tasks, bugs, epics.
 - **B6.9** Workspace setting — "Default node access for new users" `[P3]`
   > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
   >
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
   >
 - **B6.11** Bulk grant CSV import/export `[P4]`
   > Rally-validated bulk pattern (R054 §bulk): in-product UI does per-user grant only; bulk lives in CSV templates consumed by an external toolkit. Vector ships the same: a per-user CSV download on the B6.8 page (current grant set across the active workspace), plus a gadmin-only `/dev` panel that accepts a CSV (cols: `user_email,workspace_id,node_id,role`) and runs it through `Service.GrantRoleBatch`. Validation rules: caller is gadmin or workspace-admin; reject row if user doesn't exist or node is archived; report row-level success/fail in the response. Distinct from `RallyTools/Rally-User-Management` (Rally's external Ruby toolkit, R054 §sources [5]): Vector keeps the bulk path inside the app to avoid the "drives the web UI under the hood" hack Rally's toolkit had to adopt because the WSAPI never opened permission writes (R054 §CORRECTION C1).
   >
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
+> Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
+> Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
+> Commit `0bf13ed` (2026-05-13): feat(001_redesign): bounce-in animation for rail active indicator [FE-POR-0003.1]
+> Commit `fee4481` (2026-05-13): feat(001_redesign): slide-down bounce for rail active indicator [FE-POR-0003.1]
+> Commit `b5c4831` (2026-05-13): feat(001_redesign): travelling rail indicator — stretch then elastic settle [FE-POR-0003.1]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
+> Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `ed446dd` (2026-05-13): fix(001_redesign): hide admin groups from Available when already in Pinned [FE-POR-0003.1]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
   >
 
 ---
 
 ## B7. Search
 
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
 - ⚠️ **B7.1** Background search worker — indexes text + vector embeddings `[P2]`
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 
   - ✅ ~~**B7.1.1** Worker is currently a no-op after DB migration — must be rewired to new DB~~
 
@@ -1018,9 +1485,12 @@ Full lifecycle management for tasks, bugs, epics.
 - **B8.6** Postman collection `[P4]`
 - **B8.7** Idempotency keys on mutating public endpoints `[P2]`
   > `Idempotency-Key` request header → server stores `(tenant_id, key, response_body, status_code)` for 24h and replays on retry. Stripe model. Required before any external integration ships, otherwise consumers with retry loops double-create. Scope: every POST/PATCH/DELETE on `/samantha/v2`. Storage: new `idempotency_records` table in `vector_artefacts` keyed on `(tenant_id, key)` with TTL cleanup. Middleware fires before handler; cache hit short-circuits. Exempt from BFF / admin surface.
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
 - **B8.8** Cursor-based pagination on list endpoints `[P2]`
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
+> Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 - **B8.10** Per-tenant API keys with scoped permissions `[P2]`
@@ -1030,6 +1500,13 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
 > Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
 > Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `4d4ec2a` (2026-05-13): feat(PLA-0043): add Vector Admin sub-pages + User Management permissions page [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -1041,6 +1518,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
 > Commit `140b3e3` (2026-05-09): fix(B18): scope TOC sticks below subheader, doesn't scroll away [B20]
 > Commit `6513cfd` (2026-05-09): fix(B22): dynamic ID column width tracks max visible depth in ResourceTree
@@ -1110,6 +1591,9 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -1188,10 +1672,12 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - ✅ **B15.3** `<Badge>` — status / count / letter / tag variants `[P2]`
 > Commit `3dc9cdd` (2026-05-09): chore(plans): normalise unicode escapes in PLA plan files
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -1278,6 +1764,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `098ccbb` (2026-05-12): feat(PLA-0044): layoutWithDagre delegates visibility walk to walkTopology [FE-POR-API-0006]
 > Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
 > Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
+> Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
@@ -1288,8 +1775,10 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ## B18. Developer Experience
 
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -1521,6 +2010,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -1547,6 +2050,19 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -1564,6 +2080,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -1587,6 +2108,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -1635,6 +2166,18 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -1696,6 +2239,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -1722,6 +2275,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b1c5b15` (2026-05-12): feat(PLA-0042): chrome scope picker — backend grants + ScopeContext + picker UI [FE-POR-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `0d330a7` (2026-05-13): feat(PLA-0043): dev pages as 2nd-rail nav — remove tab strip, register 13 pages in shell catalogue [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -1753,6 +2313,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -1804,6 +2378,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -1845,6 +2425,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -1886,6 +2471,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -1933,6 +2521,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -1974,12 +2566,17 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
 > Commit `7b33639` (2026-05-09): fix(B22): expose at.prefix as type_prefix; replace hardcoded TYPE_PREFIX map
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
+> Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -2007,6 +2604,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -2036,6 +2636,21 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `3790542` (2026-05-13): feat(PLA-0043): persist mixed tag+group bucket order per nav profile [FE-POR-0003.1]
+> Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
+> Commit `545ebbd` (2026-05-13): feat(PLA-0043): tag bucket icon overrides in nav preferences [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `13dc98c` (2026-05-13): fix(PLA-0043): self-heal group_id on prefs when groups already exist [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -2049,6 +2664,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `bb18aa4` (2026-05-12): feat(PLA-0044): walkTopology Go mirror + cross-runtime parity tests [FE-POR-API-0006]
+> Commit `05cead9` (2026-05-13): fix(001_redesign): nav-v2 route corrections + travel indicator anchor [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -2073,6 +2691,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
+> Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -2108,6 +2731,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
+> Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
+> Commit `45cb68c` (2026-05-13): feat(PLA-0043): seed Vector Admin / Workspace Admin / User Management nav groups [FE-POR-0003.1]
+> Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -2121,6 +2753,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -2136,6 +2782,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -2158,6 +2805,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -2166,6 +2819,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `afab34b` (2026-05-09): docs(B21 PLA-0037): wizard sidecar doc + lint:scope-literals + cutover register
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -2185,6 +2844,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a07d3b5` (2026-05-12): feat(PLA-0043): frontend auto-forwards ?scope= on artefact GETs + openapi doc [FE-POR-0003.1]
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
+> Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -2201,6 +2867,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `78fd394` (2026-05-12): feat(PLA-0043): artefactitemsv2 ?scope= clamp on /work-items + /portfolio-items [FE-POR-API-0002]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `30b136c` (2026-05-13): feat(001_redesign): top bar reads PageHeaderContext + strip duplicate titles
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
+> Commit `a743bb3` (2026-05-13): chore(PLA-0023): drop dead defects table from mmff_vector [P0'/P1]
+> Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
+> Commit `82951c5` (2026-05-13): fix(PLA-0023): renumber library_ack drop + drop o_search_index_outbox [P1]
+> Commit `49b0909` (2026-05-13): chore(PLA-0023): drop 2 dead-leaf legacy tables, hold user_nav_* [P0']
+> Commit `b76ed1c` (2026-05-13): chore(PLA-0023): drop obj_flow_* legacy family from mmff_vector [P0']
+> Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
+> Commit `3ff59f0` (2026-05-13): chore(PLA-0023): P5 verification pass — drop 2 dead leaves, map blockers [P5]
+> Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
+> Commit `a998fc5` (2026-05-13): refactor(PLA-0044): remove legacy AppSidebar_2 component — superseded by redesign two-rail nav
+> Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -2210,6 +2892,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
+> Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 

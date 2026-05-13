@@ -6,6 +6,19 @@
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
+## Schema sub-pages (lazy-loaded leaves)
+
+- **Auth & permissions** → [`c_c_schema_auth.md`](c_c_schema_auth.md) — users, sessions, roles, permissions; grant matrix.
+- **History & audit** → [`c_c_schema_history.md`](c_c_schema_history.md) — `*_history` shadow tables, audit log columns.
+- **Item-type catalogues** → [`c_c_schema_item_types.md`](c_c_schema_item_types.md) — `obj_*_types`, transition catalogues.
+- **Portfolio stack** → [`c_c_schema_portfolio_stack.md`](c_c_schema_portfolio_stack.md) — strategy layers, portfolio-item types, depth invariants.
+- **Workflow states** → [`c_c_schema_states.md`](c_c_schema_states.md) — `flow_states`, `flow_transitions`, kind invariants.
+- **Adoption mirror tables** → [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md) — per-subscription mirror schema (TD-LIB-009).
+- **`librarydb` bundle fetcher** → [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md) — read-only spine + 5-child fetch from `mmff_library`.
+- **Library release channel** → [`c_c_library_release_channel.md`](c_c_library_release_channel.md) — outstanding-release notifications + acknowledgement flow.
+- **`vector_artefacts` backfill plan** → [`c_c_vector_artefacts_backfill.md`](c_c_vector_artefacts_backfill.md) — cutover from `obj_*` to PoC schema.
+- **User custom pages** → [`c_c_custom_pages.md`](c_c_custom_pages.md) — `kind="user_custom"` pages + views.
+
 ---
 
 ## `vector_artefacts` database (PoC cutover target)

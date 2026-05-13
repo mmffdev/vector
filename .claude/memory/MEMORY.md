@@ -5,7 +5,6 @@
 - [Stories all layers before starting](feedback_stories_all_layers.md) — Decompose across backend, frontend, migration, tests before /stories; never one layer at a time.
 - [Stories acceptance system — 7 gates, Fibonacci, risk](feedback_stories_system.md) — Hard gates: AIGEN+phase+feature+EST+RISK+description; F21+ auto-splits; 85%/90% confidence thresholds.
 - [All stories MUST go through /stories shortcut](feedback_stories_shortcut_mandatory.md) — No exceptions, no direct Planka writes; every story routes through the 7-gate skill.
-- [Planka PATCH listId requires position field](feedback_planka_listid_patch.md) — PATCH /api/cards/:id silently ignores listId change if position omitted.
 - [Never change passwords (HARD RULE)](feedback_never_change_passwords.md) — Never touch password_hash/email/role/is_active on gadmin@/padmin@/cookra@/user@; ask Rick or use claude@ test account.
 - [Backend pinned to dev (HARD RULE)](feedback_dev_only.md) — Env permanently dev; staging/prod refusing stubs; revert any non-dev marker silently.
 - [Always recommend the safest, best approach](feedback_safety_first.md) — Lead with ranked safest-first recommendation; never neutral A/B/C menus.
@@ -15,15 +14,14 @@
 - [Sidebar toolbar icon alignment](feedback_sidebar_toolbar.md) — Toggle + pencil left margin = 22px (user confirmed).
 - [Pages default to full screen](feedback_pages_fullscreen.md) — All new pages full screen by default; no max-width unless specified.
 - [No browser alert/confirm/prompt — in-page UI only](feedback_no_browser_alerts.md) — Never window.alert/confirm/prompt; pick form by context.
-- [Button and interactive element CSS enforcement](feedback_button_classes.md) — Every button needs .btn + variant; custom elements use --accent/--accent-ink not --brand.
-- [Canonical table HTML structure](feedback_table_structure.md) — thead/tbody/table__head/table__row/table__cell always.
 - [Verify backend env after every start](feedback_verify_backend_env_after_start.md) — Curl /api/env after backend start; auth failures = wrong DB before wrong password.
+- [Never assume a database (HARD RULE)](feedback_never_assume_database.md) — Always trace handler → main.go pool → routing doc before any psql query; no "probably lives in X".
+- [DB routing — service → pool → DB → tables](reference_db_routing_doc.md) — Canonical map at `docs/c_c_db_routing.md`; pool/DB/table for every Go service.
 - [Never wipe uncommitted](feedback_never_wipe_uncommitted.md) — Do not run destructive git clean; always preserve local work.
-- [CSS — canonical .btn rule](css_buttons.md) — Every <button> MUST use .btn + variant; bespoke selectors override only positioning/colour, never restate baseline.
-- [CSS — tables use tree_accordion-dense__scroll](css_tables.md) — `.table*` family deprecated 2026-05-05; touched files migrate as part of the change.
+- [CSS canonical — buttons, tables, inline styles, tokens](css_canonical.md) — `.btn` + variant on every button; `tree_accordion-dense__*` for every table; no inline `style={{}}`; `--accent`/`--accent-ink` for interactive state, never `--brand`.
+- [CSS/HTML naming convention — hierarchical semantic pattern](css_naming_convention.md) — `root__Container_Child_leaf`; `__` once at root boundary, `_` for deeper nesting, `-` for modifiers only; propose full TSX+CSS chain before writing any class name.
 - [Test accounts — Claude-owned + human-owned](test_accounts.md) — All test logins (claude@, claude_N_test@, gadmin/padmin/user@) consolidated; HARD RULE on human accounts.
 - [Vector Design System](reference_design_system.md) — `/MMFFDev - Vector Assets/Vector Design System/`; skill `/vector-design`; Inter font, warm neutrals.
-- [Planka API reference](planka_api_access.md) — Authoritative: .claude/bin/planka helper, board/list IDs, REST endpoints; planka-mcp uninstalled.
 - [Role boundaries — gadmin vs padmin vs user](project_role_boundaries.md) — gadmin=tech/support, padmin=product owner, user=consumer; portfolio model = padmin-only.
 - [BlockingReleaseGate — gadmin page gating pattern](project_blocking_release_gate.md) — Wrap gadmin pages; padmin pages must NOT import it.
 - [Dev launcher uses `go run`](project_dev_launcher_runtime.md) — Backend runs from `go run`; check /healthz commit vs HEAD, not file mtimes.
@@ -45,6 +43,7 @@
 - [Bracket-tag commits with scope ref](feedback_scope_commit_bracket_ref.md) — Always include `[B19.1.4]` in commit subject; otherwise scope-commit-note hook can't match → Unmatched (no growthbar tick).
 - [Helper icon — always wire through `<Panel>`](feedback_helper_icon.md) — Never render inline TbHelpHexagon + popover; wrap host block in `<Panel name="..." title="...">` so help ties into Page Help admin via the addressable substrate.
 - [Shared cross-runtime methods home (PLA-0045)](feedback_shared_methods_home.md) — `app/lib/shared/<domain>/` (TS) + `backend/internal/shared/<domain>/` (Go) + `dev/fixtures/shared/<domain>/` parity fixtures; catalogue in `docs/c_shared_methods.md`.
+- [Dev Setup page — route + source](reference_dev_page.md) — Route `/dev` → `app/(user)/dev/page.tsx` re-exports `dev/pages/DevPage.tsx`; rail cog icon links here.
 
 ### Rules
 

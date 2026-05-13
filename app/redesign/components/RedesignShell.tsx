@@ -3,8 +3,8 @@
 import "../shell.css";
 import { ShellProvider, useShell } from "../ShellContext";
 import { ViewportSlot } from "@/app/contexts/DomRegistryContext";
-import IconRail from "./IconRail";
-import SectionFlyout from "./SectionFlyout";
+import IconRail from "./nav_primary_rail_1";
+import SectionFlyout from "./nav_primary_rail_2";
 import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
 

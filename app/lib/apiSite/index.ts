@@ -463,6 +463,14 @@ export const portfolioModels = {
 // ─── Portfolio master record  (/portfolio/master_record) ─────────────────────
 // Per-workspace adopted portfolio model record — read after adoption completes.
 
+export interface WorkspaceLayerPatchInput {
+  id: ID;
+  name: string;
+  tag: string;
+  sort_order: number;
+  description_md: string | null;
+}
+
 export const portfolio = {
   /** GET /portfolio/master_record?workspace_id={id}
    *  Returns 404 if workspace is unadopted (existence not leaked). */
@@ -472,18 +480,14 @@ export const portfolio = {
   /** GET /workspace/{id}/portfolio/layers — admitted layer set for a workspace */
   getWorkspaceLayers: (workspaceId: ID) =>
     apiSite<{ layers: unknown[] }>(`/workspace/${workspaceId}/portfolio/layers`),
-};
 
-// Pages: app/(user)/portfolio-model/page.tsx (padmin — layer enable/disable toggles)
-// ─── Subscription layers  (/subscription/layers) ─────────────────────────────
-// padmin-only: read + batch-patch the subscription's layer configuration.
-
-export const subscriptionLayers = {
-  get: () =>
-    apiSite<{ layers: unknown[] }>("/subscription/layers"),
-
-  batchPatch: (data: unknown) =>
-    apiSite<void>("/subscription/layers/batch", { method: "PATCH", body: JSON.stringify(data) }),
+  /** PATCH /workspace/{id}/portfolio/layers/batch — batch update strategy
+   *  artefact_types rows owned by the workspace. Returns the full updated set. */
+  batchPatchWorkspaceLayers: <T = unknown>(workspaceId: ID, inputs: WorkspaceLayerPatchInput[]) =>
+    apiSite<T[]>(`/workspace/${workspaceId}/portfolio/layers/batch`, {
+      method: "PATCH",
+      body: JSON.stringify(inputs),
+    }),
 };
 
 // Pages: app/(user)/workspace-settings/workspace-settings/flow-states/page.tsx

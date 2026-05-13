@@ -9092,9 +9092,10 @@ input[type="reset"] {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: transparent;
-  border: var(--border-width) solid var(--border-panel);
-  border-radius: var(--radius-sm);
+  background: #ffffff;
+  border: var(--border-width) solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 20px;
 }
 
 .panel__header {

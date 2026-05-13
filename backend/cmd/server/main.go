@@ -223,8 +223,6 @@ func main() {
 	// devResetH is constructed after the vaPool block so MasterReset can
 	// target vector_artefacts. See below.
 	var devResetH *portfoliomodels.DevResetHandler
-	layersBatchH := portfoliomodels.NewLayersBatchHandler(portfolioModelsSvc)
-
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
 	// floor is 15m by default (LIBRARY_RECONCILER_INTERVAL to override).
@@ -948,6 +946,7 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
+		r.Patch("/layers/batch", workspaceLayersH.PatchWorkspaceLayers)
 	})
 
 	// /flows (B22.20) — site-only; padmin-managed workflow definitions.
@@ -1116,6 +1115,33 @@ func main() {
 		artefactTypesH.Mount(r)
 	})
 
+	// ---- /portfolio-models ----
+	r.Route("/portfolio-models", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Get("/", portfolioModelsH.List)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
+		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
+		r.Get("/{id}", portfolioModelsH.GetByModelID)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Post("/{id}/adopt", portfolioAdoptH.Adopt)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
+	})
+
+	// ---- /tenant-settings ----
+	r.Route("/tenant-settings", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		tenantSettingsH.Mount(r)
+	})
+
 	} // end mountSiteRoutes
 
 	// tagSite middleware annotates the request context with transport.Site so
@@ -1168,118 +1194,6 @@ func main() {
 			})
 		})
 
-	// ---- /api/portfolio-models ----
-	// Read-only library bundle surface (Phase 3 of mmff_library plan).
-	// Bundle GETs by family/id are open to any authenticated user —
-	// MMFF-authored content is implicitly visible across tenants;
-	// per-tenant share enforcement lands in Phase 5. List + adoption-state
-	// are padmin-only because adoption is a padmin-owned product decision.
-	r.Route("/portfolio-models", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		// Padmin-only: list of MMFF-published bundles for the adoption
-		// picker. Registered BEFORE /{id} so chi resolves the static
-		// path first (defensive — chi's trie prefers static segments
-		// anyway).
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/", portfolioModelsH.List)
-
-		// Padmin-only: live adoption state for the caller's subscription.
-		// Registered BEFORE /{id} so chi resolves the static path first
-		// (defensive — chi's trie prefers static segments anyway).
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
-
-		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
-		r.Get("/{id}", portfolioModelsH.GetByModelID)
-
-		// Padmin-only: run the adoption saga for a library model id.
-		// Per-step atomic, idempotent on retry — see
-		// backend/internal/portfoliomodels/adopt.go for the orchestrator.
-		// Registered AFTER /{id} in source order is fine — chi's trie
-		// distinguishes by HTTP method anyway.
-		// PLA-0007: gated via portfolio.list (closest existing code).
-		// Tech-debt: own code portfolio.adopt — see PLA-0007 G3.
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Post("/{id}/adopt", portfolioAdoptH.Adopt)
-
-		// Padmin-only: SSE variant — emits one `event: step` per saga
-		// step plus a final `event: done` or `event: fail`. See
-		// backend/internal/portfoliomodels/adopt_stream.go.
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
-	})
-
-	// ---- /api/portfolio (master_record_portfolio) ----
-	// PLA-0026 / Story 00498 (B9): per-workspace read surface for the
-	// persistent portfolio model record. Reads ONLY vector_artefacts —
-	// no live mmff_library look-ups happen here. Auth is enforced at
-	// the group; per-workspace membership is checked inside the handler.
-	r.Route("/portfolio", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		portfolioMasterRecordH.Mount(r)
-	})
-
-	// ---- /api/workspace/{id}/portfolio (PLA-0026 / Story 00499 / B10) ----
-	// Workspace-scoped successor to GET /api/subscription/layers. Reads
-	// strategy artefact_types from vector_artefacts. The legacy endpoint
-	// stays live until F3 frontend cutover (R047 §9). Auth + tenant +
-	// workspace-membership enforcement happens INSIDE the handler so we
-	// can return 404 for cross-tenant probes (leak-resistant) while
-	// returning 403 for in-tenant non-members.
-	r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
-	})
-
-	// ---- /api/subscription ----
-	// Subscription-scoped write surface. Padmin-only.
-	r.Route("/subscription", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0007: padmin-equivalent gate via portfolio.list (closest existing
-		// code). Tech-debt: own code subscription.layers.update — see PLA-0007 G3.
-		r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		// Subscription layer reads + writes (stories 00062–00065).
-		r.Get("/layers", layersBatchH.GetLayers)
-		r.Patch("/layers/batch", layersBatchH.PatchLayersBatch)
-	})
-
-	// ---- /api/workspace/{id}/fields (PLA-0026 / Story 00500, B11) ----
-	// Returns the admitted field set for one workspace. Auth + fresh-
-	// password gates at the router edge; per-row tenancy + membership
-	// gating happens inside the handler (404 / 403 / 200).
-	r.Route("/workspace/{id}/fields", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Get("/", fieldsH.List)
-	})
-
-	// ---- /api/tenant-settings (master_record_tenant) ----
-	// One row per subscription; reads + writes scoped to the caller's
-	// tenant via auth context. Auth + fresh-password gate is the only
-	// guard — there's no per-row permission catalogue.
-	r.Route("/tenant-settings", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		tenantSettingsH.Mount(r)
-	})
 
 	}) // end /samantha/v1
 

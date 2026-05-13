@@ -214,6 +214,14 @@ func (o *Orchestrator) Adopt(
 		hook = func(context.Context, StepEvent) {}
 	}
 
+	// Resolve workspace early — needed for state table routing (SA3).
+	// Orphan-sub fixtures have no workspace row; they get uuid.Nil and
+	// fall back to the legacy mmff_vector state path below.
+	workspaceID, err := o.resolveWorkspaceID(ctx, subscriptionID)
+	if err != nil {
+		return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
+	}
+
 	// PLA-0026 / 00497 (B8): set when the existing-state check below
 	// detects a completed adoption to a *different* model. Drives the
 	// re-adoption pre-step that inserts the placeholder strategy
@@ -222,11 +230,11 @@ func (o *Orchestrator) Adopt(
 	isReadoption := false
 
 	// ── Idempotency check (BEFORE opening any tx) ────────────────
-	// Migration 026's partial unique index keeps at most one
-	// non-terminal (pending|in_progress|completed) row per
-	// subscription. Failed/rolled_back rows are audit-only and do
-	// not block a fresh attempt.
-	existingState, err := o.loadActiveState(ctx, subscriptionID)
+	// SA3 (PLA-0026 2026-05-13): state reads/writes now target
+	// vector_artefacts.artefact_adoption_state (keyed by workspace_id)
+	// when VAPool != nil and workspaceID != uuid.Nil. Orphan-sub
+	// fixtures still fall back to the mmff_vector predecessor path.
+	existingState, err := o.loadActiveState(ctx, subscriptionID, workspaceID)
 	if err != nil {
 		return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 	}
@@ -251,7 +259,7 @@ func (o *Orchestrator) Adopt(
 			// partial unique index admits a fresh in_progress row for
 			// the new model, and flag the saga so the VA pre-step
 			// dispatches runReadoption before the strategy writer.
-			if err := o.archiveCompletedStateForReadoption(ctx, existingState.ID); err != nil {
+			if err := o.archiveCompletedStateForReadoption(ctx, existingState.ID, workspaceID); err != nil {
 				return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 			}
 			isReadoption = true
@@ -266,7 +274,7 @@ func (o *Orchestrator) Adopt(
 				// Stale failed row is for a different model. Archive it
 				// so the partial unique index admits a fresh row for the
 				// newly-selected model.
-				if err := o.archiveStaleFailedRow(ctx, existingState.ID); err != nil {
+				if err := o.archiveStaleFailedRow(ctx, existingState.ID, workspaceID); err != nil {
 					return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 				}
 				existingState = nil // treat as a clean slate
@@ -277,7 +285,7 @@ func (o *Orchestrator) Adopt(
 			// (No `failed_step` column exists on migration 026, so we
 			// cannot resume from step N; idempotent inserts make a
 			// full re-run safe. See package doc.)
-			if err := o.resetFailedToInProgress(ctx, existingState.ID); err != nil {
+			if err := o.resetFailedToInProgress(ctx, existingState.ID, workspaceID); err != nil {
 				return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 			}
 		}
@@ -305,7 +313,7 @@ func (o *Orchestrator) Adopt(
 	if opts.FailAtStep == stepValidate {
 		err := errSimInjected{step: stepValidate}
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepValidate, err, codeAdoptInternal)
 	}
 
 	bundle, err := librarydb.FetchTemplateByID(ctx, o.LibRO, modelID)
@@ -313,11 +321,11 @@ func (o *Orchestrator) Adopt(
 	// If the template was removed between the list call and now, it returns ErrBundleNotFound.
 	if errors.Is(err, librarydb.ErrBundleNotFound) {
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptBundleNotFound)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepValidate, err, codeAdoptBundleNotFound)
 	}
 	if err != nil {
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepValidate, err, codeAdoptInternal)
 	}
 
 	// Pin the state row: either reuse the resumed row, or insert a
@@ -327,7 +335,7 @@ func (o *Orchestrator) Adopt(
 	if existingState != nil {
 		stateID = existingState.ID
 	} else {
-		newID, err := o.insertPendingState(ctx, subscriptionID, userID, modelID)
+		newID, err := o.insertPendingState(ctx, subscriptionID, userID, modelID, workspaceID)
 		if err != nil {
 			hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
 			return nil, o.failSagaNoState(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
@@ -336,18 +344,6 @@ func (o *Orchestrator) Adopt(
 	}
 
 	hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end"})
-
-	// Resolve workspaceID for the PLA-0026 dual-writes. Orphan-sub
-	// fixtures (Bulk Cross-Tenant Test, etc.) have no workspace row;
-	// they fall through with uuid.Nil and the va-step dispatcher
-	// silently skips, matching M4's "ws_id = sub_id" backfill in
-	// migration 019 only after the workspace exists. We do NOT
-	// surface "no workspace" as an error — adoption against an
-	// orphan-sub still succeeds via the legacy mirror path.
-	workspaceID, err := o.resolveWorkspaceID(ctx, subscriptionID)
-	if err != nil {
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
-	}
 
 	// ── Steps 2..6: VA writers, each in its own vector_artefacts tx ─
 	// SA1 (PLA-0026 2026-05-13): legacy mmff_vector mirror writes
@@ -391,13 +387,13 @@ func (o *Orchestrator) Adopt(
 		if opts.FailAtStep == step.name {
 			err := errSimInjected{step: step.name}
 			hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
-			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
+			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, step.name, err, mirrorErrCode(step.name))
 		}
 
 		if o.VAPool != nil && workspaceID != uuid.Nil {
 			if err := o.runVAStep(ctx, step.fn); err != nil {
 				hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
-				return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
+				return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, step.name, err, mirrorErrCode(step.name))
 			}
 		}
 
@@ -411,7 +407,7 @@ func (o *Orchestrator) Adopt(
 	if opts.FailAtStep == stepFinalize {
 		err := errSimInjected{step: stepFinalize}
 		hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 	}
 
 	// PLA-0026 / Story 00495 (B6): upsert master_record_portfolio for
@@ -424,14 +420,14 @@ func (o *Orchestrator) Adopt(
 		if err := writeMasterRecordPortfolio(ctx, nil, o.MasterRecordSvc,
 			workspaceID, modelID, userID, bundle); err != nil {
 			hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
-			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 		}
 	}
 
-	adoptedAt, err := o.markCompleted(ctx, stateID, userID)
+	adoptedAt, err := o.markCompleted(ctx, stateID, userID, workspaceID)
 	if err != nil {
 		hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 	}
 	hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end"})
 
@@ -503,9 +499,29 @@ type stateRow struct {
 }
 
 // loadActiveState returns the live (archived_at IS NULL) state row for
-// this subscription if any, otherwise nil. The partial unique index
-// (migration 026) guarantees at most one such row per subscription.
-func (o *Orchestrator) loadActiveState(ctx context.Context, subscriptionID uuid.UUID) (*stateRow, error) {
+// this subscription/workspace if any, otherwise nil.
+// SA3: routes to VA artefact_adoption_state when VAPool is available and
+// workspaceID is non-nil; falls back to mmff_vector for orphan-sub fixtures.
+func (o *Orchestrator) loadActiveState(ctx context.Context, subscriptionID, workspaceID uuid.UUID) (*stateRow, error) {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		var s stateRow
+		err := o.VAPool.QueryRow(ctx, `
+			SELECT id, model_id, status, adopted_at
+			  FROM artefact_adoption_state
+			 WHERE workspace_id = $1
+			   AND archived_at IS NULL
+			 ORDER BY created_at DESC
+			 LIMIT 1`,
+			workspaceID,
+		).Scan(&s.ID, &s.ModelID, &s.Status, &s.AdoptedAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("load active state (va): %w", err)
+		}
+		return &s, nil
+	}
 	var s stateRow
 	err := o.VectorPool.QueryRow(ctx, `
 		SELECT id, adopted_model_id, status, adopted_at
@@ -529,10 +545,26 @@ func (o *Orchestrator) loadActiveState(ctx context.Context, subscriptionID uuid.
 // new id. We jump straight to in_progress (skipping `pending`) because
 // the saga starts immediately — `pending` is a planned-but-not-started
 // state we don't need to surface yet.
+// SA3: routes to VA artefact_adoption_state when VAPool is available and
+// workspaceID is non-nil; falls back to mmff_vector for orphan-sub fixtures.
 func (o *Orchestrator) insertPendingState(
 	ctx context.Context,
-	subscriptionID, userID, modelID uuid.UUID,
+	subscriptionID, userID, modelID, workspaceID uuid.UUID,
 ) (uuid.UUID, error) {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		var id uuid.UUID
+		err := o.VAPool.QueryRow(ctx, `
+			INSERT INTO artefact_adoption_state
+			    (workspace_id, subscription_id, model_id, adopted_by_user_id, status)
+			VALUES ($1, $2, $3, $4, 'in_progress')
+			RETURNING id`,
+			workspaceID, subscriptionID, modelID, userID,
+		).Scan(&id)
+		if err != nil {
+			return uuid.UUID{}, fmt.Errorf("insert state row (va): %w", err)
+		}
+		return id, nil
+	}
 	var id uuid.UUID
 	err := o.VectorPool.QueryRow(ctx, `
 		INSERT INTO subscription_portfolio_model_state
@@ -550,10 +582,26 @@ func (o *Orchestrator) insertPendingState(
 // archiveCompletedStateForReadoption soft-archives a previously-
 // completed state row when the operator picks a different model
 // (PLA-0026 / 00497). Same shape as archiveStaleFailedRow: the partial
-// unique index keys on (subscription_id, archived_at IS NULL), so
-// flipping archived_at to NOW() admits a fresh in_progress row for the
+// unique index keys on (workspace_id / subscription_id, archived_at IS NULL),
+// so flipping archived_at to NOW() admits a fresh in_progress row for the
 // new model. The historical row stays for audit.
-func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, stateID uuid.UUID) error {
+// SA3: routes to VA artefact_adoption_state when available.
+func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, stateID, workspaceID uuid.UUID) error {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		_, err := o.VAPool.Exec(ctx, `
+			UPDATE artefact_adoption_state
+			   SET archived_at = NOW()
+			 WHERE id = $1
+			   AND workspace_id = $2
+			   AND status = 'completed'
+			   AND archived_at IS NULL`,
+			stateID, workspaceID,
+		)
+		if err != nil {
+			return fmt.Errorf("archive completed state for re-adoption (va): %w", err)
+		}
+		return nil
+	}
 	_, err := o.VectorPool.Exec(ctx, `
 		UPDATE subscription_portfolio_model_state
 		   SET archived_at = NOW()
@@ -571,7 +619,23 @@ func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, s
 // archiveStaleFailedRow soft-archives a failed row for a *different*
 // model so the partial unique index (archived_at IS NULL) admits a
 // fresh row for the newly-selected model.
-func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID uuid.UUID) error {
+// SA3: routes to VA artefact_adoption_state when available.
+func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID, workspaceID uuid.UUID) error {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		_, err := o.VAPool.Exec(ctx, `
+			UPDATE artefact_adoption_state
+			   SET archived_at = NOW()
+			 WHERE id = $1
+			   AND workspace_id = $2
+			   AND status = 'failed'
+			   AND archived_at IS NULL`,
+			stateID, workspaceID,
+		)
+		if err != nil {
+			return fmt.Errorf("archive stale failed row (va): %w", err)
+		}
+		return nil
+	}
 	_, err := o.VectorPool.Exec(ctx, `
 		UPDATE subscription_portfolio_model_state
 		   SET archived_at = NOW()
@@ -589,7 +653,23 @@ func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID uuid.U
 // resetFailedToInProgress flips a previously-failed row back to
 // in_progress so the partial unique index admits the resumed saga.
 // Called only when a prior attempt for the *same* model_id failed.
-func (o *Orchestrator) resetFailedToInProgress(ctx context.Context, stateID uuid.UUID) error {
+// SA3: routes to VA artefact_adoption_state when available.
+func (o *Orchestrator) resetFailedToInProgress(ctx context.Context, stateID, workspaceID uuid.UUID) error {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		_, err := o.VAPool.Exec(ctx, `
+			UPDATE artefact_adoption_state
+			   SET status = 'in_progress'
+			 WHERE id = $1
+			   AND workspace_id = $2
+			   AND status = 'failed'
+			   AND archived_at IS NULL`,
+			stateID, workspaceID,
+		)
+		if err != nil {
+			return fmt.Errorf("reset failed state (va): %w", err)
+		}
+		return nil
+	}
 	_, err := o.VectorPool.Exec(ctx, `
 		UPDATE subscription_portfolio_model_state
 		   SET status = 'in_progress'
@@ -606,7 +686,25 @@ func (o *Orchestrator) resetFailedToInProgress(ctx context.Context, stateID uuid
 
 // markCompleted flips the state row to `completed`, stamps adopted_at +
 // adopted_by_user_id, returns the timestamp.
-func (o *Orchestrator) markCompleted(ctx context.Context, stateID, userID uuid.UUID) (time.Time, error) {
+// SA3: routes to VA artefact_adoption_state when available.
+func (o *Orchestrator) markCompleted(ctx context.Context, stateID, userID, workspaceID uuid.UUID) (time.Time, error) {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		var ts time.Time
+		err := o.VAPool.QueryRow(ctx, `
+			UPDATE artefact_adoption_state
+			   SET status = 'completed',
+			       adopted_by_user_id = $2,
+			       adopted_at = NOW()
+			 WHERE id = $1
+			   AND workspace_id = $3
+			 RETURNING adopted_at`,
+			stateID, userID, workspaceID,
+		).Scan(&ts)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("mark completed (va): %w", err)
+		}
+		return ts, nil
+	}
 	var ts time.Time
 	err := o.VectorPool.QueryRow(ctx, `
 		UPDATE subscription_portfolio_model_state
@@ -626,7 +724,19 @@ func (o *Orchestrator) markCompleted(ctx context.Context, stateID, userID uuid.U
 // markFailed flips the state row to `failed`. Best-effort: if this
 // fails too, we log via the error caller — there's no further state to
 // roll back.
-func (o *Orchestrator) markFailed(ctx context.Context, stateID uuid.UUID) {
+// SA3: routes to VA artefact_adoption_state when available.
+func (o *Orchestrator) markFailed(ctx context.Context, stateID, workspaceID uuid.UUID) {
+	if o.VAPool != nil && workspaceID != uuid.Nil {
+		_, _ = o.VAPool.Exec(ctx, `
+			UPDATE artefact_adoption_state
+			   SET status = 'failed'
+			 WHERE id = $1
+			   AND workspace_id = $2
+			   AND archived_at IS NULL`,
+			stateID, workspaceID,
+		)
+		return
+	}
 	_, _ = o.VectorPool.Exec(ctx, `
 		UPDATE subscription_portfolio_model_state
 		   SET status = 'failed'
@@ -644,19 +754,18 @@ func (o *Orchestrator) markFailed(ctx context.Context, stateID uuid.UUID) {
 // state row has been pinned. Marks the row failed, appends an
 // error_event with the matching ADOPT_* code, returns the wrapped
 // error to the caller.
+// SA3: workspaceID threads through to loadActiveState and markFailed for
+// VA routing.
 func (o *Orchestrator) failSaga(
 	ctx context.Context,
-	subscriptionID, userID, modelID uuid.UUID,
+	subscriptionID, userID, modelID, workspaceID uuid.UUID,
 	requestID string,
 	stepName string,
 	cause error,
 	code string,
 ) error {
-	// Mark the most-recent live state row failed. We re-load by
-	// (subscription, model) instead of carrying the id through every
-	// helper signature.
-	if s, err := o.loadActiveState(ctx, subscriptionID); err == nil && s != nil {
-		o.markFailed(ctx, s.ID)
+	if s, err := o.loadActiveState(ctx, subscriptionID, workspaceID); err == nil && s != nil {
+		o.markFailed(ctx, s.ID, workspaceID)
 	}
 	o.appendErrorEvent(ctx, subscriptionID, userID, requestID, code, stepName, modelID, cause)
 	return adoptionError{Code: code, Step: stepName, Cause: cause}

@@ -54,7 +54,7 @@ import {
   adoptStreamPath,
   type AdoptionStepName,
 } from "./adoptionConstants";
-import { api, getApiToken } from "@/app/lib/api";
+import { apiSite as api, getApiToken } from "@/app/lib/api";
 import { reportError } from "@/app/lib/reportError";
 
 type StepStatus = "idle" | "in-progress" | "complete" | "failed";

@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { useShell } from "./ShellContext";
 
 export default function RedesignLanding() {
-  const { perspective, activeSection } = useShell();
+  const { activeSection } = useShell();
 
   return (
     <div className="rd-page">
@@ -13,7 +13,7 @@ export default function RedesignLanding() {
           <span className="rd-page__crumb">Vector</span>
           <span className="rd-page__crumb-sep">/</span>
           <span className="rd-page__crumb rd-page__crumb--current">
-            {activeSection?.name ?? perspective.name}
+            {activeSection?.name ?? "Vector"}
           </span>
         </nav>
         <button type="button" className="rd-page__action">
@@ -25,9 +25,6 @@ export default function RedesignLanding() {
       <div className="rd-page__body">
         <header className="rd-page__heading">
           <h1 className="rd-page__title">{activeSection?.name ?? "Welcome"}</h1>
-          <p className="rd-page__subtitle">
-            Perspective: <strong>{perspective.name}</strong>
-          </p>
         </header>
 
         <div className="rd-empty">

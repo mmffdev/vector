@@ -3,6 +3,7 @@ package nav
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -146,6 +147,53 @@ func (s *Service) CreateProfile(ctx context.Context, userID, subscriptionID uuid
 		}
 		return Profile{}, err
 	}
+
+	// Seed the new profile by cloning the user's Default profile state.
+	// Without this seed a brand-new profile reads as empty — the editor
+	// shows blank admin buckets and admin pages fall back to the
+	// 'admin_settings' tag bucket. Copy two things:
+	//   1) user_nav_prefs rows (pinned pages, with group_id + parent +
+	//      icon_override preserved so admin pages stay inside their
+	//      admin groups).
+	//   2) user_nav_profile_groups placements (the rail/flyout section
+	//      ordering: tag buckets + custom groups).
+	// user_nav_groups itself is per-user (shared across profiles) so
+	// nothing needs cloning there.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_nav_prefs
+		    (user_id, subscription_id, profile_id, item_key, position,
+		     is_start_page, parent_item_key, group_id, icon_override)
+		SELECT
+		    src.user_id, src.subscription_id, $3,
+		    src.item_key, src.position,
+		    FALSE, src.parent_item_key, src.group_id, src.icon_override
+		FROM user_nav_prefs src
+		JOIN user_nav_profiles dp
+		    ON dp.user_id = src.user_id
+		   AND dp.subscription_id = src.subscription_id
+		   AND dp.is_default = TRUE
+		WHERE src.user_id = $1
+		  AND src.subscription_id = $2
+		  AND src.profile_id = dp.id
+	`, userID, subscriptionID, p.ID); err != nil {
+		return Profile{}, fmt.Errorf("seed new profile prefs from default: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_nav_profile_groups
+		    (profile_id, group_id, tag_enum, position, icon_override)
+		SELECT
+		    $3, src.group_id, src.tag_enum, src.position, src.icon_override
+		FROM user_nav_profile_groups src
+		JOIN user_nav_profiles dp
+		    ON dp.id = src.profile_id
+		   AND dp.is_default = TRUE
+		WHERE dp.user_id = $1
+		  AND dp.subscription_id = $2
+	`, userID, subscriptionID, p.ID); err != nil {
+		return Profile{}, fmt.Errorf("seed new profile groups from default: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return Profile{}, err
 	}

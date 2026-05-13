@@ -1,51 +1,47 @@
 ---
 name: stories
-description: 8-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK + transport labels.
+description: 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
 allowed-tools: Bash, Read, Write, Edit
 ---
 
 # /stories
 
-Turn a plan or work description into shippable user stories with 8-gate acceptance system, write the plan JSON, then wait for user approval.
-
-<!-- PLANKA SUSPENDED: Planka board integration is disabled. Keep API scripts and bin files intact; only board-driving steps are commented out. Stories are tracked via dev/plans/ JSON only. -->
+Turn a plan or work description into shippable user stories with 7-gate acceptance system, create them in Planka Backlog, then wait for user approval.
 
 ## Workflow
 
 1. **You invoke `/stories`** with a plan or work description.
 2. **Skill drafts a plan**, reaches 95% confidence on it (asks for web access if it needs more research), searches existing research papers, and scans existing `PLA-NNNN` plans for overlap (Step −1).
 3. **Skill decomposes into stories** and runs them through the 7-gate system (Steps 0–7).
-4. **Skill writes the plan** to `dev/plans/PLA-NNNN.json` (Step 6.5).
-5. ~~Cards are created in Planka Backlog with all required labels attached and verified.~~ (Planka suspended — stories recorded in plan JSON only)
-6. **User reviews in the Plans tab** and decides which to work on.
-7. **User says "go"** — begin implementation on approved stories.
+4. **Skill writes the plan** to `dev/plans/PLA-NNNN.json` (Step 6.5) and adds the `PLA-NNNN` label to every card.
+5. **Cards are created in Planka Backlog** with all required labels attached and verified.
+6. **User reviews in Planka and the Plans tab** and decides which to work on.
+7. **User says "go"** — you move approved cards from Backlog → To Do and begin implementation.
 
 The `/stories` skill ends after Step 7 (plan saved, cards in Backlog, ready for review). It does **not** move cards to To Do or start work — that happens after user approval.
 
 ## Hard Rules (No Exceptions)
 
-Every story produced by `/stories` MUST end the run carrying ALL FIVE of:
+Every card created by `/stories` MUST end the run carrying ALL EIGHT of:
 
 1. **Story ID + Title** — `NNNNN — Title` (5-digit zero-padded ID, em dash, title)
-2. **Phase** — `PH-NNNN` (e.g., `PH-0005`)
-3. **Feature area** — `FE-AAA-0001` or `FE-AAA-BBB-0001` (domain + optional sub-domain + 4-digit counter; e.g., `FE-DEV-0001`, `FE-POR-API-0001`, `FE-PAY-0001`)
-4. **Estimation** — `EST-F#` (Fibonacci F0–F13 only; F21+ triggers automatic split)
-5. **Risk** — `RISK-LOW` / `RISK-MED` / `RISK-HIGH`
+2. **AIGEN label** — creation source (id `1761454228267599083`, color lagoon-blue)
+3. **Phase label** — `PH-NNNN` (e.g., `PH-0005`)
+4. **Feature area label** — `FE-AAA-0001` or `FE-AAA-BBB-0001` (domain + optional sub-domain + 4-digit counter; e.g., `FE-DEV-0001`, `FE-POR-API-0001`, `FE-PAY-0001`)
+5. **Estimation label** — `EST-F#` (Fibonacci F0–F13 only; F21+ triggers automatic split)
+6. **Risk label** — `RISK-LOW` / `RISK-MED` / `RISK-HIGH`
+7. **Plan label** — `PLA-NNNN` (4-digit zero-padded; the plan this card belongs to — see Step −1 and Step 6.5)
+8. **Description** — User story format with 3+ "As Proven by" acceptance criteria
 
-Plus, in the plan JSON (`work_item_backlog` entry):
+A card missing any of (1)–(8) at end of run is a **defect**. The run **fails** regardless of which steps "succeeded". You MUST:
 
-6. **Plan ID** — `PLA-NNNN` (4-digit zero-padded; the plan this story belongs to — see Step −1 and Step 6.5)
-7. **Description** — User story format with 3+ "As Proven by" acceptance criteria (in `acceptance_criteria` array)
-
-<!-- PLANKA SUSPENDED: Labels 2–7 above were previously enforced as Planka card labels. While Planka is suspended, they are enforced as story metadata in the plan JSON only. -->
-
-A story missing any of (1)–(7) at end of run is a **defect**. The run **fails** regardless of which steps "succeeded". You MUST:
-
-- **Run Step −1 BEFORE Step 0.** Step −1 produces the `PLA-NNNN` plan ID that every story depends on and decides whether this work merges into an existing plan or creates a new one.
-- **Run Step 0 BEFORE any story creation.** Step 0 produces the IDs (1–3) that every story depends on.
-- **If confidence < 85% on ANY gate, STOP.** Do not create the story; ask the user to revise.
+- **Run Step −1 BEFORE Step 0.** Step −1 produces the `PLA-NNNN` plan ID that every card depends on (label 7) and decides whether this work merges into an existing plan or creates a new one.
+- **Run Step 0 BEFORE any card creation.** Step 0 produces the IDs and labels (1–4) that every card depends on.
+- **Run Step 3c (label verification) for every batch.** Not optional. Step 3c is the ONLY thing that catches silent-success label failures.
+- **If Step 3c finds missing labels, retry via MCP** until verified. Do NOT report success while cards are under-labelled.
+- **If confidence < 85% on ANY gate, STOP.** Do not create the card; ask the user to revise.
 - **If a story scores F21+, split automatically.** Show proposed breakdown; do NOT report intermediate steps.
-- **Run Step 6.5 BEFORE Step 7.** Persist the plan JSON to `dev/plans/PLA-NNNN.json` and update `docs/c_plan_index.md`.
+- **Run Step 6.5 BEFORE Step 7.** Persist the plan JSON to `dev/plans/PLA-NNNN.json` and update `docs/c_plan_index.md`. The plan must reference every card created.
 
 ---
 
@@ -105,24 +101,24 @@ Wait for the user. If `merge`: reuse the existing `PLA-NNNN`, and at Step 6.5 yo
 1. Read `docs/c_plan_index.md` for **Last issued**.
 2. Scan `dev/plans/` for the highest existing `PLA-NNNN.json`.
 3. `PLAN_ID = "PLA-" + str(max(file, scan) + 1).zfill(4)`.
-4. <!-- PLANKA SUSPENDED: previously created PLA-NNNN Planka label here via mcp__planka__create_label (color: wisteria-purple). Skipped while Planka is retired. -->
+4. Determine the Planka label. If a `PLA-NNNN` label with this name does not exist on the board, create it via `mcp__planka__create_label` (color: `wisteria-purple`). Record `PLA_LABEL_ID`.
 
-**Self-check:** Can you state the exact value for `PLAN_ID` before proceeding to Step 0? If "I'll figure it out later", stop and complete it now.
+**Self-check:** Can you state exact values for `PLAN_ID` and `PLA_LABEL_ID` before proceeding to Step 0? If any is "I'll figure it out later", stop and complete it now.
 
 ---
 
-## Step 0 — Allocate IDs and Metadata (BLOCKING)
+## Step 0 — Allocate IDs and Labels (BLOCKING)
 
 This step gates everything. Do not skip any sub-step.
 
 1. **Read `docs/c_story_index.md`.** Note the **Last issued** ID.
-2. <!-- PLANKA SUSPENDED: previously scanned the board's card titles for highest NNNNN — prefix as a second source. Skipped while Planka is retired — use story index file only. -->
-3. **Compute starting ID** = `last_issued + 1`. Allocate one ID per story. Write them explicitly (e.g., `STORY_IDS = [00050, 00051, 00052]`).
-4. **Determine phase** (e.g., `PH-0005`). Read `docs/c_story_index.md` for active phase. Record `PH_VALUE`. <!-- PLANKA SUSPENDED: previously created phase label on board via mcp__planka__create_label (color: midnight-blue). Skipped. -->
-5. **Determine feature area.** Read `docs/c_feature_areas.md`. Label format is `FE-AAA-0001` (single domain) or `FE-AAA-BBB-0001` (domain + sub-domain). Propose any new label name to the user; record `FE_VALUE`. <!-- PLANKA SUSPENDED: previously created FE label on board via mcp__planka__create_label (color: tank-green). Skipped. -->
-6. **Confirm `PLAN_ID`** is set from Step −1.e. If not, return to Step −1.
+2. **Scan the board's card titles** for the highest existing `NNNNN —` prefix. If higher than the file, use the scan value (another agent may have incremented).
+3. **Compute starting ID** = `max(file, scan) + 1`. Allocate one ID per story. Write them explicitly (e.g., `STORY_IDS = [00050, 00051, 00052]`).
+4. **Determine phase label** (e.g., `PH-0005`). Read `docs/c_story_index.md` for active phase. If the label doesn't exist on the board, create it via `mcp__planka__create_label` (color: `midnight-blue`). Record `PH_LABEL_ID`.
+5. **Determine feature area label.** Read `docs/c_feature_areas.md`. Label format is `FE-AAA-0001` (single domain) or `FE-AAA-BBB-0001` (domain + sub-domain). If a matching label exists, reuse its ID. If not, propose the new label name to the user; on approval, create via `mcp__planka__create_label` (color: `tank-green`). Record `FE_LABEL_ID`.
+6. **Confirm `PLA_LABEL_ID`** is set from Step −1.e. If not, return to Step −1 — the plan label is mandatory and must exist before any card is created.
 
-**Self-check:** Can you state exact values for `STORY_IDS`, `PH_VALUE`, `FE_VALUE`, and `PLAN_ID` before proceeding? If any is "I'll figure it out later", stop and complete it now.
+**Self-check:** Can you state exact values for `STORY_IDS`, `PH_LABEL_ID`, `FE_LABEL_ID`, and `PLA_LABEL_ID` before proceeding? If any is "I'll figure it out later", stop and complete it now.
 
 ---
 
@@ -182,7 +178,7 @@ Present classification to the user before card creation so they can override.
 
 ## Step 3 — Confidence Gate (85%+ rule)
 
-Before creating ANY card, assess 85%+ confidence on these eight criteria. If ANY criterion < 85%, **STOP and ask the user to revise**.
+Before creating ANY card, assess 85%+ confidence on these seven criteria. If ANY criterion < 85%, **STOP and ask the user to revise**.
 
 ### Confidence Checklist
 
@@ -196,7 +192,6 @@ Before creating ANY card, assess 85%+ confidence on these eight criteria. If ANY
 - [ ] **Feature area assigned** (85%+): One of: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV.
 - [ ] **Estimation assigned** (85%+): F0–F13 (Fibonacci). If calculated as F21+, proceed to Step 4 (automatic split).
 - [ ] **Risk assigned** (85%+): RISK-LOW, RISK-MED, or RISK-HIGH. Brief justification required if RISK-HIGH.
-- [ ] **Transport gate** (85%+, PLA-0039): Any story that adds or modifies a backend endpoint MUST declare which transport it touches: `site` (`/_site` BFF), `public` (`/samantha/v2`), `both`, or `none`. If `public`, the story must either reference a `MapPublic*` mapper in the description or justify why no projection is needed (e.g., handler produces no JSON response body). Stories that fail this gate without a transport declaration are rejected. See [`docs/c_c_transport_segregation.md`](../../../docs/c_c_transport_segregation.md).
 
 **If ANY criterion < 85%:**
 - Output: `⚠ Story N: [REPLAN REQUIRED] — <specific reason>`
@@ -251,13 +246,11 @@ If user approves: treat the list as a new Step 1 input and re-run Steps 1–4 on
 
 ---
 
-<!-- PLANKA SUSPENDED: Steps 5 and 5c below are suspended while Planka is retired. Stories are recorded in dev/plans/ JSON only. The bin files and API scripts remain intact for future re-activation.
+## Step 5 — Create Cards
 
-## Step 5 — Create Cards (SUSPENDED)
+For each story passing Steps 0–4:
 
-For each story passing Steps 0–4, create a card in Planka Backlog:
-
-**Hard rule:** Use `./.claude/bin/planka` helper — NEVER use curl directly. Do NOT use `mcp__planka__create_card` with `labels[]` parameter (silently broken). Reliable path:
+**Hard rule:** Use `./.Codex/bin/planka` helper — NEVER use curl directly. Do NOT use `mcp__planka__create_card` with `labels[]` parameter (silently broken). Reliable path:
 
 1. Create card via `mcp__planka__create_card` (no labels).
 2. Attach each label via `mcp__planka__assign_label_to_card` (one call per label).
@@ -290,9 +283,13 @@ Required labels to attach (6 mandatory + 1 optional):
 6. `PLA-NNNN` (id from Step −1.e: `PLA_LABEL_ID`) — the plan this card belongs to
 7. `MULTI AGENT` (id `1760728388919624826`) — only if Step 2b qualified
 
-## Step 5c — Verify Labels (SUSPENDED)
+---
+
+## Step 5c — Verify Labels (Mandatory; Gates to Step 6)
 
 After all cards in this batch are created, verify each card has its full label set. This catches silent-success failures.
+
+**You MUST run this exact script:**
 
 ```bash
 TOKEN=$(python3 -c "
@@ -305,7 +302,9 @@ req=urllib.request.Request('http://localhost:3333/api/access-tokens',
 print(json.loads(urllib.request.urlopen(req).read())['item'])
 ")
 
+# Comma-separated card IDs from this batch:
 CARD_IDS="<id1>,<id2>,<id3>"
+# Comma-separated required label NAMES (add MULTI AGENT only for parallel-safe cards):
 REQUIRED="AIGEN,PH-0005,FE-DEV0001,EST-F3,RISK-MED,PLA-0001"
 
 curl -s "http://localhost:3333/api/boards/1760699595475649556" \
@@ -332,7 +331,10 @@ for cid in os.environ['CARD_IDS'].split(','):
 sys.exit(1 if fail else 0)
 "
 ```
--->
+
+If exit 0: all labels are attached; proceed to Step 6.
+
+If exit 1: one or more cards are under-labelled. **Do NOT proceed to Step 6.** Retry missing labels via `mcp__planka__assign_label_to_card`, then re-run this script. Repeat until exit 0.
 
 ---
 
@@ -433,27 +435,25 @@ If any check fails: fix it now. Do not proceed to Step 7 with a half-written pla
 
 ## Step 7 — Report
 
-Print a summary. Lead with the plan written/merged in Step 6.5:
+Print a summary. Each created card line MUST list its actual labels (from Step 5c verification). Lead with the plan written/merged in Step 6.5:
 
 ```
 Plan: PLA-0001 — <plan title> (dev/plans/PLA-0001.json)
   • new | merged into existing
   • work items: N | acceptance criteria: M
 
-Stories recorded (IDs 00050–00052, phase PH-0005, feature FE-DEV0001, plan PLA-0001):
-  ✓ 00050 — <title> [PH-0005, FE-DEV0001, EST-F3, RISK-MED]
-  ✓ 00051 — <title> [PH-0005, FE-DEV0001, EST-F5, RISK-MED, MULTI AGENT]
-  ✓ 00052 — <title> [PH-0005, FE-DEV0001, EST-F2, RISK-LOW]
+Created N cards in Planka Backlog (IDs 00050–00052, phase PH-0005, feature FE-DEV0001, plan PLA-0001):
+  ✓ 00050 — <title> (card: <card_id>) [PH-0005, FE-DEV0001, AIGEN, EST-F3, RISK-MED, PLA-0001]
+  ✓ 00051 — <title> (card: <card_id>) [PH-0005, FE-DEV0001, AIGEN, EST-F5, RISK-MED, PLA-0001, MULTI AGENT]
+  ✓ 00052 — <title> (card: <card_id>) [PH-0005, FE-DEV0001, AIGEN, EST-F2, RISK-LOW, PLA-0001]
   ✗ <title> — skipped (duplicate of 00018)
 
 View: Dev Setup → Plans tab → PLA-0001
 ```
 
-<!-- PLANKA SUSPENDED: report previously listed Planka card IDs and verified label sets from Step 5c. Skipped while Planka is retired. -->
+If any card ended Step 5c missing labels (and MCP retry also failed), surface with `⚠ 00050 — <title> — MISSING [EST-F3]` so the human can intervene. **Do NOT report success while any card is under-labelled.**
 
 ---
-
-<!-- PLANKA SUSPENDED: Key Planka IDs preserved below for future re-activation. Do not remove.
 
 ## Key IDs (Do Not Re-Fetch)
 
@@ -478,5 +478,3 @@ View: Dev Setup → Plans tab → PLA-0001
 | Label colour: PH-NNNN | `midnight-blue` (created on demand) |
 | Label colour: FE-AAA-NNNN | `tank-green` (created on demand) |
 | Label colour: PLA-NNNN | `wisteria-purple` (created on demand) |
-
--->
