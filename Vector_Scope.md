@@ -73,18 +73,18 @@ Drag the codebase from its current state (SQL scattered across 56 of 137 backend
 > Commit `8f9f571` (2026-05-13): docs(PLA-0048 / RF1.0): lock canonical naming conventions [RF1.0.1] [RF1.0.2]
 - ✅ **RF1.0.2** ~~Add one-line pointer to `CLAUDE.md` index.~~ `[P1]`
 > Commit `8f9f571` (2026-05-13): docs(PLA-0048 / RF1.0): lock canonical naming conventions [RF1.0.1] [RF1.0.2]
-- 🔵 IN FLIGHT **RF1.0.3** Stop gate: user reviews the conventions doc before any code change happens. `[P1]`
+- ✅ **RF1.0.3** ~~Stop gate: user reviews the conventions doc before any code change happens.~~ **CLEARED 2026-05-14** — Rick confirmed all 5 review points (root families, scheduled renames, multi-FK semantic suffix, audit_logs scope, errors_* split). `[P1]`
 
 ### RF1.1 Phase 1 — Install drift-prevention lints BEFORE the rewrite
 
-- **RF1.1.1** `lint:sql-in-sqlfile-only` — forbids raw SQL outside `sql.go` files. Seeded with wide allow-list from current state; shrinks one package per Phase 2 step. `[P1]`
-- **RF1.1.2** `lint:no-empty-route-block` — fails any `r.Route(...)` with no verb registrations inside. `[P1]`
-- **RF1.1.3** `lint:exemption-ratchet` — `*_exempt.json` files cannot grow commit-to-commit. `[P1]`
-- **RF1.1.4** `lint:deferral-needs-td-id` — commit messages containing deferral phrases must reference `TD-*`. `[P1]`
-- **RF1.1.5** `lint:package-naming-convention` — fails any `*v\d+` package without a register entry naming the predecessor. `[P1]`
-- **RF1.1.6** New CI workflow `tests.yml` running `npm test`, `npx tsc --noEmit`, `go test ./...`, `go vet ./...` on every push (not just PR-to-main). `[P1]`
+- ✅ **RF1.1.1** ~~`lint:sql-in-sqlfile-only` — forbids raw SQL outside `sql.go` files. Seeded with wide allow-list from current state; shrinks one package per Phase 2 step.~~ Seed = 58 files. `[P1]`
+- ✅ **RF1.1.2** ~~`lint:no-empty-route-block` — fails any `r.Route(...)` with no verb registrations inside.~~ `[P1]`
+- ✅ **RF1.1.3** ~~`lint:exemption-ratchet` — `*_exempt.json` files cannot grow commit-to-commit.~~ Walks 11 ledgers, fails on any growth vs HEAD~1. `[P1]`
+- ✅ **RF1.1.4** ~~`lint:deferral-needs-td-id` — commit messages containing deferral phrases must reference `TD-*`.~~ Standalone script; commit-msg hook installation deferred (RF1.1.7 follow-up). `[P1]`
+- ✅ **RF1.1.5** ~~`lint:package-naming-convention` — fails any `*v\d+` package without a register entry naming the predecessor.~~ Updated to match §1.1.2 v-suffix-with-meaning rule (doc.go must explain predecessor). `[P1]`
+- ✅ **RF1.1.6** ~~New CI workflow `tests.yml` running `npm test`, `npx tsc --noEmit`, `go test ./...`, `go vet ./...` on every push (not just PR-to-main).~~ Five jobs: frontend, backend, rf1-lints, existing-lints, plus existing api-contracts.yml unchanged. `[P1]`
 - **RF1.1.7** Tighten `dev/scripts/check_callers.py` regex to skip files with `import { apiSite as api }` (closes TD-API-003). `[P2]`
-- **RF1.1.8** Stop gate: all five lints pass against HEAD. `[P1]`
+- 🔵 IN FLIGHT **RF1.1.8** Stop gate: all five lints pass against HEAD + user reviews lint configs. `[P1]`
 
 ### RF1.2 Phase 2 — sql.go consolidation, one package at a time
 
@@ -232,6 +232,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -518,6 +519,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1054,6 +1056,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -1071,6 +1074,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -1430,6 +1434,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -1738,6 +1743,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2895,6 +2901,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -2994,6 +3001,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -3132,6 +3140,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`

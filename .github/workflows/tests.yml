@@ -1,0 +1,164 @@
+# tests.yml
+# PLA-0048 / RF1.1.6. Runs the full test + lint surface on every push.
+#
+# Why: api-contracts.yml only fires on pull_request → main. Feature
+# branches (e.g. 001_redesign, 56+ commits ahead of origin) accumulate
+# drift before any CI gate ever sees them. This workflow closes the gap
+# by running on push to any branch with a paths filter on the surfaces
+# the gates actually care about.
+
+name: Tests + Lints
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'backend/**'
+      - 'app/**'
+      - 'dev/scripts/**'
+      - 'dev/registries/**'
+      - 'docs/c_c_naming_conventions.md'
+      - 'docs/c_tech_debt.md'
+      - 'openapi*.yaml'
+      - '.github/workflows/tests.yml'
+      - 'package.json'
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend (tsc + vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test
+
+  backend:
+    name: Backend (go build + vet + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Build
+        working-directory: backend
+        run: go build ./...
+
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Test
+        working-directory: backend
+        run: go test ./...
+        # Many tests skip when the DB tunnel isn't reachable (CI has no
+        # tunnel); the skip pattern keeps the run green.
+
+  rf1-lints:
+    name: RF1 Drift-Prevention Lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # exemption-ratchet needs HEAD~1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: lint:sql-in-sqlfile-only
+        run: python3 dev/scripts/lint_sql_in_sqlfile_only.py
+
+      - name: lint:no-empty-route-block
+        run: python3 dev/scripts/lint_no_empty_route_block.py
+
+      - name: lint:exemption-ratchet
+        run: python3 dev/scripts/lint_exemption_ratchet.py
+
+      - name: lint:package-naming-convention
+        run: python3 dev/scripts/lint_package_naming_convention.py
+
+      - name: lint:deferral-needs-td-id (HEAD commit)
+        run: python3 dev/scripts/lint_deferral_needs_td_id.py
+
+  existing-lints:
+    name: Existing Project Lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: lint:addressables
+        run: npm run lint:addressables
+
+      - name: lint:role-literals
+        run: npm run lint:role-literals
+
+      - name: lint:writer-boundary
+        run: npm run lint:writer-boundary
+
+      - name: lint:dev-css
+        run: npm run lint:dev-css
+
+      - name: lint:no-raw-table
+        run: npm run lint:no-raw-table
+
+      - name: lint:secondary-nav
+        run: npm run lint:secondary-nav
+
+      - name: lint:tab-deep-link
+        run: npm run lint:tab-deep-link
+
+      - name: lint:portfolio-library-read
+        run: npm run lint:portfolio-library-read
+
+      - name: lint:scope-literals
+        run: npm run lint:scope-literals
+
+      - name: lint:public-helper-allowlist
+        run: npm run lint:public-helper-allowlist
+
+      - name: lint:no-db-in-handlers
+        run: npm run lint:no-db-in-handlers
+
+      - name: lint:public-dto-mapper
+        run: npm run lint:public-dto-mapper
+
+      - name: lint:page-description
+        run: npm run lint:page-description
+
+      - name: lint:h2-panel-only
+        run: npm run lint:h2-panel-only
