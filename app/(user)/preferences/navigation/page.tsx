@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
   closestCenter,
@@ -794,10 +795,11 @@ function BucketBlock({
 }
 
 function AvailablePanel({
-  poolTags,
+  bucketOrder,
   poolByTag,
   libraryEntries,
   customGroups,
+  tagByEnum,
   atCap,
   customPagesTotal,
   profileLabel,
@@ -806,10 +808,11 @@ function AvailablePanel({
   onDeleteCustom,
   onSetPoolIcon,
 }: {
-  poolTags: import("@/app/contexts/NavPrefsContext").NavTagGroup[];
+  bucketOrder: BucketKey[];
   poolByTag: Map<string, import("@/app/contexts/NavPrefsContext").NavCatalogEntry[]>;
   libraryEntries: import("@/app/contexts/NavPrefsContext").NavCatalogEntry[];
   customGroups: DraftGroup[];
+  tagByEnum: (e: string) => import("@/app/contexts/NavPrefsContext").NavTagGroup | undefined;
   atCap: boolean;
   customPagesTotal: number;
   profileLabel: string;
@@ -843,10 +846,9 @@ function AvailablePanel({
       )}
     </Fragment>
   );
-  const empty =
-    poolTags.length === 0 &&
-    libraryEntries.length === 0 &&
-    customGroups.length === 0;
+
+  const allEmpty = libraryEntries.length === 0 && bucketOrder.length === 0;
+
   return (
     <div
       ref={setNodeRef}
@@ -860,7 +862,7 @@ function AvailablePanel({
         <p className="nav-prefs__pane-desc">
           Pages you can add to <strong>{profileLabel}</strong> — pin one to send it to your sidebar.
         </p>
-      {empty ? (
+      {allEmpty ? (
         <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
       ) : (
         <>
@@ -876,27 +878,42 @@ function AvailablePanel({
               <ul className="nav-prefs__list">{libraryEntries.map(renderItem)}</ul>
             )}
           </div>
-          {customGroups
-            .slice()
-            .sort((a, b) => a.position - b.position)
-            .map((g) => (
-              <AvailableGroupSlot
-                key={g.id}
-                groupId={g.id}
-                label={g.label}
-                iconKey={g.icon ?? "folder"}
-              />
-            ))}
-          {poolTags.map((tag) => (
-            <div key={tag.enum} className="nav-prefs__group">
-              <div className="nav-prefs__group-heading-row">
-                <h3 className="nav-prefs__group-heading">{tag.label}</h3>
-              </div>
-              <ul className="nav-prefs__list">
-                {(poolByTag.get(tag.enum) ?? []).map(renderItem)}
-              </ul>
-            </div>
-          ))}
+          <AnimatePresence initial={false}>
+            {bucketOrder.map((b) => {
+              if (b.startsWith("group:")) {
+                const id = b.slice("group:".length);
+                const g = customGroups.find((g) => g.id === id);
+                if (!g) return null;
+                return (
+                  <motion.div key={b} layout transition={{ duration: 0.2, ease: "easeInOut" }}>
+                    <AvailableGroupSlot
+                      groupId={id}
+                      label={g.label}
+                      iconKey={g.icon ?? "folder"}
+                    />
+                  </motion.div>
+                );
+              }
+              const tagEnum = b.slice("tag:".length);
+              const tag = tagByEnum(tagEnum);
+              if (!tag) return null;
+              const items = poolByTag.get(tagEnum) ?? [];
+              return (
+                <motion.div key={b} layout transition={{ duration: 0.2, ease: "easeInOut" }}>
+                  <div className="nav-prefs__group">
+                    <div className="nav-prefs__group-heading-row">
+                      <h3 className="nav-prefs__group-heading">{tag.label}</h3>
+                    </div>
+                    {items.length === 0 ? (
+                      <p className="nav-prefs__empty nav-prefs__empty--pool">All pages in this section are pinned.</p>
+                    ) : (
+                      <ul className="nav-prefs__list">{items.map(renderItem)}</ul>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </>
       )}
       </Panel>
@@ -1858,11 +1875,6 @@ export default function NavPreferencesPage() {
     list.push(entry);
     poolByTag.set(entry.tagEnum, list);
   }
-  const poolTags = tags
-    .filter((t) => poolByTag.has(t.enum))
-    .slice()
-    .sort((a, b) => a.defaultOrder - b.defaultOrder);
-
   // Resolve heading + custom flag for each bucket.
   const bucketHeading = (b: BucketKey): { heading: string; isCustom: boolean; groupId: string | null } => {
     if (b.startsWith("tag:")) {
@@ -1976,12 +1988,11 @@ export default function NavPreferencesPage() {
           </section>
 
           <AvailablePanel
-            poolTags={poolTags}
+            bucketOrder={draft.bucketOrder}
             poolByTag={poolByTag}
             libraryEntries={libraryEntries}
-            customGroups={draft.customGroups.filter(
-              (g) => !draft.bucketOrder.includes(groupBucket(g.id))
-            )}
+            customGroups={draft.customGroups}
+            tagByEnum={tagByEnum}
             atCap={atCap}
             customPagesTotal={customPagesTotal}
             profileLabel={activeProfile?.label ?? "this profile"}
