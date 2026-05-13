@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
@@ -19,6 +20,7 @@ interface IndicatorBox {
 export default function IconRail() {
   const { sections, activeSectionId, setActiveSectionId } = useShell();
   const { user } = useAuth();
+  const router = useRouter();
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const initials = user ? user.email.slice(0, 2).toUpperCase() : "??";
 
@@ -110,7 +112,11 @@ export default function IconRail() {
                 title={s.name}
                 aria-label={s.name}
                 aria-pressed={active}
-                onClick={() => setActiveSectionId(s.id)}
+                onClick={() => {
+                  setActiveSectionId(s.id);
+                  const first = s.pages[0]?.href;
+                  if (first) router.push(first);
+                }}
               >
                 <NavIcon iconKey={s.icon} />
               </button>
