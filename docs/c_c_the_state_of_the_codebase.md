@@ -247,21 +247,35 @@ Phases are ordered so that **earlier phases make later phases mechanical**. The 
 
 **4.2 — Table renames (per-DB, lowest-traffic first)**
 
-These each need: VA or mmff_vector migration with `ALTER TABLE ... RENAME TO ...`, paired DOWN, plus the `sql.go` constants in the owning package updated, plus comments. With Phase 2 done, the SQL update is ONE FILE.
+> **Scope expansion (2026-05-14):** the column-prefix rule locked in §2.3 of [c_c_naming_conventions.md](c_c_naming_conventions.md) significantly enlarges Phase 4.2. The full canonical list of ~40 table renames + the new family-rooting (e.g. `permissions` → `users_permissions`, `roles` → `users_roles`, `flow_states` → `flows_states`) is maintained in [c_c_naming_conventions.md §2.8](c_c_naming_conventions.md#28--scheduled-renames-rf142). That doc is now authoritative for the table rename list; this section summarises only.
 
-Examples (full list goes into the doc when we get there):
-- `topology_view_state` → `topology_view_states`.
+Each table rename needs: a migration with `ALTER TABLE ... RENAME TO ...`, paired DOWN, plus the `sql.go` constants in the owning package updated, plus comments. With Phase 2 done, the SQL update is ONE FILE per package.
+
+Highlight renames (full list in conventions doc):
+- `roles` → `users_roles`, `permissions` → `users_permissions`, `sessions` → `users_sessions` etc. (root by dominant parent — `users` owns the relationship).
+- `flow_states` → `flows_states`, `flow_transitions` → `flows_transitions` etc. (pluralise root).
+- `artefact_types` → `artefacts_types` etc. (pluralise root across the artefact family).
+- `topology_view_state` → `topology_view_states` (pluralise leaf).
+- `master_record_workspaces` → `workspaces` (customer-facing root family per §2.6).
+- `portfolio_templates` → `library_portfolio_models` (rename + reroot under library_*).
 - `audit_log` → `audit_logs`.
-- `artefacts_search_outbox` → `artefact_search_outbox`.
-- `artefact_number_sequence` → `artefact_number_sequences`.
-- `master_record_portfolio` → `master_record_portfolios`.
-- `master_record_tenant` → `master_record_tenants`.
-- `library_release_log` → `library_release_logs`.
-- `portfolio_template_layer_definitions` → `portfolio_template_layers`.
-- `portfolio_templates` → `portfolio_models` (decision: align with public route).
-- `master_record_workspaces` → `workspaces` (decision: align with package name; the legacy singular `workspace` is already on a drop path).
-- `subscription_sequence` → `subscriptions_sequence`.
-- Legacy table drops still scheduled (`workspace` singular, `sprints` in mmff_vector, anything else mid-retirement).
+
+Legacy drops still scheduled: `workspace` (singular), `sprints` in mmff_vector, `subscription_portfolio_model_state`, adoption-mirror tables, remaining `obj_*` family.
+
+**4.4 — Column renames (NEW — added 2026-05-14)**
+
+The §2.3 column-prefix rule requires every column on every table to carry the table-name prefix:
+
+- `users.email` → `users.users_email`
+- `users.role_id` → `users.users_id_role` (FK function-then-modifier per §2.4)
+- `topology_nodes.parent_id` → `topology_nodes.topology_nodes_id_parent`
+- `artefacts.title` → `artefacts.artefacts_title`
+
+Per [c_c_naming_conventions.md §2.9 "Trade-offs and known costs"](c_c_naming_conventions.md#29--trade-offs-and-known-costs): this affects every SQL query in `backend/internal/`. Mitigated by Phase 2 first (all SQL is then in one `sql.go` per package), making the rename mechanical per package.
+
+Order: each package's column rename ships in lockstep with its table rename. One migration touches BOTH `RENAME TO <new_table>` and the per-column `RENAME COLUMN <old> TO <new>` statements. The owning package's `sql.go` is updated in the same commit.
+
+This phase is the largest one in absolute LoC change. Per-package commits keep blast radius bounded.
 
 **4.3 — Route renames (BFF + public, deliberate; coordinated with frontend)**
 

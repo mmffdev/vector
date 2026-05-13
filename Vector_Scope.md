@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-13 (RF1 Codebase Recovery added — PLA-0048 seven-phase recovery plan: conventions → drift gates → sql.go consolidation → per-DB migration dirs → naming sweep → cross-DB writer hardening → docs pass)
-**Doc version:** 2.19
+**Last updated:** 2026-05-14 (RF1.4 expanded — hierarchical table naming + column-prefix rules locked in c_c_naming_conventions.md §2; RF1.4.2 now covers ~40 tables, RF1.4.4 added for column renames, RF1.4.1.1 removed per v-suffix-with-meaning rule)
+**Doc version:** 2.20
 
 ---
 
@@ -70,7 +70,9 @@ Drag the codebase from its current state (SQL scattered across 56 of 137 backend
 ### RF1.0 Phase 0 — Codify conventions (no code changes)
 
 - ✅ **RF1.0.1** ~~Write `docs/c_c_naming_conventions.md` as a leaf doc capturing every rule from §2 of the master plan (Go packages, tables, routes, file layout, migrations).~~ `[P1]`
+> Commit `8f9f571` (2026-05-13): docs(PLA-0048 / RF1.0): lock canonical naming conventions [RF1.0.1] [RF1.0.2]
 - ✅ **RF1.0.2** ~~Add one-line pointer to `CLAUDE.md` index.~~ `[P1]`
+> Commit `8f9f571` (2026-05-13): docs(PLA-0048 / RF1.0): lock canonical naming conventions [RF1.0.1] [RF1.0.2]
 - 🔵 IN FLIGHT **RF1.0.3** Stop gate: user reviews the conventions doc before any code change happens. `[P1]`
 
 ### RF1.1 Phase 1 — Install drift-prevention lints BEFORE the rewrite
@@ -119,32 +121,43 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 
 ### RF1.4 Phase 4 — Naming-convention sweep, one rename at a time
 
+> **Scope expanded 2026-05-14:** the column-prefix rule locked in `c_c_naming_conventions.md §2.3` significantly enlarges Phase 4. RF1.4.2 (table renames) now covers ~40 tables (was 11) — full canonical list maintained in [`docs/c_c_naming_conventions.md §2.8`](docs/c_c_naming_conventions.md#28--scheduled-renames-rf142). RF1.4.1 (Go package renames) — `artefactitemsv2` removed from the list per the §1.1.1 v-suffix-with-meaning clarification. RF1.4.4 (column renames) added as a new sub-phase. Per-package commits keep blast radius bounded.
+
 #### RF1.4.1 — Go package renames
 
-- **RF1.4.1.1** `artefactitemsv2` → `artefactitems`. `[P1]`
+- **RF1.4.1.1** ~~`artefactitemsv2` → `artefactitems`.~~ **Removed 2026-05-14** — version suffix carries real meaning per §1.1.1; keep as-is and document v1 in doc.go. `[N/A]`
 - **RF1.4.1.2** `wsperms` → `workspacepermissions` (if package still exists; check first). `[P3]`
 - **RF1.4.1.3** `entityrefs` → `polymorphicrefs`. `[P3]`
 - **RF1.4.1.4** `dbcheck` → `dbinvariants`. `[P3]`
 - **RF1.4.1.5** `models` → `roletypes`. `[P3]`
 - **RF1.4.1.6** `messages` → `usermessages`. `[P3]`
 - **RF1.4.1.7** `tenantsettings` → `tenantmasterrecord`. `[P3]`
+- **RF1.4.1.8** Update `artefactitemsv2/doc.go` to explicitly explain what v1 was and why v2 exists. `[P2]`
 
-#### RF1.4.2 — Table renames
+#### RF1.4.2 — Table renames (expanded 2026-05-14)
 
-- **RF1.4.2.1** `topology_view_state` → `topology_view_states`. `[P2]`
-- **RF1.4.2.2** `audit_log` → `audit_logs`. `[P2]`
-- **RF1.4.2.3** `artefacts_search_outbox` → `artefact_search_outbox`. `[P2]`
-- **RF1.4.2.4** `artefact_number_sequence` → `artefact_number_sequences`. `[P2]`
-- **RF1.4.2.5** `master_record_portfolio` → `master_record_portfolios`. `[P2]`
-- **RF1.4.2.6** `master_record_tenant` → `master_record_tenants`. `[P3]`
-- **RF1.4.2.7** `library_release_log` → `library_release_logs`. `[P3]`
-- **RF1.4.2.8** `portfolio_template_layer_definitions` → `portfolio_template_layers`. `[P2]`
-- **RF1.4.2.9** `portfolio_templates` → `portfolio_models` (align with public route). `[P1]`
-- **RF1.4.2.10** `master_record_workspaces` → `workspaces` (align with package name; legacy singular `workspace` already on a drop path). `[P1]`
-- **RF1.4.2.11** `subscription_sequence` → `subscriptions_sequence`. `[P3]`
-- **RF1.4.2.12** Drop legacy `workspace` (singular) table — last reader migrated. `[P2]`
-- **RF1.4.2.13** Drop legacy `mmff_vector.sprints` — superseded by `vector_artefacts.timebox_sprints`. `[P2]`
-- **RF1.4.2.14** Drop / rename remaining `obj_*` family as last readers migrate. `[P3]`
+Full canonical list in [`docs/c_c_naming_conventions.md §2.8`](docs/c_c_naming_conventions.md#28--scheduled-renames-rf142). Summary:
+
+- **RF1.4.2.users** — `roles` → `users_roles`, `permissions` → `users_permissions`, `sessions` → `users_sessions`, `password_resets` → `users_password_resets`, `roles_workspaces` → `users_roles_workspaces`, `roles_pages` → `users_roles_pages`, `roles_permissions` → `users_roles_permissions`, `user_*` → `users_*` (root pluralisation across nav/tab-order/custom-pages). `[P1]`
+- **RF1.4.2.admin** — `api_keys` → `admin_api_keys`. `[P2]`
+- **RF1.4.2.pages** — `page_tags` → `pages_tags`, `page_addressables` → `pages_addressables`, `page_help` → `pages_help`. `[P2]`
+- **RF1.4.2.subscriptions** — `subscription_sequence` → `subscriptions_sequence`, `subscription_item_type_icons` → `subscriptions_item_type_icons`, `entity_stakeholders` → `subscriptions_stakeholders`. `[P2]`
+- **RF1.4.2.master_record** — `master_record_portfolio` → `master_record_portfolios`, `master_record_tenant` → `master_record_tenants`, `master_record_workspaces` → `workspaces`. `[P1]`
+- **RF1.4.2.topology** — `topology_view_state` → `topology_view_states`, `topology_role_grants` + `roles_org_nodes` → merged as `users_roles_topology_nodes`. `[P1]`
+- **RF1.4.2.audit** — `audit_log` → `audit_logs`. `[P2]`
+- **RF1.4.2.artefacts** — `artefact_types` → `artefacts_types`, `artefact_type_fields` → `artefacts_types_fields`, `artefact_field_library` → `artefacts_fields_library`, `artefact_workspace_fields` → `workspaces_fields`, `artefact_field_values` → `artefacts_fields_values`, `artefact_number_sequence` → `artefacts_number_sequences`, `artefact_adoption_state` → `artefacts_adoption_states`. `[P1]`
+- **RF1.4.2.flows** — `flow_states` → `flows_states`, `flow_transitions` → `flows_transitions`, `flow_state_exit_rules` → `flows_states_exit_rules`, `flow_defaults` → `flows_defaults`, plus `_state_defaults` and `_transition_defaults` siblings. `[P1]`
+- **RF1.4.2.timeboxes** — `timebox_sprints` → `timeboxes_sprints`, `timebox_releases` → `timeboxes_releases`. `[P2]`
+- **RF1.4.2.webhooks** — `webhook_subscriptions` → `webhooks_subscriptions`, `webhook_deliveries` → `webhooks_deliveries`. `[P2]`
+- **RF1.4.2.library** — `library_acknowledgements` → `library_releases_acknowledgements`, `library_release_log` → `library_release_logs`, `library_release_actions` → `library_releases_actions`, `portfolio_templates` → `library_portfolio_models`, `portfolio_template_layer_definitions` → `library_portfolio_models_layers`. `[P1]`
+- **RF1.4.2.errors** — `error_codes` → `errors_codes`, `error_events` → `errors_events`. `[P2]`
+
+**Scheduled drops:**
+- **RF1.4.2.drop.1** Drop legacy `workspace` (singular) table. `[P2]`
+- **RF1.4.2.drop.2** Drop legacy `mmff_vector.sprints`. `[P2]`
+- **RF1.4.2.drop.3** Drop `subscription_portfolio_model_state` + adoption-mirror tables. `[P2]`
+- **RF1.4.2.drop.4** Drop remaining `obj_*` family as last readers migrate. `[P3]`
+- **RF1.4.2.drop.5** Drop `topology_role_grants` after merge into `users_roles_topology_nodes`. `[P1]`
 
 #### RF1.4.3 — Route renames
 
@@ -159,6 +172,17 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.4.3.9** `POST /errors/report` → `POST /error-reports`. `[P3]`
 - **RF1.4.3.10** `/admin/dev/adoption-reset` → `/admin/dev/reset-adoption-state`. `[P3]`
 - **RF1.4.3.11** `/tenant-settings` → `/workspace-settings` (verify what the table actually keys by first). `[P2]`
+
+#### RF1.4.4 — Column renames (NEW 2026-05-14)
+
+Per `c_c_naming_conventions.md §2.3` every column on every table now carries the table-name prefix. Ships in lockstep with RF1.4.2 — one migration per table, paired with that table's `sql.go` update.
+
+- **RF1.4.4.PK** Every PK column renamed from `id` to `<table>_id` across all renamed tables (e.g. `users.id` → `users.users_id`). `[P1]`
+- **RF1.4.4.FK** Every FK column renamed from `<target>_id` to `<table>_id_<target>` (function-then-modifier per §2.4) (e.g. `users.role_id` → `users.users_id_role`). `[P1]`
+- **RF1.4.4.bare** Every bare column renamed to `<table>_<column>` (e.g. `users.email` → `users.users_email`). `[P1]`
+- **RF1.4.4.semantic** Multi-FK-to-same-parent columns gain a semantic-role suffix (e.g. `artefacts.owner_user_id` → `artefacts.artefacts_id_user_owner` per §2.4 multi-FK rule). `[P2]`
+- **RF1.4.4.polymorphic** Polymorphic FKs keep `_kind` + `_entity_id` split per §2.4 (e.g. `page_addressables.entity_id` → `pages_addressables.pages_addressables_entity_id`). `[P2]`
+- **RF1.4.4.indexes** All non-default-named indexes and constraints renamed to match new column names (`idx_<table>_<columns>` per §2.5). `[P2]`
 
 ### RF1.5 Phase 5 — Cross-DB writer hardening
 
