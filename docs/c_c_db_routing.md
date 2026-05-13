@@ -48,6 +48,7 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 | `webhooks` | `webhooks.New(vaPool)` (L318) | `webhook_subscriptions`, `webhook_deliveries` |
 | `audit` | `audit.New(pool)` (L146) + `auditLog.SetPool(vaPool)` (L316) | `audit_log` — early-bound on `pool` so service constructors capture the reference; pool atomically swapped to `vaPool` after vaPool init (PLA-0023 P1, 2026-05-13) |
 | `errorsreport` (writes) | `errorsreport.NewService(libPools.RO, errorsReportPool)` (L505) — `errorsReportPool = vaPool` when available, else `pool` | `error_events` — moved to vaPool 2026-05-13 (PLA-0023 P1); `libPools.RO` still reads `error_codes` from mmff_library |
+| `libraryreleases` (acks) | `libraryreleases.NewService(libPools.RO, pool, pool)` (L240) + `libReleasesSvc.SetAcksPool(vaPool)` (L325); reconciler same pattern (L237 + L324) | `library_acknowledgements` — moved to vaPool 2026-05-13 (PLA-0023 P1); early-bound on `pool` so handler is wired before vaPool init, swapped after. `vectorPool` arg stays on `pool` for `subscriptions` lookups (mmff_vector) |
 | `orgdesign` | `orgdesign.New(pool, vaPool)` (L360) — **vaPool is the canonical write target post-M6.2.7** | `org_nodes`, `topology_role_grants`, `topology_view_state` (all moved to VA) |
 | `portfolio` (master record) | `portfolio.NewService(vaPool).WithVectorPool(pool)` (L383) | `master_record_*` tables |
 | `tenantsettings` | `tenantsettings.New(tenantSettingsPool)` (L405) — **vaPool if available, else falls back to `pool`** | `master_record_tenant` (mig 036 lives on VA) |
@@ -57,7 +58,7 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 | Service | Constructor line | Owns / reads |
 |---|---|---|
 | `librarydb` | `librarydb.New(ctx)` (L135) | Read-only bundle fetch: `library_strategy_layers`, `library_artefact_types`, `library_flows`, etc. |
-| `libraryreleases` | `libraryreleases.NewService(libPools.RO, pool)` (L232) | Reads release channel from `libPools`; writes ack rows to `pool` (mmff_vector) |
+| `librarydb` (releases helpers) | `librarydb.ListReleasesSinceAck/AckRelease/CountOutstandingForSubscription/loadAckedSet` (releases.go) | Reads `library_releases` from `libPools`; reads + writes `library_acknowledgements` on `acksPool` (= vaPool post-PLA-0023 P1, fallback `pool`) |
 
 ### Services on more than one pool
 
@@ -65,6 +66,7 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 |---|---|---|
 | `portfoliomodels` | `libPools.RO` + `pool` | Reads adoption catalogue from library; dual-writes adoption state to `mmff_vector` (with optional `vaPool` PLA-0026 mirror) |
 | `errorsreport` | `libPools.RO` + `vaPool` (fallback `pool`) | Reads error catalogue from library; writes `error_events` to `vector_artefacts` post-PLA-0023 P1 (2026-05-13); falls back to `pool` only when `vaPool` is unavailable |
+| `libraryreleases` | `libPools.RO` + `pool` (subscriptions) + `acksPool` (= `vaPool` post-PLA-0023 P1, fallback `pool`) | 3-pool cross-DB workflow: read `library_releases` from library, look up `subscriptions.tier` on mmff_vector, write `library_acknowledgements` on vector_artefacts. `Service` + `Reconciler` both expose `SetAcksPool` for boot-time swap (audit.Logger pattern) |
 | `portfoliomodels` (errors writer) | `vaPool` (fallback `vectorPool`) via `Orchestrator.ErrorsPool` | `appendErrorEvent` saga writes `error_events` to vaPool; other saga writes (adoption_state, etc.) stay on `vectorPool` until their tables migrate |
 | `portfoliomodels.NewDevResetHandler` | `pool` + `vaPool` (L397) | Cross-DB reset; tolerates `vaPool == nil` |
 

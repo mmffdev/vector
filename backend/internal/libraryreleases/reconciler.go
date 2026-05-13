@@ -28,9 +28,9 @@ import (
 // is over-engineering. When the worker pool grows (TD-LIB-003 cleanup
 // jobs are next), this reconciler should move to that pool.
 type Reconciler struct {
-	libRO      *pgxpool.Pool
-	vectorPool *pgxpool.Pool
-	interval   time.Duration
+	libRO    *pgxpool.Pool
+	acksPool *pgxpool.Pool
+	interval time.Duration
 
 	mu    sync.RWMutex
 	cache map[uuid.UUID]cachedCount
@@ -51,8 +51,9 @@ const cacheTTL = 5 * time.Minute
 
 // NewReconciler builds a reconciler. Read interval from
 // LIBRARY_RECONCILER_INTERVAL (Go duration string, e.g. "15m"); default
-// 15 minutes per plan §12.7.
-func NewReconciler(libRO, vectorPool *pgxpool.Pool) *Reconciler {
+// 15 minutes per plan §12.7. acksPool owns library_acknowledgements —
+// vaPool post-PLA-0023 P1 (2026-05-13), or mmff_vector as fallback.
+func NewReconciler(libRO, acksPool *pgxpool.Pool) *Reconciler {
 	interval := 15 * time.Minute
 	if v := os.Getenv("LIBRARY_RECONCILER_INTERVAL"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
@@ -60,12 +61,23 @@ func NewReconciler(libRO, vectorPool *pgxpool.Pool) *Reconciler {
 		}
 	}
 	return &Reconciler{
-		libRO:      libRO,
-		vectorPool: vectorPool,
-		interval:   interval,
-		cache:      map[uuid.UUID]cachedCount{},
-		stop:       make(chan struct{}),
+		libRO:    libRO,
+		acksPool: acksPool,
+		interval: interval,
+		cache:    map[uuid.UUID]cachedCount{},
+		stop:     make(chan struct{}),
 	}
+}
+
+// SetAcksPool swaps the pool that owns library_acknowledgements after
+// construction. Used at boot: NewReconciler is called early-bound on
+// the mmff_vector pool, then upgraded to vaPool once it is initialised
+// (PLA-0023 P1 — same pattern as audit.Logger.SetPool). Holds the
+// write lock so an in-flight refresh sees a consistent pool.
+func (r *Reconciler) SetAcksPool(p *pgxpool.Pool) {
+	r.mu.Lock()
+	r.acksPool = p
+	r.mu.Unlock()
 }
 
 // Start spins up the background ticker. Returns immediately. Call
@@ -113,7 +125,7 @@ func (r *Reconciler) refreshAll(ctx context.Context) {
 
 	for _, id := range subs {
 		count, hasBlocking, err := librarydb.CountOutstandingForSubscription(
-			ctx, r.libRO, r.vectorPool, id, tiers[id],
+			ctx, r.libRO, r.acksPool, id, tiers[id],
 		)
 		if err != nil {
 			log.Printf("libraryreleases: reconciler refresh for %s: %v", id, err)
@@ -136,7 +148,7 @@ func (r *Reconciler) refreshAll(ctx context.Context) {
 // count degrades to "we don't know yet, try again", not a 500.
 func (r *Reconciler) Touch(ctx context.Context, subscriptionID uuid.UUID, tier string) {
 	count, hasBlocking, err := librarydb.CountOutstandingForSubscription(
-		ctx, r.libRO, r.vectorPool, subscriptionID, tier,
+		ctx, r.libRO, r.acksPool, subscriptionID, tier,
 	)
 	if err != nil {
 		log.Printf("libraryreleases: touch %s: %v", subscriptionID, err)

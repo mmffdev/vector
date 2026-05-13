@@ -128,13 +128,15 @@ func IsValidAction(s string) bool {
 // mmff_vector. Cheap because the active-release set is tiny (operator
 // authored, low volume per plan §12.7).
 //
-// libRO is the librarydb.Pools.RO pool; vectorPool is the main
-// app pool (mmff_vector); subscriptionTier is the caller's
-// subscriptions.tier value, fetched once at the API boundary.
+// libRO is the librarydb.Pools.RO pool; acksPool is the pool that owns
+// the library_acknowledgements table — vaPool post-PLA-0023 P1
+// (2026-05-13), or the legacy mmff_vector pool when vaPool is unavailable.
+// subscriptionTier is the caller's subscriptions.tier value, fetched once
+// at the API boundary.
 func ListReleasesSinceAck(
 	ctx context.Context,
 	libRO *pgxpool.Pool,
-	vectorPool *pgxpool.Pool,
+	acksPool *pgxpool.Pool,
 	subscriptionID uuid.UUID,
 	subscriptionTier string,
 ) ([]Release, error) {
@@ -152,7 +154,7 @@ func ListReleasesSinceAck(
 	for _, r := range releases {
 		releaseIDs = append(releaseIDs, r.ID)
 	}
-	ackedSet, err := loadAckedSet(ctx, vectorPool, subscriptionID, releaseIDs)
+	ackedSet, err := loadAckedSet(ctx, acksPool, subscriptionID, releaseIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +256,7 @@ func loadActionsForReleases(
 
 func loadAckedSet(
 	ctx context.Context,
-	vectorPool *pgxpool.Pool,
+	acksPool *pgxpool.Pool,
 	subscriptionID uuid.UUID,
 	releaseIDs []uuid.UUID,
 ) (map[uuid.UUID]struct{}, error) {
@@ -262,7 +264,7 @@ func loadAckedSet(
 	if len(releaseIDs) == 0 {
 		return out, nil
 	}
-	rows, err := vectorPool.Query(ctx, `
+	rows, err := acksPool.Query(ctx, `
 		SELECT release_id
 		FROM library_acknowledgements
 		WHERE subscription_id = $1 AND release_id = ANY($2)`,
@@ -281,7 +283,8 @@ func loadAckedSet(
 	return out, rows.Err()
 }
 
-// AckRelease records an acknowledgement in mmff_vector.
+// AckRelease records an acknowledgement in the acks pool
+// (vector_artefacts post-PLA-0023 P1, falling back to mmff_vector).
 //
 // Idempotent: a second call with the same (subscription_id, release_id)
 // is a no-op (ON CONFLICT DO NOTHING). Returns true if a row was
@@ -294,7 +297,7 @@ func loadAckedSet(
 // 404 rather than landing as an orphan ack.
 func AckRelease(
 	ctx context.Context,
-	vectorPool *pgxpool.Pool,
+	acksPool *pgxpool.Pool,
 	subscriptionID uuid.UUID,
 	releaseID uuid.UUID,
 	userID uuid.UUID,
@@ -303,7 +306,7 @@ func AckRelease(
 	if !IsValidAction(actionTaken) {
 		return false, ErrInvalidAction
 	}
-	tag, err := vectorPool.Exec(ctx, `
+	tag, err := acksPool.Exec(ctx, `
 		INSERT INTO library_acknowledgements (
 		    subscription_id, release_id, acknowledged_by_user_id, action_taken
 		) VALUES ($1, $2, $3, $4)
@@ -352,7 +355,7 @@ func FindRelease(ctx context.Context, libRO *pgxpool.Pool, releaseID uuid.UUID) 
 func CountOutstandingForSubscription(
 	ctx context.Context,
 	libRO *pgxpool.Pool,
-	vectorPool *pgxpool.Pool,
+	acksPool *pgxpool.Pool,
 	subscriptionID uuid.UUID,
 	subscriptionTier string,
 ) (count int, hasBlocking bool, err error) {
@@ -367,7 +370,7 @@ func CountOutstandingForSubscription(
 	for _, r := range releases {
 		releaseIDs = append(releaseIDs, r.ID)
 	}
-	acked, err := loadAckedSet(ctx, vectorPool, subscriptionID, releaseIDs)
+	acked, err := loadAckedSet(ctx, acksPool, subscriptionID, releaseIDs)
 	if err != nil {
 		return 0, false, err
 	}

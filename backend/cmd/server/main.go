@@ -230,10 +230,15 @@ func main() {
 	// floor is 15m by default (LIBRARY_RECONCILER_INTERVAL to override).
 	// On-login hook warms the cache so the first badge poll after sign-in
 	// returns instantly. Cache is invalidated on every successful ack.
+	//
+	// library_acknowledgements moved to vector_artefacts 2026-05-13
+	// (PLA-0023 P1). Early-bound on `pool`; SetAcksPool below swaps to
+	// vaPool once it is initialised. Same pattern as audit.Logger.
 	libReleasesRec := libraryreleases.NewReconciler(libPools.RO, pool)
 	libReleasesRec.Start(ctx)
 	defer libReleasesRec.Stop()
-	libReleasesH := libraryreleases.NewHandler(libraryreleases.NewService(libPools.RO, pool), auditLog, libReleasesRec)
+	libReleasesSvc := libraryreleases.NewService(libPools.RO, pool, pool)
+	libReleasesH := libraryreleases.NewHandler(libReleasesSvc, auditLog, libReleasesRec)
 
 	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
 	// bridge runs LISTEN rank_changed on a dedicated connection and
@@ -316,6 +321,12 @@ func main() {
 				// early-bound Logger so every service that captured it now
 				// writes against vector_artefacts.
 				auditLog.SetPool(vaPool)
+				// library_acknowledgements moved to vaPool 2026-05-13
+				// (PLA-0023 P1). Swap the early-bound pool on both the
+				// reconciler (writes refresh-time recounts) and the
+				// service (writes acks). libRO + subscriptions stays put.
+				libReleasesRec.SetAcksPool(vaPool)
+				libReleasesSvc.SetAcksPool(vaPool)
 				// Mask password in log: strip :password@ from the URL.
 				maskedURL := vaURL
 				if i := strings.Index(vaURL, "@"); i > 0 {
