@@ -169,7 +169,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 			SELECT id FROM user_nav_profiles WHERE id = $3 AND is_default = TRUE
 		),
 		existing AS (
-			SELECT LOWER(label) AS lbl FROM user_nav_groups WHERE user_id = $1
+			SELECT id, LOWER(label) AS lbl FROM user_nav_groups WHERE user_id = $1
 		),
 		seed AS (
 			SELECT * FROM (VALUES
@@ -183,16 +183,23 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 			INSERT INTO user_nav_groups (id, user_id, label, position, icon)
 			SELECT gen_random_uuid(), $1, s.label, s.pos, s.icon FROM seed s, profile_check
 			RETURNING id, LOWER(label) AS lbl
+		),
+		all_groups AS (
+			SELECT id, lbl FROM inserted
+			UNION ALL
+			SELECT id, lbl FROM existing
 		)
-		-- Assign group_ids on prefs for pages belonging to each inserted group
+		-- Assign group_ids on prefs for pages belonging to each group.
+		-- Covers both freshly inserted groups and existing groups whose
+		-- prefs lost their group_id (e.g. after a manual reset).
 		UPDATE user_nav_prefs unp
-		SET group_id = ins.id
-		FROM inserted ins
+		SET group_id = ag.id
+		FROM all_groups ag
 		JOIN (VALUES
 			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
 			('user management', ARRAY['user-management','um-permissions']),
 			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
-		) AS mapping(lbl, pages) ON mapping.lbl = ins.lbl
+		) AS mapping(lbl, pages) ON mapping.lbl = ag.lbl
 		WHERE unp.user_id = $1
 		  AND unp.subscription_id = $2
 		  AND unp.profile_id = $3
