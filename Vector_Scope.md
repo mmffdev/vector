@@ -162,6 +162,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -217,6 +218,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -412,6 +414,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -566,6 +569,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -643,6 +647,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -797,6 +802,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -1555,6 +1562,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -1729,6 +1739,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -1817,6 +1828,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `eaf4feb` (2026-05-12): feat(PLA-0044): useTopologyTreeState sources childrenOf from walkTopology [FE-POR-API-0006]
 > Commit `6857913` (2026-05-12): feat(PLA-0044): TopologyTreeFlyout rows come from walkTopology [FE-POR-API-0006]
 > Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
@@ -1825,6 +1838,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
@@ -2080,6 +2094,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -2146,6 +2161,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -2242,6 +2258,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -2314,6 +2331,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -2349,6 +2367,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -2455,6 +2475,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -2502,6 +2523,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -2547,6 +2569,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -2599,6 +2622,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -2645,6 +2669,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -2684,6 +2709,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
 > Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -2778,6 +2805,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
 > Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -2975,6 +3004,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
+> Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
