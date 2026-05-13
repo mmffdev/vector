@@ -3,44 +3,41 @@
 import { useContext } from "react";
 import { usePathname } from "next/navigation";
 import { useShell } from "../ShellContext";
-import { flattenSectionPages } from "@/app/lib/nav-v2";
 import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
 
 export default function RedesignTopBar() {
-  const { perspective, activeSection, isAccountActive } = useShell();
+  const { activeSection, isAccountActive } = useShell();
   const pathname = usePathname() ?? "";
   const headerCtx = useContext(PageHeaderContext);
   const pageHeader = headerCtx?.top ?? null;
 
-  const currentPage = activeSection
-    ? flattenSectionPages(activeSection).find(
-        (p) => pathname === p.href || pathname.startsWith(p.href + "/"),
-      )
-    : undefined;
+  const currentPage = activeSection?.pages.find(
+    (p) => pathname === p.href || pathname.startsWith(p.href + "/"),
+  );
 
-  const sectionLabel = isAccountActive ? "Account" : activeSection?.name ?? perspective.name;
+  const sectionLabel = isAccountActive ? "Account" : activeSection?.name ?? "Vector";
 
   return (
-    <div className="rd-topbar" role="banner">
-      <nav className="rd-topbar__crumbs" aria-label="Breadcrumb">
-        <span className="rd-topbar__crumb">Vector</span>
-        <span className="rd-topbar__crumb-sep">/</span>
+    <div className="nav-top-bar" role="banner">
+      <nav className="nav-top-bar__Breadcrumbs" aria-label="Breadcrumb">
+        <span className="nav-top-bar__Breadcrumbs_Crumb">Vector</span>
+        <span className="nav-top-bar__Breadcrumbs_Sep">/</span>
         <span
-          className={`rd-topbar__crumb${currentPage ? "" : " rd-topbar__crumb--current"}`}
+          className={`nav-top-bar__Breadcrumbs_Crumb${currentPage ? "" : " nav-top-bar__Breadcrumbs_Crumb-current"}`}
         >
           {sectionLabel}
         </span>
         {currentPage && (
           <>
-            <span className="rd-topbar__crumb-sep">/</span>
-            <span className="rd-topbar__crumb rd-topbar__crumb--current">
+            <span className="nav-top-bar__Breadcrumbs_Sep">/</span>
+            <span className="nav-top-bar__Breadcrumbs_Crumb nav-top-bar__Breadcrumbs_Crumb-current">
               {currentPage.name}
             </span>
           </>
         )}
       </nav>
       {pageHeader?.actions && (
-        <div className="rd-topbar__actions">{pageHeader.actions}</div>
+        <div className="nav-top-bar__Actions">{pageHeader.actions}</div>
       )}
     </div>
   );
