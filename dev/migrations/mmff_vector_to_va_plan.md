@@ -71,7 +71,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 2 | ~~`audit_log`~~ | `audit_log` on `vaPool` | ✅ | P1 done 2026-05-13 | mig 047 (VA create) + mig 163 (mmff_vector drop); `audit.Logger.SetPool(vaPool)` swap inside vaPool init; 3676 rows copied, post-restart write verified on VA |
 | 3 | `canonical_states` | DROP | ❌ | P0 | Zero refs (backend scan) |
 | 4 | `company_roadmap` | `artefact_company_roadmap` ⚠ verify-live | ⚠ | P5 | Check if any rows / readers |
-| 5 | `defects` | `error_defects` | ✅ | P1 | Defect register |
+| 5 | ~~`defects`~~ | DROPPED 2026-05-13 (mig 165) | ✅ | P0′ done | 0 rows + 0 backend writers/readers + 0 incoming FKs → dead leaf; dropped with custom enum `defect_severity` (only used by this table). Revived defect tracking will use `artefact_types` on VA. |
 | 6 | `entity_stakeholders` | `artefact_stakeholders` | ✅ | P1 | Verify writer service |
 | 7 | ~~`error_events`~~ | `error_events` on `vaPool` | ✅ | P1 done 2026-05-13 | mig 048 (VA create) + mig 164 (mmff_vector drop); `errorsreport.NewService(libPools.RO, errorsReportPool)` + `Orchestrator.ErrorsPool` (saga); 18 rows copied; cross-DB FKs (subscriptions, users) app-enforced; append-only trigger preserved on VA |
 | 8 | `execution_item_types` | DROP (verify) | ⚠ | P5 | Likely superseded by `artefact_types` |
