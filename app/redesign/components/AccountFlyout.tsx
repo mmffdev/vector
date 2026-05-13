@@ -47,92 +47,93 @@ export default function AccountFlyout() {
   const { theme, toggle, mounted } = useTheme();
   const pathname = usePathname() ?? "";
 
-  const groupedAdminPages = useMemo(() => {
-    const adminTagEnums = new Set(
-      tags.filter((t) => t.isAdminMenu && t.enum !== "admin_settings").map((t) => t.enum),
-    );
-    const byTag = new Map<string, NavCatalogEntry[]>();
-    for (const entry of catalogue) {
-      if (!adminTagEnums.has(entry.tagEnum)) continue;
-      const list = byTag.get(entry.tagEnum) ?? [];
-      list.push(entry);
-      byTag.set(entry.tagEnum, list);
-    }
-    return tags
-      .filter((t) => t.isAdminMenu && t.enum !== "admin_settings" && byTag.has(t.enum))
-      .slice()
-      .sort((a, b) => a.defaultOrder - b.defaultOrder)
-      .map((tag) => ({
-        tag,
-        items: (byTag.get(tag.enum) ?? []).slice().sort((a, b) => a.defaultOrder - b.defaultOrder),
-      }));
-  }, [catalogue, tags]);
+  // Admin pages are split into three groups by URL prefix.
+  // personal_settings tag is handled separately (account-settings link).
+  const adminGroups = useMemo(() => {
+    const wsAdmin = catalogue
+      .filter((e) => e.tagEnum === "admin_settings" && e.href.startsWith("/workspace-admin"))
+      .sort((a, b) => a.defaultOrder - b.defaultOrder);
+    const userMgmt = catalogue
+      .filter((e) => e.tagEnum === "admin_settings" && e.href.startsWith("/user-management"))
+      .sort((a, b) => a.defaultOrder - b.defaultOrder);
+    const vectorAdmin = catalogue
+      .filter((e) => e.tagEnum === "admin_settings" && e.href.startsWith("/vector-admin"))
+      .sort((a, b) => a.defaultOrder - b.defaultOrder);
+    return [
+      wsAdmin.length    ? { label: "Workspace Admin",  items: wsAdmin }    : null,
+      userMgmt.length   ? { label: "User Admin",       items: userMgmt }   : null,
+      vectorAdmin.length ? { label: "Vector Admin",    items: vectorAdmin } : null,
+    ].filter(Boolean) as { label: string; items: NavCatalogEntry[] }[];
+  }, [catalogue]);
 
-  if (!user) return <aside className="rd-flyout" aria-label="Account" />;
+  if (!user) return <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label="Account" />;
 
   const isActivePage = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   return (
-    <aside className="rd-flyout" aria-label="Account">
-      <h3 className="rd-flyout__title">Account</h3>
-
-      <div className="rd-flyout__account-card">
-        <div className="rd-flyout__account-email">{user.email}</div>
-        <div className="rd-flyout__account-role">{user.role.label}</div>
+    <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label="Account">
+      <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
+      <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
+        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">Account</h3>
       </div>
 
-      <div className="rd-flyout__list">
-        {groupedAdminPages.map(({ tag, items }) => (
-          <div key={tag.enum} className="rd-flyout__group">
-            <div className="rd-flyout__group-label">{tag.label}</div>
+      <div id="nav-primary-rail-2__AccountCard" className="nav-primary-rail-2__AccountCard">
+        <div className="nav-primary-rail-2__AccountCard_Email">{user.email}</div>
+        <div className="nav-primary-rail-2__AccountCard_Role">{user.role.label}</div>
+      </div>
+
+      <div id="nav-primary-rail-2__PageList" className="nav-primary-rail-2__PageList">
+        {adminGroups.map(({ label, items }) => (
+          <div key={label} className="nav-primary-rail-2__PageList_Group">
+            <div className="nav-primary-rail-2__PageList_Group_Label">{label}</div>
             {items.map((entry) => (
               <Link
                 key={entry.key}
                 href={entry.href}
-                className={`rd-flyout__row${isActivePage(entry.href) ? " is-active" : ""}`}
+                className={`nav-primary-rail-2__PageList_Group_Row${isActivePage(entry.href) ? " is-active" : ""}`}
                 aria-current={isActivePage(entry.href) ? "page" : undefined}
               >
                 <IconFor iconKey={entry.icon} />
-                <span className="rd-flyout__row-label">{entry.label}</span>
+                <span className="nav-primary-rail-2__PageList_Group_Row_Label">{entry.label}</span>
               </Link>
             ))}
           </div>
         ))}
 
-        <div className="rd-flyout__group">
-          <div className="rd-flyout__group-label">Appearance</div>
+        <div className="nav-primary-rail-2__PageList_Group">
+          <div className="nav-primary-rail-2__PageList_Group_Label">Appearance</div>
           <button
             type="button"
-            className="rd-flyout__row rd-flyout__row--button"
+            className="nav-primary-rail-2__PageList_Group_Row nav-primary-rail-2__PageList_Group_Row-button"
             onClick={() => toggle()}
             aria-label={mounted ? `Switch to ${theme === "light" ? "dark" : "light"} mode` : "Toggle theme"}
           >
             <MiniIcon d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            <span className="rd-flyout__row-label">
+            <span className="nav-primary-rail-2__PageList_Group_Row_Label">
               {mounted ? (theme === "light" ? "Dark mode" : "Light mode") : "Theme"}
             </span>
           </button>
           <Link
             href="/theme"
-            className={`rd-flyout__row${isActivePage("/theme") ? " is-active" : ""}`}
+            className={`nav-primary-rail-2__PageList_Group_Row${isActivePage("/theme") ? " is-active" : ""}`}
           >
             <MiniIcon d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z" />
-            <span className="rd-flyout__row-label">Theme settings</span>
+            <span className="nav-primary-rail-2__PageList_Group_Row_Label">Theme settings</span>
           </Link>
         </div>
 
-        <div className="rd-flyout__group">
-          <div className="rd-flyout__group-label">Session</div>
+        <div className="nav-primary-rail-2__PageList_Group">
+          <div className="nav-primary-rail-2__PageList_Group_Label">Session</div>
           <button
             type="button"
-            className="rd-flyout__row rd-flyout__row--button rd-flyout__row--danger"
+            className="nav-primary-rail-2__PageList_Group_Row nav-primary-rail-2__PageList_Group_Row-button nav-primary-rail-2__PageList_Group_Row-danger"
             onClick={() => void logout()}
           >
             <MiniIcon
               d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
               d2="M16 17l5-5-5-5M21 12H9"
             />
-            <span className="rd-flyout__row-label">Log out</span>
+            <span className="nav-primary-rail-2__PageList_Group_Row_Label">Log out</span>
           </button>
         </div>
       </div>

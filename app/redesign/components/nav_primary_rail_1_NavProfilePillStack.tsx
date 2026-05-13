@@ -1,59 +1,88 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavPrefs, type NavProfile } from "@/app/contexts/NavPrefsContext";
 
-/**
- * Vertical stack of profile pills at the top of the rail. Each pill switches
- * the active navigation profile (which scopes which customGroups + prefs the
- * rail consumes). Full CRUD lives on /preferences/navigation.
- */
 export default function ProfilePillStack() {
   const { profiles, activeProfileId, setActiveProfile } = useNavPrefs();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   const ordered = useMemo(
     () => profiles.slice().sort((a, b) => a.position - b.position),
     [profiles],
   );
 
-  if (ordered.length === 0) return null;
+  const active = ordered.find((p) => p.id === activeProfileId) ?? ordered[0];
+  const others = ordered.filter((p) => p.id !== activeProfileId);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  if (!active) return null;
 
   return (
-    <ul
-      id="nav-primary-rail-1__ProfileStack_List"
-      className="nav-primary-rail-1__ProfileStack_List"
-      role="tablist"
-      aria-label="Navigation profile"
-    >
-      {ordered.map((p) => {
-        const active = p.id === activeProfileId;
-        return (
-          <li key={p.id} id={`nav-primary-rail-1__ProfileStack_List_Item-${p.id}`} className="nav-primary-rail-1__ProfileStack_List_Item">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={`nav-primary-rail-1__ProfileStack_List_Item_Pill${active ? " is-active" : ""}`}
-              title={p.label}
-              onClick={() => {
-                if (!active) void setActiveProfile(p.id);
-              }}
+    <div ref={ref} className="nav-primary-rail-1__ProfileStack_Picker">
+      <button
+        type="button"
+        className="nav-primary-rail-1__ProfileStack_Picker_Pill"
+        title={active.label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="nav-primary-rail-1__ProfileStack_Picker_Pill_Label">
+          {profileBadge(active)}
+        </span>
+      </button>
+
+      {others.length > 0 && (
+        <ul
+          className={`nav-primary-rail-1__ProfileStack_Picker_Menu${open ? " is-open" : ""}`}
+          role="listbox"
+          aria-label="Switch profile"
+        >
+          {others.map((p) => (
+            <li
+              key={p.id}
+              className="nav-primary-rail-1__ProfileStack_Picker_Menu_Item"
+              role="option"
+              aria-selected={false}
             >
-              <span className="nav-primary-rail-1__ProfileStack_List_Item_Pill_Label">
-                {profileBadge(p)}
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+              <button
+                type="button"
+                className="nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill"
+                title={p.label}
+                onClick={() => {
+                  void setActiveProfile(p.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill_Label">
+                  {profileBadge(p)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
-/**
- * Two-character badge: prefer initials of multi-word labels; otherwise the
- * first two letters of the label, upper-cased.
- */
 function profileBadge(p: NavProfile): string {
   const label = p.label.trim();
   if (!label) return "?";

@@ -59,22 +59,71 @@
   outline-offset: 2px;
 }
 
-/* ----- Vertical profile pill stack ------------------------------------
-   Replaces the old single-avatar perspective switcher. Each pill is a
-   tab; clicking switches the active NavPrefs profile (which scopes
-   which customGroups + prefs the rail consumes). */
-.nav-primary-rail-1__ProfileStack_List {
-  list-style: none;
-  padding: 0;
+/* ----- Profile picker (animated dropdown) ----------------------------
+   Collapsed: shows only the active pill. Click opens a dropdown that
+   lists all other profiles; selecting one swaps it to active and
+   closes. Dropdown is position:absolute so it overlays NavBuckets
+   without shifting the rail layout. */
+.nav-primary-rail-1__ProfileStack_Picker {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
   margin: 4px 0 0;
+}
+
+.nav-primary-rail-1__ProfileStack_Picker_Pill {
+  width: 40px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Pill:hover { opacity: 0.8; }
+.nav-primary-rail-1__ProfileStack_Picker_Pill:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Pill_Label { line-height: 1; }
+
+.nav-primary-rail-1__ProfileStack_Picker_Menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
   align-items: center;
-  width: 100%;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
-.nav-primary-rail-1__ProfileStack_List_Item { width: 100%; display: flex; justify-content: center; }
-.nav-primary-rail-1__ProfileStack_List_Item_Pill {
+.nav-primary-rail-1__ProfileStack_Picker_Menu.is-open {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill {
   width: 40px;
   height: 28px;
   border-radius: 14px;
@@ -90,20 +139,15 @@
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
-.nav-primary-rail-1__ProfileStack_List_Item_Pill:hover {
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill:hover {
   background: var(--surface);
   color: var(--ink);
 }
-.nav-primary-rail-1__ProfileStack_List_Item_Pill.is-active {
-  background: var(--ink);
-  color: var(--surface);
-  border-color: var(--ink);
-}
-.nav-primary-rail-1__ProfileStack_List_Item_Pill:focus-visible {
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
-.nav-primary-rail-1__ProfileStack_List_Item_Pill_Label { line-height: 1; }
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill_Label { line-height: 1; }
 
 .nav-primary-rail-1__ProfileStack {
   width: 100%;
@@ -205,6 +249,7 @@
   background: var(--ink);
   border-radius: 2px;
   pointer-events: none;
+  z-index: 1;
 }
 .nav-primary-rail-1__NavBuckets_TravelIndicator-idle {
   transition: none;
@@ -290,7 +335,7 @@
   /* Top padding anchors the title/clock block. The nav list is pushed
      down by .nav-primary-rail-2__SectionHeader_Clock margin-bottom so the first row centre
      aligns with the first rail section icon. See .nav-primary-rail-2__SectionHeader_Clock for
-     the pixel derivation (3-pill state → 193px). */
+     the pixel derivation (1-pill state → 129px). */
   padding: 44px 0 16px;
   /* Match the rail's sticky-to-viewport behaviour so the section list
      stays anchored as the main content scrolls. */
@@ -319,19 +364,28 @@
 .nav-primary-rail-2__SectionHeader_Clock {
   /* Flush below the title, then gap to the first nav row so the row
      centre aligns with the rail's first section icon ("Personal").
-     Rail stack to icon centre (3-pill state):
-       16 (rail pt) + 40 (brand) + 8 (gap + stack-mt) +
-       92 (3 pills + 2 gaps) + 12 (gap + divider-mt) + 1 (divider) +
-       8 (divider-mb + gap) + 6 (section pt) + 10 (½ 20px icon) = 193px.
+     Rail stack to icon centre (1-pill state):
+       16 (rail pt) + 40 (brand) + 8 (gap + picker-mt) +
+       28 (1 pill) + 12 (gap + divider-mt) + 1 (divider) +
+       8 (divider-mb + gap) + 6 (section pt) + 10 (½ 20px icon) = 129px.
      Flyout title top = 44 − 24 = 20px; title ≈ 19px; clock ≈ 12px;
-     first row half-height = 16px → gap needed = 193 − (20+19+12+16) = 126px. */
-  margin: 0 0 126px;
+     first row half-height = 16px → gap needed = 129 − (20+19+12+16) = 62px − 1px (divider offset) = 61px. */
+  margin: 0 0 61px;
   padding: 0 22px;
   font-size: 10px;
   line-height: 1.2;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+}
+
+.nav-primary-rail-2__SectionDivider {
+  position: absolute;
+  top: 104px;
+  left: 21px;
+  right: 21px;
+  height: 1px;
+  background: var(--border);
 }
 
 .nav-primary-rail-2__PageList {
@@ -350,7 +404,7 @@
   font-size: 12px;
   color: var(--ink-subtle);
 }
-.nav-primary-rail-2__PageList_GroupLabel {
+.nav-primary-rail-2__PageList_Group_Label {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -359,7 +413,7 @@
   font-weight: 600;
 }
 
-.nav-primary-rail-2__PageList_Row {
+.nav-primary-rail-2__PageList_Group_Row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -371,26 +425,31 @@
   font-weight: 400;
   transition: background 150ms ease, color 150ms ease;
 }
-.nav-primary-rail-2__PageList_Row:hover {
+.nav-primary-rail-2__PageList_Group_Row:hover {
   background: var(--surface-sunken);
   color: var(--ink);
 }
-.nav-primary-rail-2__PageList_Row.is-active {
+.nav-primary-rail-2__PageList_Group_Row.is-active {
   background: var(--surface-sunken);
   color: var(--ink);
   font-weight: 500;
 }
-.nav-primary-rail-2__PageList_Row.is-nested {
+.nav-primary-rail-2__PageList_Group_Row.is-nested {
   padding-left: 38px;
 }
-.nav-primary-rail-2__PageList_RowLabel {
+.nav-primary-rail-2__PageList_Group_Row_Icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.nav-primary-rail-2__PageList_Group_Row_Label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
   flex: 1;
 }
-.nav-primary-rail-2__PageList_RowDot {
+.nav-primary-rail-2__PageList_Group_Row_Dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -445,7 +504,7 @@
   color: var(--ink-muted);
   margin-top: 2px;
 }
-.nav-primary-rail-2__PageList_Row--button {
+.nav-primary-rail-2__PageList_Group_Row-button {
   border: 0;
   background: transparent;
   width: 100%;
@@ -453,8 +512,8 @@
   cursor: pointer;
   font-family: inherit;
 }
-.nav-primary-rail-2__PageList_Row--danger { color: var(--ink-muted); }
-.nav-primary-rail-2__PageList_Row--danger:hover {
+.nav-primary-rail-2__PageList_Group_Row-danger { color: var(--ink-muted); }
+.nav-primary-rail-2__PageList_Group_Row-danger:hover {
   color: var(--ink);
   background: var(--surface-sunken);
 }

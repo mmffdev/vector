@@ -92,21 +92,19 @@ export default function IconRail() {
 
       <div id="nav-primary-rail-1__divider" className="nav-primary-rail-1__divider" aria-hidden />
 
-      <ul id="nav-primary-rail-1__NavBuckets" className="nav-primary-rail-1__NavBuckets" ref={listRef} style={{ border: "3px solid red" }}>
+      <ul id="nav-primary-rail-1__NavBuckets" className="nav-primary-rail-1__NavBuckets" ref={listRef}>
         {indicator && !accountActive && (
           <span
             id="nav-primary-rail-1__NavBuckets_TravelIndicator"
             className={`nav-primary-rail-1__NavBuckets_TravelIndicator nav-primary-rail-1__NavBuckets_TravelIndicator-${phase}`}
-            style={{ top: indicator.top, height: indicator.height, border: "3px solid blue" }}
+            style={{ top: indicator.top, height: indicator.height }}
             aria-hidden
           />
         )}
         {sections.map((s, i) => {
           const active = s.id === activeSectionId;
-          const debugColours = ["orange", "green", "hotpink", "teal", "gold", "tomato"];
-          const debugColour = debugColours[i % debugColours.length];
           return (
-            <li key={s.id} id={`nav-primary-rail-1__NavBuckets_Items-${s.id}`} className="nav-primary-rail-1__NavBuckets_Items" style={{ border: `3px solid ${debugColour}` }}>
+            <li key={s.id} id={`nav-primary-rail-1__NavBuckets_Items-${s.id}`} className="nav-primary-rail-1__NavBuckets_Items">
               <button
                 id={`nav-primary-rail-1__NavBuckets_Items_Button-${s.id}`}
                 ref={(el) => {
@@ -125,7 +123,7 @@ export default function IconRail() {
                 }}
               >
                 <NavIcon iconKey={s.icon} />
-                <span className="nav-primary-rail-1__NavBuckets_Items_Button_Label" style={{ border: "3px solid purple" }}>{s.name}</span>
+                <span className="nav-primary-rail-1__NavBuckets_Items_Button_Label">{s.name}</span>
               </button>
             </li>
           );
