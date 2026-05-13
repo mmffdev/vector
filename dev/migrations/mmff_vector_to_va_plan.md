@@ -103,7 +103,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 34 | `portfolio` | `legacy_portfolio` then DROP | ⚠ | P5 | Likely superseded by `master_record_portfolio` on VA |
 | 35 | `product` | `legacy_product` then DROP | ⚠ | P5 | Likely superseded by `artefact_types` rows |
 | 36 | `roles` | `authz_roles` | ✅ | P4 | 5 system roles seeded with stable UUIDs |
-| 37 | `roles_org_nodes` | `authz_role_topology_grants` ⚠ verify | ⚠ | P4 | Already on VA as `topology_role_grants`? Confirm |
+| 37 | ~~`roles_org_nodes`~~ | DROPPED 2026-05-13 (mig 175) | ✅ | P4 done | 0 rows; 0 live readers (0 Go/TS non-test refs). Superseded by `vector_artefacts.topology_role_grants` since M6.2.7 orgdesign cutover. Column renames: `role` → `role_code`, `subscription_id` → `workspace_id`. |
 | 38 | `roles_pages` | `authz_role_pages` | ✅ | P4 | `nav.New(pool, …)` reads this |
 | 39 | `roles_permissions` | `authz_role_permissions` | ✅ | P4 | `roles.New(pool, …)` |
 | 40 | `roles_workspaces` | `authz_role_workspaces` | ✅ | P4 | `workspaces.New(pool, …)` |
