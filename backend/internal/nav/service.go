@@ -160,6 +160,80 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
+	// Lazy-seed the three admin nav groups (Workspace Admin, User Management,
+	// Vector Admin) for the Default profile if they're missing. This makes
+	// group seeding self-healing after resets and for new users — the one-off
+	// migration backfills are idempotent but only ran once.
+	if _, err := s.Pool.Exec(ctx, `
+		WITH profile_check AS (
+			SELECT id FROM user_nav_profiles WHERE id = $3 AND is_default = TRUE
+		),
+		existing AS (
+			SELECT LOWER(label) AS lbl FROM user_nav_groups WHERE user_id = $1
+		),
+		seed AS (
+			SELECT * FROM (VALUES
+				('Workspace Admin', 0, 'cog',    ARRAY['workspace-admin','workspace-settings','portfolio-settings','library-releases']),
+				('User Management', 1, 'users',  ARRAY['user-management','um-permissions']),
+				('Vector Admin',    2, 'shield', ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
+			) AS t(label, pos, icon, pages)
+			WHERE LOWER(t.label) NOT IN (SELECT lbl FROM existing)
+		),
+		inserted AS (
+			INSERT INTO user_nav_groups (id, user_id, label, position, icon)
+			SELECT gen_random_uuid(), $1, s.label, s.pos, s.icon FROM seed s, profile_check
+			RETURNING id, LOWER(label) AS lbl
+		)
+		-- Assign group_ids on prefs for pages belonging to each inserted group
+		UPDATE user_nav_prefs unp
+		SET group_id = ins.id
+		FROM inserted ins
+		JOIN (VALUES
+			('workspace admin', ARRAY['workspace-admin','workspace-settings','portfolio-settings','library-releases']),
+			('user management', ARRAY['user-management','um-permissions']),
+			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
+		) AS mapping(lbl, pages) ON mapping.lbl = ins.lbl
+		WHERE unp.user_id = $1
+		  AND unp.subscription_id = $2
+		  AND unp.profile_id = $3
+		  AND unp.item_key = ANY(mapping.pages)
+		  AND unp.group_id IS NULL
+	`, userID, subscriptionID, profileID); err != nil {
+		return nil, fmt.Errorf("nav groups lazy-seed: %w", err)
+	}
+
+	// Seed per-profile group placements if the Default profile has none yet.
+	// This drives the rail section order: tag buckets first, then admin groups.
+	if _, err := s.Pool.Exec(ctx, `
+		WITH profile_check AS (
+			SELECT id FROM user_nav_profiles WHERE id = $1 AND is_default = TRUE
+		),
+		has_placements AS (
+			SELECT 1 FROM user_nav_profile_groups WHERE profile_id = $1 LIMIT 1
+		),
+		combined AS (
+			SELECT
+				tag_enum::text AS tag_enum,
+				NULL::uuid     AS group_id,
+				ROW_NUMBER() OVER (ORDER BY default_order, tag_enum) - 1 AS pos
+			FROM page_tags WHERE is_admin_menu = FALSE
+			UNION ALL
+			SELECT
+				NULL,
+				id,
+				(SELECT COUNT(*) FROM page_tags WHERE is_admin_menu = FALSE) + position
+			FROM user_nav_groups WHERE user_id = $2
+		)
+		INSERT INTO user_nav_profile_groups (profile_id, tag_enum, group_id, position)
+		SELECT pc.id, c.tag_enum, c.group_id, c.pos
+		FROM profile_check pc
+		CROSS JOIN combined c
+		WHERE NOT EXISTS (SELECT 1 FROM has_placements)
+		ON CONFLICT DO NOTHING
+	`, profileID, userID); err != nil {
+		return nil, fmt.Errorf("nav profile groups lazy-seed: %w", err)
+	}
+
 	rows, err := s.Pool.Query(ctx, `
 		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
 		FROM user_nav_prefs
