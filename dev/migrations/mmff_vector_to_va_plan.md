@@ -69,7 +69,7 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 |---|---|---|---|---|---|
 | 1 | `api_keys` | `auth_api_keys` | ✅ | P6 | `apikeys.New(pool)` main.go:149 |
 | 2 | ~~`audit_log`~~ | `audit_log` on `vaPool` | ✅ | P1 done 2026-05-13 | mig 047 (VA create) + mig 163 (mmff_vector drop); `audit.Logger.SetPool(vaPool)` swap inside vaPool init; 3676 rows copied, post-restart write verified on VA |
-| 3 | `canonical_states` | DROP (blocked) | ⛔ | P0-blocked | 5 rows; 0 Go/TS refs at app layer — BUT inbound FKs from `obj_flow_system` (dropped 2026-05-13) and `obj_flow_tenant`. Once `obj_flow_tenant` is dropped, this becomes a clean leaf. |
+| 3 | ~~`canonical_states`~~ | DROPPED 2026-05-13 (mig 172) | ✅ | P0′ done | 5 legacy rows; cascade-dropped with `obj_flow_tenant` family. Canonical state vocabulary superseded by `flow_states.kind` on VA. |
 | 4 | `company_roadmap` | `artefact_company_roadmap` ⚠ verify-live | ⚠ | P5 | Check if any rows / readers |
 | 5 | ~~`defects`~~ | DROPPED 2026-05-13 (mig 165) | ✅ | P0′ done | 0 rows + 0 backend writers/readers + 0 incoming FKs → dead leaf; dropped with custom enum `defect_severity` (only used by this table). Revived defect tracking will use `artefact_types` on VA. |
 | 6 | `entity_stakeholders` | `artefact_stakeholders` (cluster move) | 🔵 | P5 reclassified 2026-05-13 | NOT a P1 leaf — one of FOUR polymorphic-FK tables (`entity_stakeholders`, `item_type_states`, `item_state_history`, `page_entity_refs`) sharing `trg_*_dispatch` triggers (mig 013) that query parent tables (`company_roadmap`, `workspace`, `portfolio`, `product`) in the SAME DB. Migrating alone breaks dispatch trigger (cross-DB SELECT). Must move with the polymorphic cluster + parents OR accept app-only FK enforcement (drop trigger first). Currently 0 rows. `entityrefs.Service` is the sole writer — `internal/entityrefs/service.go`. |
@@ -82,13 +82,13 @@ Status legend: ✅ live · ⚠ partial · ❌ dead (zero refs) · 🔵 in flight
 | 13 | ~~`o_artefact_visibility_levels`~~ | DROPPED 2026-05-13 (mig 171) | ✅ | P0 done | 4 legacy rows; 0 Go/TS refs; 0 inbound FKs |
 | 14 | ~~`o_search_index_outbox`~~ | DROPPED 2026-05-13 (mig 170) | ✅ | P1 done | 0 rows + 0 backend writers/readers (only a historical-context comment in `searchworker/worker.go:11`) + 0 incoming FKs → dead leaf. Replaced by `vector_artefacts.artefacts_search_outbox` (artefacts_schema/035, applied this date along with image-swap to `pgvector/pgvector:0.8.0-pg16` since the previous `postgres:16-alpine` image lacked pgvector). Trigger `artefacts_search_enqueue` now lives on `vector_artefacts.artefacts`. Outgoing FK to `obj_execution_types` (itself a P5 drop target) vanished with the table. |
 | 15 | `obj_custom_field_lib` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_field_library` on VA |
-| 16 | `obj_execution_types` | DROP (blocked) | ⛔ | P0-blocked | 7 rows; 0 Go/TS refs — BUT inbound FKs from `obj_flow_tenant` and `obj_execution_types_tenant`. Drop after both blockers are gone. |
+| 16 | ~~`obj_execution_types`~~ | DROPPED 2026-05-13 (mig 172) | ✅ | P0′ done | 7 legacy rows; cascade-dropped with `obj_flow_tenant` family. Strategy-vs-work split now lives in `vector_artefacts.artefact_types`. |
 | 17 | ~~`obj_execution_types_overrides`~~ | DROPPED 2026-05-13 (mig 161) | ✅ | P0′ done | Zero rows + zero non-history refs confirmed |
-| 18 | `obj_execution_types_tenant` | DROP (blocked) | ⛔ | P0-blocked | 0 rows; 0 Go/TS refs — BUT inbound FK from `obj_flow_tenant`. Drop after `obj_flow_tenant` is dropped. |
+| 18 | ~~`obj_execution_types_tenant`~~ | DROPPED 2026-05-13 (mig 172) | ✅ | P0′ done | 0 rows (never populated post-PoC); cascade-dropped with `obj_flow_tenant` family. |
 | 19 | `obj_field_template_fields` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_type_fields` on VA |
 | 20 | `obj_field_templates` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_types` on VA |
 | 21 | ~~`obj_flow_system`~~ | DROPPED 2026-05-13 (mig 171) | ✅ | P0 done | 34 legacy rows; 0 Go/TS refs; 0 inbound FKs. Superseded by `vector_artefacts.flows` / `flow_states` / `flow_transitions` |
-| 22 | `obj_flow_tenant` | DROP (verify) | ⚠ | P5 | Superseded by `flows` on VA |
+| 22 | ~~`obj_flow_tenant`~~ | DROPPED 2026-05-13 (mig 172) | ✅ | P0′ done | 277 legacy rows; 0 real readers (2 Go hits in `artefactitemsv2/types.go:36,296` are comment-only docstrings) + 0 inbound FKs → clean leaf. Dropped together with three siblings it was blocking: `canonical_states`, `obj_execution_types`, `obj_execution_types_tenant`. Superseded by `vector_artefacts.flows` / `flow_states` / `flow_transitions`. |
 | 23 | `obj_portfolio_items` | DROP (verify) | ⚠ | P5 | Superseded by `artefacts` on VA |
 | 24 | `obj_strategy_types` | DROP (verify) | ⚠ | P5 | Superseded by `artefact_types` + `strategy_layers_adopted` on VA |
 | 25 | `obj_strategy_types_layers` | DROP (verify) | ⚠ | P5 | Same as 24 |
