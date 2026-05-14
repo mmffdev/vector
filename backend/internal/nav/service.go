@@ -126,34 +126,8 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 	// read. This covers profiles created before the CreateProfile clone was
 	// added, and any profile whose prefs were wiped externally. One-time per
 	// profile: once the clone lands, subsequent reads see existing rows.
-	if _, err := s.Pool.Exec(ctx, `
-		WITH this_profile AS (
-			SELECT id FROM user_nav_profiles
-			WHERE id = $3 AND is_default = FALSE
-		),
-		is_empty AS (
-			SELECT 1 FROM this_profile
-			WHERE NOT EXISTS (
-				SELECT 1 FROM user_nav_prefs
-				WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
-			)
-		),
-		default_profile AS (
-			SELECT id FROM user_nav_profiles
-			WHERE user_id = $1 AND subscription_id = $2 AND is_default = TRUE
-		)
-		INSERT INTO user_nav_prefs (
-			user_id, subscription_id, profile_id, item_key, position,
-			is_start_page, parent_item_key, group_id, icon_override
-		)
-		SELECT
-			src.user_id, src.subscription_id, $3, src.item_key, src.position,
-			FALSE, src.parent_item_key, src.group_id, src.icon_override
-		FROM user_nav_prefs src
-		JOIN default_profile dp ON dp.id = src.profile_id
-		WHERE EXISTS (SELECT 1 FROM is_empty)
-		ON CONFLICT DO NOTHING
-	`, userID, subscriptionID, profileID); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlSeedNonDefaultPrefsFromDefaultOnFirstRead,
+		userID, subscriptionID, profileID); err != nil {
 		return nil, fmt.Errorf("nav prefs clone-from-default: %w", err)
 	}
 
@@ -161,22 +135,8 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 	// has none yet (mirrors the prefs clone above). Uses WHERE NOT EXISTS
 	// rather than ON CONFLICT because the position unique constraint is
 	// deferrable and ON CONFLICT cannot use deferrable arbiters.
-	if _, err := s.Pool.Exec(ctx, `
-		WITH default_profile AS (
-			SELECT id FROM user_nav_profiles
-			WHERE user_id = $2 AND subscription_id = $3 AND is_default = TRUE
-		)
-		INSERT INTO user_nav_profile_groups (profile_id, group_id, tag_enum, position, icon_override)
-		SELECT $1, src.group_id, src.tag_enum, src.position, src.icon_override
-		FROM user_nav_profile_groups src
-		JOIN default_profile dp ON dp.id = src.profile_id
-		WHERE NOT EXISTS (
-			SELECT 1 FROM user_nav_profile_groups WHERE profile_id = $1
-		)
-		  AND NOT EXISTS (
-			SELECT 1 FROM user_nav_profiles WHERE id = $1 AND is_default = TRUE
-		)
-	`, profileID, userID, subscriptionID); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead,
+		profileID, userID, subscriptionID); err != nil {
 		return nil, fmt.Errorf("nav profile-groups clone-from-default: %w", err)
 	}
 
@@ -184,37 +144,8 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 	// Custom profiles start with whatever the user explicitly puts on
 	// them — auto-pinning every new system page across every profile
 	// would silently grow customer profiles forever.
-	if _, err := s.Pool.Exec(ctx, `
-		INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
-		SELECT
-			$1::uuid,
-			$2::uuid,
-			$4::uuid,
-			p.key_enum,
-			COALESCE(
-				(SELECT MAX(unp.position) + 1
-				 FROM user_nav_prefs unp
-				 WHERE unp.user_id = $1::uuid
-				   AND unp.subscription_id = $2::uuid
-				   AND unp.profile_id = $4::uuid),
-				0
-			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
-			FALSE
-		FROM pages p
-		JOIN roles_pages pr ON pr.page_id = p.id
-		JOIN user_nav_profiles d ON d.id = $4::uuid AND d.is_default = TRUE
-		WHERE p.created_by IS NULL
-		  AND p.subscription_id IS NULL
-		  AND p.default_pinned = TRUE
-		  AND p.pinnable = TRUE
-		  AND pr.role = $3::user_role
-		  AND NOT EXISTS (
-			  SELECT 1 FROM user_nav_prefs unp
-			  WHERE unp.user_id = $1::uuid
-				AND unp.subscription_id = $2::uuid
-				AND unp.profile_id = $4::uuid
-				AND unp.item_key = p.key_enum
-		  )`, userID, subscriptionID, string(role), profileID); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlBackfillDefaultPinnedPages,
+		userID, subscriptionID, string(role), profileID); err != nil {
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
@@ -222,88 +153,20 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 	// Vector Admin) for the Default profile if they're missing. This makes
 	// group seeding self-healing after resets and for new users — the one-off
 	// migration backfills are idempotent but only ran once.
-	if _, err := s.Pool.Exec(ctx, `
-		WITH profile_check AS (
-			SELECT id FROM user_nav_profiles WHERE id = $3 AND is_default = TRUE
-		),
-		existing AS (
-			SELECT id, LOWER(label) AS lbl FROM user_nav_groups WHERE user_id = $1
-		),
-		seed AS (
-			SELECT * FROM (VALUES
-				('Workspace Admin', 0, 'cog',    ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-				('User Admin',      1, 'users',  ARRAY['user-management','um-permissions']),
-				('Vector Admin',    2, 'shield', ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
-			) AS t(label, pos, icon, pages)
-			WHERE LOWER(t.label) NOT IN (SELECT lbl FROM existing)
-		),
-		inserted AS (
-			INSERT INTO user_nav_groups (id, user_id, label, position, icon)
-			SELECT gen_random_uuid(), $1, s.label, s.pos, s.icon FROM seed s, profile_check
-			RETURNING id, LOWER(label) AS lbl
-		),
-		all_groups AS (
-			SELECT id, lbl FROM inserted
-			UNION ALL
-			SELECT id, lbl FROM existing
-		)
-		-- Assign group_ids on prefs for pages belonging to each group.
-		-- Covers both freshly inserted groups and existing groups whose
-		-- prefs lost their group_id (e.g. after a manual reset).
-		UPDATE user_nav_prefs unp
-		SET group_id = ag.id
-		FROM all_groups ag
-		JOIN (VALUES
-			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-			('user admin',      ARRAY['user-management','um-permissions']),
-			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
-		) AS mapping(lbl, pages) ON mapping.lbl = ag.lbl
-		WHERE unp.user_id = $1
-		  AND unp.subscription_id = $2
-		  AND unp.profile_id = $3
-		  AND unp.item_key = ANY(mapping.pages)
-		  AND unp.group_id IS NULL
-	`, userID, subscriptionID, profileID); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlLazySeedAdminNavGroups,
+		userID, subscriptionID, profileID); err != nil {
 		return nil, fmt.Errorf("nav groups lazy-seed: %w", err)
 	}
 
 	// Seed per-profile group placements if the Default profile has none yet.
 	// This drives the rail section order: tag buckets first, then admin groups.
-	if _, err := s.Pool.Exec(ctx, `
-		WITH profile_check AS (
-			SELECT id FROM user_nav_profiles WHERE id = $1 AND is_default = TRUE
-		),
-		has_placements AS (
-			SELECT 1 FROM user_nav_profile_groups WHERE profile_id = $1 LIMIT 1
-		),
-		combined AS (
-			SELECT
-				tag_enum::text AS tag_enum,
-				NULL::uuid     AS group_id,
-				ROW_NUMBER() OVER (ORDER BY default_order, tag_enum) - 1 AS pos
-			FROM page_tags WHERE is_admin_menu = FALSE
-			UNION ALL
-			SELECT
-				NULL,
-				id,
-				(SELECT COUNT(*) FROM page_tags WHERE is_admin_menu = FALSE) + position
-			FROM user_nav_groups WHERE user_id = $2
-		)
-		INSERT INTO user_nav_profile_groups (profile_id, tag_enum, group_id, position)
-		SELECT pc.id, c.tag_enum, c.group_id, c.pos
-		FROM profile_check pc
-		CROSS JOIN combined c
-		WHERE NOT EXISTS (SELECT 1 FROM has_placements)
-		ON CONFLICT DO NOTHING
-	`, profileID, userID); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlLazySeedDefaultProfileGroupPlacements,
+		profileID, userID); err != nil {
 		return nil, fmt.Errorf("nav profile groups lazy-seed: %w", err)
 	}
 
-	rows, err := s.Pool.Query(ctx, `
-		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
-		FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
-		ORDER BY position`, userID, subscriptionID, profileID)
+	rows, err := s.Pool.Query(ctx, sqlListUserNavPrefsForProfile,
+		userID, subscriptionID, profileID)
 	if err != nil {
 		return nil, err
 	}
@@ -331,11 +194,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 
 // GetCustomGroups returns the user's custom primary groups, in user-defined order.
 func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]CustomGroup, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, label, position, icon
-		FROM user_nav_groups
-		WHERE user_id = $1
-		ORDER BY position`, userID)
+	rows, err := s.Pool.Query(ctx, sqlListUserNavGroups, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -369,10 +228,8 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID u
 // GetStartPageHrefForProfile is the profile-scoped variant.
 func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) (string, bool, error) {
 	var key string
-	err := s.Pool.QueryRow(ctx, `
-		SELECT item_key FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3 AND is_start_page = TRUE
-		LIMIT 1`, userID, subscriptionID, profileID).Scan(&key)
+	err := s.Pool.QueryRow(ctx, sqlSelectStartPageKeyForProfile,
+		userID, subscriptionID, profileID).Scan(&key)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
@@ -584,20 +441,17 @@ func (s *Service) ReplacePrefsForProfile(
 	// B6; until then, non-default profiles MUST send an empty groups
 	// list (validated above by len cap; semantically should be 0).
 	var targetIsDefault bool
-	if err := tx.QueryRow(ctx, `
-		SELECT is_default FROM user_nav_profiles WHERE id = $1
-	`, profileID).Scan(&targetIsDefault); err != nil {
+	if err := tx.QueryRow(ctx, sqlSelectProfileIsDefaultByID, profileID).Scan(&targetIsDefault); err != nil {
 		return err
 	}
 
 	// Wipe prefs for THIS profile only (other profiles' rows survive).
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`, userID, subscriptionID, profileID); err != nil {
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+		userID, subscriptionID, profileID); err != nil {
 		return err
 	}
 	if targetIsDefault {
-		if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+		if _, err := tx.Exec(ctx, sqlDeleteUserNavGroupsForUser, userID); err != nil {
 			return err
 		}
 	}
@@ -611,11 +465,7 @@ func (s *Service) ReplacePrefsForProfile(
 	if len(normalisedGroups) > 0 {
 		batch := &pgx.Batch{}
 		for _, g := range normalisedGroups {
-			batch.Queue(`
-				INSERT INTO user_nav_groups (id, user_id, label, position, icon)
-				VALUES ($1, $2, $3, $4, $5)
-				ON CONFLICT (id) DO UPDATE
-				SET label = EXCLUDED.label, position = EXCLUDED.position, icon = EXCLUDED.icon`,
+			batch.Queue(sqlUpsertUserNavGroup,
 				g.ID, userID, g.Label, g.Position, g.Icon)
 		}
 		br := tx.SendBatch(ctx, batch)
@@ -639,9 +489,7 @@ func (s *Service) ReplacePrefsForProfile(
 				u, _ := uuid.Parse(*p.GroupID)
 				gid = &u
 			}
-			batch.Queue(`
-				INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			batch.Queue(sqlInsertUserNavPref,
 				userID, subscriptionID, profileID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
@@ -676,21 +524,18 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.U
 	defer tx.Rollback(ctx)
 
 	var isDefault bool
-	if err := tx.QueryRow(ctx, `
-		SELECT is_default FROM user_nav_profiles WHERE id = $1
-	`, pid).Scan(&isDefault); err != nil {
+	if err := tx.QueryRow(ctx, sqlSelectProfileIsDefaultByID, pid).Scan(&isDefault); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`, userID, subscriptionID, pid); err != nil {
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+		userID, subscriptionID, pid); err != nil {
 		return err
 	}
 	// Reset only wipes the shared group pool when the user's resolved
 	// profile is Default. Non-default profiles share the pool; resetting
 	// one of them must not erase groups that other profiles still place.
 	if isDefault {
-		if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+		if _, err := tx.Exec(ctx, sqlDeleteUserNavGroupsForUser, userID); err != nil {
 			return err
 		}
 	}
@@ -705,9 +550,7 @@ func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptio
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return err
 	}
-	_, err := s.Pool.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`,
+	_, err := s.Pool.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
 		userID, subscriptionID, profileID)
 	return err
 }

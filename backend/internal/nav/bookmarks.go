@@ -91,8 +91,7 @@ func (b *Bookmarks) loadEntity(ctx context.Context, q pgx.Tx, kind EntityKind, i
 	}
 	var archived *string
 	// SQL injection note: table is a hard-coded enum, never user input.
-	row := q.QueryRow(ctx, fmt.Sprintf(`
-		SELECT name, subscription_id, archived_at::text FROM %s WHERE id = $1`, table), id)
+	row := q.QueryRow(ctx, fmt.Sprintf(sqlSelectEntityForBookmarkTemplate, table), id)
 	if err := row.Scan(&name, &subscriptionID, &archived); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", uuid.Nil, ErrEntityNotFound
@@ -161,9 +160,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// Pin calls both read COUNT < cap and both insert, breaching MaxPinned.
 	// hashtextextended → bigint key into pg_advisory_xact_lock; lock is
 	// released at commit/rollback automatically.
-	if _, err := tx.Exec(ctx,
-		`SELECT pg_advisory_xact_lock(hashtextextended('nav-pin:'||$1::text, 0))`,
-		userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlPgAdvisoryXactLockForPin, userID); err != nil {
 		return "", err
 	}
 
@@ -173,11 +170,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// so the cap survives entity bookmarks landing in different tag
 	// groups (e.g. product → 'strategic', portfolio → 'bookmarks').
 	var current int
-	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*) FROM user_nav_prefs unp
-		JOIN pages p ON p.key_enum = unp.item_key
-		WHERE unp.user_id = $1 AND unp.subscription_id = $2 AND unp.profile_id IS NULL
-		  AND p.kind = 'entity'`, userID, callerSubscription).Scan(&current); err != nil {
+	if err := tx.QueryRow(ctx, sqlCountUserEntityBookmarks, userID, callerSubscription).Scan(&current); err != nil {
 		return "", err
 	}
 	if current >= MaxPinned {
@@ -190,14 +183,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// same row instead of duplicating it (NULL-distinct semantics on the
 	// old plain UNIQUE constraint produced phantom duplicates).
 	var pageID uuid.UUID
-	if err := tx.QueryRow(ctx, `
-		INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind,
-		                   pinnable, default_pinned, default_order,
-		                   created_by, subscription_id)
-		VALUES ($1, $2, $3, $4, $5, 'entity', TRUE, FALSE, 0, NULL, $6)
-		ON CONFLICT (key_enum, subscription_id) WHERE created_by IS NULL AND subscription_id IS NOT NULL DO UPDATE
-		  SET label = EXCLUDED.label, updated_at = NOW()
-		RETURNING id`,
+	if err := tx.QueryRow(ctx, sqlUpsertSharedEntityPage,
 		key, name, hrefFor(kind, entityID), iconFor(kind), tagEnumForBookmark(kind), entityTenant,
 	).Scan(&pageID); err != nil {
 		return "", err
@@ -218,9 +204,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// list; per-tenant role gating on the page row itself is uniform.
 	for _, r := range []models.Role{models.RoleUser, models.RolePAdmin, models.RoleGAdmin} {
 		_ = r // keep r in scope for the closure below
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO roles_pages (page_id, role) VALUES ($1, $2)
-			ON CONFLICT (page_id, role) DO NOTHING`, pageID, string(r)); err != nil {
+		if _, err := tx.Exec(ctx, sqlUpsertPageRoleGrant, pageID, string(r)); err != nil {
 			return "", err
 		}
 	}
@@ -230,21 +214,14 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// keeps the global position contiguity invariant intact (validated
 	// elsewhere on bulk replace).
 	var nextPos int
-	if err := tx.QueryRow(ctx, `
-		SELECT COALESCE(MAX(position) + 1, 0)
-		FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL`,
-		userID, callerSubscription).Scan(&nextPos); err != nil {
+	if err := tx.QueryRow(ctx, sqlNextUserNavPrefPosition, userID, callerSubscription).Scan(&nextPos); err != nil {
 		return "", err
 	}
 
 	// Idempotent: ON CONFLICT (user, tenant, profile, item_key) DO NOTHING
 	// means a second pin is a no-op rather than an error — friendlier UX
 	// and matches what the caller probably expected.
-	tag, err := tx.Exec(ctx, `
-		INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
-		VALUES ($1, $2, NULL, $3, $4, FALSE)
-		ON CONFLICT (user_id, subscription_id, profile_id, item_key) DO NOTHING`,
+	tag, err := tx.Exec(ctx, sqlInsertUserNavPrefBookmark,
 		userID, callerSubscription, key, nextPos)
 	if err != nil {
 		return "", err
@@ -284,9 +261,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 
 	// Find position of the row we're removing so we can compact later.
 	var removed *int
-	if err := tx.QueryRow(ctx, `
-		SELECT position FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3`,
+	if err := tx.QueryRow(ctx, sqlSelectUserNavPrefPositionByKey,
 		userID, callerSubscription, key).Scan(&removed); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return tx.Commit(ctx) // not pinned — nothing to do
@@ -294,9 +269,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 		return err
 	}
 
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3`,
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefByKey,
 		userID, callerSubscription, key); err != nil {
 		return err
 	}
@@ -306,9 +279,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 	// (user, tenant, profile, position) is DEFERRABLE so the bulk
 	// shift commits cleanly without temp positions.
 	if removed != nil {
-		if _, err := tx.Exec(ctx, `
-			UPDATE user_nav_prefs SET position = position - 1
-			WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND position > $3`,
+		if _, err := tx.Exec(ctx, sqlCompactUserNavPrefPositionsAbove,
 			userID, callerSubscription, *removed); err != nil {
 			return err
 		}
@@ -325,9 +296,7 @@ func (b *Bookmarks) IsPinned(ctx context.Context, userID, callerSubscription uui
 	}
 	key := itemKey(kind, entityID)
 	var n int
-	err := b.Pool.QueryRow(ctx, `
-		SELECT COUNT(*) FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3`,
+	err := b.Pool.QueryRow(ctx, sqlCountUserNavPrefByKey,
 		userID, callerSubscription, key).Scan(&n)
 	return n > 0, err
 }

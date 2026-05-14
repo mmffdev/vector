@@ -104,10 +104,7 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 	defer tx.Rollback(ctx)
 
 	// Tags first — small, needed for page rows to validate.
-	tagRows, err := tx.Query(ctx, `
-		SELECT tag_enum, display_name, default_order, is_admin_menu
-		FROM page_tags
-		ORDER BY default_order`)
+	tagRows, err := tx.Query(ctx, sqlListPageTags)
 	if err != nil {
 		return nil, fmt.Errorf("nav registry: query tags: %w", err)
 	}
@@ -134,16 +131,7 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 	// only ever has prefs in their own tenant, and the catalogue handler
 	// further filters to entity rows that user has actually pinned.
 	// User-custom pages light up when that feature lands.
-	pageRows, err := tx.Query(ctx, `
-		SELECT p.key_enum, p.label, p.href, p.icon, p.tag_enum, p.kind,
-		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
-		       COALESCE(array_agg(pr.role::text ORDER BY pr.role) FILTER (WHERE pr.role IS NOT NULL), '{}') AS roles
-		FROM pages p
-		LEFT JOIN roles_pages pr ON pr.page_id = p.id
-		WHERE p.created_by IS NULL
-		  AND (p.subscription_id IS NULL OR p.kind = 'entity')
-		GROUP BY p.id
-		ORDER BY p.tag_enum, p.default_order`)
+	pageRows, err := tx.Query(ctx, sqlListSystemPagesWithRoles)
 	if err != nil {
 		return nil, fmt.Errorf("nav registry: query pages: %w", err)
 	}
