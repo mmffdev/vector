@@ -31,6 +31,7 @@ package topology
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -315,26 +316,7 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 	}
 
 	var n Node
-	err = tx.QueryRow(ctx, `
-		INSERT INTO topology_nodes (
-		    id,
-		    workspace_id, subscription_id, parent_id, name, description, label_override,
-		    icon, colour, avatar_url,
-		    layout_mode, x, y,
-		    collapsed_default, sort_order
-		) VALUES (
-		    gen_random_uuid(),
-		    $1, $2, $3, $4, $5, $6,
-		    $7, $8, $9,
-		    $10, $11, $12,
-		    $13, $14
-		)
-		RETURNING
-		    id, workspace_id, subscription_id, parent_id, name, description, label_override,
-		    icon, colour, avatar_url,
-		    layout_mode, x, y,
-		    collapsed_default, sort_order, archived_at, created_at, updated_at
-	`,
+	err = tx.QueryRow(ctx, sqlInsertNode,
 		workspaceID, in.SubscriptionID, in.ParentID, name, derefStr(in.Description), in.LabelOverride,
 		in.Icon, in.Colour, in.AvatarURL,
 		string(mode), in.ManualX, in.ManualY,
@@ -369,7 +351,7 @@ func (s *Service) RenameNode(ctx context.Context, subscriptionID, nodeID uuid.UU
 	if _, err := s.loadNode(ctx, tx, nodeID, subscriptionID, false); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE topology_nodes SET name = $1 WHERE id = $2`, name, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, sqlRenameNode, name, nodeID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -400,16 +382,7 @@ func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID
 		// Walk newParentID's ancestors. If any of them is nodeID we'd
 		// be inserting nodeID under its own descendant — a cycle.
 		var ancestorOfNew bool
-		err := tx.QueryRow(ctx, `
-			WITH RECURSIVE up AS (
-			    SELECT id, parent_id FROM topology_nodes WHERE id = $1
-			    UNION ALL
-			    SELECT n.id, n.parent_id
-			      FROM topology_nodes n
-			      JOIN up ON up.parent_id = n.id
-			)
-			SELECT EXISTS(SELECT 1 FROM up WHERE id = $2)
-		`, *newParentID, nodeID).Scan(&ancestorOfNew)
+		err := tx.QueryRow(ctx, sqlCycleCheckMoveAncestor, *newParentID, nodeID).Scan(&ancestorOfNew)
 		if err != nil {
 			return err
 		}
@@ -418,7 +391,7 @@ func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID
 		}
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE topology_nodes SET parent_id = $1 WHERE id = $2`, newParentID, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, sqlMoveNode, newParentID, nodeID); err != nil {
 		return err
 	}
 
@@ -439,10 +412,7 @@ func (s *Service) ArchiveNode(ctx context.Context, subscriptionID, nodeID uuid.U
 	if _, err := s.loadNode(ctx, tx, nodeID, subscriptionID, true); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE topology_nodes SET archived_at = NOW()
-		 WHERE id = $1 AND archived_at IS NULL
-	`, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, sqlArchiveNode, nodeID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -492,11 +462,7 @@ func (s *Service) BulkPosition(ctx context.Context, subscriptionID uuid.UUID, up
 		if err := validateManualXY(mode, mx, my); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE topology_nodes
-			   SET sort_order = $1, layout_mode = $2, x = $3, y = $4
-			 WHERE id = $5
-		`, u.Position, string(mode), mx, my, u.NodeID); err != nil {
+		if _, err := tx.Exec(ctx, sqlBulkPositionUpdate, u.Position, string(mode), mx, my, u.NodeID); err != nil {
 			return err
 		}
 	}
@@ -533,49 +499,18 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 	// at source.sort_order + 1 without colliding. Root and child branches
 	// take slightly different WHERE clauses because parent_id is nullable.
 	if src.ParentID == nil {
-		if _, err := tx.Exec(ctx, `
-			UPDATE topology_nodes
-			   SET sort_order = sort_order + 1
-			 WHERE subscription_id = $1
-			   AND parent_id IS NULL
-			   AND archived_at IS NULL
-			   AND sort_order > $2
-		`, subscriptionID, src.SortOrder); err != nil {
+		if _, err := tx.Exec(ctx, sqlShiftRootSiblingsUp, subscriptionID, src.SortOrder); err != nil {
 			return Node{}, err
 		}
 	} else {
-		if _, err := tx.Exec(ctx, `
-			UPDATE topology_nodes
-			   SET sort_order = sort_order + 1
-			 WHERE subscription_id = $1
-			   AND parent_id = $2
-			   AND archived_at IS NULL
-			   AND sort_order > $3
-		`, subscriptionID, *src.ParentID, src.SortOrder); err != nil {
+		if _, err := tx.Exec(ctx, sqlShiftChildSiblingsUp, subscriptionID, *src.ParentID, src.SortOrder); err != nil {
 			return Node{}, err
 		}
 	}
 
 	// Walk the live subtree depth-first via recursive CTE, ordered so
 	// every parent appears before its children.
-	rows, err := tx.Query(ctx, `
-		WITH RECURSIVE down AS (
-		    SELECT n.*, ARRAY[n.sort_order]::INT[] AS path
-		      FROM topology_nodes n
-		     WHERE n.id = $1 AND n.subscription_id = $2 AND n.archived_at IS NULL
-		    UNION ALL
-		    SELECT c.*, down.path || c.sort_order
-		      FROM topology_nodes c
-		      JOIN down ON c.parent_id = down.id
-		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL
-		)
-		SELECT id, workspace_id, parent_id, name, description, label_override,
-		       icon, colour, avatar_url,
-		       layout_mode, x, y,
-		       collapsed_default, sort_order
-		  FROM down
-		 ORDER BY path
-	`, sourceID, subscriptionID)
+	rows, err := tx.Query(ctx, sqlWalkSubtreeForClone, sourceID, subscriptionID)
 	if err != nil {
 		return Node{}, err
 	}
@@ -639,26 +574,7 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 		}
 
 		var n Node
-		err = tx.QueryRow(ctx, `
-			INSERT INTO topology_nodes (
-			    id,
-			    workspace_id, subscription_id, parent_id, name, description, label_override,
-			    icon, colour, avatar_url,
-			    layout_mode, x, y,
-			    collapsed_default, sort_order
-			) VALUES (
-			    gen_random_uuid(),
-			    $1, $2, $3, $4, $5, $6,
-			    $7, $8, $9,
-			    $10, $11, $12,
-			    $13, $14
-			)
-			RETURNING
-			    id, workspace_id, subscription_id, parent_id, name, description, label_override,
-			    icon, colour, avatar_url,
-			    layout_mode, x, y,
-			    collapsed_default, sort_order, archived_at, created_at, updated_at
-		`,
+		err = tx.QueryRow(ctx, sqlInsertNode,
 			r.WorkspaceID, subscriptionID, newParent, r.Name, r.Description, r.LabelOverride,
 			r.Icon, r.Colour, r.AvatarURL,
 			string(r.LayoutMode), r.X, r.Y,
@@ -729,11 +645,7 @@ func (s *Service) GrantRole(
 
 	// Idempotent: same (node, user) with an active grant returns it.
 	var existingID uuid.UUID
-	err = tx.QueryRow(ctx, `
-		SELECT id FROM topology_role_grants
-		 WHERE node_id = $1 AND user_id = $2 AND revoked_at IS NULL
-		 LIMIT 1
-	`, nodeID, userID).Scan(&existingID)
+	err = tx.QueryRow(ctx, sqlSelectActiveGrantForUserOnNode, nodeID, userID).Scan(&existingID)
 	if err == nil {
 		if err := tx.Commit(ctx); err != nil {
 			return uuid.Nil, err
@@ -746,12 +658,7 @@ func (s *Service) GrantRole(
 
 	if role == RoleAdmin {
 		var hasAdmin bool
-		err := tx.QueryRow(ctx, `
-			SELECT EXISTS(
-			    SELECT 1 FROM topology_role_grants
-			     WHERE node_id = $1 AND role_code = 'admin' AND revoked_at IS NULL
-			)
-		`, nodeID).Scan(&hasAdmin)
+		err := tx.QueryRow(ctx, sqlExistsActiveAdminGrantOnNode, nodeID).Scan(&hasAdmin)
 		if err != nil {
 			return uuid.Nil, err
 		}
@@ -762,12 +669,9 @@ func (s *Service) GrantRole(
 
 	var newID uuid.UUID
 	var grantedAt time.Time
-	err = tx.QueryRow(ctx, `
-		INSERT INTO topology_role_grants
-		    (id, workspace_id, subscription_id, node_id, user_id, role_code, role_id, can_redelegate, granted_by)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NULL, $6, $7)
-		RETURNING id, granted_at
-	`, node.WorkspaceID, subscriptionID, nodeID, userID, string(role), canRedelegate, grantedBy).Scan(&newID, &grantedAt)
+	err = tx.QueryRow(ctx, sqlInsertGrant,
+		node.WorkspaceID, subscriptionID, nodeID, userID, string(role), canRedelegate, grantedBy,
+	).Scan(&newID, &grantedAt)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -793,11 +697,7 @@ func (s *Service) GrantRole(
 // ErrGrantNotFound (callers should treat the action as idempotent at
 // the API layer if they want).
 func (s *Service) RevokeRole(ctx context.Context, subscriptionID, grantID, revokedBy uuid.UUID) error {
-	tag, err := s.vaPool.Exec(ctx, `
-		UPDATE topology_role_grants
-		   SET revoked_at = NOW(), revoked_by = $1
-		 WHERE id = $2 AND subscription_id = $3 AND revoked_at IS NULL
-	`, revokedBy, grantID, subscriptionID)
+	tag, err := s.vaPool.Exec(ctx, sqlRevokeGrant, revokedBy, grantID, subscriptionID)
 	if err != nil {
 		return err
 	}
@@ -827,17 +727,9 @@ func (s *Service) SetViewState(
 		// CHECK (viewport_zoom > 0) on the column; reject early.
 		viewportZoom = 1.0
 	}
-	if _, err := s.vaPool.Exec(ctx, `
-		INSERT INTO topology_view_state
-		    (workspace_id, subscription_id, user_id,
-		     viewport_x, viewport_y, viewport_zoom)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (workspace_id, user_id)
-		DO UPDATE SET viewport_x    = EXCLUDED.viewport_x,
-		              viewport_y    = EXCLUDED.viewport_y,
-		              viewport_zoom = EXCLUDED.viewport_zoom,
-		              updated_at    = NOW()
-	`, workspaceID, subscriptionID, userID, viewportX, viewportY, viewportZoom); err != nil {
+	if _, err := s.vaPool.Exec(ctx, sqlUpsertViewState,
+		workspaceID, subscriptionID, userID, viewportX, viewportY, viewportZoom,
+	); err != nil {
 		return err
 	}
 	return nil
@@ -858,56 +750,9 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 	wsClause, args, slot := workspaceClause(ctx, "n", []any{rootID, subscriptionID})
 	wsClauseC := workspaceClauseAt("c", slot)
 	wsClauseA := workspaceClauseAt("a", slot)
-	rows, err := s.vaPool.Query(ctx, `
-		WITH RECURSIVE down AS (
-		    SELECT n.*, ARRAY[n.sort_order, 0]::INT[] AS path
-		      FROM topology_nodes n
-		     WHERE n.id = $1 AND n.subscription_id = $2 AND n.archived_at IS NULL`+wsClause+`
-		    UNION ALL
-		    SELECT c.*, down.path || c.sort_order
-		      FROM topology_nodes c
-		      JOIN down ON c.parent_id = down.id
-		     WHERE c.subscription_id = $2 AND c.archived_at IS NULL`+wsClauseC+`
-		), archived_children AS (
-		    SELECT a.id AS arch_id, d.id AS anchor_id
-		      FROM topology_nodes a
-		      JOIN down d ON a.parent_id = d.id
-		     WHERE a.subscription_id = $2
-		       AND a.archived_at IS NOT NULL`+wsClauseA+`
-		), archived_subtree AS (
-		    SELECT arch_id, anchor_id FROM archived_children
-		    UNION ALL
-		    SELECT c.id, ast.anchor_id
-		      FROM topology_nodes c
-		      JOIN archived_subtree ast ON c.parent_id = ast.arch_id
-		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NOT NULL`+wsClauseC+`
-		), per_anchor AS (
-		    SELECT anchor_id, COUNT(*)::INT AS arch_count
-		      FROM archived_subtree
-		     GROUP BY anchor_id
-		), live_path AS (
-		    SELECT d.id AS live_id, d.id AS anchor_id
-		      FROM down d
-		    UNION ALL
-		    SELECT lp.live_id, c.id
-		      FROM live_path lp
-		      JOIN down c ON c.parent_id = lp.anchor_id
-		), rollup AS (
-		    SELECT lp.live_id, COALESCE(SUM(pa.arch_count), 0)::INT AS arch_total
-		      FROM live_path lp
-		      LEFT JOIN per_anchor pa ON pa.anchor_id = lp.anchor_id
-		     GROUP BY lp.live_id
-		)
-		SELECT d.id, d.workspace_id, d.subscription_id, d.parent_id, d.name, d.description, d.label_override,
-		       d.icon, d.colour, d.avatar_url,
-		       d.layout_mode, d.x, d.y,
-		       d.collapsed_default, d.sort_order, d.archived_at, d.created_at, d.updated_at,
-		       COALESCE(r.arch_total, 0) AS archived_descendant_count
-		  FROM down d
-		  LEFT JOIN rollup r ON r.live_id = d.id
-		 ORDER BY d.path
-	`, args...)
+	rows, err := s.vaPool.Query(ctx,
+		fmt.Sprintf(sqlSubtreeTemplate, wsClause, wsClauseC, wsClauseA, wsClauseC),
+		args...)
 	if err != nil {
 		return nil, err
 	}
@@ -935,24 +780,7 @@ func (s *Service) Subtree(ctx context.Context, subscriptionID, rootID uuid.UUID)
 // on the node-detail panel and by audit log "where did this happen"
 // queries.
 func (s *Service) AncestorsOf(ctx context.Context, subscriptionID, nodeID uuid.UUID) ([]Node, error) {
-	rows, err := s.vaPool.Query(ctx, `
-		WITH RECURSIVE up AS (
-		    SELECT n.*, 0 AS depth
-		      FROM topology_nodes n
-		     WHERE n.id = $1 AND n.subscription_id = $2
-		    UNION ALL
-		    SELECT p.*, up.depth + 1
-		      FROM topology_nodes p
-		      JOIN up ON up.parent_id = p.id
-		     WHERE p.subscription_id = $2
-		)
-		SELECT id, workspace_id, subscription_id, parent_id, name, description, label_override,
-		       icon, colour, avatar_url,
-		       layout_mode, x, y,
-		       collapsed_default, sort_order, archived_at, created_at, updated_at
-		  FROM up
-		 ORDER BY depth DESC
-	`, nodeID, subscriptionID)
+	rows, err := s.vaPool.Query(ctx, sqlAncestorsOf, nodeID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -994,38 +822,9 @@ func (s *Service) ArchivedDescendants(
 	wsClauseN, archArgs, slot := workspaceClause(ctx, "n", []any{nodeID, subscriptionID})
 	wsClauseC := workspaceClauseAt("c", slot)
 	wsClauseA := workspaceClauseAt("a", slot)
-	rows, err := tx.Query(ctx, `
-		WITH RECURSIVE live_down AS (
-		    SELECT n.id
-		      FROM topology_nodes n
-		     WHERE n.id = $1
-		       AND n.subscription_id = $2
-		       AND n.archived_at IS NULL`+wsClauseN+`
-		    UNION ALL
-		    SELECT c.id
-		      FROM topology_nodes c
-		      JOIN live_down ld ON c.parent_id = ld.id
-		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NULL`+wsClauseC+`
-		), arch AS (
-		    SELECT a.id, a.parent_id, a.name, a.archived_at
-		      FROM topology_nodes a
-		      JOIN live_down ld ON a.parent_id = ld.id
-		     WHERE a.subscription_id = $2
-		       AND a.archived_at IS NOT NULL`+wsClauseA+`
-		    UNION ALL
-		    SELECT c.id, c.parent_id, c.name, c.archived_at
-		      FROM topology_nodes c
-		      JOIN arch ON c.parent_id = arch.id
-		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NOT NULL`+wsClauseC+`
-		)
-		SELECT a.id, a.parent_id, a.name, a.archived_at,
-		       (p.archived_at IS NOT NULL) AS parent_is_archived
-		  FROM arch a
-		  LEFT JOIN topology_nodes p ON p.id = a.parent_id
-		 ORDER BY a.archived_at DESC, a.name
-	`, archArgs...)
+	rows, err := tx.Query(ctx,
+		fmt.Sprintf(sqlArchivedDescendantsTemplate, wsClauseN, wsClauseC, wsClauseA, wsClauseC),
+		archArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -1066,22 +865,9 @@ func (s *Service) DescendantNodeIDs(
 
 	wsClauseN, args, slot := workspaceClause(ctx, "n", []any{rootNodeID, subscriptionID})
 	wsClauseC := workspaceClauseAt("c", slot)
-	rows, err := tx.Query(ctx, `
-		WITH RECURSIVE live_down AS (
-		    SELECT n.id
-		      FROM topology_nodes n
-		     WHERE n.id = $1
-		       AND n.subscription_id = $2
-		       AND n.archived_at IS NULL`+wsClauseN+`
-		    UNION ALL
-		    SELECT c.id
-		      FROM topology_nodes c
-		      JOIN live_down ld ON c.parent_id = ld.id
-		     WHERE c.subscription_id = $2
-		       AND c.archived_at IS NULL`+wsClauseC+`
-		)
-		SELECT id FROM live_down
-	`, args...)
+	rows, err := tx.Query(ctx,
+		fmt.Sprintf(sqlDescendantNodeIDsTemplate, wsClauseN, wsClauseC),
+		args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1137,9 +923,8 @@ func (s *Service) RestoreNode(
 	if newParentID != nil {
 		var pSub uuid.UUID
 		var pArchived *time.Time
-		err := tx.QueryRow(ctx, `
-			SELECT subscription_id, archived_at FROM topology_nodes WHERE id = $1
-		`, *newParentID).Scan(&pSub, &pArchived)
+		err := tx.QueryRow(ctx, sqlSelectParentForRestoreByID, *newParentID).
+			Scan(&pSub, &pArchived)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrParentMissing
 		}
@@ -1155,9 +940,8 @@ func (s *Service) RestoreNode(
 		landingParent = newParentID
 	} else if n.ParentID != nil {
 		var pArchived *time.Time
-		err := tx.QueryRow(ctx, `
-			SELECT archived_at FROM topology_nodes WHERE id = $1 AND subscription_id = $2
-		`, *n.ParentID, subscriptionID).Scan(&pArchived)
+		err := tx.QueryRow(ctx, sqlSelectParentForRestoreInTenant, *n.ParentID, subscriptionID).
+			Scan(&pArchived)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrParentMissing
 		}
@@ -1170,13 +954,7 @@ func (s *Service) RestoreNode(
 		landingParent = n.ParentID
 	}
 
-	if _, err := tx.Exec(ctx, `
-		UPDATE topology_nodes
-		   SET archived_at = NULL,
-		       parent_id   = $2,
-		       updated_at  = NOW()
-		 WHERE id = $1
-	`, nodeID, landingParent); err != nil {
+	if _, err := tx.Exec(ctx, sqlRestoreNode, nodeID, landingParent); err != nil {
 		return err
 	}
 
@@ -1223,18 +1001,7 @@ func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.
 	if actorRole == string(models.RoleGAdmin) {
 		return s.listMyGrantsGadmin(ctx, subscriptionID)
 	}
-	rows, err := s.vaPool.Query(ctx, `
-		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
-		       n.name, n.label_override, n.colour, n.icon,
-		       r.role_code, r.granted_at, n.sort_order
-		  FROM topology_role_grants r
-		  JOIN topology_nodes n ON n.id = r.node_id
-		 WHERE r.subscription_id = $1
-		   AND r.user_id = $2
-		   AND r.revoked_at IS NULL
-		   AND n.archived_at IS NULL
-		 ORDER BY n.sort_order, n.name
-	`, subscriptionID, userID)
+	rows, err := s.vaPool.Query(ctx, sqlListMyGrants, subscriptionID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1259,15 +1026,7 @@ func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.
 // node in the subscription. See ListMyGrants doc for why this is
 // synthesised rather than seeded.
 func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UUID) ([]MyGrant, error) {
-	rows, err := s.vaPool.Query(ctx, `
-		SELECT n.id, n.workspace_id, n.parent_id,
-		       n.name, n.label_override, n.colour, n.icon,
-		       n.created_at, n.sort_order
-		  FROM topology_nodes n
-		 WHERE n.subscription_id = $1
-		   AND n.archived_at IS NULL
-		 ORDER BY n.sort_order, n.name
-	`, subscriptionID)
+	rows, err := s.vaPool.Query(ctx, sqlListMyGrantsGadmin, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -1307,18 +1066,7 @@ func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUs
 	if actorRole != string(models.RoleGAdmin) {
 		return nil, ErrForbidden
 	}
-	rows, err := s.vaPool.Query(ctx, `
-		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
-		       n.name, n.label_override, n.colour, n.icon,
-		       r.role_code, r.granted_at, n.sort_order
-		  FROM topology_role_grants r
-		  JOIN topology_nodes n ON n.id = r.node_id
-		 WHERE r.subscription_id = $1
-		   AND r.user_id = $2
-		   AND r.revoked_at IS NULL
-		   AND n.archived_at IS NULL
-		 ORDER BY n.sort_order, n.name
-	`, subscriptionID, targetUserID)
+	rows, err := s.vaPool.Query(ctx, sqlListGrantsByUser, subscriptionID, targetUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1344,25 +1092,7 @@ func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUs
 // grant on. Empty result means "no Topology access" and should result
 // in an empty list response from any clamped endpoint.
 func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := s.vaPool.Query(ctx, `
-		WITH RECURSIVE grants AS (
-		    SELECT n.id
-		      FROM topology_role_grants r
-		      JOIN topology_nodes n ON n.id = r.node_id
-		     WHERE r.subscription_id = $1
-		       AND r.user_id = $2
-		       AND r.revoked_at IS NULL
-		       AND n.archived_at IS NULL
-		), reachable AS (
-		    SELECT id FROM grants
-		    UNION
-		    SELECT c.id
-		      FROM topology_nodes c
-		      JOIN reachable ON c.parent_id = reachable.id
-		     WHERE c.subscription_id = $1 AND c.archived_at IS NULL
-		)
-		SELECT id FROM reachable
-	`, subscriptionID, userID)
+	rows, err := s.vaPool.Query(ctx, sqlClampPredicate, subscriptionID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1390,15 +1120,7 @@ func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uui
 // them (view-state writes, idempotent archive).
 func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionID uuid.UUID, allowArchived bool) (Node, error) {
 	var n Node
-	err := tx.QueryRow(ctx, `
-		SELECT id, workspace_id, subscription_id, parent_id, name, description, label_override,
-		       icon, colour, avatar_url,
-		       layout_mode, x, y,
-		       collapsed_default, sort_order, archived_at, created_at, updated_at
-		  FROM topology_nodes
-		 WHERE id = $1
-		 FOR UPDATE
-	`, nodeID).Scan(
+	err := tx.QueryRow(ctx, sqlLoadNodeForUpdate, nodeID).Scan(
 		&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 		&n.Icon, &n.Colour, &n.AvatarURL,
 		&n.LayoutMode, &n.X, &n.Y,

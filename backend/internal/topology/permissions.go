@@ -56,30 +56,8 @@ func (s *Service) CanReadScope(
 	// Walk UP from targetNodeID through parent_id. Return true the
 	// moment we hit a node the user holds an active grant on.
 	var hit bool
-	err = tx.QueryRow(ctx, `
-		WITH RECURSIVE ancestors AS (
-		    SELECT id, parent_id
-		      FROM topology_nodes
-		     WHERE id = $1
-		       AND subscription_id = $2
-		       AND archived_at IS NULL
-		    UNION ALL
-		    SELECT p.id, p.parent_id
-		      FROM topology_nodes p
-		      JOIN ancestors a ON a.parent_id = p.id
-		     WHERE p.subscription_id = $2
-		       AND p.archived_at IS NULL
-		)
-		SELECT EXISTS (
-		    SELECT 1
-		      FROM ancestors a
-		      JOIN topology_role_grants r
-		        ON r.node_id = a.id
-		     WHERE r.subscription_id = $2
-		       AND r.user_id = $3
-		       AND r.revoked_at IS NULL
-		)
-	`, targetNodeID, subscriptionID, userID).Scan(&hit)
+	err = tx.QueryRow(ctx, sqlAncestorsHasGrantOnTargetOrAncestor,
+		targetNodeID, subscriptionID, userID).Scan(&hit)
 	if err != nil {
 		return false, err
 	}

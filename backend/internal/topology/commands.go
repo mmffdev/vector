@@ -17,6 +17,7 @@ package topology
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -94,7 +95,7 @@ func (s *Service) PatchNode(ctx context.Context, subscriptionID, nodeID uuid.UUI
 		add("avatar_url", nullIfEmpty(*in.AvatarURL))
 	}
 	args = append(args, nodeID)
-	sql := "UPDATE topology_nodes SET " + strings.Join(parts, ", ") + " WHERE id = $" + itoa(idx)
+	sql := fmt.Sprintf(sqlPatchNodeTemplate, strings.Join(parts, ", "), "$"+itoa(idx))
 
 	if _, err := tx.Exec(ctx, sql, args...); err != nil {
 		return err
@@ -130,7 +131,7 @@ func (s *Service) DisconnectNode(ctx context.Context, subscriptionID, nodeID uui
 		return tx.Commit(ctx)
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE topology_nodes SET parent_id = NULL WHERE id = $1`, nodeID); err != nil {
+	if _, err := tx.Exec(ctx, sqlSetNodeParentNull, nodeID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -157,24 +158,9 @@ func (s *Service) ListDisconnected(ctx context.Context, subscriptionID uuid.UUID
 	// `slot` returned from workspaceClause.
 	wsClauseRoots, args, slot := workspaceClause(ctx, "topology_nodes", []any{subscriptionID})
 	wsClauseN := workspaceClauseAt("n", slot)
-	rows, err := s.vaPool.Query(ctx, `
-		WITH roots AS (
-		    SELECT id, sort_order,
-		           ROW_NUMBER() OVER (ORDER BY sort_order, created_at) AS rn
-		      FROM topology_nodes
-		     WHERE subscription_id = $1
-		       AND parent_id IS NULL
-		       AND archived_at IS NULL`+wsClauseRoots+`
-		)
-		SELECT n.id, n.workspace_id, n.subscription_id, n.parent_id, n.name, n.description, n.label_override,
-		       n.icon, n.colour, n.avatar_url,
-		       n.layout_mode, n.x, n.y,
-		       n.collapsed_default, n.sort_order, n.archived_at, n.created_at, n.updated_at
-		  FROM topology_nodes n
-		  JOIN roots r ON r.id = n.id
-		 WHERE r.rn > 1`+wsClauseN+`
-		 ORDER BY n.sort_order, n.created_at
-	`, args...)
+	rows, err := s.vaPool.Query(ctx,
+		fmt.Sprintf(sqlListDisconnectedRootsTemplate, wsClauseRoots, wsClauseN),
+		args...)
 	if err != nil {
 		return nil, err
 	}
@@ -218,20 +204,16 @@ type CommitStatus struct {
 // orgdesign no longer reads from mmff_vector for topology I/O.
 func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID) (CommitStatus, error) {
 	var st CommitStatus
-	err := s.vaPool.QueryRow(ctx, `
-		SELECT committed_at, committed_by
-		  FROM topology_commits
-		 WHERE subscription_id = $1
-	`, subscriptionID).Scan(&st.CommittedAt, &st.CommittedBy)
+	err := s.vaPool.QueryRow(ctx, sqlSelectCommitStatus, subscriptionID).
+		Scan(&st.CommittedAt, &st.CommittedBy)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return CommitStatus{}, err
 	}
 	// pgx.ErrNoRows is the "never committed" path — leave both fields nil.
 
 	var lastUpdate *time.Time
-	if err := s.vaPool.QueryRow(ctx, `
-		SELECT MAX(updated_at) FROM topology_nodes WHERE subscription_id = $1
-	`, subscriptionID).Scan(&lastUpdate); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err := s.vaPool.QueryRow(ctx, sqlSelectMaxNodeUpdatedAt, subscriptionID).
+		Scan(&lastUpdate); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return CommitStatus{}, err
 	}
 	st.LastNodeUpdate = lastUpdate
@@ -257,14 +239,7 @@ func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID,
 	if actorRole != "gadmin" {
 		return CommitStatus{}, ErrCommitForbidden
 	}
-	if _, err := s.vaPool.Exec(ctx, `
-		INSERT INTO topology_commits (subscription_id, committed_at, committed_by)
-		VALUES ($1, NOW(), $2)
-		ON CONFLICT (subscription_id) DO UPDATE
-		   SET committed_at = EXCLUDED.committed_at,
-		       committed_by = EXCLUDED.committed_by,
-		       updated_at   = NOW()
-	`, subscriptionID, actorID); err != nil {
+	if _, err := s.vaPool.Exec(ctx, sqlUpsertCommit, subscriptionID, actorID); err != nil {
 		return CommitStatus{}, err
 	}
 	return s.GetCommitStatus(ctx, subscriptionID)
@@ -283,12 +258,7 @@ func (s *Service) ResetCanvas(ctx context.Context, subscriptionID, actorID uuid.
 	if actorRole != "gadmin" {
 		return 0, ErrResetForbidden
 	}
-	tag, err := s.vaPool.Exec(ctx, `
-		UPDATE topology_nodes
-		   SET archived_at = NOW()
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-	`, subscriptionID)
+	tag, err := s.vaPool.Exec(ctx, sqlArchiveAllLiveNodes, subscriptionID)
 	if err != nil {
 		return 0, err
 	}

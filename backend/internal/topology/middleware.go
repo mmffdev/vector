@@ -137,14 +137,7 @@ func (s *Service) ClampMiddleware(next http.Handler) http.Handler {
 // must use TenantRootID instead.
 func (s *Service) tenantRootID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := s.vaPool.QueryRow(ctx, `
-		SELECT id FROM topology_nodes
-		 WHERE subscription_id = $1
-		   AND parent_id IS NULL
-		   AND archived_at IS NULL
-		 ORDER BY sort_order
-		 LIMIT 1
-	`, subscriptionID).Scan(&id)
+	err := s.vaPool.QueryRow(ctx, sqlSelectTenantRootID, subscriptionID).Scan(&id)
 	return id, err
 }
 
@@ -160,14 +153,8 @@ func (s *Service) tenantRootID(ctx context.Context, subscriptionID uuid.UUID) (u
 func (s *Service) TenantRootID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	wsClause, args, _ := workspaceClause(ctx, "topology_nodes", []any{subscriptionID})
 	var id uuid.UUID
-	err := s.vaPool.QueryRow(ctx, `
-		SELECT id FROM topology_nodes
-		 WHERE subscription_id = $1
-		   AND parent_id IS NULL
-		   AND archived_at IS NULL`+wsClause+`
-		 ORDER BY sort_order
-		 LIMIT 1
-	`, args...).Scan(&id)
+	err := s.vaPool.QueryRow(ctx, fmt.Sprintf(sqlSelectTenantRootIDWorkspaceClampedTemplate, wsClause),
+		args...).Scan(&id)
 	return id, err
 }
 
@@ -272,13 +259,7 @@ type PoolWorkspaceLookup struct {
 // FirstLiveWorkspace implements WorkspaceLookup.
 func (l PoolWorkspaceLookup) FirstLiveWorkspace(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := l.Pool.QueryRow(ctx, `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY created_at ASC
-		 LIMIT 1
-	`, subscriptionID).Scan(&id)
+	err := l.Pool.QueryRow(ctx, sqlSelectFirstLiveWorkspaceID, subscriptionID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, ErrNoWorkspace
 	}
@@ -288,13 +269,7 @@ func (l PoolWorkspaceLookup) FirstLiveWorkspace(ctx context.Context, subscriptio
 // ResolveSlug implements WorkspaceLookup.
 func (l PoolWorkspaceLookup) ResolveSlug(ctx context.Context, subscriptionID uuid.UUID, slug string) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := l.Pool.QueryRow(ctx, `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND slug = $2
-		   AND archived_at IS NULL
-		 LIMIT 1
-	`, subscriptionID, slug).Scan(&id)
+	err := l.Pool.QueryRow(ctx, sqlSelectWorkspaceIDBySlug, subscriptionID, slug).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, ErrWorkspaceNotFound
 	}
@@ -309,13 +284,8 @@ func (l PoolWorkspaceLookup) ResolveSlug(ctx context.Context, subscriptionID uui
 func (l PoolWorkspaceLookup) ResolveRef(ctx context.Context, subscriptionID uuid.UUID, ref string) (uuid.UUID, error) {
 	if id, err := uuid.Parse(ref); err == nil {
 		var got uuid.UUID
-		qerr := l.Pool.QueryRow(ctx, `
-			SELECT id FROM master_record_workspaces
-			 WHERE id              = $1
-			   AND subscription_id = $2
-			   AND archived_at IS NULL
-			 LIMIT 1
-		`, id, subscriptionID).Scan(&got)
+		qerr := l.Pool.QueryRow(ctx, sqlSelectWorkspaceIDByIDAndSubscription,
+			id, subscriptionID).Scan(&got)
 		if errors.Is(qerr, pgx.ErrNoRows) {
 			return uuid.Nil, ErrWorkspaceNotFound
 		}
@@ -327,14 +297,7 @@ func (l PoolWorkspaceLookup) ResolveRef(ctx context.Context, subscriptionID uuid
 // HasActiveRole implements WorkspaceLookup.
 func (l PoolWorkspaceLookup) HasActiveRole(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error) {
 	var ok bool
-	err := l.Pool.QueryRow(ctx, `
-		SELECT EXISTS(
-		    SELECT 1 FROM roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id      = $2
-		       AND revoked_at IS NULL
-		)
-	`, workspaceID, userID).Scan(&ok)
+	err := l.Pool.QueryRow(ctx, sqlExistsActiveWorkspaceRole, workspaceID, userID).Scan(&ok)
 	return ok, err
 }
 

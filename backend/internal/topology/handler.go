@@ -755,17 +755,8 @@ func (h *Handler) PreviewMove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var ancestor bool
-		err := h.Svc.vaPool.QueryRow(r.Context(), `
-			WITH RECURSIVE up AS (
-			    SELECT id, parent_id FROM topology_nodes WHERE id = $1 AND subscription_id = $3
-			    UNION ALL
-			    SELECT n.id, n.parent_id
-			      FROM topology_nodes n
-			      JOIN up ON up.parent_id = n.id
-			     WHERE n.subscription_id = $3
-			)
-			SELECT EXISTS(SELECT 1 FROM up WHERE id = $2)
-		`, *newParent, nodeID, u.SubscriptionID).Scan(&ancestor)
+		err := h.Svc.vaPool.QueryRow(r.Context(), sqlCycleCheckAncestor,
+			*newParent, nodeID, u.SubscriptionID).Scan(&ancestor)
 		if err != nil {
 			writeErr(w, r, err)
 			return

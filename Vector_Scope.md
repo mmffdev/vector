@@ -78,11 +78,17 @@ Drag the codebase from its current state (SQL scattered across 56 of 137 backend
 ### RF1.1 Phase 1 — Install drift-prevention lints BEFORE the rewrite
 
 - ✅ **RF1.1.1** ~~`lint:sql-in-sqlfile-only` — forbids raw SQL outside `sql.go` files. Seeded with wide allow-list from current state; shrinks one package per Phase 2 step.~~ Seed = 58 files. `[P1]`
+> Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - ✅ **RF1.1.2** ~~`lint:no-empty-route-block` — fails any `r.Route(...)` with no verb registrations inside.~~ `[P1]`
+> Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - ✅ **RF1.1.3** ~~`lint:exemption-ratchet` — `*_exempt.json` files cannot grow commit-to-commit.~~ Walks 11 ledgers, fails on any growth vs HEAD~1. `[P1]`
+> Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - ✅ **RF1.1.4** ~~`lint:deferral-needs-td-id` — commit messages containing deferral phrases must reference `TD-*`.~~ Standalone script; commit-msg hook installation deferred (RF1.1.7 follow-up). `[P1]`
+> Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - ✅ **RF1.1.5** ~~`lint:package-naming-convention` — fails any `*v\d+` package without a register entry naming the predecessor.~~ Updated to match §1.1.2 v-suffix-with-meaning rule (doc.go must explain predecessor). `[P1]`
+> Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - ✅ **RF1.1.6** ~~New CI workflow `tests.yml` running `npm test`, `npx tsc --noEmit`, `go test ./...`, `go vet ./...` on every push (not just PR-to-main).~~ Five jobs: frontend, backend, rf1-lints, existing-lints, plus existing api-contracts.yml unchanged. `[P1]`
+> Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - **RF1.1.7** Tighten `dev/scripts/check_callers.py` regex to skip files with `import { apiSite as api }` (closes TD-API-003). `[P2]`
 - 🔵 IN FLIGHT **RF1.1.8** Stop gate: all five lints pass against HEAD + user reviews lint configs. `[P1]`
 
@@ -90,7 +96,7 @@ Drag the codebase from its current state (SQL scattered across 56 of 137 backend
 
 Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape identical for all 20: create `sql.go`, move every SQL literal to a named const (`sqlVerbResource`), update functions, build, test, smoke, commit, shrink lint allow-list. Stop gate after EVERY package.
 
-- **RF1.2.1** `topology` (post-tonight; includes `orgdesign` → `topology` rename for Section-1 consistency). `[P1]`
+- **RF1.2.1** `topology` (post-tonight; includes `orgdesign` → `topology` rename for Section-1 consistency). `[P1]` ✅ done 2026-05-14 — `sql.go` created with 52 named consts (1 in permissions.go, 1 in handler.go, 6 in middleware.go, 7 in commands.go, 37 in service.go); allow-list shrunk 58 → 53. Pre-existing boundary violation in `portfoliomodels/dev_reset.go` captured as **TD-TOP-001**.
 - **RF1.2.2** `auth` — 21 SQL strings, single-DB, foundational. `[P1]`
 - **RF1.2.3** `users` — 15 SQL strings, single-DB. `[P1]`
 - **RF1.2.4** `roles` — 10 SQL strings, single-DB. `[P1]`
@@ -322,6 +328,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -379,6 +387,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -500,6 +509,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -569,6 +580,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -815,6 +827,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -923,6 +937,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -1057,6 +1072,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -1551,6 +1567,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -1569,6 +1586,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -1630,6 +1648,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   >
 - **B6.11** Bulk grant CSV import/export `[P4]`
   > Rally-validated bulk pattern (R054 §bulk): in-product UI does per-user grant only; bulk lives in CSV templates consumed by an external toolkit. Vector ships the same: a per-user CSV download on the B6.8 page (current grant set across the active workspace), plus a gadmin-only `/dev` panel that accepts a CSV (cols: `user_email,workspace_id,node_id,role`) and runs it through `Service.GrantRoleBatch`. Validation rules: caller is gadmin or workspace-admin; reject row if user doesn't exist or node is archived; report row-level success/fail in the response. Distinct from `RallyTools/Rally-User-Management` (Rally's external Ruby toolkit, R054 §sources [5]): Vector keeps the bulk path inside the app to avoid the "drives the web UI under the hood" hack Rally's toolkit had to adopt because the WSAPI never opened permission writes (R054 §CORRECTION C1).
@@ -1673,6 +1692,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -1744,6 +1766,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -1835,6 +1858,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -2277,6 +2301,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -2320,6 +2345,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -2345,6 +2371,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -2380,6 +2407,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -2443,6 +2471,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -2516,6 +2545,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -2554,6 +2584,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 > Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -2603,6 +2634,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -2711,6 +2743,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -2866,6 +2899,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
 > Commit `a8c9c3a` (2026-05-13): refactor(PLA-0044): rename rd-topbar → nav-top-bar — CSS naming convention [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -2950,6 +2984,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `4ab58a3` (2026-05-13): chore(PLA-0039): delete empty /samantha/v1 chi block from router [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -2967,6 +3002,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 > Commit `4411327` (2026-05-13): feat(PLA-0026/SA1): remove legacy vectorPool saga writes — VA is now sole write path [FE-POR-0003]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -3047,6 +3083,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b8d1e66` (2026-05-13): fix(PLA-0043): dev_tools nav — auto-pin pages, Research first, remove hardcoded gear link [FE-POR-0003.1]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
