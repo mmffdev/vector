@@ -86,26 +86,7 @@ func runReadoption(
 	//    ("__P" — library prefix is 3 alpha-numeric chars per
 	//    librarydb.Bundle). The partial unique index on
 	//    (workspace_id) WHERE is_placeholder=TRUE guarantees one row.
-	if err := vaTx.QueryRow(ctx, `
-		INSERT INTO artefact_types (
-			subscription_id, workspace_id,
-			scope, source,
-			name, prefix, description,
-			parent_type_id, allows_children, sort_order,
-			library_layer_id, library_layer_tag,
-			is_placeholder
-		) VALUES (
-			$1, $2,
-			'strategy', 'tenant',
-			'Pending re-classification', '__P',
-			'Re-adoption placeholder. Move every work item into the new model, then archive this bin.',
-			NULL, FALSE, 9999,
-			NULL, NULL,
-			TRUE
-		)
-		ON CONFLICT (workspace_id) WHERE is_placeholder = TRUE AND archived_at IS NULL
-			DO UPDATE SET updated_at = now()
-		RETURNING id`,
+	if err := vaTx.QueryRow(ctx, sqlUpsertReadoptPlaceholderType,
 		subscriptionID, workspaceID,
 	).Scan(&placeholderTypeID); err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: upsert placeholder artefact_type: %w", err)
@@ -120,28 +101,7 @@ func runReadoption(
 	if adoptedByUserID == uuid.Nil {
 		createdBy = nil
 	}
-	if err := vaTx.QueryRow(ctx, `
-		INSERT INTO artefacts (
-			subscription_id, workspace_id,
-			artefact_type_id,
-			number,
-			title, description,
-			parent_artefact_id, flow_state_id,
-			created_by_user_id, owned_by_user_id,
-			position
-		) VALUES (
-			$1, $2,
-			$3,
-			1,
-			'Pending re-classification',
-			'These work items were attached to the previous portfolio model. Move each into a layer of the new model, then archive this bin.',
-			NULL, NULL,
-			$4, $4,
-			0
-		)
-		ON CONFLICT (subscription_id, artefact_type_id, number) DO UPDATE
-			SET updated_at = now()
-		RETURNING id`,
+	if err := vaTx.QueryRow(ctx, sqlUpsertReadoptPlaceholderArtefact,
 		subscriptionID, workspaceID, placeholderTypeID, createdBy,
 	).Scan(&placeholderArtefactID); err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: upsert placeholder artefact: %w", err)
@@ -152,18 +112,7 @@ func runReadoption(
 	//    is NOT the placeholder we just inserted) onto the placeholder
 	//    artefact. Scoped to this workspace so a multi-workspace tenant
 	//    is isolated.
-	if _, err := vaTx.Exec(ctx, `
-		UPDATE artefacts AS a
-		   SET parent_artefact_id = $1,
-		       updated_at = now()
-		  FROM artefacts AS p
-		  JOIN artefact_types AS pt ON pt.id = p.artefact_type_id
-		 WHERE a.parent_artefact_id = p.id
-		   AND a.workspace_id = $2
-		   AND a.archived_at IS NULL
-		   AND pt.scope = 'strategy'
-		   AND pt.is_placeholder = FALSE
-		   AND pt.workspace_id = $2`,
+	if _, err := vaTx.Exec(ctx, sqlRepointOrphanWorkArtefactsToPlaceholder,
 		placeholderArtefactID, workspaceID,
 	); err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: repoint orphan work artefacts: %w", err)
@@ -173,14 +122,7 @@ func runReadoption(
 	//    step 3 these rows have zero referencing work artefacts. The
 	//    placeholder artefact is excluded by the is_placeholder=FALSE
 	//    join filter; the placeholder type is excluded the same way.
-	if _, err := vaTx.Exec(ctx, `
-		DELETE FROM artefacts AS a
-		 USING artefact_types AS t
-		 WHERE a.artefact_type_id = t.id
-		   AND a.workspace_id = $1
-		   AND t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.is_placeholder = FALSE`,
+	if _, err := vaTx.Exec(ctx, sqlDeleteOldStrategyArtefacts,
 		workspaceID,
 	); err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: delete old strategy artefacts: %w", err)
@@ -191,14 +133,7 @@ func runReadoption(
 	//    a topo-order delete is fragile in the presence of partial
 	//    failures. The next saga step (writeStrategyArtefactTypes)
 	//    reads `archived_at IS NULL` so the new chain mints cleanly.
-	if _, err := vaTx.Exec(ctx, `
-		UPDATE artefact_types
-		   SET archived_at = now(),
-		       updated_at  = now()
-		 WHERE workspace_id = $1
-		   AND scope = 'strategy'
-		   AND is_placeholder = FALSE
-		   AND archived_at IS NULL`,
+	if _, err := vaTx.Exec(ctx, sqlArchiveOldStrategyArtefactTypes,
 		workspaceID,
 	); err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: archive old strategy artefact_types: %w", err)

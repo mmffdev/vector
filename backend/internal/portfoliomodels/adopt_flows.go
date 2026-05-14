@@ -98,17 +98,7 @@ func writeFlowsAndStates(
 		// scanning flows can tell at a glance which artefact_type each
 		// flow belongs to. (Documented in the package doc.)
 		flowName := l.Name + " default flow"
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO flows (
-				artefact_type_id, name, description,
-				is_default, library_layer_id
-			) VALUES (
-				$1, $2, NULL,
-				TRUE, $3
-			)
-			ON CONFLICT (artefact_type_id)
-				WHERE is_default = TRUE AND archived_at IS NULL
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertDefaultFlowForLayer,
 			artefactTypeID, flowName, l.ID,
 		); err != nil {
 			return fmt.Errorf("insert default flow for layer %q: %w", l.Name, err)
@@ -141,16 +131,7 @@ func writeFlowsAndStates(
 			continue
 		}
 		kind := classifyWorkflowKind(wf)
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO flow_states (
-				flow_id, name, kind, colour, sort_order, is_initial,
-				library_workflow_id
-			) VALUES (
-				$1, $2, $3, $4, $5, $6, $7
-			)
-			ON CONFLICT (flow_id, library_workflow_id)
-				WHERE archived_at IS NULL AND library_workflow_id IS NOT NULL
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertFlowStateForWorkflow,
 			flowID, wf.StateLabel, kind, wf.Colour, wf.SortOrder, wf.IsInitial,
 			wf.ID,
 		); err != nil {
@@ -208,14 +189,7 @@ func writeFlowTransitions(
 			return fmt.Errorf("cross-flow transition %s→%s (flows %s vs %s)",
 				fromStateID, toStateID, fromFlow, toFlow)
 		}
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO flow_transitions (
-				flow_id, from_state_id, to_state_id, required_permission
-			) VALUES (
-				$1, $2, $3, NULL
-			)
-			ON CONFLICT (flow_id, from_state_id, to_state_id)
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertFlowTransitionForLibrary,
 			fromFlow, fromStateID, toStateID,
 		); err != nil {
 			return fmt.Errorf("insert flow_transition %s→%s: %w", fromStateID, toStateID, err)
@@ -236,19 +210,7 @@ func loadFlowStateMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT fs.library_workflow_id, fs.id
-		  FROM flow_states fs
-		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND fs.archived_at IS NULL
-		   AND fs.library_workflow_id IS NOT NULL`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectFlowStateLibMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load flow_state map: %w", err)
 	}
@@ -273,17 +235,7 @@ func loadDefaultFlowMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT f.artefact_type_id, f.id
-		  FROM flows f
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND f.is_default = TRUE`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectDefaultFlowMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load default flow map: %w", err)
 	}
@@ -308,18 +260,7 @@ func loadFlowStateFlowMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT fs.id, fs.flow_id
-		  FROM flow_states fs
-		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND fs.archived_at IS NULL`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectFlowStateFlowMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load flow_state→flow map: %w", err)
 	}

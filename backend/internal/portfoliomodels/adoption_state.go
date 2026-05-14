@@ -109,13 +109,7 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 	// workspace). Multi-workspace subscriptions are out of scope for
 	// the cutover — adoption is per-tenant today.
 	var workspaceID uuid.UUID
-	err := h.VectorPool.QueryRow(r.Context(), `
-		SELECT id
-		  FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY id
-		 LIMIT 1`,
+	err := h.VectorPool.QueryRow(r.Context(), sqlSelectFirstLiveWorkspaceForSubscription,
 		u.SubscriptionID,
 	).Scan(&workspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -158,23 +152,7 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 		adoptedAt       *time.Time
 		adoptedByUserID *uuid.UUID
 	)
-	err = h.VAPool.QueryRow(r.Context(), `
-		SELECT
-			(mrp.workspace_id IS NOT NULL) AS has_master,
-			EXISTS (
-				SELECT 1
-				  FROM artefact_types at
-				 WHERE at.workspace_id = $1
-				   AND at.scope = 'strategy'
-				   AND at.archived_at IS NULL
-			) AS has_strategy_type,
-			mrp.model_id,
-			mrp.adopted_at,
-			mrp.adopted_by_user_id
-		  FROM (SELECT $1::uuid AS workspace_id) k
-		  LEFT JOIN master_record_portfolio mrp
-		    ON mrp.workspace_id = k.workspace_id
-		   AND mrp.archived_at IS NULL`,
+	err = h.VAPool.QueryRow(r.Context(), sqlSelectAdoptionStateForWorkspace,
 		workspaceID,
 	).Scan(&hasMaster, &hasStrategyType, &modelID, &adoptedAt, &adoptedByUserID)
 	if err != nil {

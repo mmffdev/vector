@@ -58,10 +58,11 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 //
 // Cleared (mmff_vector):
 //   - master_record_workspaces + roles_workspaces (all workspaces)
-//   - subscription_portfolio_model_state
-//   - adoption mirror tables (source_library_id rows only)
 //   - o_flow_tenant overrides
 //   (mmff_vector.master_record_tenant is vestigial since M2 — not reset here)
+//
+// Cleared (vector_artefacts):
+//   - artefact_adoption_state (per-workspace adoption state)
 //
 // Cleared (vector_artefacts):
 //   - artefact_field_values, artefacts, artefact_number_sequence
@@ -107,24 +108,18 @@ func (h *DevResetHandler) MasterReset(w http.ResponseWriter, r *http.Request) {
 
 // ─── private ─────────────────────────────────────────────────────────────────
 
-// resetAdoptionTables — legacy adoption-only clear (used by ResetAdoptionState).
-// Each delete targets rows with source_library_id IS NOT NULL to avoid
-// touching hand-authored subscription data.
+// resetAdoptionTables — adoption-only clear (used by ResetAdoptionState).
+//
+// PLA-0023 cutover (2026-05-13): all six legacy mmff_vector mirror tables
+// have been dropped. Adoption state now lives exclusively on
+// vector_artefacts.artefact_adoption_state, so this reset is a single VA
+// DELETE. No-op when VAPool is unavailable.
 func (h *DevResetHandler) resetAdoptionTables(ctx context.Context, subscriptionID uuid.UUID) error {
-	steps := []string{
-		`DELETE FROM subscription_artifacts           WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_terminology         WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_workflow_transitions WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_workflows           WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM obj_strategy_types_layers        WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_portfolio_model_state WHERE subscription_id = $1`,
+	if h.VAPool == nil {
+		return nil
 	}
-	for _, sql := range steps {
-		if _, err := h.VectorPool.Exec(ctx, sql, subscriptionID); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := h.VAPool.Exec(ctx, sqlDeleteAllAdoptionStateForSubscription, subscriptionID)
+	return err
 }
 
 // masterResetVA clears and re-seeds vector_artefacts for the subscription.
@@ -140,106 +135,78 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
+	// 0. Adoption state — must clear before artefact_types since the
+	//    PLA-0023 cutover replaced the legacy mmff_vector mirror table.
+	if _, err = tx.Exec(ctx, sqlDeleteAllAdoptionStateForSubscription, subscriptionID); err != nil {
+		return fmt.Errorf("artefact_adoption_state: %w", err)
+	}
+
 	// 1. Artefact field values (child — delete first).
-	if _, err = tx.Exec(ctx, `DELETE FROM artefact_field_values WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllArtefactFieldValuesForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("artefact_field_values: %w", err)
 	}
 
 	// 2. Artefacts.
-	if _, err = tx.Exec(ctx, `DELETE FROM artefacts WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllArtefactsForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("artefacts: %w", err)
 	}
 
 	// 3. Number sequence counters.
-	if _, err = tx.Exec(ctx, `DELETE FROM artefact_number_sequence WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteArtefactNumberSequenceForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("artefact_number_sequence: %w", err)
 	}
 
 	// 4. Tenant-authored artefact types (source='tenant' only).
-	if _, err = tx.Exec(ctx, `DELETE FROM artefact_types WHERE subscription_id = $1 AND source = 'tenant'`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteTenantArtefactTypesForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("artefact_types: %w", err)
 	}
 
 	// 5. Timeboxes.
-	if _, err = tx.Exec(ctx, `DELETE FROM timebox_sprints WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllTimeboxSprintsForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("timebox_sprints: %w", err)
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM timebox_releases WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllTimeboxReleasesForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("timebox_releases: %w", err)
 	}
 
 	// 6. Topology — clear role grants and view state first, then detach
 	//    parent_id self-references before deleting nodes (avoids ON DELETE
 	//    RESTRICT firing on the parent_id FK during a cascading delete).
-	if _, err = tx.Exec(ctx, `DELETE FROM topology_role_grants WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyRoleGrantsForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("topology_role_grants: %w", err)
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM topology_view_state WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyViewStateForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("topology_view_state: %w", err)
 	}
-	if _, err = tx.Exec(ctx, `UPDATE topology_nodes SET parent_id = NULL WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDetachTopologyParentsForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("topology_nodes parent detach: %w", err)
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM topology_nodes WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyNodesForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("topology_nodes: %w", err)
 	}
 
 	// 7. Master record portfolio (adoption snapshot).
-	if _, err = tx.Exec(ctx, `DELETE FROM master_record_portfolio WHERE workspace_id = $1`, devWorkspaceID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteMasterRecordPortfolioForWorkspace, devWorkspaceID); err != nil {
 		return fmt.Errorf("master_record_portfolio: %w", err)
 	}
 
 	// 8. Upsert master_record_tenant with ACME Bank testbed identity.
-	if _, err = tx.Exec(ctx, `
-		INSERT INTO master_record_tenant (
-			workspace_id,
-			tenant_name,
-			tenant_description,
-			tenant_owner_user_id,
-			tenant_data_region,
-			tenant_timezone,
-			tenant_date_format,
-			tenant_datetime_format,
-			tenant_workdays,
-			tenant_week_start,
-			tenant_rank_method,
-			tenant_build_changeset_tracking,
-			tenant_primary_contact_email
-		) VALUES (
-			$1, 'ACME Bank', 'MMFFDev Testbed', $2,
-			'euw2', 'Europe/London', 'DD/MM/YYYY', 'DD/MM/YYYY HH:mm',
-			ARRAY['mon','tue','wed','thu','fri']::text[],
-			'mon', 'manual', FALSE, 'cookra@me.com'
-		)
-		ON CONFLICT (workspace_id) DO UPDATE
-		   SET tenant_name                     = EXCLUDED.tenant_name,
-		       tenant_description              = EXCLUDED.tenant_description,
-		       tenant_owner_user_id            = EXCLUDED.tenant_owner_user_id,
-		       tenant_data_region              = EXCLUDED.tenant_data_region,
-		       tenant_timezone                 = EXCLUDED.tenant_timezone,
-		       tenant_date_format              = EXCLUDED.tenant_date_format,
-		       tenant_datetime_format          = EXCLUDED.tenant_datetime_format,
-		       tenant_workdays                 = EXCLUDED.tenant_workdays,
-		       tenant_week_start               = EXCLUDED.tenant_week_start,
-		       tenant_rank_method              = EXCLUDED.tenant_rank_method,
-		       tenant_build_changeset_tracking = EXCLUDED.tenant_build_changeset_tracking,
-		       tenant_primary_contact_email    = EXCLUDED.tenant_primary_contact_email,
-		       tenant_updated_at               = now()
-	`, devWorkspaceID, ownerUserID); err != nil {
+	if _, err = tx.Exec(ctx, sqlUpsertTestbedTenantRecord, devWorkspaceID, ownerUserID); err != nil {
 		return fmt.Errorf("master_record_tenant upsert: %w", err)
 	}
 
 	// 9. Seed root topology node "ACME Bank".
-	if _, err = tx.Exec(ctx, `
-		INSERT INTO topology_nodes (
-			id, workspace_id, subscription_id, parent_id,
-			name, description, layout_mode, collapsed_default, sort_order
-		) VALUES (
-			gen_random_uuid(), $1, $2, NULL,
-			'ACME Bank', '', 'auto-horizontal', FALSE, 0
-		)
-	`, devWorkspaceID, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlInsertTestbedRootTopologyNode, devWorkspaceID, subscriptionID); err != nil {
 		return fmt.Errorf("topology root node: %w", err)
+	}
+
+	// 10. Re-seed starter strategy artefacts via the SQL function installed by
+	//     db/artefacts_schema/052_seed_dev_strategy_artefacts.sql. Safe no-op
+	//     if the five strategy artefact_types don't exist (e.g. before the
+	//     user has adopted a portfolio model). Idempotent — the seed uses
+	//     ON CONFLICT against the unique (subscription_id, type, number) index.
+	if _, err = tx.Exec(ctx, sqlSeedDevStrategyArtefactsFn, subscriptionID, devWorkspaceID); err != nil {
+		return fmt.Errorf("seed_dev_strategy_artefacts: %w", err)
 	}
 
 	return tx.Commit(ctx)
@@ -255,32 +222,17 @@ func (h *DevResetHandler) masterResetVector(ctx context.Context, subscriptionID 
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// Adoption mirror tables (FK-safe order).
-	steps := []string{
-		`DELETE FROM subscription_workflow_transitions WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_workflows           WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM obj_strategy_types_layers        WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_terminology         WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_artifacts           WHERE subscription_id = $1 AND source_library_id IS NOT NULL`,
-		`DELETE FROM subscription_portfolio_model_state WHERE subscription_id = $1`,
-	}
-	for _, sql := range steps {
-		if _, err = tx.Exec(ctx, sql, subscriptionID); err != nil {
-			return fmt.Errorf("%s: %w", sql[:40], err)
-		}
-	}
+	// PLA-0023 cutover (2026-05-13): legacy adoption mirror tables on
+	// mmff_vector are dropped. Adoption state is cleared via the VA path
+	// in masterResetVA above (DELETE FROM artefact_adoption_state). This
+	// tx now only handles workspaces + role grants on mmff_vector.
 
 	// Workspace role grants before workspaces (FK child).
-	if _, err = tx.Exec(ctx, `
-		DELETE FROM roles_workspaces
-		 WHERE workspace_id IN (
-		     SELECT id FROM master_record_workspaces WHERE subscription_id = $1
-		 )
-	`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteRolesWorkspacesForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("roles_workspaces: %w", err)
 	}
 
-	if _, err = tx.Exec(ctx, `DELETE FROM master_record_workspaces WHERE subscription_id = $1`, subscriptionID); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteAllWorkspacesForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("master_record_workspaces: %w", err)
 	}
 

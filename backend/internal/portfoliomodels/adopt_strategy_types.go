@@ -52,23 +52,7 @@ func writeStrategyArtefactTypes(
 		if l.ArchivedAt != nil {
 			continue
 		}
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO artefact_types (
-				subscription_id, workspace_id,
-				scope, source,
-				name, prefix, description,
-				parent_type_id, allows_children, sort_order,
-				library_layer_id, library_layer_tag
-			) VALUES (
-				$1, $2,
-				'strategy', 'tenant',
-				$3, $4, $5,
-				NULL, $6, $7,
-				$8, $9
-			)
-			ON CONFLICT (workspace_id, scope, prefix)
-				WHERE archived_at IS NULL
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertStrategyArtefactType,
 			subscriptionID, workspaceID,
 			l.Name, l.Tag, l.DescriptionMD,
 			l.AllowsChildren, l.SortOrder,
@@ -102,13 +86,7 @@ func writeStrategyArtefactTypes(
 			// be set; nothing to do.
 			continue
 		}
-		if _, err := vaTx.Exec(ctx, `
-			UPDATE artefact_types
-			   SET parent_type_id = $1
-			 WHERE id = $2
-			   AND workspace_id = $3
-			   AND scope = 'strategy'
-			   AND archived_at IS NULL`,
+		if _, err := vaTx.Exec(ctx, sqlUpdateStrategyArtefactTypeParent,
 			mirParent, mirSelf, workspaceID,
 		); err != nil {
 			return fmt.Errorf("set parent for strategy artefact_type %q: %w", l.Name, err)
@@ -126,15 +104,7 @@ func loadStrategyTypeMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT library_layer_id, id
-		  FROM artefact_types
-		 WHERE workspace_id = $1
-		   AND scope = 'strategy'
-		   AND archived_at IS NULL
-		   AND library_layer_id IS NOT NULL`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectStrategyArtefactTypeMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load strategy artefact_type map: %w", err)
 	}
