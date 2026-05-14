@@ -121,15 +121,8 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 	claimCtx, cancel := context.WithTimeout(ctx, claimTimeout)
 	defer cancel()
 
-	err = tx.QueryRow(claimCtx, `
-		SELECT id, artefact_id
-		FROM artefacts_search_outbox
-		WHERE claimed_at IS NULL
-		  AND attempts < $1
-		ORDER BY enqueued_at
-		LIMIT 1
-		FOR UPDATE SKIP LOCKED`, maxAttempts,
-	).Scan(&rowID, &artefactID)
+	err = tx.QueryRow(claimCtx, sqlClaimNextOutboxRow, maxAttempts).
+		Scan(&rowID, &artefactID)
 	if err != nil {
 		if rowID == 0 {
 			tx.Rollback(ctx)
@@ -142,9 +135,7 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 	}
 
 	// Mark claimed.
-	if _, err := tx.Exec(claimCtx, `
-		UPDATE artefacts_search_outbox SET claimed_at = NOW()
-		WHERE id = $1`, rowID); err != nil {
+	if _, err := tx.Exec(claimCtx, sqlMarkOutboxClaimed, rowID); err != nil {
 		return false, err
 	}
 	if err := tx.Commit(claimCtx); err != nil {
@@ -160,7 +151,7 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 	}
 
 	// Success — delete the outbox row.
-	if _, err := w.pool.Exec(ctx, `DELETE FROM artefacts_search_outbox WHERE id = $1`, rowID); err != nil {
+	if _, err := w.pool.Exec(ctx, sqlDeleteOutboxRow, rowID); err != nil {
 		log.Printf("searchworker: failed to delete outbox row %d: %v", rowID, err)
 	}
 	return true, nil
@@ -171,11 +162,8 @@ func (w *Worker) claimAndProcess(ctx context.Context) (bool, error) {
 func (w *Worker) process(ctx context.Context, rowID int64, artefactID string) error {
 	var title string
 	var descPtr *string
-	err := w.pool.QueryRow(ctx, `
-		SELECT title, description
-		FROM artefacts WHERE id = $1 AND archived_at IS NULL`,
-		artefactID,
-	).Scan(&title, &descPtr)
+	err := w.pool.QueryRow(ctx, sqlSelectArtefactTitleAndDescription, artefactID).
+		Scan(&title, &descPtr)
 	if err != nil {
 		return fmt.Errorf("fetch artefact: %w", err)
 	}
@@ -187,9 +175,7 @@ func (w *Worker) process(ctx context.Context, rowID int64, artefactID string) er
 
 	// Recompute TSVECTOR in Postgres.
 	var tsvector string
-	if err := w.pool.QueryRow(ctx,
-		`SELECT to_tsvector('english', $1)::text`, combined,
-	).Scan(&tsvector); err != nil {
+	if err := w.pool.QueryRow(ctx, sqlComputeTsvector, combined).Scan(&tsvector); err != nil {
 		return fmt.Errorf("tsvector: %w", err)
 	}
 
@@ -200,11 +186,7 @@ func (w *Worker) process(ctx context.Context, rowID int64, artefactID string) er
 	}
 
 	// Write both back.
-	_, err = w.pool.Exec(ctx, `
-		UPDATE artefacts
-		SET search_index       = $2::tsvector,
-		    content_embedding  = $3::vector
-		WHERE id = $1`,
+	_, err = w.pool.Exec(ctx, sqlUpdateArtefactSearchAndEmbedding,
 		artefactID, tsvector, pgvectorLiteral(embedding))
 	if err != nil {
 		return fmt.Errorf("write back: %w", err)
@@ -250,12 +232,7 @@ func (w *Worker) embed(ctx context.Context, text string) ([]float32, error) {
 // recordFailure increments attempts and records the error on the outbox row,
 // and clears claimed_at so it will be retried on the next poll.
 func (w *Worker) recordFailure(ctx context.Context, rowID int64, errMsg string) {
-	_, err := w.pool.Exec(ctx, `
-		UPDATE artefacts_search_outbox
-		SET attempts   = attempts + 1,
-		    last_error = $2,
-		    claimed_at = NULL
-		WHERE id = $1`, rowID, errMsg)
+	_, err := w.pool.Exec(ctx, sqlRecordOutboxFailure, rowID, errMsg)
 	if err != nil {
 		log.Printf("searchworker: failed to record failure for row %d: %v", rowID, err)
 	}

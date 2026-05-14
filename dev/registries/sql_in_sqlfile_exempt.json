@@ -26,7 +26,6 @@
     "backend/internal/ranking/position.go",
     "backend/internal/ranking/service.go",
     "backend/internal/search/service.go",
-    "backend/internal/searchworker/worker.go",
     "backend/internal/usertaborder/service.go"
   ]
 }
