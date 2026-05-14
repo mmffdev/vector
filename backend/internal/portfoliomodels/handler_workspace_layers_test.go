@@ -20,7 +20,7 @@ import (
 // Same skip-on-unreachable discipline as the rest of the package
 // (cluster down → t.Skip, never fail). Hits the live mmff_vector pool
 // (testVectorPoolPadmin) for the workspace + workspace_roles auth check
-// and the live vector_artefacts pool (vaTestPool) for artefact_types.
+// and the live vector_artefacts pool (vaTestPool) for artefacts_types.
 //
 // Cases:
 //   - 401 when no user in context.
@@ -142,12 +142,12 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 
 	defer func() {
 		_, _ = va.Exec(ctx,
-			`DELETE FROM artefact_types WHERE workspace_id = $1 AND prefix = $2`,
+			`DELETE FROM artefacts_types WHERE workspace_id = $1 AND prefix = $2`,
 			wsID, prefix)
 	}()
 
 	if _, err := va.Exec(ctx, `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -162,7 +162,7 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 		)`,
 		subID, wsID, name, prefix, "test description", libLayerID,
 	); err != nil {
-		t.Skipf("cannot seed artefact_types row (schema not deployed?): %v", err)
+		t.Skipf("cannot seed artefacts_types row (schema not deployed?): %v", err)
 	}
 
 	// Faux gadmin in the workspace's tenant. The handler's gadmin

@@ -202,7 +202,7 @@ func writeFlowTransitions(
 // live flow_state in this workspace's strategy flows. Used by
 // writeFlowTransitions to translate library uuids into VA uuids.
 //
-// Joins flows_states → flows → artefact_types so the workspace_id filter
+// Joins flows_states → flows → artefacts_types so the workspace_id filter
 // can be applied. flows_states itself is workspace-agnostic (its parent
 // flow scopes it).
 func loadFlowStateMap(
@@ -227,7 +227,7 @@ func loadFlowStateMap(
 }
 
 // loadDefaultFlowMap returns artefact_type_id → flow_id for every live
-// default flow in this workspace's strategy artefact_types. Used by
+// default flow in this workspace's strategy artefacts_types. Used by
 // writeFlowsAndStates Phase 2 to resolve flow_id from
 // (workflow.LayerID → artefact_type_id).
 func loadDefaultFlowMap(

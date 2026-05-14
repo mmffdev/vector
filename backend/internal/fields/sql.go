@@ -2,7 +2,7 @@
 //
 // PLA-0048 / RF1.2.13. Single-DB-per-call package — vectorPool reads
 // mmff_vector (workspaces + role grants); artefactsPool reads
-// vector_artefacts (artefact_field_library + admit table).
+// vector_artefacts (artefacts_fields_library + admit table).
 package fields
 
 // ── service.go ──────────────────────────────────────────────────────────────
@@ -21,10 +21,10 @@ const sqlExistsActiveWorkspaceMembership = `
 		)
 	`
 
-// sqlLoadAdmittedFields returns every artefact_field_library row
+// sqlLoadAdmittedFields returns every artefacts_fields_library row
 // admitted into a (workspace, tenant) pair. Admission rules: global
 // scope always admitted; tenant scope when subscription_id matches;
-// workspace scope when there's a matching artefact_workspace_fields row.
+// workspace scope when there's a matching workspaces_fields row.
 const sqlLoadAdmittedFields = `
 		SELECT
 		    fl.id,
@@ -38,13 +38,13 @@ const sqlLoadAdmittedFields = `
 		    fl.scope,
 		    fl.created_at,
 		    fl.updated_at
-		  FROM artefact_field_library fl
+		  FROM artefacts_fields_library fl
 		 WHERE fl.archived_at IS NULL
 		   AND (
 		         fl.scope = 'global'
 		      OR (fl.scope = 'tenant'    AND fl.subscription_id = $2)
 		      OR (fl.scope = 'workspace' AND fl.subscription_id = $2 AND EXISTS (
-		             SELECT 1 FROM artefact_workspace_fields awf
+		             SELECT 1 FROM workspaces_fields awf
 		              WHERE awf.workspace_id = $1
 		                AND awf.field_library_id = fl.id
 		         ))
@@ -58,7 +58,7 @@ const sqlLoadAdmittedFields = `
 // the Resolver needs to decide admission for a single field.
 const sqlSelectFieldLibraryRow = `
 		SELECT scope, subscription_id
-		  FROM artefact_field_library
+		  FROM artefacts_fields_library
 		 WHERE id = $1 AND archived_at IS NULL
 	`
 
@@ -66,7 +66,7 @@ const sqlSelectFieldLibraryRow = `
 // workspace-scope resolver path.
 const sqlExistsWorkspaceFieldAdmit = `
 		SELECT EXISTS (
-			SELECT 1 FROM artefact_workspace_fields
+			SELECT 1 FROM workspaces_fields
 			 WHERE workspace_id = $1 AND field_library_id = $2
 		)
 	`

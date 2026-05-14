@@ -9,7 +9,7 @@ package fields
 //     the workspace existence + membership lookups, and they short-circuit
 //     to an empty fields slice when the artefacts pool is nil.
 //
-//  2. Integration test that seeds three artefact_field_library rows
+//  2. Integration test that seeds three artefacts_fields_library rows
 //     (one per scope) plus one whitelist row, hits the live handler,
 //     and asserts the admit/deny matrix from R047 §5 maps end-to-end
 //     to the JSON response. Skips on tunnel-down.
@@ -352,7 +352,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	// Seed: global row (subscription_id NULL).
 	var globalID, tenantID, workspaceID, otherTenantID uuid.UUID
 	err := artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES (NULL, $1, 'H Global', 'textbox', 'global')
 		RETURNING id`,
@@ -363,7 +363,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	}
 	// Tenant row matching caller's tenant.
 	err = artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'H Tenant', 'textbox', 'tenant')
 		RETURNING id`,
@@ -374,7 +374,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	}
 	// Tenant row in some OTHER tenant — must NOT appear.
 	err = artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'H Other Tenant', 'textbox', 'tenant')
 		RETURNING id`,
@@ -386,7 +386,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	// Workspace row in caller's tenant + whitelist row admitting it
 	// into the caller's workspace.
 	err = artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'H Workspace', 'textbox', 'workspace')
 		RETURNING id`,
@@ -396,14 +396,14 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 		t.Fatalf("seed workspace: %v", err)
 	}
 	if _, err := artPool.Exec(ctx,
-		`INSERT INTO artefact_workspace_fields (workspace_id, field_library_id) VALUES ($1, $2)`,
+		`INSERT INTO workspaces_fields (workspace_id, field_library_id) VALUES ($1, $2)`,
 		wsID, workspaceID,
 	); err != nil {
 		t.Fatalf("seed whitelist: %v", err)
 	}
 	t.Cleanup(func() {
 		_, _ = artPool.Exec(ctx,
-			`DELETE FROM artefact_field_library WHERE id = ANY($1)`,
+			`DELETE FROM artefacts_fields_library WHERE id = ANY($1)`,
 			[]uuid.UUID{globalID, tenantID, workspaceID, otherTenantID},
 		)
 	})

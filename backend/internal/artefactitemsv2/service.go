@@ -26,7 +26,7 @@ type TopologyScopeResolver interface {
 // vectorArtefactsPool reads from vector_artefacts; mainPool reads from
 // mmff_vector (owner decoration cross-DB lookup). Either may be nil.
 //
-// scope discriminates which `artefact_types.scope` value this Service
+// scope discriminates which `artefacts_types.scope` value this Service
 // instance serves. main.go registers two instances: scope="work" for
 // /work-items, scope="strategy" for /portfolio-items. The value is
 // embedded in every SQL clause via `at.scope = $N` parameter binding —
@@ -40,15 +40,15 @@ type Service struct {
 }
 
 // NewService creates a Service backed by the given pools, scoped to the
-// given `artefact_types.scope` value (typically "work" or "strategy").
+// given `artefacts_types.scope` value (typically "work" or "strategy").
 // vaPool may be nil when VECTOR_ARTEFACTS_DB_URL is unset; mainPool may be
 // nil (owner decoration is skipped and Owner stays nil on every item).
-// scope must be a non-empty literal known in `artefact_types.scope`.
+// scope must be a non-empty literal known in `artefacts_types.scope`.
 func NewService(vaPool, mainPool *pgxpool.Pool, scope string) *Service {
 	return &Service{vectorArtefactsPool: vaPool, mainPool: mainPool, scope: scope}
 }
 
-// Scope returns the artefact_types.scope value this Service is bound to.
+// Scope returns the artefacts_types.scope value this Service is bound to.
 // Used by tests and diagnostics.
 func (s *Service) Scope() string { return s.scope }
 
@@ -249,7 +249,7 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 // Optional sprintID narrows counts to items in that sprint.
 //
 // B21 (PLA-0037): the by-type bucket map is populated data-driven from
-// artefact_types.name so portfolio/strategy scopes (which have no
+// artefacts_types.name so portfolio/strategy scopes (which have no
 // epic/story/task/defect static fields) still get a useful summary. The
 // fixed Epics/Stories/Tasks/Defects fields remain populated from ByType
 // for back-compat with the v2 work-items page header.
@@ -336,7 +336,7 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) 
 }
 
 // CreateWorkItem inserts a new artefact row in vector_artefacts.
-// number is allocated atomically via artefact_number_sequence.
+// number is allocated atomically via artefacts_number_sequences.
 // The default flow_state is the is_initial=true state for the subscription's
 // work artefact type default flow.
 func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, in CreateWorkItemInput) (*WorkItem, error) {
@@ -683,7 +683,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 	return result, nil
 }
 
-// ListFieldValues returns all artefact_field_values for an artefact,
+// ListFieldValues returns all artefacts_fields_values for an artefact,
 // enforcing subscription isolation by first verifying the artefact exists.
 func (s *Service) ListFieldValues(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID) ([]FieldValue, error) {
 	if s.vectorArtefactsPool == nil {

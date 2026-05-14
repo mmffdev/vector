@@ -119,7 +119,7 @@ func mainPool(t *testing.T) *pgxpool.Pool {
 // ── seed helpers ──────────────────────────────────────────────────────────────
 
 // pickTestSubscription returns a subscription_id that has all four work
-// artefact_types (epic/story/task/defect) in vector_artefacts.
+// artefacts_types (epic/story/task/defect) in vector_artefacts.
 // Uses a well-known fixture sub if present; falls back to any sub with ≥4 types.
 func pickTestSubscription(t *testing.T, va *pgxpool.Pool) uuid.UUID {
 	t.Helper()
@@ -128,7 +128,7 @@ func pickTestSubscription(t *testing.T, va *pgxpool.Pool) uuid.UUID {
 	const fixtureSub = "4dbcef71-f9d2-48e5-b19c-1bafc1767c67"
 	var n int
 	_ = va.QueryRow(ctx,
-		`SELECT COUNT(*) FROM artefact_types WHERE subscription_id=$1 AND scope='work' AND archived_at IS NULL`,
+		`SELECT COUNT(*) FROM artefacts_types WHERE subscription_id=$1 AND scope='work' AND archived_at IS NULL`,
 		fixtureSub).Scan(&n)
 	if n >= 4 {
 		id, _ := uuid.Parse(fixtureSub)
@@ -138,14 +138,14 @@ func pickTestSubscription(t *testing.T, va *pgxpool.Pool) uuid.UUID {
 	// Fall back: pick any sub with all four types.
 	var subID uuid.UUID
 	err := va.QueryRow(ctx, `
-		SELECT subscription_id FROM artefact_types
+		SELECT subscription_id FROM artefacts_types
 		WHERE scope='work' AND archived_at IS NULL
 		GROUP BY subscription_id
 		HAVING COUNT(*) >= 4
 		LIMIT 1`,
 	).Scan(&subID)
 	if err != nil {
-		t.Skipf("no subscription with ≥4 work artefact_types in vector_artefacts: %v", err)
+		t.Skipf("no subscription with ≥4 work artefacts_types in vector_artefacts: %v", err)
 	}
 	return subID
 }
@@ -159,7 +159,7 @@ func defaultFlowStateIDForType(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, 
 	err := va.QueryRow(ctx, `
 		SELECT fs.id FROM flows_states fs
 		JOIN flows f ON f.id = fs.flow_id
-		JOIN artefact_types at ON at.id = f.artefact_type_id
+		JOIN artefacts_types at ON at.id = f.artefact_type_id
 		WHERE at.subscription_id = $1
 		  AND lower(at.name) = $2
 		  AND at.scope = 'work'
@@ -185,7 +185,7 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 
 	var atID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT id FROM artefact_types
+		SELECT id FROM artefacts_types
 		WHERE subscription_id=$1 AND scope='work' AND lower(name)=$2 AND archived_at IS NULL
 		LIMIT 1`, subID, itemType,
 	).Scan(&atID); err != nil {
@@ -205,10 +205,10 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 
 	var num int64
 	_ = va.QueryRow(ctx, `
-		INSERT INTO artefact_number_sequence (subscription_id, artefact_type_id, next_num)
+		INSERT INTO artefacts_number_sequences (subscription_id, artefact_type_id, next_num)
 		VALUES ($1,$2,2)
 		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
-			SET next_num = artefact_number_sequence.next_num + 1
+			SET next_num = artefacts_number_sequences.next_num + 1
 		RETURNING next_num - 1`,
 		subID, atID,
 	).Scan(&num)
@@ -864,18 +864,18 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 	sub := pickTestSubscription(t, va)
 	ctx := context.Background()
 
-	// Probe: does this subscription have any strategy-scoped artefact_types?
+	// Probe: does this subscription have any strategy-scoped artefacts_types?
 	// If not, the test reduces to a vacuous truth — skip rather than mislead.
 	var strategyTypeCount int
 	if err := va.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefact_types
+		SELECT COUNT(*) FROM artefacts_types
 		 WHERE subscription_id=$1 AND scope='strategy' AND archived_at IS NULL`,
 		sub,
 	).Scan(&strategyTypeCount); err != nil {
-		t.Skipf("cannot probe strategy artefact_types: %v", err)
+		t.Skipf("cannot probe strategy artefacts_types: %v", err)
 	}
 	if strategyTypeCount == 0 {
-		t.Skip("subscription has no strategy artefact_types — vacuous; seed required")
+		t.Skip("subscription has no strategy artefacts_types — vacuous; seed required")
 	}
 
 	workSvc := artefactitemsv2.NewService(va, nil, "work")
@@ -887,11 +887,11 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 		t.Fatalf("workSvc.ListWorkItems: %v", err)
 	}
 	for _, it := range workItems {
-		// item_type carries the artefact_types.name; assert this row's type
+		// item_type carries the artefacts_types.name; assert this row's type
 		// row in fact has scope='work'.
 		var rowScope string
 		if err := va.QueryRow(ctx, `
-			SELECT scope FROM artefact_types
+			SELECT scope FROM artefacts_types
 			 WHERE subscription_id=$1 AND lower(name)=lower($2) AND archived_at IS NULL
 			 LIMIT 1`, sub, it.ItemType,
 		).Scan(&rowScope); err != nil {
@@ -911,7 +911,7 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 	for _, it := range stratItems {
 		var rowScope string
 		if err := va.QueryRow(ctx, `
-			SELECT scope FROM artefact_types
+			SELECT scope FROM artefacts_types
 			 WHERE subscription_id=$1 AND lower(name)=lower($2) AND archived_at IS NULL
 			 LIMIT 1`, sub, it.ItemType,
 		).Scan(&rowScope); err != nil {

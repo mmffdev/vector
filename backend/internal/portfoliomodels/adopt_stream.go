@@ -284,10 +284,10 @@ func writeStepEvent(w http.ResponseWriter, flusher http.Flusher, msg streamMsg) 
 // Mapping rationale:
 //
 //   - validate     → "library_snapshot"            (REPEATABLE READ open)
-//   - layers       → "artefact_types/strategy"     (strategy hierarchy)
+//   - layers       → "artefacts_types/strategy"     (strategy hierarchy)
 //   - workflows    → "flows + flows_states"         (flow header + states)
 //   - transitions  → "flows_transitions"            (state→state edges)
-//   - artifacts    → "artefact_types/work"         (work-item leaf types)
+//   - artifacts    → "artefacts_types/work"         (work-item leaf types)
 //   - terminology  → "legacy/subscription_terminology" (no VA equivalent yet)
 //   - finalize     → "master_record_portfolios"     (portfolio-adoption row)
 //
@@ -298,13 +298,13 @@ func stepSubstrate(stepName string) string {
 	case stepValidate:
 		return "library_snapshot"
 	case stepLayers:
-		return "artefact_types/strategy"
+		return "artefacts_types/strategy"
 	case stepWorkflows:
 		return "flows + flows_states"
 	case stepTransitions:
 		return "flows_transitions"
 	case stepArtifacts:
-		return "artefact_types/work"
+		return "artefacts_types/work"
 	case stepTerminology:
 		return "legacy/subscription_terminology"
 	case stepFinalize:

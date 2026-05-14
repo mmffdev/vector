@@ -1,16 +1,16 @@
 package portfoliomodels
 
 // PLA-0026 / Story 00492 (B3): adoption-saga step 2 rewrite — write
-// strategy-scope artefact_types into vector_artefacts.
+// strategy-scope artefacts_types into vector_artefacts.
 //
 // This file is the first VA writer in the adoption saga. The legacy
 // writeLayers (obj_strategy_types_layers in mmff_vector) still runs;
 // after it commits, the orchestrator opens a vaTx and runs this writer
-// against vector_artefacts.artefact_types. Both writes are idempotent
+// against vector_artefacts.artefacts_types. Both writes are idempotent
 // (ON CONFLICT … DO NOTHING) so a retry after a partial cross-DB
 // failure converges.
 //
-// Schema target: vector_artefacts.artefact_types (M1–M4)
+// Schema target: vector_artefacts.artefacts_types (M1–M4)
 //   subscription_id   — soft FK mmff_vector.subscriptions
 //   workspace_id      — soft FK mmff_vector.workspaces  (NOT NULL)
 //   scope             — 'strategy' here
@@ -38,7 +38,7 @@ import (
 )
 
 // writeStrategyArtefactTypes mirrors every live library Layer into
-// vector_artefacts.artefact_types as a strategy-scope tenant row.
+// vector_artefacts.artefacts_types as a strategy-scope tenant row.
 // Two-phase topological insert handles the parent self-FK without
 // requiring a deterministic ordering of bundle.Layers.
 func writeStrategyArtefactTypes(

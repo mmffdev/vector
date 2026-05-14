@@ -86,7 +86,7 @@ func (s *Service) Search(ctx context.Context, q Query) ([]Result, error) {
 			a.flow_state_id::text,
 			ts_rank(a.search_index, plainto_tsquery('english', $1)) AS rank
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		WHERE a.workspace_id = $2::uuid
 		  AND a.archived_at IS NULL
 		  AND a.search_index @@ plainto_tsquery('english', $1)

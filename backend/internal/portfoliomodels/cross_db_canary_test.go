@@ -37,7 +37,7 @@ import (
 //     the dev/scripts/cross_db_canary.sh wrapper which exits non-zero.
 //
 // Tables covered (verified live 2026-05-07 against vector_artefacts):
-//   artefact_types, artefact_workspace_fields, artefacts,
+//   artefacts_types, workspaces_fields, artefacts,
 //   master_record_portfolios
 //
 // Note: sprints (013) was replaced by timeboxes_sprints in migration 025
@@ -59,8 +59,8 @@ var vaCanaryTables = []struct {
 	name          string
 	hasArchivedAt bool
 }{
-	{"artefact_types", true},
-	{"artefact_workspace_fields", false}, // admit-row table; lifetime = workspace
+	{"artefacts_types", true},
+	{"workspaces_fields", false}, // admit-row table; lifetime = workspace
 	{"artefacts", true},
 	{"master_record_portfolios", false}, // PK = workspace_id; lifetime = workspace
 	// {"timeboxes_sprints", true}, -- add once migration 025 is applied to dev DB

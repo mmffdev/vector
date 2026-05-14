@@ -215,7 +215,7 @@ func main() {
 	// Constructed AFTER the vaPool block so the handler picks up the
 	// pool when VECTOR_ARTEFACTS_DB_URL is set.
 	// PLA-0026 / Story 00501 (B12): adoption-state handler ALSO waits
-	// for vaPool — it now reads master_record_portfolios + artefact_types
+	// for vaPool — it now reads master_record_portfolios + artefacts_types
 	// from vector_artefacts and degrades to notStarted when vaPool is nil.
 	var portfolioAdoptionStateH *portfoliomodels.AdoptionStateHandler
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
@@ -404,7 +404,7 @@ func main() {
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 
 	// PLA-0026 / Story 00501 (B12): adoption-state reads from the new
-	// substrate (master_record_portfolios + artefact_types) via vaPool.
+	// substrate (master_record_portfolios + artefacts_types) via vaPool.
 	// vectorPool is still required to resolve subscription_id →
 	// workspace_id; vaPool may be nil (handler returns notStarted).
 	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
@@ -446,7 +446,7 @@ func main() {
 	fieldsH := fields.NewHandler(fieldsSvc)
 
 	// PLA-0026 / Story 00499 (B10): workspace-scoped successor to the
-	// legacy GET /api/subscription/layers. Reads strategy artefact_types
+	// legacy GET /api/subscription/layers. Reads strategy artefacts_types
 	// from vector_artefacts; legacy handler stays live until F3 (per
 	// R047 §9). vaPool may be nil — handler returns 503 in that case.
 	// PLA-0039 / Story 00530: pmSvc was constructed up-top with vaPool=nil
@@ -1327,7 +1327,7 @@ func main() {
 		})
 
 		// ---- /workspace/{id}/portfolio/layers (PLA-0026 B10 / PLA-0030 T3) ----
-		// Strategy artefact_types (scope='strategy') for one workspace.
+		// Strategy artefacts_types (scope='strategy') for one workspace.
 		// Auth + tenancy + membership gating inside the handler.
 		r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)

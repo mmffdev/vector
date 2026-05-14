@@ -309,8 +309,8 @@ func TestVAWorkspaceTables_MatchesCanary(t *testing.T) {
 		hasArchivedAt bool
 	}
 	want := []entry{
-		{"artefact_types", true},
-		{"artefact_workspace_fields", false},
+		{"artefacts_types", true},
+		{"workspaces_fields", false},
 		{"artefacts", true},
 		{"master_record_portfolios", false},
 		{"sprints", true},

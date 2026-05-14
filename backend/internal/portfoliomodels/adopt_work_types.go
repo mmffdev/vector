@@ -13,7 +13,7 @@ package portfoliomodels
 // the tenant can edit / archive their own copy without mutating the
 // system template.
 //
-// Schema target: vector_artefacts.artefact_types (M1–M4)
+// Schema target: vector_artefacts.artefacts_types (M1–M4)
 //   subscription_id   — soft FK mmff_vector.subscriptions
 //   workspace_id      — soft FK mmff_vector.workspaces  (NOT NULL)
 //   scope             — 'work'

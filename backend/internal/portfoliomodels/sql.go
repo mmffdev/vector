@@ -5,7 +5,7 @@
 //
 //   - libRO       — mmff_library (delegated to librarydb)
 //   - vectorPool  — mmff_vector  (workspace + role lookups)
-//   - vaPool      — vector_artefacts (artefact_types, artefacts, flows,
+//   - vaPool      — vector_artefacts (artefacts_types, artefacts, flows,
 //                   timeboxes, topology, master_record_*, adoption state,
 //                   error_events post-PLA-0023-P1)
 //
@@ -33,7 +33,7 @@ const sqlExistsActiveWorkspaceMembership = `
 	`
 
 // sqlListWorkspaceStrategyArtefactTypes returns the live strategy
-// artefact_types for a workspace, ordered parent-first.
+// artefacts_types for a workspace, ordered parent-first.
 const sqlListWorkspaceStrategyArtefactTypes = `
 		SELECT id, workspace_id,
 		       library_layer_id,
@@ -42,7 +42,7 @@ const sqlListWorkspaceStrategyArtefactTypes = `
 		       description, allows_children,
 		       is_placeholder,
 		       archived_at, created_at, updated_at
-		  FROM artefact_types
+		  FROM artefacts_types
 		 WHERE workspace_id = $1
 		   AND scope         = 'strategy'
 		   AND archived_at  IS NULL
@@ -54,7 +54,7 @@ const sqlListWorkspaceStrategyArtefactTypes = `
 // sqlPatchWorkspaceStrategyArtefactType updates one strategy artefact_type
 // scoped to its workspace.
 const sqlPatchWorkspaceStrategyArtefactType = `
-		UPDATE artefact_types
+		UPDATE artefacts_types
 		   SET name        = $1,
 		       prefix      = $2,
 		       sort_order  = $3,
@@ -86,7 +86,7 @@ const sqlSelectAdoptionStateForWorkspace = `
 			(mrp.master_record_portfolios_id_workspace IS NOT NULL) AS has_master,
 			EXISTS (
 				SELECT 1
-				  FROM artefact_types at
+				  FROM artefacts_types at
 				 WHERE at.workspace_id = $1
 				   AND at.scope = 'strategy'
 				   AND at.archived_at IS NULL
@@ -103,10 +103,10 @@ const sqlSelectAdoptionStateForWorkspace = `
 // ── adopt.go (orchestrator state + errors) ─────────────────────────────────
 
 // sqlSelectActiveAdoptionState returns the live (non-archived)
-// artefact_adoption_state row for a workspace.
+// artefacts_adoption_states row for a workspace.
 const sqlSelectActiveAdoptionState = `
 		SELECT id, model_id, status, adopted_at
-		  FROM artefact_adoption_state
+		  FROM artefacts_adoption_states
 		 WHERE workspace_id = $1
 		   AND archived_at IS NULL
 		 ORDER BY created_at DESC
@@ -115,7 +115,7 @@ const sqlSelectActiveAdoptionState = `
 
 // sqlInsertAdoptionState writes a fresh in_progress row.
 const sqlInsertAdoptionState = `
-		INSERT INTO artefact_adoption_state
+		INSERT INTO artefacts_adoption_states
 		    (workspace_id, subscription_id, model_id, adopted_by_user_id, status)
 		VALUES ($1, $2, $3, $4, 'in_progress')
 		RETURNING id
@@ -124,7 +124,7 @@ const sqlInsertAdoptionState = `
 // sqlArchiveCompletedStateForReadoption soft-archives a completed row
 // when the operator switches to a different model.
 const sqlArchiveCompletedStateForReadoption = `
-		UPDATE artefact_adoption_state
+		UPDATE artefacts_adoption_states
 		   SET archived_at = NOW()
 		 WHERE id = $1
 		   AND workspace_id = $2
@@ -135,7 +135,7 @@ const sqlArchiveCompletedStateForReadoption = `
 // sqlArchiveStaleFailedAdoptionState soft-archives a failed row for a
 // different model so the partial unique index admits a fresh row.
 const sqlArchiveStaleFailedAdoptionState = `
-		UPDATE artefact_adoption_state
+		UPDATE artefacts_adoption_states
 		   SET archived_at = NOW()
 		 WHERE id = $1
 		   AND workspace_id = $2
@@ -146,7 +146,7 @@ const sqlArchiveStaleFailedAdoptionState = `
 // sqlResetFailedAdoptionStateToInProgress flips a previously-failed
 // row back so a retry of the same model resumes idempotently.
 const sqlResetFailedAdoptionStateToInProgress = `
-		UPDATE artefact_adoption_state
+		UPDATE artefacts_adoption_states
 		   SET status = 'in_progress'
 		 WHERE id = $1
 		   AND workspace_id = $2
@@ -156,7 +156,7 @@ const sqlResetFailedAdoptionStateToInProgress = `
 
 // sqlMarkAdoptionStateCompleted finalises the saga.
 const sqlMarkAdoptionStateCompleted = `
-		UPDATE artefact_adoption_state
+		UPDATE artefacts_adoption_states
 		   SET status = 'completed',
 		       adopted_by_user_id = $2,
 		       adopted_at = NOW()
@@ -167,7 +167,7 @@ const sqlMarkAdoptionStateCompleted = `
 
 // sqlMarkAdoptionStateFailed flips the row to failed in the abort path.
 const sqlMarkAdoptionStateFailed = `
-		UPDATE artefact_adoption_state
+		UPDATE artefacts_adoption_states
 		   SET status = 'failed'
 		 WHERE id = $1
 		   AND workspace_id = $2
@@ -190,7 +190,7 @@ const sqlInsertErrorEvent = `
 
 // sqlInsertStrategyArtefactType — Phase 1 of B3 (parent_type_id=NULL).
 const sqlInsertStrategyArtefactType = `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -210,7 +210,7 @@ const sqlInsertStrategyArtefactType = `
 
 // sqlUpdateStrategyArtefactTypeParent — Phase 2 of B3 (set parent_type_id).
 const sqlUpdateStrategyArtefactTypeParent = `
-		UPDATE artefact_types
+		UPDATE artefacts_types
 		   SET parent_type_id = $1
 		 WHERE id = $2
 		   AND workspace_id = $3
@@ -222,7 +222,7 @@ const sqlUpdateStrategyArtefactTypeParent = `
 // every live strategy artefact_type in this workspace.
 const sqlSelectStrategyArtefactTypeMap = `
 		SELECT library_layer_id, id
-		  FROM artefact_types
+		  FROM artefacts_types
 		 WHERE workspace_id = $1
 		   AND scope = 'strategy'
 		   AND archived_at IS NULL
@@ -270,7 +270,7 @@ const sqlSelectFlowStateLibMap = `
 		SELECT fs.library_workflow_id, fs.id
 		  FROM flows_states fs
 		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
+		  JOIN artefacts_types t ON t.id = f.artefact_type_id
 		 WHERE t.workspace_id = $1
 		   AND t.scope = 'strategy'
 		   AND t.archived_at IS NULL
@@ -282,7 +282,7 @@ const sqlSelectFlowStateLibMap = `
 const sqlSelectDefaultFlowMap = `
 		SELECT f.artefact_type_id, f.id
 		  FROM flows f
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
+		  JOIN artefacts_types t ON t.id = f.artefact_type_id
 		 WHERE t.workspace_id = $1
 		   AND t.scope = 'strategy'
 		   AND t.archived_at IS NULL
@@ -294,7 +294,7 @@ const sqlSelectFlowStateFlowMap = `
 		SELECT fs.id, fs.flow_id
 		  FROM flows_states fs
 		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
+		  JOIN artefacts_types t ON t.id = f.artefact_type_id
 		 WHERE t.workspace_id = $1
 		   AND t.scope = 'strategy'
 		   AND t.archived_at IS NULL
@@ -305,7 +305,7 @@ const sqlSelectFlowStateFlowMap = `
 // ── adopt_readopt.go (B8 placeholder + repoint) ────────────────────────────
 
 const sqlUpsertReadoptPlaceholderType = `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -355,7 +355,7 @@ const sqlRepointOrphanWorkArtefactsToPlaceholder = `
 		   SET parent_artefact_id = $1,
 		       updated_at = now()
 		  FROM artefacts AS p
-		  JOIN artefact_types AS pt ON pt.id = p.artefact_type_id
+		  JOIN artefacts_types AS pt ON pt.id = p.artefact_type_id
 		 WHERE a.parent_artefact_id = p.id
 		   AND a.workspace_id = $2
 		   AND a.archived_at IS NULL
@@ -366,7 +366,7 @@ const sqlRepointOrphanWorkArtefactsToPlaceholder = `
 
 const sqlDeleteOldStrategyArtefacts = `
 		DELETE FROM artefacts AS a
-		 USING artefact_types AS t
+		 USING artefacts_types AS t
 		 WHERE a.artefact_type_id = t.id
 		   AND a.workspace_id = $1
 		   AND t.workspace_id = $1
@@ -375,7 +375,7 @@ const sqlDeleteOldStrategyArtefacts = `
 	`
 
 const sqlArchiveOldStrategyArtefactTypes = `
-		UPDATE artefact_types
+		UPDATE artefacts_types
 		   SET archived_at = now(),
 		       updated_at  = now()
 		 WHERE workspace_id = $1
@@ -387,7 +387,7 @@ const sqlArchiveOldStrategyArtefactTypes = `
 // ── adopt_work_types.go (B5) ───────────────────────────────────────────────
 
 const sqlInsertWorkArtefactTypeFromSystem = `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -406,7 +406,7 @@ const sqlInsertWorkArtefactTypeFromSystem = `
 	`
 
 const sqlUpdateWorkArtefactTypeParent = `
-		UPDATE artefact_types
+		UPDATE artefacts_types
 		   SET parent_type_id = $1
 		 WHERE id = $2
 		   AND workspace_id = $3
@@ -417,7 +417,7 @@ const sqlUpdateWorkArtefactTypeParent = `
 const sqlSelectSystemWorkTypes = `
 		SELECT id, parent_type_id, name, prefix, description,
 		       allows_children, sort_order
-		  FROM artefact_types
+		  FROM artefacts_types
 		 WHERE subscription_id = $1
 		   AND scope  = 'work'
 		   AND source = 'system'
@@ -427,7 +427,7 @@ const sqlSelectSystemWorkTypes = `
 
 const sqlSelectWorkTenantPrefixMap = `
 		SELECT prefix, id
-		  FROM artefact_types
+		  FROM artefacts_types
 		 WHERE workspace_id = $1
 		   AND scope  = 'work'
 		   AND source = 'tenant'
@@ -436,15 +436,15 @@ const sqlSelectWorkTenantPrefixMap = `
 
 // ── dev_reset.go ───────────────────────────────────────────────────────────
 
-const sqlDeleteAllAdoptionStateForSubscription = `DELETE FROM artefact_adoption_state WHERE subscription_id = $1`
+const sqlDeleteAllAdoptionStateForSubscription = `DELETE FROM artefacts_adoption_states WHERE subscription_id = $1`
 
-const sqlDeleteAllArtefactFieldValuesForSubscription = `DELETE FROM artefact_field_values WHERE subscription_id = $1`
+const sqlDeleteAllArtefactFieldValuesForSubscription = `DELETE FROM artefacts_fields_values WHERE subscription_id = $1`
 
 const sqlDeleteAllArtefactsForSubscription = `DELETE FROM artefacts WHERE subscription_id = $1`
 
-const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefact_number_sequence WHERE subscription_id = $1`
+const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefacts_number_sequences WHERE subscription_id = $1`
 
-const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefact_types WHERE subscription_id = $1 AND source = 'tenant'`
+const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefacts_types WHERE subscription_id = $1 AND source = 'tenant'`
 
 const sqlDeleteAllTimeboxSprintsForSubscription = `DELETE FROM timeboxes_sprints WHERE timeboxes_sprints_id_subscription = $1`
 

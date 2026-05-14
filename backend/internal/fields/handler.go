@@ -17,10 +17,10 @@ package fields
 //
 // On success the body is the union of:
 //
-//   - scope=global rows from artefact_field_library
+//   - scope=global rows from artefacts_fields_library
 //   - scope=tenant rows whose subscription_id == caller tenant
 //   - scope=workspace rows whose subscription_id == caller tenant AND
-//     have a matching artefact_workspace_fields row for this workspace
+//     have a matching workspaces_fields row for this workspace
 //
 // Archived rows (archived_at IS NOT NULL) are excluded — same rule the
 // resolver uses (ResolveField in resolver.go).
@@ -57,7 +57,7 @@ func NewHandler(svc *Service) *Handler {
 }
 
 // fieldRowOut is the wire shape for one entry in the response. Columns
-// mirror artefact_field_library exactly — we do not invent fields. The
+// mirror artefacts_fields_library exactly — we do not invent fields. The
 // frontend may ignore columns it doesn't render.
 type fieldRowOut struct {
 	ID             uuid.UUID       `json:"id"`

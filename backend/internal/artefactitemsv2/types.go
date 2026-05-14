@@ -324,7 +324,7 @@ type BulkFailure struct {
 // portfolio-items}/summary. The fixed fields (Total/Epics/Stories/Tasks/
 // Defects/Blocked) are retained for backward compatibility with the v2
 // work-items page summary header. ByType is the scope-agnostic bucket map
-// keyed on `lower(artefact_types.name)` and is populated for every scope —
+// keyed on `lower(artefacts_types.name)` and is populated for every scope —
 // portfolio/strategy consumers (themes, objectives, business epics, …)
 // read from ByType because they have no static field analogue.
 //
@@ -360,9 +360,9 @@ var validFieldTypes = map[string]bool{
 // discriminator on Create. Scope "work" mirrors the legacy CHECK on
 // obj_work_items (migration 066) plus the portfolio-item escape hatch
 // retained from PLA-0033. Scope "strategy" is intentionally an open set —
-// strategy artefact_types are tenant-extensible (themes, objectives,
+// strategy artefacts_types are tenant-extensible (themes, objectives,
 // business epics, capabilities, …) and the canonical authority is the
-// `artefact_types` row lookup performed by CreateWorkItem; an extra
+// `artefacts_types` row lookup performed by CreateWorkItem; an extra
 // hardcoded list here would force a code change every time a tenant
 // added a new strategy type. Returning nil from validItemTypesByScope
 // means "trust the DB lookup".

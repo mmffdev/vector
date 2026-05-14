@@ -62,11 +62,11 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 //   (mmff_vector.master_record_tenants is vestigial since M2 — not reset here)
 //
 // Cleared (vector_artefacts):
-//   - artefact_adoption_state (per-workspace adoption state)
+//   - artefacts_adoption_states (per-workspace adoption state)
 //
 // Cleared (vector_artefacts):
-//   - artefact_field_values, artefacts, artefact_number_sequence
-//   - tenant artefact_types (source='tenant' only; system rows preserved)
+//   - artefacts_fields_values, artefacts, artefacts_number_sequences
+//   - tenant artefacts_types (source='tenant' only; system rows preserved)
 //   - timeboxes_sprints, timeboxes_releases
 //   - users_roles_topology_nodes, topology_view_states, topology_nodes
 //   - master_record_portfolios
@@ -76,7 +76,7 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 //   - topology_nodes: single root node "ACME Bank"
 //
 // NOT touched: users, sessions, roles, permissions, pages, nav prefs,
-//              subscriptions, tenants, system artefact_types.
+//              subscriptions, tenants, system artefacts_types.
 func (h *DevResetHandler) MasterReset(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
@@ -112,7 +112,7 @@ func (h *DevResetHandler) MasterReset(w http.ResponseWriter, r *http.Request) {
 //
 // PLA-0023 cutover (2026-05-13): all six legacy mmff_vector mirror tables
 // have been dropped. Adoption state now lives exclusively on
-// vector_artefacts.artefact_adoption_state, so this reset is a single VA
+// vector_artefacts.artefacts_adoption_states, so this reset is a single VA
 // DELETE. No-op when VAPool is unavailable.
 func (h *DevResetHandler) resetAdoptionTables(ctx context.Context, subscriptionID uuid.UUID) error {
 	if h.VAPool == nil {
@@ -135,15 +135,15 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// 0. Adoption state — must clear before artefact_types since the
+	// 0. Adoption state — must clear before artefacts_types since the
 	//    PLA-0023 cutover replaced the legacy mmff_vector mirror table.
 	if _, err = tx.Exec(ctx, sqlDeleteAllAdoptionStateForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("artefact_adoption_state: %w", err)
+		return fmt.Errorf("artefacts_adoption_states: %w", err)
 	}
 
 	// 1. Artefact field values (child — delete first).
 	if _, err = tx.Exec(ctx, sqlDeleteAllArtefactFieldValuesForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("artefact_field_values: %w", err)
+		return fmt.Errorf("artefacts_fields_values: %w", err)
 	}
 
 	// 2. Artefacts.
@@ -153,12 +153,12 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 
 	// 3. Number sequence counters.
 	if _, err = tx.Exec(ctx, sqlDeleteArtefactNumberSequenceForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("artefact_number_sequence: %w", err)
+		return fmt.Errorf("artefacts_number_sequences: %w", err)
 	}
 
 	// 4. Tenant-authored artefact types (source='tenant' only).
 	if _, err = tx.Exec(ctx, sqlDeleteTenantArtefactTypesForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("artefact_types: %w", err)
+		return fmt.Errorf("artefacts_types: %w", err)
 	}
 
 	// 5. Timeboxes.
@@ -202,7 +202,7 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 
 	// 10. Re-seed starter strategy artefacts via the SQL function installed by
 	//     db/vector_artefacts/schema/052_seed_dev_strategy_artefacts.sql. Safe no-op
-	//     if the five strategy artefact_types don't exist (e.g. before the
+	//     if the five strategy artefacts_types don't exist (e.g. before the
 	//     user has adopted a portfolio model). Idempotent — the seed uses
 	//     ON CONFLICT against the unique (subscription_id, type, number) index.
 	if _, err = tx.Exec(ctx, sqlSeedDevStrategyArtefactsFn, subscriptionID, devWorkspaceID); err != nil {
@@ -224,7 +224,7 @@ func (h *DevResetHandler) masterResetVector(ctx context.Context, subscriptionID 
 
 	// PLA-0023 cutover (2026-05-13): legacy adoption mirror tables on
 	// mmff_vector are dropped. Adoption state is cleared via the VA path
-	// in masterResetVA above (DELETE FROM artefact_adoption_state). This
+	// in masterResetVA above (DELETE FROM artefacts_adoption_states). This
 	// tx now only handles workspaces + role grants on mmff_vector.
 
 	// Workspace role grants before workspaces (FK child).

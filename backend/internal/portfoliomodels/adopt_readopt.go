@@ -42,7 +42,7 @@ package portfoliomodels
 // bin is empty, the placeholder type can be archived by an explicit
 // admin action (out of scope here).
 //
-// Sole writer: this file is the only writer that touches artefact_types
+// Sole writer: this file is the only writer that touches artefacts_types
 // or artefacts during the re-adoption transition. It runs in its own
 // vector_artefacts tx so a partial failure is rolled back atomically.
 
@@ -136,7 +136,7 @@ func runReadoption(
 	if _, err := vaTx.Exec(ctx, sqlArchiveOldStrategyArtefactTypes,
 		workspaceID,
 	); err != nil {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: archive old strategy artefact_types: %w", err)
+		return uuid.Nil, uuid.Nil, fmt.Errorf("readopt: archive old strategy artefacts_types: %w", err)
 	}
 
 	return placeholderTypeID, placeholderArtefactID, nil

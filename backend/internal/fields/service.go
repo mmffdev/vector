@@ -7,7 +7,7 @@ package fields
 //
 //   - AssertCallerMayRead: tenancy + membership gate against mmff_vector
 //     (master_record_workspaces + roles_workspaces).
-//   - LoadAdmittedFields:  bulk lookup of admitted artefact_field_library
+//   - LoadAdmittedFields:  bulk lookup of admitted artefacts_fields_library
 //     rows for a (workspace, tenant) pair against vector_artefacts.
 //
 // vectorPool MUST be non-nil. artefactsPool MAY be nil — when the

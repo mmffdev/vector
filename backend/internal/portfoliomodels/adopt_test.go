@@ -34,7 +34,7 @@ const seededMMFFModelID = "00000000-0000-0000-0000-00000000aa01"
 // MMFF Standard bundle. It cleans up before + after so re-runs are
 // safe.
 // SA1 update (PLA-0026 2026-05-13): now uses a real VA pool and asserts
-// artefact_types on vector_artefacts instead of the removed legacy mirror.
+// artefacts_types on vector_artefacts instead of the removed legacy mirror.
 func TestOrchestrator_HappyPath(t *testing.T) {
 	libRO := testRoPool(t)
 	defer libRO.Close()
@@ -63,7 +63,7 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 	defer func() {
 		c := context.Background()
 		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, workspaceID)
-		_, _ = va.Exec(c, `DELETE FROM artefact_types WHERE workspace_id = $1`, workspaceID)
+		_, _ = va.Exec(c, `DELETE FROM artefacts_types WHERE workspace_id = $1`, workspaceID)
 	}()
 
 	o := NewOrchestrator(libRO, vec, va, nil)
@@ -81,13 +81,13 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 	// At least one strategy artefact_type should now exist on VA.
 	var atCount int
 	if err := va.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefact_types
+		SELECT COUNT(*) FROM artefacts_types
 		 WHERE workspace_id = $1 AND scope = 'strategy' AND archived_at IS NULL`,
 		workspaceID).Scan(&atCount); err != nil {
-		t.Fatalf("count artefact_types: %v", err)
+		t.Fatalf("count artefacts_types: %v", err)
 	}
 	if atCount == 0 {
-		t.Errorf("artefact_types: want >0 strategy rows after happy-path adopt, got 0")
+		t.Errorf("artefacts_types: want >0 strategy rows after happy-path adopt, got 0")
 	}
 }
 

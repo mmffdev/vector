@@ -22,8 +22,8 @@ package workspaces
 // internal/portfoliomodels/cross_db_canary_test.go (verified live
 // 2026-05-07 against vector_artefacts):
 //
-//	artefact_types              — has archived_at, scan live rows only
-//	artefact_workspace_fields   — admit-row, lifetime = workspace
+//	artefacts_types              — has archived_at, scan live rows only
+//	workspaces_fields   — admit-row, lifetime = workspace
 //	artefacts                   — has archived_at, scan live rows only
 //	master_record_portfolios     — PK = workspace_id, lifetime = workspace
 //	sprints                     — has archived_at, scan live rows only
@@ -31,7 +31,7 @@ package workspaces
 // For tables with archived_at, we scan only live rows. Archived rows
 // are tombstones — workspace deletion is allowed to leave dangling
 // references from rows that the application has already retired. For
-// PK-lifetime tables (master_record_portfolios, artefact_workspace_fields)
+// PK-lifetime tables (master_record_portfolios, workspaces_fields)
 // any row blocks deletion: their lifetime equals the workspace's by
 // definition, so a live row IS a live reference.
 //
@@ -49,7 +49,7 @@ import (
 )
 
 // OrphanReport is one row of CheckCrossDBOrphans's result. Table is
-// the unqualified vector_artefacts table name (e.g. "artefact_types"),
+// the unqualified vector_artefacts table name (e.g. "artefacts_types"),
 // Count is the number of LIVE rows in that table whose workspace_id
 // equals the workspace under inspection. Tables with zero matching
 // rows are omitted from the result slice.
@@ -73,8 +73,8 @@ var vaWorkspaceTables = []struct {
 	workspaceIDCol string // varies per table after RF1.4.2 column-prefix.
 	archivedAtCol  string // empty when the table has no archived_at.
 }{
-	{"artefact_types", "workspace_id", "archived_at"},
-	{"artefact_workspace_fields", "workspace_id", ""}, // admit-row; lifetime = workspace
+	{"artefacts_types", "workspace_id", "archived_at"},
+	{"workspaces_fields", "workspace_id", ""}, // admit-row; lifetime = workspace
 	{"artefacts", "workspace_id", "archived_at"},
 	{"master_record_portfolios", "master_record_portfolios_id_workspace", ""}, // PK = workspace; renamed by RF1.4.2.master_record
 	{"timeboxes_sprints", "timeboxes_sprints_id_workspace", "timeboxes_sprints_archived_at"},

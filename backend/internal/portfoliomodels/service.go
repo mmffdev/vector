@@ -42,7 +42,7 @@ var (
 // libRO is the mmff_library RO pool (for bundle reads). vectorPool is
 // the mmff_vector pool (for subscription layers + workspace tenancy /
 // membership). vaPool is the vector_artefacts pool (for workspace
-// artefact_types). Any of the three may be nil at boot — methods that
+// artefacts_types). Any of the three may be nil at boot — methods that
 // touch a missing pool surface a sentinel error rather than panicking.
 type Service struct {
 	libRO      *pgxpool.Pool
@@ -86,7 +86,7 @@ func (s *Service) ListPublishedModels(ctx context.Context) ([]librarydb.ModelSum
 	return librarydb.ListPublishedModels(ctx, s.libRO)
 }
 
-// ── workspace strategy layers (vector_artefacts.artefact_types) ──────
+// ── workspace strategy layers (vector_artefacts.artefacts_types) ──────
 
 // WorkspaceLayer mirrors workspaceLayerDTO so the handler can JSON-
 // encode without further mapping.
@@ -148,7 +148,7 @@ func (s *Service) IsWorkspaceMember(
 	return exists, err
 }
 
-// ListWorkspaceArtefactLayers returns the live strategy artefact_types
+// ListWorkspaceArtefactLayers returns the live strategy artefacts_types
 // rows for the workspace. Returns ErrVAUnavailable when vaPool is nil
 // (the handler renders 503 in that case).
 func (s *Service) ListWorkspaceArtefactLayers(
@@ -198,7 +198,7 @@ type PatchWorkspaceArtefactLayerInput struct {
 }
 
 // PatchWorkspaceArtefactLayers applies a batch update to strategy
-// artefact_types rows owned by the workspace. Each row is updated
+// artefacts_types rows owned by the workspace. Each row is updated
 // individually inside a single transaction; the full updated set is
 // returned so the frontend can replace its local state.
 func (s *Service) PatchWorkspaceArtefactLayers(

@@ -1,7 +1,7 @@
 // Adoption-state endpoint — GET /api/portfolio-models/adoption-state
 //
 // PLA-0026 / Story 00501 (B12): rewritten to read from the
-// vector_artefacts substrate (master_record_portfolios + artefact_types)
+// vector_artefacts substrate (master_record_portfolios + artefacts_types)
 // instead of the legacy mmff_vector mirror (subscription_portfolio_model_state
 // + obj_strategy_types_layers).
 //
@@ -13,10 +13,10 @@
 // Status logic (substrate-driven):
 //
 //   notStarted: master_record_portfolios has NO row for this workspace_id
-//               AND artefact_types has NO scope='strategy' rows for this
+//               AND artefacts_types has NO scope='strategy' rows for this
 //               workspace_id.
 //
-//   inProgress: artefact_types HAS scope='strategy' rows for this
+//   inProgress: artefacts_types HAS scope='strategy' rows for this
 //               workspace_id BUT master_record_portfolios has NO row.
 //               (Saga partway through; B6 finalize hasn't run.)
 //
@@ -37,7 +37,7 @@
 //   - vectorPool (mmff_vector) — used to resolve subscription_id →
 //     workspace_id. Always required.
 //   - vaPool (vector_artefacts) — used to read master_record_portfolios
-//     and artefact_types. May be nil when VECTOR_ARTEFACTS_DB_URL is
+//     and artefacts_types. May be nil when VECTOR_ARTEFACTS_DB_URL is
 //     unset; in that case the handler returns status='notStarted' for
 //     backward compatibility (no environment regresses to a 5xx).
 package portfoliomodels
@@ -56,7 +56,7 @@ import (
 
 // AdoptionStateHandler reads adoption status from the new substrate.
 // VectorPool resolves subscription → workspace; VAPool reads
-// master_record_portfolios + artefact_types in vector_artefacts. VAPool
+// master_record_portfolios + artefacts_types in vector_artefacts. VAPool
 // may be nil; the handler degrades to notStarted in that case.
 type AdoptionStateHandler struct {
 	VectorPool *pgxpool.Pool
@@ -140,7 +140,7 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 
 	// Single-statement substrate check:
 	//   - master_record_portfolios row presence → adopted
-	//   - artefact_types scope='strategy' presence → inProgress
+	//   - artefacts_types scope='strategy' presence → inProgress
 	//   - neither → notStarted
 	// LEFT JOIN gives us the master-record fields when present and
 	// NULLs when not; the EXISTS sub-select gives us a cheap "any

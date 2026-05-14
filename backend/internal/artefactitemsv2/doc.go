@@ -1,6 +1,6 @@
 // Package artefactitemsv2 is the scope-parameterised v2 artefacts handler
 // reading from vector_artefacts. One handler instance is registered per
-// `artefact_types.scope` value: scope="work" mounts at /samantha/v2/work-items,
+// `artefacts_types.scope` value: scope="work" mounts at /samantha/v2/work-items,
 // scope="strategy" mounts at /samantha/v2/portfolio-items. The wire shape and
 // SQL are identical — only the scope filter differs. See B21 (PLA-0037).
 //

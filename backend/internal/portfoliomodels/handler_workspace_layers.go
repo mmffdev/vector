@@ -2,7 +2,7 @@
 //
 // Workspace-scoped successor to the legacy GET /api/subscription/layers
 // (handler_layers.go). Reads the strategy-layer hierarchy from
-// vector_artefacts.artefact_types (scope='strategy'), instead of the
+// vector_artefacts.artefacts_types (scope='strategy'), instead of the
 // legacy mmff_vector.obj_strategy_types_layers.
 //
 // Per R047 §9 the legacy endpoint stays live until F3 (frontend cutover);
@@ -37,7 +37,7 @@ import (
 
 // WorkspaceLayersHandler serves the workspace-scoped strategy-layer GET.
 // All DB I/O — workspace tenancy probe, workspace_roles membership
-// probe, artefact_types read — is delegated to Svc.
+// probe, artefacts_types read — is delegated to Svc.
 type WorkspaceLayersHandler struct {
 	Svc *Service
 }

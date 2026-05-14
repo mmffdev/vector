@@ -14,7 +14,7 @@ import (
 
 var hexColourRE = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
-// Service owns DB operations for the artefact_types settings surface.
+// Service owns DB operations for the artefacts_types settings surface.
 // It operates against vector_artefacts only.
 type Service struct {
 	pool *pgxpool.Pool
@@ -35,7 +35,7 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 			id, scope, source, name, prefix, description, colour,
 			parent_type_id, allows_children, layer_depth,
 			sort_order, archived_at, created_at, updated_at
-		FROM artefact_types
+		FROM artefacts_types
 		WHERE subscription_id = $1
 		  AND archived_at IS NULL
 		ORDER BY scope, sort_order, name`
@@ -141,7 +141,7 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 	}
 
 	q := fmt.Sprintf(`
-		UPDATE artefact_types
+		UPDATE artefacts_types
 		SET %s
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
 		RETURNING

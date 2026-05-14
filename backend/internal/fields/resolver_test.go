@@ -15,8 +15,8 @@ import (
 // Integration test against the real vector_artefacts DB via the SSH
 // tunnel on :5435. Per repo convention we do not mock the DB.
 //
-// The test seeds three artefact_field_library rows (one per scope),
-// one artefact_workspace_fields whitelist row, and exercises the
+// The test seeds three artefacts_fields_library rows (one per scope),
+// one workspaces_fields whitelist row, and exercises the
 // 5-cell admit/deny matrix from R047 §5:
 //
 //   1. scope=global                                 → Admit
@@ -83,7 +83,7 @@ func mkFixture(t *testing.T, pool *pgxpool.Pool) (fixture, func()) {
 
 	// Global field — subscription_id MUST be NULL per chk_afl_global_no_subscription.
 	err := pool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES (NULL, $1, 'Global Field', 'textbox', 'global')
 		RETURNING id`,
@@ -95,7 +95,7 @@ func mkFixture(t *testing.T, pool *pgxpool.Pool) (fixture, func()) {
 
 	// Tenant field — bound to tenantA.
 	err = pool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'Tenant Field', 'textbox', 'tenant')
 		RETURNING id`,
@@ -108,7 +108,7 @@ func mkFixture(t *testing.T, pool *pgxpool.Pool) (fixture, func()) {
 	// Workspace field — bound to tenantA, requires whitelist row to be
 	// visible in any workspace.
 	err = pool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'Workspace Field', 'textbox', 'workspace')
 		RETURNING id`,
@@ -120,7 +120,7 @@ func mkFixture(t *testing.T, pool *pgxpool.Pool) (fixture, func()) {
 
 	// Whitelist the workspace field into workspaceA.
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO artefact_workspace_fields (workspace_id, field_library_id)
+		INSERT INTO workspaces_fields (workspace_id, field_library_id)
 		VALUES ($1, $2)`,
 		f.workspaceA, f.workspaceFieldID,
 	); err != nil {
@@ -128,9 +128,9 @@ func mkFixture(t *testing.T, pool *pgxpool.Pool) (fixture, func()) {
 	}
 
 	cleanup := func() {
-		// CASCADE on field_library_id cleans up artefact_workspace_fields.
+		// CASCADE on field_library_id cleans up workspaces_fields.
 		_, _ = pool.Exec(ctx,
-			`DELETE FROM artefact_field_library WHERE id = ANY($1)`,
+			`DELETE FROM artefacts_fields_library WHERE id = ANY($1)`,
 			[]uuid.UUID{f.globalFieldID, f.tenantFieldID, f.workspaceFieldID},
 		)
 	}
@@ -254,7 +254,7 @@ func TestResolveField_ArchivedField_ReturnsErrFieldNotFound(t *testing.T) {
 
 	var fieldID uuid.UUID
 	err := pool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope, archived_at)
 		VALUES ($1, $2, 'Archived', 'textbox', 'tenant', now())
 		RETURNING id`,
@@ -264,7 +264,7 @@ func TestResolveField_ArchivedField_ReturnsErrFieldNotFound(t *testing.T) {
 		t.Fatalf("seed archived: %v", err)
 	}
 	defer func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM artefact_field_library WHERE id = $1`, fieldID)
+		_, _ = pool.Exec(ctx, `DELETE FROM artefacts_fields_library WHERE id = $1`, fieldID)
 	}()
 
 	r := New(pool)

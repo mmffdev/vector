@@ -31,7 +31,7 @@ package portfoliomodels
 //     (inherits from adopt_strategy_types_test.go)
 //   - SKIPs cleanly when either pool is unreachable
 //   - cleans up its own state via resetAdoptionFixture + a workspace-
-//     scoped DELETE on artefact_types so no cross-test bleed.
+//     scoped DELETE on artefacts_types so no cross-test bleed.
 
 import (
 	"context"
@@ -44,7 +44,7 @@ import (
 
 // TestAdoptSaga_VectorArtefactsOnly — runs the full saga, then asserts:
 //
-//	(1) vector_artefacts.artefact_types contains strategy-scope rows for
+//	(1) vector_artefacts.artefacts_types contains strategy-scope rows for
 //	    the resolved workspace (cutover-side present), AND
 //	(2) zero rows landed in obj_strategy_types_layers /
 //	    subscription_workflows / subscription_workflow_transitions /
@@ -86,12 +86,12 @@ func TestAdoptSaga_VectorArtefactsOnly(t *testing.T) {
 	}
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 
-	// Clean any artefact_types this workspace might have left over from
+	// Clean any artefacts_types this workspace might have left over from
 	// a prior run, so the cutover-side count post-saga is meaningful.
 	defer func() {
 		c := context.Background()
 		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, workspaceID)
-		_, _ = va.Exec(c, `DELETE FROM artefact_types WHERE workspace_id = $1`, workspaceID)
+		_, _ = va.Exec(c, `DELETE FROM artefacts_types WHERE workspace_id = $1`, workspaceID)
 	}()
 
 	// Wire a real master-record service so the finalize step's
@@ -108,20 +108,20 @@ func TestAdoptSaga_VectorArtefactsOnly(t *testing.T) {
 		t.Fatalf("status: want completed, got %q", res.Status)
 	}
 
-	// (1) cutover-side present — strategy artefact_types for the
+	// (1) cutover-side present — strategy artefacts_types for the
 	//     workspace must be > 0 after a successful adopt.
 	var vaCount int
 	if err := va.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefact_types
+		SELECT COUNT(*) FROM artefacts_types
 		 WHERE workspace_id = $1
 		   AND scope         = 'strategy'
 		   AND archived_at  IS NULL`,
 		workspaceID,
 	).Scan(&vaCount); err != nil {
-		t.Fatalf("count vector_artefacts.artefact_types: %v", err)
+		t.Fatalf("count vector_artefacts.artefacts_types: %v", err)
 	}
 	if vaCount == 0 {
-		t.Fatalf("vector_artefacts.artefact_types: want >0 strategy rows for workspace %s after adopt, got 0",
+		t.Fatalf("vector_artefacts.artefacts_types: want >0 strategy rows for workspace %s after adopt, got 0",
 			workspaceID)
 	}
 

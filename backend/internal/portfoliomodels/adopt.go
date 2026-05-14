@@ -13,7 +13,7 @@
 //      `failed`, append an `error_events` row with the matching
 //      `ADOPT_*` code, return 500. Library tx is rolled back (read-only,
 //      so no effect).
-//   4. Final step flips `artefact_adoption_state.status` to
+//   4. Final step flips `artefacts_adoption_states.status` to
 //      `completed` and stamps adopted_at / adopted_by_user_id.
 //
 // Idempotency / retry-resume
@@ -28,7 +28,7 @@
 //   end-state is identical: a retry that re-runs every step lands no
 //   duplicate rows.
 //
-//   The `artefact_adoption_state` row has no
+//   The `artefacts_adoption_states` row has no
 //   `failed_step` / `current_step` / `last_error_code` columns, so we
 //   cannot record "resume from step N" telemetry in the DB. Per the
 //   card's hard constraint we do NOT add a follow-up migration here;
@@ -229,7 +229,7 @@ func (o *Orchestrator) Adopt(
 
 	// ── Idempotency check (BEFORE opening any tx) ────────────────
 	// SA3 (PLA-0026 2026-05-13): state reads/writes now target
-	// vector_artefacts.artefact_adoption_state (keyed by workspace_id)
+	// vector_artefacts.artefacts_adoption_states (keyed by workspace_id)
 	// when VAPool != nil and workspaceID != uuid.Nil. Orphan-sub
 	// fixtures still fall back to the mmff_vector predecessor path.
 	existingState, err := o.loadActiveState(ctx, subscriptionID, workspaceID)
@@ -439,7 +439,7 @@ func (o *Orchestrator) Adopt(
 
 // resolveWorkspaceID returns the workspace_id for a subscription, or
 // uuid.Nil when none exists (orphan-sub fixtures). The PLA-0026 VA
-// writes use this to address artefact_types per workspace; the legacy
+// writes use this to address artefacts_types per workspace; the legacy
 // mirror path is unaffected.
 //
 // We pick the lowest-id live workspace deterministically. Multi-
@@ -480,7 +480,7 @@ func (o *Orchestrator) runVAStep(ctx context.Context, fn func(ctx context.Contex
 }
 
 // ──────────────────────────────────────────────────────────────────
-// State-row helpers (vector_artefacts.artefact_adoption_state)
+// State-row helpers (vector_artefacts.artefacts_adoption_states)
 // ──────────────────────────────────────────────────────────────────
 //
 // PLA-0023 cutover (2026-05-13): legacy mmff_vector.subscription_portfolio_model_state

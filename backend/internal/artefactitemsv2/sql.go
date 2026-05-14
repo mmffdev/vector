@@ -1,6 +1,6 @@
 // Package artefactitemsv2 SQL constants.
 //
-// PLA-0048 / RF1.2.19. Sole writer for artefacts + artefact_field_values
+// PLA-0048 / RF1.2.19. Sole writer for artefacts + artefacts_fields_values
 // (vector_artefacts); read-only against mmff_vector for owner decoration
 // and workspace resolution.
 package artefactitemsv2
@@ -82,7 +82,7 @@ const sqlWorkItemColumns = `
 // extraWhere is composed in Go from the active filter set; %s slot.
 const sqlCountWorkItemsTemplate = `
 		SELECT count(*) FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
@@ -95,7 +95,7 @@ const sqlListWorkItemsTemplate = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
@@ -110,7 +110,7 @@ const sqlSelectWorkItemByID = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.id = $2
@@ -124,7 +124,7 @@ const sqlListChildWorkItems = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
@@ -146,7 +146,7 @@ const sqlSummariseTotalTemplate = `
 				  AND a.updated_at < NOW() - INTERVAL '14 days'
 			) AS blocked
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		WHERE %s
 	`
@@ -156,7 +156,7 @@ const sqlSummariseTotalTemplate = `
 const sqlSummariseByTypeTemplate = `
 		SELECT lower(at.name) AS name, COUNT(*)
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		WHERE %s
 		GROUP BY lower(at.name)
@@ -169,7 +169,7 @@ const sqlListWorkScopeFlowStates = `
 		FROM flows_states fs
 		JOIN flows f ON f.id = fs.flow_id
 		WHERE f.artefact_type_id = (
-			SELECT at.id FROM artefact_types at
+			SELECT at.id FROM artefacts_types at
 			JOIN flows f2 ON f2.artefact_type_id = at.id
 			WHERE at.subscription_id = $1
 			  AND at.scope = $2
@@ -188,7 +188,7 @@ const sqlListWorkScopeFlowStates = `
 // ── CreateWorkItem ─────────────────────────────────────────────────────────
 
 const sqlSelectArtefactTypeIDForCreate = `
-		SELECT id FROM artefact_types
+		SELECT id FROM artefacts_types
 		WHERE subscription_id = $1
 		  AND scope = $3
 		  AND lower(name) = $2
@@ -197,10 +197,10 @@ const sqlSelectArtefactTypeIDForCreate = `
 	`
 
 const sqlAllocateArtefactNumber = `
-		INSERT INTO artefact_number_sequence (subscription_id, artefact_type_id, next_num)
+		INSERT INTO artefacts_number_sequences (subscription_id, artefact_type_id, next_num)
 		VALUES ($1, $2, 2)
 		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
-			SET next_num = artefact_number_sequence.next_num + 1
+			SET next_num = artefacts_number_sequences.next_num + 1
 		RETURNING next_num - 1
 	`
 
@@ -243,7 +243,7 @@ const sqlExistsFlowStateInSubscription = `
 		SELECT EXISTS(
 			SELECT 1 FROM flows_states fs
 			JOIN flows f ON f.id = fs.flow_id
-			JOIN artefact_types at ON at.id = f.artefact_type_id
+			JOIN artefacts_types at ON at.id = f.artefact_type_id
 			WHERE fs.id = $1
 			  AND at.subscription_id = $2
 			  AND fs.archived_at IS NULL
@@ -269,7 +269,7 @@ const sqlArchiveArtefact = `
 const sqlSelectArtefactsForBulkLock = `
 		SELECT a.id::text, lower(at.name)
 		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.id = a.artefact_type_id
 		WHERE a.subscription_id = $1 AND a.id::text = ANY($2) AND a.archived_at IS NULL
 		FOR UPDATE OF a
 	`
@@ -288,18 +288,18 @@ const sqlListFieldValuesForArtefact = `
 		SELECT fv.id, fv.artefact_id::text, fl.id::text, NULL::text,
 		       fl.name, fl.label, fl.field_type, fl.options_json,
 		       fv.string_value, fv.number_value::text, fv.text_value, fv.date_value::text
-		FROM artefact_field_values fv
-		JOIN artefact_field_library fl ON fl.id = fv.field_library_id
+		FROM artefacts_fields_values fv
+		JOIN artefacts_fields_library fl ON fl.id = fv.field_library_id
 		WHERE fv.artefact_id = $1
 		ORDER BY fl.name ASC
 	`
 
 const sqlSelectFieldLibraryType = `
-		SELECT field_type FROM artefact_field_library WHERE id = $1 AND subscription_id = $2
+		SELECT field_type FROM artefacts_fields_library WHERE id = $1 AND subscription_id = $2
 	`
 
 const sqlUpsertFieldValue = `
-		INSERT INTO artefact_field_values
+		INSERT INTO artefacts_fields_values
 			(artefact_id, field_library_id, string_value, number_value, text_value, date_value)
 		VALUES ($1,$2,$3,$4::numeric,$5,$6::date)
 		ON CONFLICT (artefact_id, field_library_id)
@@ -311,7 +311,7 @@ const sqlUpsertFieldValue = `
 			updated_at   = now()
 	`
 
-const sqlDeleteFieldValue = `DELETE FROM artefact_field_values WHERE id = $1 AND artefact_id = $2`
+const sqlDeleteFieldValue = `DELETE FROM artefacts_fields_values WHERE id = $1 AND artefact_id = $2`
 
 // ── decorateOwners (mmff_vector) ───────────────────────────────────────────
 

@@ -148,7 +148,7 @@ func pickFixtures(t *testing.T, pool *pgxpool.Pool) (subID, wsID, typeID uuid.UU
 	err := pool.QueryRow(context.Background(),
 		`SELECT w.subscription_id, w.id, at.id
 		 FROM master_record_workspaces w
-		 JOIN artefact_types at ON at.subscription_id = w.subscription_id
+		 JOIN artefacts_types at ON at.subscription_id = w.subscription_id
 		 WHERE w.archived_at IS NULL AND at.archived_at IS NULL
 		 LIMIT 1`,
 	).Scan(&subID, &wsID, &typeID)

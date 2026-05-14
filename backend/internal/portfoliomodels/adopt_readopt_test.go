@@ -50,7 +50,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	)
 	runInVATx(t, ctx, pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO artefact_types (
+			INSERT INTO artefacts_types (
 				subscription_id, workspace_id,
 				scope, source, name, prefix,
 				allows_children, sort_order, is_placeholder
@@ -60,7 +60,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO artefact_types (
+			INSERT INTO artefacts_types (
 				subscription_id, workspace_id,
 				scope, source, name, prefix,
 				allows_children, sort_order, is_placeholder
@@ -94,12 +94,12 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 		return nil
 	})
 
-	// Cleanup at end: delete artefacts then artefact_types for this ws.
+	// Cleanup at end: delete artefacts then artefacts_types for this ws.
 	t.Cleanup(func() {
 		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_, _ = pool.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, wsID)
-		_, _ = pool.Exec(c, `DELETE FROM artefact_types WHERE workspace_id = $1`, wsID)
+		_, _ = pool.Exec(c, `DELETE FROM artefacts_types WHERE workspace_id = $1`, wsID)
 	})
 
 	// ── Run the re-adoption flow.
@@ -118,7 +118,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	// (a) exactly one is_placeholder=TRUE type for this workspace.
 	var ct int
 	if err := pool.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefact_types
+		SELECT COUNT(*) FROM artefacts_types
 		 WHERE workspace_id = $1
 		   AND is_placeholder = TRUE
 		   AND archived_at IS NULL`, wsID).Scan(&ct); err != nil {
@@ -171,7 +171,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	// (e) original strategy artefact_type soft-archived.
 	var archivedAt *time.Time
 	if err := pool.QueryRow(ctx, `
-		SELECT archived_at FROM artefact_types WHERE id = $1`,
+		SELECT archived_at FROM artefacts_types WHERE id = $1`,
 		oldStrategyTypeID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("read old strategy type: %v", err)
@@ -195,7 +195,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	}
 	// Still exactly one live placeholder type.
 	if err := pool.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefact_types
+		SELECT COUNT(*) FROM artefacts_types
 		 WHERE workspace_id = $1 AND is_placeholder = TRUE AND archived_at IS NULL`,
 		wsID).Scan(&ct); err != nil {
 		t.Fatalf("count placeholder types (rerun): %v", err)

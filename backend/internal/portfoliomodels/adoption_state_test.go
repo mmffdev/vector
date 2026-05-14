@@ -21,7 +21,7 @@ import (
 
 // PLA-0026 / Story 00501 (B12): smoke tests for GET
 // /api/portfolio-models/adoption-state after the rewrite to read from
-// the new substrate (master_record_portfolios + artefact_types).
+// the new substrate (master_record_portfolios + artefacts_types).
 //
 // Skip-on-unreachable discipline matches the rest of portfoliomodels:
 // when either the mmff_vector cluster or the vector_artefacts cluster
@@ -149,7 +149,7 @@ func TestGetAdoptionState_VAPoolNil(t *testing.T) {
 }
 
 // TestGetAdoptionState_NotStarted — both pools live, no
-// master_record_portfolios row AND no scope='strategy' artefact_types
+// master_record_portfolios row AND no scope='strategy' artefacts_types
 // row for the workspace → status='notStarted'.
 func TestGetAdoptionState_NotStarted(t *testing.T) {
 	vec, user := testVectorPoolPadmin(t)
@@ -181,18 +181,18 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 		t.Skipf("cannot reset master_record_portfolios (table may not be deployed): %v", err)
 	}
 
-	// Soft-archive any live scope='strategy' artefact_types rows for
+	// Soft-archive any live scope='strategy' artefacts_types rows for
 	// this workspace so we hit the notStarted branch deterministically.
 	// We never hard-delete (other rows may FK at it).
 	if _, err := va.Exec(ctx,
-		`UPDATE artefact_types
+		`UPDATE artefacts_types
 		    SET archived_at = COALESCE(archived_at, now())
 		  WHERE workspace_id = $1
 		    AND scope = 'strategy'
 		    AND archived_at IS NULL`,
 		ws,
 	); err != nil {
-		t.Skipf("cannot archive strategy artefact_types: %v", err)
+		t.Skipf("cannot archive strategy artefacts_types: %v", err)
 	}
 
 	h := NewAdoptionStateHandler(vec, va)
@@ -223,7 +223,7 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 	}
 }
 
-// TestGetAdoptionState_InProgress — strategy artefact_types rows
+// TestGetAdoptionState_InProgress — strategy artefacts_types rows
 // exist for the workspace but no master_record_portfolios row →
 // status='inProgress' (saga partway through; B6 finalize hasn't run).
 func TestGetAdoptionState_InProgress(t *testing.T) {
@@ -252,14 +252,14 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 		t.Skipf("cannot reset master_record_portfolios: %v", err)
 	}
 
-	// Insert a single live scope='strategy' artefact_types row for this
+	// Insert a single live scope='strategy' artefacts_types row for this
 	// workspace. Use a unique prefix to avoid conflicting with the
 	// (workspace_id, scope, prefix) WHERE archived_at IS NULL unique.
 	suffix := uuid.NewString()[:6]
 	prefix := "TI" + suffix[:3]
 	typeID := uuid.New()
 	if _, err := va.Exec(ctx, `
-		INSERT INTO artefact_types
+		INSERT INTO artefacts_types
 		    (id, subscription_id, workspace_id,
 		     scope, source, name, prefix,
 		     allows_children, sort_order)
@@ -271,7 +271,7 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 	}
 	defer func() {
 		_, _ = va.Exec(ctx,
-			`UPDATE artefact_types SET archived_at = now() WHERE id = $1`,
+			`UPDATE artefacts_types SET archived_at = now() WHERE id = $1`,
 			typeID)
 	}()
 

@@ -18,7 +18,7 @@ package flows
 
 // sqlListFlowsByScope returns every flow and its states for a
 // subscription, scoped by artefact-type scope ('work' or 'strategy').
-// Joins flows → artefact_types → flows_states; the listByScope helper
+// Joins flows → artefacts_types → flows_states; the listByScope helper
 // then de-duplicates flows in Go.
 const sqlListFlowsByScope = `
 		SELECT
@@ -37,7 +37,7 @@ const sqlListFlowsByScope = `
 		    fs.colour      AS state_colour,
 		    fs.description AS state_description
 		FROM flows f
-		JOIN artefact_types at ON at.id = f.artefact_type_id
+		JOIN artefacts_types at ON at.id = f.artefact_type_id
 		JOIN flows_states    fs ON fs.flow_id = f.id AND fs.archived_at IS NULL
 		WHERE at.subscription_id = $1
 		  AND at.scope = $2
@@ -69,7 +69,7 @@ const sqlListTransitionsForFlows = `
 // ── service.go: flow state CRUD ────────────────────────────────────────────
 
 // sqlPatchFlowState rewrites the mutable fields of one flow state,
-// scoped to subscription via the artefact_types join. COALESCE handles
+// scoped to subscription via the artefacts_types join. COALESCE handles
 // nil-as-no-change for everything except description, which uses a
 // $9 boolean flag so callers can clear it to NULL.
 const sqlPatchFlowState = `
@@ -82,7 +82,7 @@ const sqlPatchFlowState = `
 		       is_pullable = COALESCE($8, fs.is_pullable),
 		       description = CASE WHEN $9::boolean THEN $10 ELSE fs.description END
 		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  fs.id      = $2
 		  AND  fs.flow_id = f.id
 		  AND  at.subscription_id = $3
@@ -100,7 +100,7 @@ const sqlExistsFlowStateInTenant = `
 			SELECT 1
 			FROM   flows_states fs
 			JOIN   flows f         ON f.id = fs.flow_id
-			JOIN   artefact_types at ON at.id = f.artefact_type_id
+			JOIN   artefacts_types at ON at.id = f.artefact_type_id
 			WHERE  fs.id = $1
 			  AND  at.subscription_id = $2
 			  AND  fs.archived_at IS NULL
@@ -129,7 +129,7 @@ const sqlInsertExitRuleAppend = `
 			SELECT fs.id
 			FROM   flows_states fs
 			JOIN   flows f         ON f.id = fs.flow_id
-			JOIN   artefact_types at ON at.id = f.artefact_type_id
+			JOIN   artefacts_types at ON at.id = f.artefact_type_id
 			WHERE  fs.id = $1
 			  AND  at.subscription_id = $2
 			  AND  fs.archived_at IS NULL
@@ -158,7 +158,7 @@ const sqlPatchExitRule = `
 		       colour     = CASE WHEN $3::boolean THEN $4 ELSE r.colour END
 		FROM   flows_states fs
 		JOIN   flows f         ON f.id = fs.flow_id
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  r.id            = $5
 		  AND  r.flow_state_id = fs.id
 		  AND  at.subscription_id = $6
@@ -175,7 +175,7 @@ const sqlArchiveExitRule = `
 		SET    archived_at = NOW()
 		FROM   flows_states fs
 		JOIN   flows f         ON f.id = fs.flow_id
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  r.id            = $1
 		  AND  r.flow_state_id = fs.id
 		  AND  at.subscription_id = $2
@@ -190,12 +190,12 @@ const sqlSelectMaxFlowStateSortOrder = `
 	`
 
 // sqlInsertFlowState appends a new state to a flow, tenancy-gated via
-// the artefact_types join. Returns the hydrated state row.
+// the artefacts_types join. Returns the hydrated state row.
 const sqlInsertFlowState = `
 		INSERT INTO flows_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
 		SELECT f.id, $3, $4, $5, $6, $7
 		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  f.id = $1
 		  AND  at.subscription_id = $2
 		  AND  f.archived_at IS NULL
@@ -208,7 +208,7 @@ const sqlArchiveFlowState = `
 		UPDATE flows_states fs
 		SET    archived_at = NOW()
 		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  fs.id = $1
 		  AND  fs.flow_id = f.id
 		  AND  at.subscription_id = $2
@@ -222,7 +222,7 @@ const sqlInsertTransition = `
 		INSERT INTO flows_transitions (flow_id, from_state_id, to_state_id)
 		SELECT f.id, $3, $4
 		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  f.id = $1
 		  AND  at.subscription_id = $2
 		  AND  f.archived_at IS NULL
@@ -243,7 +243,7 @@ const sqlExistsTransition = `
 const sqlDeleteTransition = `
 		DELETE FROM flows_transitions ft
 		USING  flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
+		JOIN   artefacts_types at ON at.id = f.artefact_type_id
 		WHERE  ft.flow_id      = f.id
 		  AND  f.id            = $1
 		  AND  at.subscription_id = $2
@@ -256,7 +256,7 @@ const sqlDeleteTransition = `
 // sqlSelectArtefactTypeNameInTenant gates the reset operation on the
 // caller's subscription and fetches the type name for the audit/UI.
 const sqlSelectArtefactTypeNameInTenant = `
-		SELECT name FROM artefact_types
+		SELECT name FROM artefacts_types
 		 WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
 	`
 

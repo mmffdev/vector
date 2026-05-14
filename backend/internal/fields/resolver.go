@@ -1,11 +1,11 @@
 // Package fields owns the scope resolution layer for the EAV substrate
 // (PLA-0026 / Story 00491, B2). Given a (workspace, tenant, field)
-// triple it answers admit/deny by walking the artefact_field_library
-// scope discriminator and consulting the artefact_workspace_fields
+// triple it answers admit/deny by walking the artefacts_fields_library
+// scope discriminator and consulting the workspaces_fields
 // whitelist for workspace-scoped entries.
 //
 // The package is read-only against vector_artefacts: it does NOT write
-// to artefact_field_library or artefact_workspace_fields. Whitelist
+// to artefacts_fields_library or workspaces_fields. Whitelist
 // curation is owned by a separate admin surface (out of scope for B2).
 //
 // Resolution rules per R047 §5:
@@ -18,7 +18,7 @@
 //
 // Plus: field not found (or archived) → deny with ErrFieldNotFound.
 // Unknown scope value → deny with ErrUnknownScope (defensive — the
-// CHECK constraint on artefact_field_library.scope makes this
+// CHECK constraint on artefacts_fields_library.scope makes this
 // unreachable in production, but the resolver must not panic).
 package fields
 
@@ -109,7 +109,7 @@ func (r *Resolver) ResolveField(
 		// Tenant boundary still applies: a workspace-scoped field
 		// belongs to one tenant. Cross-tenant whitelisting is not
 		// possible because the workspace_id PK in
-		// artefact_workspace_fields refers to mmff_vector.workspaces
+		// workspaces_fields refers to mmff_vector.workspaces
 		// (one tenant per workspace), but we re-check tenant match
 		// here for defence in depth.
 		if row.subscriptionID == nil || *row.subscriptionID != subscriptionID {
