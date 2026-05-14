@@ -159,7 +159,7 @@ export default function ArtefactFlowTransitionDesigner({
       let labelPos: "top" | "right" | "bottom" | "left";
       if (Math.abs(cos) >= Math.abs(sin)) labelPos = cos >= 0 ? "right" : "left";
       else labelPos = sin >= 0 ? "bottom" : "top";
-      return { item: n, x, y, angle: a, labelPos };
+      return { item: n, x, y, angle: a, labelPos, index: i };
     });
 
     const slots = rawSlots.map((s) => {
@@ -276,8 +276,8 @@ export default function ArtefactFlowTransitionDesigner({
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
               </marker>
               <pattern id="aftd-wedge-stripes" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)">
-                <rect x="0" y="0" width="10" height="20" fill="#584400" />
-                <rect x="10" y="0" width="10" height="20" fill="transparent" />
+                <rect x="0" y="0" width="10" height="20" fill="#ff6600" />
+                <rect x="10" y="0" width="10" height="20" fill="#000000" />
               </pattern>
             </defs>
 
@@ -359,26 +359,39 @@ export default function ArtefactFlowTransitionDesigner({
             ))}
           </svg>
 
-          {positions.map(({ item, x, y, labelPos }) => (
-            <button
-              key={item.id}
-              type="button"
-              className="aftd__node"
-              title={`Click to remove ${item.label}`}
-              aria-label={`Remove ${item.label}`}
-              style={{
-                left: pct(x),
-                top:  pct(y),
-                width: pct(nodeRadius * 2),
-                transition: `left ${transitionMs}ms cubic-bezier(0.4,0,0.2,1), top ${transitionMs}ms cubic-bezier(0.4,0,0.2,1), width ${transitionMs}ms ease`,
-              }}
-              onClick={() => handleRemove(item.id)}
-            >
-              <div className={`aftd__node-label aftd__node-label--${labelPos}`}>
-                {item.label}
-              </div>
-            </button>
-          ))}
+          {positions.map(({ item, x, y, labelPos, angle, index }) => {
+            // Rotate the number so the glyph's "top" points radially
+            // outward from the centre. Screen angle: 0 = right, 90 = down.
+            // CSS rotate(0) has top pointing up (= -90 / 270). So to align
+            // glyph-top with the outward radial, rotate by deg + 90.
+            const deg = (angle * 180) / Math.PI;
+            const textRotation = deg + 90;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="aftd__node"
+                title={`Click to remove ${item.label}`}
+                aria-label={`Remove ${item.label}`}
+                style={{
+                  left: pct(x),
+                  top:  pct(y),
+                  width: pct(nodeRadius * 2),
+                  transition: `left ${transitionMs}ms cubic-bezier(0.4,0,0.2,1), top ${transitionMs}ms cubic-bezier(0.4,0,0.2,1), width ${transitionMs}ms ease`,
+                }}
+                onClick={() => handleRemove(item.id)}
+              >
+                <span className="aftd__node-fill" style={{ background: item.colour }} aria-hidden>
+                  <span className="aftd__node-index" style={{ transform: `rotate(${textRotation}deg)` }}>
+                    {index + 1}
+                  </span>
+                </span>
+                <div className={`aftd__node-label aftd__node-label--${labelPos}`}>
+                  {item.label}
+                </div>
+              </button>
+            );
+          })}
 
           {slots.map(({ insertAt: idx, key, x, y, angle }) => (
             <button
@@ -436,8 +449,9 @@ export default function ArtefactFlowTransitionDesigner({
         }
         .aftd__arc-track {
           fill: none;
-          stroke: var(--border);
+          stroke: var(--ink-muted);
           stroke-width: 1;
+          opacity: 0.55;
           display: none;
         }
         .aftd__arc-track--outer {
@@ -445,15 +459,16 @@ export default function ArtefactFlowTransitionDesigner({
           stroke-dasharray: 20 10;
         }
         .aftd__cross line {
-          stroke: var(--border);
+          stroke: var(--ink-muted);
           stroke-width: 1.5;
           stroke-linecap: round;
+          opacity: 0.55;
         }
         .aftd__node {
           position: absolute;
           transform: translate(-50%, -50%);
           padding: 0;
-          border: 1px solid var(--border);
+          border: 1px solid color-mix(in srgb, var(--ink-muted) 55%, transparent);
           background: transparent;
           border-radius: 50%;
           aspect-ratio: 1 / 1;
@@ -462,6 +477,24 @@ export default function ArtefactFlowTransitionDesigner({
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+        .aftd__node-fill {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 60%;
+          height: 60%;
+          border-radius: 50%;
+          pointer-events: none;
+          transition: background 160ms ease;
+        }
+        .aftd__node-index {
+          color: #fff;
+          font-weight: 600;
+          font-size: 35px;
+          line-height: 1;
+          user-select: none;
+          transition: transform ${transitionMs}ms cubic-bezier(0.4,0,0.2,1);
         }
         .aftd__node-label {
           position: absolute;
@@ -479,9 +512,9 @@ export default function ArtefactFlowTransitionDesigner({
           position: absolute;
           transform: translate(-50%, -50%);
           padding: 0;
-          border: 1px dashed var(--border);
+          border: 1.5px dashed var(--ink-muted);
           background: var(--surface-raised, rgba(255,255,255,0.04));
-          color: var(--ink-muted);
+          color: var(--ink);
           border-radius: 50%;
           aspect-ratio: 1 / 1;
           height: auto;
