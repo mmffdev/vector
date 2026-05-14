@@ -38,7 +38,6 @@
     "backend/internal/portfoliomodels/service.go",
     "backend/internal/ranking/position.go",
     "backend/internal/ranking/service.go",
-    "backend/internal/roles/service.go",
     "backend/internal/search/service.go",
     "backend/internal/searchworker/worker.go",
     "backend/internal/tenantsettings/service.go",

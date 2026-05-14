@@ -108,8 +108,7 @@ func (s *Service) ResolveActorPermissionIDs(ctx context.Context, actorID uuid.UU
 	if len(codes) == 0 {
 		return map[uuid.UUID]struct{}{}, nil
 	}
-	rows, err := s.Pool.Query(ctx,
-		`SELECT id FROM permissions WHERE code = ANY($1)`, codes)
+	rows, err := s.Pool.Query(ctx, sqlSelectPermissionIDsByCode, codes)
 	if err != nil {
 		return nil, err
 	}
@@ -136,13 +135,7 @@ func IsSystemRole(id uuid.UUID) bool {
 // List returns all roles visible to actorTenant — that is, every system
 // role plus every non-archived tenant-custom role belonging to actorTenant.
 func (s *Service) List(ctx context.Context, actorTenant uuid.UUID) ([]models.RoleRow, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, subscription_id, code, label, description, rank,
-		       is_system, is_external, archived_at, created_at, updated_at, created_by
-		  FROM roles
-		 WHERE archived_at IS NULL
-		   AND (subscription_id IS NULL OR subscription_id = $1)
-		 ORDER BY rank DESC, label ASC`, actorTenant)
+	rows, err := s.Pool.Query(ctx, sqlListRolesVisibleToTenant, actorTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -155,15 +148,9 @@ func (s *Service) List(ctx context.Context, actorTenant uuid.UUID) ([]models.Rol
 // ErrNotFound (no existence leak).
 func (s *Service) Get(ctx context.Context, id, actorTenant uuid.UUID) (*models.RoleRow, error) {
 	r := &models.RoleRow{}
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, code, label, description, rank,
-		       is_system, is_external, archived_at, created_at, updated_at, created_by
-		  FROM roles
-		 WHERE id = $1
-		   AND (subscription_id IS NULL OR subscription_id = $2)`,
-		id, actorTenant,
-	).Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
-		&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
+	err := s.Pool.QueryRow(ctx, sqlSelectRoleByIDInTenant, id, actorTenant).
+		Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
+			&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -199,12 +186,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorTenant, actor
 	}
 
 	r := &models.RoleRow{}
-	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO roles (subscription_id, code, label, description, rank,
-		                   is_system, is_external, created_by)
-		VALUES ($1, $2, $3, $4, $5, FALSE, $6, $7)
-		RETURNING id, subscription_id, code, label, description, rank,
-		          is_system, is_external, archived_at, created_at, updated_at, created_by`,
+	err := s.Pool.QueryRow(ctx, sqlInsertTenantRole,
 		actorTenant, in.Code, in.Label, in.Description, in.Rank, in.IsExternal, actor,
 	).Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
 		&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
@@ -270,15 +252,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	}
 
 	r := &models.RoleRow{}
-	err = s.Pool.QueryRow(ctx, `
-		UPDATE roles
-		   SET label = $2, description = $3, rank = $4, updated_at = NOW()
-		 WHERE id = $1
-		RETURNING id, subscription_id, code, label, description, rank,
-		          is_system, is_external, archived_at, created_at, updated_at, created_by`,
-		id, label, description, rank,
-	).Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
-		&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
+	err = s.Pool.QueryRow(ctx, sqlUpdateRole, id, label, description, rank).
+		Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
+			&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
 	if err != nil {
 		return nil, err
 	}
@@ -305,8 +281,7 @@ func (s *Service) Archive(ctx context.Context, id uuid.UUID, actorTenant, actor 
 	if existing.IsSystem {
 		return ErrSystemRoleImmutable
 	}
-	_, err = s.Pool.Exec(ctx,
-		`UPDATE roles SET archived_at = NOW(), updated_at = NOW() WHERE id = $1`, id)
+	_, err = s.Pool.Exec(ctx, sqlArchiveRole, id)
 	if err != nil {
 		return err
 	}
@@ -355,11 +330,7 @@ func (s *Service) AssignPermissions(
 	defer tx.Rollback(ctx)
 
 	for _, pid := range permissionIDs {
-		_, err := tx.Exec(ctx, `
-			INSERT INTO roles_permissions (role_id, permission_id, granted_by)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (role_id, permission_id) DO NOTHING`,
-			roleID, pid, actor)
+		_, err := tx.Exec(ctx, sqlUpsertRolePermission, roleID, pid, actor)
 		if err != nil {
 			return err
 		}
@@ -396,10 +367,7 @@ func (s *Service) RevokePermissions(
 		return ErrSystemRoleImmutable
 	}
 
-	_, err = s.Pool.Exec(ctx, `
-		DELETE FROM roles_permissions
-		 WHERE role_id = $1
-		   AND permission_id = ANY($2)`, roleID, permissionIDs)
+	_, err = s.Pool.Exec(ctx, sqlDeleteRolePermissions, roleID, permissionIDs)
 	if err != nil {
 		return err
 	}
@@ -420,8 +388,7 @@ func (s *Service) ListPermissionsForRole(ctx context.Context, roleID, actorTenan
 	if _, err := s.Get(ctx, roleID, actorTenant); err != nil {
 		return nil, err
 	}
-	rows, err := s.Pool.Query(ctx,
-		`SELECT permission_id FROM roles_permissions WHERE role_id = $1`, roleID)
+	rows, err := s.Pool.Query(ctx, sqlListPermissionIDsForRole, roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -442,10 +409,7 @@ func (s *Service) ListPermissionsForRole(ctx context.Context, roleID, actorTenan
 // (not tenant-scoped); the visibility check is the actor's
 // roles.list permission, enforced at the route layer.
 func (s *Service) ListPermissionsCatalogue(ctx context.Context) ([]models.PermissionRow, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, code, label, category, description, created_at
-		FROM permissions
-		ORDER BY category, code`)
+	rows, err := s.Pool.Query(ctx, sqlListPermissionsCatalogue)
 	if err != nil {
 		return nil, err
 	}

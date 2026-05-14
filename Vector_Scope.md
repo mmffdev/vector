@@ -101,7 +101,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.2** `auth` — 21 SQL strings, single-DB, foundational. `[P1]` ✅ done 2026-05-14 — `sql.go` created with 21 named consts (role/user lookups + login lifecycle + refresh-token rotation + logout + password change/reset); allow-list shrunk 53 → 52.
 > Commit `44e6e68` (2026-05-14): refactor(PLA-0048 / RF1.2.2): consolidate auth SQL into sql.go [RF1.2.2]
 - **RF1.2.3** `users` — 15 SQL strings, single-DB. `[P1]` ✅ done 2026-05-14 — `sql.go` created with 14 named consts across service.go / prefs.go / handler.go (Create + List + Update + Delete + IssueResetLink + FindByID + theme-pack get/set + post-reset email lookup); 2 dedupes (sqlInsertPasswordReset shared by Create + IssueResetLink, sqlSelectUserTenantRoleEmail shared by Delete + IssueResetLink); 1 fragment const for the role_id subquery in the sparse Update. Allow-list shrunk 52 → 49.
-- **RF1.2.4** `roles` — 10 SQL strings, single-DB. `[P1]`
+> Commit `cb1b895` (2026-05-14): refactor(PLA-0048 / RF1.2.3): consolidate users SQL into sql.go [RF1.2.3]
+- **RF1.2.4** `roles` — 10 SQL strings, single-DB. `[P1]` ✅ done 2026-05-14 — `sql.go` created with 10 named consts (permission-id resolution + list/get + Create/Update/Archive + role-permission grid upsert/delete/list + permissions catalogue). Allow-list shrunk 49 → 48.
 - **RF1.2.5** `permissions` — 3 SQL strings, single-DB, foundational. `[P2]`
 - **RF1.2.6** `addressables` — 21 SQL strings, single-DB. `[P2]`
 - **RF1.2.7** `nav` — 53 SQL strings, single-DB. `[P2]`
