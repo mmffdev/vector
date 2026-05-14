@@ -117,7 +117,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.10** `timeboxsprints` + `timeboxreleases` — small, single-DB. `[P3]` ✅ done 2026-05-14 — two `sql.go` files (mirror-shaped packages): timeboxsprints 9 consts (insert/select/list template/update template/archive/start/close + last-end probe root+node), timeboxreleases 5 consts (insert/select/list template/update template/archive). Allow-list shrunk 35 → 33.
 > Commit `b090831` (2026-05-14): refactor(PLA-0048 / RF1.2.10): consolidate timebox SQL into sql.go [RF1.2.10]
 - **RF1.2.11** `workspaces` — 18 SQL strings, 2 DBs. `[P2]` ✅ done 2026-05-14 — `sql.go` with 18 consts: commands.go (workspace CRUD + creator admin seed + list/load template/for-update), roles.go (workspace_roles grant idempotent + admin-existence + insert + revoke + list), crossdb.go (cross-DB orphan-scan template — VAPool read-only). Allow-list shrunk 33 → 30.
-- **RF1.2.12** `tenantsettings` — 4 SQL strings, 2 DBs. `[P3]`
+> Commit `a82f165` (2026-05-14): refactor(PLA-0048 / RF1.2.11): consolidate workspaces SQL into sql.go [RF1.2.11]
+- **RF1.2.12** `tenantsettings` — 4 SQL strings, 2 DBs. `[P3]` ✅ done 2026-05-14 — 3 consts (ensure-row idempotent insert + select + sparse-update template). False-positive lint hit on user-facing "select at least one day" message fixed by rewording to "must include at least one day". Allow-list shrunk 30 → 29.
 - **RF1.2.13** `fields` — 5 SQL strings, 2 DBs. `[P3]`
 - **RF1.2.14** `searchworker` — 7 SQL strings, 2 DBs. `[P3]`
 - **RF1.2.15** `errorsreport` — 2 SQL strings, 3 DBs. `[P3]`

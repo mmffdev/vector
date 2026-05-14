@@ -138,11 +138,7 @@ var (
 func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*Settings, error) {
 	row, err := s.read(ctx, workspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		if _, err := s.Pool.Exec(ctx,
-			`INSERT INTO master_record_tenant (workspace_id) VALUES ($1)
-             ON CONFLICT (workspace_id) DO NOTHING`,
-			workspaceID,
-		); err != nil {
+		if _, err := s.Pool.Exec(ctx, sqlEnsureTenantRow, workspaceID); err != nil {
 			return nil, err
 		}
 		return s.read(ctx, workspaceID)
@@ -152,16 +148,7 @@ func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*Settings, er
 
 func (s *Service) read(ctx context.Context, workspaceID uuid.UUID) (*Settings, error) {
 	var x Settings
-	err := s.Pool.QueryRow(ctx, `
-		SELECT workspace_id, tenant_name, tenant_description, tenant_owner_user_id, tenant_primary_contact_email,
-		       tenant_data_region, tenant_timezone, tenant_date_format, tenant_datetime_format,
-		       tenant_workdays, tenant_week_start, tenant_rank_method, tenant_build_changeset_tracking,
-		       tenant_notes,
-		       tenant_created_at, tenant_updated_at, tenant_archived_at
-		  FROM master_record_tenant
-		 WHERE workspace_id = $1`,
-		workspaceID,
-	).Scan(
+	err := s.Pool.QueryRow(ctx, sqlSelectTenantSettings, workspaceID).Scan(
 		&x.TenantID, &x.TenantName, &x.TenantDescription, &x.TenantOwnerUserID, &x.TenantPrimaryContactEmail,
 		&x.TenantDataRegion, &x.TenantTimezone, &x.TenantDateFormat, &x.TenantDatetimeFormat,
 		&x.TenantWorkdays, &x.TenantWeekStart, &x.TenantRankMethod, &x.TenantBuildChangesetTracking,
@@ -259,7 +246,7 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 	if in.TenantWorkdays != nil {
 		days := *in.TenantWorkdays
 		if len(days) == 0 {
-			violations = append(violations, Violation{Field: "tenant_workdays", Message: "select at least one day"})
+			violations = append(violations, Violation{Field: "tenant_workdays", Message: "must include at least one day"})
 		} else if len(days) > 7 {
 			violations = append(violations, Violation{Field: "tenant_workdays", Message: "no more than seven days"})
 		} else {
@@ -327,10 +314,7 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 	}
 
 	args = append(args, workspaceID)
-	q := fmt.Sprintf(
-		`UPDATE master_record_tenant SET %s WHERE workspace_id = $%d`,
-		strings.Join(sets, ", "), len(args),
-	)
+	q := fmt.Sprintf(sqlUpdateTenantTemplate, strings.Join(sets, ", "), len(args))
 	if _, err := s.Pool.Exec(ctx, q, args...); err != nil {
 		return nil, err
 	}
