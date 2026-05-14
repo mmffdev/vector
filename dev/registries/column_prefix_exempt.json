@@ -23,6 +23,7 @@
     "  workspaces:      14",
     "",
     "Pay-down log (newest first):",
+    "  2026-05-14 — mig 189 — RBAC triangle column-prefixed (users_roles 12 cols + users_permissions 6 cols + users_roles_permissions 4 cols + ~12 idx/constraint + dedicated trigger fn). §2.4 multi-FK role suffix applied (created_by / granted_by). roles + permissions + auth + users all rewritten. 191→174 (-17). roles package OFF ledger. 4 → 3.",
     "  2026-05-14 — mig 188 — users_roles_workspaces fully prefixed (12 cols + 3 idx + 5 FK + 2 check + dedicated trigger fn; workspaces/sql.go + topology/sql.go + portfoliomodels/sql.go). §2.4 multi-FK role suffix applied (granted_by / revoked_by). 205→191 (-14). workspaces package OFF ledger. 5 → 4.",
     "  2026-05-14 — mig 064 (VA) — artefacts_fields_values fully prefixed (10 cols + 5 idx + 3 constraint + trigger). Bundled with Go package rename artefactitemsv2 → artefactitems (v-suffix dropped per §1.1.2 since v1 obj_* substrate is fully retired). lint sample: 211→205 (-6). artefactitems package OFF ledger. 6 → 5.",
     "  2026-05-14 — mig 187 — users_sessions fully prefixed (11 cols + 6 index + 1 FK; auth/sql.go + users/sql.go rewrites) → 222→211 total (-11). users + auth packages BOTH OFF ledger. 8 packages → 6.",
@@ -32,7 +33,6 @@
   "exempt_packages": [
     "flows",
     "nav",
-    "portfoliomodels",
-    "roles"
+    "portfoliomodels"
   ]
 }

@@ -19,7 +19,7 @@ package permissions
 // drift between the SQL seed (db/mmff_vector/schema/088_roles_permissions.sql + any
 // extension migrations) and the Go-side `All` slice in catalogue.go.
 // A mismatch is fatal — main() refuses to start.
-const sqlListPermissionCodes = `SELECT code FROM users_permissions`
+const sqlListPermissionCodes = `SELECT users_permissions_code FROM users_permissions`
 
 // ── resolver.go (PermissionsFor) ───────────────────────────────────────────
 
@@ -27,6 +27,9 @@ const sqlListPermissionCodes = `SELECT code FROM users_permissions`
 // Used by PermissionsFor before joining through users_roles_permissions.
 // (Same SQL as users.sqlSelectUserRoleID, but this package owns its
 // own catalogue file — packages do not reach across to share consts.)
+//
+// users.role_id is NOT yet column-prefixed — the users table itself is
+// deferred under TD-NAME-001 (frontend wire-shape consumers).
 const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
 
 // sqlSelectPermissionCodesForRole returns the effective permission
@@ -34,8 +37,8 @@ const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
 // resolver caches the result in-process; cache TTL bounds drift,
 // explicit Invalidate/InvalidateRole calls drop stale entries.
 const sqlSelectPermissionCodesForRole = `
-		SELECT p.code
+		SELECT p.users_permissions_code
 		  FROM users_roles_permissions rp
-		  JOIN users_permissions p ON p.id = rp.permission_id
-		 WHERE rp.role_id = $1
+		  JOIN users_permissions p ON p.users_permissions_id = rp.users_roles_permissions_id_permission
+		 WHERE rp.users_roles_permissions_id_role = $1
 	`

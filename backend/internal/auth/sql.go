@@ -25,8 +25,14 @@ const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
 // rank, system/external flags) returned to the frontend on every auth
 // response (login, refresh, /me).
 const sqlSelectRoleByID = `
-		SELECT id, code, label, rank, is_system, is_external
-		  FROM users_roles WHERE id = $1
+		SELECT users_roles_id,
+		       users_roles_code,
+		       users_roles_label,
+		       users_roles_rank,
+		       users_roles_is_system,
+		       users_roles_is_external
+		  FROM users_roles
+		 WHERE users_roles_id = $1
 	`
 
 // ── user hydration (FindUserByEmail, FindUserByID) ──────────────────────────

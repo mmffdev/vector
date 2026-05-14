@@ -26,7 +26,7 @@ package users
 const sqlInsertUser = `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id, force_password_change)
 		VALUES ($1, $2, $3, $4,
-			(SELECT id FROM users_roles WHERE is_system = TRUE AND code = $5),
+			(SELECT users_roles_id FROM users_roles WHERE users_roles_is_system = TRUE AND users_roles_code = $5),
 			TRUE)
 		RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at
 	`
@@ -76,7 +76,7 @@ const sqlUpdateUserTemplate = `UPDATE users SET %s WHERE id = %s`
 // fragment ("role = $N"). One %s holds the `$N` bind placeholder for
 // the role code lookup. PLA-0007 G4 retires this subquery once the
 // users.role enum column is dropped.
-const sqlUpdateUserRoleIDFragmentTemplate = `role_id = (SELECT id FROM users_roles WHERE is_system = TRUE AND code = %s)`
+const sqlUpdateUserRoleIDFragmentTemplate = `role_id = (SELECT users_roles_id FROM users_roles WHERE users_roles_is_system = TRUE AND users_roles_code = %s)`
 
 // sqlRevokeActiveUserSessions revokes a user's live (non-already-revoked)
 // users_sessions. Used inside the Update tx when role changes so a downgrade

@@ -12,7 +12,7 @@
 //
 // All reads/writes target the mmff_vector pool via s.Pool — users_roles is
 // single-DB (users_roles + users_roles_permissions + users_permissions catalogue all
-// live there).
+// live there). Column-prefix applied 2026-05-14 (RF1.4.4 / TD-NAME-001).
 package roles
 
 // ── permission-id resolution (ResolveActorPermissionIDs) ───────────────────
@@ -21,7 +21,7 @@ package roles
 // (e.g. ["users.create.padmin", "users_roles.update"]) to their permission
 // row IDs. Used by the self-elevation gate in AssignPermissions to
 // reject grants the actor does not themselves hold.
-const sqlSelectPermissionIDsByCode = `SELECT id FROM users_permissions WHERE code = ANY($1)`
+const sqlSelectPermissionIDsByCode = `SELECT users_permissions_id FROM users_permissions WHERE users_permissions_code = ANY($1)`
 
 // ── role list / get ────────────────────────────────────────────────────────
 
@@ -30,24 +30,45 @@ const sqlSelectPermissionIDsByCode = `SELECT id FROM users_permissions WHERE cod
 // hidden. Order: highest rank first, then label A→Z so the admin UI
 // renders gadmin/padmin/team_lead/user/external at the top.
 const sqlListRolesVisibleToTenant = `
-		SELECT id, subscription_id, code, label, description, rank,
-		       is_system, is_external, archived_at, created_at, updated_at, created_by
+		SELECT users_roles_id,
+		       users_roles_id_subscription,
+		       users_roles_code,
+		       users_roles_label,
+		       users_roles_description,
+		       users_roles_rank,
+		       users_roles_is_system,
+		       users_roles_is_external,
+		       users_roles_archived_at,
+		       users_roles_created_at,
+		       users_roles_updated_at,
+		       users_roles_id_user_created_by
 		  FROM users_roles
-		 WHERE archived_at IS NULL
-		   AND (subscription_id IS NULL OR subscription_id = $1)
-		 ORDER BY rank DESC, label ASC
+		 WHERE users_roles_archived_at IS NULL
+		   AND (users_roles_id_subscription IS NULL OR users_roles_id_subscription = $1)
+		 ORDER BY users_roles_rank DESC, users_roles_label ASC
 	`
 
 // sqlSelectRoleByIDInTenant returns a single role gated on tenant
-// visibility. System users_roles (subscription_id IS NULL) are visible to
-// every tenant; tenant-custom rows are filtered by actorTenant.
-// pgx.ErrNoRows → ErrNotFound in the caller (no existence leak).
+// visibility. System users_roles (users_roles_id_subscription IS NULL)
+// are visible to every tenant; tenant-custom rows are filtered by
+// actorTenant. pgx.ErrNoRows → ErrNotFound in the caller (no
+// existence leak).
 const sqlSelectRoleByIDInTenant = `
-		SELECT id, subscription_id, code, label, description, rank,
-		       is_system, is_external, archived_at, created_at, updated_at, created_by
+		SELECT users_roles_id,
+		       users_roles_id_subscription,
+		       users_roles_code,
+		       users_roles_label,
+		       users_roles_description,
+		       users_roles_rank,
+		       users_roles_is_system,
+		       users_roles_is_external,
+		       users_roles_archived_at,
+		       users_roles_created_at,
+		       users_roles_updated_at,
+		       users_roles_id_user_created_by
 		  FROM users_roles
-		 WHERE id = $1
-		   AND (subscription_id IS NULL OR subscription_id = $2)
+		 WHERE users_roles_id = $1
+		   AND (users_roles_id_subscription IS NULL OR users_roles_id_subscription = $2)
 	`
 
 // ── tenant role mutation (Create / Update / Archive) ───────────────────────
@@ -57,11 +78,29 @@ const sqlSelectRoleByIDInTenant = `
 // Returns the full row so the caller can hydrate the audit/response
 // payload in one round-trip.
 const sqlInsertTenantRole = `
-		INSERT INTO users_roles (subscription_id, code, label, description, rank,
-		                   is_system, is_external, created_by)
+		INSERT INTO users_roles (
+			users_roles_id_subscription,
+			users_roles_code,
+			users_roles_label,
+			users_roles_description,
+			users_roles_rank,
+			users_roles_is_system,
+			users_roles_is_external,
+			users_roles_id_user_created_by
+		)
 		VALUES ($1, $2, $3, $4, $5, FALSE, $6, $7)
-		RETURNING id, subscription_id, code, label, description, rank,
-		          is_system, is_external, archived_at, created_at, updated_at, created_by
+		RETURNING users_roles_id,
+		          users_roles_id_subscription,
+		          users_roles_code,
+		          users_roles_label,
+		          users_roles_description,
+		          users_roles_rank,
+		          users_roles_is_system,
+		          users_roles_is_external,
+		          users_roles_archived_at,
+		          users_roles_created_at,
+		          users_roles_updated_at,
+		          users_roles_id_user_created_by
 	`
 
 // sqlUpdateRole rewrites label + description + rank + updated_at.
@@ -69,28 +108,45 @@ const sqlInsertTenantRole = `
 // flow through here for system rows.
 const sqlUpdateRole = `
 		UPDATE users_roles
-		   SET label = $2, description = $3, rank = $4, updated_at = NOW()
-		 WHERE id = $1
-		RETURNING id, subscription_id, code, label, description, rank,
-		          is_system, is_external, archived_at, created_at, updated_at, created_by
+		   SET users_roles_label       = $2,
+		       users_roles_description = $3,
+		       users_roles_rank        = $4,
+		       users_roles_updated_at  = NOW()
+		 WHERE users_roles_id = $1
+		RETURNING users_roles_id,
+		          users_roles_id_subscription,
+		          users_roles_code,
+		          users_roles_label,
+		          users_roles_description,
+		          users_roles_rank,
+		          users_roles_is_system,
+		          users_roles_is_external,
+		          users_roles_archived_at,
+		          users_roles_created_at,
+		          users_roles_updated_at,
+		          users_roles_id_user_created_by
 	`
 
 // sqlArchiveRole soft-archives a tenant-custom role by stamping
 // archived_at + updated_at. System rows are rejected by the caller's
 // guard before this query runs.
-const sqlArchiveRole = `UPDATE users_roles SET archived_at = NOW(), updated_at = NOW() WHERE id = $1`
+const sqlArchiveRole = `UPDATE users_roles SET users_roles_archived_at = NOW(), users_roles_updated_at = NOW() WHERE users_roles_id = $1`
 
 // ── role-permission grid (AssignPermissions / RevokePermissions /
 //    ListPermissionsForRole / ListPermissionsCatalogue) ────────────────────
 
 // sqlUpsertRolePermission idempotently grants one permission to one
-// role. The (role_id, permission_id) unique key drives ON CONFLICT —
+// role. The (id_role, id_permission) unique key drives ON CONFLICT —
 // re-granting is a silent no-op, so the caller's loop can iterate
 // over a candidate set without checking for prior membership.
 const sqlUpsertRolePermission = `
-		INSERT INTO users_roles_permissions (role_id, permission_id, granted_by)
+		INSERT INTO users_roles_permissions (
+			users_roles_permissions_id_role,
+			users_roles_permissions_id_permission,
+			users_roles_permissions_id_user_granted_by
+		)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (role_id, permission_id) DO NOTHING
+		ON CONFLICT (users_roles_permissions_id_role, users_roles_permissions_id_permission) DO NOTHING
 	`
 
 // sqlDeleteRolePermissions revokes a batch of users_permissions from a role
@@ -99,21 +155,26 @@ const sqlUpsertRolePermission = `
 // cannot escalate).
 const sqlDeleteRolePermissions = `
 		DELETE FROM users_roles_permissions
-		 WHERE role_id = $1
-		   AND permission_id = ANY($2)
+		 WHERE users_roles_permissions_id_role       = $1
+		   AND users_roles_permissions_id_permission = ANY($2)
 	`
 
 // sqlListPermissionIDsForRole returns the permission row IDs in a
 // role's grid. Caller (ListPermissionsForRole) has already gated on
 // tenant visibility via Get.
-const sqlListPermissionIDsForRole = `SELECT permission_id FROM users_roles_permissions WHERE role_id = $1`
+const sqlListPermissionIDsForRole = `SELECT users_roles_permissions_id_permission FROM users_roles_permissions WHERE users_roles_permissions_id_role = $1`
 
 // sqlListPermissionsCatalogue returns the server-wide users_permissions
 // catalogue ordered by (category, code) for the admin grid. Not
 // tenant-scoped — visibility is enforced by the actor's users_roles.list
 // permission at the route layer.
 const sqlListPermissionsCatalogue = `
-		SELECT id, code, label, category, description, created_at
-		FROM users_permissions
-		ORDER BY category, code
+		SELECT users_permissions_id,
+		       users_permissions_code,
+		       users_permissions_label,
+		       users_permissions_category,
+		       users_permissions_description,
+		       users_permissions_created_at
+		  FROM users_permissions
+		 ORDER BY users_permissions_category, users_permissions_code
 	`
