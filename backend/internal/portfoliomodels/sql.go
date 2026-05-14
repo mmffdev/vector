@@ -462,39 +462,39 @@ const sqlDeleteMasterRecordPortfolioForWorkspace = `DELETE FROM master_record_po
 
 const sqlUpsertTestbedTenantRecord = `
 		INSERT INTO master_record_tenants (
-			workspace_id,
-			tenant_name,
-			tenant_description,
-			tenant_owner_user_id,
-			tenant_data_region,
-			tenant_timezone,
-			tenant_date_format,
-			tenant_datetime_format,
-			tenant_workdays,
-			tenant_week_start,
-			tenant_rank_method,
-			tenant_build_changeset_tracking,
-			tenant_primary_contact_email
+			master_record_tenants_id_workspace,
+			master_record_tenants_name,
+			master_record_tenants_description,
+			master_record_tenants_id_user_owner,
+			master_record_tenants_data_region,
+			master_record_tenants_timezone,
+			master_record_tenants_date_format,
+			master_record_tenants_datetime_format,
+			master_record_tenants_workdays,
+			master_record_tenants_week_start,
+			master_record_tenants_rank_method,
+			master_record_tenants_build_changeset_tracking,
+			master_record_tenants_primary_contact_email
 		) VALUES (
 			$1, 'ACME Bank', 'MMFFDev Testbed', $2,
 			'euw2', 'Europe/London', 'DD/MM/YYYY', 'DD/MM/YYYY HH:mm',
 			ARRAY['mon','tue','wed','thu','fri']::text[],
 			'mon', 'manual', FALSE, 'cookra@me.com'
 		)
-		ON CONFLICT (workspace_id) DO UPDATE
-		   SET tenant_name                     = EXCLUDED.tenant_name,
-		       tenant_description              = EXCLUDED.tenant_description,
-		       tenant_owner_user_id            = EXCLUDED.tenant_owner_user_id,
-		       tenant_data_region              = EXCLUDED.tenant_data_region,
-		       tenant_timezone                 = EXCLUDED.tenant_timezone,
-		       tenant_date_format              = EXCLUDED.tenant_date_format,
-		       tenant_datetime_format          = EXCLUDED.tenant_datetime_format,
-		       tenant_workdays                 = EXCLUDED.tenant_workdays,
-		       tenant_week_start               = EXCLUDED.tenant_week_start,
-		       tenant_rank_method              = EXCLUDED.tenant_rank_method,
-		       tenant_build_changeset_tracking = EXCLUDED.tenant_build_changeset_tracking,
-		       tenant_primary_contact_email    = EXCLUDED.tenant_primary_contact_email,
-		       tenant_updated_at               = now()
+		ON CONFLICT (master_record_tenants_id_workspace) DO UPDATE
+		   SET master_record_tenants_name                     = EXCLUDED.master_record_tenants_name,
+		       master_record_tenants_description              = EXCLUDED.master_record_tenants_description,
+		       master_record_tenants_id_user_owner            = EXCLUDED.master_record_tenants_id_user_owner,
+		       master_record_tenants_data_region              = EXCLUDED.master_record_tenants_data_region,
+		       master_record_tenants_timezone                 = EXCLUDED.master_record_tenants_timezone,
+		       master_record_tenants_date_format              = EXCLUDED.master_record_tenants_date_format,
+		       master_record_tenants_datetime_format          = EXCLUDED.master_record_tenants_datetime_format,
+		       master_record_tenants_workdays                 = EXCLUDED.master_record_tenants_workdays,
+		       master_record_tenants_week_start               = EXCLUDED.master_record_tenants_week_start,
+		       master_record_tenants_rank_method              = EXCLUDED.master_record_tenants_rank_method,
+		       master_record_tenants_build_changeset_tracking = EXCLUDED.master_record_tenants_build_changeset_tracking,
+		       master_record_tenants_primary_contact_email    = EXCLUDED.master_record_tenants_primary_contact_email,
+		       master_record_tenants_updated_at               = now()
 	`
 
 const sqlInsertTestbedRootTopologyNode = `
