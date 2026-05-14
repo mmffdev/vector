@@ -202,7 +202,7 @@ func (h *Handler) IssueReset(w http.ResponseWriter, r *http.Request) {
 	}
 	// Look up the email from the same row for the response payload.
 	var email string
-	_ = h.Svc.Pool.QueryRow(r.Context(), `SELECT email FROM users WHERE id = $1`, id).Scan(&email)
+	_ = h.Svc.Pool.QueryRow(r.Context(), sqlSelectUserEmailByID, id).Scan(&email)
 	writeJSON(w, http.StatusOK, resetResp{Email: email, ResetURL: link})
 }
 

@@ -17,9 +17,7 @@ import (
 // could relax it).
 func (s *Service) GetThemePack(ctx context.Context, userID uuid.UUID) (string, error) {
 	var pack *string
-	err := s.Pool.QueryRow(ctx,
-		`SELECT theme_pack FROM users WHERE id = $1`, userID,
-	).Scan(&pack)
+	err := s.Pool.QueryRow(ctx, sqlSelectUserThemePack, userID).Scan(&pack)
 	if err == pgx.ErrNoRows {
 		return "", ErrNotFound
 	}
@@ -38,10 +36,7 @@ func (s *Service) GetThemePack(ctx context.Context, userID uuid.UUID) (string, e
 // themes gracefully). Writing whatever the user sends is harmless — it's
 // just a string column rendered into a stylesheet href on read.
 func (s *Service) SetThemePack(ctx context.Context, userID uuid.UUID, pack string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE users SET theme_pack = $1, updated_at = NOW() WHERE id = $2`,
-		pack, userID,
-	)
+	tag, err := s.Pool.Exec(ctx, sqlUpdateUserThemePack, pack, userID)
 	if err != nil {
 		return err
 	}

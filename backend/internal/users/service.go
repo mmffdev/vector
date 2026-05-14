@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -89,19 +90,12 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 		if legacyRole != string(models.RoleUser) && legacyRole != string(models.RolePAdmin) && legacyRole != string(models.RoleGAdmin) {
 			legacyRole = string(models.RoleUser)
 		}
-		if err := tx.QueryRow(ctx, `
-			INSERT INTO users (subscription_id, email, password_hash, role, role_id, force_password_change)
-			VALUES ($1, $2, $3, $4,
-				(SELECT id FROM roles WHERE is_system = TRUE AND code = $5),
-				TRUE)
-			RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at`,
+		if err := tx.QueryRow(ctx, sqlInsertUser,
 			in.SubscriptionID, email, hash, legacyRole, roleStr,
 		).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `
-			INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
-			VALUES ($1, $2, $3, $4)`, u.ID, tokHash, exp, nilIfEmpty(ip))
+		_, err := tx.Exec(ctx, sqlInsertPasswordReset, u.ID, tokHash, exp, nilIfEmpty(ip))
 		return err
 	})
 	if err != nil {
@@ -123,11 +117,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 }
 
 func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.User, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, subscription_id, email, role, is_active, first_name, last_name, department,
-		       last_login, auth_method, force_password_change, password_changed_at,
-		       created_at, updated_at
-		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC`, subscriptionID)
+	rows, err := s.Pool.Query(ctx, sqlListUsersBySubscription, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +160,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		targetTenant uuid.UUID
 		targetRole   models.Role
 	)
-	err := s.Pool.QueryRow(ctx,
-		`SELECT subscription_id, role FROM users WHERE id = $1`, id,
-	).Scan(&targetTenant, &targetRole)
+	err := s.Pool.QueryRow(ctx, sqlSelectUserTenantAndRole, id).
+		Scan(&targetTenant, &targetRole)
 	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
 		return ErrNotFound
 	}
@@ -203,7 +192,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		sets = append(sets, "role = $"+itoa(i))
 		args = append(args, legacyRole)
 		i++
-		sets = append(sets, "role_id = (SELECT id FROM roles WHERE is_system = TRUE AND code = $"+itoa(i)+")")
+		sets = append(sets, fmt.Sprintf(sqlUpdateUserRoleIDFragmentTemplate, "$"+itoa(i)))
 		args = append(args, roleStr)
 		i++
 	}
@@ -244,17 +233,13 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	defer tx.Rollback(ctx)
 
 	args = append(args, id)
-	if _, err := tx.Exec(ctx,
-		"UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = $"+itoa(i), args...,
-	); err != nil {
+	sql := fmt.Sprintf(sqlUpdateUserTemplate, strings.Join(sets, ", "), "$"+itoa(i))
+	if _, err := tx.Exec(ctx, sql, args...); err != nil {
 		return err
 	}
 
 	if roleChanged {
-		if _, err := tx.Exec(ctx,
-			`UPDATE sessions SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
-			id,
-		); err != nil {
+		if _, err := tx.Exec(ctx, sqlRevokeActiveUserSessions, id); err != nil {
 			return err
 		}
 	}
@@ -299,9 +284,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorRole models.Rol
 		targetRole   models.Role
 		targetEmail  string
 	)
-	err := s.Pool.QueryRow(ctx,
-		`SELECT subscription_id, role, email FROM users WHERE id = $1`, id,
-	).Scan(&targetTenant, &targetRole, &targetEmail)
+	err := s.Pool.QueryRow(ctx, sqlSelectUserTenantRoleEmail, id).
+		Scan(&targetTenant, &targetRole, &targetEmail)
 	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
 		return ErrNotFound
 	}
@@ -311,7 +295,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorRole models.Rol
 	if targetRole.Rank() > actorRole.Rank() {
 		return ErrRoleCeiling
 	}
-	if _, err := s.Pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlDeleteUser, id); err != nil {
 		return err
 	}
 	s.Audit.Log(ctx, audit.Entry{
@@ -333,9 +317,8 @@ func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole mo
 		targetRole   models.Role
 		targetEmail  string
 	)
-	err := s.Pool.QueryRow(ctx,
-		`SELECT subscription_id, role, email FROM users WHERE id = $1`, id,
-	).Scan(&targetTenant, &targetRole, &targetEmail)
+	err := s.Pool.QueryRow(ctx, sqlSelectUserTenantRoleEmail, id).
+		Scan(&targetTenant, &targetRole, &targetEmail)
 	if err == pgx.ErrNoRows || (err == nil && targetTenant != actorTenant) {
 		return "", ErrNotFound
 	}
@@ -351,9 +334,7 @@ func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole mo
 		return "", err
 	}
 	exp := time.Now().Add(1 * time.Hour)
-	_, err = s.Pool.Exec(ctx, `
-		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
-		VALUES ($1, $2, $3, $4)`, id, tokHash, exp, nilIfEmpty(ip))
+	_, err = s.Pool.Exec(ctx, sqlInsertPasswordReset, id, tokHash, exp, nilIfEmpty(ip))
 	if err != nil {
 		return "", err
 	}
@@ -373,10 +354,8 @@ func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole mo
 // existence is hidden — same ErrNotFound either way.
 func (s *Service) FindByID(ctx context.Context, id, actorTenant uuid.UUID) (*models.User, error) {
 	u := &models.User{}
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, email, role, is_active, created_at, updated_at
-		FROM users WHERE id = $1 AND subscription_id = $2`, id, actorTenant,
-	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
+	err := s.Pool.QueryRow(ctx, sqlSelectUserByIDInTenant, id, actorTenant).
+		Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
 	}
