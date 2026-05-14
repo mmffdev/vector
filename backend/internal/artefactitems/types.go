@@ -1,8 +1,8 @@
-// Package artefactitemsv2 owns the v2 artefacts wire types mirroring
+// Package artefactitems owns the v2 artefacts wire types mirroring
 // backend/internal/workitems/types.go. The struct layout MUST NOT drift
 // from v1 — any schema change must be applied to both packages in tandem
 // until the vector_artefacts cutover is complete.
-package artefactitemsv2
+package artefactitems
 
 import (
 	"errors"
@@ -367,7 +367,7 @@ var validFieldTypes = map[string]bool{
 // added a new strategy type. Returning nil from validItemTypesByScope
 // means "trust the DB lookup".
 //
-// B21 (PLA-0037): introduced when artefactitemsv2 became scope-parameterised.
+// B21 (PLA-0037): introduced when artefactitems became scope-parameterised.
 var validItemTypesByScope = map[string]map[string]bool{
 	"work": {
 		"epic": true, "story": true, "task": true, "defect": true, "portfolio item": true,

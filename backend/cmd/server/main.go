@@ -53,7 +53,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
-	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
+	"github.com/mmffdev/vector-backend/internal/artefactitems"
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -276,24 +276,24 @@ func main() {
 	// route returns empty pages AND adoption falls back to legacy-only
 	// (no PLA-0026 dual-writes).
 	var vaPool *pgxpool.Pool
-	// B21 (PLA-0037): two handler instances on the same artefactitemsv2
+	// B21 (PLA-0037): two handler instances on the same artefactitems
 	// codebase — workItemsV2H mounted at /samantha/v2/work-items with
 	// scope="work" (legacy compat), portfolioItemsV2H mounted at
 	// /samantha/v2/portfolio-items with scope="strategy" (new in B21).
 	// Both share vaPool/pool; the only difference is the scope literal
 	// each Service binds for `at.scope = $N` filtering.
-	var workItemsV2H *artefactitemsv2.Handler
-	var portfolioItemsV2H *artefactitemsv2.Handler
+	var workItemsV2H *artefactitems.Handler
+	var portfolioItemsV2H *artefactitems.Handler
 	var webhookSvc *webhooks.Service
 	// v2ScopeAttach is captured inside the vaPool branch below so the
 	// PLA-0043 scope clamp can be wired onto both v2 services once
 	// orgDesignSvc is constructed further down. Nil when v2 is stubbed
 	// (no vaPool) — scope reads then fall through to ErrInvalidInput
 	// inside the service.
-	var v2ScopeAttach func(artefactitemsv2.TopologyScopeResolver)
+	var v2ScopeAttach func(artefactitems.TopologyScopeResolver)
 	makeStubHandlers := func() {
-		workItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "work"))
-		portfolioItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "strategy"))
+		workItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "work"))
+		portfolioItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "strategy"))
 	}
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
@@ -335,16 +335,16 @@ func main() {
 				logger.Info("vector_artefacts pool connected", "url", maskedURL)
 				webhookSvc = webhooks.New(vaPool)
 				notifier := webhooks.NewNotifier(webhookSvc)
-				wiSvc := artefactitemsv2.NewService(vaPool, pool, "work")
+				wiSvc := artefactitems.NewService(vaPool, pool, "work")
 				wiSvc.WithNotifier(notifier)
-				workItemsV2H = artefactitemsv2.NewHandler(wiSvc)
-				piSvc := artefactitemsv2.NewService(vaPool, pool, "strategy")
+				workItemsV2H = artefactitems.NewHandler(wiSvc)
+				piSvc := artefactitems.NewService(vaPool, pool, "strategy")
 				piSvc.WithNotifier(notifier)
-				portfolioItemsV2H = artefactitemsv2.NewHandler(piSvc)
+				portfolioItemsV2H = artefactitems.NewHandler(piSvc)
 				// PLA-0043 — defer wiring orgDesignSvc until after it is
 				// constructed below; assign back through closures so the
 				// scope clamp is available on both v2 services.
-				v2ScopeAttach = func(t artefactitemsv2.TopologyScopeResolver) {
+				v2ScopeAttach = func(t artefactitems.TopologyScopeResolver) {
 					wiSvc.WithTopologyResolver(t)
 					piSvc.WithTopologyResolver(t)
 				}
@@ -1001,11 +1001,11 @@ func main() {
 	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
 	// These are BFF-only: the ObjectTree, WorkItemDetailPanel, and
 	// artefact-items tree are all staff/site surfaces. The same
-	// artefactitemsv2 handlers (and rate limits) are reused.
+	// artefactitems handlers (and rate limits) are reused.
 	if workItemsV2H != nil {
 		readLimit17 := httprate.LimitByIP(600, time.Minute)
 		writeLimit17 := httprate.LimitByIP(120, time.Minute)
-		mountArtefactSite := func(r chi.Router, h *artefactitemsv2.Handler) {
+		mountArtefactSite := func(r chi.Router, h *artefactitems.Handler) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.With(readLimit17).Get("/", h.List)
@@ -1186,7 +1186,7 @@ func main() {
 		r.Use(apikeys.Middleware(apiKeysSvc))
 
 		// ---- /work-items + /portfolio-items (B21 / PLA-0037) ----
-		// Both groups share the artefactitemsv2 handler; the only
+		// Both groups share the artefactitems handler; the only
 		// difference is each Service's bound `at.scope` value (see
 		// the construction block above). The route shape is identical;
 		// any new endpoint added to /work-items must be added to
@@ -1196,7 +1196,7 @@ func main() {
 			// exhaust the limit; writes keep the conservative 120/min + per-user gate.
 			readLimit := httprate.LimitByIP(600, time.Minute)
 			writeLimit := httprate.LimitByIP(120, time.Minute)
-			mountArtefactRoutes := func(r chi.Router, h *artefactitemsv2.Handler) {
+			mountArtefactRoutes := func(r chi.Router, h *artefactitems.Handler) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
 				r.With(readLimit).Get("/", h.List)

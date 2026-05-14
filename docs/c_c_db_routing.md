@@ -37,7 +37,7 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 | Service | Constructor line | Owns / writes |
 |---|---|---|
 | `artefacttypes` | `artefacttypes.NewService(vaPool)` | **`artefacts_types`** (post RF1.4.2.artefacts; the table the `/workspace-admin/artefact-types` page reads/writes) |
-| `artefactitemsv2` | `artefactitemsv2.NewService(vaPool, pool, "work"\|"strategy")` | `artefacts`, `artefacts_fields_values` (post RF1.4.2.artefacts); `pool` for cross-DB tenant joins |
+| `artefactitems` | `artefactitems.NewService(vaPool, pool, "work"\|"strategy")` | `artefacts`, `artefacts_fields_values` (post RF1.4.2.artefacts + RF1.4.4 column-prefix); `pool` for cross-DB tenant joins. v-suffix dropped 2026-05-14 (RF1.4.4) — v1 obj_* substrate retired. |
 | `flows` | `flows.NewHandler(flows.New(vaPool, pool))` | `flows`, `flows_states`, `flows_transitions`, `flows_states_exit_rules`, `flows_defaults`, `flows_states_defaults`, `flows_transitions_defaults` (post RF1.4.2.flows) |
 | `fields` | `fields.NewService(pool, vaPool)` — **vaPool is `artefactsPool`** | `artefacts_fields_library`, `artefacts_types_fields`, `workspaces_fields` (post RF1.4.2.artefacts) |
 | `timeboxsprints` | `timeboxsprints.NewService(vaPool)` | `timeboxes_sprints` (post RF1.4.2.timeboxes — full column-prefix applied) |

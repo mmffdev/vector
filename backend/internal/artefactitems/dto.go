@@ -1,4 +1,4 @@
-package artefactitemsv2
+package artefactitems
 
 // MapPublicWorkItem projects the internal WorkItem wire type into its public
 // API representation. The two shapes are currently identical — this function

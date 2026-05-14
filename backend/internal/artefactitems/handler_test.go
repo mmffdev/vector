@@ -1,4 +1,4 @@
-package artefactitemsv2_test
+package artefactitems_test
 
 // Handler-level tests for the v2 work-items surface. These mount a minimal
 // chi router (same pattern as workitems/handler_bulk_test.go) and exercise
@@ -9,7 +9,7 @@ package artefactitemsv2_test
 // fallbacks, malformed bodies) run without a DB.
 //
 // Run:
-//   BACKEND_ENV=dev go test -v -run TestHandler ./internal/artefactitemsv2/...
+//   BACKEND_ENV=dev go test -v -run TestHandler ./internal/artefactitems/...
 
 import (
 	"bytes"
@@ -24,12 +24,12 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
-	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
+	"github.com/mmffdev/vector-backend/internal/artefactitems"
 )
 
 // ── router helpers ────────────────────────────────────────────────────────────
 
-func newTestRouter(h *artefactitemsv2.Handler, u *roletypes.User) http.Handler {
+func newTestRouter(h *artefactitems.Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -67,8 +67,8 @@ func newTestUser(subID uuid.UUID) *roletypes.User {
 // TestHandler_List_NilPool verifies that GET /api/v2/work-items returns 200
 // with an empty items array when the vector_artefacts pool is nil.
 func TestHandler_List_NilPool(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -95,8 +95,8 @@ func TestHandler_List_NilPool(t *testing.T) {
 
 // TestHandler_Get_InvalidUUID verifies that a non-UUID path param returns 400.
 func TestHandler_Get_InvalidUUID(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -113,8 +113,8 @@ func TestHandler_Get_InvalidUUID(t *testing.T) {
 
 // TestHandler_Get_NotFound verifies that a random UUID returns 404 via nil pool.
 func TestHandler_Get_NotFound(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -131,8 +131,8 @@ func TestHandler_Get_NotFound(t *testing.T) {
 
 // TestHandler_Create_MissingBody verifies that POST with no body returns 400.
 func TestHandler_Create_MissingBody(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -150,8 +150,8 @@ func TestHandler_Create_MissingBody(t *testing.T) {
 
 // TestHandler_Bulk_InvalidBody verifies that POST /bulk with bad JSON returns 400.
 func TestHandler_Bulk_InvalidBody(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -169,8 +169,8 @@ func TestHandler_Bulk_InvalidBody(t *testing.T) {
 
 // TestHandler_Bulk_UnsupportedOp verifies that an unsupported op returns 400.
 func TestHandler_Bulk_UnsupportedOp(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -193,8 +193,8 @@ func TestHandler_Bulk_UnsupportedOp(t *testing.T) {
 // TestHandler_Patch_InvalidDueDate verifies that a non-date due_date string
 // results in a 400 (JSON decode catches it via RawMessage).
 func TestHandler_Patch_InvalidDueDate(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -217,8 +217,8 @@ func TestHandler_Patch_InvalidDueDate(t *testing.T) {
 
 // TestHandler_Summary_ContentType verifies that /summary returns JSON.
 func TestHandler_Summary_ContentType(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -240,8 +240,8 @@ func TestHandler_Summary_ContentType(t *testing.T) {
 // TestHandler_FlowStates_EmptyPool verifies that /flow-states returns 200
 // with an empty states array when the pool is nil.
 func TestHandler_FlowStates_EmptyPool(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
 	user := newTestUser(uuid.New())
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -273,8 +273,8 @@ func TestHandler_List_WithDB(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(va, mp, "work")
+	h := artefactitems.NewHandler(svc)
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(context.Background(),
@@ -296,7 +296,7 @@ func TestHandler_List_WithDB(t *testing.T) {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
 	var body struct {
-		Items []artefactitemsv2.WorkItem `json:"items"`
+		Items []artefactitems.WorkItem `json:"items"`
 		Total int                    `json:"total"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
@@ -312,8 +312,8 @@ func TestHandler_Create_ThenGet(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(va, mp, "work")
+	h := artefactitems.NewHandler(svc)
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -341,7 +341,7 @@ func TestHandler_Create_ThenGet(t *testing.T) {
 		t.Fatalf("create status = %d, want 201", resp.StatusCode)
 	}
 
-	var created artefactitemsv2.WorkItem
+	var created artefactitems.WorkItem
 	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
 		t.Fatalf("decode created: %v", err)
 	}
@@ -360,7 +360,7 @@ func TestHandler_Create_ThenGet(t *testing.T) {
 		t.Errorf("get status = %d, want 200", getResp.StatusCode)
 	}
 
-	var got artefactitemsv2.WorkItem
+	var got artefactitems.WorkItem
 	if err := json.NewDecoder(getResp.Body).Decode(&got); err != nil {
 		t.Fatalf("decode get: %v", err)
 	}
@@ -374,8 +374,8 @@ func TestHandler_Archive_Returns204(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(va, mp, "work")
+	h := artefactitems.NewHandler(svc)
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -386,7 +386,7 @@ func TestHandler_Archive_Returns204(t *testing.T) {
 	}
 
 	// Seed via service (avoids HTTP create complexity here).
-	wi, err := artefactitemsv2.NewService(va, mp, "work").CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	wi, err := artefactitems.NewService(va, mp, "work").CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "task",
 		Title:     "delete-me-via-handler",
 		OwnerID:   ownerID.String(),
@@ -420,8 +420,8 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
-	h := artefactitemsv2.NewHandler(svc)
+	svc := artefactitems.NewService(va, mp, "work")
+	h := artefactitems.NewHandler(svc)
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -431,7 +431,7 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	wi, err := svc.CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	wi, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "story",
 		Title:     "bulk-priority-target",
 		OwnerID:   ownerID.String(),
@@ -463,7 +463,7 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
-	var result artefactitemsv2.BulkOpResult
+	var result artefactitems.BulkOpResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatalf("decode: %v", err)
 	}

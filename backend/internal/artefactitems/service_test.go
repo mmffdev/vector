@@ -1,4 +1,4 @@
-package artefactitemsv2_test
+package artefactitems_test
 
 // PLA-0023 / WS2 — service-level integration tests for the v2 work-items
 // domain. All tests hit the live vector_artefacts DB via the tunnel
@@ -8,8 +8,8 @@ package artefactitemsv2_test
 //
 // Run manually:
 //
-//	BACKEND_ENV=dev go test -v ./internal/artefactitemsv2/...
-//	BACKEND_ENV=dev go test -v -run TestCreateWorkItem ./internal/artefactitemsv2/...
+//	BACKEND_ENV=dev go test -v ./internal/artefactitems/...
+//	BACKEND_ENV=dev go test -v -run TestCreateWorkItem ./internal/artefactitems/...
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
-	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
+	"github.com/mmffdev/vector-backend/internal/artefactitems"
 )
 
 // ── pool helpers ─────────────────────────────────────────────────────────────
@@ -246,9 +246,9 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 func TestListWorkItems_ReturnsTenantRows(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
-	items, total, err := svc.ListWorkItems(context.Background(), sub, artefactitemsv2.Filters{Limit: 100})
+	items, total, err := svc.ListWorkItems(context.Background(), sub, artefactitems.Filters{Limit: 100})
 	if err != nil {
 		t.Fatalf("ListWorkItems: %v", err)
 	}
@@ -273,10 +273,10 @@ func TestListWorkItems_ReturnsTenantRows(t *testing.T) {
 // UUID returns zero rows when it has no data in vector_artefacts.
 func TestListWorkItems_CrossTenantIsolation(t *testing.T) {
 	va := vaPool(t)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	unknown := uuid.New()
 
-	items, total, err := svc.ListWorkItems(context.Background(), unknown, artefactitemsv2.Filters{Limit: 50})
+	items, total, err := svc.ListWorkItems(context.Background(), unknown, artefactitems.Filters{Limit: 50})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -292,10 +292,10 @@ func TestListWorkItems_CrossTenantIsolation(t *testing.T) {
 func TestListWorkItems_Pagination(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	ctx := context.Background()
 
-	_, total, err := svc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 1000})
+	_, total, err := svc.ListWorkItems(ctx, sub, artefactitems.Filters{Limit: 1000})
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestListWorkItems_Pagination(t *testing.T) {
 		t.Skip("no rows in vector_artefacts for this subscription")
 	}
 
-	p1, _, err := svc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 1, Offset: 0})
+	p1, _, err := svc.ListWorkItems(ctx, sub, artefactitems.Filters{Limit: 1, Offset: 0})
 	if err != nil {
 		t.Fatalf("page 1: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestListWorkItems_Pagination(t *testing.T) {
 	}
 
 	if total >= 2 {
-		p2, _, err := svc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 1, Offset: 1})
+		p2, _, err := svc.ListWorkItems(ctx, sub, artefactitems.Filters{Limit: 1, Offset: 1})
 		if err != nil {
 			t.Fatalf("page 2: %v", err)
 		}
@@ -329,11 +329,11 @@ func TestListWorkItems_Pagination(t *testing.T) {
 func TestListWorkItems_ItemTypeFilter(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	ctx := context.Background()
 
 	itemType := "story"
-	stories, _, err := svc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{
+	stories, _, err := svc.ListWorkItems(ctx, sub, artefactitems.Filters{
 		ItemType: &itemType,
 		Limit:    100,
 	})
@@ -352,9 +352,9 @@ func TestListWorkItems_ItemTypeFilter(t *testing.T) {
 func TestListWorkItems_SortWhitelist(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
-	_, _, err := svc.ListWorkItems(context.Background(), sub, artefactitemsv2.Filters{
+	_, _, err := svc.ListWorkItems(context.Background(), sub, artefactitems.Filters{
 		Sort:  "'; DROP TABLE artefacts; --",
 		Dir:   "asc",
 		Limit: 1,
@@ -367,11 +367,11 @@ func TestListWorkItems_SortWhitelist(t *testing.T) {
 // TestNilPool_ReturnsEmpty verifies that all read operations return empty
 // results rather than panicking when vectorArtefactsPool is nil.
 func TestNilPool_ReturnsEmpty(t *testing.T) {
-	svc := artefactitemsv2.NewService(nil, nil, "work")
+	svc := artefactitems.NewService(nil, nil, "work")
 	ctx := context.Background()
 	sub := uuid.New()
 
-	items, total, err := svc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 10})
+	items, total, err := svc.ListWorkItems(ctx, sub, artefactitems.Filters{Limit: 10})
 	if err != nil || total != 0 || len(items) != 0 {
 		t.Errorf("nil pool List: got items=%d total=%d err=%v, want 0/0/nil", len(items), total, err)
 	}
@@ -400,7 +400,7 @@ func TestNilPool_ReturnsEmpty(t *testing.T) {
 // TestGetWorkItem_NotFound verifies that a random UUID returns ErrNotFound.
 func TestGetWorkItem_NotFound(t *testing.T) {
 	va := vaPool(t)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
 	_, err := svc.GetWorkItem(context.Background(), uuid.New(), uuid.New())
 	if err == nil {
@@ -413,7 +413,7 @@ func TestGetWorkItem_NotFound(t *testing.T) {
 func TestGetWorkItem_CrossTenantBlocked(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	ctx := context.Background()
 
 	id := seedArtefact(t, va, sub, "story", "cross-tenant-probe")
@@ -432,7 +432,7 @@ func TestCreateWorkItem_StoresRow(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 	ctx := context.Background()
 
 	// Resolve a user from mmff_vector for owner/created_by.
@@ -443,7 +443,7 @@ func TestCreateWorkItem_StoresRow(t *testing.T) {
 		t.Skipf("no active user for sub %s in mmff_vector: %v", sub, err)
 	}
 
-	in := artefactitemsv2.CreateWorkItemInput{
+	in := artefactitems.CreateWorkItemInput{
 		ItemType:  "story",
 		Title:     "v2-test-create-" + uuid.New().String()[:8],
 		OwnerID:   ownerID.String(),
@@ -488,10 +488,10 @@ func TestCreateWorkItem_TaskRejectsPoints(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 
 	pts := 5
-	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitemsv2.CreateWorkItemInput{
+	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitems.CreateWorkItemInput{
 		ItemType:    "task",
 		Title:       "task-with-points",
 		StoryPoints: &pts,
@@ -507,9 +507,9 @@ func TestCreateWorkItem_EmptyTitleRejected(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 
-	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitemsv2.CreateWorkItemInput{
+	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitems.CreateWorkItemInput{
 		ItemType: "story",
 		Title:    "   ",
 	})
@@ -524,7 +524,7 @@ func TestPatchWorkItem_UpdatesTitle(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -534,7 +534,7 @@ func TestPatchWorkItem_UpdatesTitle(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	wi, err := svc.CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	wi, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "story",
 		Title:     "patch-title-before",
 		OwnerID:   ownerID.String(),
@@ -549,7 +549,7 @@ func TestPatchWorkItem_UpdatesTitle(t *testing.T) {
 	})
 
 	newTitle := "patch-title-after"
-	patched, err := svc.PatchWorkItem(ctx, sub, uuid.MustParse(wi.ID), artefactitemsv2.PatchWorkItemInput{
+	patched, err := svc.PatchWorkItem(ctx, sub, uuid.MustParse(wi.ID), artefactitems.PatchWorkItemInput{
 		Title: &newTitle,
 	})
 	if err != nil {
@@ -566,7 +566,7 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -576,7 +576,7 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	wi, err := svc.CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	wi, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "story",
 		Title:     "due-date-test",
 		OwnerID:   ownerID.String(),
@@ -593,7 +593,7 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 
 	// Set.
 	date := "2027-03-15"
-	set, err := svc.PatchWorkItem(ctx, sub, id, artefactitemsv2.PatchWorkItemInput{DueDate: &date})
+	set, err := svc.PatchWorkItem(ctx, sub, id, artefactitems.PatchWorkItemInput{DueDate: &date})
 	if err != nil {
 		t.Fatalf("set due_date: %v", err)
 	}
@@ -603,7 +603,7 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 
 	// Clear via empty string sentinel.
 	empty := ""
-	cleared, err := svc.PatchWorkItem(ctx, sub, id, artefactitemsv2.PatchWorkItemInput{DueDate: &empty})
+	cleared, err := svc.PatchWorkItem(ctx, sub, id, artefactitems.PatchWorkItemInput{DueDate: &empty})
 	if err != nil {
 		t.Fatalf("clear due_date: %v", err)
 	}
@@ -615,10 +615,10 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 // TestPatchWorkItem_NotFound verifies ErrNotFound for an unknown id.
 func TestPatchWorkItem_NotFound(t *testing.T) {
 	va := vaPool(t)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	title := "ghost"
 	_, err := svc.PatchWorkItem(context.Background(), uuid.New(), uuid.New(),
-		artefactitemsv2.PatchWorkItemInput{Title: &title})
+		artefactitems.PatchWorkItemInput{Title: &title})
 	if err == nil {
 		t.Fatal("expected ErrNotFound, got nil")
 	}
@@ -630,7 +630,7 @@ func TestArchiveWorkItem_SoftDeletes(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -640,7 +640,7 @@ func TestArchiveWorkItem_SoftDeletes(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	wi, err := svc.CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	wi, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "task",
 		Title:     "archive-me",
 		OwnerID:   ownerID.String(),
@@ -672,7 +672,7 @@ func TestArchiveWorkItem_SoftDeletes(t *testing.T) {
 func TestArchiveWorkItem_CrossTenantBlocked(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	ctx := context.Background()
 
 	id := seedArtefact(t, va, sub, "story", "archive-cross-tenant")
@@ -689,7 +689,7 @@ func TestArchiveWorkItem_CrossTenantBlocked(t *testing.T) {
 func TestSummariseWorkItems_CountsWorkScoped(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
 	summary, err := svc.SummariseWorkItems(context.Background(), sub, nil)
 	if err != nil {
@@ -709,7 +709,7 @@ func TestSummariseWorkItems_CountsWorkScoped(t *testing.T) {
 func TestListFlowStates_ReturnsStates(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
 	states, err := svc.ListFlowStates(context.Background(), sub)
 	if err != nil {
@@ -737,7 +737,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 	va := vaPool(t)
 	mp := mainPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, mp, "work")
+	svc := artefactitems.NewService(va, mp, "work")
 	ctx := context.Background()
 
 	var ownerID uuid.UUID
@@ -747,7 +747,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	parent, err := svc.CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	parent, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "epic",
 		Title:     "parent-epic",
 		OwnerID:   ownerID.String(),
@@ -761,7 +761,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
 	})
 
-	child, err := svc.CreateWorkItem(ctx, sub, artefactitemsv2.CreateWorkItemInput{
+	child, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
 		ItemType:  "story",
 		Title:     "child-story",
 		ParentID:  &parent.ID,
@@ -800,7 +800,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 // for an unrecognised operation name.
 func TestBulkOps_UnsupportedOp(t *testing.T) {
 	va := vaPool(t)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
 	_, err := svc.BulkOps(context.Background(), uuid.New(), []string{uuid.New().String()},
 		"nuke_everything", nil)
@@ -813,7 +813,7 @@ func TestBulkOps_UnsupportedOp(t *testing.T) {
 // clean no-op (0 updated, 0 failed).
 func TestBulkOps_EmptyIDs(t *testing.T) {
 	va := vaPool(t)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 
 	result, err := svc.BulkOps(context.Background(), uuid.New(), nil, "set_priority", map[string]any{"priority": "high"})
 	if err != nil {
@@ -829,7 +829,7 @@ func TestBulkOps_EmptyIDs(t *testing.T) {
 func TestBulkOps_CrossTenantRejected(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
-	svc := artefactitemsv2.NewService(va, nil, "work")
+	svc := artefactitems.NewService(va, nil, "work")
 	ctx := context.Background()
 
 	id := seedArtefact(t, va, sub, "story", "bulk-cross-tenant")
@@ -878,11 +878,11 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 		t.Skip("subscription has no strategy artefacts_types — vacuous; seed required")
 	}
 
-	workSvc := artefactitemsv2.NewService(va, nil, "work")
-	stratSvc := artefactitemsv2.NewService(va, nil, "strategy")
+	workSvc := artefactitems.NewService(va, nil, "work")
+	stratSvc := artefactitems.NewService(va, nil, "strategy")
 
 	// 1. work service: every returned row must have a work-scoped item_type.
-	workItems, _, err := workSvc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 500})
+	workItems, _, err := workSvc.ListWorkItems(ctx, sub, artefactitems.Filters{Limit: 500})
 	if err != nil {
 		t.Fatalf("workSvc.ListWorkItems: %v", err)
 	}
@@ -904,7 +904,7 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 	}
 
 	// 2. strategy service: every returned row must have a strategy-scoped type.
-	stratItems, _, err := stratSvc.ListWorkItems(ctx, sub, artefactitemsv2.Filters{Limit: 500})
+	stratItems, _, err := stratSvc.ListWorkItems(ctx, sub, artefactitems.Filters{Limit: 500})
 	if err != nil {
 		t.Fatalf("stratSvc.ListWorkItems: %v", err)
 	}

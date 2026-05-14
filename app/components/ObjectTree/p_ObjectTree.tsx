@@ -106,7 +106,7 @@ export default function ObjectTree({
   // resourceUrl resolution order:
   //   1. wizardConfig.resourceUrl (sidecar JSON — preferred path, PLA-0037)
   //   2. mode-derived fallback (back-compat for callers not on sidecars yet)
-  // Both endpoints land on artefactitemsv2 with different scope (work | strategy).
+  // Both endpoints land on artefactitems with different scope (work | strategy).
   const resourceUrl =
     wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
 

@@ -53,7 +53,7 @@ All three ledgers end empty → invariant. Run via `npm run lint:<name>`.
 Public-transport handlers (`/samantha/v2`) must not serialize `internal/models` structs directly. Use a `MapPublic*` function in the domain package's `dto.go`:
 
 ```go
-// backend/internal/artefactitemsv2/dto.go
+// backend/internal/artefactitems/dto.go
 func MapPublicWorkItem(w WorkItem) WorkItem { return w }
 ```
 
@@ -92,8 +92,8 @@ All frontend call sites migrated from `apiV2()` → `apiSite()`. Allowlist shrun
 | `/_site/workspaces` | workspaces.Handler | B22.1–B22.15 |
 | `/_site/api-keys` | apikeys.Handler | B22.1–B22.15 |
 | `/_site/topology` | orgDesignH | B22.16 |
-| `/_site/work-items` | artefactitemsv2.Handler (scope=work) | B22.17 |
-| `/_site/portfolio-items` | artefactitemsv2.Handler (scope=strategy) | B22.18 |
+| `/_site/work-items` | artefactitems.Handler (scope=work) | B22.17 |
+| `/_site/portfolio-items` | artefactitems.Handler (scope=strategy) | B22.18 |
 | `/_site/portfolio` | portfolioMasterRecordH | B22.19 |
 | `/_site/workspace/{id}/portfolio` | workspaceLayersH (GET /layers) | B22.19 |
 | `/_site/flows` | flowsH | B22.20 |

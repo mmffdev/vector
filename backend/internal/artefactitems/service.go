@@ -1,4 +1,4 @@
-package artefactitemsv2
+package artefactitems
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 // TopologyScopeResolver answers "may this user read scope X" and "what
 // nodes are in scope X's subtree." Implemented by orgdesign.Service —
-// declared here as an interface so artefactitemsv2 does not import
+// declared here as an interface so artefactitems does not import
 // orgdesign (which would create a cycle once orgdesign starts reading
 // artefacts). Wired by main.go after both services exist.
 type TopologyScopeResolver interface {

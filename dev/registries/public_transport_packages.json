@@ -1,6 +1,6 @@
 {
   "description": "Packages whose handlers are mounted at /samantha/v2 (the public, externally-contracted transport). Handlers in these packages must not serialize internal/models structs directly — they must project through a MapPublic* function (PLA-0039 / Story 00532). Add a package here whenever a new domain is mounted under /samantha/v2 in main.go.",
   "public_transport_packages": [
-    "artefactitemsv2"
+    "artefactitems"
   ]
 }

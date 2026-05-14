@@ -10,7 +10,7 @@
 
 ## Why this exists
 
-Three weeks of architectural drift across a multi-session AI build produced 42 backend packages with inconsistent naming, 461 inline SQL strings spread across 56 files, tables with stale `obj_*`/`o_*` prefixes, singular/plural mismatches across same-family tables and routes, and one Go package (`artefactitemsv2`) carrying a meaningless version suffix. The master plan that fixes it is [`c_c_the_state_of_the_codebase.md`](c_c_the_state_of_the_codebase.md). **This doc is the conventions half of that plan, extracted so it can be referenced standalone.**
+Three weeks of architectural drift across a multi-session AI build produced 42 backend packages with inconsistent naming, 461 inline SQL strings spread across 56 files, tables with stale `obj_*`/`o_*` prefixes, singular/plural mismatches across same-family tables and routes, and one Go package (`artefactitemsv2`, since renamed to `artefactitems` in RF1.4.4) carrying a now-meaningless version suffix. The master plan that fixes it is [`c_c_the_state_of_the_codebase.md`](c_c_the_state_of_the_codebase.md). **This doc is the conventions half of that plan, extracted so it can be referenced standalone.**
 
 A future engineer or DBA cloning this repo should be able to read this one page and predict every file, table, column, route, and import path in the system. If they cannot, the doc is wrong — fix it.
 
@@ -24,7 +24,7 @@ A future engineer or DBA cloning this repo should be able to read this one page 
 
 1. **All lowercase, single concept token.** No camelCase, no PascalCase, no underscores, no hyphens. The package's directory name IS the package name. This is a Go-language constraint, not a stylistic choice: `gofmt`, `go vet`, and `staticcheck` flag any deviation. (The hierarchical chain rule used for SQL table names — §2.2 — does not apply to Go packages because Go forbids underscores in package names.)
 2. **Version suffixes are allowed when "version" is a real distinction in the domain.** The suffix earns its place by carrying meaning a future reader cares about — a substrate transition, API-contract version, or compatibility break. Rule of thumb: if you can finish the sentence *"this is v2 of \_\_\_ because v1 was \_\_\_"* with a real architectural fact, keep the suffix. If the sentence is vague, drop it.
-   - `artefactitemsv2` (keep) — the v2 marks the post-PLA-0023 artefact substrate; v1 was the deleted `obj_*` work-items pipeline. The version is meaningful even though the v1 directory no longer exists.
+   - `artefactitemsv2` (kept until 2026-05-14, then renamed to `artefactitems`) — the v2 marked the post-PLA-0023 artefact substrate transition (v1 was the deleted `obj_*` work-items pipeline). Renamed to `artefactitems` in RF1.4.4 once the v1 substrate was fully retired and the suffix lost its disambiguating power. The doc.go HISTORY block records the renames. **Lesson:** version suffixes are intentional but temporary — they earn their place while the older surface still casts a shadow, and drop when it doesn't.
    - `flowsv2` would be wrong if it just means "the new file I started after a rewrite" with no architectural version concept behind it.
    - When a package carries a version suffix, its `doc.go` must explain what previous version it supersedes and why the suffix exists. "What was v1?" must have a documented answer.
 3. **Match the canonical noun of the domain.** The package name must equal either:

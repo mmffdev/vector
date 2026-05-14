@@ -1,4 +1,4 @@
-package artefactitemsv2
+package artefactitems
 
 import (
 	"encoding/json"
@@ -113,7 +113,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write(jsonErrBody(err))
 			return
 		}
-		log.Printf("artefactitemsv2.List: subID=%s err=%v", subID, err)
+		log.Printf("artefactitems.List: subID=%s err=%v", subID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return

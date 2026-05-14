@@ -773,7 +773,7 @@ export interface UseWorkItemsWindowResult {
 //
 // resourceUrl is the apiSite path prefix (e.g. "/work-items" or
 // "/portfolio-items"). Both endpoints are served by the same scope-parameterised
-// artefactitemsv2 handler — see backend/internal/artefactitemsv2 (PLA-0037, B21).
+// artefactitems handler — see backend/internal/artefactitems (PLA-0037, B21).
 export interface UseArtefactItemsWindowOptions {
   resourceUrl: string;
   pageSize: number | "all";

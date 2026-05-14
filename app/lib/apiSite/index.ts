@@ -730,7 +730,7 @@ export const workItems = {
 // ─── Portfolio items  (/portfolio-items) ─────────────────────────────────────
 
 export const portfolioItems = {
-  // Same handler as workItems (artefactitemsv2), different route prefix.
+  // Same handler as workItems (artefactitems), different route prefix.
   list: (params: string) =>
     apiSite<{ items: unknown[]; total: number }>(`/portfolio-items?${params}`),
 

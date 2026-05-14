@@ -1,9 +1,9 @@
-// Package artefactitemsv2 SQL constants.
+// Package artefactitems SQL constants.
 //
 // PLA-0048 / RF1.2.19. Sole writer for artefacts + artefacts_fields_values
 // (vector_artefacts); read-only against mmff_vector for owner decoration
 // and workspace resolution.
-package artefactitemsv2
+package artefactitems
 
 // rollupCTE is the WITH RECURSIVE expression spliced into the list,
 // get-one, and list-children data queries. Independent const so the
@@ -285,13 +285,19 @@ const sqlBulkSetFlowState = `UPDATE artefacts SET flow_state_id=$1::uuid, update
 // ── ListFieldValues + UpsertFieldValue + DeleteFieldValue ──────────────────
 
 const sqlListFieldValuesForArtefact = `
-		SELECT fv.id, fv.artefact_id::text, fl.id::text, NULL::text,
+		SELECT fv.artefacts_fields_values_id,
+		       fv.artefacts_fields_values_id_artefact::text,
+		       fl.id::text,
+		       NULL::text,
 		       fl.name, fl.label, fl.field_type, fl.options_json,
-		       fv.string_value, fv.number_value::text, fv.text_value, fv.date_value::text
-		FROM artefacts_fields_values fv
-		JOIN artefacts_fields_library fl ON fl.id = fv.field_library_id
-		WHERE fv.artefact_id = $1
-		ORDER BY fl.name ASC
+		       fv.artefacts_fields_values_string_value,
+		       fv.artefacts_fields_values_number_value::text,
+		       fv.artefacts_fields_values_text_value,
+		       fv.artefacts_fields_values_date_value::text
+		  FROM artefacts_fields_values fv
+		  JOIN artefacts_fields_library fl ON fl.id = fv.artefacts_fields_values_id_field_library
+		 WHERE fv.artefacts_fields_values_id_artefact = $1
+		 ORDER BY fl.name ASC
 	`
 
 const sqlSelectFieldLibraryType = `
@@ -299,19 +305,25 @@ const sqlSelectFieldLibraryType = `
 	`
 
 const sqlUpsertFieldValue = `
-		INSERT INTO artefacts_fields_values
-			(artefact_id, field_library_id, string_value, number_value, text_value, date_value)
-		VALUES ($1,$2,$3,$4::numeric,$5,$6::date)
-		ON CONFLICT (artefact_id, field_library_id)
+		INSERT INTO artefacts_fields_values (
+			artefacts_fields_values_id_artefact,
+			artefacts_fields_values_id_field_library,
+			artefacts_fields_values_string_value,
+			artefacts_fields_values_number_value,
+			artefacts_fields_values_text_value,
+			artefacts_fields_values_date_value
+		)
+		VALUES ($1, $2, $3, $4::numeric, $5, $6::date)
+		ON CONFLICT (artefacts_fields_values_id_artefact, artefacts_fields_values_id_field_library)
 		DO UPDATE SET
-			string_value = EXCLUDED.string_value,
-			number_value = EXCLUDED.number_value,
-			text_value   = EXCLUDED.text_value,
-			date_value   = EXCLUDED.date_value,
-			updated_at   = now()
+			artefacts_fields_values_string_value = EXCLUDED.artefacts_fields_values_string_value,
+			artefacts_fields_values_number_value = EXCLUDED.artefacts_fields_values_number_value,
+			artefacts_fields_values_text_value   = EXCLUDED.artefacts_fields_values_text_value,
+			artefacts_fields_values_date_value   = EXCLUDED.artefacts_fields_values_date_value,
+			artefacts_fields_values_updated_at   = now()
 	`
 
-const sqlDeleteFieldValue = `DELETE FROM artefacts_fields_values WHERE id = $1 AND artefact_id = $2`
+const sqlDeleteFieldValue = `DELETE FROM artefacts_fields_values WHERE artefacts_fields_values_id = $1 AND artefacts_fields_values_id_artefact = $2`
 
 // ── decorateOwners (mmff_vector) ───────────────────────────────────────────
 

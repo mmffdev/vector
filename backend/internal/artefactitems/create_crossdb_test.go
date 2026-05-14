@@ -1,4 +1,4 @@
-package artefactitemsv2
+package artefactitems
 
 // RF1.5.3 — Cross-DB partial-failure regression test for CreateWorkItem.
 //

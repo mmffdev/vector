@@ -112,7 +112,7 @@ type Service struct {
 // NewService builds a Service backed by the given vector_artefacts pool.
 // Pass nil to construct a no-op Service that surfaces ErrPoolMissing on
 // every call — useful for boot configurations where the artefacts DB is
-// optional (see artefactitemsv2 for the same pattern).
+// optional (see artefactitems for the same pattern).
 //
 // To enable the read authz path (CanReadMasterRecord), chain
 // .WithVectorPool(pool) — the master-record HTTP handler requires it.
