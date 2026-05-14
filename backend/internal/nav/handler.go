@@ -231,6 +231,25 @@ func (h *Handler) DeletePrefs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// POST /_site/nav/reset — manual full nav reset for the calling user.
+//
+// Wipes every nav-related row owned by the user under their active
+// subscription (profiles, prefs, custom groups, placements). The next
+// GET /_site/nav/prefs call re-lazy-seeds a fresh Default profile and
+// pins everything pages.default_pinned=TRUE that users_roles_pages
+// allows for the user's role.
+//
+// 204 on success. No body. Backed by the button on /preferences/navigation.
+func (h *Handler) ResetAll(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if err := h.Svc.ResetAllForUser(r.Context(), u.ID, u.SubscriptionID); err != nil {
+		log.Printf("nav.ResetAll: user=%s sub=%s: %v", u.ID, u.SubscriptionID, err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type startPageResp struct {
 	Href string `json:"href"`
 }

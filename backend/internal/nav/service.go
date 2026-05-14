@@ -550,6 +550,48 @@ func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptio
 	return err
 }
 
+// ResetAllForUser is the "blow it all away" reset used by the Navigation
+// page's manual reset button. Deletes every nav-related row owned by the
+// user for the given subscription:
+//
+//   - users_nav_profiles      (CASCADE drops users_nav_prefs +
+//                              users_nav_profile_groups; SET NULL on
+//                              users.active_nav_profile_id)
+//   - users_nav_groups        (shared custom-group pool — explicit delete
+//                              since CASCADE above doesn't reach it)
+//
+// On the next /_site/nav/prefs read, ResolveProfile sees no Default,
+// EnsureDefaultProfile lazy-seeds a fresh one, sqlBackfillDefaultPinnedPages
+// re-pins everything pages.default_pinned=TRUE that the user's role is
+// allowed to see via users_roles_pages, and sqlLazySeedDefaultProfileGroupPlacements
+// rebuilds the tag-bucket order from pages_tags.default_order. The end
+// state is exactly what a freshly-onboarded user would see.
+//
+// Unlike DeletePrefs (legacy), this also tears down the profile rows so
+// any drift in users_nav_profile_groups (e.g. stale placements pointing
+// at deleted tag enums) is cleared in the same shot.
+func (s *Service) ResetAllForUser(ctx context.Context, userID, subscriptionID uuid.UUID) error {
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete profiles first — CASCADE handles prefs + profile_groups,
+	// and users.active_nav_profile_id is nulled via ON DELETE SET NULL.
+	if _, err := tx.Exec(ctx, sqlResetUserNavProfilesForSubscription, userID, subscriptionID); err != nil {
+		return err
+	}
+
+	// users_nav_groups is the shared pool (per-user, not per-profile).
+	// CASCADE above doesn't reach it, so explicit delete.
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavGroupsForUser, userID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 // validatePinned enforces the rule set described on ReplacePrefs.
 //   - lookup: resolves an item_key to its catalogue entry (registry + custom pages)
 //   - role: caller's role

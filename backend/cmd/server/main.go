@@ -199,6 +199,7 @@ func main() {
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
+	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry)
 
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
 	// Sole writer for users_tab_order; mounted at /api/user/tab-order below.
@@ -747,6 +748,7 @@ func main() {
 		r.Get("/prefs", navH.GetPrefs)
 		r.Put("/prefs", navH.PutPrefs)
 		r.Delete("/prefs", navH.DeletePrefs)
+		r.Post("/reset", navH.ResetAll)
 		r.Get("/start-page", navH.StartPage)
 		r.Post("/bookmark", navH.PinBookmark)
 		r.Delete("/bookmark", navH.UnpinBookmark)
@@ -761,6 +763,22 @@ func main() {
 		r.Delete("/profiles/{id}", navH.DeleteProfile)
 		r.Get("/profiles/{id}/groups", navH.ListProfileGroups)
 		r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
+	})
+
+	// /admin/page-grants — gadmin-only matrix at /user-management/permissions.
+	// Grants and revokes (page × role) rows in users_roles_pages. The
+	// {role} URL param is rejected for "gadmin" inside the handler so this
+	// surface can never strip gadmin's universal page access (mig 193).
+	r.Route("/admin/page-grants", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+
+		r.Get("/", navGrantsAdminH.List)
+		r.Put("/{page_id}/{role}", navGrantsAdminH.Grant)
+		r.Delete("/{page_id}/{role}", navGrantsAdminH.Revoke)
 	})
 
 	// /user/tab-order

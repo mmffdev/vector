@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
@@ -40,8 +40,9 @@ import {
   type ProfileGroupPlacement,
 } from "@/app/contexts/NavPrefsContext";
 import { createCustomPage, patchCustomPage, deleteCustomPage } from "@/app/lib/customPages";
-import { ApiError } from "@/app/lib/api";
+import { ApiError, apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
+import { ConfirmModal } from "@/app/components/topology/ConfirmModal";
 import { useDraft } from "@/app/hooks/useDraft";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
@@ -1060,6 +1061,29 @@ export default function NavPreferencesPage() {
   const [createGroupErr, setCreateGroupErr] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
+  // Reset-to-defaults flow. POST /_site/nav/reset wipes every nav row
+  // for the user under their subscription (profiles + prefs +
+  // profile_groups + custom groups), then refetch triggers the lazy-
+  // seed against the new schema. The modal exists to make this an
+  // explicit user action — it's destructive of any layout work the
+  // user has done.
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const handleConfirmReset = useCallback(async () => {
+    setResetting(true);
+    try {
+      await apiSite<void>("/nav/reset", { method: "POST" });
+      await refetch();
+      notify.success("Navigation reset to defaults.");
+      setConfirmReset(false);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.detail ?? err.message) : "Reset failed — try again.";
+      notify.error(msg);
+    } finally {
+      setResetting(false);
+    }
+  }, [refetch]);
+
   // Draft persistence for the "New custom page" form. The draft only
   // Silently restore whatever the user was typing last — no banner.
   const newPageDraft = useDraft<{ label: string }>(
@@ -1901,6 +1925,29 @@ export default function NavPreferencesPage() {
         title="Navigation"
         description="Customise the navigation rail order, visibility, and default section preferences for your account."
       />
+      <Panel
+        name="panel_navigation_preferences_reset"
+        title="Reset to defaults"
+        description="Clears your current navigation layout and restores the default buckets and pages permitted by your role. This undoes every customisation you have made to the rail order, custom groups, and pinned pages."
+      >
+        <button
+          type="button"
+          className="btn btn--danger btn--sm"
+          onClick={() => setConfirmReset(true)}
+          disabled={resetting}
+        >
+          {resetting ? "Resetting…" : "Reset navigation"}
+        </button>
+      </Panel>
+      {confirmReset && (
+        <ConfirmModal
+          title="Reset navigation to defaults?"
+          body="This will wipe all of your nav customisations and rebuild the rail from scratch using only the pages your role permits. You can't undo this."
+          danger
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={() => void handleConfirmReset()}
+        />
+      )}
       <StrictRoute>
       <div className="nav-prefs__quick-bar">
         <Panel

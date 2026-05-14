@@ -71,6 +71,45 @@ const sqlUpsertPageRoleGrant = `
 		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_role) DO NOTHING
 	`
 
+// sqlListSystemPagesForGrantsAdmin returns every system page (created_by
+// IS NULL AND subscription_id IS NULL) with its tag bucket position so
+// the admin grid can group / order rows the same way the rail does.
+// users_roles_pages_role is folded into a sorted text array so the
+// padmin/user toggles can be derived in one pass without N+1.
+const sqlListSystemPagesForGrantsAdmin = `
+		SELECT p.id, p.key_enum, p.label, p.href, p.tag_enum, p.default_order,
+		       COALESCE(t.pages_tags_display_name, p.tag_enum)        AS bucket_label,
+		       COALESCE(t.pages_tags_default_order, 9999)             AS bucket_order,
+		       COALESCE(array_agg(pr.users_roles_pages_role::text ORDER BY pr.users_roles_pages_role)
+		                FILTER (WHERE pr.users_roles_pages_role IS NOT NULL), '{}') AS roles
+		FROM pages p
+		LEFT JOIN pages_tags t ON t.pages_tags_tag_enum = p.tag_enum
+		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
+		WHERE p.created_by IS NULL
+		  AND p.subscription_id IS NULL
+		GROUP BY p.id, t.pages_tags_display_name, t.pages_tags_default_order
+		ORDER BY bucket_order, bucket_label, p.default_order, p.label
+	`
+
+// sqlDeletePageRoleGrant revokes one (page, role) pair. The handler
+// refuses gadmin in $2 so gadmin's universal-access guarantee is
+// preserved by the API surface.
+const sqlDeletePageRoleGrant = `
+		DELETE FROM users_roles_pages
+		 WHERE users_roles_pages_id_page = $1
+		   AND users_roles_pages_role    = $2
+	`
+
+// sqlPageExistsForGrantsAdmin probes that a page id refers to a system
+// page. Tenant-scoped entity bookmarks are NOT editable from the admin
+// grid — only system pages are.
+const sqlPageExistsForGrantsAdmin = `
+		SELECT 1 FROM pages
+		 WHERE id = $1
+		   AND created_by      IS NULL
+		   AND subscription_id IS NULL
+	`
+
 // sqlNextUserNavPrefPosition returns the next free position for a
 // user's pinned list (max(position) + 1 or 0 when empty). Profile-NULL
 // scope (the legacy/Default lane) — Pin only touches that lane today.
@@ -582,6 +621,18 @@ const sqlSelectProfileIsDefaultByID = `
 const sqlDeleteUserNavPrefsForProfile = `
 		DELETE FROM users_nav_prefs
 		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
+	`
+
+// sqlResetUserNavProfilesForSubscription wipes ALL profiles for the
+// (user, subscription). CASCADE drops users_nav_prefs +
+// users_nav_profile_groups; users.active_nav_profile_id is nulled by
+// ON DELETE SET NULL. Used by Service.ResetAllForUser (the Navigation
+// page's manual reset button) to force a fresh lazy-seed on the next
+// /_site/nav/prefs read.
+const sqlResetUserNavProfilesForSubscription = `
+		DELETE FROM users_nav_profiles
+		 WHERE users_nav_profiles_id_user = $1
+		   AND users_nav_profiles_id_subscription = $2
 	`
 
 // sqlDeleteUserNavGroupsForUser wipes the user's shared group pool.
