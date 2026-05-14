@@ -1,6 +1,6 @@
 // Typed client for the master_record_tenant sole-writer service.
 // Backend: backend/internal/tenantsettings/{handler,service}.go.
-// Routes mounted under /v1/api/tenant-settings — auth + fresh-password
+// Routes mounted under /v1/api/workspace-settings — auth + fresh-password
 // gated. The row is keyed by the caller's tenant_id, so there is no id
 // in the path; GET returns the caller's row, PATCH updates it.
 //
@@ -58,10 +58,10 @@ export interface TenantSettingsPatch {
 
 export const tenantSettingsApi = {
   get() {
-    return api<TenantSettings>(`/tenant-settings`);
+    return api<TenantSettings>(`/workspace-settings`);
   },
   patch(input: TenantSettingsPatch) {
-    return api<TenantSettings>(`/tenant-settings`, {
+    return api<TenantSettings>(`/workspace-settings`, {
       method: "PATCH",
       body: JSON.stringify(input),
     });

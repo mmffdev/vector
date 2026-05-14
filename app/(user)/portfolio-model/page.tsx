@@ -386,7 +386,7 @@ function BundleView({ bundle, workspaceId }: { bundle: BundleDTO; workspaceId: s
 
   useEffect(() => {
     let cancelled = false;
-    apiSite<LayerDTO[]>(`/workspace/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
+    apiSite<LayerDTO[]>(`/workspaces/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
       if (!cancelled) setLocalLayers(rows.sort((a, b) => a.sort_order - b.sort_order));
     }).catch(() => {
       // On error fall back to bundle layers so the page isn't blank.

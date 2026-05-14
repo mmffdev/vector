@@ -940,7 +940,7 @@ func main() {
 		r.Use(userWriteLimiter)
 		portfolioMasterRecordH.Mount(r)
 	})
-	r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
+	r.Route("/workspaces/{id}/portfolio", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -991,7 +991,7 @@ func main() {
 	}
 
 	// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
-	r.Route("/workspace/{id}/fields", func(r chi.Router) {
+	r.Route("/workspaces/{id}/fields", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1134,7 +1134,7 @@ func main() {
 	})
 
 	// ---- /tenant-settings ----
-	r.Route("/tenant-settings", func(r chi.Router) {
+	r.Route("/workspace-settings", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1319,7 +1319,7 @@ func main() {
 		// ---- /workspace/{id}/fields (PLA-0026 B11 / PLA-0030 T3) ----
 		// Admitted field set for one workspace. Auth + tenancy + membership
 		// gating happens inside the handler (404 for cross-tenant probes).
-		r.Route("/workspace/{id}/fields", func(r chi.Router) {
+		r.Route("/workspaces/{id}/fields", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1329,7 +1329,7 @@ func main() {
 		// ---- /workspace/{id}/portfolio/layers (PLA-0026 B10 / PLA-0030 T3) ----
 		// Strategy artefacts_types (scope='strategy') for one workspace.
 		// Auth + tenancy + membership gating inside the handler.
-		r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
+		r.Route("/workspaces/{id}/portfolio", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
