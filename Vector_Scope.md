@@ -131,7 +131,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.17** `librarydb` — 15 SQL strings, 3 DBs (library access layer). `[P2]` ✅ done 2026-05-14 — 15 consts across fetch.go (template + 6 model children + 2 model spine variants), list.go (published-models list), releases.go (audience filter + actions + acks + insert + find). Absorbed the `modelCols` and `releaseCols` concat fragments into full-shot SELECTs so SQL never crosses the const boundary. Allow-list shrunk 24 → 21.
 > Commit `e9fe980` (2026-05-14): refactor(PLA-0048 / RF1.2.17): consolidate librarydb SQL into sql.go [RF1.2.17]
 - **RF1.2.18** `portfolio` — 6 SQL strings, 2 DBs. `[P2]` ✅ done 2026-05-14 — 6 consts (vectorPool: workspace subscription probe + active membership; vaPool: master record select + upsert + update template + idempotent archive). Allow-list shrunk 21 → 20.
-- **RF1.2.19** `artefactitemsv2` — 26 SQL strings, 1 DB (rename deferred to Phase 4). `[P2]`
+> Commit `833eae0` (2026-05-14): refactor(PLA-0048 / RF1.2.18): consolidate portfolio SQL into sql.go [RF1.2.18]
+- **RF1.2.19** `artefactitemsv2` — 26 SQL strings, 1 DB (rename deferred to Phase 4). `[P2]` ✅ done 2026-05-14 — ~30 named consts: shared rollupCTE + sqlWorkItemColumns fragments; list/get/list-children templates; count + summary templates; flow-state list; CreateWorkItem 6-query saga; PatchWorkItem flow-state probe + sparse-template; archive; BulkOps lock + 4 op queries; field-value list/upsert/delete; owner decoration. Allow-list shrunk 20 → 18 (service.go + types.go).
 - **RF1.2.20** `portfoliomodels` — 51 SQL strings, 3 DBs. **Hardest. Last.** `[P1]`
 
 ### RF1.3 Phase 3 — Per-DB migration directories

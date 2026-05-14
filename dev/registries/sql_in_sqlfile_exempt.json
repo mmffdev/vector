@@ -3,8 +3,6 @@
   "exempt_paths": [
     "backend/internal/apikeys/apikeys.go",
     "backend/internal/apikeys/dev.go",
-    "backend/internal/artefactitemsv2/service.go",
-    "backend/internal/artefactitemsv2/types.go",
     "backend/internal/artefacttypes/service.go",
     "backend/internal/audit/audit.go",
     "backend/internal/custompages/service.go",

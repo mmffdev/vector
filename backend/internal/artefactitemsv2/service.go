@@ -61,39 +61,6 @@ func (s *Service) WithNotifier(n *webhooks.Notifier) { s.notifier = n }
 // resolver. Pass a *orgdesign.Service.
 func (s *Service) WithTopologyResolver(t TopologyScopeResolver) { s.topology = t }
 
-// rollupCTE is the WITH RECURSIVE expression retargeted to
-// vector_artefacts.artefacts. Structure is identical to v1's
-// rollupPointsExpr except:
-//   - table name    : artefacts (not obj_work_items)
-//   - parent column : parent_artefact_id (not parent_id)
-//   - points column : story_points (same name, just confirming)
-//
-// The CTE is used in both the data query and the count query so
-// Postgres only walks the tree once per query plan.
-const rollupCTE = `rollup_points AS (
-	SELECT
-		a.id,
-		CASE WHEN EXISTS (
-			SELECT 1 FROM artefacts c
-			WHERE c.parent_artefact_id = a.id AND c.archived_at IS NULL
-		) THEN (
-			WITH RECURSIVE descendants AS (
-				SELECT id, story_points
-				FROM artefacts
-				WHERE parent_artefact_id = a.id AND archived_at IS NULL
-				UNION ALL
-				SELECT child.id, child.story_points
-				FROM artefacts child
-				JOIN descendants d ON child.parent_artefact_id = d.id
-				WHERE child.archived_at IS NULL
-			)
-			SELECT COALESCE(SUM(story_points), 0) FROM descendants
-		) ELSE NULL END AS rollup_points
-	FROM artefacts a
-	WHERE a.subscription_id = $1
-	  AND a.archived_at IS NULL
-)`
-
 // ListWorkItems returns work items from vector_artefacts for the given
 // subscription. Filters and ORDER BY are applied dynamically; LIMIT/OFFSET
 // provide pagination. Returns an empty slice (not nil) when the pool is nil.
@@ -202,13 +169,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	orderBy := buildOrderBy(filters.Sort, filters.Dir)
 
 	// ── count query (no rollupCTE, no LIMIT/OFFSET) ───────────────────────────
-	countQ := `
-		SELECT count(*) FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		WHERE a.subscription_id = $1
-		  AND a.archived_at IS NULL
-		  AND at.scope = $2` + extraWhere
+	countQ := fmt.Sprintf(sqlCountWorkItemsTemplate, extraWhere)
 
 	if err = s.vectorArtefactsPool.QueryRow(ctx, countQ, args...).Scan(&total); err != nil {
 		return nil, 0, err
@@ -219,55 +180,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	offsetN := n + 1
 	dataArgs := append(args, lim, filters.Offset)
 
-	dataQ := `
-		WITH ` + rollupCTE + `
-		SELECT
-			a.id::text,
-			a.subscription_id::text,
-			a.number                        AS key_num,
-			lower(at.name)                  AS item_type,
-			at.prefix                       AS type_prefix,
-			a.title,
-			a.description,
-			''                              AS status,
-			COALESCE(fs.id::text, '')        AS flow_state_id,
-			COALESCE(fs.name, '')            AS flow_state_name,
-			CASE fs.kind
-				WHEN 'todo'        THEN 'backlog'
-				WHEN 'in_progress' THEN 'doing'
-				WHEN 'done'        THEN 'completed'
-				WHEN 'cancelled'   THEN 'cancelled'
-				ELSE                    'backlog'
-			END                             AS flow_state_code,
-			a.priority,
-			a.story_points,
-			a.timebox_sprint_id::text,
-			NULL::text                      AS sprint_ref_id,
-			NULL::text                      AS sprint_ref_alias,
-			a.parent_artefact_id::text      AS parent_id,
-			NULL::text                      AS root_feature_id,
-			COALESCE(a.owned_by_user_id::text, '') AS owner_id,
-			NULL::text                      AS owner_ref_id,
-			NULL::text                      AS owner_display_name,
-			NULL::text                      AS owner_avatar_url,
-			a.due_date::text,
-			COALESCE(a.created_by_user_id::text, '') AS created_by,
-			a.created_at,
-			a.updated_at,
-			a.archived_at,
-			(SELECT count(*) FROM artefacts child
-			 WHERE child.parent_artefact_id = a.id
-			   AND child.archived_at IS NULL)        AS children_count,
-			COALESCE(rp.rollup_points, a.story_points) AS rollup_points
-		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		WHERE a.subscription_id = $1
-		  AND a.archived_at IS NULL
-		  AND at.scope = $2` + extraWhere + `
-		ORDER BY ` + orderBy + fmt.Sprintf(`
-		LIMIT $%d OFFSET $%d`, limitN, offsetN)
+	dataQ := fmt.Sprintf(sqlListWorkItemsTemplate, extraWhere, orderBy, limitN, offsetN)
 
 	rows, err := s.vectorArtefactsPool.Query(ctx, dataQ, dataArgs...)
 	if err != nil {
@@ -292,54 +205,7 @@ func (s *Service) GetWorkItem(ctx context.Context, subscriptionID uuid.UUID, id 
 	if s.vectorArtefactsPool == nil {
 		return nil, ErrNotFound
 	}
-	row := s.vectorArtefactsPool.QueryRow(ctx, `
-		WITH `+rollupCTE+`
-		SELECT
-			a.id::text,
-			a.subscription_id::text,
-			a.number                        AS key_num,
-			lower(at.name)                  AS item_type,
-			at.prefix                       AS type_prefix,
-			a.title,
-			a.description,
-			''                              AS status,
-			COALESCE(fs.id::text, '')        AS flow_state_id,
-			COALESCE(fs.name, '')            AS flow_state_name,
-			CASE fs.kind
-				WHEN 'todo'        THEN 'backlog'
-				WHEN 'in_progress' THEN 'doing'
-				WHEN 'done'        THEN 'completed'
-				WHEN 'cancelled'   THEN 'cancelled'
-				ELSE                    'backlog'
-			END                             AS flow_state_code,
-			a.priority,
-			a.story_points,
-			a.timebox_sprint_id::text,
-			NULL::text                      AS sprint_ref_id,
-			NULL::text                      AS sprint_ref_alias,
-			a.parent_artefact_id::text      AS parent_id,
-			NULL::text                      AS root_feature_id,
-			COALESCE(a.owned_by_user_id::text, '') AS owner_id,
-			NULL::text                      AS owner_ref_id,
-			NULL::text                      AS owner_display_name,
-			NULL::text                      AS owner_avatar_url,
-			a.due_date::text,
-			COALESCE(a.created_by_user_id::text, '') AS created_by,
-			a.created_at,
-			a.updated_at,
-			a.archived_at,
-			(SELECT count(*) FROM artefacts child
-			 WHERE child.parent_artefact_id = a.id
-			   AND child.archived_at IS NULL)        AS children_count,
-			COALESCE(rp.rollup_points, a.story_points) AS rollup_points
-		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		WHERE a.id = $2
-		  AND a.subscription_id = $1
-		  AND a.archived_at IS NULL
-		  AND at.scope = $3`,
+	row := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectWorkItemByID,
 		subscriptionID, id, s.scope,
 	)
 	wi, err := scanWorkItemRow(row)
@@ -362,55 +228,7 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 	if s.vectorArtefactsPool == nil {
 		return []WorkItem{}, nil
 	}
-	rows, err := s.vectorArtefactsPool.Query(ctx, `
-		WITH `+rollupCTE+`
-		SELECT
-			a.id::text,
-			a.subscription_id::text,
-			a.number                        AS key_num,
-			lower(at.name)                  AS item_type,
-			at.prefix                       AS type_prefix,
-			a.title,
-			a.description,
-			''                              AS status,
-			COALESCE(fs.id::text, '')        AS flow_state_id,
-			COALESCE(fs.name, '')            AS flow_state_name,
-			CASE fs.kind
-				WHEN 'todo'        THEN 'backlog'
-				WHEN 'in_progress' THEN 'doing'
-				WHEN 'done'        THEN 'completed'
-				WHEN 'cancelled'   THEN 'cancelled'
-				ELSE                    'backlog'
-			END                             AS flow_state_code,
-			a.priority,
-			a.story_points,
-			a.timebox_sprint_id::text,
-			NULL::text                      AS sprint_ref_id,
-			NULL::text                      AS sprint_ref_alias,
-			a.parent_artefact_id::text      AS parent_id,
-			NULL::text                      AS root_feature_id,
-			COALESCE(a.owned_by_user_id::text, '') AS owner_id,
-			NULL::text                      AS owner_ref_id,
-			NULL::text                      AS owner_display_name,
-			NULL::text                      AS owner_avatar_url,
-			a.due_date::text,
-			COALESCE(a.created_by_user_id::text, '') AS created_by,
-			a.created_at,
-			a.updated_at,
-			a.archived_at,
-			(SELECT count(*) FROM artefacts child
-			 WHERE child.parent_artefact_id = a.id
-			   AND child.archived_at IS NULL)        AS children_count,
-			COALESCE(rp.rollup_points, a.story_points) AS rollup_points
-		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		WHERE a.subscription_id = $1
-		  AND a.parent_artefact_id = $2
-		  AND a.archived_at IS NULL
-		  AND at.scope = $3
-		ORDER BY a.position ASC, a.number ASC`,
+	rows, err := s.vectorArtefactsPool.Query(ctx, sqlListChildWorkItems,
 		subscriptionID, parentID, s.scope,
 	)
 	if err != nil {
@@ -456,29 +274,13 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 	whereClause := strings.Join(conds, " AND ")
 
 	// Pass 1: total + blocked (single row).
-	totalQ := fmt.Sprintf(`
-		SELECT
-			COUNT(*) AS total,
-			COUNT(*) FILTER (
-				WHERE (fs.kind = 'todo' OR fs.id IS NULL)
-				  AND a.updated_at < NOW() - INTERVAL '14 days'
-			) AS blocked
-		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		WHERE %s`, whereClause)
+	totalQ := fmt.Sprintf(sqlSummariseTotalTemplate, whereClause)
 	if err := s.vectorArtefactsPool.QueryRow(ctx, totalQ, args...).Scan(&out.Total, &out.Blocked); err != nil {
 		return WorkItemsSummary{ByType: map[string]int{}}, err
 	}
 
 	// Pass 2: per-type bucket map (one row per artefact_type.name).
-	typeQ := fmt.Sprintf(`
-		SELECT lower(at.name) AS name, COUNT(*)
-		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
-		WHERE %s
-		GROUP BY lower(at.name)`, whereClause)
+	typeQ := fmt.Sprintf(sqlSummariseByTypeTemplate, whereClause)
 	rows, err := s.vectorArtefactsPool.Query(ctx, typeQ, args...)
 	if err != nil {
 		return WorkItemsSummary{ByType: map[string]int{}}, err
@@ -512,25 +314,7 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) 
 	if s.vectorArtefactsPool == nil {
 		return []WorkItemFlowState{}, nil
 	}
-	rows, err := s.vectorArtefactsPool.Query(ctx, `
-		SELECT fs.id, fs.sort_order, fs.name, fs.kind
-		FROM flow_states fs
-		JOIN flows f ON f.id = fs.flow_id
-		WHERE f.artefact_type_id = (
-			SELECT at.id FROM artefact_types at
-			JOIN flows f2 ON f2.artefact_type_id = at.id
-			WHERE at.subscription_id = $1
-			  AND at.scope = $2
-			  AND f2.is_default = TRUE
-			  AND f2.archived_at IS NULL
-			  AND at.archived_at IS NULL
-			ORDER BY at.created_at ASC
-			LIMIT 1
-		)
-		  AND f.is_default = TRUE
-		  AND f.archived_at IS NULL
-		  AND fs.archived_at IS NULL
-		ORDER BY fs.sort_order ASC`,
+	rows, err := s.vectorArtefactsPool.Query(ctx, sqlListWorkScopeFlowStates,
 		subscriptionID, s.scope,
 	)
 	if err != nil {
@@ -579,13 +363,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 
 	// Resolve artefact_type_id for this subscription + item_type.
 	var artefactTypeID uuid.UUID
-	err = tx.QueryRow(ctx, `
-		SELECT id FROM artefact_types
-		WHERE subscription_id = $1
-		  AND scope = $3
-		  AND lower(name) = $2
-		  AND archived_at IS NULL
-		LIMIT 1`,
+	err = tx.QueryRow(ctx, sqlSelectArtefactTypeIDForCreate,
 		subscriptionID, in.ItemType, s.scope,
 	).Scan(&artefactTypeID)
 	if err != nil {
@@ -594,12 +372,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 
 	// Allocate number atomically.
 	var num int64
-	err = tx.QueryRow(ctx, `
-		INSERT INTO artefact_number_sequence (subscription_id, artefact_type_id, next_num)
-		VALUES ($1, $2, 2)
-		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
-			SET next_num = artefact_number_sequence.next_num + 1
-		RETURNING next_num - 1`,
+	err = tx.QueryRow(ctx, sqlAllocateArtefactNumber,
 		subscriptionID, artefactTypeID,
 	).Scan(&num)
 	if err != nil {
@@ -608,17 +381,8 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 
 	// Resolve default (is_initial) flow state for this type.
 	var defaultFlowStateID uuid.UUID
-	err = tx.QueryRow(ctx, `
-		SELECT fs.id FROM flow_states fs
-		JOIN flows f ON f.id = fs.flow_id
-		WHERE f.artefact_type_id = $1
-		  AND f.is_default = TRUE
-		  AND f.archived_at IS NULL
-		  AND fs.is_initial = TRUE
-		  AND fs.archived_at IS NULL
-		LIMIT 1`,
-		artefactTypeID,
-	).Scan(&defaultFlowStateID)
+	err = tx.QueryRow(ctx, sqlSelectDefaultInitialFlowState, artefactTypeID).
+		Scan(&defaultFlowStateID)
 	if err != nil {
 		return nil, fmt.Errorf("resolve default flow state: %w", err)
 	}
@@ -626,10 +390,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	// Resolve workspace_id — required NOT NULL. Use first workspace for subscription
 	// (same heuristic as the ETL backfill).
 	var workspaceID uuid.UUID
-	err = s.mainPool.QueryRow(ctx, `
-		SELECT id FROM master_record_workspaces
-		WHERE subscription_id = $1 AND archived_at IS NULL
-		ORDER BY created_at ASC LIMIT 1`,
+	err = s.mainPool.QueryRow(ctx, sqlSelectFirstLiveWorkspaceForSubscription,
 		subscriptionID,
 	).Scan(&workspaceID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -672,21 +433,11 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 
 	// Append to existing items (position = MAX + 100).
 	var pos int
-	_ = tx.QueryRow(ctx, `
-		SELECT COALESCE(MAX(position), 0) + 100 FROM artefacts
-		WHERE subscription_id = $1
-		  AND artefact_type_id = $2
-		  AND archived_at IS NULL`,
+	_ = tx.QueryRow(ctx, sqlSelectNextArtefactPosition,
 		subscriptionID, artefactTypeID,
 	).Scan(&pos)
 
-	err = tx.QueryRow(ctx, `
-		INSERT INTO artefacts
-			(subscription_id, workspace_id, artefact_type_id, number, title, description,
-			 flow_state_id, priority, story_points, timebox_sprint_id, parent_artefact_id,
-			 owned_by_user_id, created_by_user_id, position)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-		RETURNING id`,
+	err = tx.QueryRow(ctx, sqlInsertArtefact,
 		subscriptionID, workspaceID, artefactTypeID, num,
 		in.Title, in.Description,
 		defaultFlowStateID, in.Priority, in.StoryPoints, sprintID, parentID,
@@ -736,15 +487,8 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if in.FlowStateID != nil {
 		// Validate the flow_state belongs to this subscription.
 		var fsExists bool
-		err := s.vectorArtefactsPool.QueryRow(ctx, `
-			SELECT EXISTS(
-				SELECT 1 FROM flow_states fs
-				JOIN flows f ON f.id = fs.flow_id
-				JOIN artefact_types at ON at.id = f.artefact_type_id
-				WHERE fs.id = $1
-				  AND at.subscription_id = $2
-				  AND fs.archived_at IS NULL
-			)`, *in.FlowStateID, subscriptionID,
+		err := s.vectorArtefactsPool.QueryRow(ctx, sqlExistsFlowStateInSubscription,
+			*in.FlowStateID, subscriptionID,
 		).Scan(&fsExists)
 		if err != nil || !fsExists {
 			return nil, fmt.Errorf("%w: flow_state_id not found", ErrInvalidInput)
@@ -792,8 +536,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	subN := n + 1
 
 	ct, err := s.vectorArtefactsPool.Exec(ctx,
-		fmt.Sprintf(`UPDATE artefacts SET %s
-			WHERE id = $%d AND subscription_id = $%d AND archived_at IS NULL`,
+		fmt.Sprintf(sqlPatchArtefactTemplate,
 			strings.Join(sets, ", "), idN, subN),
 		args...,
 	)
@@ -820,10 +563,7 @@ func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID uuid.UUID,
 	if s.vectorArtefactsPool == nil {
 		return ErrNotFound
 	}
-	ct, err := s.vectorArtefactsPool.Exec(ctx, `
-		UPDATE artefacts
-		SET archived_at = now(), updated_at = now()
-		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
+	ct, err := s.vectorArtefactsPool.Exec(ctx, sqlArchiveArtefact,
 		id, subscriptionID,
 	)
 	if err != nil {
@@ -869,12 +609,7 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	rows, err := tx.Query(ctx, `
-		SELECT a.id::text, lower(at.name)
-		FROM artefacts a
-		JOIN artefact_types at ON at.id = a.artefact_type_id
-		WHERE a.subscription_id = $1 AND a.id::text = ANY($2) AND a.archived_at IS NULL
-		FOR UPDATE OF a`,
+	rows, err := tx.Query(ctx, sqlSelectArtefactsForBulkLock,
 		subscriptionID, ids,
 	)
 	if err != nil {
@@ -915,25 +650,21 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 				result.Failed = append(result.Failed, BulkFailure{ID: row.id, Reason: "invalid priority"})
 				continue
 			}
-			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET priority=$1, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`,
+			_, execErr = tx.Exec(ctx, sqlBulkSetPriority,
 				val, row.id, subscriptionID)
 		case "set_owner":
 			ownerID, _ := payload["owner_id"].(string)
-			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET owned_by_user_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`,
+			_, execErr = tx.Exec(ctx, sqlBulkSetOwner,
 				ownerID, row.id, subscriptionID)
 		case "archive":
-			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET archived_at=now(), updated_at=now() WHERE id=$1::uuid AND subscription_id=$2`,
+			_, execErr = tx.Exec(ctx, sqlBulkArchive,
 				row.id, subscriptionID)
 		case "set_flow_state", "set_status":
 			fsID, _ := payload["flow_state_id"].(string)
 			if fsID == "" {
 				fsID, _ = payload["status"].(string)
 			}
-			_, execErr = tx.Exec(ctx,
-				`UPDATE artefacts SET flow_state_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`,
+			_, execErr = tx.Exec(ctx, sqlBulkSetFlowState,
 				fsID, row.id, subscriptionID)
 		}
 		if execErr != nil {
@@ -961,14 +692,7 @@ func (s *Service) ListFieldValues(ctx context.Context, subscriptionID uuid.UUID,
 	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
 		return nil, err
 	}
-	rows, err := s.vectorArtefactsPool.Query(ctx, `
-		SELECT fv.id, fv.artefact_id::text, fl.id::text, NULL::text,
-		       fl.name, fl.label, fl.field_type, fl.options_json,
-		       fv.string_value, fv.number_value::text, fv.text_value, fv.date_value::text
-		FROM artefact_field_values fv
-		JOIN artefact_field_library fl ON fl.id = fv.field_library_id
-		WHERE fv.artefact_id = $1
-		ORDER BY fl.name ASC`,
+	rows, err := s.vectorArtefactsPool.Query(ctx, sqlListFieldValuesForArtefact,
 		artefactID,
 	)
 	if err != nil {
@@ -1005,8 +729,7 @@ func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID uuid.UUID
 		return fmt.Errorf("%w: invalid field_library_id", ErrInvalidInput)
 	}
 	var fieldType string
-	err = s.vectorArtefactsPool.QueryRow(ctx,
-		`SELECT field_type FROM artefact_field_library WHERE id = $1 AND subscription_id = $2`,
+	err = s.vectorArtefactsPool.QueryRow(ctx, sqlSelectFieldLibraryType,
 		fieldID, subscriptionID,
 	).Scan(&fieldType)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -1016,17 +739,7 @@ func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID uuid.UUID
 		return err
 	}
 
-	_, err = s.vectorArtefactsPool.Exec(ctx, `
-		INSERT INTO artefact_field_values
-			(artefact_id, field_library_id, string_value, number_value, text_value, date_value)
-		VALUES ($1,$2,$3,$4::numeric,$5,$6::date)
-		ON CONFLICT (artefact_id, field_library_id)
-		DO UPDATE SET
-			string_value = EXCLUDED.string_value,
-			number_value = EXCLUDED.number_value,
-			text_value   = EXCLUDED.text_value,
-			date_value   = EXCLUDED.date_value,
-			updated_at   = now()`,
+	_, err = s.vectorArtefactsPool.Exec(ctx, sqlUpsertFieldValue,
 		artefactID, fieldID,
 		in.StringValue, in.NumberValue, in.TextValue, in.DateValue,
 	)
@@ -1041,8 +754,7 @@ func (s *Service) DeleteFieldValue(ctx context.Context, subscriptionID uuid.UUID
 	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
 		return err
 	}
-	ct, err := s.vectorArtefactsPool.Exec(ctx,
-		`DELETE FROM artefact_field_values WHERE id = $1 AND artefact_id = $2`,
+	ct, err := s.vectorArtefactsPool.Exec(ctx, sqlDeleteFieldValue,
 		fvID, artefactID,
 	)
 	if err != nil {
@@ -1077,12 +789,7 @@ func (s *Service) decorateOwners(ctx context.Context, items []WorkItem) error {
 		ids = append(ids, id)
 	}
 
-	uRows, err := s.mainPool.Query(ctx, `
-		SELECT id::text,
-		       COALESCE(NULLIF(TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')), ''), email)
-		FROM users
-		WHERE id::text = ANY($1)
-		  AND is_active = true`, ids)
+	uRows, err := s.mainPool.Query(ctx, sqlSelectActiveUserDisplayNamesByIDs, ids)
 	if err != nil {
 		return err
 	}
