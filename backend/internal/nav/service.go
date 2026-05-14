@@ -79,7 +79,7 @@ type PinnedInput struct {
 
 // CustomGroup is the wire shape for a user-created primary group.
 // Icon is nil = "no override picked"; consumers fall back to a generic
-// group icon. The string vocabulary matches user_nav_prefs.icon_override.
+// group icon. The string vocabulary matches users_nav_prefs.icon_override.
 type CustomGroup struct {
 	ID       string  `json:"id"`
 	Label    string  `json:"label"`
@@ -114,7 +114,7 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 //
 // Side effect: opportunistically backfills any system page (created_by IS NULL,
 // subscription_id IS NULL) where pages.default_pinned=TRUE and the user's role
-// is allowed by page_roles, but the user has no row in user_nav_prefs for it.
+// is allowed by page_roles, but the user has no row in users_nav_prefs for it.
 // This eliminates the per-release backfill-migration tax — adding a new system
 // page with default_pinned=TRUE auto-pins it for every existing eligible user
 // on their next nav fetch. One-time per (user, page, profile); subsequent
@@ -282,13 +282,13 @@ func (s *Service) ReplacePrefs(
 }
 
 // ReplacePrefsForProfile is the profile-scoped variant. Wipes + re-inserts
-// only this profile's rows; other profiles are untouched. user_nav_groups
+// only this profile's rows; other profiles are untouched. users_nav_groups
 // (the shared pool) is NOT wiped here — that would clobber other profiles
 // referencing the same groups. Group writes happen via /api/nav/groups
 // instead (a separate surface — see story B6).
 //
 // Until the dedicated groups surface lands, this method preserves the
-// legacy "groups payload replaces user_nav_groups" behaviour ONLY when
+// legacy "groups payload replaces users_nav_groups" behaviour ONLY when
 // it's writing the user's Default profile (the only profile the legacy
 // PUT could ever touch). Non-default profiles MUST send an empty
 // groups list; the shared group pool is not the responsibility of a
@@ -434,7 +434,7 @@ func (s *Service) ReplacePrefsForProfile(
 	defer tx.Rollback(ctx)
 
 	// Look up whether the targeted profile is Default. The shared
-	// user_nav_groups pool is only wiped when writing Default — that
+	// users_nav_groups pool is only wiped when writing Default — that
 	// preserves the legacy single-profile behaviour without letting a
 	// non-default-profile PUT clobber groups other profiles still
 	// reference. The group surface gets its own dedicated endpoint in
@@ -543,7 +543,7 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.U
 }
 
 // DeletePrefsForProfile wipes prefs for the named profile only. Never
-// touches user_nav_groups (the shared pool). Use the legacy DeletePrefs
+// touches users_nav_groups (the shared pool). Use the legacy DeletePrefs
 // when the caller really means "reset to defaults" on the user's home
 // profile.
 func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {

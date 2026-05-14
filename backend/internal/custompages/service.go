@@ -4,7 +4,7 @@
 //
 // The page surfaces in the nav catalogue as kind="user_custom" via the
 // merge in nav handler (CatalogueWithCustom). Pinning lives in
-// user_nav_prefs as item_key="custom:<page.id>".
+// users_nav_prefs as item_key="custom:<page.id>".
 package custompages
 
 import (
@@ -85,7 +85,7 @@ func New(pool *pgxpool.Pool) *Service { return &Service{Pool: pool} }
 func (s *Service) ListPagesOnly(ctx context.Context, userID, subscriptionID uuid.UUID) ([]CustomPage, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT id, label, icon
-		FROM user_custom_pages
+		FROM users_custom_pages
 		WHERE user_id = $1 AND subscription_id = $2
 		ORDER BY label`, userID, subscriptionID)
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *Service) Get(ctx context.Context, userID, subscriptionID, pageID uuid.U
 	var id uuid.UUID
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id, label, icon
-		FROM user_custom_pages
+		FROM users_custom_pages
 		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
 		pageID, userID, subscriptionID).Scan(&id, &p.Label, &p.Icon)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -135,7 +135,7 @@ func (s *Service) Get(ctx context.Context, userID, subscriptionID, pageID uuid.U
 func (s *Service) listViews(ctx context.Context, pageID uuid.UUID) ([]CustomView, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT id, label, kind::text, position, config
-		FROM user_custom_page_views
+		FROM users_custom_page_views
 		WHERE page_id = $1
 		ORDER BY position`, pageID)
 	if err != nil {
@@ -184,7 +184,7 @@ func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, 
 	// Cap check inside the tx so concurrent creates can't race past it.
 	var count int
 	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*) FROM user_custom_pages
+		SELECT COUNT(*) FROM users_custom_pages
 		WHERE user_id = $1 AND subscription_id = $2`, userID, subscriptionID).Scan(&count); err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, 
 
 	pageID := uuid.New()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO user_custom_pages (id, user_id, subscription_id, label, icon)
+		INSERT INTO users_custom_pages (id, user_id, subscription_id, label, icon)
 		VALUES ($1, $2, $3, $4, $5)`,
 		pageID, userID, subscriptionID, label, icon)
 	if err != nil {
@@ -206,7 +206,7 @@ func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, 
 
 	viewID := uuid.New()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO user_custom_page_views (id, page_id, label, kind, position, config)
+		INSERT INTO users_custom_page_views (id, page_id, label, kind, position, config)
 		VALUES ($1, $2, $3, $4::custom_view_kind, 0, '{}'::jsonb)`,
 		viewID, pageID, DefaultViewLabel, string(DefaultViewKind))
 	if err != nil {
@@ -255,7 +255,7 @@ func (s *Service) Patch(ctx context.Context, userID, subscriptionID, pageID uuid
 	}
 
 	tag, err := s.Pool.Exec(ctx, `
-		UPDATE user_custom_pages
+		UPDATE users_custom_pages
 		SET label = COALESCE($4, label),
 		    icon  = COALESCE($5, icon)
 		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
@@ -273,12 +273,12 @@ func (s *Service) Patch(ctx context.Context, userID, subscriptionID, pageID uuid
 }
 
 // Delete removes a page (and cascades its views). Also cascades on the
-// nav side via ON DELETE CASCADE in user_nav_prefs? No — prefs do not
+// nav side via ON DELETE CASCADE in users_nav_prefs? No — prefs do not
 // FK to custom pages (item_key is a string). So callers should also
 // drop any pinned reference; the frontend does this on delete.
 func (s *Service) Delete(ctx context.Context, userID, subscriptionID, pageID uuid.UUID) error {
 	tag, err := s.Pool.Exec(ctx, `
-		DELETE FROM user_custom_pages
+		DELETE FROM users_custom_pages
 		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
 		pageID, userID, subscriptionID)
 	if err != nil {

@@ -136,7 +136,7 @@ func iconFor(kind EntityKind) string {
 //  2. Get-or-create the shared pages row (subscription_id = entity tenant)
 //  3. Get-or-create the page_entity_refs backlink
 //  4. Ensure all roles have access via page_roles (idempotent)
-//  5. Insert user_nav_prefs at end of bookmarks group (idempotent)
+//  5. Insert users_nav_prefs at end of bookmarks group (idempotent)
 //  6. Bust the registry cache so the next catalogue read picks up the new page
 func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUID, role models.Role, kind EntityKind, entityID uuid.UUID) (string, error) {
 	if !kind.Valid() {
@@ -210,7 +210,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	}
 
 	// Append to user's bookmarks group. Compute next position as
-	// max(position over user_nav_prefs for this user/tenant) + 1; that
+	// max(position over users_nav_prefs for this user/tenant) + 1; that
 	// keeps the global position contiguity invariant intact (validated
 	// elsewhere on bulk replace).
 	var nextPos int

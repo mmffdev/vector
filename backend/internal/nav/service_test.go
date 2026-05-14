@@ -21,7 +21,7 @@ import (
 //
 // Each test creates its own tenant + user, exercises the service, and
 // leaves rows behind for incidental inspection; ON DELETE CASCADE on
-// user_nav_prefs + users means dropping the test user wipes all prefs.
+// users_nav_prefs + users means dropping the test user wipes all prefs.
 // We explicitly delete the test tenant at the end to keep the remote
 // DB tidy.
 
@@ -95,7 +95,7 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func())
 
 	cleanup := func() {
 		// ON DELETE CASCADE on users.subscription_id is RESTRICT, so we delete
-		// user first, then tenant. user_nav_prefs cascades from users.
+		// user first, then tenant. users_nav_prefs cascades from users.
 		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
 			t.Logf("cleanup user: %v", err)
 		}

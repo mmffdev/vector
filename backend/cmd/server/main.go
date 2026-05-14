@@ -201,7 +201,7 @@ func main() {
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
-	// Sole writer for user_tab_order; mounted at /api/user/tab-order below.
+	// Sole writer for users_tab_order; mounted at /api/user/tab-order below.
 	userTabOrderSvc := usertaborder.New(pool)
 	userTabOrderH := usertaborder.NewHandler(userTabOrderSvc)
 

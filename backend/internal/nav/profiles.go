@@ -131,12 +131,12 @@ func (s *Service) CreateProfile(ctx context.Context, userID, subscriptionID uuid
 	// Without this seed a brand-new profile reads as empty — the editor
 	// shows blank admin buckets and admin pages fall back to the
 	// 'admin_settings' tag bucket. Copy two things:
-	//   1) user_nav_prefs rows (pinned pages, with group_id + parent +
+	//   1) users_nav_prefs rows (pinned pages, with group_id + parent +
 	//      icon_override preserved so admin pages stay inside their
 	//      admin groups).
-	//   2) user_nav_profile_groups placements (the rail/flyout section
+	//   2) users_nav_profile_groups placements (the rail/flyout section
 	//      ordering: tag buckets + custom groups).
-	// user_nav_groups itself is per-user (shared across profiles) so
+	// users_nav_groups itself is per-user (shared across profiles) so
 	// nothing needs cloning there.
 	if _, err := tx.Exec(ctx, sqlSeedNewProfilePrefsFromDefault,
 		userID, subscriptionID, p.ID); err != nil {
@@ -183,8 +183,8 @@ func (s *Service) RenameProfile(ctx context.Context, userID, subscriptionID, pro
 // custom pages survive (they're user-scoped, not profile-scoped).
 //
 // Side effects handled by FKs:
-//   - user_nav_prefs rows for this profile: ON DELETE CASCADE (035)
-//   - user_nav_profile_groups for this profile: ON DELETE CASCADE (034)
+//   - users_nav_prefs rows for this profile: ON DELETE CASCADE (035)
+//   - users_nav_profile_groups for this profile: ON DELETE CASCADE (034)
 //   - users.active_nav_profile_id pointing here: ON DELETE SET NULL (035)
 //     The next /api/nav/prefs read falls back to that user's Default.
 func (s *Service) DeleteProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {
@@ -417,7 +417,7 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 // so the wipe + re-insert can run in any order inside the txn.
 //
 // SHARED-POOL INVARIANT: this endpoint never inserts/updates/deletes
-// rows in user_nav_groups itself. Groups are created/renamed/deleted
+// rows in users_nav_groups itself. Groups are created/renamed/deleted
 // only via the legacy PUT /api/nav/prefs path (Default profile) until
 // that surface is split off — so a user's group pool is the union of
 // what they author from Default, and per-profile placement just decides
