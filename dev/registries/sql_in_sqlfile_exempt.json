@@ -33,8 +33,6 @@
     "backend/internal/timeboxreleases/service.go",
     "backend/internal/timeboxsprints/service.go",
     "backend/internal/usertaborder/service.go",
-    "backend/internal/webhooks/service.go",
-    "backend/internal/webhooks/worker.go",
     "backend/internal/workspaces/commands.go",
     "backend/internal/workspaces/crossdb.go",
     "backend/internal/workspaces/roles.go"
