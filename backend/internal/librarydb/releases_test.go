@@ -92,7 +92,7 @@ func TestListReleasesSinceAck(t *testing.T) {
 
 	// Reset any prior ack so the test starts in a known state.
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 
 	// Pre-ack: seeded release must be in the outstanding list.
@@ -133,7 +133,7 @@ func TestListReleasesSinceAck(t *testing.T) {
 
 	// Cleanup so re-runs start fresh.
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 }
 
@@ -146,7 +146,7 @@ func TestCountOutstanding(t *testing.T) {
 	releaseID := uuid.MustParse(seededReleaseID)
 	ctx := context.Background()
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 
 	pre, _, err := CountOutstandingForSubscription(ctx, libPool, vecPool, subID, tier)
@@ -170,7 +170,7 @@ func TestCountOutstanding(t *testing.T) {
 	}
 
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 }
 

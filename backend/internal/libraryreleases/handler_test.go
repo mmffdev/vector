@@ -55,7 +55,7 @@ func TestList_OK(t *testing.T) {
 	// Reset ack so seeded release is in the list.
 	releaseID := uuid.MustParse(seededReleaseID)
 	_, _ = vecPool.Exec(context.Background(),
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		sub.ID, releaseID)
 
 	h := NewHandler(NewService(libPool, vecPool), nil, nil)
@@ -136,7 +136,7 @@ func TestAck_OK_Then_Idempotent(t *testing.T) {
 
 	releaseID := uuid.MustParse(seededReleaseID)
 	_, _ = vecPool.Exec(context.Background(),
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		sub.ID, releaseID)
 
 	h := NewHandler(NewService(libPool, vecPool), nil, nil)
@@ -169,7 +169,7 @@ func TestAck_OK_Then_Idempotent(t *testing.T) {
 
 	// Cleanup so re-runs start fresh.
 	_, _ = vecPool.Exec(context.Background(),
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		sub.ID, releaseID)
 }
 

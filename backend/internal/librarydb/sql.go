@@ -115,48 +115,86 @@ const sqlListPublishedModels = `
 // library_releases for a (subscription, tier) pair. Visibility rules
 // per plan §12.5.
 const sqlListActiveReleasesForAudience = `
-		SELECT id, library_version, title, summary_md, body_md, severity,
-		       audience_tier, audience_subscription_ids, affects_model_family_id,
-		       released_at, expires_at, archived_at, created_at, updated_at
+		SELECT library_releases_id,
+		       library_releases_library_version,
+		       library_releases_title,
+		       library_releases_summary_md,
+		       library_releases_body_md,
+		       library_releases_severity,
+		       library_releases_audience_tier,
+		       library_releases_audience_subscription_ids,
+		       library_releases_id_model_family,
+		       library_releases_released_at,
+		       library_releases_expires_at,
+		       library_releases_archived_at,
+		       library_releases_created_at,
+		       library_releases_updated_at
 		FROM library_releases
-		WHERE archived_at IS NULL
-		  AND (expires_at IS NULL OR expires_at > NOW())
-		  AND (audience_tier IS NULL OR $1 = ANY(audience_tier))
-		  AND (audience_subscription_ids IS NULL OR $2 = ANY(audience_subscription_ids))
-		ORDER BY released_at DESC, id
+		WHERE library_releases_archived_at IS NULL
+		  AND (library_releases_expires_at IS NULL OR library_releases_expires_at > NOW())
+		  AND (library_releases_audience_tier IS NULL OR $1 = ANY(library_releases_audience_tier))
+		  AND (library_releases_audience_subscription_ids IS NULL OR $2 = ANY(library_releases_audience_subscription_ids))
+		ORDER BY library_releases_released_at DESC, library_releases_id
 	`
 
 // sqlListActionsForReleases returns library_release_actions for a
 // batch of release ids, ordered for stable rendering.
 const sqlListActionsForReleases = `
-		SELECT id, release_id, action_key, label, payload, sort_order, created_at, updated_at
-		FROM library_release_actions
-		WHERE release_id = ANY($1)
-		ORDER BY release_id, sort_order, action_key
+		SELECT library_releases_actions_id,
+		       library_releases_actions_id_library_release,
+		       library_releases_actions_action_key,
+		       library_releases_actions_label,
+		       library_releases_actions_payload,
+		       library_releases_actions_sort_order,
+		       library_releases_actions_created_at,
+		       library_releases_actions_updated_at
+		FROM library_releases_actions
+		WHERE library_releases_actions_id_library_release = ANY($1)
+		ORDER BY library_releases_actions_id_library_release,
+		         library_releases_actions_sort_order,
+		         library_releases_actions_action_key
 	`
 
 // sqlListAckedReleaseIDs returns the release_ids the caller has
 // already acknowledged from the supplied candidate set.
 const sqlListAckedReleaseIDs = `
-		SELECT release_id
-		FROM library_acknowledgements
-		WHERE subscription_id = $1 AND release_id = ANY($2)
+		SELECT library_releases_acknowledgements_id_library_release
+		FROM library_releases_acknowledgements
+		WHERE library_releases_acknowledgements_id_subscription = $1
+		  AND library_releases_acknowledgements_id_library_release = ANY($2)
 	`
 
 // sqlInsertReleaseAck idempotently records one acknowledgement.
 const sqlInsertReleaseAck = `
-		INSERT INTO library_acknowledgements (
-		    subscription_id, release_id, acknowledged_by_user_id, action_taken
+		INSERT INTO library_releases_acknowledgements (
+		    library_releases_acknowledgements_id_subscription,
+		    library_releases_acknowledgements_id_library_release,
+		    library_releases_acknowledgements_id_user_acknowledger,
+		    library_releases_acknowledgements_action_taken
 		) VALUES ($1, $2, $3, $4)
-		ON CONFLICT (subscription_id, release_id) DO NOTHING
+		ON CONFLICT (
+		    library_releases_acknowledgements_id_subscription,
+		    library_releases_acknowledgements_id_library_release
+		) DO NOTHING
 	`
 
 // sqlSelectReleaseByID loads one library_releases row by id; archived
 // rows return ErrReleaseNotFound.
 const sqlSelectReleaseByID = `
-		SELECT id, library_version, title, summary_md, body_md, severity,
-		       audience_tier, audience_subscription_ids, affects_model_family_id,
-		       released_at, expires_at, archived_at, created_at, updated_at
+		SELECT library_releases_id,
+		       library_releases_library_version,
+		       library_releases_title,
+		       library_releases_summary_md,
+		       library_releases_body_md,
+		       library_releases_severity,
+		       library_releases_audience_tier,
+		       library_releases_audience_subscription_ids,
+		       library_releases_id_model_family,
+		       library_releases_released_at,
+		       library_releases_expires_at,
+		       library_releases_archived_at,
+		       library_releases_created_at,
+		       library_releases_updated_at
 		FROM library_releases
-		WHERE id = $1 AND archived_at IS NULL
+		WHERE library_releases_id = $1 AND library_releases_archived_at IS NULL
 	`

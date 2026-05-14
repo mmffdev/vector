@@ -49,8 +49,8 @@ func TestLibraryGrantMatrix(t *testing.T) {
 	// releases + actions (Phase 3); INSERT-only on release_log.
 	publishMap := tableMap(bundleTables, publishWritePrivs)
 	publishMap["library_releases"] = sortedCopy(publishWritePrivs)
-	publishMap["library_release_actions"] = sortedCopy(publishWritePrivs)
-	publishMap["library_release_log"] = []string{"INSERT"}
+	publishMap["library_releases_actions"] = sortedCopy(publishWritePrivs)
+	publishMap["library_release_logs"] = []string{"INSERT"}
 	// Phase-4 prep: publish reads error_codes (reference data), does not write.
 	for _, t := range referenceTables {
 		publishMap[t] = sortedCopy(roPrivs)
@@ -61,8 +61,8 @@ func TestLibraryGrantMatrix(t *testing.T) {
 	// SELECT on error_codes so ack can resolve codes when surfacing
 	// validation failures.
 	ackMap := map[string][]string{
-		"library_releases":        sortedCopy(roPrivs),
-		"library_release_actions": sortedCopy(roPrivs),
+		"library_releases":         sortedCopy(roPrivs),
+		"library_releases_actions": sortedCopy(roPrivs),
 	}
 	for _, t := range referenceTables {
 		ackMap[t] = sortedCopy(roPrivs)
@@ -121,8 +121,8 @@ func bundleTableList() []string {
 func releaseTableList() []string {
 	return []string{
 		"library_releases",
-		"library_release_actions",
-		"library_release_log",
+		"library_releases_actions",
+		"library_release_logs",
 	}
 }
 
