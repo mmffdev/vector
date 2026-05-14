@@ -15,8 +15,8 @@
 --       - artefact_number_sequence (per-type counters → reset)
 --       - artefact_types WHERE scope IN ('work','strategy') AND source='tenant'
 --         (system rows from 010/011/014 seeds are preserved)
---       - timebox_sprints
---       - timebox_releases
+--       - timeboxes_sprints
+--       - timeboxes_releases
 --       - topology_role_grants
 --       - topology_view_state
 --       - topology_nodes
@@ -121,11 +121,11 @@ BEGIN
     -- ──────────────────────────────────────────────────────────
     -- 1e. Timeboxes
     -- ──────────────────────────────────────────────────────────
-    DELETE FROM vector_artefacts.timebox_sprints
-     WHERE subscription_id = v_subscription_id;
+    DELETE FROM vector_artefacts.timeboxes_sprints
+     WHERE timeboxes_sprints_id_subscription = v_subscription_id;
 
-    DELETE FROM vector_artefacts.timebox_releases
-     WHERE subscription_id = v_subscription_id;
+    DELETE FROM vector_artefacts.timeboxes_releases
+     WHERE timeboxes_releases_id_subscription = v_subscription_id;
 
     -- ──────────────────────────────────────────────────────────
     -- 2a. Topology — role grants (child of topology_nodes)

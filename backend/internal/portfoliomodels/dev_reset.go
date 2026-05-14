@@ -67,7 +67,7 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 // Cleared (vector_artefacts):
 //   - artefact_field_values, artefacts, artefact_number_sequence
 //   - tenant artefact_types (source='tenant' only; system rows preserved)
-//   - timebox_sprints, timebox_releases
+//   - timeboxes_sprints, timeboxes_releases
 //   - topology_role_grants, topology_view_state, topology_nodes
 //   - master_record_portfolio
 //
@@ -163,10 +163,10 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 
 	// 5. Timeboxes.
 	if _, err = tx.Exec(ctx, sqlDeleteAllTimeboxSprintsForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("timebox_sprints: %w", err)
+		return fmt.Errorf("timeboxes_sprints: %w", err)
 	}
 	if _, err = tx.Exec(ctx, sqlDeleteAllTimeboxReleasesForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("timebox_releases: %w", err)
+		return fmt.Errorf("timeboxes_releases: %w", err)
 	}
 
 	// 6. Topology — clear role grants and view state first, then detach

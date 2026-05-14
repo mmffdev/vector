@@ -99,7 +99,7 @@ func baseInput(subID, wsID string, orgNodeID *string, name, start, end string) t
 func cleanup(pool *pgxpool.Pool, wsID string) func() {
 	return func() {
 		_, _ = pool.Exec(context.Background(),
-			`DELETE FROM timebox_sprints WHERE workspace_id = $1`, wsID)
+			`DELETE FROM timeboxes_sprints WHERE timeboxes_sprints_id_workspace = $1`, wsID)
 	}
 }
 
@@ -198,7 +198,7 @@ func TestListExcludesArchived(t *testing.T) {
 	}
 	// Archive directly via pool since Delete blocks active/completed.
 	_, _ = pool.Exec(context.Background(),
-		`UPDATE timebox_sprints SET archived_at = now() WHERE id = $1`, s.ID)
+		`UPDATE timeboxes_sprints SET timeboxes_sprints_archived_at = now() WHERE timeboxes_sprints_id = $1`, s.ID)
 
 	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{})
 	if err != nil {
@@ -254,9 +254,14 @@ func TestNonOverlap(t *testing.T) {
 
 	// Force an overlap by bypassing adjacency check via direct DB insert.
 	_, err := pool.Exec(context.Background(), `
-		INSERT INTO timebox_sprints (
-			subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_cadence_days, sprint_date_start, sprint_date_end
+		INSERT INTO timeboxes_sprints (
+			timeboxes_sprints_id_subscription,
+			timeboxes_sprints_id_workspace,
+			timeboxes_sprints_id_topology_node,
+			timeboxes_sprints_name,
+			timeboxes_sprints_cadence_days,
+			timeboxes_sprints_date_start,
+			timeboxes_sprints_date_end
 		) VALUES ($1,$2,$3,'Overlap',14,'2034-01-05','2034-01-20')`,
 		sub, ws, orgStr)
 	if err == nil {
@@ -266,7 +271,7 @@ func TestNonOverlap(t *testing.T) {
 		return
 	}
 	// SQLSTATE 23P01 expected.
-	if !containsAny(err.Error(), "23P01", "timebox_sprints_no_overlap") {
+	if !containsAny(err.Error(), "23P01", "timeboxes_sprints_no_overlap") {
 		t.Errorf("expected EXCLUDE constraint error, got: %v", err)
 	}
 }
@@ -293,7 +298,7 @@ func TestBulkCreateRollback(t *testing.T) {
 	// Verify no sprints were inserted.
 	var n int
 	_ = pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM timebox_sprints WHERE workspace_id = $1`, ws).Scan(&n)
+		`SELECT COUNT(*) FROM timeboxes_sprints WHERE timeboxes_sprints_id_workspace = $1`, ws).Scan(&n)
 	if n != 0 {
 		t.Errorf("BulkCreate rollback failed: %d rows remain", n)
 	}
@@ -339,7 +344,7 @@ func TestDeleteLifecycleGuard(t *testing.T) {
 
 	// Force status to active directly.
 	_, _ = pool.Exec(context.Background(),
-		`UPDATE timebox_sprints SET status = 'active' WHERE id = $1`, s.ID)
+		`UPDATE timeboxes_sprints SET timeboxes_sprints_status = 'active' WHERE timeboxes_sprints_id = $1`, s.ID)
 
 	err = svc.Delete(context.Background(), ws, s.ID)
 	if err != timeboxsprints.ErrLifecycle {
@@ -760,7 +765,7 @@ func TestListFilterByStatus(t *testing.T) {
 	}
 	// Mark active directly.
 	_, _ = pool.Exec(context.Background(),
-		`UPDATE timebox_sprints SET status = 'active' WHERE id = $1`, s.ID)
+		`UPDATE timeboxes_sprints SET timeboxes_sprints_status = 'active' WHERE timeboxes_sprints_id = $1`, s.ID)
 
 	status := "active"
 	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{Status: &status})

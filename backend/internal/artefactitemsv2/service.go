@@ -151,7 +151,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		n++
 	}
 	if filters.SprintID != nil {
-		extra = append(extra, fmt.Sprintf("a.timebox_sprint_id = $%d::uuid", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_timebox_sprint = $%d::uuid", n))
 		args = append(args, *filters.SprintID)
 		n++
 	}
@@ -266,7 +266,7 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 	}
 	n := 3
 	if sprintID != nil && *sprintID != "" {
-		conds = append(conds, fmt.Sprintf("a.timebox_sprint_id = $%d::uuid", n))
+		conds = append(conds, fmt.Sprintf("a.artefacts_id_timebox_sprint = $%d::uuid", n))
 		args = append(args, *sprintID)
 		n++
 	}
@@ -513,9 +513,9 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 	if in.SprintID != nil {
 		if *in.SprintID == "" {
-			sets = append(sets, "timebox_sprint_id = NULL")
+			sets = append(sets, "artefacts_id_timebox_sprint = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("timebox_sprint_id = $%d::uuid", n))
+			sets = append(sets, fmt.Sprintf("artefacts_id_timebox_sprint = $%d::uuid", n))
 			args = append(args, *in.SprintID)
 			n++
 		}
@@ -861,7 +861,7 @@ func buildOrderBy(sort, dir string) string {
 	case "points":
 		return fmt.Sprintf("COALESCE(rp.rollup_points, a.story_points) %s NULLS LAST, a.number ASC", d)
 	case "sprint_id":
-		return fmt.Sprintf("a.timebox_sprint_id %s NULLS LAST, a.number ASC", d)
+		return fmt.Sprintf("a.artefacts_id_timebox_sprint %s NULLS LAST, a.number ASC", d)
 	case "due_date":
 		return fmt.Sprintf("a.due_date %s NULLS LAST, a.number ASC", d)
 	default:

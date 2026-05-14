@@ -15,27 +15,30 @@ var (
 	ErrCloseLifecycle = errors.New("only active sprints can be closed")
 )
 
-// Sprint is the wire representation of a timebox_sprints row.
+// Sprint is the wire representation of a timeboxes_sprints row. JSON
+// tags follow §2.3 — the wire keys match the column names so the
+// frontend can address fields with the same prefix it uses for the
+// other timeboxes table.
 type Sprint struct {
-	ID               string     `json:"id"`
-	SubscriptionID   string     `json:"subscription_id"`
-	WorkspaceID      string     `json:"workspace_id"`
-	OrgNodeID        *string    `json:"org_node_id"`
-	SprintName       string     `json:"sprint_name"`
-	SprintSuffix     *string    `json:"sprint_suffix"`
-	SprintOwner      *string    `json:"sprint_owner"`
-	SprintCadenceDays int       `json:"sprint_cadence_days"`
-	SprintDateStart  string     `json:"sprint_date_start"`
-	SprintDateEnd    string     `json:"sprint_date_end"`
-	SprintScope      int        `json:"sprint_scope"`
-	SprintVelocity   int        `json:"sprint_velocity"`
-	SprintEstimate   int        `json:"sprint_estimate"`
-	SprintCreepByCount    int   `json:"sprint_creep_by_count"`
-	SprintCreepByEstimate int   `json:"sprint_creep_by_estimate"`
-	Status           string     `json:"status"`
-	SprintDateAdded  time.Time  `json:"sprint_date_added"`
-	SprintDateUpdated time.Time `json:"sprint_date_updated"`
-	ArchivedAt       *time.Time `json:"archived_at"`
+	ID                    string     `json:"timeboxes_sprints_id"`
+	SubscriptionID        string     `json:"timeboxes_sprints_id_subscription"`
+	WorkspaceID           string     `json:"timeboxes_sprints_id_workspace"`
+	OrgNodeID             *string    `json:"timeboxes_sprints_id_topology_node"`
+	SprintName            string     `json:"timeboxes_sprints_name"`
+	SprintSuffix          *string    `json:"timeboxes_sprints_suffix"`
+	SprintOwner           *string    `json:"timeboxes_sprints_id_user_owner"`
+	SprintCadenceDays     int        `json:"timeboxes_sprints_cadence_days"`
+	SprintDateStart       string     `json:"timeboxes_sprints_date_start"`
+	SprintDateEnd         string     `json:"timeboxes_sprints_date_end"`
+	SprintScope           int        `json:"timeboxes_sprints_scope"`
+	SprintVelocity        int        `json:"timeboxes_sprints_velocity"`
+	SprintEstimate        int        `json:"timeboxes_sprints_estimate"`
+	SprintCreepByCount    int        `json:"timeboxes_sprints_creep_by_count"`
+	SprintCreepByEstimate int        `json:"timeboxes_sprints_creep_by_estimate"`
+	Status                string     `json:"timeboxes_sprints_status"`
+	SprintDateAdded       time.Time  `json:"timeboxes_sprints_created_at"`
+	SprintDateUpdated     time.Time  `json:"timeboxes_sprints_updated_at"`
+	ArchivedAt            *time.Time `json:"timeboxes_sprints_archived_at"`
 }
 
 // CreateSprintInput holds required fields to create a sprint.

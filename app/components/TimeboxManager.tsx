@@ -16,9 +16,15 @@ import { useTimebox } from "@/app/hooks/useTimebox";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-// Generic row shape — field names vary by kind (sprint_name vs release_name etc.)
-// We use a Record<string, unknown> internally and access via the rowPrefix.
-export type TimeboxRow = Record<string, unknown> & { id: string; status: string };
+// Generic row shape — field names vary by kind. After RF1.4.2.timeboxes
+// the column names carry the full table prefix (timeboxes_sprints_name,
+// timeboxes_releases_name, …). The rowPrefix in kinds.ts is set to the
+// table name so `${rowPrefix}_name` resolves to the canonical wire key.
+// TimeboxRow is the wire shape after RF1.4.2.timeboxes — keys carry
+// the full column prefix. The component reads `id` and `status` via
+// `${rowPrefix}_id` / `${rowPrefix}_status` rather than fixed names so
+// it works for both sprints and releases.
+export type TimeboxRow = Record<string, unknown>;
 
 export interface TimeboxManagerProps {
   kind: TimeboxKind;
@@ -130,7 +136,7 @@ function BulkCreateForm({ cfg, kind, workspaceId, orgNodeId, nextNumber, lastEnd
           [`${p}_date_start`]: r.date_start,
           [`${p}_date_end`]: deriveEnd(r),
           [`${p}_velocity`]: isNaN(velocity) ? undefined : velocity,
-          org_node_id: orgNodeId,
+          [`${p}_id_topology_node`]: orgNodeId,
         };
       });
       await apiSite(`${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`, {
@@ -285,11 +291,11 @@ function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerPro
     { key: `${p}_date_end`, header: "End", kind: "mono" },
     { key: `${p}_cadence_days`, header: "Cadence (days)", kind: "numeric" },
     {
-      key: "status",
+      key: `${p}_status`,
       header: "Status",
       kind: "pill",
-      pillVariant: (r) => statusVariant(r.status),
-      pillLabel: (r) => r.status,
+      pillVariant: (r) => statusVariant(String(r[`${p}_status`] ?? "")),
+      pillLabel: (r) => String(r[`${p}_status`] ?? ""),
     },
     {
       key: `${p}_scope`,
@@ -343,7 +349,7 @@ function TimeboxManagerInner({ kind, workspaceId, orgNodeId }: TimeboxManagerPro
           ariaLabel={`${cfg.namePrefix} list`}
           columns={columns}
           rows={rows}
-          rowKey={(r) => r.id}
+          rowKey={(r) => String(r[`${p}_id`])}
           loading={loading}
           empty={`No ${kind}s found.`}
         />

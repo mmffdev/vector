@@ -1,5 +1,7 @@
-// Package timeboxreleases is the sole writer for the timebox_releases table in
-// vector_artefacts. All reads and writes must go through this package.
+// Package timeboxreleases is the sole writer for the timeboxes_releases
+// table in vector_artefacts. All reads and writes must go through this
+// package. Table + column names follow §2.3 / §2.4 after
+// RF1.4.2.timeboxes / migration 054.
 package timeboxreleases
 
 import (
@@ -14,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service owns all DB operations for timebox_releases.
+// Service owns all DB operations for timeboxes_releases.
 type Service struct {
 	pool *pgxpool.Pool
 }
@@ -104,16 +106,19 @@ func (s *Service) Get(ctx context.Context, workspaceID, releaseID string) (*Rele
 // List returns non-archived releases for a workspace, ordered by start date ASC.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Release, error) {
 	args := []any{workspaceID}
-	conds := []string{"workspace_id = $1", "archived_at IS NULL"}
+	conds := []string{
+		"timeboxes_releases_id_workspace = $1",
+		"timeboxes_releases_archived_at IS NULL",
+	}
 	n := 2
 
 	if f.OrgNodeID != nil {
-		conds = append(conds, fmt.Sprintf("org_node_id = $%d", n))
+		conds = append(conds, fmt.Sprintf("timeboxes_releases_id_topology_node = $%d", n))
 		args = append(args, *f.OrgNodeID)
 		n++
 	}
 	if f.Status != nil {
-		conds = append(conds, fmt.Sprintf("status = $%d", n))
+		conds = append(conds, fmt.Sprintf("timeboxes_releases_status = $%d", n))
 		args = append(args, *f.Status)
 		n++
 	}
@@ -157,40 +162,40 @@ func (s *Service) Update(ctx context.Context, workspaceID, releaseID string, in 
 		if strings.TrimSpace(*in.ReleaseName) == "" {
 			return nil, ErrInvalidInput
 		}
-		addField("release_name", *in.ReleaseName)
+		addField("timeboxes_releases_name", *in.ReleaseName)
 	}
 	if in.ReleaseSuffix != nil {
-		addField("release_suffix", *in.ReleaseSuffix)
+		addField("timeboxes_releases_suffix", *in.ReleaseSuffix)
 	}
 	if in.ReleaseOwner != nil {
-		addField("release_owner", *in.ReleaseOwner)
+		addField("timeboxes_releases_id_user_owner", *in.ReleaseOwner)
 	}
 	if in.ReleaseCadenceDays != nil {
 		if *in.ReleaseCadenceDays < 0 {
 			return nil, ErrInvalidInput
 		}
-		addField("release_cadence_days", *in.ReleaseCadenceDays)
+		addField("timeboxes_releases_cadence_days", *in.ReleaseCadenceDays)
 	}
 	if in.ReleaseDateStart != nil {
-		addField("release_date_start", *in.ReleaseDateStart)
+		addField("timeboxes_releases_date_start", *in.ReleaseDateStart)
 	}
 	if in.ReleaseDateEnd != nil {
-		addField("release_date_end", *in.ReleaseDateEnd)
+		addField("timeboxes_releases_date_end", *in.ReleaseDateEnd)
 	}
 	if in.ReleaseScope != nil {
-		addField("release_scope", *in.ReleaseScope)
+		addField("timeboxes_releases_scope", *in.ReleaseScope)
 	}
 	if in.ReleaseVelocity != nil {
-		addField("release_velocity", *in.ReleaseVelocity)
+		addField("timeboxes_releases_velocity", *in.ReleaseVelocity)
 	}
 	if in.ReleaseEstimate != nil {
-		addField("release_estimate", *in.ReleaseEstimate)
+		addField("timeboxes_releases_estimate", *in.ReleaseEstimate)
 	}
 	if in.Status != nil {
 		if !validStatuses[*in.Status] {
 			return nil, ErrInvalidInput
 		}
-		addField("status", *in.Status)
+		addField("timeboxes_releases_status", *in.Status)
 	}
 
 	if len(sets) == 0 {
@@ -270,7 +275,7 @@ func isOverlapErr(err error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), "23P01") ||
-		strings.Contains(err.Error(), "timebox_releases_no_overlap")
+		strings.Contains(err.Error(), "timeboxes_releases_no_overlap")
 }
 
 type scannable interface {

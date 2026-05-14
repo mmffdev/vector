@@ -64,7 +64,7 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	ranking.ResetForTests()
 	ranking.Register("work_item", ranking.ResourceConfig{
 		Table:       "artefacts",
-		ScopeColumn: "timebox_sprint_id",
+		ScopeColumn: "artefacts_id_timebox_sprint",
 		Permissions: ranking.PermissionCheckerFunc(func(_ context.Context, _, _ uuid.UUID) (bool, error) {
 			return true, nil
 		}),
@@ -159,7 +159,7 @@ func pickFixtures(t *testing.T, pool *pgxpool.Pool) (subID, wsID, typeID uuid.UU
 }
 
 // seedThreeBacklogRows inserts three artefacts in the same backlog scope
-// (timebox_sprint_id IS NULL) with positions 100, 200, 300.
+// (artefacts_id_timebox_sprint IS NULL) with positions 100, 200, 300.
 func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID, wsID, typeID uuid.UUID) [3]uuid.UUID {
 	t.Helper()
 	var ids [3]uuid.UUID

@@ -97,13 +97,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromCtx(r.Context())
 
 	var body struct {
-		SprintName        string  `json:"sprint_name"`
-		SprintSuffix      *string `json:"sprint_suffix"`
-		SprintOwner       *string `json:"sprint_owner"`
-		SprintCadenceDays int     `json:"sprint_cadence_days"`
-		SprintDateStart   string  `json:"sprint_date_start"`
-		SprintDateEnd     string  `json:"sprint_date_end"`
-		OrgNodeID         *string `json:"org_node_id"`
+		SprintName        string  `json:"timeboxes_sprints_name"`
+		SprintSuffix      *string `json:"timeboxes_sprints_suffix"`
+		SprintOwner       *string `json:"timeboxes_sprints_id_user_owner"`
+		SprintCadenceDays int     `json:"timeboxes_sprints_cadence_days"`
+		SprintDateStart   string  `json:"timeboxes_sprints_date_start"`
+		SprintDateEnd     string  `json:"timeboxes_sprints_date_end"`
+		OrgNodeID         *string `json:"timeboxes_sprints_id_topology_node"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
@@ -131,11 +131,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrAdjacency):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprint_date_start", Message: err.Error()},
+				{Field: "timeboxes_sprints_date_start", Message: err.Error()},
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprint_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_sprints_date_start", Message: messages.Conflict},
 			})
 		default:
 			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
@@ -157,16 +157,16 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	var body struct {
-		SprintName        *string `json:"sprint_name"`
-		SprintSuffix      *string `json:"sprint_suffix"`
-		SprintOwner       *string `json:"sprint_owner"`
-		SprintCadenceDays *int    `json:"sprint_cadence_days"`
-		SprintDateStart   *string `json:"sprint_date_start"`
-		SprintDateEnd     *string `json:"sprint_date_end"`
-		SprintScope       *int    `json:"sprint_scope"`
-		SprintVelocity    *int    `json:"sprint_velocity"`
-		SprintEstimate    *int    `json:"sprint_estimate"`
-		Status            *string `json:"status"`
+		SprintName        *string `json:"timeboxes_sprints_name"`
+		SprintSuffix      *string `json:"timeboxes_sprints_suffix"`
+		SprintOwner       *string `json:"timeboxes_sprints_id_user_owner"`
+		SprintCadenceDays *int    `json:"timeboxes_sprints_cadence_days"`
+		SprintDateStart   *string `json:"timeboxes_sprints_date_start"`
+		SprintDateEnd     *string `json:"timeboxes_sprints_date_end"`
+		SprintScope       *int    `json:"timeboxes_sprints_scope"`
+		SprintVelocity    *int    `json:"timeboxes_sprints_velocity"`
+		SprintEstimate    *int    `json:"timeboxes_sprints_estimate"`
+		Status            *string `json:"timeboxes_sprints_status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
@@ -197,7 +197,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprint_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_sprints_date_start", Message: messages.Conflict},
 			})
 		default:
 			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
@@ -292,14 +292,14 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		Sprints []struct {
-			SprintName        string  `json:"sprint_name"`
-			SprintSuffix      *string `json:"sprint_suffix"`
-			SprintOwner       *string `json:"sprint_owner"`
-			SprintCadenceDays int     `json:"sprint_cadence_days"`
-			SprintDateStart   string  `json:"sprint_date_start"`
-			SprintDateEnd     string  `json:"sprint_date_end"`
-			SprintVelocity    *int    `json:"sprint_velocity"`
-			OrgNodeID         *string `json:"org_node_id"`
+			SprintName        string  `json:"timeboxes_sprints_name"`
+			SprintSuffix      *string `json:"timeboxes_sprints_suffix"`
+			SprintOwner       *string `json:"timeboxes_sprints_id_user_owner"`
+			SprintCadenceDays int     `json:"timeboxes_sprints_cadence_days"`
+			SprintDateStart   string  `json:"timeboxes_sprints_date_start"`
+			SprintDateEnd     string  `json:"timeboxes_sprints_date_end"`
+			SprintVelocity    *int    `json:"timeboxes_sprints_velocity"`
+			OrgNodeID         *string `json:"timeboxes_sprints_id_topology_node"`
 		} `json:"sprints"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

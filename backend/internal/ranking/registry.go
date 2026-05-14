@@ -9,7 +9,7 @@
 //
 // Adoption checklist for a new resource:
 //   1. Ensure the table has a `position INTEGER NOT NULL` column and a
-//      nullable scope FK (e.g. `timebox_sprint_id UUID`). See
+//      nullable scope FK (e.g. `artefacts_id_timebox_sprint UUID`). See
 //      vector_artefacts migration 025 for the canonical pattern.
 //   2. Attach `notify_rank_changed('<resource_type>')` trigger
 //      (see mmff_vector migration 069 for the helper function).

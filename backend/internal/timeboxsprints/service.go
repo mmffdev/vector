@@ -1,5 +1,8 @@
-// Package timeboxsprints is the sole writer for the timebox_sprints table in
-// vector_artefacts. All reads and writes must go through this package.
+// Package timeboxsprints is the sole writer for the timeboxes_sprints
+// table in vector_artefacts. All reads and writes must go through this
+// package. Table + column names follow §2.3 (column-prefix rule) and
+// §2.4 (PK/FK function-then-modifier) after RF1.4.2.timeboxes /
+// migration 054.
 package timeboxsprints
 
 import (
@@ -15,7 +18,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
-// Service owns all DB operations for timebox_sprints.
+// Service owns all DB operations for timeboxes_sprints.
 type Service struct {
 	pool     *pgxpool.Pool
 	notifier *webhooks.Notifier
@@ -117,16 +120,19 @@ func (s *Service) Get(ctx context.Context, workspaceID, sprintID string) (*Sprin
 // List returns non-archived sprints for a workspace, ordered by start date ASC.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Sprint, error) {
 	args := []any{workspaceID}
-	conds := []string{"workspace_id = $1", "archived_at IS NULL"}
+	conds := []string{
+		"timeboxes_sprints_id_workspace = $1",
+		"timeboxes_sprints_archived_at IS NULL",
+	}
 	n := 2
 
 	if f.OrgNodeID != nil {
-		conds = append(conds, fmt.Sprintf("org_node_id = $%d", n))
+		conds = append(conds, fmt.Sprintf("timeboxes_sprints_id_topology_node = $%d", n))
 		args = append(args, *f.OrgNodeID)
 		n++
 	}
 	if f.Status != nil {
-		conds = append(conds, fmt.Sprintf("status = $%d", n))
+		conds = append(conds, fmt.Sprintf("timeboxes_sprints_status = $%d", n))
 		args = append(args, *f.Status)
 		n++
 	}
@@ -171,40 +177,40 @@ func (s *Service) Update(ctx context.Context, workspaceID, sprintID string, in U
 		if strings.TrimSpace(*in.SprintName) == "" {
 			return nil, ErrInvalidInput
 		}
-		addField("sprint_name", *in.SprintName)
+		addField("timeboxes_sprints_name", *in.SprintName)
 	}
 	if in.SprintSuffix != nil {
-		addField("sprint_suffix", *in.SprintSuffix)
+		addField("timeboxes_sprints_suffix", *in.SprintSuffix)
 	}
 	if in.SprintOwner != nil {
-		addField("sprint_owner", *in.SprintOwner)
+		addField("timeboxes_sprints_id_user_owner", *in.SprintOwner)
 	}
 	if in.SprintCadenceDays != nil {
 		if *in.SprintCadenceDays <= 0 {
 			return nil, ErrInvalidInput
 		}
-		addField("sprint_cadence_days", *in.SprintCadenceDays)
+		addField("timeboxes_sprints_cadence_days", *in.SprintCadenceDays)
 	}
 	if in.SprintDateStart != nil {
-		addField("sprint_date_start", *in.SprintDateStart)
+		addField("timeboxes_sprints_date_start", *in.SprintDateStart)
 	}
 	if in.SprintDateEnd != nil {
-		addField("sprint_date_end", *in.SprintDateEnd)
+		addField("timeboxes_sprints_date_end", *in.SprintDateEnd)
 	}
 	if in.SprintScope != nil {
-		addField("sprint_scope", *in.SprintScope)
+		addField("timeboxes_sprints_scope", *in.SprintScope)
 	}
 	if in.SprintVelocity != nil {
-		addField("sprint_velocity", *in.SprintVelocity)
+		addField("timeboxes_sprints_velocity", *in.SprintVelocity)
 	}
 	if in.SprintEstimate != nil {
-		addField("sprint_estimate", *in.SprintEstimate)
+		addField("timeboxes_sprints_estimate", *in.SprintEstimate)
 	}
 	if in.Status != nil {
 		if !validStatuses[*in.Status] {
 			return nil, ErrInvalidInput
 		}
-		addField("status", *in.Status)
+		addField("timeboxes_sprints_status", *in.Status)
 	}
 
 	if len(sets) == 0 {
@@ -386,7 +392,7 @@ func isOverlapErr(err error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), "23P01") ||
-		strings.Contains(err.Error(), "timebox_sprints_no_overlap")
+		strings.Contains(err.Error(), "timeboxes_sprints_no_overlap")
 }
 
 // scannable is the interface satisfied by both pgx.Row and pgx.Rows.

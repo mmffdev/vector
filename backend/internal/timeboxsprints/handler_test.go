@@ -127,10 +127,10 @@ func TestHandlerCreate(t *testing.T) {
 	t.Cleanup(cleanup(pool, ws))
 
 	payload := map[string]any{
-		"sprint_name":         "H-Create Sprint",
-		"sprint_cadence_days": 14,
-		"sprint_date_start":   "2046-01-01",
-		"sprint_date_end":     "2046-01-14",
+		"timeboxes_sprints_name":          "H-Create Sprint",
+		"timeboxes_sprints_cadence_days":  14,
+		"timeboxes_sprints_date_start":    "2046-01-01",
+		"timeboxes_sprints_date_end":      "2046-01-14",
 	}
 	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws, body(payload))
 	r = withAuth(r, sub, ws)
@@ -165,12 +165,12 @@ func TestHandlerCreateValidationError(t *testing.T) {
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
 	sub, ws, _ := newIDs()
-	// Empty sprint_name triggers ErrInvalidInput → 422.
+	// Empty timeboxes_sprints_name triggers ErrInvalidInput → 422.
 	payload := map[string]any{
-		"sprint_name":         "",
-		"sprint_cadence_days": 14,
-		"sprint_date_start":   "2047-01-01",
-		"sprint_date_end":     "2047-01-14",
+		"timeboxes_sprints_name":          "",
+		"timeboxes_sprints_cadence_days":  14,
+		"timeboxes_sprints_date_start":    "2047-01-01",
+		"timeboxes_sprints_date_end":      "2047-01-14",
 	}
 	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws, body(payload))
 	r = withAuth(r, sub, ws)
@@ -214,7 +214,7 @@ func TestHandlerDeleteLifecycle(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 	_, _ = pool.Exec(context.Background(),
-		`UPDATE timebox_sprints SET status = 'active' WHERE id = $1`, s.ID)
+		`UPDATE timeboxes_sprints SET timeboxes_sprints_status = 'active' WHERE timeboxes_sprints_id = $1`, s.ID)
 
 	r := httptest.NewRequest(http.MethodDelete, "/api/v2/timeboxes/sprints/"+s.ID+"?workspace_id="+ws, nil)
 	r = withAuth(r, sub, ws)
@@ -237,8 +237,8 @@ func TestHandlerBulkCreate(t *testing.T) {
 
 	payload := map[string]any{
 		"sprints": []map[string]any{
-			{"sprint_name": "Bulk-1", "sprint_cadence_days": 14, "sprint_date_start": "2049-01-01", "sprint_date_end": "2049-01-14"},
-			{"sprint_name": "Bulk-2", "sprint_cadence_days": 14, "sprint_date_start": "2049-01-15", "sprint_date_end": "2049-01-28"},
+			{"timeboxes_sprints_name": "Bulk-1", "timeboxes_sprints_cadence_days": 14, "timeboxes_sprints_date_start": "2049-01-01", "timeboxes_sprints_date_end": "2049-01-14"},
+			{"timeboxes_sprints_name": "Bulk-2", "timeboxes_sprints_cadence_days": 14, "timeboxes_sprints_date_start": "2049-01-15", "timeboxes_sprints_date_end": "2049-01-28"},
 		},
 	}
 	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints/bulk-create?workspace_id="+ws, body(payload))
@@ -284,7 +284,7 @@ func TestHandlerUpdateNotFound(t *testing.T) {
 
 	sub, ws, _ := newIDs()
 	newName := "Renamed"
-	payload := map[string]any{"sprint_name": newName}
+	payload := map[string]any{"timeboxes_sprints_name": newName}
 	r := httptest.NewRequest(http.MethodPut, "/api/v2/timeboxes/sprints/unknown?workspace_id="+ws, body(payload))
 	r = withAuth(r, sub, ws)
 	r = routeWith(r, "id", "00000000-0000-0000-0000-000000000000")

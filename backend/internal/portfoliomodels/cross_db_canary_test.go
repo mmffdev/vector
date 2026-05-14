@@ -40,8 +40,8 @@ import (
 //   artefact_types, artefact_workspace_fields, artefacts,
 //   master_record_portfolio
 //
-// Note: sprints (013) was replaced by timebox_sprints in migration 025
-// (db/vector_artefacts/schema/025_timebox_sprints.sql). Add timebox_sprints to
+// Note: sprints (013) was replaced by timeboxes_sprints in migration 025
+// (db/vector_artefacts/schema/025_timeboxes_sprints.sql). Add timeboxes_sprints to
 // vaCanaryTables once 025 is applied to the dev DB.
 //
 // Detection rule: `archived_at IS NULL` is filtered out for tables that have
@@ -63,7 +63,7 @@ var vaCanaryTables = []struct {
 	{"artefact_workspace_fields", false}, // admit-row table; lifetime = workspace
 	{"artefacts", true},
 	{"master_record_portfolio", false}, // PK = workspace_id; lifetime = workspace
-	// {"timebox_sprints", true}, -- add once migration 025 is applied to dev DB
+	// {"timeboxes_sprints", true}, -- add once migration 025 is applied to dev DB
 }
 
 // vectorPoolForCanary opens a read-only-style pool against mmff_vector. We

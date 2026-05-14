@@ -482,7 +482,7 @@ func main() {
 	if vaPool != nil {
 		ranking.Register("work_item", ranking.ResourceConfig{
 			Table:       "artefacts",
-			ScopeColumn: "timebox_sprint_id",
+			ScopeColumn: "artefacts_id_timebox_sprint",
 			Permissions: ranking.PermissionCheckerFunc(func(ctx context.Context, subscriptionID, rowID uuid.UUID) (bool, error) {
 				return true, nil
 			}),

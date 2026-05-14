@@ -441,9 +441,9 @@ const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefact_num
 
 const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefact_types WHERE subscription_id = $1 AND source = 'tenant'`
 
-const sqlDeleteAllTimeboxSprintsForSubscription = `DELETE FROM timebox_sprints WHERE subscription_id = $1`
+const sqlDeleteAllTimeboxSprintsForSubscription = `DELETE FROM timeboxes_sprints WHERE timeboxes_sprints_id_subscription = $1`
 
-const sqlDeleteAllTimeboxReleasesForSubscription = `DELETE FROM timebox_releases WHERE subscription_id = $1`
+const sqlDeleteAllTimeboxReleasesForSubscription = `DELETE FROM timeboxes_releases WHERE timeboxes_releases_id_subscription = $1`
 
 const sqlDeleteAllTopologyRoleGrantsForSubscription = `DELETE FROM topology_role_grants WHERE subscription_id = $1`
 

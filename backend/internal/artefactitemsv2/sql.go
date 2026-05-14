@@ -59,7 +59,7 @@ const sqlWorkItemColumns = `
 	END                             AS flow_state_code,
 	a.priority,
 	a.story_points,
-	a.timebox_sprint_id::text,
+	a.artefacts_id_timebox_sprint::text,
 	NULL::text                      AS sprint_ref_id,
 	NULL::text                      AS sprint_ref_alias,
 	a.parent_artefact_id::text      AS parent_id,
@@ -231,7 +231,7 @@ const sqlSelectNextArtefactPosition = `
 const sqlInsertArtefact = `
 		INSERT INTO artefacts
 			(subscription_id, workspace_id, artefact_type_id, number, title, description,
-			 flow_state_id, priority, story_points, timebox_sprint_id, parent_artefact_id,
+			 flow_state_id, priority, story_points, artefacts_id_timebox_sprint, parent_artefact_id,
 			 owned_by_user_id, created_by_user_id, position)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		RETURNING id

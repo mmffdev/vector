@@ -94,13 +94,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromCtx(r.Context())
 
 	var body struct {
-		ReleaseName        string  `json:"release_name"`
-		ReleaseSuffix      *string `json:"release_suffix"`
-		ReleaseOwner       *string `json:"release_owner"`
-		ReleaseCadenceDays int     `json:"release_cadence_days"`
-		ReleaseDateStart   string  `json:"release_date_start"`
-		ReleaseDateEnd     string  `json:"release_date_end"`
-		OrgNodeID          *string `json:"org_node_id"`
+		ReleaseName        string  `json:"timeboxes_releases_name"`
+		ReleaseSuffix      *string `json:"timeboxes_releases_suffix"`
+		ReleaseOwner       *string `json:"timeboxes_releases_id_user_owner"`
+		ReleaseCadenceDays int     `json:"timeboxes_releases_cadence_days"`
+		ReleaseDateStart   string  `json:"timeboxes_releases_date_start"`
+		ReleaseDateEnd     string  `json:"timeboxes_releases_date_end"`
+		OrgNodeID          *string `json:"timeboxes_releases_id_topology_node"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
@@ -128,7 +128,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "release_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_releases_date_start", Message: messages.Conflict},
 			})
 		default:
 			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
@@ -150,16 +150,16 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	var body struct {
-		ReleaseName        *string `json:"release_name"`
-		ReleaseSuffix      *string `json:"release_suffix"`
-		ReleaseOwner       *string `json:"release_owner"`
-		ReleaseCadenceDays *int    `json:"release_cadence_days"`
-		ReleaseDateStart   *string `json:"release_date_start"`
-		ReleaseDateEnd     *string `json:"release_date_end"`
-		ReleaseScope       *int    `json:"release_scope"`
-		ReleaseVelocity    *int    `json:"release_velocity"`
-		ReleaseEstimate    *int    `json:"release_estimate"`
-		Status             *string `json:"status"`
+		ReleaseName        *string `json:"timeboxes_releases_name"`
+		ReleaseSuffix      *string `json:"timeboxes_releases_suffix"`
+		ReleaseOwner       *string `json:"timeboxes_releases_id_user_owner"`
+		ReleaseCadenceDays *int    `json:"timeboxes_releases_cadence_days"`
+		ReleaseDateStart   *string `json:"timeboxes_releases_date_start"`
+		ReleaseDateEnd     *string `json:"timeboxes_releases_date_end"`
+		ReleaseScope       *int    `json:"timeboxes_releases_scope"`
+		ReleaseVelocity    *int    `json:"timeboxes_releases_velocity"`
+		ReleaseEstimate    *int    `json:"timeboxes_releases_estimate"`
+		Status             *string `json:"timeboxes_releases_status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
@@ -190,7 +190,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "release_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_releases_date_start", Message: messages.Conflict},
 			})
 		default:
 			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
@@ -235,14 +235,14 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		Releases []struct {
-			ReleaseName        string  `json:"release_name"`
-			ReleaseSuffix      *string `json:"release_suffix"`
-			ReleaseOwner       *string `json:"release_owner"`
-			ReleaseCadenceDays int     `json:"release_cadence_days"`
-			ReleaseDateStart   string  `json:"release_date_start"`
-			ReleaseDateEnd     string  `json:"release_date_end"`
-			ReleaseVelocity    *int    `json:"release_velocity"`
-			OrgNodeID          *string `json:"org_node_id"`
+			ReleaseName        string  `json:"timeboxes_releases_name"`
+			ReleaseSuffix      *string `json:"timeboxes_releases_suffix"`
+			ReleaseOwner       *string `json:"timeboxes_releases_id_user_owner"`
+			ReleaseCadenceDays int     `json:"timeboxes_releases_cadence_days"`
+			ReleaseDateStart   string  `json:"timeboxes_releases_date_start"`
+			ReleaseDateEnd     string  `json:"timeboxes_releases_date_end"`
+			ReleaseVelocity    *int    `json:"timeboxes_releases_velocity"`
+			OrgNodeID          *string `json:"timeboxes_releases_id_topology_node"`
 		} `json:"releases"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

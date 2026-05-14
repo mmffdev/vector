@@ -33,7 +33,7 @@ const CORE_FIELDS: CoreField[] = [
   { name: "priority",            type: "enum",   source: "artefacts.priority",            note: "critical / high / medium / low" },
   { name: "story_points",        type: "int",    source: "artefacts.story_points" },
   { name: "due_date",            type: "date",   source: "artefacts.due_date" },
-  { name: "timebox_sprint_id",   type: "uuid",   source: "artefacts.timebox_sprint_id" },
+  { name: "artefacts_id_timebox_sprint", type: "uuid", source: "artefacts.artefacts_id_timebox_sprint" },
   { name: "parent_artefact_id",  type: "uuid",   source: "artefacts.parent_artefact_id" },
   { name: "position",            type: "int",    source: "artefacts.position",            note: "rank within current scope (backlog or sprint)" },
   { name: "flow_state_id",       type: "uuid",   source: "artefacts.flow_state_id",       note: "current state via flow_states.kind" },
