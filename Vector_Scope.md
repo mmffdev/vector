@@ -129,7 +129,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.16** `libraryreleases` — 1 SQL string (rest delegated), 3 DBs. `[P3]` ✅ done 2026-05-14 — 1 const (subscription tier lookup); other queries delegate to librarydb. Allow-list shrunk 25 → 24.
 > Commit `08adeb6` (2026-05-14): refactor(PLA-0048 / RF1.2.16): consolidate libraryreleases SQL into sql.go [RF1.2.16]
 - **RF1.2.17** `librarydb` — 15 SQL strings, 3 DBs (library access layer). `[P2]` ✅ done 2026-05-14 — 15 consts across fetch.go (template + 6 model children + 2 model spine variants), list.go (published-models list), releases.go (audience filter + actions + acks + insert + find). Absorbed the `modelCols` and `releaseCols` concat fragments into full-shot SELECTs so SQL never crosses the const boundary. Allow-list shrunk 24 → 21.
-- **RF1.2.18** `portfolio` — 6 SQL strings, 2 DBs. `[P2]`
+> Commit `e9fe980` (2026-05-14): refactor(PLA-0048 / RF1.2.17): consolidate librarydb SQL into sql.go [RF1.2.17]
+- **RF1.2.18** `portfolio` — 6 SQL strings, 2 DBs. `[P2]` ✅ done 2026-05-14 — 6 consts (vectorPool: workspace subscription probe + active membership; vaPool: master record select + upsert + update template + idempotent archive). Allow-list shrunk 21 → 20.
 - **RF1.2.19** `artefactitemsv2` — 26 SQL strings, 1 DB (rename deferred to Phase 4). `[P2]`
 - **RF1.2.20** `portfoliomodels` — 51 SQL strings, 3 DBs. **Hardest. Last.** `[P1]`
 

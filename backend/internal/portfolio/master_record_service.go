@@ -154,10 +154,8 @@ func (s *Service) CanReadMasterRecord(
 
 	// Tenancy: workspace must belong to caller's subscription.
 	var ownerSub uuid.UUID
-	err := s.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`,
-		workspaceID,
-	).Scan(&ownerSub)
+	err := s.vectorPool.QueryRow(ctx, sqlSelectWorkspaceSubscriptionID, workspaceID).
+		Scan(&ownerSub)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil
@@ -176,13 +174,7 @@ func (s *Service) CanReadMasterRecord(
 	// Per-workspace membership: any active roles_workspaces grant
 	// (viewer / editor / admin) suffices.
 	var member bool
-	err = s.vectorPool.QueryRow(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id = $2
-		       AND revoked_at IS NULL
-		)`,
+	err = s.vectorPool.QueryRow(ctx, sqlExistsActiveWorkspaceMembership,
 		workspaceID, u.ID,
 	).Scan(&member)
 	if err != nil {
@@ -207,14 +199,7 @@ func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*MasterRecord
 
 func (s *Service) read(ctx context.Context, workspaceID uuid.UUID) (*MasterRecord, error) {
 	var x MasterRecord
-	err := s.vectorArtefactsPool.QueryRow(ctx, `
-		SELECT workspace_id, model_id, model_name, model_description,
-		       adopted_at, adopted_by_user_id,
-		       created_at, updated_at, archived_at
-		  FROM master_record_portfolio
-		 WHERE workspace_id = $1`,
-		workspaceID,
-	).Scan(
+	err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectMasterRecord, workspaceID).Scan(
 		&x.WorkspaceID, &x.ModelID, &x.ModelName, &x.ModelDescription,
 		&x.AdoptedAt, &x.AdoptedByUserID,
 		&x.CreatedAt, &x.UpdatedAt, &x.ArchivedAt,
@@ -246,17 +231,7 @@ func (s *Service) Upsert(ctx context.Context, in UpsertInput) (*MasterRecord, er
 		return nil, &ValidationError{Violations: []Violation{{Field: "model_description", Message: "must be 4000 characters or fewer"}}}
 	}
 
-	if _, err := s.vectorArtefactsPool.Exec(ctx, `
-		INSERT INTO master_record_portfolio (
-			workspace_id, model_id, model_name, model_description, adopted_by_user_id
-		) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (workspace_id) DO UPDATE SET
-			model_id           = EXCLUDED.model_id,
-			model_name         = EXCLUDED.model_name,
-			model_description  = EXCLUDED.model_description,
-			adopted_at         = now(),
-			adopted_by_user_id = EXCLUDED.adopted_by_user_id,
-			archived_at        = NULL`,
+	if _, err := s.vectorArtefactsPool.Exec(ctx, sqlUpsertMasterRecord,
 		in.WorkspaceID, in.ModelID, name, in.ModelDescription, in.AdoptedByUserID,
 	); err != nil {
 		return nil, err
@@ -336,10 +311,7 @@ func (s *Service) Patch(ctx context.Context, workspaceID uuid.UUID, in PatchInpu
 	}
 
 	args = append(args, workspaceID)
-	q := fmt.Sprintf(
-		`UPDATE master_record_portfolio SET %s WHERE workspace_id = $%d`,
-		strings.Join(sets, ", "), len(args),
-	)
+	q := fmt.Sprintf(sqlUpdateMasterRecordTemplate, strings.Join(sets, ", "), len(args))
 	if _, err := s.vectorArtefactsPool.Exec(ctx, q, args...); err != nil {
 		return nil, err
 	}
@@ -353,10 +325,7 @@ func (s *Service) Archive(ctx context.Context, workspaceID uuid.UUID) error {
 	if s.vectorArtefactsPool == nil {
 		return ErrPoolMissing
 	}
-	tag, err := s.vectorArtefactsPool.Exec(ctx,
-		`UPDATE master_record_portfolio SET archived_at = COALESCE(archived_at, now()) WHERE workspace_id = $1`,
-		workspaceID,
-	)
+	tag, err := s.vectorArtefactsPool.Exec(ctx, sqlArchiveMasterRecord, workspaceID)
 	if err != nil {
 		return err
 	}
