@@ -115,7 +115,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.9** `webhooks` — 11 SQL strings, single-DB. `[P3]` ✅ done 2026-05-14 — `sql.go` created with 11 named consts across service.go (subscription List/Get/Insert/Update sparse template/SoftDelete + Enqueue fan-out: active filters + delivery insert) and worker.go (FOR UPDATE SKIP LOCKED claim + mark claimed + delete on success + record failure with backoff). Allow-list shrunk 37 → 35.
 > Commit `fcf9b6c` (2026-05-14): refactor(PLA-0048 / RF1.2.9): consolidate webhooks SQL into sql.go [RF1.2.9]
 - **RF1.2.10** `timeboxsprints` + `timeboxreleases` — small, single-DB. `[P3]` ✅ done 2026-05-14 — two `sql.go` files (mirror-shaped packages): timeboxsprints 9 consts (insert/select/list template/update template/archive/start/close + last-end probe root+node), timeboxreleases 5 consts (insert/select/list template/update template/archive). Allow-list shrunk 35 → 33.
-- **RF1.2.11** `workspaces` — 18 SQL strings, 2 DBs. `[P2]`
+> Commit `b090831` (2026-05-14): refactor(PLA-0048 / RF1.2.10): consolidate timebox SQL into sql.go [RF1.2.10]
+- **RF1.2.11** `workspaces` — 18 SQL strings, 2 DBs. `[P2]` ✅ done 2026-05-14 — `sql.go` with 18 consts: commands.go (workspace CRUD + creator admin seed + list/load template/for-update), roles.go (workspace_roles grant idempotent + admin-existence + insert + revoke + list), crossdb.go (cross-DB orphan-scan template — VAPool read-only). Allow-list shrunk 33 → 30.
 - **RF1.2.12** `tenantsettings` — 4 SQL strings, 2 DBs. `[P3]`
 - **RF1.2.13** `fields` — 5 SQL strings, 2 DBs. `[P3]`
 - **RF1.2.14** `searchworker` — 7 SQL strings, 2 DBs. `[P3]`

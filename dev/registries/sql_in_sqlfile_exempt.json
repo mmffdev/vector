@@ -30,9 +30,6 @@
     "backend/internal/search/service.go",
     "backend/internal/searchworker/worker.go",
     "backend/internal/tenantsettings/service.go",
-    "backend/internal/usertaborder/service.go",
-    "backend/internal/workspaces/commands.go",
-    "backend/internal/workspaces/crossdb.go",
-    "backend/internal/workspaces/roles.go"
+    "backend/internal/usertaborder/service.go"
   ]
 }

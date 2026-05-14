@@ -106,10 +106,11 @@ func (s *Service) CheckCrossDBOrphans(ctx context.Context, workspaceID uuid.UUID
 		// Table name is from a hard-coded allow-list above; it never
 		// comes from user input, so the %s interpolation is safe.
 		// workspace_id is parameterised through pgx.
-		q := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE workspace_id = $1`, tbl.name)
+		archivedClause := ""
 		if tbl.hasArchivedAt {
-			q += ` AND archived_at IS NULL`
+			archivedClause = ` AND archived_at IS NULL`
 		}
+		q := fmt.Sprintf(sqlCountOrphansForWorkspaceTemplate, tbl.name, archivedClause)
 		var n int
 		if err := s.VAPool.QueryRow(ctx, q, workspaceID).Scan(&n); err != nil {
 			return nil, fmt.Errorf("workspaces: cross-DB orphan scan on %s: %w", tbl.name, err)
