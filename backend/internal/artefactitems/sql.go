@@ -48,9 +48,9 @@ const sqlWorkItemColumns = `
 	a.title,
 	a.description,
 	''                              AS status,
-	COALESCE(fs.id::text, '')        AS flow_state_id,
-	COALESCE(fs.name, '')            AS flow_state_name,
-	CASE fs.kind
+	COALESCE(fs.flows_states_id::text, '')        AS flow_state_id,
+	COALESCE(fs.flows_states_name, '')            AS flow_state_name,
+	CASE fs.flows_states_kind
 		WHEN 'todo'        THEN 'backlog'
 		WHEN 'in_progress' THEN 'doing'
 		WHEN 'done'        THEN 'completed'
@@ -83,7 +83,7 @@ const sqlWorkItemColumns = `
 const sqlCountWorkItemsTemplate = `
 		SELECT count(*) FROM artefacts a
 		JOIN artefacts_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
 		  AND at.scope = $2%s
@@ -96,7 +96,7 @@ const sqlListWorkItemsTemplate = `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
@@ -111,7 +111,7 @@ const sqlSelectWorkItemByID = `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.id = $2
 		  AND a.subscription_id = $1
@@ -125,7 +125,7 @@ const sqlListChildWorkItems = `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.parent_artefact_id = $2
@@ -142,12 +142,12 @@ const sqlSummariseTotalTemplate = `
 		SELECT
 			COUNT(*) AS total,
 			COUNT(*) FILTER (
-				WHERE (fs.kind = 'todo' OR fs.id IS NULL)
+				WHERE (fs.flows_states_kind = 'todo' OR fs.flows_states_id IS NULL)
 				  AND a.updated_at < NOW() - INTERVAL '14 days'
 			) AS blocked
 		FROM artefacts a
 		JOIN artefacts_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE %s
 	`
 
@@ -157,7 +157,7 @@ const sqlSummariseByTypeTemplate = `
 		SELECT lower(at.name) AS name, COUNT(*)
 		FROM artefacts a
 		JOIN artefacts_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE %s
 		GROUP BY lower(at.name)
 	`
@@ -165,24 +165,24 @@ const sqlSummariseByTypeTemplate = `
 // ── ListFlowStates ─────────────────────────────────────────────────────────
 
 const sqlListWorkScopeFlowStates = `
-		SELECT fs.id, fs.sort_order, fs.name, fs.kind
+		SELECT fs.flows_states_id, fs.flows_states_sort_order, fs.flows_states_name, fs.flows_states_kind
 		FROM flows_states fs
-		JOIN flows f ON f.id = fs.flow_id
-		WHERE f.artefact_type_id = (
+		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		WHERE f.flows_id_artefact_type = (
 			SELECT at.id FROM artefacts_types at
-			JOIN flows f2 ON f2.artefact_type_id = at.id
+			JOIN flows f2 ON f2.flows_id_artefact_type = at.id
 			WHERE at.subscription_id = $1
 			  AND at.scope = $2
-			  AND f2.is_default = TRUE
-			  AND f2.archived_at IS NULL
+			  AND f2.flows_is_default = TRUE
+			  AND f2.flows_archived_at IS NULL
 			  AND at.archived_at IS NULL
 			ORDER BY at.created_at ASC
 			LIMIT 1
 		)
-		  AND f.is_default = TRUE
-		  AND f.archived_at IS NULL
-		  AND fs.archived_at IS NULL
-		ORDER BY fs.sort_order ASC
+		  AND f.flows_is_default = TRUE
+		  AND f.flows_archived_at IS NULL
+		  AND fs.flows_states_archived_at IS NULL
+		ORDER BY fs.flows_states_sort_order ASC
 	`
 
 // ── CreateWorkItem ─────────────────────────────────────────────────────────
@@ -205,13 +205,13 @@ const sqlAllocateArtefactNumber = `
 	`
 
 const sqlSelectDefaultInitialFlowState = `
-		SELECT fs.id FROM flows_states fs
-		JOIN flows f ON f.id = fs.flow_id
-		WHERE f.artefact_type_id = $1
-		  AND f.is_default = TRUE
-		  AND f.archived_at IS NULL
-		  AND fs.is_initial = TRUE
-		  AND fs.archived_at IS NULL
+		SELECT fs.flows_states_id FROM flows_states fs
+		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		WHERE f.flows_id_artefact_type = $1
+		  AND f.flows_is_default = TRUE
+		  AND f.flows_archived_at IS NULL
+		  AND fs.flows_states_is_initial = TRUE
+		  AND fs.flows_states_archived_at IS NULL
 		LIMIT 1
 	`
 
@@ -242,11 +242,11 @@ const sqlInsertArtefact = `
 const sqlExistsFlowStateInSubscription = `
 		SELECT EXISTS(
 			SELECT 1 FROM flows_states fs
-			JOIN flows f ON f.id = fs.flow_id
-			JOIN artefacts_types at ON at.id = f.artefact_type_id
-			WHERE fs.id = $1
+			JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+			JOIN artefacts_types at ON at.id = f.flows_id_artefact_type
+			WHERE fs.flows_states_id = $1
 			  AND at.subscription_id = $2
-			  AND fs.archived_at IS NULL
+			  AND fs.flows_states_archived_at IS NULL
 		)
 	`
 

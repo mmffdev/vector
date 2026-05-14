@@ -233,73 +233,73 @@ const sqlSelectStrategyArtefactTypeMap = `
 
 const sqlInsertDefaultFlowForLayer = `
 		INSERT INTO flows (
-			artefact_type_id, name, description,
-			is_default, library_layer_id
+			flows_id_artefact_type, flows_name, flows_description,
+			flows_is_default, flows_id_library_layer
 		) VALUES (
 			$1, $2, NULL,
 			TRUE, $3
 		)
-		ON CONFLICT (artefact_type_id)
-			WHERE is_default = TRUE AND archived_at IS NULL
+		ON CONFLICT (flows_id_artefact_type)
+			WHERE flows_is_default = TRUE AND flows_archived_at IS NULL
 			DO NOTHING
 	`
 
 const sqlInsertFlowStateForWorkflow = `
 		INSERT INTO flows_states (
-			flow_id, name, kind, colour, sort_order, is_initial,
-			library_workflow_id
+			flows_states_id_flow, flows_states_name, flows_states_kind, flows_states_colour, flows_states_sort_order, flows_states_is_initial,
+			flows_states_id_library_workflow
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7
 		)
-		ON CONFLICT (flow_id, library_workflow_id)
-			WHERE archived_at IS NULL AND library_workflow_id IS NOT NULL
+		ON CONFLICT (flows_states_id_flow, flows_states_id_library_workflow)
+			WHERE flows_states_archived_at IS NULL AND flows_states_id_library_workflow IS NOT NULL
 			DO NOTHING
 	`
 
 const sqlInsertFlowTransitionForLibrary = `
 		INSERT INTO flows_transitions (
-			flow_id, from_state_id, to_state_id, required_permission
+			flows_transitions_id_flow, flows_transitions_id_state_from, flows_transitions_id_state_to, flows_transitions_required_permission
 		) VALUES (
 			$1, $2, $3, NULL
 		)
-		ON CONFLICT (flow_id, from_state_id, to_state_id)
+		ON CONFLICT (flows_transitions_id_flow, flows_transitions_id_state_from, flows_transitions_id_state_to)
 			DO NOTHING
 	`
 
 const sqlSelectFlowStateLibMap = `
-		SELECT fs.library_workflow_id, fs.id
+		SELECT fs.flows_states_id_library_workflow, fs.flows_states_id
 		  FROM flows_states fs
-		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
+		  JOIN flows f          ON f.flows_id = fs.flows_states_id_flow
+		  JOIN artefacts_types t ON t.id = f.flows_id_artefact_type
 		 WHERE t.workspace_id = $1
 		   AND t.scope = 'strategy'
 		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND fs.archived_at IS NULL
-		   AND fs.library_workflow_id IS NOT NULL
+		   AND f.flows_archived_at IS NULL
+		   AND fs.flows_states_archived_at IS NULL
+		   AND fs.flows_states_id_library_workflow IS NOT NULL
 	`
 
 const sqlSelectDefaultFlowMap = `
-		SELECT f.artefact_type_id, f.id
+		SELECT f.flows_id_artefact_type, f.flows_id
 		  FROM flows f
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
+		  JOIN artefacts_types t ON t.id = f.flows_id_artefact_type
 		 WHERE t.workspace_id = $1
 		   AND t.scope = 'strategy'
 		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND f.is_default = TRUE
+		   AND f.flows_archived_at IS NULL
+		   AND f.flows_is_default = TRUE
 	`
 
 const sqlSelectFlowStateFlowMap = `
-		SELECT fs.id, fs.flow_id
+		SELECT fs.flows_states_id, fs.flows_states_id_flow
 		  FROM flows_states fs
-		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
+		  JOIN flows f          ON f.flows_id = fs.flows_states_id_flow
+		  JOIN artefacts_types t ON t.id = f.flows_id_artefact_type
 		 WHERE t.workspace_id = $1
 		   AND t.scope = 'strategy'
 		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND fs.archived_at IS NULL
+		   AND f.flows_archived_at IS NULL
+		   AND fs.flows_states_archived_at IS NULL
 	`
 
 // ── adopt_readopt.go (B8 placeholder + repoint) ────────────────────────────
