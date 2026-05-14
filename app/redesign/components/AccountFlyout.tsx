@@ -47,17 +47,19 @@ export default function AccountFlyout() {
   const { theme, toggle, mounted } = useTheme();
   const pathname = usePathname() ?? "";
 
-  // Admin pages are split into three groups by URL prefix.
+  // Admin pages are split into three groups by tag_enum. Mig 191 collapsed
+  // the legacy single admin_settings tag + URL-prefix partitioning into
+  // three regular pages_tags rows (workspace_admin, user_admin, vector_admin).
   // personal_settings tag is handled separately (account-settings link).
   const adminGroups = useMemo(() => {
     const wsAdmin = catalogue
-      .filter((e) => e.tagEnum === "admin_settings" && e.href.startsWith("/workspace-admin"))
+      .filter((e) => e.tagEnum === "workspace_admin")
       .sort((a, b) => a.defaultOrder - b.defaultOrder);
     const userMgmt = catalogue
-      .filter((e) => e.tagEnum === "admin_settings" && e.href.startsWith("/user-management"))
+      .filter((e) => e.tagEnum === "user_admin")
       .sort((a, b) => a.defaultOrder - b.defaultOrder);
     const vectorAdmin = catalogue
-      .filter((e) => e.tagEnum === "admin_settings" && e.href.startsWith("/vector-admin"))
+      .filter((e) => e.tagEnum === "vector_admin")
       .sort((a, b) => a.defaultOrder - b.defaultOrder);
     return [
       wsAdmin.length    ? { label: "Workspace Admin",  items: wsAdmin }    : null,

@@ -7,14 +7,16 @@ import { useNavPrefs, type NavCatalogEntry, type NavTagGroup, type PrefRow } fro
 /** Sentinel ID for the account flyout slot — not a real customGroup. */
 export const ACCOUNT_SECTION_ID = "__account";
 
-/** Default rail icons per tag bucket. page_tags has no icon column. */
+/** Default rail icons per tag bucket. pages_tags has no icon column. */
 const TAG_ICON_DEFAULTS: Record<string, string> = {
   personal: "home",
-  admin_settings: "cog",
   planning: "clipboard",
   strategic: "star",
   bookmarks: "pin",
   dev_tools: "terminal-square",
+  workspace_admin: "cog",
+  user_admin: "users",
+  vector_admin: "shield",
 };
 
 /** A page row resolved from a pref + catalogue lookup. */

@@ -149,17 +149,12 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
-	// Lazy-seed the three admin nav groups (Workspace Admin, User Admin,
-	// Vector Admin) for the Default profile if they're missing. This makes
-	// group seeding self-healing after resets and for new users — the one-off
-	// migration backfills are idempotent but only ran once.
-	if _, err := s.Pool.Exec(ctx, sqlLazySeedAdminNavGroups,
-		userID, subscriptionID, profileID); err != nil {
-		return nil, fmt.Errorf("nav groups lazy-seed: %w", err)
-	}
-
 	// Seed per-profile group placements if the Default profile has none yet.
-	// This drives the rail section order: tag buckets first, then admin groups.
+	// Mig 191 collapsed the three lazy-seeded "admin nav groups"
+	// (Workspace Admin / User Admin / Vector Admin) into three regular
+	// tag enums on pages_tags, so they flow through the same placement
+	// table as Personal / Planning / Dev Tools. The hard-coded
+	// sqlLazySeedAdminNavGroups query is gone.
 	if _, err := s.Pool.Exec(ctx, sqlLazySeedDefaultProfileGroupPlacements,
 		profileID, userID); err != nil {
 		return nil, fmt.Errorf("nav profile groups lazy-seed: %w", err)

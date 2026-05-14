@@ -504,54 +504,15 @@ const sqlBackfillDefaultPinnedPages = `
 		  )
 	`
 
-// sqlLazySeedAdminNavGroups lazy-seeds the three admin nav groups
-// (Workspace Admin, User Admin, Vector Admin) for Default if they're
-// missing AND assigns group_id on existing prefs that landed without
-// one. Self-healing after resets and for new users; idempotent so it
-// can run on every Default read.
-const sqlLazySeedAdminNavGroups = `
-		WITH profile_check AS (
-			SELECT users_nav_profiles_id FROM users_nav_profiles WHERE users_nav_profiles_id = $3 AND users_nav_profiles_is_default = TRUE
-		),
-		existing AS (
-			SELECT users_nav_groups_id AS id, LOWER(users_nav_groups_label) AS lbl FROM users_nav_groups WHERE users_nav_groups_id_user = $1
-		),
-		seed AS (
-			SELECT * FROM (VALUES
-				('Workspace Admin', 0, 'cog',    ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-				('User Admin',      1, 'users',  ARRAY['user-management','um-users_permissions']),
-				('Vector Admin',    2, 'shield', ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
-			) AS t(label, pos, icon, pages)
-			WHERE LOWER(t.label) NOT IN (SELECT lbl FROM existing)
-		),
-		inserted AS (
-			INSERT INTO users_nav_groups (users_nav_groups_id, users_nav_groups_id_user, users_nav_groups_label, users_nav_groups_position, users_nav_groups_icon)
-			SELECT gen_random_uuid(), $1, s.label, s.pos, s.icon FROM seed s, profile_check
-			RETURNING users_nav_groups_id AS id, LOWER(users_nav_groups_label) AS lbl
-		),
-		all_groups AS (
-			SELECT id, lbl FROM inserted
-			UNION ALL
-			SELECT id, lbl FROM existing
-		)
-		UPDATE users_nav_prefs unp
-		SET users_nav_prefs_id_group = ag.id
-		FROM all_groups ag
-		JOIN (VALUES
-			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-			('user admin',      ARRAY['user-management','um-users_permissions']),
-			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
-		) AS mapping(lbl, pages) ON mapping.lbl = ag.lbl
-		WHERE unp.users_nav_prefs_id_user = $1
-		  AND unp.users_nav_prefs_id_subscription = $2
-		  AND unp.users_nav_prefs_id_profile = $3
-		  AND unp.users_nav_prefs_item_key = ANY(mapping.pages)
-		  AND unp.users_nav_prefs_id_group IS NULL
-	`
-
 // sqlLazySeedDefaultProfileGroupPlacements seeds the Default profile's
 // rail section order if it has none: tag buckets first (in
 // default_order), then users_nav_groups (in their position).
+//
+// Uses WHERE NOT EXISTS rather than ON CONFLICT because the position
+// unique constraint (uq_users_nav_profile_groups_unique_position) is
+// DEFERRABLE INITIALLY DEFERRED, and Postgres forbids ON CONFLICT
+// arbitrating on a deferrable constraint. Mirrors the sibling
+// sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead query.
 const sqlLazySeedDefaultProfileGroupPlacements = `
 		WITH profile_check AS (
 			SELECT users_nav_profiles_id AS id FROM users_nav_profiles WHERE users_nav_profiles_id = $1 AND users_nav_profiles_is_default = TRUE
@@ -577,7 +538,6 @@ const sqlLazySeedDefaultProfileGroupPlacements = `
 		FROM profile_check pc
 		CROSS JOIN combined c
 		WHERE NOT EXISTS (SELECT 1 FROM has_placements)
-		ON CONFLICT DO NOTHING
 	`
 
 // sqlListUserNavPrefsForProfile returns the users_nav_prefs rows for one
