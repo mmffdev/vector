@@ -97,7 +97,8 @@ Drag the codebase from its current state (SQL scattered across 56 of 137 backend
 Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape identical for all 20: create `sql.go`, move every SQL literal to a named const (`sqlVerbResource`), update functions, build, test, smoke, commit, shrink lint allow-list. Stop gate after EVERY package.
 
 - **RF1.2.1** `topology` (post-tonight; includes `orgdesign` → `topology` rename for Section-1 consistency). `[P1]` ✅ done 2026-05-14 — `sql.go` created with 52 named consts (1 in permissions.go, 1 in handler.go, 6 in middleware.go, 7 in commands.go, 37 in service.go); allow-list shrunk 58 → 53. Pre-existing boundary violation in `portfoliomodels/dev_reset.go` captured as **TD-TOP-001**.
-- **RF1.2.2** `auth` — 21 SQL strings, single-DB, foundational. `[P1]`
+> Commit `6190859` (2026-05-14): refactor(PLA-0048 / RF1.2.1): consolidate topology SQL into sql.go [RF1.2.1]
+- **RF1.2.2** `auth` — 21 SQL strings, single-DB, foundational. `[P1]` ✅ done 2026-05-14 — `sql.go` created with 21 named consts (role/user lookups + login lifecycle + refresh-token rotation + logout + password change/reset); allow-list shrunk 53 → 52.
 - **RF1.2.3** `users` — 15 SQL strings, single-DB. `[P1]`
 - **RF1.2.4** `roles` — 10 SQL strings, single-DB. `[P1]`
 - **RF1.2.5** `permissions` — 3 SQL strings, single-DB, foundational. `[P2]`

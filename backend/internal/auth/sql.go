@@ -1,0 +1,155 @@
+// Package auth SQL constants.
+//
+// PLA-0048 / RF1.2.2. Every SQL string literal used by the auth
+// package lives here as a named constant. The service file references
+// these constants; it DOES NOT embed raw SQL.
+//
+// Naming: sqlVerbResource — sqlSelectUserByEmail, sqlInsertSession,
+// sqlUpdateSessionRevoked, etc.
+//
+// Lint contract: lint:sql-in-sqlfile-only fails the build if any
+// non-sql.go file in this package contains raw SQL literals.
+//
+// All reads/writes target the mmff_vector pool via s.Pool — auth is
+// single-DB (membership/credentials/sessions/password-resets all
+// live in mmff_vector).
+package auth
+
+// ── role + permission lookups (LoadRoleAndPermissions) ──────────────────────
+
+// sqlSelectUserRoleID resolves a user's role_id. The auth payload
+// renderer joins this against `roles` via sqlSelectRoleByID.
+const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
+
+// sqlSelectRoleByID hydrates the RolePayload wire shape (code, label,
+// rank, system/external flags) returned to the frontend on every auth
+// response (login, refresh, /me).
+const sqlSelectRoleByID = `
+		SELECT id, code, label, rank, is_system, is_external
+		  FROM roles WHERE id = $1
+	`
+
+// ── user hydration (FindUserByEmail, FindUserByID) ──────────────────────────
+
+// sqlSelectUserByEmail returns the full user row for a given email.
+// Used by Login + RequestPasswordReset.
+const sqlSelectUserByEmail = `
+		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
+		       auth_method, ldap_dn, force_password_change, password_changed_at,
+		       failed_login_count, locked_until, created_at, updated_at
+		FROM users WHERE email = $1
+	`
+
+// sqlSelectUserByID returns the full user row for a given UUID. Used
+// by Refresh / ConfirmPasswordReset / ChangePassword post-token-validation.
+const sqlSelectUserByID = `
+		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
+		       auth_method, ldap_dn, force_password_change, password_changed_at,
+		       failed_login_count, locked_until, created_at, updated_at
+		FROM users WHERE id = $1
+	`
+
+// ── login lifecycle (Login, recordFailedLogin) ──────────────────────────────
+
+// sqlClearLockoutAndStampLogin resets failed_login_count + locked_until
+// and stamps last_login=NOW() after a successful credential check.
+const sqlClearLockoutAndStampLogin = `
+		UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login = NOW()
+		WHERE id = $1
+	`
+
+// sqlInsertSession opens a new refresh-token session row. token_hash is
+// the SHA-256 of the raw refresh token (raw never persists). Used by
+// Login and the rotation path in Refresh.
+const sqlInsertSession = `
+		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+
+// sqlBumpFailedLoginAndLock raises failed_login_count to $1 AND stamps
+// locked_until=$2 — used when the failure crosses LOCKOUT_THRESHOLD.
+const sqlBumpFailedLoginAndLock = `
+		UPDATE users SET failed_login_count = $1, locked_until = $2 WHERE id = $3
+	`
+
+// sqlBumpFailedLogin raises failed_login_count without locking (sub-
+// threshold failure path).
+const sqlBumpFailedLogin = `UPDATE users SET failed_login_count = $1 WHERE id = $2`
+
+// ── refresh-token rotation (Refresh, refreshFromSuccessor) ──────────────────
+
+// sqlSelectSessionByHash returns the rotation-aware session row for a
+// token_hash (revoked + rotated_at + successor_hash needed for the
+// grace-window decision).
+const sqlSelectSessionByHash = `
+		SELECT id, user_id, expires_at, revoked, rotated_at, successor_hash
+		FROM sessions WHERE token_hash = $1
+	`
+
+// sqlRevokeAllUserSessions revokes every session for a user. Used by
+// the reuse-attack response (Refresh) and by Logout/ChangePassword/
+// ConfirmPasswordReset side-effects.
+const sqlRevokeAllUserSessions = `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`
+
+// sqlRotateSession marks the current session revoked + stamps
+// rotation metadata (rotated_at, successor_hash) so a concurrent reuse
+// inside the grace window can be resolved to the successor instead of
+// triggering reuse-attack revocation.
+const sqlRotateSession = `
+		UPDATE sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
+		WHERE id = $2
+	`
+
+// sqlSelectSuccessorSession is the lean shape used by refreshFromSuccessor
+// (it doesn't need rotation metadata — only liveness).
+const sqlSelectSuccessorSession = `
+		SELECT id, user_id, expires_at, revoked FROM sessions WHERE token_hash = $1
+	`
+
+// ── logout (Logout) ─────────────────────────────────────────────────────────
+
+// sqlRevokeSessionByHashReturningUser revokes the session matching a
+// refresh-token hash AND returns the owning user_id so the caller can
+// audit-log without a second round-trip.
+const sqlRevokeSessionByHashReturningUser = `
+		UPDATE sessions SET revoked = TRUE WHERE token_hash = $1 RETURNING user_id
+	`
+
+// ── password change (ChangePassword) ────────────────────────────────────────
+
+// sqlUpdatePasswordHashAndClearForceFlag rewrites password_hash,
+// stamps password_changed_at=NOW(), and clears force_password_change.
+// Used by ChangePassword (current → new path).
+const sqlUpdatePasswordHashAndClearForceFlag = `
+		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW()
+		WHERE id = $2
+	`
+
+// ── password reset (RequestPasswordReset, ConfirmPasswordReset) ─────────────
+
+// sqlInsertPasswordReset opens a new password_resets row. token_hash
+// is SHA-256 of the raw reset token (raw is only emailed, never stored).
+const sqlInsertPasswordReset = `
+		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+		VALUES ($1, $2, $3, $4)
+	`
+
+// sqlSelectPasswordResetByHash returns the reset-token row needed to
+// validate the confirmation request (expiry + used_at gate).
+const sqlSelectPasswordResetByHash = `
+		SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = $1
+	`
+
+// sqlUpdatePasswordHashAndClearLockout rewrites password_hash and ALSO
+// clears failed_login_count + locked_until — the "I forgot my password"
+// path implicitly resolves a lockout.
+const sqlUpdatePasswordHashAndClearLockout = `
+		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW(),
+		                 failed_login_count = 0, locked_until = NULL
+		WHERE id = $2
+	`
+
+// sqlMarkPasswordResetUsed stamps used_at=NOW() so the reset token
+// cannot be replayed. Run inside the confirmation tx alongside the
+// password update and session revoke.
+const sqlMarkPasswordResetUsed = `UPDATE password_resets SET used_at = NOW() WHERE id = $1`

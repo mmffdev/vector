@@ -8,7 +8,6 @@
     "backend/internal/artefactitemsv2/types.go",
     "backend/internal/artefacttypes/service.go",
     "backend/internal/audit/audit.go",
-    "backend/internal/auth/service.go",
     "backend/internal/custompages/service.go",
     "backend/internal/entityrefs/service.go",
     "backend/internal/errorsreport/service.go",

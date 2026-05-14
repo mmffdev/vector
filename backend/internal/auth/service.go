@@ -74,14 +74,12 @@ type RolePayload struct {
 // not break because the catalogue is briefly unavailable.
 func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) (RolePayload, []string) {
 	var roleID uuid.UUID
-	if err := s.Pool.QueryRow(ctx, `SELECT role_id FROM users WHERE id = $1`, userID).Scan(&roleID); err != nil {
+	if err := s.Pool.QueryRow(ctx, sqlSelectUserRoleID, userID).Scan(&roleID); err != nil {
 		return RolePayload{}, []string{}
 	}
 	var rp RolePayload
-	if err := s.Pool.QueryRow(ctx, `
-		SELECT id, code, label, rank, is_system, is_external
-		  FROM roles WHERE id = $1`, roleID,
-	).Scan(&rp.ID, &rp.Code, &rp.Label, &rp.Rank, &rp.IsSystem, &rp.IsExternal); err != nil {
+	if err := s.Pool.QueryRow(ctx, sqlSelectRoleByID, roleID).
+		Scan(&rp.ID, &rp.Code, &rp.Label, &rp.Rank, &rp.IsSystem, &rp.IsExternal); err != nil {
 		return RolePayload{}, []string{}
 	}
 	perms := []string{}
@@ -96,11 +94,7 @@ func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) 
 
 func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	u := &models.User{}
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
-		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until, created_at, updated_at
-		FROM users WHERE email = $1`, email).Scan(
+	err := s.Pool.QueryRow(ctx, sqlSelectUserByEmail, email).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
@@ -116,11 +110,7 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.Us
 
 func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	u := &models.User{}
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
-		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until, created_at, updated_at
-		FROM users WHERE id = $1`, id).Scan(
+	err := s.Pool.QueryRow(ctx, sqlSelectUserByID, id).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
@@ -159,9 +149,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	}
 
 	// Success: reset lockout state, stamp last_login.
-	_, _ = s.Pool.Exec(ctx, `
-		UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login = NOW()
-		WHERE id = $1`, u.ID)
+	_, _ = s.Pool.Exec(ctx, sqlClearLockoutAndStampLogin, u.ID)
 
 	access, err := SignAccessToken(u)
 	if err != nil {
@@ -174,9 +162,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
 
-	_, err = s.Pool.Exec(ctx, `
-		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)`,
+	_, err = s.Pool.Exec(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
 	)
 	if err != nil {
@@ -205,12 +191,10 @@ func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip stri
 	newCount := u.FailedLoginCount + 1
 	if newCount >= threshold {
 		lockUntil := time.Now().Add(dur)
-		_, _ = s.Pool.Exec(ctx, `
-			UPDATE users SET failed_login_count = $1, locked_until = $2 WHERE id = $3`,
-			newCount, lockUntil, u.ID)
+		_, _ = s.Pool.Exec(ctx, sqlBumpFailedLoginAndLock, newCount, lockUntil, u.ID)
 		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.account_locked", IPAddress: &ip})
 	} else {
-		_, _ = s.Pool.Exec(ctx, `UPDATE users SET failed_login_count = $1 WHERE id = $2`, newCount, u.ID)
+		_, _ = s.Pool.Exec(ctx, sqlBumpFailedLogin, newCount, u.ID)
 	}
 }
 
@@ -222,10 +206,8 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	var revoked bool
 	var rotatedAt *time.Time
 	var successorHash *string
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, revoked, rotated_at, successor_hash
-		FROM sessions WHERE token_hash = $1`, hash,
-	).Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash)
+	err := s.Pool.QueryRow(ctx, sqlSelectSessionByHash, hash).
+		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash)
 	if err == pgx.ErrNoRows {
 		return nil, ErrTokenExpired
 	}
@@ -242,7 +224,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		if rotatedAt != nil && successorHash != nil && time.Since(*rotatedAt) <= graceSecs {
 			return s.refreshFromSuccessor(ctx, *successorHash, ip, ua)
 		}
-		_, _ = s.Pool.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID)
+		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
 		s.Audit.Log(ctx, audit.Entry{UserID: &userID, Action: "auth.refresh_token_reuse", IPAddress: &ip, Metadata: map[string]any{"session_id": sessID.String()}})
 		return nil, ErrTokenExpired
 	}
@@ -269,15 +251,11 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := tx.Exec(ctx, `
-		UPDATE sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
-		WHERE id = $2`, newHash, sessID,
-	); err != nil {
+	if _, err := tx.Exec(ctx, sqlRotateSession, newHash, sessID); err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)`, u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
+	if _, err := tx.Exec(ctx, sqlInsertSession,
+		u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
 	); err != nil {
 		return nil, err
 	}
@@ -300,9 +278,8 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	var sessID, userID uuid.UUID
 	var expiresAt time.Time
 	var revoked bool
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, revoked FROM sessions WHERE token_hash = $1`, successorHash,
-	).Scan(&sessID, &userID, &expiresAt, &revoked)
+	err := s.Pool.QueryRow(ctx, sqlSelectSuccessorSession, successorHash).
+		Scan(&sessID, &userID, &expiresAt, &revoked)
 	if err == pgx.ErrNoRows || revoked || expiresAt.Before(time.Now()) {
 		return nil, ErrTokenExpired
 	}
@@ -331,9 +308,8 @@ func (s *Service) Logout(ctx context.Context, rawRefresh, ip string) error {
 	}
 	hash := Sha256Hex(rawRefresh)
 	var userID uuid.UUID
-	err := s.Pool.QueryRow(ctx, `
-		UPDATE sessions SET revoked = TRUE WHERE token_hash = $1 RETURNING user_id`, hash,
-	).Scan(&userID)
+	err := s.Pool.QueryRow(ctx, sqlRevokeSessionByHashReturningUser, hash).
+		Scan(&userID)
 	if err == pgx.ErrNoRows {
 		return nil
 	}
@@ -364,12 +340,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `
-		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW()
-		WHERE id = $2`, hash, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlUpdatePasswordHashAndClearForceFlag, hash, userID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlRevokeAllUserSessions, userID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -395,9 +369,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, emailIn, ip string) 
 	}
 	ttl := parseDurationEnv("RESET_TOKEN_TTL", time.Hour)
 	expAt := time.Now().Add(ttl)
-	_, err = s.Pool.Exec(ctx, `
-		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
-		VALUES ($1, $2, $3, $4)`, u.ID, hash, expAt, nilIfEmpty(ip))
+	_, err = s.Pool.Exec(ctx, sqlInsertPasswordReset, u.ID, hash, expAt, nilIfEmpty(ip))
 	if err != nil {
 		return err
 	}
@@ -413,9 +385,8 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 	var id, userID uuid.UUID
 	var expiresAt time.Time
 	var usedAt *time.Time
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = $1`, hash,
-	).Scan(&id, &userID, &expiresAt, &usedAt)
+	err := s.Pool.QueryRow(ctx, sqlSelectPasswordResetByHash, hash).
+		Scan(&id, &userID, &expiresAt, &usedAt)
 	if err == pgx.ErrNoRows {
 		return ErrTokenExpired
 	}
@@ -442,16 +413,13 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `
-		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW(),
-		                 failed_login_count = 0, locked_until = NULL
-		WHERE id = $2`, pwHash, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlUpdatePasswordHashAndClearLockout, pwHash, userID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE password_resets SET used_at = NOW() WHERE id = $1`, id); err != nil {
+	if _, err := tx.Exec(ctx, sqlMarkPasswordResetUsed, id); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlRevokeAllUserSessions, userID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
