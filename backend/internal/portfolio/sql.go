@@ -16,7 +16,7 @@ const sqlSelectWorkspaceSubscriptionID = `SELECT subscription_id FROM master_rec
 // any active grant on the workspace.
 const sqlExistsActiveWorkspaceMembership = `
 		SELECT EXISTS (
-		    SELECT 1 FROM roles_workspaces
+		    SELECT 1 FROM users_roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id = $2
 		       AND revoked_at IS NULL

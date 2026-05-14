@@ -13,7 +13,7 @@
 // non-sql.go file in this package contains raw SQL literals.
 //
 // Single DB: every read/write targets the mmff_vector pool (pages,
-// page_tags, roles_pages, user_nav_*, page_entity_refs, portfolio,
+// page_tags, users_roles_pages, user_nav_*, page_entity_refs, portfolio,
 // product, users).
 package nav
 
@@ -67,7 +67,7 @@ const sqlUpsertSharedEntityPage = `
 // Pin loops over the three role codes (user/padmin/gadmin) inside the
 // pin tx; ON CONFLICT lets the second/third call be a quiet no-op.
 const sqlUpsertPageRoleGrant = `
-		INSERT INTO roles_pages (page_id, role) VALUES ($1, $2)
+		INSERT INTO users_roles_pages (page_id, role) VALUES ($1, $2)
 		ON CONFLICT (page_id, role) DO NOTHING
 	`
 
@@ -152,15 +152,15 @@ const sqlListPageTags = `
 
 // sqlListSystemPagesWithRoles returns every system-scoped or
 // tenant-scoped-entity page with its aggregated role list. The aggregate
-// avoids N+1 against roles_pages. WHERE clause covers two catalogue
+// avoids N+1 against users_roles_pages. WHERE clause covers two catalogue
 // shapes: system pages (created_by IS NULL AND subscription_id IS NULL)
 // and tenant-scoped entity bookmarks (kind='entity').
 const sqlListSystemPagesWithRoles = `
 		SELECT p.key_enum, p.label, p.href, p.icon, p.tag_enum, p.kind,
 		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
-		       COALESCE(array_agg(pr.role::text ORDER BY pr.role) FILTER (WHERE pr.role IS NOT NULL), '{}') AS roles
+		       COALESCE(array_agg(pr.role::text ORDER BY pr.role) FILTER (WHERE pr.role IS NOT NULL), '{}') AS users_roles
 		FROM pages p
-		LEFT JOIN roles_pages pr ON pr.page_id = p.id
+		LEFT JOIN users_roles_pages pr ON pr.page_id = p.id
 		WHERE p.created_by IS NULL
 		  AND (p.subscription_id IS NULL OR p.kind = 'entity')
 		GROUP BY p.id
@@ -488,7 +488,7 @@ const sqlBackfillDefaultPinnedPages = `
 			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
 			FALSE
 		FROM pages p
-		JOIN roles_pages pr ON pr.page_id = p.id
+		JOIN users_roles_pages pr ON pr.page_id = p.id
 		JOIN users_nav_profiles d ON d.id = $4::uuid AND d.is_default = TRUE
 		WHERE p.created_by IS NULL
 		  AND p.subscription_id IS NULL
@@ -519,7 +519,7 @@ const sqlLazySeedAdminNavGroups = `
 		seed AS (
 			SELECT * FROM (VALUES
 				('Workspace Admin', 0, 'cog',    ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-				('User Admin',      1, 'users',  ARRAY['user-management','um-permissions']),
+				('User Admin',      1, 'users',  ARRAY['user-management','um-users_permissions']),
 				('Vector Admin',    2, 'shield', ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 			) AS t(label, pos, icon, pages)
 			WHERE LOWER(t.label) NOT IN (SELECT lbl FROM existing)
@@ -539,7 +539,7 @@ const sqlLazySeedAdminNavGroups = `
 		FROM all_groups ag
 		JOIN (VALUES
 			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
-			('user admin',      ARRAY['user-management','um-permissions']),
+			('user admin',      ARRAY['user-management','um-users_permissions']),
 			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 		) AS mapping(lbl, pages) ON mapping.lbl = ag.lbl
 		WHERE unp.user_id = $1

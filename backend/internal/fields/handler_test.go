@@ -102,7 +102,7 @@ func vectorPoolForTest(t *testing.T) *pgxpool.Pool {
 }
 
 // pickWorkspaceUser pulls one (workspace, user) pair from the live DB
-// where the user has an active roles_workspaces grant on the workspace.
+// where the user has an active users_roles_workspaces grant on the workspace.
 // The user is NOT a tenant admin (so the membership branch — not the
 // role-bypass branch — is exercised). Skips when no such pair exists.
 func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID, u *models.User) {
@@ -110,7 +110,7 @@ func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID,
 	u = &models.User{}
 	err := pool.QueryRow(context.Background(), `
 		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.workspace_id
-		  FROM roles_workspaces rw
+		  FROM users_roles_workspaces rw
 		  JOIN users u ON u.id = rw.user_id
 		  JOIN master_record_workspaces w ON w.id = rw.workspace_id
 		 WHERE rw.revoked_at IS NULL

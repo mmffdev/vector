@@ -61,16 +61,16 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	var subID uuid.UUID
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
-		"roles-test-"+label+"-"+suffix, "roles-test-"+label+"-"+suffix,
+		"users_roles-test-"+label+"-"+suffix, "users_roles-test-"+label+"-"+suffix,
 	).Scan(&subID); err != nil {
 		t.Fatalf("insert tenant: %v", err)
 	}
 	cleanup := func() {
-		// Order matters: users.role_id RESTRICTs roles, so users must
-		// go before roles. password_resets and other user-FK leaves go
+		// Order matters: users.role_id RESTRICTs users_roles, so users must
+		// go before users_roles. users_password_resets and other user-FK leaves go
 		// before users.
 		stmts := []string{
-			`DELETE FROM roles_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
+			`DELETE FROM users_roles_permissions            WHERE role_id IN (SELECT id FROM users_roles WHERE subscription_id = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,
@@ -78,9 +78,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
-			`DELETE FROM roles                       WHERE subscription_id = $1`,
+			`DELETE FROM users_roles                       WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
 		for _, sql := range stmts {
@@ -138,15 +138,15 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 func newRouter(h *Handler, u *models.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(withUser(u))
-	r.Get("/api/roles", h.List)
-	r.Get("/api/roles/creatable", h.Creatable)
-	r.Get("/api/roles/{id}", h.Get)
-	r.Post("/api/roles", h.Create)
-	r.Patch("/api/roles/{id}", h.Update)
-	r.Delete("/api/roles/{id}", h.Archive)
-	r.Get("/api/roles/{id}/permissions", h.ListPermissions)
-	r.Post("/api/roles/{id}/permissions", h.AssignPermissions)
-	r.Delete("/api/roles/{id}/permissions", h.RevokePermissions)
+	r.Get("/api/users_roles", h.List)
+	r.Get("/api/users_roles/creatable", h.Creatable)
+	r.Get("/api/users_roles/{id}", h.Get)
+	r.Post("/api/users_roles", h.Create)
+	r.Patch("/api/users_roles/{id}", h.Update)
+	r.Delete("/api/users_roles/{id}", h.Archive)
+	r.Get("/api/users_roles/{id}/users_permissions", h.ListPermissions)
+	r.Post("/api/users_roles/{id}/users_permissions", h.AssignPermissions)
+	r.Delete("/api/users_roles/{id}/users_permissions", h.RevokePermissions)
 	return r
 }
 
@@ -176,14 +176,14 @@ func TestList_returnsRolesScopedToTenant(t *testing.T) {
 	ctx := context.Background()
 	var aRoleID, bRoleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO roles (subscription_id, code, label, description, rank, is_system, is_external)
+		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
 		VALUES ($1, $2, 'A Custom', '', 100, FALSE, FALSE) RETURNING id`,
 		subA, "tenant-a-"+uuid.NewString()[:8],
 	).Scan(&aRoleID); err != nil {
 		t.Fatalf("insert role A: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO roles (subscription_id, code, label, description, rank, is_system, is_external)
+		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
 		VALUES ($1, $2, 'B Custom', '', 100, FALSE, FALSE) RETURNING id`,
 		subB, "tenant-b-"+uuid.NewString()[:8],
 	).Scan(&bRoleID); err != nil {
@@ -194,7 +194,7 @@ func TestList_returnsRolesScopedToTenant(t *testing.T) {
 	srv := httptest.NewServer(newRouter(h, actor))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/roles")
+	resp, err := http.Get(srv.URL + "/api/users_roles")
 	if err != nil {
 		t.Fatalf("GET: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestList_returnsRolesScopedToTenant(t *testing.T) {
 		t.Errorf("saw foreign tenant role B — tenant isolation broken")
 	}
 	if !sawSystem {
-		t.Errorf("system roles missing from list")
+		t.Errorf("system users_roles missing from list")
 	}
 }
 
@@ -255,7 +255,7 @@ func TestCreate_409onDuplicateCode(t *testing.T) {
 	}
 
 	// First create: 201.
-	resp1, err := http.Post(srv.URL+"/api/roles", "application/json", body())
+	resp1, err := http.Post(srv.URL+"/api/users_roles", "application/json", body())
 	if err != nil {
 		t.Fatalf("POST 1: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestCreate_409onDuplicateCode(t *testing.T) {
 	}
 
 	// Second create with same code under same tenant: 409.
-	resp2, err := http.Post(srv.URL+"/api/roles", "application/json", body())
+	resp2, err := http.Post(srv.URL+"/api/users_roles", "application/json", body())
 	if err != nil {
 		t.Fatalf("POST 2: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	ctx := context.Background()
 	var roleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO roles (subscription_id, code, label, description, rank, is_system, is_external)
+		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
 		VALUES ($1, $2, 'Target', '', 100, FALSE, FALSE) RETURNING id`,
 		subID, "target-"+uuid.NewString()[:8],
 	).Scan(&roleID); err != nil {
@@ -311,7 +311,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	// Pick any seeded permission id to attempt to grant.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup permission id: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	// can't blank it; we have to swap it for an empty-grid role.
 	var emptyRoleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO roles (subscription_id, code, label, description, rank, is_system, is_external)
+		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
 		VALUES ($1, $2, 'Empty', '', 99, FALSE, FALSE) RETURNING id`,
 		subID, "empty-"+uuid.NewString()[:8],
 	).Scan(&emptyRoleID); err != nil {
@@ -337,7 +337,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 
 	body, _ := json.Marshal(permIDsReq{PermissionIDs: []uuid.UUID{permID}})
 	resp, err := http.Post(
-		srv.URL+"/api/roles/"+roleID.String()+"/permissions",
+		srv.URL+"/api/users_roles/"+roleID.String()+"/users_permissions",
 		"application/json", bytes.NewBuffer(body),
 	)
 	if err != nil {
@@ -373,7 +373,7 @@ func TestArchive_403onSystemRole(t *testing.T) {
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodDelete,
-		srv.URL+"/api/roles/"+SystemRoleGadmin.String(), nil)
+		srv.URL+"/api/users_roles/"+SystemRoleGadmin.String(), nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("DELETE: %v", err)

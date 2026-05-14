@@ -1,7 +1,7 @@
 // Package workspaces SQL constants.
 //
 // PLA-0048 / RF1.2.11. Sole writer for master_record_workspaces and
-// roles_workspaces (mmff_vector); read-only over VAPool (vector_artefacts)
+// users_roles_workspaces (mmff_vector); read-only over VAPool (vector_artefacts)
 // via the cross-DB orphan scan in crossdb.go.
 package workspaces
 
@@ -15,9 +15,9 @@ const sqlInsertWorkspace = `
 	`
 
 // sqlInsertWorkspaceCreatorAdminGrant seeds the creator-as-admin
-// roles_workspaces row so the clamp middleware lets them read it.
+// users_roles_workspaces row so the clamp middleware lets them read it.
 const sqlInsertWorkspaceCreatorAdminGrant = `
-		INSERT INTO roles_workspaces (subscription_id, workspace_id, user_id, role, granted_by)
+		INSERT INTO users_roles_workspaces (subscription_id, workspace_id, user_id, role, granted_by)
 		VALUES ($1, $2, $3, 'admin', $3)
 	`
 
@@ -84,30 +84,30 @@ const sqlLoadWorkspaceForUpdate = `
 		 FOR UPDATE
 	`
 
-// ── roles.go: workspace_roles grant CRUD ───────────────────────────────────
+// ── users_roles.go: workspace_roles grant CRUD ───────────────────────────────────
 
 const sqlSelectActiveGrantForUserOnWorkspace = `
-		SELECT id FROM roles_workspaces
+		SELECT id FROM users_roles_workspaces
 		 WHERE workspace_id = $1 AND user_id = $2 AND revoked_at IS NULL
 		 LIMIT 1
 	`
 
 const sqlExistsActiveAdminGrantOnWorkspace = `
 		SELECT EXISTS(
-		    SELECT 1 FROM roles_workspaces
+		    SELECT 1 FROM users_roles_workspaces
 		     WHERE workspace_id = $1 AND role = 'admin' AND revoked_at IS NULL
 		)
 	`
 
 const sqlInsertWorkspaceRoleGrant = `
-		INSERT INTO roles_workspaces
+		INSERT INTO users_roles_workspaces
 		    (subscription_id, workspace_id, user_id, role, can_redelegate, granted_by)
 		VALUES ($1, $2, $3, $4, FALSE, $5)
 		RETURNING id
 	`
 
 const sqlRevokeWorkspaceRoleGrant = `
-		UPDATE roles_workspaces
+		UPDATE users_roles_workspaces
 		   SET revoked_at = NOW(),
 		       revoked_by = $1,
 		       updated_at = NOW()
@@ -121,7 +121,7 @@ const sqlListActiveWorkspaceRoles = `
 		SELECT id, subscription_id, workspace_id, user_id, role,
 		       can_redelegate, granted_by, granted_at,
 		       revoked_at, revoked_by, created_at, updated_at
-		  FROM roles_workspaces
+		  FROM users_roles_workspaces
 		 WHERE workspace_id = $1
 		   AND subscription_id = $2
 		   AND revoked_at IS NULL

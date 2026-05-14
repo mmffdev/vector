@@ -46,7 +46,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	// Look up a permission id and grant/revoke it.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup perm: %v", err)
 	}

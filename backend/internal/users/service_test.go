@@ -62,7 +62,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	// Dependency-ordered teardown. Subscriptions can accumulate portfolio-stack +
 	// item-type seed data whose FKs RESTRICT both `users` and `subscriptions`, so a
 	// users/subscription delete alone leaves orphans and silently fails. Delete from
-	// the leaves up; let CASCADE handle sessions/perms/nav off `users`.
+	// the leaves up; let CASCADE handle users_sessions/perms/nav off `users`.
 	cleanup := func() {
 		stmts := []string{
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
@@ -72,7 +72,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
@@ -275,16 +275,16 @@ func TestUpdate_PadminCanDeactivateUser(t *testing.T) {
 }
 
 // ----------------------------------------------------------------
-// PLA-0010 / story 00367 — role change revokes active sessions
+// PLA-0010 / story 00367 — role change revokes active users_sessions
 // ----------------------------------------------------------------
 
-// insertSession seeds a non-revoked sessions row for the given user.
+// insertSession seeds a non-revoked users_sessions row for the given user.
 // Token hash is unique per call so tenant cleanup ordering is safe.
 func insertSession(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) {
 	t.Helper()
 	hash := uuid.NewString()
 	_, err := pool.Exec(context.Background(), `
-		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+		INSERT INTO users_sessions (user_id, token_hash, expires_at, ip_address, user_agent)
 		VALUES ($1, $2, NOW() + INTERVAL '1 hour', '127.0.0.1', 'test')`,
 		userID, hash,
 	)
@@ -297,7 +297,7 @@ func sessionRevoked(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) bool {
 	t.Helper()
 	var revoked bool
 	if err := pool.QueryRow(context.Background(),
-		`SELECT revoked FROM sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+		`SELECT revoked FROM users_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
 		userID,
 	).Scan(&revoked); err != nil {
 		t.Fatalf("read session.revoked: %v", err)
@@ -355,7 +355,7 @@ func TestUpdate_NoRoleChange_DoesNotRevokeSessions(t *testing.T) {
 
 // Same role assigned again — the role string equals the loaded targetRole,
 // so we should NOT revoke (defensive: a no-op update must not nuke
-// sessions and force re-login).
+// users_sessions and force re-login).
 func TestUpdate_SameRole_DoesNotRevokeSessions(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()

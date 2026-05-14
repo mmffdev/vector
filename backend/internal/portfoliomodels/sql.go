@@ -25,7 +25,7 @@ const sqlSelectWorkspaceSubscriptionID = `SELECT subscription_id FROM master_rec
 const sqlExistsActiveWorkspaceMembership = `
 		SELECT EXISTS (
 		    SELECT 1
-		      FROM roles_workspaces
+		      FROM users_roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id      = $2
 		       AND revoked_at  IS NULL
@@ -513,7 +513,7 @@ const sqlInsertTestbedRootTopologyNode = `
 const sqlSeedDevStrategyArtefactsFn = `SELECT seed_dev_strategy_artefacts($1, $2)`
 
 const sqlDeleteRolesWorkspacesForSubscription = `
-		DELETE FROM roles_workspaces
+		DELETE FROM users_roles_workspaces
 		 WHERE workspace_id IN (
 		     SELECT id FROM master_record_workspaces WHERE subscription_id = $1
 		 )

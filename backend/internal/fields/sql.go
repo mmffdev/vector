@@ -13,10 +13,10 @@ const sqlSelectWorkspaceTenant = `SELECT subscription_id FROM master_record_work
 
 // sqlExistsActiveWorkspaceMembership probes whether a user holds any
 // live role grant on a workspace. Used by AssertCallerMayRead for
-// non-admin roles.
+// non-admin users_roles.
 const sqlExistsActiveWorkspaceMembership = `
 		SELECT EXISTS (
-			SELECT 1 FROM roles_workspaces
+			SELECT 1 FROM users_roles_workspaces
 			 WHERE user_id = $1 AND workspace_id = $2 AND revoked_at IS NULL
 		)
 	`

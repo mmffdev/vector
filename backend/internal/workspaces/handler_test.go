@@ -2,7 +2,7 @@ package workspaces_test
 
 // Integration tests for the /api/workspaces REST surface (PLA-0006 /
 // story 00377). Mirrors the testPool / mkTenant / mkUser style of
-// internal/roles/handler_test.go — every test runs against the live
+// internal/users_roles/handler_test.go — every test runs against the live
 // dev Postgres through the SSH tunnel and skips on unreachable.
 //
 // Coverage map (one test per AC + the companion routes):
@@ -13,7 +13,7 @@ package workspaces_test
 //   00380 → TestPatch_RenamesWorkspace
 //   00381 → TestRestore_403ForNonGadmin + TestRestore_200ForGadmin
 //
-// The cleanup leaf list mirrors roles/handler_test.go but adds the
+// The cleanup leaf list mirrors users_roles/handler_test.go but adds the
 // workspaces + workspace_roles tables (this is the first test in the
 // repo to write to either table through the real service path).
 
@@ -88,11 +88,11 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	cleanup := func() {
 		// Order: leaves before roots. workspace_roles → workspaces;
 		// then the legacy `workspace` table (different beast); then
-		// users + roles + the subscription row.
+		// users + users_roles + the subscription row.
 		stmts := []string{
-			`DELETE FROM roles_workspaces             WHERE subscription_id = $1`,
+			`DELETE FROM users_roles_workspaces             WHERE subscription_id = $1`,
 			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
-			`DELETE FROM roles_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
+			`DELETE FROM users_roles_permissions            WHERE role_id IN (SELECT id FROM users_roles WHERE subscription_id = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,
@@ -100,9 +100,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
-			`DELETE FROM roles                       WHERE subscription_id = $1`,
+			`DELETE FROM users_roles                       WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
 		for _, sql := range stmts {

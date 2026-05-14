@@ -10,7 +10,7 @@ package topology_test
 //      shell stays deterministic and tunnel-independent.
 //
 //   2. PoolWorkspaceLookup — the production adapter that runs three
-//      SELECTs against `master_record_workspaces` and `roles_workspaces`. We exercise
+//      SELECTs against `master_record_workspaces` and `users_roles_workspaces`. We exercise
 //      it against the live dev DB through testPool / mkTenant so the
 //      SQL is verified end-to-end. Tunnel-down → t.Skip per the rest
 //      of the suite.
@@ -426,7 +426,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, uuid.U
 
 	cleanup := func() {
 		stmts := []string{
-			`DELETE FROM roles_workspaces             WHERE subscription_id = $1`,
+			`DELETE FROM users_roles_workspaces             WHERE subscription_id = $1`,
 			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
@@ -467,7 +467,7 @@ func seedWorkspaceRole(t *testing.T, pool *pgxpool.Pool, subID, wsID, userID, gr
 	t.Helper()
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO roles_workspaces (subscription_id, workspace_id, user_id, role, can_redelegate, granted_by)
+		INSERT INTO users_roles_workspaces (subscription_id, workspace_id, user_id, role, can_redelegate, granted_by)
 		VALUES ($1, $2, $3, $4, FALSE, $5)
 		RETURNING id
 	`, subID, wsID, userID, role, grantedBy).Scan(&id); err != nil {
@@ -475,7 +475,7 @@ func seedWorkspaceRole(t *testing.T, pool *pgxpool.Pool, subID, wsID, userID, gr
 	}
 	if revoked {
 		if _, err := pool.Exec(context.Background(),
-			`UPDATE roles_workspaces SET revoked_at = NOW(), revoked_by = $1 WHERE id = $2`,
+			`UPDATE users_roles_workspaces SET revoked_at = NOW(), revoked_by = $1 WHERE id = $2`,
 			grantedBy, id,
 		); err != nil {
 			t.Fatalf("revoke seed grant: %v", err)
@@ -613,7 +613,7 @@ func TestPoolWorkspaceLookup_HasActiveRole_RevokedExcluded(t *testing.T) {
 
 	// Revoke the original grant; HasActiveRole now returns false.
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE roles_workspaces SET revoked_at = NOW(), revoked_by = $1
+		`UPDATE users_roles_workspaces SET revoked_at = NOW(), revoked_by = $1
 		 WHERE workspace_id = $2 AND user_id = $3`,
 		userID, wsID, userID,
 	); err != nil {

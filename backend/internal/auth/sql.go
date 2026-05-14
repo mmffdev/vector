@@ -11,14 +11,14 @@
 // non-sql.go file in this package contains raw SQL literals.
 //
 // All reads/writes target the mmff_vector pool via s.Pool — auth is
-// single-DB (membership/credentials/sessions/password-resets all
+// single-DB (membership/credentials/users_sessions/password-resets all
 // live in mmff_vector).
 package auth
 
 // ── role + permission lookups (LoadRoleAndPermissions) ──────────────────────
 
 // sqlSelectUserRoleID resolves a user's role_id. The auth payload
-// renderer joins this against `roles` via sqlSelectRoleByID.
+// renderer joins this against `users_roles` via sqlSelectRoleByID.
 const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
 
 // sqlSelectRoleByID hydrates the RolePayload wire shape (code, label,
@@ -26,7 +26,7 @@ const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
 // response (login, refresh, /me).
 const sqlSelectRoleByID = `
 		SELECT id, code, label, rank, is_system, is_external
-		  FROM roles WHERE id = $1
+		  FROM users_roles WHERE id = $1
 	`
 
 // ── user hydration (FindUserByEmail, FindUserByID) ──────────────────────────
@@ -62,7 +62,7 @@ const sqlClearLockoutAndStampLogin = `
 // the SHA-256 of the raw refresh token (raw never persists). Used by
 // Login and the rotation path in Refresh.
 const sqlInsertSession = `
-		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+		INSERT INTO users_sessions (user_id, token_hash, expires_at, ip_address, user_agent)
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
@@ -83,27 +83,27 @@ const sqlBumpFailedLogin = `UPDATE users SET failed_login_count = $1 WHERE id = 
 // grace-window decision).
 const sqlSelectSessionByHash = `
 		SELECT id, user_id, expires_at, revoked, rotated_at, successor_hash
-		FROM sessions WHERE token_hash = $1
+		FROM users_sessions WHERE token_hash = $1
 	`
 
 // sqlRevokeAllUserSessions revokes every session for a user. Used by
 // the reuse-attack response (Refresh) and by Logout/ChangePassword/
 // ConfirmPasswordReset side-effects.
-const sqlRevokeAllUserSessions = `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`
+const sqlRevokeAllUserSessions = `UPDATE users_sessions SET revoked = TRUE WHERE user_id = $1`
 
 // sqlRotateSession marks the current session revoked + stamps
 // rotation metadata (rotated_at, successor_hash) so a concurrent reuse
 // inside the grace window can be resolved to the successor instead of
 // triggering reuse-attack revocation.
 const sqlRotateSession = `
-		UPDATE sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
+		UPDATE users_sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
 		WHERE id = $2
 	`
 
 // sqlSelectSuccessorSession is the lean shape used by refreshFromSuccessor
 // (it doesn't need rotation metadata — only liveness).
 const sqlSelectSuccessorSession = `
-		SELECT id, user_id, expires_at, revoked FROM sessions WHERE token_hash = $1
+		SELECT id, user_id, expires_at, revoked FROM users_sessions WHERE token_hash = $1
 	`
 
 // ── logout (Logout) ─────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ const sqlSelectSuccessorSession = `
 // refresh-token hash AND returns the owning user_id so the caller can
 // audit-log without a second round-trip.
 const sqlRevokeSessionByHashReturningUser = `
-		UPDATE sessions SET revoked = TRUE WHERE token_hash = $1 RETURNING user_id
+		UPDATE users_sessions SET revoked = TRUE WHERE token_hash = $1 RETURNING user_id
 	`
 
 // ── password change (ChangePassword) ────────────────────────────────────────
@@ -127,17 +127,17 @@ const sqlUpdatePasswordHashAndClearForceFlag = `
 
 // ── password reset (RequestPasswordReset, ConfirmPasswordReset) ─────────────
 
-// sqlInsertPasswordReset opens a new password_resets row. token_hash
+// sqlInsertPasswordReset opens a new users_password_resets row. token_hash
 // is SHA-256 of the raw reset token (raw is only emailed, never stored).
 const sqlInsertPasswordReset = `
-		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+		INSERT INTO users_password_resets (user_id, token_hash, expires_at, requested_ip)
 		VALUES ($1, $2, $3, $4)
 	`
 
 // sqlSelectPasswordResetByHash returns the reset-token row needed to
 // validate the confirmation request (expiry + used_at gate).
 const sqlSelectPasswordResetByHash = `
-		SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = $1
+		SELECT id, user_id, expires_at, used_at FROM users_password_resets WHERE token_hash = $1
 	`
 
 // sqlUpdatePasswordHashAndClearLockout rewrites password_hash and ALSO
@@ -152,4 +152,4 @@ const sqlUpdatePasswordHashAndClearLockout = `
 // sqlMarkPasswordResetUsed stamps used_at=NOW() so the reset token
 // cannot be replayed. Run inside the confirmation tx alongside the
 // password update and session revoke.
-const sqlMarkPasswordResetUsed = `UPDATE password_resets SET used_at = NOW() WHERE id = $1`
+const sqlMarkPasswordResetUsed = `UPDATE users_password_resets SET used_at = NOW() WHERE id = $1`

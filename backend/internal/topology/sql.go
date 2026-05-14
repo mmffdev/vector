@@ -18,7 +18,7 @@
 // combine.
 package topology
 
-// ── permissions.go ──────────────────────────────────────────────────────────
+// ── users_permissions.go ──────────────────────────────────────────────────────────
 
 // sqlAncestorsHasGrantOnTargetOrAncestor walks UP from targetNodeID
 // through parent_id and returns whether the user holds an active grant
@@ -182,10 +182,10 @@ const sqlSelectWorkspaceIDByIDAndSubscription = `
 // role assignment on the given workspace.
 const sqlExistsActiveWorkspaceRole = `
 		SELECT EXISTS(
-		    SELECT 1 FROM roles_workspaces
+		    SELECT 1 FROM users_roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id      = $2
-		       AND users_roles_topology_nodes_revoked_at IS NULL
+		       AND revoked_at IS NULL
 		)
 	`
 

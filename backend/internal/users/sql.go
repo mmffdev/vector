@@ -12,13 +12,13 @@
 // non-sql.go file in this package contains raw SQL literals.
 //
 // All reads/writes target the mmff_vector pool via s.Pool — users is
-// single-DB (users + roles + sessions + password_resets all live there).
+// single-DB (users + users_roles + users_sessions + users_password_resets all live there).
 package users
 
 // ── Create ─────────────────────────────────────────────────────────────────
 
 // sqlInsertUser creates a new user row with both the legacy `role`
-// enum AND the structured `role_id` (subquery against the roles
+// enum AND the structured `role_id` (subquery against the users_roles
 // table). force_password_change defaults TRUE because Create's
 // password is a random placeholder; the user must reset via the
 // emailed link. Returns the hydrated row fields needed for the
@@ -26,16 +26,16 @@ package users
 const sqlInsertUser = `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id, force_password_change)
 		VALUES ($1, $2, $3, $4,
-			(SELECT id FROM roles WHERE is_system = TRUE AND code = $5),
+			(SELECT id FROM users_roles WHERE is_system = TRUE AND code = $5),
 			TRUE)
 		RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at
 	`
 
-// sqlInsertPasswordReset opens a password_resets row. Shared by
+// sqlInsertPasswordReset opens a users_password_resets row. Shared by
 // Create (initial setup, 24h TTL) and IssueResetLink (admin re-issue,
 // 1h TTL) — TTL is decided by the caller via $3.
 const sqlInsertPasswordReset = `
-		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
+		INSERT INTO users_password_resets (user_id, token_hash, expires_at, requested_ip)
 		VALUES ($1, $2, $3, $4)
 	`
 
@@ -71,12 +71,12 @@ const sqlUpdateUserTemplate = `UPDATE users SET %s WHERE id = %s`
 // fragment ("role = $N"). One %s holds the `$N` bind placeholder for
 // the role code lookup. PLA-0007 G4 retires this subquery once the
 // users.role enum column is dropped.
-const sqlUpdateUserRoleIDFragmentTemplate = `role_id = (SELECT id FROM roles WHERE is_system = TRUE AND code = %s)`
+const sqlUpdateUserRoleIDFragmentTemplate = `role_id = (SELECT id FROM users_roles WHERE is_system = TRUE AND code = %s)`
 
 // sqlRevokeActiveUserSessions revokes a user's live (non-already-revoked)
-// sessions. Used inside the Update tx when role changes so a downgrade
+// users_sessions. Used inside the Update tx when role changes so a downgrade
 // invalidates outstanding tokens before they expire.
-const sqlRevokeActiveUserSessions = `UPDATE sessions SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`
+const sqlRevokeActiveUserSessions = `UPDATE users_sessions SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`
 
 // ── Delete ─────────────────────────────────────────────────────────────────
 
