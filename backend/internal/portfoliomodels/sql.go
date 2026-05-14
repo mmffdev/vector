@@ -503,7 +503,7 @@ const sqlInsertTestbedRootTopologyNode = `
 	`
 
 // sqlSeedDevStrategyArtefactsFn calls the SQL function installed by
-// db/artefacts_schema/052_seed_dev_strategy_artefacts.sql to populate
+// db/vector_artefacts/schema/052_seed_dev_strategy_artefacts.sql to populate
 // starter strategy artefacts. Idempotent via ON CONFLICT inside the fn.
 const sqlSeedDevStrategyArtefactsFn = `SELECT seed_dev_strategy_artefacts($1, $2)`
 

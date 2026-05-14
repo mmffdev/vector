@@ -3,6 +3,7 @@
 - [Empirical blast-radius before any change](feedback_empirical_blast_radius.md) — Never rely on a prior agent's summary; read the actual workflow/script/snapshot files yourself before recommending or making cross-cutting changes.
 - [Deferrals always go in the tech-debt register](feedback_deferrals_register.md) — When I defer work ("hold until", "out of scope", "needs its own plan", "follow-up"), file it in docs/c_tech_debt.md with severity + trigger BEFORE the commit that creates the deferral. Spoken deferrals decay; register entries persist.
 - [Never create debt — fix now, flag if detected](feedback_no_debt.md) — Overrides cap-and-defer; introduce no new debt, surface detected debt immediately.
+- [No hardcoded order/list from DB data](feedback_no_hardcoded_order_from_db_data.md) — Never invent an order/mapping in TSX or Go when the data is DB-driven; if the column doesn't carry the signal, STOP and surface the gap — don't paper over with a hardcoded list.
 - [Card lifecycle — move states on every task](feedback_card_lifecycle.md) — Backlog→To Do→Doing→Completed on every task, including quick fixes; no code before card is in Doing.
 - [Stories all layers before starting](feedback_stories_all_layers.md) — Decompose across backend, frontend, migration, tests before /stories; never one layer at a time.
 - [Stories acceptance system — 7 gates, Fibonacci, risk](feedback_stories_system.md) — Hard gates: AIGEN+phase+feature+EST+RISK+description; F21+ auto-splits; 85%/90% confidence thresholds.
@@ -29,7 +30,7 @@
 - [Dev launcher uses `go run`](project_dev_launcher_runtime.md) — Backend runs from `go run`; check /healthz commit vs HEAD, not file mtimes.
 - [Launcher backend stale-binary trap](project_launcher_stale_binary.md) — `/tmp/vector-backend` updates on disk but launcher serves OLD code; SIGKILL to force respawn.
 - [MMFF Vector Launcher — backlog](project_launcher_backlog.md) — Swift macOS launcher (tunnel + backend + frontend + DB env) backlog & build plan.
-- [DB migrations — file-based ordered SQL only](project_db_migrations.md) — `db/schema/NNN_*.sql` (vector) and `db/library_schema/NNN_*.sql` (library); runner `backend/cmd/migrate`.
+- [DB migrations — file-based ordered SQL only](project_db_migrations.md) — `db/<dbname>/schema/NNN_*.sql` per DB; runner `backend/cmd/migrate`.
 - [Pre-launch security checklist](project_pre_launch_security.md) — Scrub git history, harden ssh_manager.sh, rotate secrets; deadline: before any external repo access.
 - [Open-source-first stack, no subscription costs](project_open_source_first.md) — Hobby-funded; prefer MIT/BSD OSS → self-hosted → build → paid SaaS last resort.
 - [PageBuilder architecture](project_pagebuilder_architecture.md) — Hierarchical container model (Section→Row→Column→Widget), phases 0–6, 100 stories.

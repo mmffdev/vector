@@ -241,7 +241,7 @@ func main() {
 	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
 	// bridge runs LISTEN rank_changed on a dedicated connection and
 	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
-	// in db/schema/069) to subscribed clients.
+	// in db/mmff_vector/schema/069) to subscribed clients.
 	//
 	// Constructed early so other services can inject it as a notifier
 	// (e.g. topology GrantNotifier for story 00283 handoff inbox).

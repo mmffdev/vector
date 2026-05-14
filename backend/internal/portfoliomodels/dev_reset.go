@@ -201,7 +201,7 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 	}
 
 	// 10. Re-seed starter strategy artefacts via the SQL function installed by
-	//     db/artefacts_schema/052_seed_dev_strategy_artefacts.sql. Safe no-op
+	//     db/vector_artefacts/schema/052_seed_dev_strategy_artefacts.sql. Safe no-op
 	//     if the five strategy artefact_types don't exist (e.g. before the
 	//     user has adopted a portfolio model). Idempotent — the seed uses
 	//     ON CONFLICT against the unique (subscription_id, type, number) index.

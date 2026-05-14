@@ -6,7 +6,7 @@ package portfoliomodels
 //
 // Unlike writeStrategyArtefactTypes, this writer does NOT consume the
 // library bundle. Work-types come from the system seed at
-//   db/artefacts_schema/010_seed_system_artefact_types.sql
+//   db/vector_artefacts/schema/010_seed_system_artefact_types.sql
 // (which seeds rows with workspace_id=NULL, source='system',
 // scope='work' for the host subscription). At runtime we read those
 // LIVE seeded rows and copy them per workspace as source='tenant' so
@@ -66,7 +66,7 @@ type systemWorkType struct {
 // rows. Two-phase topological insert handles the parent_type_id
 // self-FK. Idempotent via uq_artefact_types_ws_scope_prefix.
 //
-// Source of truth: db/artefacts_schema/010_seed_system_artefact_types.sql
+// Source of truth: db/vector_artefacts/schema/010_seed_system_artefact_types.sql
 // — but at runtime we read the LIVE seeded rows (source='system' AND
 // scope='work') and copy them per workspace. This keeps the saga
 // writer in lock-step with whatever the seed file contains today,

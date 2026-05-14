@@ -12,7 +12,7 @@ import (
 
 // TestDispatchTriggers verifies migration 013's polymorphic dispatch
 // triggers reject every category of bad write and accept the valid
-// shape. See db/schema/013_polymorphic_dispatch_triggers.sql and
+// shape. See db/mmff_vector/schema/013_polymorphic_dispatch_triggers.sql and
 // docs/c_polymorphic_writes.md for the rules these triggers enforce.
 //
 // Each subtest opens its own transaction and rolls back at the end —

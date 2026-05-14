@@ -8,7 +8,7 @@
 // rules are expressed once and tested once.
 //
 // See docs/c_polymorphic_writes.md for the full pattern and
-// db/schema/013_polymorphic_dispatch_triggers.sql for the trigger
+// db/mmff_vector/schema/013_polymorphic_dispatch_triggers.sql for the trigger
 // implementations.
 package entityrefs
 

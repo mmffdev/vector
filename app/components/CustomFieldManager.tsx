@@ -49,7 +49,7 @@ const FIELD_TYPES = [
 const NEEDS_OPTIONS = new Set<string>(["select", "multiselect", "radio"]);
 
 // Map the parent page's itemType key to the artefact_type prefix seeded in the
-// vector_artefacts schema (see db/artefacts_schema/010_seed_system_artefact_types.sql
+// vector_artefacts schema (see db/vector_artefacts/schema/010_seed_system_artefact_types.sql
 // and 027_seed_defect_field_library.sql).
 const ITEM_TYPE_TO_PREFIX: Record<string, string> = {
   epic:   "EP",

@@ -15,7 +15,7 @@ import (
 
 // Releases tests cover the cross-DB list/ack workflow against the live
 // dev cluster. Skip on unreachable — same discipline as fetch_test.go
-// and grants_test.go. The seed at db/library_schema/seed/002_test_release.sql
+// and grants_test.go. The seed at db/mmff_library/schema/seed/002_test_release.sql
 // supplies a single info-severity release; tests use that fixed UUID.
 const (
 	seededReleaseID = "00000000-0000-0000-0000-00000000ad01"

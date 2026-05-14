@@ -16,7 +16,7 @@ package permissions
 
 // sqlListPermissionCodes returns the full set of permission codes from
 // the DB-side catalogue. Used at server boot by VerifyParity to detect
-// drift between the SQL seed (db/schema/088_roles_permissions.sql + any
+// drift between the SQL seed (db/mmff_vector/schema/088_roles_permissions.sql + any
 // extension migrations) and the Go-side `All` slice in catalogue.go.
 // A mismatch is fatal — main() refuses to start.
 const sqlListPermissionCodes = `SELECT code FROM permissions`

@@ -11,7 +11,7 @@
 // authz read it back via FromContext to make per-transport decisions
 // without tight coupling to chi mount paths.
 //
-// The string values match db/schema/143_audit_log_source_transport.sql
+// The string values match db/mmff_vector/schema/143_audit_log_source_transport.sql
 // CHECK constraint and the lint:public-dto-mapper exemption ledger.
 package transport
 

@@ -15,7 +15,7 @@ import (
 )
 
 // TestLibraryGrantMatrix asserts that the live mmff_library role grants
-// exactly match the canonical map in db/library_schema/005_grants.sql +
+// exactly match the canonical map in db/mmff_library/schema/005_grants.sql +
 // 007_grants_release_channel.sql (and plan §9 + §12). Drift in either
 // direction — extra privileges OR missing privileges — fails this test.
 //

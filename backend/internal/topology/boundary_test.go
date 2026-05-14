@@ -22,7 +22,7 @@ import (
 //
 // Mirrors the addressables boundary test (see
 // backend/internal/addressables/boundary_test.go) — same mechanism,
-// different tables. SQL migrations under db/artefacts_schema/ are
+// different tables. SQL migrations under db/vector_artefacts/schema/ are
 // exempt because the rg invocation scopes to .go files.
 func TestPackageBoundary(t *testing.T) {
 	repoRoot, err := filepath.Abs("../../..")

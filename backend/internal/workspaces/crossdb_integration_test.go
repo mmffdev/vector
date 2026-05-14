@@ -74,7 +74,7 @@ func TestCheckCrossDBOrphans_RandomWorkspaceHasNoOrphans(t *testing.T) {
 // "master_record_portfolio" with count=1, then cleans up. We pick
 // master_record_portfolio because it has the smallest required-cols
 // surface (workspace_id PK + model_name) — see
-// db/artefacts_schema/020_master_record_portfolio.sql.
+// db/vector_artefacts/schema/020_master_record_portfolio.sql.
 func TestCheckCrossDBOrphans_DetectsInsertedRow(t *testing.T) {
 	va := vaPoolForTest(t)
 	defer va.Close()

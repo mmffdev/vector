@@ -136,14 +136,16 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 > Commit `5f69241` (2026-05-14): refactor(PLA-0048 / RF1.2.19): consolidate artefactitemsv2 SQL into sql.go [RF1.2.19]
 - **RF1.2.20** `portfoliomodels` — 51 SQL strings, 3 DBs. **Hardest. Last.** `[P1]` ✅ done 2026-05-14 — ~50 named consts across 8 files: service surface (workspace/membership/layer list+patch), adoption_state LEFT-JOIN computed state, adopt.go full saga (resolveWorkspaceID + state machine: insert pending / archive completed / archive stale failed / reset failed→in_progress / mark completed / mark failed / append error event), adopt_strategy_types two-phase topo insert (Phase-1 ON CONFLICT + Phase-2 parent update), adopt_flows (default flow per layer + flow_states ON CONFLICT + flow_transitions; libMap/defaultFlowMap/flowStateFlowMap loaders), adopt_readopt placeholder pattern (upsert placeholder type+artefact / repoint orphans / delete old strategy artefacts / archive old strategy types), adopt_work_types system→tenant copy (Phase-1 ON CONFLICT + Phase-2 parent update + system/tenant prefix loaders), dev_reset (16 ops across VA + mmff_vector). Allow-list shrunk 18 → 10.
 > **RF1.2 Phase 2 COMPLETE — 11 packages migrated this session; allow-list now contains only 10 files (apikeys×2, artefacttypes, audit, custompages, entityrefs, ranking×2, search, usertaborder) reserved for later phases.**
+> Commit `6487dff` (2026-05-14): refactor(PLA-0048 / RF1.2.20): consolidate portfoliomodels SQL into sql.go [RF1.2.20]
 
 ### RF1.3 Phase 3 — Per-DB migration directories
 
-- **RF1.3.1** `git mv db/schema/` → `db/mmff_vector/schema/`. `[P1]`
-- **RF1.3.2** `git mv db/artefacts_schema/` → `db/vector_artefacts/schema/`. `[P1]`
-- **RF1.3.3** `git mv db/library_schema/` → `db/mmff_library/schema/`. `[P1]`
-- **RF1.3.4** Update `backend/cmd/migrate/main.go`, `c_db-backup.md`, `backup-on-push.sh`, any tooling that walks `db/`. `[P1]`
-- **RF1.3.5** Stop gate: `go run ./cmd/migrate -dry-run -db <each>` reports zero pending. `[P1]`
+- **RF1.3.1** `git mv db/schema/` → `db/mmff_vector/schema/`. `[P1]` ✅ done 2026-05-14 — flat dir moved under per-DB root.
+- **RF1.3.2** `git mv db/artefacts_schema/` → `db/vector_artefacts/schema/`. `[P1]` ✅ done 2026-05-14.
+- **RF1.3.3** `git mv db/library_schema/` → `db/mmff_library/schema/`. `[P1]` ✅ done 2026-05-14.
+- **RF1.3.4** Update `backend/cmd/migrate/main.go`, `c_db-backup.md`, `backup-on-push.sh`, any tooling that walks `db/`. `[P1]` ✅ done 2026-05-14 — migrate runner main.go (3 dir paths + package doc comments), backend/Makefile test-db-reset target (2 refs), apply-phase3.sh (SCRIPT_DIR REPO_ROOT depth + VECTOR_SQL_DIR), lint_writer_boundary.py docstring, plus ~25 Go file comment refs across catalogue.go/sql.go/listener.go/transport.go/handler.go/grants_test.go/releases_test.go/dispatch_triggers_test.go/topology boundary_test.go/permissions catalogue+test/nav catalog/entityrefs service/realtime listener/transport/portfoliomodels (adopt+adopt_stream+adopt_work_types+sql+dev_reset+cross_db_canary_test+scope_resolver_matrix_test+list_test)/workspaces crossdb_test/cmd/server main.go/CustomFieldManager.tsx — and ops docs (c_postgresql.md, c_postgresql_migrations.md, c_bash_postgres.md, c_lint_rules.md, c_schema.md, c_deployment.md) + memory files (project_db_migrations, MEMORY index, feedback_push_often).
+- **RF1.3.5** Stop gate: `go run ./cmd/migrate -dry-run -db <each>` reports zero pending. `[P1]` ✅ done 2026-05-14 — all three DBs (`vector`, `library`, `vector_artefacts`) report "up to date — no pending migrations" against dev cluster on tunnel `:5435`.
+> **RF1.3 Phase 3 COMPLETE — three per-DB roots now live (`db/mmff_vector/schema/`, `db/mmff_library/schema/`, `db/vector_artefacts/schema/`); migrate runner reads from them; all code and doc refs updated; dry-run gate green.**
 
 ### RF1.4 Phase 4 — Naming-convention sweep, one rename at a time
 

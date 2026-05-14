@@ -13,7 +13,7 @@
 //     this is treated as the caller's bug, not an internal failure.
 //   - context is optional and free-form JSON object. We pass it through
 //     to the JSONB column as-is. Hard size cap (4 KiB encoded) matches
-//     the column comment in db/schema/028_error_events.sql so a single
+//     the column comment in db/mmff_vector/schema/028_error_events.sql so a single
 //     misbehaving caller cannot bloat the table.
 //
 // All DB I/O lives in errorsreport.Service (service.go); this handler
@@ -35,7 +35,7 @@ import (
 
 // MaxContextBytes caps the encoded JSON size of the context payload.
 // Matches the "< ~4 KB" guidance documented on error_events.context in
-// db/schema/028_error_events.sql.
+// db/mmff_vector/schema/028_error_events.sql.
 const MaxContextBytes = 4096
 
 // Handler is the chi-mountable HTTP surface; all DB access is delegated

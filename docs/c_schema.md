@@ -23,7 +23,7 @@ This is the canonical map of every table in `mmff_vector`. Read here first inste
 
 ## `vector_artefacts` database (PoC cutover target)
 
-Migration files at `db/artefacts_schema/NNN_*.sql`; runner: `go run ./backend/cmd/migrate -db vector_artefacts`.
+Migration files at `db/vector_artefacts/schema/NNN_*.sql`; runner: `go run ./backend/cmd/migrate -db vector_artefacts`.
 
 | Table | Purpose |
 |---|---|
@@ -72,7 +72,7 @@ Migration files at `db/artefacts_schema/NNN_*.sql`; runner: `go run ./backend/cm
 
 Still live (intentionally): `o_search_index_outbox` (active worker queue), `o_artefact_visibility_levels` (FK target), `canonical_states` (FK target of `obj_flow_*`).
 
-> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `error_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/library_schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
+> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/mmff_library/schema/NNN_*.sql`; the MMFF seed bundle is at `db/mmff_library/schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `error_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/mmff_library/schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
 If you find drift, re-run the snapshot at the bottom of this file and update.
 
@@ -82,7 +82,7 @@ If you find drift, re-run the snapshot at the bottom of this file and update.
 - **Database:** `mmff_vector`.
 - **App role:** `mmff_dev`. Password in `backend/.env.dev` (`DB_PASSWORD`).
 - **Local access:** SSH tunnel `localhost:5435` → server `:5432` (dev env; see active marker in [`/.claude/CLAUDE.md`](../.claude/CLAUDE.md)). See [c_postgresql.md](c_postgresql.md).
-- **Schema migrations:** `db/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; … COMMIT;`.
+- **Schema migrations:** `db/mmff_vector/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; … COMMIT;`.
 
 ## Invariants that span tables
 

@@ -23,13 +23,13 @@ set -euo pipefail
 
 # --- locate repo paths ------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # Prefer .env.dev (canonical), fall back to .env.local.
 ENV_FILE="${REPO_ROOT}/backend/.env.dev"
 [[ -f "${ENV_FILE}" ]] || ENV_FILE="${REPO_ROOT}/backend/.env.local"
 LIB_SQL_DIR="${SCRIPT_DIR}"
 LIB_SEED_DIR="${SCRIPT_DIR}/seed"
-VECTOR_SQL_DIR="${REPO_ROOT}/db/schema"
+VECTOR_SQL_DIR="${REPO_ROOT}/db/mmff_vector/schema"
 
 # Single source of truth for the dev tunnel port. Sets DEV_DB_PORT and
 # DEV_DB_PORT_SOURCE.

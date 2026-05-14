@@ -1,6 +1,6 @@
 // Package nav holds the sidebar navigation catalogue and per-user prefs.
 //
-// The catalogue itself lives in the DB (see db/schema/009_page_registry.sql)
+// The catalogue itself lives in the DB (see db/mmff_vector/schema/009_page_registry.sql)
 // and is loaded into a Registry at startup. Lookups during request handling
 // go through a *Registry snapshot — not package-level globals.
 package nav

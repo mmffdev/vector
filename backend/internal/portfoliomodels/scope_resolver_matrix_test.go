@@ -139,7 +139,7 @@ func TestScopeResolver_AdmitDenyMatrix(t *testing.T) {
 	t.Logf("surface-shape: portfoliomodels exposes NO Go-level scope " +
 		"resolver. There is no ResolveField / CanRead / CanWrite / " +
 		"ScopeResolver in this package today. Admission lives in the " +
-		"artefact_types.scope CHECK (db/artefacts_schema/003) and is " +
+		"artefact_types.scope CHECK (db/vector_artefacts/schema/003) and is " +
 		"locked-in by writeWorkArtefactTypes / writeStrategyArtefactTypes.")
 	t.Logf("surface-shape: no resolver in this package takes an identity " +
 		"argument today. workspace owner / member / anonymous distinctions " +

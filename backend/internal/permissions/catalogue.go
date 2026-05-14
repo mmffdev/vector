@@ -1,6 +1,6 @@
 // Package permissions is the Go-side catalogue of RBAC permission codes.
 //
-// The DB-side seed lives in db/schema/088_roles_permissions.sql. Both sides
+// The DB-side seed lives in db/mmff_vector/schema/088_roles_permissions.sql. Both sides
 // are kept in sync by VerifyParity (called from server boot): if the DB
 // catalogue and the constants below diverge, the server refuses to start.
 package permissions
@@ -19,7 +19,7 @@ type Code string
 
 func (c Code) String() string { return string(c) }
 
-// Permission code constants — must match db/schema/088_roles_permissions.sql
+// Permission code constants — must match db/mmff_vector/schema/088_roles_permissions.sql
 // and any extension migrations (e.g. 100, 104).
 //
 // Categories follow the seed catalogue:
@@ -189,7 +189,7 @@ func VerifyParity(ctx context.Context, pool *pgxpool.Pool) error {
 	sort.Strings(missingInGo)
 	return fmt.Errorf(
 		"permissions catalogue drift: missing-in-DB=%v missing-in-Go=%v "+
-			"(sync db/schema/088_roles_permissions.sql with internal/permissions/catalogue.go)",
+			"(sync db/mmff_vector/schema/088_roles_permissions.sql with internal/permissions/catalogue.go)",
 		missingInDB, missingInGo,
 	)
 }

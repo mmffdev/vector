@@ -66,7 +66,7 @@ import (
 )
 
 // Adoption error codes — must match the seed in
-// `db/library_schema/008_error_codes.sql`. Validation that each code is
+// `db/mmff_library/schema/008_error_codes.sql`. Validation that each code is
 // present in `mmff_library.error_codes` is the job of
 // `errorsreport.codeExists`; here we only enforce spelling against the
 // seed by hand-typing the constants.
@@ -708,7 +708,7 @@ func (o *Orchestrator) appendErrorEvent(
 }
 
 // mirrorErrCode picks the right ADOPT_* code for a given step. The seed
-// in `db/library_schema/008_error_codes.sql` only ships
+// in `db/mmff_library/schema/008_error_codes.sql` only ships
 // ADOPT_STEP_FAIL_LAYERS today; other mirror failures collapse onto
 // ADOPT_INTERNAL until per-step codes are added to the seed.
 func mirrorErrCode(stepName string) string {

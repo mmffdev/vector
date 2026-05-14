@@ -370,7 +370,7 @@ func writeTerminator(w http.ResponseWriter, flusher http.Flusher, res *AdoptionR
 // stepErrorCode picks the ADOPT_* code for a step-level failure.
 // Mirrors the orchestrator's mirrorErrCode for mirror steps; the rest
 // (validate / finalize / sim-injected) collapse onto ADOPT_INTERNAL
-// per the seed in db/library_schema/008_error_codes.sql.
+// per the seed in db/mmff_library/schema/008_error_codes.sql.
 func stepErrorCode(stepName string, stepErr error) string {
 	// Sentinel: bundle-not-found surfaced from validate.
 	var aerr adoptionError

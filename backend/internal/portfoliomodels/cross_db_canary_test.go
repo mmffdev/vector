@@ -18,7 +18,7 @@ import (
 // Postgres cannot enforce foreign keys across databases. Every
 // `vector_artefacts.<table>.workspace_id` is a SOFT reference to
 // `mmff_vector.master_record_workspaces.id`; the application layer is supposed to validate
-// before insert (see db/artefacts_schema/001_init_vector_artefacts.sql top
+// before insert (see db/vector_artefacts/schema/001_init_vector_artefacts.sql top
 // comment). This test stands in for the missing FK by ASSERTING that no live
 // (un-archived) row in any VA table carries a workspace_id that is absent
 // from mmff_vector.workspaces.
@@ -41,7 +41,7 @@ import (
 //   master_record_portfolio
 //
 // Note: sprints (013) was replaced by timebox_sprints in migration 025
-// (db/artefacts_schema/025_timebox_sprints.sql). Add timebox_sprints to
+// (db/vector_artefacts/schema/025_timebox_sprints.sql). Add timebox_sprints to
 // vaCanaryTables once 025 is applied to the dev DB.
 //
 // Detection rule: `archived_at IS NULL` is filtered out for tables that have

@@ -3,7 +3,7 @@
 > Parent: [c_postgresql.md](c_postgresql.md)
 > Last verified: 2026-05-04
 
-Every migration lives at `db/schema/NNN_name.sql`. Each file already wraps its DDL in `BEGIN; … COMMIT;` — no extra transaction wrapping needed.
+Every migration lives at `db/mmff_vector/schema/NNN_name.sql`. Each file already wraps its DDL in `BEGIN; … COMMIT;` — no extra transaction wrapping needed.
 
 The preferred apply path is the Go runner at `backend/cmd/migrate/main.go`, which records every applied file in a `schema_migrations` table and skips ones already there. The raw `psql -f` patterns below are for one-offs (e.g. running a DOWN script, or applying on the server with no Go toolchain available).
 
@@ -17,7 +17,7 @@ cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" \
 
 Flags: `-db vector|library|both`, `-env <path>`, `-dry-run`.
 
-The runner reads the **top level** of `db/schema/` and `db/schema/library_schema/` only — subdirectories like `db/schema/down/` are intentionally skipped (see Rollback below).
+The runner reads the **top level** of `db/mmff_vector/schema/`, `db/mmff_library/schema/`, and `db/vector_artefacts/schema/` only — subdirectories like `db/mmff_vector/schema/down/` are intentionally skipped (see Rollback below).
 
 ## Apply pattern (from the laptop, via the tunnel)
 
@@ -27,7 +27,7 @@ cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" \
   && PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
        -h localhost -p 5434 -U mmff_dev -d mmff_vector \
        -v ON_ERROR_STOP=1 \
-       -f db/schema/00N_name.sql
+       -f db/mmff_vector/schema/00N_name.sql
 ```
 
 `ON_ERROR_STOP=1` is non-negotiable — without it, a failing statement mid-file leaves the DB in a partial state.
@@ -37,7 +37,7 @@ cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector" \
 ```bash
 ssh mmffdev-admin 'docker exec -i mmff-ops-postgres \
   psql -U mmff_dev -d mmff_vector -v ON_ERROR_STOP=1' \
-  < db/schema/00N_name.sql
+  < db/mmff_vector/schema/00N_name.sql
 ```
 
 This avoids the tunnel entirely — useful when the server can reach its own Postgres but the laptop is offline.
@@ -74,20 +74,20 @@ PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
 
 **Primary strategy: restore from the pre-apply `<backupsql>` dump.** Data volume is small enough that a full restore is faster (and safer) than maintaining bidirectional migration pairs. Run `<backupsql>` *before* every apply so this option is always available.
 
-**Optional convenience: DOWN scripts in `db/schema/down/`.** When a migration is cleanly reversible (e.g. drop a column added in the UP, drop a table that holds no data yet), you may also commit a sibling rollback file:
+**Optional convenience: DOWN scripts in `db/mmff_vector/schema/down/`.** When a migration is cleanly reversible (e.g. drop a column added in the UP, drop a table that holds no data yet), you may also commit a sibling rollback file:
 
 ```
-db/schema/NNN_name.sql            ← forward migration (auto-applied)
-db/schema/down/NNN_name_DOWN.sql  ← rollback (NEVER auto-applied)
+db/mmff_vector/schema/NNN_name.sql            ← forward migration (auto-applied)
+db/mmff_vector/schema/down/NNN_name_DOWN.sql  ← rollback (NEVER auto-applied)
 ```
 
-The runner's `sqlFiles()` reads only the top level of `db/schema/`, so anything under `down/` is skipped by design — DOWN scripts cannot be picked up as forward migrations. To run one, invoke `psql` directly:
+The runner's `sqlFiles()` reads only the top level of `db/mmff_vector/schema/`, so anything under `down/` is skipped by design — DOWN scripts cannot be picked up as forward migrations. To run one, invoke `psql` directly:
 
 ```bash
 PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
   -h localhost -p 5434 -U mmff_dev -d mmff_vector \
   -v ON_ERROR_STOP=1 \
-  -f db/schema/down/NNN_name_DOWN.sql
+  -f db/mmff_vector/schema/down/NNN_name_DOWN.sql
 ```
 
 After running a DOWN, delete the matching row from `schema_migrations` so the runner will re-apply the forward migration on the next run:
@@ -106,7 +106,7 @@ Run in number order — the runner sorts files lexicographically. When adding a 
 2. Wrap in `BEGIN; … COMMIT;`.
 3. Document it in the matching [c_c_schema_*.md](c_schema.md) leaf.
 4. Run `<backupsql>` before applying.
-5. (Optional) drop a sibling `db/schema/down/NNN_name_DOWN.sql` if cleanly reversible.
+5. (Optional) drop a sibling `db/mmff_vector/schema/down/NNN_name_DOWN.sql` if cleanly reversible.
 
 ## Numbering gaps
 
@@ -114,4 +114,4 @@ The Vector schema sequence has one intentional gap. It is not a deleted file, no
 
 | Slot | Status | Reason |
 |---|---|---|
-| `db/schema/027_*.sql` | reserved → unused | Slots 026 and 027 were both reserved during parallel development for a `mmff_library` migration that was eventually authored against `db/library_schema/` instead. The leading comment of [`db/schema/028_error_events.sql:4`](../db/schema/028_error_events.sql) records this: *"slots 026/027 reserved by parallel mmff_library work"*. The runner sorts lexicographically and skips missing numbers cleanly, so the gap is a no-op for `schema_migrations`. **Do not** renumber 028+ to close the gap — every applied filename is already recorded in `schema_migrations` on every cluster, and renaming would break idempotency. |
+| `db/mmff_vector/schema/027_*.sql` | reserved → unused | Slots 026 and 027 were both reserved during parallel development for a `mmff_library` migration that was eventually authored against `db/library_schema/` instead. The leading comment of [`db/mmff_vector/schema/028_error_events.sql:4`](../db/mmff_vector/schema/028_error_events.sql) records this: *"slots 026/027 reserved by parallel mmff_library work"*. The runner sorts lexicographically and skips missing numbers cleanly, so the gap is a no-op for `schema_migrations`. **Do not** renumber 028+ to close the gap — every applied filename is already recorded in `schema_migrations` on every cluster, and renaming would break idempotency. |

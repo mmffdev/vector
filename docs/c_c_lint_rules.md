@@ -78,7 +78,7 @@ Scans every `*.go` under `backend/` (excluding `*_test.go` and `vendor/`) for `I
 | `role_permissions` | `backend/internal/roles/` |
 | `page_addressables` | `backend/internal/addressables/` |
 
-Migration SQL files (`db/schema/*.sql`) are not scanned — migrations are the privileged bootstrap path.
+Migration SQL files (`db/<dbname>/schema/*.sql`) are not scanned — migrations are the privileged bootstrap path.
 
 **Adding a new sole-writer boundary:** edit `WRITER_BOUNDARY` in `dev/scripts/lint_writer_boundary.py` and add the new `<table> → <package>` row.
 
