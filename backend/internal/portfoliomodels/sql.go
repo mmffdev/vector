@@ -35,34 +35,34 @@ const sqlExistsActiveWorkspaceMembership = `
 // sqlListWorkspaceStrategyArtefactTypes returns the live strategy
 // artefacts_types for a workspace, ordered parent-first.
 const sqlListWorkspaceStrategyArtefactTypes = `
-		SELECT id, workspace_id,
-		       library_layer_id,
-		       name, prefix, sort_order,
-		       parent_type_id,
-		       description, allows_children,
-		       is_placeholder,
-		       archived_at, created_at, updated_at
+		SELECT artefacts_types_id, artefacts_types_id_workspace,
+		       artefacts_types_id_library_layer,
+		       artefacts_types_name, artefacts_types_prefix, artefacts_types_sort_order,
+		       artefacts_types_id_parent_type,
+		       artefacts_types_description, artefacts_types_allows_children,
+		       artefacts_types_is_placeholder,
+		       artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
 		  FROM artefacts_types
-		 WHERE workspace_id = $1
-		   AND scope         = 'strategy'
-		   AND archived_at  IS NULL
-		 ORDER BY (parent_type_id IS NOT NULL),
-		          sort_order,
-		          name
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope         = 'strategy'
+		   AND artefacts_types_archived_at  IS NULL
+		 ORDER BY (artefacts_types_id_parent_type IS NOT NULL),
+		          artefacts_types_sort_order,
+		          artefacts_types_name
 	`
 
 // sqlPatchWorkspaceStrategyArtefactType updates one strategy artefact_type
 // scoped to its workspace.
 const sqlPatchWorkspaceStrategyArtefactType = `
 		UPDATE artefacts_types
-		   SET name        = $1,
-		       prefix      = $2,
-		       sort_order  = $3,
-		       description = $4
-		 WHERE id           = $5
-		   AND workspace_id = $6
-		   AND scope        = 'strategy'
-		   AND archived_at IS NULL
+		   SET artefacts_types_name        = $1,
+		       artefacts_types_prefix      = $2,
+		       artefacts_types_sort_order  = $3,
+		       artefacts_types_description = $4
+		 WHERE artefacts_types_id           = $5
+		   AND artefacts_types_id_workspace = $6
+		   AND artefacts_types_scope        = 'strategy'
+		   AND artefacts_types_archived_at IS NULL
 	`
 
 // ── adoption_state.go ──────────────────────────────────────────────────────
@@ -87,9 +87,9 @@ const sqlSelectAdoptionStateForWorkspace = `
 			EXISTS (
 				SELECT 1
 				  FROM artefacts_types at
-				 WHERE at.workspace_id = $1
-				   AND at.scope = 'strategy'
-				   AND at.archived_at IS NULL
+				 WHERE at.artefacts_types_id_workspace = $1
+				   AND at.artefacts_types_scope = 'strategy'
+				   AND at.artefacts_types_archived_at IS NULL
 			) AS has_strategy_type,
 			mrp.master_record_portfolios_id_library_portfolio_model,
 			mrp.master_record_portfolios_adopted_at,
@@ -191,11 +191,11 @@ const sqlInsertErrorEvent = `
 // sqlInsertStrategyArtefactType — Phase 1 of B3 (parent_type_id=NULL).
 const sqlInsertStrategyArtefactType = `
 		INSERT INTO artefacts_types (
-			subscription_id, workspace_id,
-			scope, source,
-			name, prefix, description,
-			parent_type_id, allows_children, sort_order,
-			library_layer_id, library_layer_tag
+			artefacts_types_id_subscription, artefacts_types_id_workspace,
+			artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
 			'strategy', 'tenant',
@@ -203,30 +203,30 @@ const sqlInsertStrategyArtefactType = `
 			NULL, $6, $7,
 			$8, $9
 		)
-		ON CONFLICT (workspace_id, scope, prefix)
-			WHERE archived_at IS NULL
+		ON CONFLICT (artefacts_types_id_workspace, artefacts_types_scope, artefacts_types_prefix)
+			WHERE artefacts_types_archived_at IS NULL
 			DO NOTHING
 	`
 
 // sqlUpdateStrategyArtefactTypeParent — Phase 2 of B3 (set parent_type_id).
 const sqlUpdateStrategyArtefactTypeParent = `
 		UPDATE artefacts_types
-		   SET parent_type_id = $1
-		 WHERE id = $2
-		   AND workspace_id = $3
-		   AND scope = 'strategy'
-		   AND archived_at IS NULL
+		   SET artefacts_types_id_parent_type = $1
+		 WHERE artefacts_types_id = $2
+		   AND artefacts_types_id_workspace = $3
+		   AND artefacts_types_scope = 'strategy'
+		   AND artefacts_types_archived_at IS NULL
 	`
 
 // sqlSelectStrategyArtefactTypeMap returns library_layer_id → id for
 // every live strategy artefact_type in this workspace.
 const sqlSelectStrategyArtefactTypeMap = `
-		SELECT library_layer_id, id
+		SELECT artefacts_types_id_library_layer, artefacts_types_id
 		  FROM artefacts_types
-		 WHERE workspace_id = $1
-		   AND scope = 'strategy'
-		   AND archived_at IS NULL
-		   AND library_layer_id IS NOT NULL
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope = 'strategy'
+		   AND artefacts_types_archived_at IS NULL
+		   AND artefacts_types_id_library_layer IS NOT NULL
 	`
 
 // ── adopt_flows.go (B4) ────────────────────────────────────────────────────
@@ -270,10 +270,10 @@ const sqlSelectFlowStateLibMap = `
 		SELECT fs.flows_states_id_library_workflow, fs.flows_states_id
 		  FROM flows_states fs
 		  JOIN flows f          ON f.flows_id = fs.flows_states_id_flow
-		  JOIN artefacts_types t ON t.id = f.flows_id_artefact_type
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND t.artefacts_types_scope = 'strategy'
+		   AND t.artefacts_types_archived_at IS NULL
 		   AND f.flows_archived_at IS NULL
 		   AND fs.flows_states_archived_at IS NULL
 		   AND fs.flows_states_id_library_workflow IS NOT NULL
@@ -282,10 +282,10 @@ const sqlSelectFlowStateLibMap = `
 const sqlSelectDefaultFlowMap = `
 		SELECT f.flows_id_artefact_type, f.flows_id
 		  FROM flows f
-		  JOIN artefacts_types t ON t.id = f.flows_id_artefact_type
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND t.artefacts_types_scope = 'strategy'
+		   AND t.artefacts_types_archived_at IS NULL
 		   AND f.flows_archived_at IS NULL
 		   AND f.flows_is_default = TRUE
 	`
@@ -294,10 +294,10 @@ const sqlSelectFlowStateFlowMap = `
 		SELECT fs.flows_states_id, fs.flows_states_id_flow
 		  FROM flows_states fs
 		  JOIN flows f          ON f.flows_id = fs.flows_states_id_flow
-		  JOIN artefacts_types t ON t.id = f.flows_id_artefact_type
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND t.artefacts_types_scope = 'strategy'
+		   AND t.artefacts_types_archived_at IS NULL
 		   AND f.flows_archived_at IS NULL
 		   AND fs.flows_states_archived_at IS NULL
 	`
@@ -306,12 +306,12 @@ const sqlSelectFlowStateFlowMap = `
 
 const sqlUpsertReadoptPlaceholderType = `
 		INSERT INTO artefacts_types (
-			subscription_id, workspace_id,
-			scope, source,
-			name, prefix, description,
-			parent_type_id, allows_children, sort_order,
-			library_layer_id, library_layer_tag,
-			is_placeholder
+			artefacts_types_id_subscription, artefacts_types_id_workspace,
+			artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_id_library_layer, artefacts_types_library_layer_tag,
+			artefacts_types_is_placeholder
 		) VALUES (
 			$1, $2,
 			'strategy', 'tenant',
@@ -321,9 +321,9 @@ const sqlUpsertReadoptPlaceholderType = `
 			NULL, NULL,
 			TRUE
 		)
-		ON CONFLICT (workspace_id) WHERE is_placeholder = TRUE AND archived_at IS NULL
-			DO UPDATE SET updated_at = now()
-		RETURNING id
+		ON CONFLICT (artefacts_types_id_workspace) WHERE artefacts_types_is_placeholder = TRUE AND artefacts_types_archived_at IS NULL
+			DO UPDATE SET artefacts_types_updated_at = now()
+		RETURNING artefacts_types_id
 	`
 
 const sqlUpsertReadoptPlaceholderArtefact = `
@@ -355,44 +355,44 @@ const sqlRepointOrphanWorkArtefactsToPlaceholder = `
 		   SET parent_artefact_id = $1,
 		       updated_at = now()
 		  FROM artefacts AS p
-		  JOIN artefacts_types AS pt ON pt.id = p.artefact_type_id
+		  JOIN artefacts_types AS pt ON pt.artefacts_types_id = p.artefact_type_id
 		 WHERE a.parent_artefact_id = p.id
 		   AND a.workspace_id = $2
 		   AND a.archived_at IS NULL
-		   AND pt.scope = 'strategy'
-		   AND pt.is_placeholder = FALSE
-		   AND pt.workspace_id = $2
+		   AND pt.artefacts_types_scope = 'strategy'
+		   AND pt.artefacts_types_is_placeholder = FALSE
+		   AND pt.artefacts_types_id_workspace = $2
 	`
 
 const sqlDeleteOldStrategyArtefacts = `
 		DELETE FROM artefacts AS a
 		 USING artefacts_types AS t
-		 WHERE a.artefact_type_id = t.id
+		 WHERE a.artefact_type_id = t.artefacts_types_id
 		   AND a.workspace_id = $1
-		   AND t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.is_placeholder = FALSE
+		   AND t.artefacts_types_id_workspace = $1
+		   AND t.artefacts_types_scope = 'strategy'
+		   AND t.artefacts_types_is_placeholder = FALSE
 	`
 
 const sqlArchiveOldStrategyArtefactTypes = `
 		UPDATE artefacts_types
-		   SET archived_at = now(),
-		       updated_at  = now()
-		 WHERE workspace_id = $1
-		   AND scope = 'strategy'
-		   AND is_placeholder = FALSE
-		   AND archived_at IS NULL
+		   SET artefacts_types_archived_at = now(),
+		       artefacts_types_updated_at  = now()
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope = 'strategy'
+		   AND artefacts_types_is_placeholder = FALSE
+		   AND artefacts_types_archived_at IS NULL
 	`
 
 // ── adopt_work_types.go (B5) ───────────────────────────────────────────────
 
 const sqlInsertWorkArtefactTypeFromSystem = `
 		INSERT INTO artefacts_types (
-			subscription_id, workspace_id,
-			scope, source,
-			name, prefix, description,
-			parent_type_id, allows_children, sort_order,
-			library_layer_id, library_layer_tag
+			artefacts_types_id_subscription, artefacts_types_id_workspace,
+			artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
 			'work', 'tenant',
@@ -400,38 +400,38 @@ const sqlInsertWorkArtefactTypeFromSystem = `
 			NULL, $6, $7,
 			NULL, NULL
 		)
-		ON CONFLICT (workspace_id, scope, prefix)
-			WHERE archived_at IS NULL
+		ON CONFLICT (artefacts_types_id_workspace, artefacts_types_scope, artefacts_types_prefix)
+			WHERE artefacts_types_archived_at IS NULL
 			DO NOTHING
 	`
 
 const sqlUpdateWorkArtefactTypeParent = `
 		UPDATE artefacts_types
-		   SET parent_type_id = $1
-		 WHERE id = $2
-		   AND workspace_id = $3
-		   AND scope = 'work'
-		   AND archived_at IS NULL
+		   SET artefacts_types_id_parent_type = $1
+		 WHERE artefacts_types_id = $2
+		   AND artefacts_types_id_workspace = $3
+		   AND artefacts_types_scope = 'work'
+		   AND artefacts_types_archived_at IS NULL
 	`
 
 const sqlSelectSystemWorkTypes = `
-		SELECT id, parent_type_id, name, prefix, description,
-		       allows_children, sort_order
+		SELECT artefacts_types_id, artefacts_types_id_parent_type, artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+		       artefacts_types_allows_children, artefacts_types_sort_order
 		  FROM artefacts_types
-		 WHERE subscription_id = $1
-		   AND scope  = 'work'
-		   AND source = 'system'
-		   AND archived_at IS NULL
-		 ORDER BY sort_order, name
+		 WHERE artefacts_types_id_subscription = $1
+		   AND artefacts_types_scope  = 'work'
+		   AND artefacts_types_source = 'system'
+		   AND artefacts_types_archived_at IS NULL
+		 ORDER BY artefacts_types_sort_order, artefacts_types_name
 	`
 
 const sqlSelectWorkTenantPrefixMap = `
-		SELECT prefix, id
+		SELECT artefacts_types_prefix, artefacts_types_id
 		  FROM artefacts_types
-		 WHERE workspace_id = $1
-		   AND scope  = 'work'
-		   AND source = 'tenant'
-		   AND archived_at IS NULL
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope  = 'work'
+		   AND artefacts_types_source = 'tenant'
+		   AND artefacts_types_archived_at IS NULL
 	`
 
 // ── dev_reset.go ───────────────────────────────────────────────────────────
@@ -444,7 +444,7 @@ const sqlDeleteAllArtefactsForSubscription = `DELETE FROM artefacts WHERE subscr
 
 const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefacts_number_sequences WHERE subscription_id = $1`
 
-const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefacts_types WHERE subscription_id = $1 AND source = 'tenant'`
+const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefacts_types WHERE artefacts_types_id_subscription = $1 AND artefacts_types_source = 'tenant'`
 
 const sqlDeleteAllTimeboxSprintsForSubscription = `DELETE FROM timeboxes_sprints WHERE timeboxes_sprints_id_subscription = $1`
 

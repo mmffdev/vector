@@ -26,8 +26,8 @@ const sqlListFlowsByScope = `
 		    f.flows_name         AS flow_name,
 		    f.flows_is_default,
 		    f.flows_id_artefact_type,
-		    at.name        AS type_name,
-		    at.scope       AS type_scope,
+		    at.artefacts_types_name  AS type_name,
+		    at.artefacts_types_scope AS type_scope,
 		    fs.flows_states_id          AS state_id,
 		    fs.flows_states_name        AS state_name,
 		    fs.flows_states_kind        AS state_kind,
@@ -37,13 +37,13 @@ const sqlListFlowsByScope = `
 		    fs.flows_states_colour      AS state_colour,
 		    fs.flows_states_description AS state_description
 		FROM flows f
-		JOIN artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		JOIN flows_states    fs ON fs.flows_states_id_flow = f.flows_id AND fs.flows_states_archived_at IS NULL
-		WHERE at.subscription_id = $1
-		  AND at.scope = $2
-		  AND at.archived_at IS NULL
+		WHERE at.artefacts_types_id_subscription = $1
+		  AND at.artefacts_types_scope = $2
+		  AND at.artefacts_types_archived_at IS NULL
 		  AND f.flows_archived_at IS NULL
-		ORDER BY at.name, f.flows_is_default DESC, fs.flows_states_sort_order;
+		ORDER BY at.artefacts_types_name, f.flows_is_default DESC, fs.flows_states_sort_order;
 	`
 
 // sqlListExitRulesForStates fetches active exit rules for a batch of
@@ -82,11 +82,11 @@ const sqlPatchFlowState = `
 		       flows_states_is_pullable = COALESCE($8, fs.flows_states_is_pullable),
 		       flows_states_description = CASE WHEN $9::boolean THEN $10 ELSE fs.flows_states_description END
 		FROM   flows f
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  fs.flows_states_id      = $2
 		  AND  fs.flows_states_id_flow = f.flows_id
-		  AND  at.subscription_id = $3
-		  AND  at.archived_at IS NULL
+		  AND  at.artefacts_types_id_subscription = $3
+		  AND  at.artefacts_types_archived_at IS NULL
 		  AND  f.flows_archived_at  IS NULL
 		  AND  fs.flows_states_archived_at IS NULL
 		RETURNING fs.flows_states_id, fs.flows_states_name, fs.flows_states_kind, fs.flows_states_sort_order, fs.flows_states_is_initial, fs.flows_states_is_pullable, fs.flows_states_colour, fs.flows_states_description
@@ -100,12 +100,12 @@ const sqlExistsFlowStateInTenant = `
 			SELECT 1
 			FROM   flows_states fs
 			JOIN   flows f         ON f.flows_id = fs.flows_states_id_flow
-			JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+			JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 			WHERE  fs.flows_states_id = $1
-			  AND  at.subscription_id = $2
+			  AND  at.artefacts_types_id_subscription = $2
 			  AND  fs.flows_states_archived_at IS NULL
 			  AND  f.flows_archived_at  IS NULL
-			  AND  at.archived_at IS NULL
+			  AND  at.artefacts_types_archived_at IS NULL
 		)
 	`
 
@@ -129,12 +129,12 @@ const sqlInsertExitRuleAppend = `
 			SELECT fs.flows_states_id
 			FROM   flows_states fs
 			JOIN   flows f         ON f.flows_id = fs.flows_states_id_flow
-			JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+			JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 			WHERE  fs.flows_states_id = $1
-			  AND  at.subscription_id = $2
+			  AND  at.artefacts_types_id_subscription = $2
 			  AND  fs.flows_states_archived_at IS NULL
 			  AND  f.flows_archived_at  IS NULL
-			  AND  at.archived_at IS NULL
+			  AND  at.artefacts_types_archived_at IS NULL
 		),
 		next_order AS (
 			SELECT COALESCE(MAX(flows_states_exit_rules_sort_order), 0) + 10 AS so
@@ -158,14 +158,14 @@ const sqlPatchExitRule = `
 		       flows_states_exit_rules_colour     = CASE WHEN $3::boolean THEN $4 ELSE r.flows_states_exit_rules_colour END
 		FROM   flows_states fs
 		JOIN   flows f         ON f.flows_id = fs.flows_states_id_flow
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  r.flows_states_exit_rules_id            = $5
 		  AND  r.flows_states_exit_rules_id_flow_state = fs.flows_states_id
-		  AND  at.subscription_id = $6
+		  AND  at.artefacts_types_id_subscription = $6
 		  AND  r.flows_states_exit_rules_archived_at IS NULL
 		  AND  fs.flows_states_archived_at IS NULL
 		  AND  f.flows_archived_at  IS NULL
-		  AND  at.archived_at IS NULL
+		  AND  at.artefacts_types_archived_at IS NULL
 		RETURNING r.flows_states_exit_rules_id, r.flows_states_exit_rules_sort_order, r.flows_states_exit_rules_name, r.flows_states_exit_rules_colour
 	`
 
@@ -175,10 +175,10 @@ const sqlArchiveExitRule = `
 		SET    flows_states_exit_rules_archived_at = NOW()
 		FROM   flows_states fs
 		JOIN   flows f         ON f.flows_id = fs.flows_states_id_flow
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  r.flows_states_exit_rules_id            = $1
 		  AND  r.flows_states_exit_rules_id_flow_state = fs.flows_states_id
-		  AND  at.subscription_id = $2
+		  AND  at.artefacts_types_id_subscription = $2
 		  AND  r.flows_states_exit_rules_archived_at IS NULL
 	`
 
@@ -195,11 +195,11 @@ const sqlInsertFlowState = `
 		INSERT INTO flows_states (flows_states_id_flow, flows_states_name, flows_states_kind, flows_states_sort_order, flows_states_is_initial, flows_states_is_pullable)
 		SELECT f.flows_id, $3, $4, $5, $6, $7
 		FROM   flows f
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  f.flows_id = $1
-		  AND  at.subscription_id = $2
+		  AND  at.artefacts_types_id_subscription = $2
 		  AND  f.flows_archived_at IS NULL
-		  AND  at.archived_at IS NULL
+		  AND  at.artefacts_types_archived_at IS NULL
 		RETURNING flows_states_id, flows_states_name, flows_states_kind, flows_states_sort_order, flows_states_is_initial, flows_states_is_pullable, flows_states_colour, flows_states_description
 	`
 
@@ -208,10 +208,10 @@ const sqlArchiveFlowState = `
 		UPDATE flows_states fs
 		SET    flows_states_archived_at = NOW()
 		FROM   flows f
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  fs.flows_states_id = $1
 		  AND  fs.flows_states_id_flow = f.flows_id
-		  AND  at.subscription_id = $2
+		  AND  at.artefacts_types_id_subscription = $2
 		  AND  fs.flows_states_archived_at IS NULL
 	`
 
@@ -222,11 +222,11 @@ const sqlInsertTransition = `
 		INSERT INTO flows_transitions (flows_transitions_id_flow, flows_transitions_id_state_from, flows_transitions_id_state_to)
 		SELECT f.flows_id, $3, $4
 		FROM   flows f
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  f.flows_id = $1
-		  AND  at.subscription_id = $2
+		  AND  at.artefacts_types_id_subscription = $2
 		  AND  f.flows_archived_at IS NULL
-		  AND  at.archived_at IS NULL
+		  AND  at.artefacts_types_archived_at IS NULL
 		ON CONFLICT (flows_transitions_id_flow, flows_transitions_id_state_from, flows_transitions_id_state_to) DO NOTHING
 		RETURNING flows_transitions_id_state_from, flows_transitions_id_state_to
 	`
@@ -243,10 +243,10 @@ const sqlExistsTransition = `
 const sqlDeleteTransition = `
 		DELETE FROM flows_transitions ft
 		USING  flows f
-		JOIN   artefacts_types at ON at.id = f.flows_id_artefact_type
+		JOIN   artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		WHERE  ft.flows_transitions_id_flow      = f.flows_id
 		  AND  f.flows_id            = $1
-		  AND  at.subscription_id = $2
+		  AND  at.artefacts_types_id_subscription = $2
 		  AND  ft.flows_transitions_id_state_from   = $3
 		  AND  ft.flows_transitions_id_state_to     = $4
 	`
@@ -256,8 +256,8 @@ const sqlDeleteTransition = `
 // sqlSelectArtefactTypeNameInTenant gates the reset operation on the
 // caller's subscription and fetches the type name for the audit/UI.
 const sqlSelectArtefactTypeNameInTenant = `
-		SELECT name FROM artefacts_types
-		 WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+		SELECT artefacts_types_name FROM artefacts_types
+		 WHERE artefacts_types_id = $1 AND artefacts_types_id_subscription = $2 AND artefacts_types_archived_at IS NULL
 	`
 
 // sqlSelectDefaultFlowForArtefactType returns the live default flow

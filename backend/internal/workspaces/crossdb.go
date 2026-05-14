@@ -73,7 +73,7 @@ var vaWorkspaceTables = []struct {
 	workspaceIDCol string // varies per table after RF1.4.2 column-prefix.
 	archivedAtCol  string // empty when the table has no archived_at.
 }{
-	{"artefacts_types", "workspace_id", "archived_at"},
+	{"artefacts_types", "artefacts_types_id_workspace", "artefacts_types_archived_at"},
 	{"workspaces_fields", "workspace_id", ""}, // admit-row; lifetime = workspace
 	{"artefacts", "workspace_id", "archived_at"},
 	{"master_record_portfolios", "master_record_portfolios_id_workspace", ""}, // PK = workspace; renamed by RF1.4.2.master_record

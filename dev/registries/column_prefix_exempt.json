@@ -23,6 +23,7 @@
     "  workspaces:      14",
     "",
     "Pay-down log (newest first):",
+    "  2026-05-14 — mig 066 (VA) — artefacts_types fully prefixed (19 cols). portfoliomodels/sql.go + artefacttypes/service.go + artefactitems/sql.go + artefactitems/service.go + flows/sql.go + search/service.go + workspaces/crossdb.go all rewritten. portfoliomodels: 45→0. portfoliomodels package OFF ledger. 2 → 1.",
     "  2026-05-14 — mig 065 (VA) — flows family fully prefixed (7 tables: flows / flows_states / flows_transitions / flows_states_exit_rules / flows_defaults / flows_states_defaults / flows_transitions_defaults; ~50 cols + ~15 idx + ~12 FK + 3 check + 3 dedicated trigger fns). §2.4 FK shapes applied (flow_id → *_id_flow, from_state_id → *_id_state_from, etc.). flows/sql.go + artefactitems/sql.go + portfoliomodels/sql.go all rewritten. 174→132 (-42). flows package OFF ledger. portfoliomodels: 61→45 (some shared JOIN sites already prefixed by mig 063 caught up). 3 → 2.",
     "  2026-05-14 — mig 189 — RBAC triangle column-prefixed (users_roles 12 cols + users_permissions 6 cols + users_roles_permissions 4 cols + ~12 idx/constraint + dedicated trigger fn). §2.4 multi-FK role suffix applied (created_by / granted_by). roles + permissions + auth + users all rewritten. 191→174 (-17). roles package OFF ledger. 4 → 3.",
     "  2026-05-14 — mig 188 — users_roles_workspaces fully prefixed (12 cols + 3 idx + 5 FK + 2 check + dedicated trigger fn; workspaces/sql.go + topology/sql.go + portfoliomodels/sql.go). §2.4 multi-FK role suffix applied (granted_by / revoked_by). 205→191 (-14). workspaces package OFF ledger. 5 → 4.",
@@ -32,7 +33,6 @@
     "  2026-05-14 — mig 186 — users_password_resets fully prefixed → 245→236 total (-9). users + auth packages stay on ledger (users_sessions still bare in both)."
   ],
   "exempt_packages": [
-    "nav",
-    "portfoliomodels"
+    "nav"
   ]
 }

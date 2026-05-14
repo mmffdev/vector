@@ -79,14 +79,14 @@ func (s *Service) Search(ctx context.Context, q Query) ([]Result, error) {
 			a.id,
 			a.title,
 			a.description,
-			CASE WHEN at.prefix <> '' THEN at.prefix || '-' || a.number::text ELSE '' END AS public_id,
-			at.name   AS type_name,
-			at.prefix AS type_prefix,
+			CASE WHEN at.artefacts_types_prefix <> '' THEN at.artefacts_types_prefix || '-' || a.number::text ELSE '' END AS public_id,
+			at.artefacts_types_name   AS type_name,
+			at.artefacts_types_prefix AS type_prefix,
 			a.workspace_id::text,
 			a.flow_state_id::text,
 			ts_rank(a.search_index, plainto_tsquery('english', $1)) AS rank
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		WHERE a.workspace_id = $2::uuid
 		  AND a.archived_at IS NULL
 		  AND a.search_index @@ plainto_tsquery('english', $1)

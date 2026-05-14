@@ -136,7 +136,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		extra = append(extra, "a.parent_artefact_id IS NULL")
 	}
 	if filters.ItemType != nil {
-		extra = append(extra, fmt.Sprintf("lower(at.name) = $%d", n))
+		extra = append(extra, fmt.Sprintf("lower(at.artefacts_types_name) = $%d", n))
 		args = append(args, *filters.ItemType)
 		n++
 	}
@@ -262,7 +262,7 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 	conds := []string{
 		"a.subscription_id = $1",
 		"a.archived_at IS NULL",
-		"at.scope = $2",
+		"at.artefacts_types_scope = $2",
 	}
 	n := 3
 	if sprintID != nil && *sprintID != "" {
@@ -845,7 +845,7 @@ func buildOrderBy(sort, dir string) string {
 	}
 	switch sort {
 	case "item_type":
-		return fmt.Sprintf(`CASE lower(at.name)
+		return fmt.Sprintf(`CASE lower(at.artefacts_types_name)
 			WHEN 'epic' THEN 1 WHEN 'story' THEN 2
 			WHEN 'defect' THEN 3 WHEN 'task' THEN 4
 			ELSE 99 END ASC, a.number %s`, d)

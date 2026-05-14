@@ -43,8 +43,8 @@ const sqlWorkItemColumns = `
 	a.id::text,
 	a.subscription_id::text,
 	a.number                        AS key_num,
-	lower(at.name)                  AS item_type,
-	at.prefix                       AS type_prefix,
+	lower(at.artefacts_types_name)  AS item_type,
+	at.artefacts_types_prefix       AS type_prefix,
 	a.title,
 	a.description,
 	''                              AS status,
@@ -82,11 +82,11 @@ const sqlWorkItemColumns = `
 // extraWhere is composed in Go from the active filter set; %s slot.
 const sqlCountWorkItemsTemplate = `
 		SELECT count(*) FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
-		  AND at.scope = $2%s
+		  AND at.artefacts_types_scope = $2%s
 	`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots: extra
@@ -95,12 +95,12 @@ const sqlListWorkItemsTemplate = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
-		  AND at.scope = $2%s
+		  AND at.artefacts_types_scope = $2%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
 	`
@@ -110,13 +110,13 @@ const sqlSelectWorkItemByID = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.id = $2
 		  AND a.subscription_id = $1
 		  AND a.archived_at IS NULL
-		  AND at.scope = $3
+		  AND at.artefacts_types_scope = $3
 	`
 
 // sqlListChildWorkItems lists direct children of a parent.
@@ -124,13 +124,13 @@ const sqlListChildWorkItems = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.parent_artefact_id = $2
 		  AND a.archived_at IS NULL
-		  AND at.scope = $3
+		  AND at.artefacts_types_scope = $3
 		ORDER BY a.position ASC, a.number ASC
 	`
 
@@ -146,7 +146,7 @@ const sqlSummariseTotalTemplate = `
 				  AND a.updated_at < NOW() - INTERVAL '14 days'
 			) AS blocked
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE %s
 	`
@@ -154,12 +154,12 @@ const sqlSummariseTotalTemplate = `
 // sqlSummariseByTypeTemplate buckets counts by artefact_type.name. %s
 // holds the composed WHERE clause shared with the total query.
 const sqlSummariseByTypeTemplate = `
-		SELECT lower(at.name) AS name, COUNT(*)
+		SELECT lower(at.artefacts_types_name) AS name, COUNT(*)
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE %s
-		GROUP BY lower(at.name)
+		GROUP BY lower(at.artefacts_types_name)
 	`
 
 // ── ListFlowStates ─────────────────────────────────────────────────────────
@@ -169,14 +169,14 @@ const sqlListWorkScopeFlowStates = `
 		FROM flows_states fs
 		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
 		WHERE f.flows_id_artefact_type = (
-			SELECT at.id FROM artefacts_types at
-			JOIN flows f2 ON f2.flows_id_artefact_type = at.id
-			WHERE at.subscription_id = $1
-			  AND at.scope = $2
+			SELECT at.artefacts_types_id FROM artefacts_types at
+			JOIN flows f2 ON f2.flows_id_artefact_type = at.artefacts_types_id
+			WHERE at.artefacts_types_id_subscription = $1
+			  AND at.artefacts_types_scope = $2
 			  AND f2.flows_is_default = TRUE
 			  AND f2.flows_archived_at IS NULL
-			  AND at.archived_at IS NULL
-			ORDER BY at.created_at ASC
+			  AND at.artefacts_types_archived_at IS NULL
+			ORDER BY at.artefacts_types_created_at ASC
 			LIMIT 1
 		)
 		  AND f.flows_is_default = TRUE
@@ -188,11 +188,11 @@ const sqlListWorkScopeFlowStates = `
 // ── CreateWorkItem ─────────────────────────────────────────────────────────
 
 const sqlSelectArtefactTypeIDForCreate = `
-		SELECT id FROM artefacts_types
-		WHERE subscription_id = $1
-		  AND scope = $3
-		  AND lower(name) = $2
-		  AND archived_at IS NULL
+		SELECT artefacts_types_id FROM artefacts_types
+		WHERE artefacts_types_id_subscription = $1
+		  AND artefacts_types_scope = $3
+		  AND lower(artefacts_types_name) = $2
+		  AND artefacts_types_archived_at IS NULL
 		LIMIT 1
 	`
 
@@ -243,9 +243,9 @@ const sqlExistsFlowStateInSubscription = `
 		SELECT EXISTS(
 			SELECT 1 FROM flows_states fs
 			JOIN flows f ON f.flows_id = fs.flows_states_id_flow
-			JOIN artefacts_types at ON at.id = f.flows_id_artefact_type
+			JOIN artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 			WHERE fs.flows_states_id = $1
-			  AND at.subscription_id = $2
+			  AND at.artefacts_types_id_subscription = $2
 			  AND fs.flows_states_archived_at IS NULL
 		)
 	`
@@ -267,9 +267,9 @@ const sqlArchiveArtefact = `
 // ── BulkOps ────────────────────────────────────────────────────────────────
 
 const sqlSelectArtefactsForBulkLock = `
-		SELECT a.id::text, lower(at.name)
+		SELECT a.id::text, lower(at.artefacts_types_name)
 		FROM artefacts a
-		JOIN artefacts_types at ON at.id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		WHERE a.subscription_id = $1 AND a.id::text = ANY($2) AND a.archived_at IS NULL
 		FOR UPDATE OF a
 	`

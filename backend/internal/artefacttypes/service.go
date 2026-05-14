@@ -32,13 +32,13 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 	}
 	const q = `
 		SELECT
-			id, scope, source, name, prefix, description, colour,
-			parent_type_id, allows_children, layer_depth,
-			sort_order, archived_at, created_at, updated_at
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
 		FROM artefacts_types
-		WHERE subscription_id = $1
-		  AND archived_at IS NULL
-		ORDER BY scope, sort_order, name`
+		WHERE artefacts_types_id_subscription = $1
+		  AND artefacts_types_archived_at IS NULL
+		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
 	rows, err := s.pool.Query(ctx, q, subscriptionID)
 	if err != nil {
@@ -107,34 +107,34 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 	}
 
 	// Build SET clause dynamically from non-nil fields.
-	setClauses := []string{"updated_at = now()"}
+	setClauses := []string{"artefacts_types_updated_at = now()"}
 	args := []any{id, subscriptionID}
 	argN := 3
 
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
-		setClauses = append(setClauses, fmt.Sprintf("name = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_name = $%d", argN))
 		args = append(args, n)
 		argN++
 	}
 	if in.Prefix != nil {
 		p := strings.ToUpper(strings.TrimSpace(*in.Prefix))
-		setClauses = append(setClauses, fmt.Sprintf("prefix = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_prefix = $%d", argN))
 		args = append(args, p)
 		argN++
 	}
 	if in.Description != nil {
-		setClauses = append(setClauses, fmt.Sprintf("description = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_description = $%d", argN))
 		args = append(args, *in.Description)
 		argN++
 	}
 	if in.Colour != nil {
 		c := *in.Colour
 		if c == "" {
-			setClauses = append(setClauses, fmt.Sprintf("colour = $%d", argN))
+			setClauses = append(setClauses, fmt.Sprintf("artefacts_types_colour = $%d", argN))
 			args = append(args, nil)
 		} else {
-			setClauses = append(setClauses, fmt.Sprintf("colour = $%d", argN))
+			setClauses = append(setClauses, fmt.Sprintf("artefacts_types_colour = $%d", argN))
 			args = append(args, c)
 		}
 		argN++
@@ -143,11 +143,11 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 	q := fmt.Sprintf(`
 		UPDATE artefacts_types
 		SET %s
-		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+		WHERE artefacts_types_id = $1 AND artefacts_types_id_subscription = $2 AND artefacts_types_archived_at IS NULL
 		RETURNING
-			id, scope, source, name, prefix, description, colour,
-			parent_type_id, allows_children, layer_depth,
-			sort_order, archived_at, created_at, updated_at`,
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at`,
 		strings.Join(setClauses, ", "),
 	)
 
