@@ -315,9 +315,9 @@ Every table starts with one of these roots. Adding a new root requires a TD entr
 - `<column>_id` for FKs (must be `<table>_id_<target>` — §2.4).
 - Underscores collapsed inappropriately — `workspace_id` is wrong as a column name in any table (right form depends on context: `workspaces_id` as the workspaces PK, or `<some_table>_id_workspace` as an FK).
 
-### §2.8 — Scheduled renames (RF1.4.2) — **STATUS: shipped 2026-05-13/14**
+### §2.8 — Scheduled renames (RF1.4.2 + RF1.4.4) — **STATUS: shipped 2026-05-13/14 — COLUMN-PREFIX SWEEP COMPLETE**
 
-Every table that doesn't conform to §2.1–2.7 was scheduled for rename. Listed here for traceability; rename migrations landed in RF1.4.2 of PLA-0048 across `db/mmff_vector/schema/181-185`, `db/vector_artefacts/schema/054-062`, and `db/mmff_library/schema/013-014`. Column-prefix sweeps for tables that did not get full §2.3 treatment are captured in **TD-NAME-001** (see [`docs/c_tech_debt.md`](c_tech_debt.md)).
+Every table that doesn't conform to §2.1–2.7 was scheduled for rename. Table renames landed in RF1.4.2 of PLA-0048 across `db/mmff_vector/schema/181-185`, `db/vector_artefacts/schema/054-062`, and `db/mmff_library/schema/013-014`. Full §2.3 column-prefix sweep followed in RF1.4.4 (TD-NAME-001) across migrations `db/mmff_vector/schema/186-190` and `db/vector_artefacts/schema/063-066` — total **9 column-rename migrations on 2026-05-14**, 245 → 0 lint findings, ledger empty. `lint:column-prefix-convention` is now a hard fail. **Carve-outs:** the `artefacts` core table (one specific table, distinct from `artefacts_types` / `artefacts_fields_values` / `artefacts_adoption_states` which ARE prefixed) and the `users` core table remain bare per §2.9 — the JSON wire-tag dependencies are tracked separately and will be addressed when the frontend wire-tag contract changes.
 
 **Table renames** (large set — the new convention forced more renames than the original plan accounted for):
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lint column-prefix-convention: §2.3 of c_c_naming_conventions.md.
 
-PLA-0048 / RF1.4.4 pre-req. TD-NAME-001 pay-down enabler.
+PLA-0048 / RF1.4.4. Hard gate on the §2.3 column-prefix convention.
 
 §2.3 rule: every column on a table carries the table name as prefix.
 E.g. on `users_sessions`, columns are `users_sessions_id`,
@@ -9,30 +9,33 @@ E.g. on `users_sessions`, columns are `users_sessions_id`,
 bare `id`, `token_hash`, `user_id`.
 
 This lint scans SQL string literals inside `backend/internal/<pkg>/sql.go`
-for INSERT / UPDATE / SELECT statements on renamed (§2.6 root family)
-tables whose column lists still use bare names. Findings are warn-only
-until the ledger empties.
+for INSERT / UPDATE statements on renamed (§2.6 root family) tables
+whose column lists still use bare names.
 
 Detection (regex-based; not a real SQL parser):
   • Find every `INTO <table> (...)` and `UPDATE <table> SET ...` clause.
-  • If <table> is in the renamed set (built from RF1.4.2 migrations),
-    inspect the column list. Any identifier that doesn't start with
-    `<table>_` is a candidate violation.
+  • If <table> is in the renamed set (built from RF1.4.2 + RF1.4.4
+    migrations), inspect the column list. Any identifier that doesn't
+    start with `<table>_` is a violation.
   • Skip identifiers that are SQL keywords (NULL, NOW(), DEFAULT, etc.),
     placeholders ($1), and column aliases.
 
-The renamed set is hard-coded here from §2.8 status `Done`+`Done (full
-prefix)` rows. Tables already on the prefix (timeboxes_*, webhooks_*,
-audit_logs, errors_events, library_releases_acknowledgements) are
-expected to be clean; everything else is on the ledger.
-
 Exit code:
-  0 — always (warn-only mode). Switch to fail-on-violation when the
-      ledger empties.
-Reports a count per package so the pay-down plan can prioritise.
+  0 — clean.
+  1 — at least one violation found in a non-exempt package.
 
-Ledger: dev/registries/column_prefix_exempt.json — packages whose
-violations are accepted until their domain's RF1.4.4 sub-phase lands.
+History: the lint ran in warn-only mode from 2026-05-14 (baseline 245
+findings, 9 packages) until 2026-05-14 when the final pay-down (mig
+190 — users_nav family) landed. Migrations: 186 (users_password_resets),
+063 (master_record_tenants), 187 (users_sessions), 064
+(artefacts_fields_values + artefactitemsv2→artefactitems rename),
+188 (users_roles_workspaces), 189 (RBAC triangle), 065 (flows family),
+066 (artefacts_types), 190 (users_nav family). Total 9 pay-downs, 245
+→ 0 findings.
+
+Ledger: dev/registries/column_prefix_exempt.json — empty array means
+the lint is the new architectural invariant. Any package added back to
+the ledger is a regression that needs review.
 """
 from __future__ import annotations
 
@@ -188,21 +191,44 @@ def main() -> int:
         print("lint:column-prefix-convention OK — no violations.")
         return 0
 
-    print(f"lint:column-prefix-convention WARN — {total} bare-column "
-          f"reference(s) across {len(by_pkg)} package(s).\n")
+    # Partition findings into "on the ledger" (warn — escape hatch
+    # for legitimate regressions in flight) vs "NOT on ledger" (hard fail).
+    on_ledger: list[str] = []
+    off_ledger: list[str] = []
+
     for pkg in sorted(by_pkg):
         marker = "(on ledger)" if pkg in exempt else "(NOT on ledger)"
         rows = by_pkg[pkg]
-        print(f"  {pkg} — {len(rows)} finding(s) {marker}")
-        # Sample top 3 per package so output is scannable.
+        block = [f"  {pkg} — {len(rows)} finding(s) {marker}"]
         for rel, table, col, kind in rows[:3]:
-            print(f"    • {rel}: {kind} {table} → bare column `{col}`")
+            block.append(f"    • {rel}: {kind} {table} → bare column `{col}`")
         if len(rows) > 3:
-            print(f"    … {len(rows) - 3} more")
+            block.append(f"    … {len(rows) - 3} more")
+        target = on_ledger if pkg in exempt else off_ledger
+        target.extend(block)
 
-    print("\nThis lint is WARN-ONLY. TD-NAME-001 pay-down lands one")
-    print("package at a time; remove the package from the ledger after")
-    print("its column-rename migration ships.")
+    if off_ledger:
+        print(f"lint:column-prefix-convention FAIL — {total} bare-column "
+              f"reference(s) across {len(by_pkg)} package(s).\n")
+        for line in off_ledger:
+            print(line)
+        if on_ledger:
+            print("\nAlso on the warn-only ledger (not failing):")
+            for line in on_ledger:
+                print(line)
+        print("\nFix: add the table-name prefix to every column on the")
+        print("§2.6 root-family table that this SQL writes. See")
+        print("docs/c_c_naming_conventions.md §2.3 for the rule.")
+        print(f"Ledger: dev/registries/column_prefix_exempt.json")
+        return 1
+
+    # All findings are on the ledger — warn only.
+    print(f"lint:column-prefix-convention WARN — {total} bare-column "
+          f"reference(s) across {len(by_pkg)} package(s) (all on ledger).\n")
+    for line in on_ledger:
+        print(line)
+    print("\nThese packages are exempt; remove from the ledger after the")
+    print("column-rename migration for that domain ships.")
     print(f"Ledger: dev/registries/column_prefix_exempt.json")
     return 0
 

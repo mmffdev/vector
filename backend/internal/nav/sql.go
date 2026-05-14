@@ -43,8 +43,8 @@ const sqlPgAdvisoryXactLockForPin = `
 // 'bookmarks').
 const sqlCountUserEntityBookmarks = `
 		SELECT COUNT(*) FROM users_nav_prefs unp
-		JOIN pages p ON p.key_enum = unp.item_key
-		WHERE unp.user_id = $1 AND unp.subscription_id = $2 AND unp.profile_id IS NULL
+		JOIN pages p ON p.key_enum = unp.users_nav_prefs_item_key
+		WHERE unp.users_nav_prefs_id_user = $1 AND unp.users_nav_prefs_id_subscription = $2 AND unp.users_nav_prefs_id_profile IS NULL
 		  AND p.kind = 'entity'
 	`
 
@@ -67,17 +67,17 @@ const sqlUpsertSharedEntityPage = `
 // Pin loops over the three role codes (user/padmin/gadmin) inside the
 // pin tx; ON CONFLICT lets the second/third call be a quiet no-op.
 const sqlUpsertPageRoleGrant = `
-		INSERT INTO users_roles_pages (page_id, role) VALUES ($1, $2)
-		ON CONFLICT (page_id, role) DO NOTHING
+		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_role) VALUES ($1, $2)
+		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_role) DO NOTHING
 	`
 
 // sqlNextUserNavPrefPosition returns the next free position for a
 // user's pinned list (max(position) + 1 or 0 when empty). Profile-NULL
 // scope (the legacy/Default lane) — Pin only touches that lane today.
 const sqlNextUserNavPrefPosition = `
-		SELECT COALESCE(MAX(position) + 1, 0)
+		SELECT COALESCE(MAX(users_nav_prefs_position) + 1, 0)
 		FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile IS NULL
 	`
 
 // sqlInsertUserNavPrefBookmark inserts the users_nav_prefs row that
@@ -85,17 +85,17 @@ const sqlNextUserNavPrefPosition = `
 // NOTHING — a second pin for the same key is friendlier as a no-op
 // than as an error. profile_id is NULL (Default/legacy lane).
 const sqlInsertUserNavPrefBookmark = `
-		INSERT INTO users_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
+		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page)
 		VALUES ($1, $2, NULL, $3, $4, FALSE)
-		ON CONFLICT (user_id, subscription_id, profile_id, item_key) DO NOTHING
+		ON CONFLICT (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key) DO NOTHING
 	`
 
 // sqlSelectUserNavPrefPositionByKey reads the position of a specific
 // bookmark in the user's pinned list. Used by Unpin so it can compact
 // subsequent positions down by 1 in the same tx.
 const sqlSelectUserNavPrefPositionByKey = `
-		SELECT position FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3
+		SELECT users_nav_prefs_position FROM users_nav_prefs
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile IS NULL AND users_nav_prefs_item_key = $3
 	`
 
 // sqlDeleteUserNavPrefByKey removes one bookmark from the user's
@@ -103,7 +103,7 @@ const sqlSelectUserNavPrefPositionByKey = `
 // happens via sqlCompactUserNavPrefPositionsAbove.
 const sqlDeleteUserNavPrefByKey = `
 		DELETE FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile IS NULL AND users_nav_prefs_item_key = $3
 	`
 
 // sqlCompactUserNavPrefPositionsAbove shifts every position above the
@@ -111,15 +111,15 @@ const sqlDeleteUserNavPrefByKey = `
 // 0..N-1. The unique index on (user, tenant, profile, position) is
 // DEFERRABLE so the bulk shift commits without temp positions.
 const sqlCompactUserNavPrefPositionsAbove = `
-		UPDATE users_nav_prefs SET position = position - 1
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND position > $3
+		UPDATE users_nav_prefs SET users_nav_prefs_position = users_nav_prefs_position - 1
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile IS NULL AND users_nav_prefs_position > $3
 	`
 
 // sqlCountUserNavPrefByKey is the existence probe behind IsPinned —
 // returns 0 or 1. COUNT(*) over the unique index is cheap.
 const sqlCountUserNavPrefByKey = `
 		SELECT COUNT(*) FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id IS NULL AND item_key = $3
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile IS NULL AND users_nav_prefs_item_key = $3
 	`
 
 // ── entities.go ─────────────────────────────────────────────────────────────
@@ -158,9 +158,9 @@ const sqlListPageTags = `
 const sqlListSystemPagesWithRoles = `
 		SELECT p.key_enum, p.label, p.href, p.icon, p.tag_enum, p.kind,
 		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
-		       COALESCE(array_agg(pr.role::text ORDER BY pr.role) FILTER (WHERE pr.role IS NOT NULL), '{}') AS users_roles
+		       COALESCE(array_agg(pr.users_roles_pages_role::text ORDER BY pr.users_roles_pages_role) FILTER (WHERE pr.users_roles_pages_role IS NOT NULL), '{}') AS users_roles
 		FROM pages p
-		LEFT JOIN users_roles_pages pr ON pr.page_id = p.id
+		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
 		WHERE p.created_by IS NULL
 		  AND (p.subscription_id IS NULL OR p.kind = 'entity')
 		GROUP BY p.id
@@ -175,19 +175,19 @@ const sqlListSystemPagesWithRoles = `
 const sqlSelectProfileOwnedExists = `
 		SELECT 1
 		  FROM users_nav_profiles
-		 WHERE id              = $1
-		   AND user_id         = $2
-		   AND subscription_id = $3
+		 WHERE users_nav_profiles_id              = $1
+		   AND users_nav_profiles_id_user         = $2
+		   AND users_nav_profiles_id_subscription = $3
 	`
 
 // sqlListUserProfiles returns the user's nav profiles for a
 // subscription, ordered by display position.
 const sqlListUserProfiles = `
-		SELECT id, label, position, is_default, start_page_key
+		SELECT users_nav_profiles_id, users_nav_profiles_label, users_nav_profiles_position, users_nav_profiles_is_default, users_nav_profiles_start_page_key
 		  FROM users_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
-		 ORDER BY position, created_at, id
+		 WHERE users_nav_profiles_id_user         = $1
+		   AND users_nav_profiles_id_subscription = $2
+		 ORDER BY users_nav_profiles_position, users_nav_profiles_created_at, users_nav_profiles_id
 	`
 
 // sqlCountUserProfiles is the cap probe before CreateProfile — used to
@@ -195,8 +195,8 @@ const sqlListUserProfiles = `
 const sqlCountUserProfiles = `
 		SELECT COUNT(*)
 		  FROM users_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
+		 WHERE users_nav_profiles_id_user         = $1
+		   AND users_nav_profiles_id_subscription = $2
 	`
 
 // sqlInsertUserProfile creates a non-default profile at the named
@@ -204,9 +204,9 @@ const sqlCountUserProfiles = `
 // or EnsureDefaultProfile, never by this insert.
 const sqlInsertUserProfile = `
 		INSERT INTO users_nav_profiles
-		    (user_id, subscription_id, label, position, is_default, start_page_key)
+		    (users_nav_profiles_id_user, users_nav_profiles_id_subscription, users_nav_profiles_label, users_nav_profiles_position, users_nav_profiles_is_default, users_nav_profiles_start_page_key)
 		VALUES ($1, $2, $3, $4, FALSE, NULL)
-		RETURNING id, label, position, is_default, start_page_key
+		RETURNING users_nav_profiles_id, users_nav_profiles_label, users_nav_profiles_position, users_nav_profiles_is_default, users_nav_profiles_start_page_key
 	`
 
 // sqlSeedNewProfilePrefsFromDefault clones users_nav_prefs rows from the
@@ -215,20 +215,20 @@ const sqlInsertUserProfile = `
 // of reading empty.
 const sqlSeedNewProfilePrefsFromDefault = `
 		INSERT INTO users_nav_prefs
-		    (user_id, subscription_id, profile_id, item_key, position,
-		     is_start_page, parent_item_key, group_id, icon_override)
+		    (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position,
+		     users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override)
 		SELECT
-		    src.user_id, src.subscription_id, $3,
-		    src.item_key, src.position,
-		    FALSE, src.parent_item_key, src.group_id, src.icon_override
+		    src.users_nav_prefs_id_user, src.users_nav_prefs_id_subscription, $3,
+		    src.users_nav_prefs_item_key, src.users_nav_prefs_position,
+		    FALSE, src.users_nav_prefs_parent_item_key, src.users_nav_prefs_id_group, src.users_nav_prefs_icon_override
 		FROM users_nav_prefs src
 		JOIN users_nav_profiles dp
-		    ON dp.user_id = src.user_id
-		   AND dp.subscription_id = src.subscription_id
-		   AND dp.is_default = TRUE
-		WHERE src.user_id = $1
-		  AND src.subscription_id = $2
-		  AND src.profile_id = dp.id
+		    ON dp.users_nav_profiles_id_user = src.users_nav_prefs_id_user
+		   AND dp.users_nav_profiles_id_subscription = src.users_nav_prefs_id_subscription
+		   AND dp.users_nav_profiles_is_default = TRUE
+		WHERE src.users_nav_prefs_id_user = $1
+		  AND src.users_nav_prefs_id_subscription = $2
+		  AND src.users_nav_prefs_id_profile = dp.users_nav_profiles_id
 	`
 
 // sqlSeedNewProfileGroupsFromDefault clones users_nav_profile_groups
@@ -236,36 +236,36 @@ const sqlSeedNewProfilePrefsFromDefault = `
 // section ordering carries over to the new profile.
 const sqlSeedNewProfileGroupsFromDefault = `
 		INSERT INTO users_nav_profile_groups
-		    (profile_id, group_id, tag_enum, position, icon_override)
+		    (users_nav_profile_groups_id_profile, users_nav_profile_groups_id_group, users_nav_profile_groups_tag_enum, users_nav_profile_groups_position, users_nav_profile_groups_icon_override)
 		SELECT
-		    $3, src.group_id, src.tag_enum, src.position, src.icon_override
+		    $3, src.users_nav_profile_groups_id_group, src.users_nav_profile_groups_tag_enum, src.users_nav_profile_groups_position, src.users_nav_profile_groups_icon_override
 		FROM users_nav_profile_groups src
 		JOIN users_nav_profiles dp
-		    ON dp.id = src.profile_id
-		   AND dp.is_default = TRUE
-		WHERE dp.user_id = $1
-		  AND dp.subscription_id = $2
+		    ON dp.users_nav_profiles_id = src.users_nav_profile_groups_id_profile
+		   AND dp.users_nav_profiles_is_default = TRUE
+		WHERE dp.users_nav_profiles_id_user = $1
+		  AND dp.users_nav_profiles_id_subscription = $2
 	`
 
 // sqlRenameUserProfile rewrites a profile's label. Ownership is folded
 // into the WHERE clause so we never read a row owned by another user.
 const sqlRenameUserProfile = `
 		UPDATE users_nav_profiles
-		   SET label = $1, updated_at = NOW()
-		 WHERE id              = $2
-		   AND user_id         = $3
-		   AND subscription_id = $4
+		   SET users_nav_profiles_label = $1, users_nav_profiles_updated_at = NOW()
+		 WHERE users_nav_profiles_id              = $2
+		   AND users_nav_profiles_id_user         = $3
+		   AND users_nav_profiles_id_subscription = $4
 	`
 
 // sqlSelectProfileIsDefault probes is_default on a profile owned by
 // (user, subscription). Used by DeleteProfile to reject Default
 // without leaking existence.
 const sqlSelectProfileIsDefault = `
-		SELECT is_default
+		SELECT users_nav_profiles_is_default
 		  FROM users_nav_profiles
-		 WHERE id              = $1
-		   AND user_id         = $2
-		   AND subscription_id = $3
+		 WHERE users_nav_profiles_id              = $1
+		   AND users_nav_profiles_id_user         = $2
+		   AND users_nav_profiles_id_subscription = $3
 	`
 
 // sqlDeleteNonDefaultProfile removes a non-default profile. The
@@ -273,20 +273,20 @@ const sqlSelectProfileIsDefault = `
 // already ran in Go.
 const sqlDeleteNonDefaultProfile = `
 		DELETE FROM users_nav_profiles
-		 WHERE id              = $1
-		   AND user_id         = $2
-		   AND subscription_id = $3
-		   AND is_default      = FALSE
+		 WHERE users_nav_profiles_id              = $1
+		   AND users_nav_profiles_id_user         = $2
+		   AND users_nav_profiles_id_subscription = $3
+		   AND users_nav_profiles_is_default      = FALSE
 	`
 
 // sqlListUserProfileIDs returns just the ids of a user's profiles in a
 // subscription — used by ReorderProfiles to validate the supplied order
 // against the actual set.
 const sqlListUserProfileIDs = `
-		SELECT id
+		SELECT users_nav_profiles_id
 		  FROM users_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
+		 WHERE users_nav_profiles_id_user         = $1
+		   AND users_nav_profiles_id_subscription = $2
 	`
 
 // sqlUpdateProfilePosition rewrites one profile's position +
@@ -295,8 +295,8 @@ const sqlListUserProfileIDs = `
 // commit-safe in any order.
 const sqlUpdateProfilePosition = `
 		UPDATE users_nav_profiles
-		   SET position = $1, updated_at = NOW()
-		 WHERE id = $2
+		   SET users_nav_profiles_position = $1, users_nav_profiles_updated_at = NOW()
+		 WHERE users_nav_profiles_id = $2
 	`
 
 // sqlSelectProfileOwnerAndSubscription reads owner + subscription for a
@@ -305,9 +305,9 @@ const sqlUpdateProfilePosition = `
 // gets a clearer signal because the hot-desk caller may already know
 // the id exists in a sibling subscription).
 const sqlSelectProfileOwnerAndSubscription = `
-		SELECT user_id, subscription_id
+		SELECT users_nav_profiles_id_user, users_nav_profiles_id_subscription
 		  FROM users_nav_profiles
-		 WHERE id = $1
+		 WHERE users_nav_profiles_id = $1
 	`
 
 // sqlUpdateUserActiveProfile pins users.active_nav_profile_id to the
@@ -324,23 +324,23 @@ const sqlUpdateUserActiveProfile = `
 // subscription. Otherwise the row scan misses and the caller falls
 // back to Default.
 const sqlSelectActiveProfileScoped = `
-		SELECT p.id
+		SELECT p.users_nav_profiles_id
 		  FROM users u
-		  JOIN users_nav_profiles p ON p.id = u.active_nav_profile_id
+		  JOIN users_nav_profiles p ON p.users_nav_profiles_id = u.active_nav_profile_id
 		 WHERE u.id = $1
-		   AND p.user_id = $1
-		   AND p.subscription_id = $2
+		   AND p.users_nav_profiles_id_user = $1
+		   AND p.users_nav_profiles_id_subscription = $2
 	`
 
 // sqlSelectDefaultProfileID returns the Default profile id for a
 // (user, subscription). pgx.ErrNoRows triggers the lazy-seed branch in
 // EnsureDefaultProfile.
 const sqlSelectDefaultProfileID = `
-		SELECT id
+		SELECT users_nav_profiles_id
 		  FROM users_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
-		   AND is_default      = TRUE
+		 WHERE users_nav_profiles_id_user         = $1
+		   AND users_nav_profiles_id_subscription = $2
+		   AND users_nav_profiles_is_default      = TRUE
 	`
 
 // sqlEnsureDefaultProfile lazy-seeds the Default profile for a
@@ -349,11 +349,11 @@ const sqlSelectDefaultProfileID = `
 // two concurrent first-reads both land on the same row.
 const sqlEnsureDefaultProfile = `
 		INSERT INTO users_nav_profiles
-		    (user_id, subscription_id, label, position, is_default, start_page_key)
+		    (users_nav_profiles_id_user, users_nav_profiles_id_subscription, users_nav_profiles_label, users_nav_profiles_position, users_nav_profiles_is_default, users_nav_profiles_start_page_key)
 		VALUES ($1, $2, 'Default', 0, TRUE, NULL)
-		ON CONFLICT (user_id, subscription_id) WHERE is_default = TRUE
-		DO UPDATE SET updated_at = users_nav_profiles.updated_at
-		RETURNING id
+		ON CONFLICT (users_nav_profiles_id_user, users_nav_profiles_id_subscription) WHERE users_nav_profiles_is_default = TRUE
+		DO UPDATE SET users_nav_profiles_updated_at = users_nav_profiles.users_nav_profiles_updated_at
+		RETURNING users_nav_profiles_id
 	`
 
 // sqlSelectActiveOrDefaultProfile resolves the (active, default) pair
@@ -361,20 +361,20 @@ const sqlEnsureDefaultProfile = `
 // between writes.
 const sqlSelectActiveOrDefaultProfile = `
 		SELECT
-		    (SELECT id FROM users_nav_profiles
-		      WHERE user_id = $1 AND subscription_id = $2 AND id =
+		    (SELECT users_nav_profiles_id FROM users_nav_profiles
+		      WHERE users_nav_profiles_id_user = $1 AND users_nav_profiles_id_subscription = $2 AND users_nav_profiles_id =
 		            (SELECT active_nav_profile_id FROM users WHERE id = $1)) AS active_id,
-		    (SELECT id FROM users_nav_profiles
-		      WHERE user_id = $1 AND subscription_id = $2 AND is_default = TRUE) AS default_id
+		    (SELECT users_nav_profiles_id FROM users_nav_profiles
+		      WHERE users_nav_profiles_id_user = $1 AND users_nav_profiles_id_subscription = $2 AND users_nav_profiles_is_default = TRUE) AS default_id
 	`
 
 // sqlListProfileGroupPlacements returns per-profile group placements
 // in display order. Each row sets exactly one of group_id or tag_enum.
 const sqlListProfileGroupPlacements = `
-		SELECT group_id, tag_enum, position, icon_override
+		SELECT users_nav_profile_groups_id_group, users_nav_profile_groups_tag_enum, users_nav_profile_groups_position, users_nav_profile_groups_icon_override
 		  FROM users_nav_profile_groups
-		 WHERE profile_id = $1
-		 ORDER BY position
+		 WHERE users_nav_profile_groups_id_profile = $1
+		 ORDER BY users_nav_profile_groups_position
 	`
 
 // sqlCountOwnedNavGroupsByIDs counts how many of the supplied group ids
@@ -382,7 +382,7 @@ const sqlListProfileGroupPlacements = `
 // payload that references a group the user doesn't own.
 const sqlCountOwnedNavGroupsByIDs = `
 		SELECT COUNT(*) FROM users_nav_groups
-		 WHERE user_id = $1 AND id = ANY($2)
+		 WHERE users_nav_groups_id_user = $1 AND users_nav_groups_id = ANY($2)
 	`
 
 // sqlCountKnownTagEnums counts how many of the supplied tag_enum values
@@ -396,7 +396,7 @@ const sqlCountKnownTagEnums = `
 // sqlDeleteProfileGroupPlacements wipes per-profile placements for one
 // profile. Step 1 of SetProfileGroups's atomic replace.
 const sqlDeleteProfileGroupPlacements = `
-		DELETE FROM users_nav_profile_groups WHERE profile_id = $1
+		DELETE FROM users_nav_profile_groups WHERE users_nav_profile_groups_id_profile = $1
 	`
 
 // sqlInsertProfileGroupPlacement inserts one placement row. Step 2 of
@@ -404,7 +404,7 @@ const sqlDeleteProfileGroupPlacements = `
 // one round-trip. The position unique constraint is DEFERRABLE so any
 // order is fine inside the tx.
 const sqlInsertProfileGroupPlacement = `
-		INSERT INTO users_nav_profile_groups (profile_id, group_id, tag_enum, position, icon_override)
+		INSERT INTO users_nav_profile_groups (users_nav_profile_groups_id_profile, users_nav_profile_groups_id_group, users_nav_profile_groups_tag_enum, users_nav_profile_groups_position, users_nav_profile_groups_icon_override)
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
@@ -417,29 +417,29 @@ const sqlInsertProfileGroupPlacement = `
 // wiped externally.
 const sqlSeedNonDefaultPrefsFromDefaultOnFirstRead = `
 		WITH this_profile AS (
-			SELECT id FROM users_nav_profiles
-			WHERE id = $3 AND is_default = FALSE
+			SELECT users_nav_profiles_id FROM users_nav_profiles
+			WHERE users_nav_profiles_id = $3 AND users_nav_profiles_is_default = FALSE
 		),
 		is_empty AS (
 			SELECT 1 FROM this_profile
 			WHERE NOT EXISTS (
 				SELECT 1 FROM users_nav_prefs
-				WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
+				WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
 			)
 		),
 		default_profile AS (
-			SELECT id FROM users_nav_profiles
-			WHERE user_id = $1 AND subscription_id = $2 AND is_default = TRUE
+			SELECT users_nav_profiles_id FROM users_nav_profiles
+			WHERE users_nav_profiles_id_user = $1 AND users_nav_profiles_id_subscription = $2 AND users_nav_profiles_is_default = TRUE
 		)
 		INSERT INTO users_nav_prefs (
-			user_id, subscription_id, profile_id, item_key, position,
-			is_start_page, parent_item_key, group_id, icon_override
+			users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position,
+			users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override
 		)
 		SELECT
-			src.user_id, src.subscription_id, $3, src.item_key, src.position,
-			FALSE, src.parent_item_key, src.group_id, src.icon_override
+			src.users_nav_prefs_id_user, src.users_nav_prefs_id_subscription, $3, src.users_nav_prefs_item_key, src.users_nav_prefs_position,
+			FALSE, src.users_nav_prefs_parent_item_key, src.users_nav_prefs_id_group, src.users_nav_prefs_icon_override
 		FROM users_nav_prefs src
-		JOIN default_profile dp ON dp.id = src.profile_id
+		JOIN default_profile dp ON dp.users_nav_profiles_id = src.users_nav_prefs_id_profile
 		WHERE EXISTS (SELECT 1 FROM is_empty)
 		ON CONFLICT DO NOTHING
 	`
@@ -451,18 +451,18 @@ const sqlSeedNonDefaultPrefsFromDefaultOnFirstRead = `
 // cannot use deferrable arbiters.
 const sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead = `
 		WITH default_profile AS (
-			SELECT id FROM users_nav_profiles
-			WHERE user_id = $2 AND subscription_id = $3 AND is_default = TRUE
+			SELECT users_nav_profiles_id FROM users_nav_profiles
+			WHERE users_nav_profiles_id_user = $2 AND users_nav_profiles_id_subscription = $3 AND users_nav_profiles_is_default = TRUE
 		)
-		INSERT INTO users_nav_profile_groups (profile_id, group_id, tag_enum, position, icon_override)
-		SELECT $1, src.group_id, src.tag_enum, src.position, src.icon_override
+		INSERT INTO users_nav_profile_groups (users_nav_profile_groups_id_profile, users_nav_profile_groups_id_group, users_nav_profile_groups_tag_enum, users_nav_profile_groups_position, users_nav_profile_groups_icon_override)
+		SELECT $1, src.users_nav_profile_groups_id_group, src.users_nav_profile_groups_tag_enum, src.users_nav_profile_groups_position, src.users_nav_profile_groups_icon_override
 		FROM users_nav_profile_groups src
-		JOIN default_profile dp ON dp.id = src.profile_id
+		JOIN default_profile dp ON dp.users_nav_profiles_id = src.users_nav_profile_groups_id_profile
 		WHERE NOT EXISTS (
-			SELECT 1 FROM users_nav_profile_groups WHERE profile_id = $1
+			SELECT 1 FROM users_nav_profile_groups WHERE users_nav_profile_groups_id_profile = $1
 		)
 		  AND NOT EXISTS (
-			SELECT 1 FROM users_nav_profiles WHERE id = $1 AND is_default = TRUE
+			SELECT 1 FROM users_nav_profiles WHERE users_nav_profiles_id = $1 AND users_nav_profiles_is_default = TRUE
 		)
 	`
 
@@ -472,35 +472,35 @@ const sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead = `
 // Only fires for Default — custom profiles must explicitly choose what
 // they show.
 const sqlBackfillDefaultPinnedPages = `
-		INSERT INTO users_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
+		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page)
 		SELECT
 			$1::uuid,
 			$2::uuid,
 			$4::uuid,
 			p.key_enum,
 			COALESCE(
-				(SELECT MAX(unp.position) + 1
+				(SELECT MAX(unp.users_nav_prefs_position) + 1
 				 FROM users_nav_prefs unp
-				 WHERE unp.user_id = $1::uuid
-				   AND unp.subscription_id = $2::uuid
-				   AND unp.profile_id = $4::uuid),
+				 WHERE unp.users_nav_prefs_id_user = $1::uuid
+				   AND unp.users_nav_prefs_id_subscription = $2::uuid
+				   AND unp.users_nav_prefs_id_profile = $4::uuid),
 				0
 			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
 			FALSE
 		FROM pages p
-		JOIN users_roles_pages pr ON pr.page_id = p.id
-		JOIN users_nav_profiles d ON d.id = $4::uuid AND d.is_default = TRUE
+		JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
+		JOIN users_nav_profiles d ON d.users_nav_profiles_id = $4::uuid AND d.users_nav_profiles_is_default = TRUE
 		WHERE p.created_by IS NULL
 		  AND p.subscription_id IS NULL
 		  AND p.default_pinned = TRUE
 		  AND p.pinnable = TRUE
-		  AND pr.role = $3::user_role
+		  AND pr.users_roles_pages_role = $3::user_role
 		  AND NOT EXISTS (
 			  SELECT 1 FROM users_nav_prefs unp
-			  WHERE unp.user_id = $1::uuid
-				AND unp.subscription_id = $2::uuid
-				AND unp.profile_id = $4::uuid
-				AND unp.item_key = p.key_enum
+			  WHERE unp.users_nav_prefs_id_user = $1::uuid
+				AND unp.users_nav_prefs_id_subscription = $2::uuid
+				AND unp.users_nav_prefs_id_profile = $4::uuid
+				AND unp.users_nav_prefs_item_key = p.key_enum
 		  )
 	`
 
@@ -511,10 +511,10 @@ const sqlBackfillDefaultPinnedPages = `
 // can run on every Default read.
 const sqlLazySeedAdminNavGroups = `
 		WITH profile_check AS (
-			SELECT id FROM users_nav_profiles WHERE id = $3 AND is_default = TRUE
+			SELECT users_nav_profiles_id FROM users_nav_profiles WHERE users_nav_profiles_id = $3 AND users_nav_profiles_is_default = TRUE
 		),
 		existing AS (
-			SELECT id, LOWER(label) AS lbl FROM users_nav_groups WHERE user_id = $1
+			SELECT users_nav_groups_id AS id, LOWER(users_nav_groups_label) AS lbl FROM users_nav_groups WHERE users_nav_groups_id_user = $1
 		),
 		seed AS (
 			SELECT * FROM (VALUES
@@ -525,9 +525,9 @@ const sqlLazySeedAdminNavGroups = `
 			WHERE LOWER(t.label) NOT IN (SELECT lbl FROM existing)
 		),
 		inserted AS (
-			INSERT INTO users_nav_groups (id, user_id, label, position, icon)
+			INSERT INTO users_nav_groups (users_nav_groups_id, users_nav_groups_id_user, users_nav_groups_label, users_nav_groups_position, users_nav_groups_icon)
 			SELECT gen_random_uuid(), $1, s.label, s.pos, s.icon FROM seed s, profile_check
-			RETURNING id, LOWER(label) AS lbl
+			RETURNING users_nav_groups_id AS id, LOWER(users_nav_groups_label) AS lbl
 		),
 		all_groups AS (
 			SELECT id, lbl FROM inserted
@@ -535,18 +535,18 @@ const sqlLazySeedAdminNavGroups = `
 			SELECT id, lbl FROM existing
 		)
 		UPDATE users_nav_prefs unp
-		SET group_id = ag.id
+		SET users_nav_prefs_id_group = ag.id
 		FROM all_groups ag
 		JOIN (VALUES
 			('workspace admin', ARRAY['ws-organisation','ws-workspaces','ws-portfolio-model','ws-artefact-types','ws-flow-states','ws-transition-rules','ws-custom-fields','ws-flow-states-v2']),
 			('user admin',      ARRAY['user-management','um-users_permissions']),
 			('vector admin',    ARRAY['va-tenant-details','va-topology','va-topology-map','va-api-manager'])
 		) AS mapping(lbl, pages) ON mapping.lbl = ag.lbl
-		WHERE unp.user_id = $1
-		  AND unp.subscription_id = $2
-		  AND unp.profile_id = $3
-		  AND unp.item_key = ANY(mapping.pages)
-		  AND unp.group_id IS NULL
+		WHERE unp.users_nav_prefs_id_user = $1
+		  AND unp.users_nav_prefs_id_subscription = $2
+		  AND unp.users_nav_prefs_id_profile = $3
+		  AND unp.users_nav_prefs_item_key = ANY(mapping.pages)
+		  AND unp.users_nav_prefs_id_group IS NULL
 	`
 
 // sqlLazySeedDefaultProfileGroupPlacements seeds the Default profile's
@@ -554,10 +554,10 @@ const sqlLazySeedAdminNavGroups = `
 // default_order), then users_nav_groups (in their position).
 const sqlLazySeedDefaultProfileGroupPlacements = `
 		WITH profile_check AS (
-			SELECT id FROM users_nav_profiles WHERE id = $1 AND is_default = TRUE
+			SELECT users_nav_profiles_id AS id FROM users_nav_profiles WHERE users_nav_profiles_id = $1 AND users_nav_profiles_is_default = TRUE
 		),
 		has_placements AS (
-			SELECT 1 FROM users_nav_profile_groups WHERE profile_id = $1 LIMIT 1
+			SELECT 1 FROM users_nav_profile_groups WHERE users_nav_profile_groups_id_profile = $1 LIMIT 1
 		),
 		combined AS (
 			SELECT
@@ -568,11 +568,11 @@ const sqlLazySeedDefaultProfileGroupPlacements = `
 			UNION ALL
 			SELECT
 				NULL,
-				id,
-				(SELECT COUNT(*) FROM pages_tags WHERE pages_tags_is_admin_menu = FALSE) + position
-			FROM users_nav_groups WHERE user_id = $2
+				users_nav_groups_id,
+				(SELECT COUNT(*) FROM pages_tags WHERE pages_tags_is_admin_menu = FALSE) + users_nav_groups_position
+			FROM users_nav_groups WHERE users_nav_groups_id_user = $2
 		)
-		INSERT INTO users_nav_profile_groups (profile_id, tag_enum, group_id, position)
+		INSERT INTO users_nav_profile_groups (users_nav_profile_groups_id_profile, users_nav_profile_groups_tag_enum, users_nav_profile_groups_id_group, users_nav_profile_groups_position)
 		SELECT pc.id, c.tag_enum, c.group_id, c.pos
 		FROM profile_check pc
 		CROSS JOIN combined c
@@ -583,28 +583,28 @@ const sqlLazySeedDefaultProfileGroupPlacements = `
 // sqlListUserNavPrefsForProfile returns the users_nav_prefs rows for one
 // (user, subscription, profile) in display order.
 const sqlListUserNavPrefsForProfile = `
-		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
+		SELECT users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override
 		FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
-		ORDER BY position
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
+		ORDER BY users_nav_prefs_position
 	`
 
 // sqlListUserNavGroups returns the user's custom primary groups in
 // user-defined order. users_nav_groups is per-user (shared across that
 // user's profiles).
 const sqlListUserNavGroups = `
-		SELECT id, label, position, icon
+		SELECT users_nav_groups_id, users_nav_groups_label, users_nav_groups_position, users_nav_groups_icon
 		FROM users_nav_groups
-		WHERE user_id = $1
-		ORDER BY position
+		WHERE users_nav_groups_id_user = $1
+		ORDER BY users_nav_groups_position
 	`
 
 // sqlSelectStartPageKeyForProfile returns the user's start_page item_key
 // inside one profile. NULL/no-row both map to "no start page set" at
 // the caller.
 const sqlSelectStartPageKeyForProfile = `
-		SELECT item_key FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3 AND is_start_page = TRUE
+		SELECT users_nav_prefs_item_key FROM users_nav_prefs
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_is_start_page = TRUE
 		LIMIT 1
 	`
 
@@ -613,7 +613,7 @@ const sqlSelectStartPageKeyForProfile = `
 // sqlSelectProfileIsDefault above (which is ownership-scoped) — this
 // variant is called only after ownership has already been established.
 const sqlSelectProfileIsDefaultByID = `
-		SELECT is_default FROM users_nav_profiles WHERE id = $1
+		SELECT users_nav_profiles_is_default FROM users_nav_profiles WHERE users_nav_profiles_id = $1
 	`
 
 // sqlDeleteUserNavPrefsForProfile wipes users_nav_prefs for one profile.
@@ -621,30 +621,30 @@ const sqlSelectProfileIsDefaultByID = `
 // and DeletePrefsForProfile.
 const sqlDeleteUserNavPrefsForProfile = `
 		DELETE FROM users_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
+		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
 	`
 
 // sqlDeleteUserNavGroupsForUser wipes the user's shared group pool.
 // Only used when writing/resetting the Default profile — non-default
 // profiles share the pool and cannot wipe it without clobbering
 // siblings.
-const sqlDeleteUserNavGroupsForUser = `DELETE FROM users_nav_groups WHERE user_id = $1`
+const sqlDeleteUserNavGroupsForUser = `DELETE FROM users_nav_groups WHERE users_nav_groups_id_user = $1`
 
 // sqlUpsertUserNavGroup inserts or refreshes one custom group. The
 // ON CONFLICT update makes re-sending an existing group's row
 // idempotent (label/position/icon get refreshed, no PK clash). Queued
 // inside a pgx.Batch from ReplacePrefsForProfile.
 const sqlUpsertUserNavGroup = `
-		INSERT INTO users_nav_groups (id, user_id, label, position, icon)
+		INSERT INTO users_nav_groups (users_nav_groups_id, users_nav_groups_id_user, users_nav_groups_label, users_nav_groups_position, users_nav_groups_icon)
 		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (id) DO UPDATE
-		SET label = EXCLUDED.label, position = EXCLUDED.position, icon = EXCLUDED.icon
+		ON CONFLICT (users_nav_groups_id) DO UPDATE
+		SET users_nav_groups_label = EXCLUDED.users_nav_groups_label, users_nav_groups_position = EXCLUDED.users_nav_groups_position, users_nav_groups_icon = EXCLUDED.users_nav_groups_icon
 	`
 
 // sqlInsertUserNavPref inserts one users_nav_prefs row. Queued in a
 // pgx.Batch from ReplacePrefsForProfile so the entire pinned list
 // commits in one round-trip.
 const sqlInsertUserNavPref = `
-		INSERT INTO users_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
+		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
