@@ -62,18 +62,12 @@ func (r *Resolver) PermissionsFor(ctx context.Context, userID uuid.UUID) (map[Co
 	}
 
 	var roleID uuid.UUID
-	err := r.pool.QueryRow(ctx,
-		`SELECT role_id FROM users WHERE id = $1`, userID,
-	).Scan(&roleID)
+	err := r.pool.QueryRow(ctx, sqlSelectUserRoleID, userID).Scan(&roleID)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := r.pool.Query(ctx, `
-		SELECT p.code
-		  FROM roles_permissions rp
-		  JOIN permissions p ON p.id = rp.permission_id
-		 WHERE rp.role_id = $1`, roleID)
+	rows, err := r.pool.Query(ctx, sqlSelectPermissionCodesForRole, roleID)
 	if err != nil {
 		return nil, err
 	}

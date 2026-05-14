@@ -146,7 +146,7 @@ var All = []Code{
 // from the DB silently denies; an orphan DB row is dead config. Either is
 // a bug we want surfaced before the server takes traffic.
 func VerifyParity(ctx context.Context, pool *pgxpool.Pool) error {
-	rows, err := pool.Query(ctx, `SELECT code FROM permissions`)
+	rows, err := pool.Query(ctx, sqlListPermissionCodes)
 	if err != nil {
 		return fmt.Errorf("permissions parity: query: %w", err)
 	}
