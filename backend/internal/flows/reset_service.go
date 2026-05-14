@@ -178,10 +178,7 @@ func (s *Service) PreviewReset(ctx context.Context, subscriptionID string, in Re
 			return nil, ErrNoSurvivor
 		}
 		var count int
-		err := s.vaPool.QueryRow(ctx,
-			`SELECT COUNT(*) FROM artefacts WHERE flow_state_id = $1 AND archived_at IS NULL`,
-			d.LiveStateID,
-		).Scan(&count)
+		err := s.vaPool.QueryRow(ctx, sqlCountArtefactsOnFlowState, d.LiveStateID).Scan(&count)
 		if err != nil {
 			return nil, fmt.Errorf("flows: count artefacts on %s: %w", d.LiveStateID, err)
 		}
@@ -227,9 +224,7 @@ func (s *Service) ApplyReset(ctx context.Context, subscriptionID string, in Rese
 	//    state row gets archived (avoids momentary FK violations even
 	//    though we soft-archive rather than hard delete).
 	for _, imp := range preview.ArtefactImpacts {
-		tag, err := tx.Exec(ctx,
-			`UPDATE artefacts SET flow_state_id = $1, updated_at = now()
-			 WHERE flow_state_id = $2 AND archived_at IS NULL`,
+		tag, err := tx.Exec(ctx, sqlRebindArtefactsToSuccessor,
 			imp.SuccessorStateID, imp.RemovedStateID,
 		)
 		if err != nil {
@@ -245,16 +240,13 @@ func (s *Service) ApplyReset(ctx context.Context, subscriptionID string, in Rese
 	for _, d := range preview.Pills {
 		switch d.Action {
 		case "remove":
-			_, err := tx.Exec(ctx,
-				`UPDATE flow_states SET archived_at = now() WHERE id = $1`, d.LiveStateID,
-			)
+			_, err := tx.Exec(ctx, sqlArchiveFlowStateByID, d.LiveStateID)
 			if err != nil {
 				return nil, fmt.Errorf("flows: archive state %s: %w", d.LiveStateID, err)
 			}
 			result.PillsRemoved++
 		case "update":
-			_, err := tx.Exec(ctx,
-				`UPDATE flow_states SET sort_order = $1, is_initial = $2, is_pullable = $3 WHERE id = $4`,
+			_, err := tx.Exec(ctx, sqlUpdateFlowStateOrderAndFlags,
 				d.SortOrder, d.IsInitial, d.IsPullable, d.LiveStateID,
 			)
 			if err != nil {
@@ -266,9 +258,7 @@ func (s *Service) ApplyReset(ctx context.Context, subscriptionID string, in Rese
 		}
 	}
 	for _, d := range addRows {
-		_, err := tx.Exec(ctx,
-			`INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
-			 VALUES ($1, $2, $3, $4, $5, $6)`,
+		_, err := tx.Exec(ctx, sqlInsertFlowStateForReset,
 			preview.FlowID, d.Name, d.Kind, d.SortOrder, d.IsInitial, d.IsPullable,
 		)
 		if err != nil {
@@ -287,8 +277,7 @@ func (s *Service) ApplyReset(ctx context.Context, subscriptionID string, in Rese
 	for _, t := range preview.Transitions {
 		switch t.Action {
 		case "remove":
-			_, err := tx.Exec(ctx,
-				`DELETE FROM flow_transitions WHERE flow_id = $1 AND from_state_id = $2 AND to_state_id = $3`,
+			_, err := tx.Exec(ctx, sqlDeleteFlowTransitionByFlowFromTo,
 				preview.FlowID, t.FromStateID, t.ToStateID,
 			)
 			if err != nil {
@@ -301,9 +290,7 @@ func (s *Service) ApplyReset(ctx context.Context, subscriptionID string, in Rese
 			if !fromOK || !toOK {
 				return nil, fmt.Errorf("flows: cannot map snapshot transition %s→%s to live state ids", t.FromName, t.ToName)
 			}
-			_, err := tx.Exec(ctx,
-				`INSERT INTO flow_transitions (flow_id, from_state_id, to_state_id)
-				 VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+			_, err := tx.Exec(ctx, sqlInsertFlowTransitionIdempotent,
 				preview.FlowID, fromID, toID,
 			)
 			if err != nil {
@@ -356,10 +343,7 @@ func hasChanges(p *ResetPreview) bool {
 
 // loadLiveNameIDMap reads name->id for live pills on the given flow within tx.
 func loadLiveNameIDMap(ctx context.Context, tx pgx.Tx, flowID string) (map[string]string, error) {
-	rows, err := tx.Query(ctx,
-		`SELECT id, name FROM flow_states WHERE flow_id = $1 AND archived_at IS NULL`,
-		flowID,
-	)
+	rows, err := tx.Query(ctx, sqlListFlowStateNameIDs, flowID)
 	if err != nil {
 		return nil, fmt.Errorf("flows: reload state ids: %w", err)
 	}
