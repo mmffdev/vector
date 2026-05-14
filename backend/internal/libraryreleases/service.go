@@ -61,9 +61,7 @@ func (s *Service) SetAcksPool(p *pgxpool.Pool) {
 // Identical SQL to the prior handler-local subscriptionTier method.
 func (s *Service) SubscriptionTier(ctx context.Context, subID uuid.UUID) (string, error) {
 	var tier string
-	err := s.vectorPool.QueryRow(ctx,
-		`SELECT tier FROM subscriptions WHERE id = $1`, subID,
-	).Scan(&tier)
+	err := s.vectorPool.QueryRow(ctx, sqlSelectSubscriptionTier, subID).Scan(&tier)
 	if err != nil {
 		return "", fmt.Errorf("libraryreleases: load tier: %w", err)
 	}

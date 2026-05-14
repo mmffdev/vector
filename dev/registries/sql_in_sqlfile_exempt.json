@@ -12,7 +12,6 @@
     "backend/internal/librarydb/fetch.go",
     "backend/internal/librarydb/list.go",
     "backend/internal/librarydb/releases.go",
-    "backend/internal/libraryreleases/service.go",
     "backend/internal/portfolio/master_record_service.go",
     "backend/internal/portfoliomodels/adopt.go",
     "backend/internal/portfoliomodels/adopt_flows.go",

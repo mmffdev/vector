@@ -125,7 +125,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.14** `searchworker` — 7 SQL strings, 2 DBs. `[P3]` ✅ done 2026-05-14 — 7 consts (claim outbox + mark-claimed + delete + select-artefact + compute-tsvector + update search/embedding + record-failure). Allow-list shrunk 27 → 26.
 > Commit `faaabec` (2026-05-14): refactor(PLA-0048 / RF1.2.14): consolidate searchworker SQL into sql.go [RF1.2.14]
 - **RF1.2.15** `errorsreport` — 2 SQL strings, 3 DBs. `[P3]` ✅ done 2026-05-14 — 2 consts (libRO error-code probe + vectorPool error_events insert). Allow-list shrunk 26 → 25.
-- **RF1.2.16** `libraryreleases` — 1 SQL string (rest delegated), 3 DBs. `[P3]`
+> Commit `adaabbd` (2026-05-14): refactor(PLA-0048 / RF1.2.15): consolidate errorsreport SQL into sql.go [RF1.2.15]
+- **RF1.2.16** `libraryreleases` — 1 SQL string (rest delegated), 3 DBs. `[P3]` ✅ done 2026-05-14 — 1 const (subscription tier lookup); other queries delegate to librarydb. Allow-list shrunk 25 → 24.
 - **RF1.2.17** `librarydb` — 15 SQL strings, 3 DBs (library access layer). `[P2]`
 - **RF1.2.18** `portfolio` — 6 SQL strings, 2 DBs. `[P2]`
 - **RF1.2.19** `artefactitemsv2` — 26 SQL strings, 1 DB (rename deferred to Phase 4). `[P2]`
