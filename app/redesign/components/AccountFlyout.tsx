@@ -47,25 +47,15 @@ export default function AccountFlyout() {
   const { theme, toggle, mounted } = useTheme();
   const pathname = usePathname() ?? "";
 
-  // Admin pages are split into three groups by tag_enum. Mig 191 collapsed
-  // the legacy single admin_settings tag + URL-prefix partitioning into
-  // three regular pages_tags rows (workspace_admin, user_admin, vector_admin).
-  // personal_settings tag is handled separately (account-settings link).
-  const adminGroups = useMemo(() => {
-    const wsAdmin = catalogue
-      .filter((e) => e.tagEnum === "workspace_admin")
+  // Avatar Menu pages only. The earlier mig-191/192 sweep promoted
+  // Workspace Admin / User Management / Vector Admin to first-class
+  // rail-1 buckets, so the avatar flyout should ONLY render its own
+  // avatar_menu tree (Account Settings, Navigation, Themes) plus the
+  // static Appearance + Session blocks below.
+  const avatarMenuPages = useMemo(() => {
+    return catalogue
+      .filter((e) => e.tagEnum === "avatar_menu")
       .sort((a, b) => a.defaultOrder - b.defaultOrder);
-    const userMgmt = catalogue
-      .filter((e) => e.tagEnum === "user_admin")
-      .sort((a, b) => a.defaultOrder - b.defaultOrder);
-    const vectorAdmin = catalogue
-      .filter((e) => e.tagEnum === "vector_admin")
-      .sort((a, b) => a.defaultOrder - b.defaultOrder);
-    return [
-      wsAdmin.length    ? { label: "Workspace Admin",  items: wsAdmin }    : null,
-      userMgmt.length   ? { label: "User Admin",       items: userMgmt }   : null,
-      vectorAdmin.length ? { label: "Vector Admin",    items: vectorAdmin } : null,
-    ].filter(Boolean) as { label: string; items: NavCatalogEntry[] }[];
   }, [catalogue]);
 
   if (!user) return <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label="Account" />;
@@ -85,10 +75,9 @@ export default function AccountFlyout() {
       </div>
 
       <div id="nav-primary-rail-2__PageList" className="nav-primary-rail-2__PageList">
-        {adminGroups.map(({ label, items }) => (
-          <div key={label} className="nav-primary-rail-2__PageList_Group">
-            <div className="nav-primary-rail-2__PageList_Group_Label">{label}</div>
-            {items.map((entry) => (
+        {avatarMenuPages.length > 0 && (
+          <div className="nav-primary-rail-2__PageList_Group">
+            {avatarMenuPages.map((entry) => (
               <Link
                 key={entry.key}
                 href={entry.href}
@@ -100,7 +89,7 @@ export default function AccountFlyout() {
               </Link>
             ))}
           </div>
-        ))}
+        )}
 
         <div className="nav-primary-rail-2__PageList_Group">
           <div className="nav-primary-rail-2__PageList_Group_Label">Appearance</div>
@@ -115,13 +104,6 @@ export default function AccountFlyout() {
               {mounted ? (theme === "light" ? "Dark mode" : "Light mode") : "Theme"}
             </span>
           </button>
-          <Link
-            href="/theme"
-            className={`nav-primary-rail-2__PageList_Group_Row${isActivePage("/theme") ? " is-active" : ""}`}
-          >
-            <MiniIcon d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z" />
-            <span className="nav-primary-rail-2__PageList_Group_Row_Label">Theme settings</span>
-          </Link>
         </div>
 
         <div className="nav-primary-rail-2__PageList_Group">
