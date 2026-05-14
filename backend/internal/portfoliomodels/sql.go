@@ -438,7 +438,16 @@ const sqlSelectWorkTenantPrefixMap = `
 
 const sqlDeleteAllAdoptionStateForSubscription = `DELETE FROM artefacts_adoption_states WHERE subscription_id = $1`
 
-const sqlDeleteAllArtefactFieldValuesForSubscription = `DELETE FROM artefacts_fields_values WHERE subscription_id = $1`
+// TD-RESET-001 fix (2026-05-14): artefacts_fields_values has NO subscription_id
+// column — scoping reaches through artefacts.subscription_id (FK on the parent
+// artefact). Old query (DELETE … WHERE subscription_id = $1) would error;
+// MasterReset wouldn't have worked against any tenant carrying field values.
+const sqlDeleteAllArtefactFieldValuesForSubscription = `
+		DELETE FROM artefacts_fields_values fv
+		 USING artefacts a
+		 WHERE fv.artefacts_fields_values_id_artefact = a.id
+		   AND a.subscription_id = $1
+	`
 
 const sqlDeleteAllArtefactsForSubscription = `DELETE FROM artefacts WHERE subscription_id = $1`
 

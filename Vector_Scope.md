@@ -1,7 +1,7 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-14 (RF1.4 expanded — hierarchical table naming + column-prefix rules locked in c_c_naming_conventions.md §2; RF1.4.2 now covers ~40 tables, RF1.4.4 added for column renames, RF1.4.1.1 removed per v-suffix-with-meaning rule)
+**Last updated:** 2026-05-14 (RF1.4.4 + RF1.5 + RF1.6 ✅ shipped end-to-end same day; TD-NAME-001 closed; `lint:column-prefix-convention` hard gate; `artefactitemsv2` renamed to `artefactitems` per v-suffix-with-meaning rule reversal — v1 obj_* substrate retired)
 **Doc version:** 2.20
 
 ---
@@ -201,35 +201,37 @@ Full canonical list in [`docs/c_c_naming_conventions.md §2.8`](docs/c_c_naming_
 - **RF1.4.3.10** `/admin/dev/adoption-reset` → `/admin/dev/reset-adoption-state`. `[P3]`
 - **RF1.4.3.11** `/tenant-settings` → `/workspace-settings` (verify what the table actually keys by first). `[P2]`
 
-#### RF1.4.4 — Column renames (NEW 2026-05-14)
+#### RF1.4.4 — Column renames ✅ DONE 2026-05-14 (TD-NAME-001 closed same day)
 
-Per `c_c_naming_conventions.md §2.3` every column on every table now carries the table-name prefix. Ships in lockstep with RF1.4.2 — one migration per table, paired with that table's `sql.go` update.
+Per `c_c_naming_conventions.md §2.3` every column on every renamed §2.6 root-family table now carries the table-name prefix. Pre-req lint (`lint:column-prefix-convention`) shipped warn-only with a 9-package ledger, then flipped to hard fail-on-violation when the ledger emptied. Nine migrations across mmff_vector + vector_artefacts: 186 (users_password_resets) → 063 (master_record_tenants) → 187 (users_sessions) → 064 (artefacts_fields_values + artefactitemsv2→artefactitems Go-package rename) → 188 (users_roles_workspaces) → 189 (RBAC triangle) → 065 (flows family, 7 tables) → 066 (artefacts_types) → 190 (users_nav family, 5 tables). 245 → 0 findings.
 
-- **RF1.4.4.PK** Every PK column renamed from `id` to `<table>_id` across all renamed tables (e.g. `users.id` → `users.users_id`). `[P1]`
-- **RF1.4.4.FK** Every FK column renamed from `<target>_id` to `<table>_id_<target>` (function-then-modifier per §2.4) (e.g. `users.role_id` → `users.users_id_role`). `[P1]`
-- **RF1.4.4.bare** Every bare column renamed to `<table>_<column>` (e.g. `users.email` → `users.users_email`). `[P1]`
-- **RF1.4.4.semantic** Multi-FK-to-same-parent columns gain a semantic-role suffix (e.g. `artefacts.owner_user_id` → `artefacts.artefacts_id_user_owner` per §2.4 multi-FK rule). `[P2]`
-- **RF1.4.4.polymorphic** Polymorphic FKs keep `_kind` + `_entity_id` split per §2.4 (e.g. `page_addressables.entity_id` → `pages_addressables.pages_addressables_entity_id`). `[P2]`
-- **RF1.4.4.indexes** All non-default-named indexes and constraints renamed to match new column names (`idx_<table>_<columns>` per §2.5). `[P2]`
+Carve-outs (deferred per §2.9 — JSON wire-tag contract): the `artefacts` core table (distinct from artefacts_types / artefacts_fields_values / artefacts_adoption_states which are prefixed), and the `users` core table. Both stay bare until the frontend wire-tag rewrite lands as a separate PLA.
 
-### RF1.5 Phase 5 — Cross-DB writer hardening
+- ✅ **RF1.4.4.PK** ~~Every PK column renamed from `id` to `<table>_id` across all renamed tables.~~ `[P1]`
+- ✅ **RF1.4.4.FK** ~~Every FK column renamed from `<target>_id` to `<table>_id_<target>` (function-then-modifier per §2.4).~~ `[P1]`
+- ✅ **RF1.4.4.bare** ~~Every bare column renamed to `<table>_<column>`.~~ `[P1]`
+- ✅ **RF1.4.4.semantic** ~~Multi-FK-to-same-parent columns gain a semantic-role suffix (e.g. `granted_by` → `*_id_user_granted_by`).~~ `[P2]`
+- ⏸️ **RF1.4.4.polymorphic** Polymorphic FKs keep `_kind` + `_entity_id` split per §2.4 (e.g. `page_addressables.entity_id` → `pages_addressables.pages_addressables_entity_id`). `[P2]` — pages_addressables was prefixed under mig 182, but the entity_id polymorphic column kept its shape. Polymorphic-FK convention sweep deferred until polymorphicrefs service hits a real cleanup case (TD-001 has the trigger).
+- ✅ **RF1.4.4.indexes** ~~All non-default-named indexes and constraints renamed to match new column names.~~ `[P2]`
 
-Each of the 5 high-risk cross-DB writers gets an explicit `*_crossdb_test.go` regression test plus partial-failure documentation. File TD entries for any actual partial-failure bugs uncovered.
+### RF1.5 Phase 5 — Cross-DB writer hardening ✅ DONE 2026-05-14 (commit f173b93)
 
-- **RF1.5.1** `portfoliomodels.Orchestrator.Adopt` (3 DBs). `[P1]`
-- **RF1.5.2** `portfoliomodels.DevResetHandler.MasterReset` (2 DBs). `[P2]`
-- **RF1.5.3** `artefactitemsv2.Service.CreateWorkItem` (cross-DB read inside write tx). `[P1]`
-- **RF1.5.4** `libraryreleases.Handler.Ack` (validate L, write A; no shared tx). `[P2]`
-- **RF1.5.5** `errorsreport.Handler.Report` (validate L, write A or V; no shared tx). `[P3]`
-- **RF1.5.6** Add `lint:cross-db-writer-test` — every cross-DB writer must have a sibling `_crossdb_test.go`. `[P1]`
+Each of the 5 high-risk cross-DB writers got a stub `*_crossdb_test.go` documenting partial-failure semantics, plus `lint:cross-db-writer-test` enforcing the convention via a shrinking ledger. Live tests are RF1.5.x follow-ups.
 
-### RF1.6 Phase 6 — Documentation pass
+- ✅ **RF1.5.1** ~~`portfoliomodels.Orchestrator.Adopt` stub.~~ `[P1]`
+- ✅ **RF1.5.2** ~~`portfoliomodels.DevResetHandler.MasterReset` stub.~~ `[P2]`
+- ✅ **RF1.5.3** ~~`artefactitems.Service.CreateWorkItem` stub.~~ `[P1]`
+- ✅ **RF1.5.4** ~~`libraryreleases.Handler.Ack` stub.~~ `[P2]`
+- ✅ **RF1.5.5** ~~`errorsreport.Handler.Report` stub.~~ `[P3]`
+- ✅ **RF1.5.6** ~~`lint:cross-db-writer-test` shipped with shrinking ledger (6 packages on ledger).~~ `[P1]`
 
-- **RF1.6.1** Regenerate `docs/c_c_db_routing.md` from code reality post-rewrite. `[P1]`
-- **RF1.6.2** Update `docs/c_schema.md` with renamed table names + DB locations. `[P1]`
-- **RF1.6.3** Finalise `docs/c_c_naming_conventions.md` post-Phase-4 (anything learned during rename sweep folded back into the spec). `[P2]`
-- **RF1.6.4** Reduce CLAUDE.md index to one-line-only entries per the standing rule. `[P2]`
-- **RF1.6.5** Stop gate: user reads the regenerated docs. `[P1]`
+### RF1.6 Phase 6 — Documentation pass ✅ DONE 2026-05-14 (commit 4e1e171 + closing commit c7f74bc)
+
+- ✅ **RF1.6.1** ~~Regenerate `docs/c_c_db_routing.md` from code reality post-rewrite.~~ `[P1]`
+- ✅ **RF1.6.2** ~~Update `docs/c_schema.md` with renamed table names + DB locations.~~ `[P1]`
+- ✅ **RF1.6.3** ~~Finalise `docs/c_c_naming_conventions.md` post-Phase-4 — §2.8 now reads "COLUMN-PREFIX SWEEP COMPLETE"; §1.1.2 v-suffix example updated post-artefactitems rename; §3.3 status column added.~~ `[P2]`
+- ✅ **RF1.6.4** ~~Reduce CLAUDE.md index to one-line-only entries per the standing rule.~~ `[P2]`
+- 🔵 **RF1.6.5** IN FLIGHT Stop gate: user reads the regenerated docs. `[P1]`
 
 ### RF1.7 Completion tests (from master doc §6)
 
@@ -256,11 +258,19 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `c9764a6` (2026-05-12): feat(PLA-0044): UserNodeAssignment picker — gadmin checkbox tree [FE-POR-0003.9.10]
 > Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -357,6 +367,67 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -415,6 +486,29 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -541,6 +635,23 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -561,11 +672,18 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 > Commit `495b81c` (2026-05-13): feat(PLA-0043): kill admin_settings tag bucket — all admin pages live in named groups [FE-POR-0003.1]
 > Commit `376cfef` (2026-05-13): refactor(PLA-0044): nav-primary-rail-1 — fix 6 CSS naming violations [FE-UI-0001]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -584,6 +702,21 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0941095` (2026-05-13): feat(PLA-0043): rail icon click navigates to first page of section [FE-POR-0003.1]
 > Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -593,12 +726,15 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `810ab6a` (2026-05-13): chore(001_redesign): strip redundant PageShell wrappers from 13 pages
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
 
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
 
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -606,6 +742,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -624,15 +762,25 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
 
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
 > Commit `b6bc2e0` (2026-05-10): feat(dev): master-reset panel + custom-field manager refactor
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
 - **FLOW1.4.1** Per-artefact `po_ready` flag on `artefacts` table — visual aid for PO grooming, independent of flow state; sort-to-top/badge UI; optional DoR validation on toggle `[P3]`
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
@@ -641,10 +789,16 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3b1a9d6` (2026-05-13): fix(PLA-0043): sort catalogue items by tag_enum before save to satisfy contiguity rule [FE-POR-0003.1]
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -652,11 +806,20 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `e5ef452` (2026-05-12): feat(PLA-0044): MyGrant.position field + ListMyGrants ORDER BY sort_order [FE-POR-API-0006]
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 ---
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
 
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 ## F1. Artefact Type and Flow State Customisation
 > Commit `d8c8341` (2026-05-13): feat(PLA-0023): migrate library_acknowledgements from mmff_vector to vector_artefacts [P1]
 
@@ -664,6 +827,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
 > Commit `bbb874f` (2026-05-13): feat(PLA-0023): migrate error_events from mmff_vector to vector_artefacts [P1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
 Workspace Settings > Customisation page — two sections. Section 1 (artefact type tags, prefix, name, description, colour) is already built. Section 2 adds a third-level tab nav (mirroring Custom Fields) for flow state management: one tab per artefact type, showing that type's flow states with colour editing. Covers data-correction migrations to fix wrong seeded states for all work types and missing states for strategy types. `[P2]` 🔵 IN FLIGHT
 
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -716,6 +881,23 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -740,6 +922,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -770,6 +960,16 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -788,6 +988,20 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -872,6 +1086,32 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -906,6 +1146,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -983,6 +1227,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -1034,6 +1291,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
 > Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -1071,6 +1334,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -1121,6 +1392,21 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -1139,12 +1425,21 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -1164,6 +1459,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1174,6 +1473,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 ---
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1502,6 +1803,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -1620,6 +1925,13 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -1640,6 +1952,15 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -1653,6 +1974,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `37ba249` (2026-05-13): feat(PLA-0023): migrate audit_log from mmff_vector to vector_artefacts [P1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -1695,17 +2019,41 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `07612ca` (2026-05-13): fix(001_redesign): seed non-default nav profile from Default on first read [FE-POR-0003.1]
 > Commit `1cbe497` (2026-05-13): chore(PLA-0023): drop shadow master_record_tenant from mmff_vector [P2]
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 > Commit `101aaf3` (2026-05-13): feat(PLA-0043): Workspace Admin sub-page catalogue entries [FE-POR-0003.1]
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
   >
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 - **B6.11** Bulk grant CSV import/export `[P4]`
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
   > Rally-validated bulk pattern (R054 §bulk): in-product UI does per-user grant only; bulk lives in CSV templates consumed by an external toolkit. Vector ships the same: a per-user CSV download on the B6.8 page (current grant set across the active workspace), plus a gadmin-only `/dev` panel that accepts a CSV (cols: `user_email,workspace_id,node_id,role`) and runs it through `Service.GrantRoleBatch`. Validation rules: caller is gadmin or workspace-admin; reject row if user doesn't exist or node is archived; report row-level success/fail in the response. Distinct from `RallyTools/Rally-User-Management` (Rally's external Ruby toolkit, R054 §sources [5]): Vector keeps the bulk path inside the app to avoid the "drives the web UI under the hood" hack Rally's toolkit had to adopt because the WSAPI never opened permission writes (R054 §CORRECTION C1).
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   >
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
@@ -1753,6 +2101,22 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -1826,6 +2190,36 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -1922,6 +2316,9 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -2002,18 +2399,29 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `816fbf7` (2026-05-12): chore: mcp whisper stdio type + theme slot-name sanitisation
 > Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
 > Commit `0a2ee86` (2026-05-12): docs(PLA-0044): close out plan — catalogue row + index + plan JSON [FE-DEV-0025]
 > Commit `1bc9958` (2026-05-13): feat(PLA-0026/SA2): add artefact_adoption_state to vector_artefacts [FE-SQL-0019]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
   > `app/components/TimeboxManager.tsx` (369 LOC) — generic `kind` system (sprint/release); table-per-kind via `kinds.ts` registry; spec: `docs/c_c_timebox_manager.md`
 > Commit `1e010e2` (2026-05-12): chore(scope): Vector_Scope progress sweep + PLA-0022 date bump + R051 research entry
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 - ✅ **B15.5** `<DiagramCanvas>` — Canvas2D + dagre + d3-zoom `[P3]`
 > Commit `c9e2a41` (2026-05-09): chore: scope-hook annotations and launcher log refresh
 > Commit `6068d40` (2026-05-09): chore: refresh scope annotations before B21 execution [B21]
@@ -2107,9 +2515,14 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `ea4862c` (2026-05-12): fix(PLA-0044): ScopeRail uses walkTopology + byPosition — kills phantom-D orphan re-root [FE-POR-API-0006]
 > Commit `1a56726` (2026-05-12): feat(PLA-0044): BFF tree handler routes Subtree through shared walker [FE-POR-API-0006]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 
 > Commit `1667c40` (2026-05-11): refactor: self-build reorderable nav pageId from URL path
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
@@ -2367,6 +2780,30 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -2412,6 +2849,31 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -2439,6 +2901,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -2476,6 +2947,25 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -2541,6 +3031,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -2616,6 +3120,17 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -2657,6 +3172,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -2708,6 +3232,29 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -2769,6 +3316,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -2819,6 +3380,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -2866,6 +3443,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -2921,6 +3500,18 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -2969,6 +3560,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `3a061a1` (2026-05-13): chore: session housekeeping — empirical-blast-radius memory + scope/snapshot refresh
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -2979,6 +3576,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -3016,6 +3629,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -3066,6 +3687,29 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -3085,6 +3729,19 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -3121,6 +3778,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -3168,6 +3834,19 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -3217,11 +3896,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `71f127e` (2026-05-13): feat: dev/scripts/pace.sh — commit-mix + TD-register scoreboard
 > Commit `952cc41` (2026-05-13): plan(PLA-0048): codebase recovery — lock conventions, install drift gates, consolidate SQL [RF1]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
 - **B21.4** Deferred follow-ups (post-cutover) `[P4]`
 > Commit `b65e06a` (2026-05-09): docs(B21): add Artefact-Items Substrate plan, PLA-0037 [B21]
+> Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
   > Tracked here so they don't get lost; do NOT block B21.1–B21.3 completion.
   >
 - **B21.4.1** Generalise `useRefetchOnPush` topic to scope-aware `[P3]`
@@ -3248,6 +3930,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -3266,6 +3962,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9abf139` (2026-05-13): chore(PLA-0039): retire /samantha/v1 dead paths + fix AdoptionOverlay [FE-POR-0003]
 > Commit `a8c32ec` (2026-05-14): docs(PLA-0048 / RF1.0): lock hierarchical table + column-prefix naming rules
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `26bc100` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[A]): pluralise user_* nav/prefs tables [RF1.4.2.users]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -3295,6 +3998,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
+> Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
+> Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
+> Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
+> Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -3333,6 +4050,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -3347,6 +4065,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
+> Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
