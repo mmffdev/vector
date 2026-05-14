@@ -26,9 +26,9 @@ const sqlExistsActiveWorkspaceMembership = `
 		SELECT EXISTS (
 		    SELECT 1
 		      FROM users_roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id      = $2
-		       AND revoked_at  IS NULL
+		     WHERE users_roles_workspaces_id_workspace = $1
+		       AND users_roles_workspaces_id_user      = $2
+		       AND users_roles_workspaces_revoked_at  IS NULL
 		)
 	`
 
@@ -514,7 +514,7 @@ const sqlSeedDevStrategyArtefactsFn = `SELECT seed_dev_strategy_artefacts($1, $2
 
 const sqlDeleteRolesWorkspacesForSubscription = `
 		DELETE FROM users_roles_workspaces
-		 WHERE workspace_id IN (
+		 WHERE users_roles_workspaces_id_workspace IN (
 		     SELECT id FROM master_record_workspaces WHERE subscription_id = $1
 		 )
 	`

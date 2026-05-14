@@ -183,9 +183,9 @@ const sqlSelectWorkspaceIDByIDAndSubscription = `
 const sqlExistsActiveWorkspaceRole = `
 		SELECT EXISTS(
 		    SELECT 1 FROM users_roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id      = $2
-		       AND revoked_at IS NULL
+		     WHERE users_roles_workspaces_id_workspace = $1
+		       AND users_roles_workspaces_id_user      = $2
+		       AND users_roles_workspaces_revoked_at IS NULL
 		)
 	`
 
