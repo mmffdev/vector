@@ -1,7 +1,6 @@
 {
   "note": "Pre-RF1.2 seed list of files containing raw SQL outside sql.go. Each entry should be removed as that package completes RF1.2 sql.go consolidation. Final state: empty exempt_paths array.",
   "exempt_paths": [
-    "backend/internal/addressables/service.go",
     "backend/internal/apikeys/apikeys.go",
     "backend/internal/apikeys/dev.go",
     "backend/internal/artefactitemsv2/service.go",

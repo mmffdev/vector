@@ -105,7 +105,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.4** `roles` — 10 SQL strings, single-DB. `[P1]` ✅ done 2026-05-14 — `sql.go` created with 10 named consts (permission-id resolution + list/get + Create/Update/Archive + role-permission grid upsert/delete/list + permissions catalogue). Allow-list shrunk 49 → 48.
 > Commit `15c0ddd` (2026-05-14): refactor(PLA-0048 / RF1.2.4): consolidate roles SQL into sql.go [RF1.2.4]
 - **RF1.2.5** `permissions` — 3 SQL strings, single-DB, foundational. `[P2]` ✅ done 2026-05-14 — `sql.go` created with 3 named consts (sqlListPermissionCodes for VerifyParity at boot; sqlSelectUserRoleID + sqlSelectPermissionCodesForRole for the cached PermissionsFor resolver). Allow-list shrunk 48 → 46.
-- **RF1.2.6** `addressables` — 21 SQL strings, single-DB. `[P2]`
+> Commit `09d14fd` (2026-05-14): refactor(PLA-0048 / RF1.2.5): consolidate permissions SQL into sql.go [RF1.2.5]
+- **RF1.2.6** `addressables` — 21 SQL strings, single-DB. `[P2]` ✅ done 2026-05-14 — `sql.go` created with 21 named consts (Snapshot + HelpFor + AdminListHelp + UpdateHelp + ArchiveHelp + UpdateHelpable + upsertAddressable family with paired root/child variants + archiveDroppedBuildRows + lookupRowByAddress + addressableExists + peekSibling root/child + touchLastSeen root/child + lookupID + library_help_defaults seed with placeholder/library variants). Allow-list shrunk 46 → 45.
 - **RF1.2.7** `nav` — 53 SQL strings, single-DB. `[P2]`
 - **RF1.2.8** `flows` — 30 SQL strings, single-DB. `[P2]`
 - **RF1.2.9** `webhooks` — 11 SQL strings, single-DB. `[P3]`
