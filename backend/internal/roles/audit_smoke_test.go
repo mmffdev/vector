@@ -67,7 +67,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	// Pull all audit rows for this resource and assert the five action
 	// codes are present.
 	rows, err := pool.Query(ctx,
-		`SELECT action FROM audit_log WHERE resource_id = $1 ORDER BY created_at`,
+		`SELECT audit_logs_action FROM audit_logs WHERE audit_logs_resource_id = $1 ORDER BY audit_logs_created_at`,
 		r.ID.String(),
 	)
 	if err != nil {

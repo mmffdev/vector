@@ -28,30 +28,31 @@ var (
 	ErrInvalidInput = errors.New("invalid input")
 )
 
-// Subscription is the wire shape for a webhook_subscriptions row.
+// Subscription is the wire shape for a webhooks_subscriptions row.
+// JSON tags follow §2.3 (post RF1.4.2.webhooks).
 type Subscription struct {
-	ID          uuid.UUID  `json:"id"`
-	WorkspaceID uuid.UUID  `json:"workspace_id"`
-	URL         string     `json:"url"`
-	Events      *string    `json:"events"`
-	IsActive    bool       `json:"is_active"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
+	ID          uuid.UUID  `json:"webhooks_subscriptions_id"`
+	WorkspaceID uuid.UUID  `json:"webhooks_subscriptions_id_workspace"`
+	URL         string     `json:"webhooks_subscriptions_url"`
+	Events      *string    `json:"webhooks_subscriptions_events"`
+	IsActive    bool       `json:"webhooks_subscriptions_is_active"`
+	CreatedAt   time.Time  `json:"webhooks_subscriptions_created_at"`
+	UpdatedAt   time.Time  `json:"webhooks_subscriptions_updated_at"`
+	ArchivedAt  *time.Time `json:"webhooks_subscriptions_archived_at,omitempty"`
 }
 
 // CreateInput is the payload for creating a new subscription.
 type CreateInput struct {
-	URL    string  `json:"url"`
-	Events *string `json:"events"`
-	Secret *string `json:"secret"`
+	URL    string  `json:"webhooks_subscriptions_url"`
+	Events *string `json:"webhooks_subscriptions_events"`
+	Secret *string `json:"webhooks_subscriptions_secret"`
 }
 
 // UpdateInput is the partial-update payload.
 type UpdateInput struct {
-	URL      *string `json:"url,omitempty"`
-	Events   *string `json:"events,omitempty"`
-	IsActive *bool   `json:"is_active,omitempty"`
+	URL      *string `json:"webhooks_subscriptions_url,omitempty"`
+	Events   *string `json:"webhooks_subscriptions_events,omitempty"`
+	IsActive *bool   `json:"webhooks_subscriptions_is_active,omitempty"`
 }
 
 // Service is the sole-writer surface.
@@ -134,13 +135,13 @@ func (s *Service) Update(ctx context.Context, workspaceID, id uuid.UUID, in Upda
 		if !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "http://") {
 			return nil, fmt.Errorf("%w: url must begin with http:// or https://", ErrInvalidInput)
 		}
-		add("url", u)
+		add("webhooks_subscriptions_url", u)
 	}
 	if in.Events != nil {
-		add("events", in.Events)
+		add("webhooks_subscriptions_events", in.Events)
 	}
 	if in.IsActive != nil {
-		add("is_active", *in.IsActive)
+		add("webhooks_subscriptions_is_active", *in.IsActive)
 	}
 
 	if len(sets) == 0 {
@@ -151,7 +152,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, id uuid.UUID, in Upda
 	q := fmt.Sprintf(
 		sqlUpdateSubscriptionTemplate,
 		strings.Join(sets, ", "),
-		fmt.Sprintf("id = $%d AND workspace_id = $%d", len(args)-1, len(args)),
+		fmt.Sprintf("webhooks_subscriptions_id = $%d AND webhooks_subscriptions_id_workspace = $%d", len(args)-1, len(args)),
 	)
 	n, err := s.pool.Exec(ctx, q, args...)
 	if err != nil {

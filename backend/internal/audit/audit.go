@@ -45,8 +45,11 @@ func (l *Logger) Log(ctx context.Context, e Entry) {
 		src = &s
 	}
 	_, _ = l.pool.Exec(ctx, `
-		INSERT INTO audit_log (user_id, subscription_id, action, resource, resource_id, metadata, ip_address, source_transport)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		INSERT INTO audit_logs (
+			audit_logs_id_user, audit_logs_id_subscription,
+			audit_logs_action, audit_logs_resource, audit_logs_resource_id,
+			audit_logs_metadata, audit_logs_ip_address, audit_logs_source_transport
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		e.UserID, e.SubscriptionID, e.Action, e.Resource, e.ResourceID, meta, e.IPAddress, src,
 	)
 }

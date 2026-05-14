@@ -130,7 +130,7 @@ func releaseTableList() []string {
 // Every role gets SELECT (admin gets ALL); publish does NOT write here.
 func referenceTableList() []string {
 	return []string{
-		"error_codes",
+		"errors_codes",
 	}
 }
 

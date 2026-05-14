@@ -177,8 +177,13 @@ const sqlMarkAdoptionStateFailed = `
 // sqlInsertErrorEvent persists one error_events row (the saga's
 // failure-record path).
 const sqlInsertErrorEvent = `
-		INSERT INTO error_events (subscription_id, user_id, code, context, request_id)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO errors_events (
+			errors_events_id_subscription,
+			errors_events_id_user,
+			errors_events_code,
+			errors_events_context,
+			errors_events_request_id
+		) VALUES ($1, $2, $3, $4, $5)
 	`
 
 // ── adopt_strategy_types.go (B3) ───────────────────────────────────────────
