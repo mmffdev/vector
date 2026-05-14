@@ -104,7 +104,7 @@ type grantRoleReq struct {
 // viewStateReq is the request body for PUT /api/topology/view-state.
 //
 // Signature change at M6.2.7: legacy org_node_view_state stored a
-// per-node collapsed flag, while topology_view_state stores the
+// per-node collapsed flag, while topology_view_states stores the
 // canvas-level viewport (pan + zoom). The route is now scoped to a
 // workspace (resolved from the WorkspaceClampMiddleware on context),
 // not a node.
@@ -700,7 +700,7 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 // PUT /api/topology/view-state — per-user canvas viewport (pan + zoom).
 //
 // Signature change at M6.2.7: legacy org_node_view_state stored a
-// per-node collapsed flag; topology_view_state stores the canvas
+// per-node collapsed flag; topology_view_states stores the canvas
 // viewport, scoped by (workspace_id, user_id). The workspace is
 // resolved from WorkspaceClampMiddleware on the request context — no
 // {id} URL param. Callers that previously hit /nodes/{id}/view-state

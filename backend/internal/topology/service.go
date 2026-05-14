@@ -1,5 +1,5 @@
 // Package orgdesign is the SOLE writer for topology_nodes,
-// topology_role_grants, and topology_view_state. Every INSERT/UPDATE/
+// users_roles_topology_nodes, and topology_view_states. Every INSERT/UPDATE/
 // DELETE against any of these tables must pass through this package.
 //
 // The Topology canvas (PLA-0006) treats the topology_nodes tree as the
@@ -19,8 +19,8 @@
 // SQL migrations are exempt from the boundary (the test scopes to
 // .go files).
 //
-// M6.2.7 cutover (PLA-0006): topology_nodes, topology_role_grants,
-// topology_view_state, and topology_commits all live in the
+// M6.2.7 cutover (PLA-0006): topology_nodes, users_roles_topology_nodes,
+// topology_view_states, and topology_commits all live in the
 // vector_artefacts database. Every topology read/write goes through
 // s.vaPool. The legacy s.pool (mmff_vector) is retained only for
 // membership/auth checks (e.g. the PoolWorkspaceLookup adapter) —
@@ -60,7 +60,7 @@ func (l LayoutMode) IsValid() bool {
 	return false
 }
 
-// Role is the closed vocabulary for topology_role_grants.role_code.
+// Role is the closed vocabulary for users_roles_topology_nodes.role_code.
 type Role string
 
 const (
@@ -158,8 +158,8 @@ type GrantNotification struct {
 //
 // vaPool — vector_artefacts. EVERY topology read/write goes here. The
 //
-//	three boundary tables (topology_nodes, topology_role_grants,
-//	topology_view_state) only exist in this database.
+//	three boundary tables (topology_nodes, users_roles_topology_nodes,
+//	topology_view_states) only exist in this database.
 type Service struct {
 	pool     *pgxpool.Pool
 	vaPool   *pgxpool.Pool
@@ -600,7 +600,7 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 	return newRoot, nil
 }
 
-// GrantRole inserts (or re-grants) a topology_role_grants row. MVP
+// GrantRole inserts (or re-grants) a users_roles_topology_nodes row. MVP
 // constraint: at most one active admin grant per node — checked here
 // before the INSERT and also enforced by the partial unique index in
 // the artefacts schema (defence in depth). The same (node, user) cannot
@@ -712,7 +712,7 @@ func (s *Service) RevokeRole(ctx context.Context, subscriptionID, grantID, revok
 // drives ON CONFLICT.
 //
 // Signature change at M6.2.7: the legacy org_node_view_state stored
-// per-node collapse state, while topology_view_state stores the canvas
+// per-node collapse state, while topology_view_states stores the canvas
 // viewport. Callers now pass workspaceID + viewport coordinates instead
 // of nodeID + collapsed.
 func (s *Service) SetViewState(

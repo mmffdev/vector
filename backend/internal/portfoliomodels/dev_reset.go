@@ -68,7 +68,7 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 //   - artefact_field_values, artefacts, artefact_number_sequence
 //   - tenant artefact_types (source='tenant' only; system rows preserved)
 //   - timeboxes_sprints, timeboxes_releases
-//   - topology_role_grants, topology_view_state, topology_nodes
+//   - users_roles_topology_nodes, topology_view_states, topology_nodes
 //   - master_record_portfolio
 //
 // Re-seeded (vector_artefacts):
@@ -173,10 +173,10 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 	//    parent_id self-references before deleting nodes (avoids ON DELETE
 	//    RESTRICT firing on the parent_id FK during a cascading delete).
 	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyRoleGrantsForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("topology_role_grants: %w", err)
+		return fmt.Errorf("users_roles_topology_nodes: %w", err)
 	}
 	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyViewStateForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("topology_view_state: %w", err)
+		return fmt.Errorf("topology_view_states: %w", err)
 	}
 	if _, err = tx.Exec(ctx, sqlDetachTopologyParentsForSubscription, subscriptionID); err != nil {
 		return fmt.Errorf("topology_nodes parent detach: %w", err)

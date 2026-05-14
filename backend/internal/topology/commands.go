@@ -5,8 +5,8 @@ package topology
 //
 // Lives alongside service.go inside the sole-writer boundary —
 // every INSERT/UPDATE here counts toward the package's monopoly
-// on writes to topology_nodes / topology_role_grants /
-// topology_view_state / topology_commits (all vector_artefacts).
+// on writes to topology_nodes / users_roles_topology_nodes /
+// topology_view_states / topology_commits (all vector_artefacts).
 //
 // PLA-0023 P6 (2026-05-13): the commit-checkpoint moved from
 // subscriptions.topology_committed_at/_by (mmff_vector, dropped

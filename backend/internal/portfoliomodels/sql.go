@@ -450,9 +450,9 @@ const sqlDeleteAllTimeboxSprintsForSubscription = `DELETE FROM timeboxes_sprints
 
 const sqlDeleteAllTimeboxReleasesForSubscription = `DELETE FROM timeboxes_releases WHERE timeboxes_releases_id_subscription = $1`
 
-const sqlDeleteAllTopologyRoleGrantsForSubscription = `DELETE FROM topology_role_grants WHERE subscription_id = $1`
+const sqlDeleteAllTopologyRoleGrantsForSubscription = `DELETE FROM users_roles_topology_nodes WHERE users_roles_topology_nodes_id_subscription = $1`
 
-const sqlDeleteAllTopologyViewStateForSubscription = `DELETE FROM topology_view_state WHERE subscription_id = $1`
+const sqlDeleteAllTopologyViewStateForSubscription = `DELETE FROM topology_view_states WHERE topology_view_states_id_subscription = $1`
 
 const sqlDetachTopologyParentsForSubscription = `UPDATE topology_nodes SET parent_id = NULL WHERE subscription_id = $1`
 

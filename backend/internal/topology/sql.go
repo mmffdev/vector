@@ -40,11 +40,11 @@ const sqlAncestorsHasGrantOnTargetOrAncestor = `
 		SELECT EXISTS (
 		    SELECT 1
 		      FROM ancestors a
-		      JOIN topology_role_grants r
-		        ON r.node_id = a.id
-		     WHERE r.subscription_id = $2
-		       AND r.user_id = $3
-		       AND r.revoked_at IS NULL
+		      JOIN users_roles_topology_nodes r
+		        ON r.users_roles_topology_nodes_id_topology_node = a.id
+		     WHERE r.users_roles_topology_nodes_id_subscription = $2
+		       AND r.users_roles_topology_nodes_id_user = $3
+		       AND r.users_roles_topology_nodes_revoked_at IS NULL
 		)
 	`
 
@@ -185,7 +185,7 @@ const sqlExistsActiveWorkspaceRole = `
 		    SELECT 1 FROM roles_workspaces
 		     WHERE workspace_id = $1
 		       AND user_id      = $2
-		       AND revoked_at IS NULL
+		       AND users_roles_topology_nodes_revoked_at IS NULL
 		)
 	`
 
@@ -315,8 +315,10 @@ const sqlWalkSubtreeForClone = `
 
 // sqlSelectActiveGrantForUserOnNode is the idempotency probe for GrantRole.
 const sqlSelectActiveGrantForUserOnNode = `
-		SELECT id FROM topology_role_grants
-		 WHERE node_id = $1 AND user_id = $2 AND revoked_at IS NULL
+		SELECT users_roles_topology_nodes_id FROM users_roles_topology_nodes
+		 WHERE users_roles_topology_nodes_id_topology_node = $1
+		   AND users_roles_topology_nodes_id_user = $2
+		   AND users_roles_topology_nodes_revoked_at IS NULL
 		 LIMIT 1
 	`
 
@@ -324,8 +326,10 @@ const sqlSelectActiveGrantForUserOnNode = `
 // before inserting an admin grant.
 const sqlExistsActiveAdminGrantOnNode = `
 		SELECT EXISTS(
-		    SELECT 1 FROM topology_role_grants
-		     WHERE node_id = $1 AND role_code = 'admin' AND revoked_at IS NULL
+		    SELECT 1 FROM users_roles_topology_nodes
+		     WHERE users_roles_topology_nodes_id_topology_node = $1
+		       AND users_roles_topology_nodes_role_code = 'admin'
+		       AND users_roles_topology_nodes_revoked_at IS NULL
 		)
 	`
 
@@ -333,33 +337,48 @@ const sqlExistsActiveAdminGrantOnNode = `
 // new substrate (legacy column kept for transitional reasons); see
 // PLA-0007 for the role-table cutover plan.
 const sqlInsertGrant = `
-		INSERT INTO topology_role_grants
-		    (id, workspace_id, subscription_id, node_id, user_id, role_code, role_id, can_redelegate, granted_by)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NULL, $6, $7)
-		RETURNING id, granted_at
+		INSERT INTO users_roles_topology_nodes (
+			users_roles_topology_nodes_id,
+			users_roles_topology_nodes_id_workspace,
+			users_roles_topology_nodes_id_subscription,
+			users_roles_topology_nodes_id_topology_node,
+			users_roles_topology_nodes_id_user,
+			users_roles_topology_nodes_role_code,
+			users_roles_topology_nodes_id_role,
+			users_roles_topology_nodes_can_redelegate,
+			users_roles_topology_nodes_id_user_granter
+		) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NULL, $6, $7)
+		RETURNING users_roles_topology_nodes_id, users_roles_topology_nodes_granted_at
 	`
 
-// sqlRevokeGrant stamps revoked_at + revoked_by on an active grant
+// sqlRevokeGrant stamps users_roles_topology_nodes_revoked_at + users_roles_topology_nodes_id_user_revoker on an active grant
 // scoped to the caller's subscription. RowsAffected = 0 signals
 // "no active grant" (caller maps to ErrGrantNotFound).
 const sqlRevokeGrant = `
-		UPDATE topology_role_grants
-		   SET revoked_at = NOW(), revoked_by = $1
-		 WHERE id = $2 AND subscription_id = $3 AND revoked_at IS NULL
+		UPDATE users_roles_topology_nodes
+		   SET users_roles_topology_nodes_revoked_at = NOW(),
+		       users_roles_topology_nodes_id_user_revoker = $1
+		 WHERE users_roles_topology_nodes_id = $2
+		   AND users_roles_topology_nodes_id_subscription = $3
+		   AND users_roles_topology_nodes_revoked_at IS NULL
 	`
 
 // sqlUpsertViewState writes one row per (workspace, user) carrying the
 // canvas viewport (pan + zoom). ON CONFLICT bumps coordinates + bookkeeping.
 const sqlUpsertViewState = `
-		INSERT INTO topology_view_state
-		    (workspace_id, subscription_id, user_id,
-		     viewport_x, viewport_y, viewport_zoom)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (workspace_id, user_id)
-		DO UPDATE SET viewport_x    = EXCLUDED.viewport_x,
-		              viewport_y    = EXCLUDED.viewport_y,
-		              viewport_zoom = EXCLUDED.viewport_zoom,
-		              updated_at    = NOW()
+		INSERT INTO topology_view_states (
+		    topology_view_states_id_workspace,
+		    topology_view_states_id_subscription,
+		    topology_view_states_id_user,
+		    topology_view_states_viewport_x,
+		    topology_view_states_viewport_y,
+		    topology_view_states_viewport_zoom
+		) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (topology_view_states_id_workspace, topology_view_states_id_user)
+		DO UPDATE SET topology_view_states_viewport_x    = EXCLUDED.topology_view_states_viewport_x,
+		              topology_view_states_viewport_y    = EXCLUDED.topology_view_states_viewport_y,
+		              topology_view_states_viewport_zoom = EXCLUDED.topology_view_states_viewport_zoom,
+		              topology_view_states_updated_at    = NOW()
 	`
 
 // sqlSubtreeTemplate is the depth-first live-subtree walker with archived
@@ -517,14 +536,14 @@ const sqlRestoreNode = `
 // sqlListMyGrants is the self-pivot grant list for the scope picker.
 // Joins active grants to live nodes for the (subscription, user) pair.
 const sqlListMyGrants = `
-		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
+		SELECT r.users_roles_topology_nodes_id, r.users_roles_topology_nodes_id_topology_node, n.workspace_id, n.parent_id,
 		       n.name, n.label_override, n.colour, n.icon,
-		       r.role_code, r.granted_at, n.sort_order
-		  FROM topology_role_grants r
-		  JOIN topology_nodes n ON n.id = r.node_id
-		 WHERE r.subscription_id = $1
-		   AND r.user_id = $2
-		   AND r.revoked_at IS NULL
+		       r.users_roles_topology_nodes_role_code, r.users_roles_topology_nodes_granted_at, n.sort_order
+		  FROM users_roles_topology_nodes r
+		  JOIN topology_nodes n ON n.id = r.users_roles_topology_nodes_id_topology_node
+		 WHERE r.users_roles_topology_nodes_id_subscription = $1
+		   AND r.users_roles_topology_nodes_id_user = $2
+		   AND r.users_roles_topology_nodes_revoked_at IS NULL
 		   AND n.archived_at IS NULL
 		 ORDER BY n.sort_order, n.name
 	`
@@ -545,14 +564,14 @@ const sqlListMyGrantsGadmin = `
 // sqlListGrantsByUser is the admin-pivot read (PLA-0046, B6.8): gadmin
 // enumerates a target user's active grants. Shape mirrors sqlListMyGrants.
 const sqlListGrantsByUser = `
-		SELECT r.id, r.node_id, n.workspace_id, n.parent_id,
+		SELECT r.users_roles_topology_nodes_id, r.users_roles_topology_nodes_id_topology_node, n.workspace_id, n.parent_id,
 		       n.name, n.label_override, n.colour, n.icon,
-		       r.role_code, r.granted_at, n.sort_order
-		  FROM topology_role_grants r
-		  JOIN topology_nodes n ON n.id = r.node_id
-		 WHERE r.subscription_id = $1
-		   AND r.user_id = $2
-		   AND r.revoked_at IS NULL
+		       r.users_roles_topology_nodes_role_code, r.users_roles_topology_nodes_granted_at, n.sort_order
+		  FROM users_roles_topology_nodes r
+		  JOIN topology_nodes n ON n.id = r.users_roles_topology_nodes_id_topology_node
+		 WHERE r.users_roles_topology_nodes_id_subscription = $1
+		   AND r.users_roles_topology_nodes_id_user = $2
+		   AND r.users_roles_topology_nodes_revoked_at IS NULL
 		   AND n.archived_at IS NULL
 		 ORDER BY n.sort_order, n.name
 	`
@@ -563,11 +582,11 @@ const sqlListGrantsByUser = `
 const sqlClampPredicate = `
 		WITH RECURSIVE grants AS (
 		    SELECT n.id
-		      FROM topology_role_grants r
-		      JOIN topology_nodes n ON n.id = r.node_id
-		     WHERE r.subscription_id = $1
-		       AND r.user_id = $2
-		       AND r.revoked_at IS NULL
+		      FROM users_roles_topology_nodes r
+		      JOIN topology_nodes n ON n.id = r.users_roles_topology_nodes_id_topology_node
+		     WHERE r.users_roles_topology_nodes_id_subscription = $1
+		       AND r.users_roles_topology_nodes_id_user = $2
+		       AND r.users_roles_topology_nodes_revoked_at IS NULL
 		       AND n.archived_at IS NULL
 		), reachable AS (
 		    SELECT id FROM grants

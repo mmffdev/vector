@@ -130,14 +130,14 @@ BEGIN
     -- ──────────────────────────────────────────────────────────
     -- 2a. Topology — role grants (child of topology_nodes)
     -- ──────────────────────────────────────────────────────────
-    DELETE FROM vector_artefacts.topology_role_grants
-     WHERE subscription_id = v_subscription_id;
+    DELETE FROM vector_artefacts.users_roles_topology_nodes
+     WHERE users_roles_topology_nodes_id_subscription = v_subscription_id;
 
     -- ──────────────────────────────────────────────────────────
     -- 2b. Topology — view state (per-user canvas pan/zoom)
     -- ──────────────────────────────────────────────────────────
-    DELETE FROM vector_artefacts.topology_view_state
-     WHERE subscription_id = v_subscription_id;
+    DELETE FROM vector_artefacts.topology_view_states
+     WHERE topology_view_states_id_subscription = v_subscription_id;
 
     -- ──────────────────────────────────────────────────────────
     -- 2c. Topology — nodes (self-referential; delete all at once,
