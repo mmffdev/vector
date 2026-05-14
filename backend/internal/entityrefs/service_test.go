@@ -290,7 +290,7 @@ func TestCleanupChildren_DeletesPortfolioStakeholdersAndPageRefs(t *testing.T) {
 
 	// Seed a page + page_entity_refs row pointing at this portfolio.
 	var tagEnum string
-	if err := tx.QueryRow(ctx, `SELECT tag_enum FROM page_tags LIMIT 1`).Scan(&tagEnum); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT pages_tags_tag_enum FROM pages_tags LIMIT 1`).Scan(&tagEnum); err != nil {
 		t.Fatalf("read page_tags: %v", err)
 	}
 	var pageID uuid.UUID
@@ -481,7 +481,7 @@ func TestInsertPageEntityRef_HappyPathAndIdempotent(t *testing.T) {
 
 	// Seed a page so we have a real page_id (page_entity_refs.page_id is PK + FK).
 	var tagEnum string
-	if err := tx.QueryRow(ctx, `SELECT tag_enum FROM page_tags LIMIT 1`).Scan(&tagEnum); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT pages_tags_tag_enum FROM pages_tags LIMIT 1`).Scan(&tagEnum); err != nil {
 		t.Fatalf("read page_tags: %v", err)
 	}
 	var pageID uuid.UUID

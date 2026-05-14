@@ -33,7 +33,7 @@ func TestPackageBoundary(t *testing.T) {
 	}
 
 	// Pattern: SQL write keyword + table name on the same line.
-	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(page_addressables|page_help)\b`
+	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(pages_addressables|pages_help)\b`
 
 	cmd := exec.Command("rg",
 		"--no-heading", "--line-number",

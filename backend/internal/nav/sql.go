@@ -142,9 +142,12 @@ const sqlListPortfoliosAndProductsInTenant = `
 // sqlListPageTags returns the page_tags catalogue in default order.
 // Used by LoadRegistry as the first hop before joining pages.
 const sqlListPageTags = `
-		SELECT tag_enum, display_name, default_order, is_admin_menu
-		FROM page_tags
-		ORDER BY default_order
+		SELECT pages_tags_tag_enum,
+		       pages_tags_display_name,
+		       pages_tags_default_order,
+		       pages_tags_is_admin_menu
+		FROM pages_tags
+		ORDER BY pages_tags_default_order
 	`
 
 // sqlListSystemPagesWithRoles returns every system-scoped or
@@ -386,8 +389,8 @@ const sqlCountOwnedNavGroupsByIDs = `
 // actually exist in page_tags. Used in SetProfileGroups to reject
 // unknown tags from a placement payload.
 const sqlCountKnownTagEnums = `
-		SELECT COUNT(*) FROM page_tags
-		 WHERE tag_enum = ANY($1)
+		SELECT COUNT(*) FROM pages_tags
+		 WHERE pages_tags_tag_enum = ANY($1)
 	`
 
 // sqlDeleteProfileGroupPlacements wipes per-profile placements for one
@@ -558,15 +561,15 @@ const sqlLazySeedDefaultProfileGroupPlacements = `
 		),
 		combined AS (
 			SELECT
-				tag_enum::text AS tag_enum,
-				NULL::uuid     AS group_id,
-				ROW_NUMBER() OVER (ORDER BY default_order, tag_enum) - 1 AS pos
-			FROM page_tags WHERE is_admin_menu = FALSE
+				pages_tags_tag_enum::text AS tag_enum,
+				NULL::uuid                AS group_id,
+				ROW_NUMBER() OVER (ORDER BY pages_tags_default_order, pages_tags_tag_enum) - 1 AS pos
+			FROM pages_tags WHERE pages_tags_is_admin_menu = FALSE
 			UNION ALL
 			SELECT
 				NULL,
 				id,
-				(SELECT COUNT(*) FROM page_tags WHERE is_admin_menu = FALSE) + position
+				(SELECT COUNT(*) FROM pages_tags WHERE pages_tags_is_admin_menu = FALSE) + position
 			FROM user_nav_groups WHERE user_id = $2
 		)
 		INSERT INTO user_nav_profile_groups (profile_id, tag_enum, group_id, position)

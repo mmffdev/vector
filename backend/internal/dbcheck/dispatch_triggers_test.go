@@ -148,7 +148,7 @@ func TestDispatchTriggers(t *testing.T) {
 		}
 		// page_tags has a fixed FK vocabulary; pick any existing tag.
 		var tagEnum string
-		if err := tx.QueryRow(ctx, `SELECT tag_enum FROM page_tags LIMIT 1`).Scan(&tagEnum); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT pages_tags_tag_enum FROM pages_tags LIMIT 1`).Scan(&tagEnum); err != nil {
 			t.Skipf("cannot read page_tags: %v", err)
 		}
 		var pageID uuid.UUID
