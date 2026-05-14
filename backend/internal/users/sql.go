@@ -81,7 +81,7 @@ const sqlUpdateUserRoleIDFragmentTemplate = `role_id = (SELECT id FROM users_rol
 // sqlRevokeActiveUserSessions revokes a user's live (non-already-revoked)
 // users_sessions. Used inside the Update tx when role changes so a downgrade
 // invalidates outstanding tokens before they expire.
-const sqlRevokeActiveUserSessions = `UPDATE users_sessions SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`
+const sqlRevokeActiveUserSessions = `UPDATE users_sessions SET users_sessions_revoked = TRUE WHERE users_sessions_id_user = $1 AND users_sessions_revoked = FALSE`
 
 // ── Delete ─────────────────────────────────────────────────────────────────
 

@@ -62,7 +62,13 @@ const sqlClearLockoutAndStampLogin = `
 // the SHA-256 of the raw refresh token (raw never persists). Used by
 // Login and the rotation path in Refresh.
 const sqlInsertSession = `
-		INSERT INTO users_sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+		INSERT INTO users_sessions (
+			users_sessions_id_user,
+			users_sessions_token_hash,
+			users_sessions_expires_at,
+			users_sessions_ip_address,
+			users_sessions_user_agent
+		)
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
@@ -82,28 +88,42 @@ const sqlBumpFailedLogin = `UPDATE users SET failed_login_count = $1 WHERE id = 
 // token_hash (revoked + rotated_at + successor_hash needed for the
 // grace-window decision).
 const sqlSelectSessionByHash = `
-		SELECT id, user_id, expires_at, revoked, rotated_at, successor_hash
-		FROM users_sessions WHERE token_hash = $1
+		SELECT users_sessions_id,
+		       users_sessions_id_user,
+		       users_sessions_expires_at,
+		       users_sessions_revoked,
+		       users_sessions_rotated_at,
+		       users_sessions_successor_hash
+		  FROM users_sessions
+		 WHERE users_sessions_token_hash = $1
 	`
 
 // sqlRevokeAllUserSessions revokes every session for a user. Used by
 // the reuse-attack response (Refresh) and by Logout/ChangePassword/
 // ConfirmPasswordReset side-effects.
-const sqlRevokeAllUserSessions = `UPDATE users_sessions SET revoked = TRUE WHERE user_id = $1`
+const sqlRevokeAllUserSessions = `UPDATE users_sessions SET users_sessions_revoked = TRUE WHERE users_sessions_id_user = $1`
 
 // sqlRotateSession marks the current session revoked + stamps
 // rotation metadata (rotated_at, successor_hash) so a concurrent reuse
 // inside the grace window can be resolved to the successor instead of
 // triggering reuse-attack revocation.
 const sqlRotateSession = `
-		UPDATE users_sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
-		WHERE id = $2
+		UPDATE users_sessions
+		   SET users_sessions_revoked        = TRUE,
+		       users_sessions_rotated_at     = NOW(),
+		       users_sessions_successor_hash = $1
+		 WHERE users_sessions_id = $2
 	`
 
 // sqlSelectSuccessorSession is the lean shape used by refreshFromSuccessor
 // (it doesn't need rotation metadata — only liveness).
 const sqlSelectSuccessorSession = `
-		SELECT id, user_id, expires_at, revoked FROM users_sessions WHERE token_hash = $1
+		SELECT users_sessions_id,
+		       users_sessions_id_user,
+		       users_sessions_expires_at,
+		       users_sessions_revoked
+		  FROM users_sessions
+		 WHERE users_sessions_token_hash = $1
 	`
 
 // ── logout (Logout) ─────────────────────────────────────────────────────────
@@ -112,7 +132,10 @@ const sqlSelectSuccessorSession = `
 // refresh-token hash AND returns the owning user_id so the caller can
 // audit-log without a second round-trip.
 const sqlRevokeSessionByHashReturningUser = `
-		UPDATE users_sessions SET revoked = TRUE WHERE token_hash = $1 RETURNING user_id
+		UPDATE users_sessions
+		   SET users_sessions_revoked = TRUE
+		 WHERE users_sessions_token_hash = $1
+		 RETURNING users_sessions_id_user
 	`
 
 // ── password change (ChangePassword) ────────────────────────────────────────

@@ -23,17 +23,16 @@
     "  workspaces:      14",
     "",
     "Pay-down log (newest first):",
+    "  2026-05-14 — mig 187 — users_sessions fully prefixed (11 cols + 6 index + 1 FK; auth/sql.go + users/sql.go rewrites) → 222→211 total (-11). users + auth packages BOTH OFF ledger. 8 packages → 6.",
     "  2026-05-14 — mig 063 (VA) — master_record_tenants fully prefixed (17 cols + tenantmasterrecord/service.go + portfoliomodels/sql.go upsert) → 236→222 total (-14). tenantmasterrecord package OFF ledger. portfoliomodels: 74→61.",
     "  2026-05-14 — mig 186 — users_password_resets fully prefixed → 245→236 total (-9). users + auth packages stay on ledger (users_sessions still bare in both)."
   ],
   "exempt_packages": [
     "artefactitemsv2",
-    "auth",
     "flows",
     "nav",
     "portfoliomodels",
     "roles",
-    "users",
     "workspaces"
   ]
 }
