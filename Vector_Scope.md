@@ -119,7 +119,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.11** `workspaces` — 18 SQL strings, 2 DBs. `[P2]` ✅ done 2026-05-14 — `sql.go` with 18 consts: commands.go (workspace CRUD + creator admin seed + list/load template/for-update), roles.go (workspace_roles grant idempotent + admin-existence + insert + revoke + list), crossdb.go (cross-DB orphan-scan template — VAPool read-only). Allow-list shrunk 33 → 30.
 > Commit `a82f165` (2026-05-14): refactor(PLA-0048 / RF1.2.11): consolidate workspaces SQL into sql.go [RF1.2.11]
 - **RF1.2.12** `tenantsettings` — 4 SQL strings, 2 DBs. `[P3]` ✅ done 2026-05-14 — 3 consts (ensure-row idempotent insert + select + sparse-update template). False-positive lint hit on user-facing "select at least one day" message fixed by rewording to "must include at least one day". Allow-list shrunk 30 → 29.
-- **RF1.2.13** `fields` — 5 SQL strings, 2 DBs. `[P3]`
+> Commit `0eb2675` (2026-05-14): refactor(PLA-0048 / RF1.2.12): consolidate tenantsettings SQL into sql.go [RF1.2.12]
+- **RF1.2.13** `fields` — 5 SQL strings, 2 DBs. `[P3]` ✅ done 2026-05-14 — 5 consts across service.go (vectorPool: workspace tenant + membership probe; artefactsPool: bulk admitted-field lookup) and resolver.go (per-field admit probe). Allow-list shrunk 29 → 27.
 - **RF1.2.14** `searchworker` — 7 SQL strings, 2 DBs. `[P3]`
 - **RF1.2.15** `errorsreport` — 2 SQL strings, 3 DBs. `[P3]`
 - **RF1.2.16** `libraryreleases` — 1 SQL string (rest delegated), 3 DBs. `[P3]`

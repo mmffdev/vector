@@ -77,9 +77,7 @@ type FieldRow struct {
 // straight extraction.
 func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *models.User) error {
 	var wsTenant uuid.UUID
-	err := s.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`, wsID,
-	).Scan(&wsTenant)
+	err := s.vectorPool.QueryRow(ctx, sqlSelectWorkspaceTenant, wsID).Scan(&wsTenant)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrWorkspaceNotFound
 	}
@@ -93,12 +91,7 @@ func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *mo
 		return nil
 	}
 	var member bool
-	err = s.vectorPool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM roles_workspaces
-			 WHERE user_id = $1 AND workspace_id = $2 AND revoked_at IS NULL
-		)`, u.ID, wsID,
-	).Scan(&member)
+	err = s.vectorPool.QueryRow(ctx, sqlExistsActiveWorkspaceMembership, u.ID, wsID).Scan(&member)
 	if err != nil {
 		return err
 	}
@@ -115,33 +108,7 @@ func (s *Service) LoadAdmittedFields(ctx context.Context, wsID, tenantID uuid.UU
 	if s.artefactsPool == nil {
 		return nil, ErrArtefactsPoolMissing
 	}
-	rows, err := s.artefactsPool.Query(ctx, `
-		SELECT
-		    fl.id,
-		    fl.subscription_id,
-		    fl.field_name,
-		    fl.label,
-		    fl.field_type,
-		    fl.options_json,
-		    fl.config_json,
-		    fl.description,
-		    fl.scope,
-		    fl.created_at,
-		    fl.updated_at
-		  FROM artefact_field_library fl
-		 WHERE fl.archived_at IS NULL
-		   AND (
-		         fl.scope = 'global'
-		      OR (fl.scope = 'tenant'    AND fl.subscription_id = $2)
-		      OR (fl.scope = 'workspace' AND fl.subscription_id = $2 AND EXISTS (
-		             SELECT 1 FROM artefact_workspace_fields awf
-		              WHERE awf.workspace_id = $1
-		                AND awf.field_library_id = fl.id
-		         ))
-		       )
-		 ORDER BY fl.label ASC, fl.field_name ASC`,
-		wsID, tenantID,
-	)
+	rows, err := s.artefactsPool.Query(ctx, sqlLoadAdmittedFields, wsID, tenantID)
 	if err != nil {
 		return nil, err
 	}

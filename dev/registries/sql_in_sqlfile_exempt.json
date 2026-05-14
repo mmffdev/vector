@@ -10,8 +10,6 @@
     "backend/internal/custompages/service.go",
     "backend/internal/entityrefs/service.go",
     "backend/internal/errorsreport/service.go",
-    "backend/internal/fields/resolver.go",
-    "backend/internal/fields/service.go",
     "backend/internal/librarydb/fetch.go",
     "backend/internal/librarydb/list.go",
     "backend/internal/librarydb/releases.go",

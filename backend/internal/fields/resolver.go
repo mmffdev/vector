@@ -130,12 +130,8 @@ func (r *Resolver) ResolveField(
 
 func (r *Resolver) loadField(ctx context.Context, fieldLibraryID uuid.UUID) (*fieldRow, error) {
 	var row fieldRow
-	err := r.pool.QueryRow(ctx, `
-		SELECT scope, subscription_id
-		  FROM artefact_field_library
-		 WHERE id = $1 AND archived_at IS NULL`,
-		fieldLibraryID,
-	).Scan(&row.scope, &row.subscriptionID)
+	err := r.pool.QueryRow(ctx, sqlSelectFieldLibraryRow, fieldLibraryID).
+		Scan(&row.scope, &row.subscriptionID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrFieldNotFound
 	}
@@ -147,13 +143,8 @@ func (r *Resolver) loadField(ctx context.Context, fieldLibraryID uuid.UUID) (*fi
 
 func (r *Resolver) workspaceHasField(ctx context.Context, workspaceID, fieldLibraryID uuid.UUID) (bool, error) {
 	var ok bool
-	err := r.pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM artefact_workspace_fields
-			 WHERE workspace_id = $1 AND field_library_id = $2
-		)`,
-		workspaceID, fieldLibraryID,
-	).Scan(&ok)
+	err := r.pool.QueryRow(ctx, sqlExistsWorkspaceFieldAdmit,
+		workspaceID, fieldLibraryID).Scan(&ok)
 	if err != nil {
 		return false, err
 	}
