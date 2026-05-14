@@ -56,9 +56,7 @@ func (s *Service) CodeExists(ctx context.Context, code string) (bool, error) {
 		return false, ErrLibPoolMissing
 	}
 	var found int
-	err := s.libRO.QueryRow(ctx,
-		`SELECT 1 FROM error_codes WHERE code = $1`, code,
-	).Scan(&found)
+	err := s.libRO.QueryRow(ctx, sqlSelectErrorCodeExists, code).Scan(&found)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -93,9 +91,7 @@ func (s *Service) Record(ctx context.Context, ev Event) error {
 	if ev.RequestID != "" {
 		reqID = ev.RequestID
 	}
-	_, err := s.vectorPool.Exec(ctx, `
-		INSERT INTO error_events (subscription_id, user_id, code, context, request_id)
-		VALUES ($1, $2, $3, $4, $5)`,
+	_, err := s.vectorPool.Exec(ctx, sqlInsertErrorEvent,
 		ev.SubscriptionID, ev.UserID, ev.Code, ctxPayload, reqID,
 	)
 	return err
