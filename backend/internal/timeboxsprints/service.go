@@ -43,23 +43,7 @@ func (s *Service) Create(ctx context.Context, in CreateSprintInput) (*Sprint, er
 		return nil, err
 	}
 
-	const q = `
-		INSERT INTO timebox_sprints (
-			subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days, sprint_date_start, sprint_date_end,
-			sprint_velocity
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at`
-
-	row := s.pool.QueryRow(ctx, q,
+	row := s.pool.QueryRow(ctx, sqlInsertSprint,
 		in.SubscriptionID, in.WorkspaceID, in.OrgNodeID,
 		in.SprintName, in.SprintSuffix, in.SprintOwner,
 		in.SprintCadenceDays, in.SprintDateStart, in.SprintDateEnd,
@@ -93,25 +77,9 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateSprintInput) ([
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	const q = `
-		INSERT INTO timebox_sprints (
-			subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days, sprint_date_start, sprint_date_end,
-			sprint_velocity
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at`
-
 	results := make([]*Sprint, 0, len(inputs))
 	for _, in := range inputs {
-		row := tx.QueryRow(ctx, q,
+		row := tx.QueryRow(ctx, sqlInsertSprint,
 			in.SubscriptionID, in.WorkspaceID, in.OrgNodeID,
 			in.SprintName, in.SprintSuffix, in.SprintOwner,
 			in.SprintCadenceDays, in.SprintDateStart, in.SprintDateEnd,
@@ -135,19 +103,7 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateSprintInput) ([
 
 // Get returns a single sprint by ID scoped to the workspace.
 func (s *Service) Get(ctx context.Context, workspaceID, sprintID string) (*Sprint, error) {
-	const q = `
-		SELECT
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at
-		FROM timebox_sprints
-		WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`
-
-	row := s.pool.QueryRow(ctx, q, sprintID, workspaceID)
+	row := s.pool.QueryRow(ctx, sqlSelectSprintByID, sprintID, workspaceID)
 	sprint, err := scanSprint(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -175,18 +131,7 @@ func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) (
 		n++
 	}
 
-	q := fmt.Sprintf(`
-		SELECT
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at
-		FROM timebox_sprints
-		WHERE %s
-		ORDER BY sprint_date_start ASC`, strings.Join(conds, " AND "))
+	q := fmt.Sprintf(sqlListSprintsTemplate, strings.Join(conds, " AND "))
 
 	_ = n // used for param counting
 	rows, err := s.pool.Query(ctx, q, args...)
@@ -267,19 +212,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, sprintID string, in U
 	}
 
 	args = append(args, sprintID, workspaceID)
-	q := fmt.Sprintf(`
-		UPDATE timebox_sprints
-		SET %s
-		WHERE id = $%d AND workspace_id = $%d AND archived_at IS NULL
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at`,
-		strings.Join(sets, ", "), n, n+1)
+	q := fmt.Sprintf(sqlUpdateSprintTemplate, strings.Join(sets, ", "), n, n+1)
 
 	row := s.pool.QueryRow(ctx, q, args...)
 	sprint, err := scanSprint(row)
@@ -307,12 +240,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, sprintID string) erro
 		return ErrLifecycle
 	}
 
-	const q = `
-		UPDATE timebox_sprints
-		SET archived_at = now()
-		WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`
-
-	tag, err := s.pool.Exec(ctx, q, sprintID, workspaceID)
+	tag, err := s.pool.Exec(ctx, sqlArchiveSprint, sprintID, workspaceID)
 	if err != nil {
 		return fmt.Errorf("delete sprint: %w", err)
 	}
@@ -326,20 +254,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, sprintID string) erro
 // if the sprint is not in the planned state. The atomic UPDATE guards against
 // concurrent transitions.
 func (s *Service) Start(ctx context.Context, workspaceID, sprintID string) (*Sprint, error) {
-	const q = `
-		UPDATE timebox_sprints
-		SET status = 'active'
-		WHERE id = $1 AND workspace_id = $2 AND status = 'planned' AND archived_at IS NULL
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at`
-
-	row := s.pool.QueryRow(ctx, q, sprintID, workspaceID)
+	row := s.pool.QueryRow(ctx, sqlStartSprint, sprintID, workspaceID)
 	sprint, err := scanSprint(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -366,20 +281,7 @@ func (s *Service) Start(ctx context.Context, workspaceID, sprintID string) (*Spr
 // Close transitions a sprint from active → completed. Returns ErrCloseLifecycle
 // if the sprint is not active. The atomic UPDATE guards against concurrent transitions.
 func (s *Service) Close(ctx context.Context, workspaceID, sprintID string) (*Sprint, error) {
-	const q = `
-		UPDATE timebox_sprints
-		SET status = 'completed'
-		WHERE id = $1 AND workspace_id = $2 AND status = 'active' AND archived_at IS NULL
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			sprint_name, sprint_suffix, sprint_owner,
-			sprint_cadence_days,
-			sprint_date_start::text, sprint_date_end::text,
-			sprint_scope, sprint_velocity, sprint_estimate,
-			sprint_creep_by_count, sprint_creep_by_estimate,
-			status, sprint_date_added, sprint_date_updated, archived_at`
-
-	row := s.pool.QueryRow(ctx, q, sprintID, workspaceID)
+	row := s.pool.QueryRow(ctx, sqlCloseSprint, sprintID, workspaceID)
 	sprint, err := scanSprint(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -412,18 +314,10 @@ func (s *Service) checkAdjacency(ctx context.Context, workspaceID string, orgNod
 
 	if orgNodeID == nil {
 		// No org_node — only check workspace-level sprints with no org_node.
-		q = `
-			SELECT sprint_date_end::text
-			FROM timebox_sprints
-			WHERE workspace_id = $1 AND org_node_id IS NULL AND archived_at IS NULL
-			ORDER BY sprint_date_end DESC LIMIT 1`
+		q = sqlSelectLastSprintEndDateRoot
 		args = []any{workspaceID}
 	} else {
-		q = `
-			SELECT sprint_date_end::text
-			FROM timebox_sprints
-			WHERE workspace_id = $1 AND org_node_id = $2 AND archived_at IS NULL
-			ORDER BY sprint_date_end DESC LIMIT 1`
+		q = sqlSelectLastSprintEndDateForNode
 		args = []any{workspaceID, *orgNodeID}
 	}
 

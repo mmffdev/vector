@@ -113,7 +113,8 @@ Order: cleanest-first, highest-leverage-first, sagas last. Per-package shape ide
 - **RF1.2.8** `flows` — 30 SQL strings, single-DB. `[P2]` ✅ done 2026-05-14 — `sql.go` created with 30 named consts across service.go (catalogue list + exit rules CRUD + state CRUD + transition CRUD), reset_load.go (snapshot diff reads — type/flow/states/transitions live vs snapshot), and reset_service.go (preview impact probe + apply ops: rebind artefacts, archive/update/insert states, transitions). Allow-list shrunk 40 → 37.
 > Commit `22ba22b` (2026-05-14): refactor(PLA-0048 / RF1.2.8): consolidate flows SQL into sql.go [RF1.2.8]
 - **RF1.2.9** `webhooks` — 11 SQL strings, single-DB. `[P3]` ✅ done 2026-05-14 — `sql.go` created with 11 named consts across service.go (subscription List/Get/Insert/Update sparse template/SoftDelete + Enqueue fan-out: active filters + delivery insert) and worker.go (FOR UPDATE SKIP LOCKED claim + mark claimed + delete on success + record failure with backoff). Allow-list shrunk 37 → 35.
-- **RF1.2.10** `timeboxsprints` + `timeboxreleases` — small, single-DB. `[P3]`
+> Commit `fcf9b6c` (2026-05-14): refactor(PLA-0048 / RF1.2.9): consolidate webhooks SQL into sql.go [RF1.2.9]
+- **RF1.2.10** `timeboxsprints` + `timeboxreleases` — small, single-DB. `[P3]` ✅ done 2026-05-14 — two `sql.go` files (mirror-shaped packages): timeboxsprints 9 consts (insert/select/list template/update template/archive/start/close + last-end probe root+node), timeboxreleases 5 consts (insert/select/list template/update template/archive). Allow-list shrunk 35 → 33.
 - **RF1.2.11** `workspaces` — 18 SQL strings, 2 DBs. `[P2]`
 - **RF1.2.12** `tenantsettings` — 4 SQL strings, 2 DBs. `[P3]`
 - **RF1.2.13** `fields` — 5 SQL strings, 2 DBs. `[P3]`
