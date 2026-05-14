@@ -1,0 +1,36 @@
+{
+  "$comment": [
+    "TD-NAME-001 / RF1.4.4 pay-down ledger. Every package whose sql.go",
+    "still uses bare column names against a renamed (§2.6 root family)",
+    "table is listed here. As each domain's column-rename migration",
+    "ships, the package is REMOVED from this list — that's how the",
+    "ledger shrinks. End-state: empty array → lint becomes fail-on-",
+    "violation in lint_column_prefix_convention.py and warn-only mode",
+    "is retired.",
+    "",
+    "Lint: dev/scripts/lint_column_prefix_convention.py",
+    "Reference: docs/c_tech_debt.md TD-NAME-001 + docs/c_c_naming_conventions.md §2.3",
+    "Baseline captured: 2026-05-14 (245 findings, 9 packages, post RF1.4.2 sweep).",
+    "Per-package counts at baseline (sanity for next run):",
+    "  artefactitemsv2:  6",
+    "  auth:            15",
+    "  flows:           26",
+    "  nav:             87",
+    "  portfoliomodels: 74",
+    "  roles:           17",
+    "  tenantmasterrecord: 1",
+    "  users:            5",
+    "  workspaces:      14"
+  ],
+  "exempt_packages": [
+    "artefactitemsv2",
+    "auth",
+    "flows",
+    "nav",
+    "portfoliomodels",
+    "roles",
+    "tenantmasterrecord",
+    "users",
+    "workspaces"
+  ]
+}

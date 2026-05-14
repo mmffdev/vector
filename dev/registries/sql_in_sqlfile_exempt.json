@@ -6,7 +6,7 @@
     "backend/internal/artefacttypes/service.go",
     "backend/internal/audit/audit.go",
     "backend/internal/custompages/service.go",
-    "backend/internal/entityrefs/service.go",
+    "backend/internal/polymorphicrefs/service.go",
     "backend/internal/ranking/position.go",
     "backend/internal/ranking/service.go",
     "backend/internal/search/service.go",
