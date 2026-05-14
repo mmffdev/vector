@@ -315,69 +315,69 @@ Every table starts with one of these roots. Adding a new root requires a TD entr
 - `<column>_id` for FKs (must be `<table>_id_<target>` — §2.4).
 - Underscores collapsed inappropriately — `workspace_id` is wrong as a column name in any table (right form depends on context: `workspaces_id` as the workspaces PK, or `<some_table>_id_workspace` as an FK).
 
-### §2.8 — Scheduled renames (RF1.4.2)
+### §2.8 — Scheduled renames (RF1.4.2) — **STATUS: shipped 2026-05-13/14**
 
-Every table that doesn't conform to §2.1–2.7 is scheduled for rename. Listed here for traceability; rename migrations land in RF1.4.2 of PLA-0048.
+Every table that doesn't conform to §2.1–2.7 was scheduled for rename. Listed here for traceability; rename migrations landed in RF1.4.2 of PLA-0048 across `db/mmff_vector/schema/181-185`, `db/vector_artefacts/schema/054-062`, and `db/mmff_library/schema/013-014`. Column-prefix sweeps for tables that did not get full §2.3 treatment are captured in **TD-NAME-001** (see [`docs/c_tech_debt.md`](c_tech_debt.md)).
 
-**Table renames** (large set — the new convention forces more renames than the original plan accounted for):
+**Table renames** (large set — the new convention forced more renames than the original plan accounted for):
 
-| Current | Target | DB | Reason |
-|---|---|---|---|
-| `roles` | `users_roles` | `mmff_vector` | Roles belong to users; hierarchical root |
-| `roles_workspaces` | `users_roles_workspaces` | `mmff_vector` | Dominant parent is users |
-| `roles_org_nodes` / `topology_role_grants` | `users_roles_topology_nodes` | `vector_artefacts` | Single canonical name; dominant parent is users |
-| `roles_pages` | `users_roles_pages` | `mmff_vector` | Dominant parent is users |
-| `roles_permissions` | `users_roles_permissions` | `mmff_vector` | Junction; users root |
-| `permissions` | `users_permissions` | `mmff_vector` | Permissions belong to users |
-| `sessions` | `users_sessions` | `mmff_vector` | Sessions belong to users |
-| `password_resets` | `users_password_resets` | `mmff_vector` | Password resets belong to users |
-| `api_keys` | `admin_api_keys` | `mmff_vector` | API keys are admin-issued |
-| `user_nav_profiles` | `users_nav_profiles` | `mmff_vector` | Pluralise root |
-| `user_nav_prefs` | `users_nav_prefs` | `mmff_vector` | Pluralise root |
-| `user_nav_groups` | `users_nav_groups` | `mmff_vector` | Pluralise root |
-| `user_nav_profile_groups` | `users_nav_profile_groups` | `mmff_vector` | Pluralise root |
-| `user_tab_order` | `users_tab_order` | `mmff_vector` | Pluralise root |
-| `user_custom_pages` | `users_custom_pages` | `mmff_vector` | Pluralise root |
-| `user_custom_page_views` | `users_custom_page_views` | `mmff_vector` | Pluralise root |
-| `page_tags` | `pages_tags` | `mmff_vector` | Pluralise root |
-| `page_addressables` | `pages_addressables` | `mmff_vector` | Pluralise root |
-| `page_help` | `pages_help` | `mmff_vector` | Pluralise root |
-| `subscription_sequence` | `subscriptions_sequence` | `mmff_vector` | Pluralise root |
-| `subscription_item_type_icons` | `subscriptions_item_type_icons` | `mmff_vector` | Pluralise root |
-| `subscription_portfolio_model_state` | (drop — superseded by `artefact_adoption_state`) | `mmff_vector` | Already on drop path |
-| `entity_stakeholders` | `subscriptions_stakeholders` | `mmff_vector` | Already keyed by subscription_id; root is subscriptions |
-| `master_record_portfolio` | `master_record_portfolios` | `vector_artefacts` | Pluralise |
-| `master_record_tenant` | `master_record_tenants` | `vector_artefacts` | Pluralise |
-| `master_record_workspaces` | `workspaces` | `vector_artefacts` | Customer-facing noun (PLA-0048 §2.6 root family) |
-| `topology_view_state` | `topology_view_states` | `vector_artefacts` | Pluralise |
-| `topology_role_grants` | (drop — merged into `users_roles_topology_nodes` above) | `vector_artefacts` | Single canonical |
-| `audit_log` | `audit_logs` | `vector_artefacts` | Pluralise |
-| `artefact_types` | `artefacts_types` | `vector_artefacts` | Pluralise root |
-| `artefact_type_fields` | `artefacts_types_fields` | `vector_artefacts` | Pluralise root |
-| `artefact_field_library` | `artefacts_fields_library` | `vector_artefacts` | Pluralise root |
-| `artefact_workspace_fields` | `workspaces_fields` | `vector_artefacts` | Root is workspaces (the workspace owns its admitted-field set) |
-| `artefact_field_values` | `artefacts_fields_values` | `vector_artefacts` | Pluralise root |
-| `artefact_number_sequence` | `artefacts_number_sequences` | `vector_artefacts` | Pluralise both ends |
-| `artefacts_search_outbox` | `artefacts_search_outbox` | `vector_artefacts` | Already correct under new rule |
-| `artefact_adoption_state` | `artefacts_adoption_states` | `vector_artefacts` | Pluralise both ends |
-| `flow_states` | `flows_states` | `vector_artefacts` | Pluralise root |
-| `flow_transitions` | `flows_transitions` | `vector_artefacts` | Pluralise root |
-| `flow_state_exit_rules` | `flows_states_exit_rules` | `vector_artefacts` | Hierarchical chain |
-| `flow_defaults` | `flows_defaults` | `vector_artefacts` | Pluralise root |
-| `flow_state_defaults` | `flows_states_defaults` | `vector_artefacts` | Hierarchical chain |
-| `flow_transition_defaults` | `flows_transitions_defaults` | `vector_artefacts` | Hierarchical chain |
-| `timebox_sprints` | `timeboxes_sprints` | `vector_artefacts` | Pluralise root |
-| `timebox_releases` | `timeboxes_releases` | `vector_artefacts` | Pluralise root |
-| `webhook_subscriptions` | `webhooks_subscriptions` | `vector_artefacts` | Pluralise root |
-| `webhook_deliveries` | `webhooks_deliveries` | `vector_artefacts` | Pluralise root |
-| `library_acknowledgements` | `library_releases_acknowledgements` | `vector_artefacts` | Hierarchical: acks belong to releases |
-| `library_release_log` | `library_release_logs` | `mmff_library` | Pluralise |
-| `library_release_actions` | `library_releases_actions` | `mmff_library` | Pluralise root |
-| `portfolio_templates` | `library_portfolio_models` | `mmff_library` | Rename + reroot (under library_*); aligns with public route `/portfolio-models` |
-| `portfolio_template_layer_definitions` | `library_portfolio_models_layers` | `mmff_library` | Rename + reroot + drop filler "definitions" |
-| `error_codes` | `errors_codes` | `mmff_library` | Pluralise root |
-| `error_events` | `errors_events` | `vector_artefacts` | Pluralise root |
-| `library_help_defaults` | `library_help_defaults` | `mmff_vector` | Already correct (note: `library_help_defaults` lives in mmff_vector, not mmff_library — see §2.6) |
+| Current | Target | DB | Status | Reason |
+|---|---|---|---|---|
+| `roles` | `users_roles` | `mmff_vector` | Done | Roles belong to users; hierarchical root |
+| `roles_workspaces` | `users_roles_workspaces` | `mmff_vector` | Done | Dominant parent is users |
+| `roles_org_nodes` / `topology_role_grants` | `users_roles_topology_nodes` | `vector_artefacts` | Done (merged) | Single canonical name; dominant parent is users |
+| `roles_pages` | `users_roles_pages` | `mmff_vector` | Done | Dominant parent is users |
+| `roles_permissions` | `users_roles_permissions` | `mmff_vector` | Done | Junction; users root |
+| `permissions` | `users_permissions` | `mmff_vector` | Done | Permissions belong to users |
+| `sessions` | `users_sessions` | `mmff_vector` | Done | Sessions belong to users |
+| `password_resets` | `users_password_resets` | `mmff_vector` | Done | Password resets belong to users |
+| `api_keys` | `admin_api_keys` | `mmff_vector` | Done | API keys are admin-issued |
+| `user_nav_profiles` | `users_nav_profiles` | `mmff_vector` | Done | Pluralise root |
+| `user_nav_prefs` | `users_nav_prefs` | `mmff_vector` | Done | Pluralise root |
+| `user_nav_groups` | `users_nav_groups` | `mmff_vector` | Done | Pluralise root |
+| `user_nav_profile_groups` | `users_nav_profile_groups` | `mmff_vector` | Done | Pluralise root |
+| `user_tab_order` | `users_tab_order` | `mmff_vector` | Done | Pluralise root |
+| `user_custom_pages` | `users_custom_pages` | `mmff_vector` | Done | Pluralise root |
+| `user_custom_page_views` | `users_custom_page_views` | `mmff_vector` | Done | Pluralise root |
+| `page_tags` | `pages_tags` | `mmff_vector` | Done | Pluralise root |
+| `page_addressables` | `pages_addressables` | `mmff_vector` | Done | Pluralise root |
+| `page_help` | `pages_help` | `mmff_vector` | Done | Pluralise root |
+| `subscription_sequence` | `subscriptions_sequence` | `mmff_vector` | Done | Pluralise root |
+| `subscription_item_type_icons` | `subscriptions_item_type_icons` | `mmff_vector` | Done | Pluralise root |
+| `subscription_portfolio_model_state` | (drop — superseded by `artefact_adoption_state`) | `mmff_vector` | Done (drop) | Already on drop path |
+| `entity_stakeholders` | `subscriptions_stakeholders` | `mmff_vector` | Done | Already keyed by subscription_id; root is subscriptions |
+| `master_record_portfolio` | `master_record_portfolios` | `vector_artefacts` | Done | Pluralise |
+| `master_record_tenant` | `master_record_tenants` | `vector_artefacts` | Done | Pluralise |
+| `master_record_workspaces` | `workspaces` | `vector_artefacts` | Deferred (TD-NAME-001) | Customer-facing noun (PLA-0048 §2.6 root family) |
+| `topology_view_state` | `topology_view_states` | `vector_artefacts` | Done | Pluralise |
+| `topology_role_grants` | (drop — merged into `users_roles_topology_nodes` above) | `vector_artefacts` | Done (merged) | Single canonical |
+| `audit_log` | `audit_logs` | `vector_artefacts` | Done (full prefix) | Pluralise |
+| `artefact_types` | `artefacts_types` | `vector_artefacts` | Done | Pluralise root |
+| `artefact_type_fields` | `artefacts_types_fields` | `vector_artefacts` | Done | Pluralise root |
+| `artefact_field_library` | `artefacts_fields_library` | `vector_artefacts` | Done | Pluralise root |
+| `artefact_workspace_fields` | `workspaces_fields` | `vector_artefacts` | Done | Root is workspaces (the workspace owns its admitted-field set) |
+| `artefact_field_values` | `artefacts_fields_values` | `vector_artefacts` | Done | Pluralise root |
+| `artefact_number_sequence` | `artefacts_number_sequences` | `vector_artefacts` | Done | Pluralise both ends |
+| `artefacts_search_outbox` | `artefacts_search_outbox` | `vector_artefacts` | Already correct | Already correct under new rule |
+| `artefact_adoption_state` | `artefacts_adoption_states` | `vector_artefacts` | Done | Pluralise both ends |
+| `flow_states` | `flows_states` | `vector_artefacts` | Done | Pluralise root |
+| `flow_transitions` | `flows_transitions` | `vector_artefacts` | Done | Pluralise root |
+| `flow_state_exit_rules` | `flows_states_exit_rules` | `vector_artefacts` | Done | Hierarchical chain |
+| `flow_defaults` | `flows_defaults` | `vector_artefacts` | Done | Pluralise root |
+| `flow_state_defaults` | `flows_states_defaults` | `vector_artefacts` | Done | Hierarchical chain |
+| `flow_transition_defaults` | `flows_transitions_defaults` | `vector_artefacts` | Done | Hierarchical chain |
+| `timebox_sprints` | `timeboxes_sprints` | `vector_artefacts` | Done (full prefix) | Pluralise root |
+| `timebox_releases` | `timeboxes_releases` | `vector_artefacts` | Done (full prefix) | Pluralise root |
+| `webhook_subscriptions` | `webhooks_subscriptions` | `vector_artefacts` | Done (full prefix) | Pluralise root |
+| `webhook_deliveries` | `webhooks_deliveries` | `vector_artefacts` | Done (full prefix) | Pluralise root |
+| `library_acknowledgements` | `library_releases_acknowledgements` | `vector_artefacts` | Done (full prefix) | Hierarchical: acks belong to releases |
+| `library_release_log` | `library_release_logs` | `mmff_library` | Done | Pluralise |
+| `library_release_actions` | `library_releases_actions` | `mmff_library` | Done | Pluralise root |
+| `portfolio_templates` | `library_portfolio_models` | `mmff_library` | Deferred (TD-NAME-001) | Rename + reroot (under library_*); aligns with public route `/portfolio-models` |
+| `portfolio_template_layer_definitions` | `library_portfolio_models_layers` | `mmff_library` | Deferred (TD-NAME-001) | Rename + reroot + drop filler "definitions" |
+| `error_codes` | `errors_codes` | `mmff_library` | Done | Pluralise root |
+| `error_events` | `errors_events` | `vector_artefacts` | Done (full prefix) | Pluralise root |
+| `library_help_defaults` | `library_help_defaults` | `mmff_vector` | Already correct | Already correct (note: `library_help_defaults` lives in mmff_vector, not mmff_library — see §2.6) |
 
 **Column renames** (every column on every renamed table also gains the table-prefix). Scope is large; see RF1.4.4.
 
@@ -435,21 +435,21 @@ Same handler may serve both surfaces, but the public surface goes through a `Map
 
 Root-level routes (unversioned, no prefix): `/healthz`, `/env`, `/status/pipeline`, `/ws`, `/env/switch`. These are infra, not part of either transport.
 
-### §3.3 — Scheduled route renames (RF1.4.3)
+### §3.3 — Scheduled route renames (RF1.4.3) — **STATUS: shipped 2026-05-13**
 
-| Current | Target | Reason |
-|---|---|---|
-| `GET /workspace/{id}/fields` | `GET /workspaces/{id}/fields` | Plural collection |
-| `GET/PATCH /workspace/{id}/portfolio/layers/batch` | `/workspaces/{id}/portfolio/layers/batch` | Plural |
-| `/portfolio` (mount) | `/portfolios` | Plural |
-| `POST /nav/bookmark` / `DELETE /nav/bookmark` | `POST /nav/bookmarks` / `DELETE /nav/bookmarks/{id}` | Plural, REST-canonical |
-| `GET/PUT/DELETE /user/tab-order/{pageId}` | `GET/PUT/DELETE /me/tab-order/{pageId}` | Per-user resources live under `/me` |
-| `POST /admin/api-keys/issue` | `POST /admin/api-keys` | REST-canonical create |
-| `POST /admin/api-keys/revoke` | `DELETE /admin/api-keys/{id}` | REST-canonical delete |
-| `PATCH /flow-states/{id}` etc. | `PATCH /flows/{flowId}/states/{id}` | Nested resource |
-| `POST /errors/report` | `POST /error-reports` | Noun, not verb |
-| `POST /admin/dev/adoption-reset` | `POST /admin/dev/reset-adoption-state` | Match neighbour `master-reset` verb-noun order |
-| `/tenant-settings` | `/workspace-settings` | The settings key per workspace, not per tenant (verify before renaming) |
+| Current | Target | Status | Reason |
+|---|---|---|---|
+| `GET /workspace/{id}/fields` | `GET /workspaces/{id}/fields` | Done | Plural collection |
+| `GET/PATCH /workspace/{id}/portfolio/layers/batch` | `/workspaces/{id}/portfolio/layers/batch` | Done | Plural |
+| `/portfolio` (mount) | `/portfolios` | Done | Plural |
+| `POST /nav/bookmark` / `DELETE /nav/bookmark` | `POST /nav/bookmarks` / `DELETE /nav/bookmarks/{id}` | Deferred (TD-NAME-002) | Plural, REST-canonical |
+| `GET/PUT/DELETE /user/tab-order/{pageId}` | `GET/PUT/DELETE /me/tab-order/{pageId}` | Deferred (TD-NAME-002) | Per-user resources live under `/me` |
+| `POST /admin/api-keys/issue` | `POST /admin/api-keys` | Deferred (TD-NAME-002) | REST-canonical create |
+| `POST /admin/api-keys/revoke` | `DELETE /admin/api-keys/{id}` | Deferred (TD-NAME-002) | REST-canonical delete |
+| `PATCH /flow-states/{id}` etc. | `PATCH /flows/{flowId}/states/{id}` | Deferred (TD-NAME-002) | Nested resource |
+| `POST /errors/report` | `POST /error-reports` | Deferred (TD-NAME-002) | Noun, not verb |
+| `POST /admin/dev/adoption-reset` | `POST /admin/dev/reset-adoption-state` | Done | Match neighbour `master-reset` verb-noun order |
+| `/tenant-settings` | `/workspace-settings` | Deferred (verify) | The settings key per workspace, not per tenant (verify before renaming) |
 
 Cutover rule for `/samantha/v2/*` renames (public API breaking change): the old route stays mounted for one release cycle returning HTTP 410 Gone with a `Link: <new-url>; rel="successor"` header, OR a 301 redirect. `/_site/*` renames cut over immediately (frontend updates in same commit).
 
@@ -487,7 +487,7 @@ db/
 ```
 
 Rules:
-- **Numeric prefix, 4-digit zero-padded.** `0001_`, `0042_`, `0180_`. (Existing pre-RF1 migrations keep their 3-digit numbers; new migrations from RF1.3 onward use 4 digits — or simply continue the existing numbering scheme without padding gain. The migration runner does not care about padding; it sorts lexically. **Decision pending RF1.3:** keep existing numbering scheme rather than re-pad. This doc to be updated at end of RF1.3.)
+- **Numeric prefix, continuing the per-DB sequence in use today.** `mmff_vector` is at `185_`, `vector_artefacts` at `062_`, `mmff_library` at `014_`. **Decision (RF1.3, 2026-05-13):** keep existing 3-digit unpadded numbering rather than back-fill to 4 digits. The migration runner sorts lexically and `185_` sorts correctly against `186_`, `187_`, … so the only break would come at the four-digit boundary (`999_` → `1000_`) which is years away. When a DB crosses 1000 we re-pad in a single dedicated rename commit.
 - **Descriptive name in snake_case.** `0180_drop_subscription_topology_committed_columns.sql`, `0053_topology_commits.sql`.
 - **Every UP has a paired DOWN.** Same number, same descriptive name, `.down.sql` (or `_DOWN.sql` per existing convention — to be normalised in RF1.3).
 - **No migration may be edited after merge.** A mistake is fixed by a new migration. The schema_migrations table is append-only.
