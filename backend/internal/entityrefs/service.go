@@ -126,10 +126,20 @@ func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind E
 	}
 	var id uuid.UUID
 	err := tx.QueryRow(ctx, `
-		INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (entity_kind, entity_id, user_id, role) DO UPDATE SET role = EXCLUDED.role
-		RETURNING id`,
+		INSERT INTO subscriptions_stakeholders (
+			subscriptions_stakeholders_id_subscription,
+			subscriptions_stakeholders_entity_kind,
+			subscriptions_stakeholders_entity_id,
+			subscriptions_stakeholders_id_user,
+			subscriptions_stakeholders_role
+		) VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (
+			subscriptions_stakeholders_entity_kind,
+			subscriptions_stakeholders_entity_id,
+			subscriptions_stakeholders_id_user,
+			subscriptions_stakeholders_role
+		) DO UPDATE SET subscriptions_stakeholders_role = EXCLUDED.subscriptions_stakeholders_role
+		RETURNING subscriptions_stakeholders_id`,
 		callerSubscription, string(kind), entityID, userID, role,
 	).Scan(&id)
 	return id, err
@@ -209,7 +219,7 @@ type childRel struct {
 }
 
 var (
-	childRelStakeholders = childRel{table: "entity_stakeholders", kindCol: "entity_kind", idCol: "entity_id"}
+	childRelStakeholders = childRel{table: "subscriptions_stakeholders", kindCol: "subscriptions_stakeholders_entity_kind", idCol: "subscriptions_stakeholders_entity_id"}
 	childRelPageRefs     = childRel{table: "page_entity_refs", kindCol: "entity_kind", idCol: "entity_id"}
 )
 

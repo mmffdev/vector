@@ -35,7 +35,13 @@ func TestDispatchTriggers(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO subscriptions_stakeholders (
+				subscriptions_stakeholders_id_subscription,
+				subscriptions_stakeholders_entity_kind,
+				subscriptions_stakeholders_entity_id,
+				subscriptions_stakeholders_id_user,
+				subscriptions_stakeholders_role
+			)
 			VALUES ($1, 'workspace', gen_random_uuid(), $2, 'test')`,
 			subscriptionID, userID)
 		assertFKViolation(t, err)
@@ -63,7 +69,13 @@ func TestDispatchTriggers(t *testing.T) {
 			}
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO subscriptions_stakeholders (
+				subscriptions_stakeholders_id_subscription,
+				subscriptions_stakeholders_entity_kind,
+				subscriptions_stakeholders_entity_id,
+				subscriptions_stakeholders_id_user,
+				subscriptions_stakeholders_role
+			)
 			VALUES ($1, 'workspace', $2, $3, 'test_dispatch_lifecycle')`,
 			wsSubscription, wsID, userID)
 		if err != nil {
@@ -94,7 +106,13 @@ func TestDispatchTriggers(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO subscriptions_stakeholders (
+				subscriptions_stakeholders_id_subscription,
+				subscriptions_stakeholders_entity_kind,
+				subscriptions_stakeholders_entity_id,
+				subscriptions_stakeholders_id_user,
+				subscriptions_stakeholders_role
+			)
 			VALUES ($1, 'workspace', $2, $3, 'test_dispatch_archived')`,
 			wsSubscription, wsID, userID)
 		assertFKViolation(t, err)
@@ -126,7 +144,13 @@ func TestDispatchTriggers(t *testing.T) {
 			t.Fatalf("seed foreign user: %v", err)
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
+			INSERT INTO subscriptions_stakeholders (
+				subscriptions_stakeholders_id_subscription,
+				subscriptions_stakeholders_entity_kind,
+				subscriptions_stakeholders_entity_id,
+				subscriptions_stakeholders_id_user,
+				subscriptions_stakeholders_role
+			)
 			VALUES ($1, 'workspace', $2, $3, 'test_dispatch_cross_tenant')`,
 			foreignTenant, wsID, foreignUser)
 		assertFKViolation(t, err)

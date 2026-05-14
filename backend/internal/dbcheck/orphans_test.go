@@ -46,14 +46,14 @@ func TestNoPolymorphicOrphans(t *testing.T) {
 
 	checks := []check{
 		{
-			name: "entity_stakeholders",
+			name: "subscriptions_stakeholders",
 			sql: `
-				SELECT count(*) FROM entity_stakeholders es
+				SELECT count(*) FROM subscriptions_stakeholders es
 				WHERE NOT EXISTS (
-				  SELECT 1 FROM company_roadmap cr WHERE es.entity_kind = 'company_roadmap' AND es.entity_id = cr.id
-				  UNION ALL SELECT 1 FROM workspace w  WHERE es.entity_kind = 'workspace'        AND es.entity_id = w.id
-				  UNION ALL SELECT 1 FROM portfolio p  WHERE es.entity_kind = 'portfolio'        AND es.entity_id = p.id
-				  UNION ALL SELECT 1 FROM product   pr WHERE es.entity_kind = 'product'          AND es.entity_id = pr.id
+				  SELECT 1 FROM company_roadmap cr WHERE es.subscriptions_stakeholders_entity_kind = 'company_roadmap' AND es.subscriptions_stakeholders_entity_id = cr.id
+				  UNION ALL SELECT 1 FROM workspace w  WHERE es.subscriptions_stakeholders_entity_kind = 'workspace'        AND es.subscriptions_stakeholders_entity_id = w.id
+				  UNION ALL SELECT 1 FROM portfolio p  WHERE es.subscriptions_stakeholders_entity_kind = 'portfolio'        AND es.subscriptions_stakeholders_entity_id = p.id
+				  UNION ALL SELECT 1 FROM product   pr WHERE es.subscriptions_stakeholders_entity_kind = 'product'          AND es.subscriptions_stakeholders_entity_id = pr.id
 				)`,
 		},
 		{

@@ -73,10 +73,10 @@ func TestChildRelationshipsFor(t *testing.T) {
 		want  []string // table names, ordered as CleanupChildren iterates
 		ok    bool
 	}{
-		{KindCompanyRoadmap, []string{"entity_stakeholders"}, true},
-		{KindWorkspace, []string{"entity_stakeholders"}, true},
-		{KindPortfolio, []string{"entity_stakeholders", "page_entity_refs"}, true},
-		{KindProduct, []string{"entity_stakeholders", "page_entity_refs"}, true},
+		{KindCompanyRoadmap, []string{"subscriptions_stakeholders"}, true},
+		{KindWorkspace, []string{"subscriptions_stakeholders"}, true},
+		{KindPortfolio, []string{"subscriptions_stakeholders", "page_entity_refs"}, true},
+		{KindProduct, []string{"subscriptions_stakeholders", "page_entity_refs"}, true},
 		{EntityKind("bogus"), nil, false},
 	}
 	for _, c := range cases {
@@ -282,7 +282,13 @@ func TestCleanupChildren_DeletesPortfolioStakeholdersAndPageRefs(t *testing.T) {
 		}
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO entity_stakeholders (subscription_id, entity_kind, entity_id, user_id, role)
+		INSERT INTO subscriptions_stakeholders (
+			subscriptions_stakeholders_id_subscription,
+			subscriptions_stakeholders_entity_kind,
+			subscriptions_stakeholders_entity_id,
+			subscriptions_stakeholders_id_user,
+			subscriptions_stakeholders_role
+		)
 		VALUES ($1, 'portfolio', $2, $3, 'cleanup-test')`,
 		portSubscription, portID, userID); err != nil {
 		t.Fatalf("seed stakeholder: %v", err)
@@ -319,11 +325,11 @@ func TestCleanupChildren_DeletesPortfolioStakeholdersAndPageRefs(t *testing.T) {
 
 	// Confirm both child tables now have zero rows for this portfolio.
 	var n int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM entity_stakeholders WHERE entity_kind = 'portfolio' AND entity_id = $1`, portID).Scan(&n); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM subscriptions_stakeholders WHERE subscriptions_stakeholders_entity_kind = 'portfolio' AND subscriptions_stakeholders_entity_id = $1`, portID).Scan(&n); err != nil {
 		t.Fatalf("recount stakeholders: %v", err)
 	}
 	if n != 0 {
-		t.Errorf("entity_stakeholders still has %d rows for portfolio %v", n, portID)
+		t.Errorf("subscriptions_stakeholders still has %d rows for portfolio %v", n, portID)
 	}
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM page_entity_refs WHERE entity_kind = 'portfolio' AND entity_id = $1`, portID).Scan(&n); err != nil {
 		t.Fatalf("recount page_entity_refs: %v", err)
@@ -404,8 +410,11 @@ func TestInsertEntityStakeholder_HappyPathAndIdempotent(t *testing.T) {
 
 	var n int
 	if err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM entity_stakeholders
-		WHERE entity_kind = 'workspace' AND entity_id = $1 AND user_id = $2 AND role = 'test-insert-happy'`,
+		SELECT count(*) FROM subscriptions_stakeholders
+		WHERE subscriptions_stakeholders_entity_kind = 'workspace'
+		  AND subscriptions_stakeholders_entity_id = $1
+		  AND subscriptions_stakeholders_id_user = $2
+		  AND subscriptions_stakeholders_role = 'test-insert-happy'`,
 		wsID, userID).Scan(&n); err != nil {
 		t.Fatalf("recount: %v", err)
 	}
