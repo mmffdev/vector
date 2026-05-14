@@ -19,7 +19,7 @@ package portfoliomodels
 //     proves the cutover has not happened yet (expected today, until
 //     M7 runs).
 //   - PASSes once the legacy writes are removed AND the vector_artefacts
-//     side carries the strategy hierarchy + master_record_portfolio.
+//     side carries the strategy hierarchy + master_record_portfolios.
 //
 // When M7 ships, this skip flips to a real assertion automatically —
 // no test edit required. That is exactly the gate PLA-0026 wants.
@@ -95,7 +95,7 @@ func TestAdoptSaga_VectorArtefactsOnly(t *testing.T) {
 	}()
 
 	// Wire a real master-record service so the finalize step's
-	// master_record_portfolio upsert runs (PLA-0026 / B6). Without it
+	// master_record_portfolios upsert runs (PLA-0026 / B6). Without it
 	// the orchestrator skips the upsert and the cutover-side parity
 	// check would be incomplete.
 	mrSvc := portfolio.NewService(va)

@@ -38,14 +38,14 @@ import (
 //
 // Tables covered (verified live 2026-05-07 against vector_artefacts):
 //   artefact_types, artefact_workspace_fields, artefacts,
-//   master_record_portfolio
+//   master_record_portfolios
 //
 // Note: sprints (013) was replaced by timeboxes_sprints in migration 025
 // (db/vector_artefacts/schema/025_timeboxes_sprints.sql). Add timeboxes_sprints to
 // vaCanaryTables once 025 is applied to the dev DB.
 //
 // Detection rule: `archived_at IS NULL` is filtered out for tables that have
-// the column. master_record_portfolio is the one exception — its row IS the
+// the column. master_record_portfolios is the one exception — its row IS the
 // adoption record and it has no archived_at; one row per workspace_id PK.
 
 // vaCanaryTables is the authoritative list of vector_artefacts tables whose
@@ -53,7 +53,7 @@ import (
 //
 // hasArchivedAt = true means the canary filters out archived rows (a
 // workspace deletion + soft-archive is allowed to leave dangling references
-// from archived rows). master_record_portfolio has no archived_at column —
+// from archived rows). master_record_portfolios has no archived_at column —
 // the row IS the adoption state, lifetime equals the workspace.
 var vaCanaryTables = []struct {
 	name          string
@@ -62,7 +62,7 @@ var vaCanaryTables = []struct {
 	{"artefact_types", true},
 	{"artefact_workspace_fields", false}, // admit-row table; lifetime = workspace
 	{"artefacts", true},
-	{"master_record_portfolio", false}, // PK = workspace_id; lifetime = workspace
+	{"master_record_portfolios", false}, // PK = workspace_id; lifetime = workspace
 	// {"timeboxes_sprints", true}, -- add once migration 025 is applied to dev DB
 }
 

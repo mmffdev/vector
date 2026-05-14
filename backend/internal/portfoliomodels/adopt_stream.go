@@ -289,7 +289,7 @@ func writeStepEvent(w http.ResponseWriter, flusher http.Flusher, msg streamMsg) 
 //   - transitions  → "flow_transitions"            (state→state edges)
 //   - artifacts    → "artefact_types/work"         (work-item leaf types)
 //   - terminology  → "legacy/subscription_terminology" (no VA equivalent yet)
-//   - finalize     → "master_record_portfolio"     (portfolio-adoption row)
+//   - finalize     → "master_record_portfolios"     (portfolio-adoption row)
 //
 // Unknown step names fall through to "" — callers receive an empty
 // substrate field rather than a misleading guess.
@@ -308,7 +308,7 @@ func stepSubstrate(stepName string) string {
 	case stepTerminology:
 		return "legacy/subscription_terminology"
 	case stepFinalize:
-		return "master_record_portfolio"
+		return "master_record_portfolios"
 	default:
 		return ""
 	}

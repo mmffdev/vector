@@ -1,7 +1,7 @@
 package portfoliomodels
 
 // PLA-0026 / Story 00495 (B6): adoption-saga finalize-step writer —
-// upsert the master_record_portfolio row for this workspace.
+// upsert the master_record_portfolios row for this workspace.
 //
 // Called at saga step 7 (finalize), AFTER the per-step VA writers have
 // committed (B3–B5). One row per workspace; absence means "no model
@@ -9,10 +9,10 @@ package portfoliomodels
 // (model_name + model_description) so it survives library-template
 // deletion (R047 §6).
 //
-// Writer-boundary contract: master_record_portfolio writes MUST go
+// Writer-boundary contract: master_record_portfolios writes MUST go
 // through portfolio.Service (sole writer for that table; lint:
 // writer-boundary). This file calls portfolio.Service.Upsert and
-// performs no direct SQL against master_record_portfolio.
+// performs no direct SQL against master_record_portfolios.
 //
 // Tx semantics: portfolio.Service.Upsert runs against the
 // vector_artefacts pool directly (not a passed-in tx). That is
@@ -39,7 +39,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/portfolio"
 )
 
-// writeMasterRecordPortfolio upserts the master_record_portfolio row
+// writeMasterRecordPortfolio upserts the master_record_portfolios row
 // for this workspace. Called at saga step 7 (finalize), AFTER the
 // per-step VA writers have committed. Copies model_name +
 // model_description from the library bundle so the row survives
@@ -68,19 +68,19 @@ func writeMasterRecordPortfolio(
 	// inputs the saga is responsible for resolving (modelID,
 	// adoptedByUserID).
 	if workspaceID == uuid.Nil {
-		return fmt.Errorf("upsert master_record_portfolio: workspace_id is required")
+		return fmt.Errorf("upsert master_record_portfolios: workspace_id is required")
 	}
 	if modelID == uuid.Nil {
-		return fmt.Errorf("upsert master_record_portfolio: model_id is required")
+		return fmt.Errorf("upsert master_record_portfolios: model_id is required")
 	}
 	if adoptedByUserID == uuid.Nil {
-		return fmt.Errorf("upsert master_record_portfolio: adopted_by_user_id is required (R047 §6)")
+		return fmt.Errorf("upsert master_record_portfolios: adopted_by_user_id is required (R047 §6)")
 	}
 	if svc == nil {
-		return fmt.Errorf("upsert master_record_portfolio: master record service not configured")
+		return fmt.Errorf("upsert master_record_portfolios: master record service not configured")
 	}
 	if bundle == nil {
-		return fmt.Errorf("upsert master_record_portfolio: bundle is required")
+		return fmt.Errorf("upsert master_record_portfolios: bundle is required")
 	}
 
 	in := portfolio.UpsertInput{
@@ -91,7 +91,7 @@ func writeMasterRecordPortfolio(
 		AdoptedByUserID:  &adoptedByUserID,
 	}
 	if _, err := svc.Upsert(ctx, in); err != nil {
-		return fmt.Errorf("upsert master_record_portfolio: %w", err)
+		return fmt.Errorf("upsert master_record_portfolios: %w", err)
 	}
 	return nil
 }

@@ -1,10 +1,10 @@
-// Package portfolio is the SOLE writer for the master_record_portfolio
+// Package portfolio is the SOLE writer for the master_record_portfolios
 // table (PLA-0026 / Story 00490, B1). One row exists per workspace and
 // holds the persistent portfolio model record (model identity + adoption
 // metadata). The row is inserted by the adoption saga (B6) at adoption
 // time; absence means "no model adopted" — there is no auto-seed trigger.
 //
-// master_record_portfolio lives in vector_artefacts (separate Postgres
+// master_record_portfolios lives in vector_artefacts (separate Postgres
 // database from mmff_vector). The Service holds the vector_artefacts
 // pool; cross-DB validation against mmff_vector (e.g. workspace exists,
 // adopted_by_user_id belongs to the workspace's tenant) is handled at
@@ -12,7 +12,7 @@
 // sole-writer scope tight.
 //
 // Writer-boundary contract: every INSERT / UPDATE / DELETE against
-// master_record_portfolio MUST go through this package. Enforced by
+// master_record_portfolios MUST go through this package. Enforced by
 // dev/scripts/lint_writer_boundary.py.
 package portfolio
 
@@ -37,7 +37,7 @@ var (
 )
 
 // MasterRecord is the wire shape returned to callers. Field names mirror
-// the columns on master_record_portfolio. Pointer types are nullable on
+// the columns on master_record_portfolios. Pointer types are nullable on
 // the wire.
 type MasterRecord struct {
 	WorkspaceID       uuid.UUID  `json:"workspace_id"`
@@ -93,7 +93,7 @@ func (v *ValidationError) Error() string {
 	return "validation failed — " + strings.Join(parts, "; ")
 }
 
-// Service is the sole-writer surface for master_record_portfolio.
+// Service is the sole-writer surface for master_record_portfolios.
 type Service struct {
 	// vectorArtefactsPool reads + writes vector_artefacts. May be nil
 	// when VECTOR_ARTEFACTS_DB_URL is unset; in that case all methods
@@ -183,7 +183,7 @@ func (s *Service) CanReadMasterRecord(
 	return member, nil
 }
 
-// Get returns the master_record_portfolio row for workspaceID, or
+// Get returns the master_record_portfolios row for workspaceID, or
 // ErrNotFound if none exists. No auto-seed: callers (the saga, the
 // handler) must distinguish "no model adopted" from a hard error.
 func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*MasterRecord, error) {
@@ -260,13 +260,13 @@ func (s *Service) Patch(ctx context.Context, workspaceID uuid.UUID, in PatchInpu
 	if in.ModelID != nil {
 		v := strings.TrimSpace(*in.ModelID)
 		if v == "" {
-			addSet("model_id", nil)
+			addSet("master_record_portfolios_id_library_portfolio_model", nil)
 		} else {
 			id, err := uuid.Parse(v)
 			if err != nil {
 				violations = append(violations, Violation{Field: "model_id", Message: "must be a valid UUID"})
 			} else {
-				addSet("model_id", id)
+				addSet("master_record_portfolios_id_library_portfolio_model", id)
 			}
 		}
 	}
@@ -277,28 +277,28 @@ func (s *Service) Patch(ctx context.Context, workspaceID uuid.UUID, in PatchInpu
 		} else if len(v) > 256 {
 			violations = append(violations, Violation{Field: "model_name", Message: "must be 256 characters or fewer"})
 		} else {
-			addSet("model_name", v)
+			addSet("master_record_portfolios_model_name", v)
 		}
 	}
 	if in.ModelDescription != nil {
 		if len(*in.ModelDescription) > 4000 {
 			violations = append(violations, Violation{Field: "model_description", Message: "must be 4000 characters or fewer"})
 		} else if *in.ModelDescription == "" {
-			addSet("model_description", nil)
+			addSet("master_record_portfolios_model_description", nil)
 		} else {
-			addSet("model_description", *in.ModelDescription)
+			addSet("master_record_portfolios_model_description", *in.ModelDescription)
 		}
 	}
 	if in.AdoptedByUserID != nil {
 		v := strings.TrimSpace(*in.AdoptedByUserID)
 		if v == "" {
-			addSet("adopted_by_user_id", nil)
+			addSet("master_record_portfolios_id_user_adopter", nil)
 		} else {
 			id, err := uuid.Parse(v)
 			if err != nil {
 				violations = append(violations, Violation{Field: "adopted_by_user_id", Message: "must be a valid UUID"})
 			} else {
-				addSet("adopted_by_user_id", id)
+				addSet("master_record_portfolios_id_user_adopter", id)
 			}
 		}
 	}

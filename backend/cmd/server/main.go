@@ -215,7 +215,7 @@ func main() {
 	// Constructed AFTER the vaPool block so the handler picks up the
 	// pool when VECTOR_ARTEFACTS_DB_URL is set.
 	// PLA-0026 / Story 00501 (B12): adoption-state handler ALSO waits
-	// for vaPool — it now reads master_record_portfolio + artefact_types
+	// for vaPool — it now reads master_record_portfolios + artefact_types
 	// from vector_artefacts and degrades to notStarted when vaPool is nil.
 	var portfolioAdoptionStateH *portfoliomodels.AdoptionStateHandler
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
@@ -404,7 +404,7 @@ func main() {
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 
 	// PLA-0026 / Story 00501 (B12): adoption-state reads from the new
-	// substrate (master_record_portfolio + artefact_types) via vaPool.
+	// substrate (master_record_portfolios + artefact_types) via vaPool.
 	// vectorPool is still required to resolve subscription_id →
 	// workspace_id; vaPool may be nil (handler returns notStarted).
 	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
@@ -414,7 +414,7 @@ func main() {
 	// vaPool may be nil; MasterReset skips the VA leg gracefully when nil.
 	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool)
 
-	// Tenant settings (master_record_tenant). M2: reads/writes vector_artefacts
+	// Tenant settings (master_record_tenants). M2: reads/writes vector_artefacts
 	// (mig 036). Falls back to mmff_vector pool until 036 is applied on dev.
 	tenantSettingsPool := pool
 	if vaPool != nil {
@@ -1306,7 +1306,7 @@ func main() {
 		}
 
 		// ---- /portfolio/master_record (PLA-0026 B9 / PLA-0030 T4a) ----
-		// Per-workspace read of master_record_portfolio (vector_artefacts).
+		// Per-workspace read of master_record_portfolios (vector_artefacts).
 		// mmff_vector used only for tenancy/membership gate inside handler.
 		r.Route("/portfolio", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)

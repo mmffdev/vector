@@ -3,7 +3,7 @@ package portfoliomodels
 // PLA-0026 / Story 00497 (B8): re-adoption flow.
 //
 // Re-adoption is the case where a workspace already has a model (a row
-// exists in master_record_portfolio) and the operator picks a different
+// exists in master_record_portfolios) and the operator picks a different
 // model. R047 §8 specifies the hard correctness invariant:
 //
 //   Existing work artefacts must survive the cutover with their parent

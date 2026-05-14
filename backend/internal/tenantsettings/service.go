@@ -1,5 +1,5 @@
 // Package tenantsettings is the SOLE writer for the
-// master_record_tenant table in vector_artefacts.
+// master_record_tenants table in vector_artefacts.
 //
 // One row exists per workspace (the table's PRIMARY KEY). Get
 // auto-creates the row on demand (defensive — covers workspaces
@@ -31,7 +31,7 @@ var (
 )
 
 // Settings is the wire shape returned to the frontend. Every field
-// maps 1:1 to a column on master_record_tenant. Pointer types are
+// maps 1:1 to a column on master_record_tenants. Pointer types are
 // nullable on the wire.
 type Settings struct {
 	TenantID                     uuid.UUID  `json:"tenant_id"`

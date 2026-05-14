@@ -1,6 +1,6 @@
 package tenantsettings
 
-// HTTP surface for the master_record_tenant sole-writer service.
+// HTTP surface for the master_record_tenants sole-writer service.
 // Mounts under /api/tenant-settings; both routes require auth +
 // fresh-password (handled by main.go middlewares). Reads are open
 // to any authenticated user in the tenant; writes inherit the same

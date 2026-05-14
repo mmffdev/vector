@@ -1,26 +1,26 @@
 // Adoption-state endpoint — GET /api/portfolio-models/adoption-state
 //
 // PLA-0026 / Story 00501 (B12): rewritten to read from the
-// vector_artefacts substrate (master_record_portfolio + artefact_types)
+// vector_artefacts substrate (master_record_portfolios + artefact_types)
 // instead of the legacy mmff_vector mirror (subscription_portfolio_model_state
 // + obj_strategy_types_layers).
 //
 // The legacy mirror tables stay alive for now — other callers still
 // read them — but the saga's master-of-truth for "is a portfolio model
-// adopted?" is master_record_portfolio (B6 finalize step), so this
+// adopted?" is master_record_portfolios (B6 finalize step), so this
 // handler must read the same source the saga writes.
 //
 // Status logic (substrate-driven):
 //
-//   notStarted: master_record_portfolio has NO row for this workspace_id
+//   notStarted: master_record_portfolios has NO row for this workspace_id
 //               AND artefact_types has NO scope='strategy' rows for this
 //               workspace_id.
 //
 //   inProgress: artefact_types HAS scope='strategy' rows for this
-//               workspace_id BUT master_record_portfolio has NO row.
+//               workspace_id BUT master_record_portfolios has NO row.
 //               (Saga partway through; B6 finalize hasn't run.)
 //
-//   adopted:    master_record_portfolio HAS a row for this workspace_id.
+//   adopted:    master_record_portfolios HAS a row for this workspace_id.
 //
 // The route stays /api/portfolio-models/adoption-state (subscription-
 // scoped, no path param) for wire compatibility — the frontend will not
@@ -36,7 +36,7 @@
 // Pool wiring:
 //   - vectorPool (mmff_vector) — used to resolve subscription_id →
 //     workspace_id. Always required.
-//   - vaPool (vector_artefacts) — used to read master_record_portfolio
+//   - vaPool (vector_artefacts) — used to read master_record_portfolios
 //     and artefact_types. May be nil when VECTOR_ARTEFACTS_DB_URL is
 //     unset; in that case the handler returns status='notStarted' for
 //     backward compatibility (no environment regresses to a 5xx).
@@ -56,7 +56,7 @@ import (
 
 // AdoptionStateHandler reads adoption status from the new substrate.
 // VectorPool resolves subscription → workspace; VAPool reads
-// master_record_portfolio + artefact_types in vector_artefacts. VAPool
+// master_record_portfolios + artefact_types in vector_artefacts. VAPool
 // may be nil; the handler degrades to notStarted in that case.
 type AdoptionStateHandler struct {
 	VectorPool *pgxpool.Pool
@@ -139,7 +139,7 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 	}
 
 	// Single-statement substrate check:
-	//   - master_record_portfolio row presence → adopted
+	//   - master_record_portfolios row presence → adopted
 	//   - artefact_types scope='strategy' presence → inProgress
 	//   - neither → notStarted
 	// LEFT JOIN gives us the master-record fields when present and

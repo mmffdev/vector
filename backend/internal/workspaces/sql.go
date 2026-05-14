@@ -131,8 +131,10 @@ const sqlListActiveWorkspaceRoles = `
 // ── crossdb.go: cross-DB orphan scan (vector_artefacts read-only) ──────────
 
 // sqlCountOrphansForWorkspaceTemplate counts rows referencing a
-// workspace in a vector_artefacts table. First %s is the table name
-// (hard-coded enum, never user input — see vaWorkspaceTables); second
-// %s is the optional " AND archived_at IS NULL" clause appended when
-// the table has an archived_at column.
-const sqlCountOrphansForWorkspaceTemplate = `SELECT COUNT(*) FROM %s WHERE workspace_id = $1%s`
+// workspace in a vector_artefacts table. Slots: %s = table name
+// (hard-coded enum), %s = workspace-id column name (hard-coded enum),
+// %s = optional " AND <archive-pred>" clause when the table has an
+// archived_at column. The column names are now table-prefixed after
+// RF1.4.2 column-prefix sweep, so the orphan-scan registry carries the
+// column name explicitly per row.
+const sqlCountOrphansForWorkspaceTemplate = `SELECT COUNT(*) FROM %s WHERE %s = $1%s`

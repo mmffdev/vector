@@ -83,7 +83,7 @@ const sqlSelectFirstLiveWorkspaceForSubscription = `
 // for a workspace in one round-trip.
 const sqlSelectAdoptionStateForWorkspace = `
 		SELECT
-			(mrp.workspace_id IS NOT NULL) AS has_master,
+			(mrp.master_record_portfolios_id_workspace IS NOT NULL) AS has_master,
 			EXISTS (
 				SELECT 1
 				  FROM artefact_types at
@@ -91,13 +91,13 @@ const sqlSelectAdoptionStateForWorkspace = `
 				   AND at.scope = 'strategy'
 				   AND at.archived_at IS NULL
 			) AS has_strategy_type,
-			mrp.model_id,
-			mrp.adopted_at,
-			mrp.adopted_by_user_id
+			mrp.master_record_portfolios_id_library_portfolio_model,
+			mrp.master_record_portfolios_adopted_at,
+			mrp.master_record_portfolios_id_user_adopter
 		  FROM (SELECT $1::uuid AS workspace_id) k
-		  LEFT JOIN master_record_portfolio mrp
-		    ON mrp.workspace_id = k.workspace_id
-		   AND mrp.archived_at IS NULL
+		  LEFT JOIN master_record_portfolios mrp
+		    ON mrp.master_record_portfolios_id_workspace = k.workspace_id
+		   AND mrp.master_record_portfolios_archived_at IS NULL
 	`
 
 // ── adopt.go (orchestrator state + errors) ─────────────────────────────────
@@ -458,10 +458,10 @@ const sqlDetachTopologyParentsForSubscription = `UPDATE topology_nodes SET paren
 
 const sqlDeleteAllTopologyNodesForSubscription = `DELETE FROM topology_nodes WHERE subscription_id = $1`
 
-const sqlDeleteMasterRecordPortfolioForWorkspace = `DELETE FROM master_record_portfolio WHERE workspace_id = $1`
+const sqlDeleteMasterRecordPortfolioForWorkspace = `DELETE FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`
 
 const sqlUpsertTestbedTenantRecord = `
-		INSERT INTO master_record_tenant (
+		INSERT INTO master_record_tenants (
 			workspace_id,
 			tenant_name,
 			tenant_description,

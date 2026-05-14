@@ -1,6 +1,7 @@
 // Package portfolio SQL constants.
 //
-// PLA-0048 / RF1.2.18. Sole writer for master_record_portfolio
+// PLA-0048 / RF1.2.18 (consts) + RF1.4.2.master_record (column-prefix
+// rule, migration 060). Sole writer for master_record_portfolios
 // (vector_artefacts); read-only against mmff_vector for the
 // CanReadMasterRecord tenancy + membership probe.
 package portfolio
@@ -22,40 +23,47 @@ const sqlExistsActiveWorkspaceMembership = `
 		)
 	`
 
-// ── master_record_portfolio CRUD (vector_artefacts) ────────────────────────
+// ── master_record_portfolios CRUD (vector_artefacts) ────────────────────────
 
-// sqlSelectMasterRecord returns one row by workspace_id.
+// sqlSelectMasterRecord returns one row by workspace id.
 const sqlSelectMasterRecord = `
-		SELECT workspace_id, model_id, model_name, model_description,
-		       adopted_at, adopted_by_user_id,
-		       created_at, updated_at, archived_at
-		  FROM master_record_portfolio
-		 WHERE workspace_id = $1
+		SELECT master_record_portfolios_id_workspace,
+		       master_record_portfolios_id_library_portfolio_model,
+		       master_record_portfolios_model_name,
+		       master_record_portfolios_model_description,
+		       master_record_portfolios_adopted_at,
+		       master_record_portfolios_id_user_adopter,
+		       master_record_portfolios_created_at,
+		       master_record_portfolios_updated_at,
+		       master_record_portfolios_archived_at
+		  FROM master_record_portfolios
+		 WHERE master_record_portfolios_id_workspace = $1
 	`
 
-// sqlUpsertMasterRecord is the adoption-saga write. ON CONFLICT
-// resurrects an archived record (archived_at cleared) and overwrites
-// model identity.
+// sqlUpsertMasterRecord is the adoption-saga write.
 const sqlUpsertMasterRecord = `
-		INSERT INTO master_record_portfolio (
-			workspace_id, model_id, model_name, model_description, adopted_by_user_id
+		INSERT INTO master_record_portfolios (
+			master_record_portfolios_id_workspace,
+			master_record_portfolios_id_library_portfolio_model,
+			master_record_portfolios_model_name,
+			master_record_portfolios_model_description,
+			master_record_portfolios_id_user_adopter
 		) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (workspace_id) DO UPDATE SET
-			model_id           = EXCLUDED.model_id,
-			model_name         = EXCLUDED.model_name,
-			model_description  = EXCLUDED.model_description,
-			adopted_at         = now(),
-			adopted_by_user_id = EXCLUDED.adopted_by_user_id,
-			archived_at        = NULL
+		ON CONFLICT (master_record_portfolios_id_workspace) DO UPDATE SET
+			master_record_portfolios_id_library_portfolio_model = EXCLUDED.master_record_portfolios_id_library_portfolio_model,
+			master_record_portfolios_model_name                 = EXCLUDED.master_record_portfolios_model_name,
+			master_record_portfolios_model_description          = EXCLUDED.master_record_portfolios_model_description,
+			master_record_portfolios_adopted_at                 = now(),
+			master_record_portfolios_id_user_adopter            = EXCLUDED.master_record_portfolios_id_user_adopter,
+			master_record_portfolios_archived_at                = NULL
 	`
 
-// sqlUpdateMasterRecordTemplate is the sparse-UPDATE shell. First %s
-// holds the comma-separated `col = $N` SET clause; %d holds the
-// workspace_id bind index.
-const sqlUpdateMasterRecordTemplate = `UPDATE master_record_portfolio SET %s WHERE workspace_id = $%d`
+// sqlUpdateMasterRecordTemplate is the sparse-UPDATE shell.
+const sqlUpdateMasterRecordTemplate = `UPDATE master_record_portfolios SET %s WHERE master_record_portfolios_id_workspace = $%d`
 
-// sqlArchiveMasterRecord soft-archives the row idempotently
-// (COALESCE preserves the original archived_at on re-archive).
+// sqlArchiveMasterRecord soft-archives the row idempotently.
 const sqlArchiveMasterRecord = `
-		UPDATE master_record_portfolio SET archived_at = COALESCE(archived_at, now()) WHERE workspace_id = $1
+		UPDATE master_record_portfolios
+		   SET master_record_portfolios_archived_at = COALESCE(master_record_portfolios_archived_at, now())
+		 WHERE master_record_portfolios_id_workspace = $1
 	`

@@ -152,7 +152,7 @@ type Orchestrator struct {
 	// mmff_vector to vector_artefacts; NewOrchestrator sets this to
 	// VAPool when available, falling back to VectorPool.
 	ErrorsPool *pgxpool.Pool
-	// MasterRecordSvc is the sole-writer for master_record_portfolio
+	// MasterRecordSvc is the sole-writer for master_record_portfolios
 	// (PLA-0026 B6). Optional — when nil the saga skips the finalize-
 	// step master_record upsert. Pair with VAPool: a non-nil VAPool
 	// without a MasterRecordSvc will still run B3–B5 but skip B6.
@@ -408,7 +408,7 @@ func (o *Orchestrator) Adopt(
 		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 	}
 
-	// PLA-0026 / Story 00495 (B6): upsert master_record_portfolio for
+	// PLA-0026 / Story 00495 (B6): upsert master_record_portfolios for
 	// this workspace BEFORE markCompleted. The master-record service
 	// writes against the VA pool directly (idempotent on workspace_id
 	// PK), so a saga retry converges to the same row. No-op when

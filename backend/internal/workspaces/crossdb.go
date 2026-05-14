@@ -25,13 +25,13 @@ package workspaces
 //	artefact_types              — has archived_at, scan live rows only
 //	artefact_workspace_fields   — admit-row, lifetime = workspace
 //	artefacts                   — has archived_at, scan live rows only
-//	master_record_portfolio     — PK = workspace_id, lifetime = workspace
+//	master_record_portfolios     — PK = workspace_id, lifetime = workspace
 //	sprints                     — has archived_at, scan live rows only
 //
 // For tables with archived_at, we scan only live rows. Archived rows
 // are tombstones — workspace deletion is allowed to leave dangling
 // references from rows that the application has already retired. For
-// PK-lifetime tables (master_record_portfolio, artefact_workspace_fields)
+// PK-lifetime tables (master_record_portfolios, artefact_workspace_fields)
 // any row blocks deletion: their lifetime equals the workspace's by
 // definition, so a live row IS a live reference.
 //
@@ -66,17 +66,18 @@ type OrphanReport struct {
 //
 // hasArchivedAt = true means the scan filters out archived rows
 // (archived rows are tombstones and do not block workspace deletion).
-// PK-lifetime tables (admit-row + master_record_portfolio) have no
+// PK-lifetime tables (admit-row + master_record_portfolios) have no
 // archived_at column; any row blocks deletion.
 var vaWorkspaceTables = []struct {
-	name          string
-	hasArchivedAt bool
+	name           string
+	workspaceIDCol string // varies per table after RF1.4.2 column-prefix.
+	archivedAtCol  string // empty when the table has no archived_at.
 }{
-	{"artefact_types", true},
-	{"artefact_workspace_fields", false}, // admit-row table; lifetime = workspace
-	{"artefacts", true},
-	{"master_record_portfolio", false}, // PK = workspace_id; lifetime = workspace
-	{"sprints", true},
+	{"artefact_types", "workspace_id", "archived_at"},
+	{"artefact_workspace_fields", "workspace_id", ""}, // admit-row; lifetime = workspace
+	{"artefacts", "workspace_id", "archived_at"},
+	{"master_record_portfolios", "master_record_portfolios_id_workspace", ""}, // PK = workspace; renamed by RF1.4.2.master_record
+	{"timeboxes_sprints", "timeboxes_sprints_id_workspace", "timeboxes_sprints_archived_at"},
 }
 
 // CheckCrossDBOrphans scans every vector_artefacts table that carries
@@ -103,14 +104,14 @@ func (s *Service) CheckCrossDBOrphans(ctx context.Context, workspaceID uuid.UUID
 
 	out := make([]OrphanReport, 0, len(vaWorkspaceTables))
 	for _, tbl := range vaWorkspaceTables {
-		// Table name is from a hard-coded allow-list above; it never
-		// comes from user input, so the %s interpolation is safe.
-		// workspace_id is parameterised through pgx.
+		// Table name + workspace-id column name come from the hard-coded
+		// allow-list above; never user input, so the %s interpolation is
+		// safe. workspace_id value is parameterised through pgx.
 		archivedClause := ""
-		if tbl.hasArchivedAt {
-			archivedClause = ` AND archived_at IS NULL`
+		if tbl.archivedAtCol != "" {
+			archivedClause = ` AND ` + tbl.archivedAtCol + ` IS NULL`
 		}
-		q := fmt.Sprintf(sqlCountOrphansForWorkspaceTemplate, tbl.name, archivedClause)
+		q := fmt.Sprintf(sqlCountOrphansForWorkspaceTemplate, tbl.name, tbl.workspaceIDCol, archivedClause)
 		var n int
 		if err := s.VAPool.QueryRow(ctx, q, workspaceID).Scan(&n); err != nil {
 			return nil, fmt.Errorf("workspaces: cross-DB orphan scan on %s: %w", tbl.name, err)

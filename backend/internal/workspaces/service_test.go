@@ -312,7 +312,7 @@ func TestVAWorkspaceTables_MatchesCanary(t *testing.T) {
 		{"artefact_types", true},
 		{"artefact_workspace_fields", false},
 		{"artefacts", true},
-		{"master_record_portfolio", false},
+		{"master_record_portfolios", false},
 		{"sprints", true},
 	}
 	if len(vaWorkspaceTables) != len(want) {

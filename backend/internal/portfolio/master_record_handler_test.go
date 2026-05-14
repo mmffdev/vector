@@ -142,7 +142,7 @@ func liveVAPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// 404 when the workspace has no master_record_portfolio row. Uses a
+// 404 when the workspace has no master_record_portfolios row. Uses a
 // random UUID — the canRead short-circuit (padmin role + nil vector
 // pool fallback) admits the request, then the service Get returns
 // ErrNotFound which the handler maps to 404.
@@ -181,7 +181,7 @@ func TestGetMasterRecord_LiveAdopted_200(t *testing.T) {
 	wsID := uuid.New()
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`DELETE FROM master_record_portfolio WHERE workspace_id = $1`, wsID)
+			`DELETE FROM master_record_portfolios WHERE workspace_id = $1`, wsID)
 	})
 
 	desc := "test description for B9 handler"

@@ -1,13 +1,13 @@
 package portfolio
 
-// HTTP read surface for master_record_portfolio (PLA-0026 / story 00498, B9).
+// HTTP read surface for master_record_portfolios (PLA-0026 / story 00498, B9).
 //
 // Mounts a single route — GET /api/portfolio/master_record?workspace_id=<uuid>
 // — that reads the persistent portfolio model record for one workspace.
 //
 // This endpoint is BundleView's new source of truth for adopted-model
 // prose: the frontend MUST NOT read mmff_library at runtime, so this
-// handler reads ONLY vector_artefacts.master_record_portfolio (via the
+// handler reads ONLY vector_artefacts.master_record_portfolios (via the
 // sole-writer Service in this package). No live library look-ups happen
 // here — model_name + model_description were copied at adoption time.
 //
@@ -34,7 +34,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messages"
 )
 
-// Handler is the HTTP surface for master_record_portfolio reads.
+// Handler is the HTTP surface for master_record_portfolios reads.
 //
 // All DB I/O lives in Svc. Tenancy + workspace-membership probes are
 // also delegated to Svc via CanReadMasterRecord; the handler does only
@@ -45,7 +45,7 @@ type Handler struct {
 
 // NewHandler builds the read handler.
 //
-// svc — the master_record_portfolio service. Must be non-nil; pass a
+// svc — the master_record_portfolios service. Must be non-nil; pass a
 // Service whose pools are wired (vector_artefacts via NewService, +
 // .WithVectorPool(mmff_vector) for the read authz path).
 func NewHandler(svc *Service) *Handler {
@@ -59,7 +59,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Get("/master_record", h.GetMasterRecord)
 }
 
-// GetMasterRecord returns the master_record_portfolio row for the
+// GetMasterRecord returns the master_record_portfolios row for the
 // workspace identified by the workspace_id query parameter.
 //
 //	200 — JSON body (MasterRecord wire shape from this package).

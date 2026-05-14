@@ -6,7 +6,7 @@
 --   Wipes all tenant data back to a clean, known default state so
 --   subsequent seeds (workspace, backlog, topology, etc.) can be
 --   applied from zero without FK collisions. Also seeds the canonical
---   master_record_tenant row with the ACME Bank testbed identity.
+--   master_record_tenants row with the ACME Bank testbed identity.
 --
 -- WHAT THIS DOES
 --   1.  Clear artefact data (vector_artefacts schema)
@@ -20,12 +20,12 @@
 --       - topology_role_grants
 --       - topology_view_state
 --       - topology_nodes
---       - master_record_portfolio
---       - master_record_tenant (vector_artefacts) — replaced below
+--       - master_record_portfolios
+--       - master_record_tenants (vector_artefacts) — replaced below
 --
 --   2.  Clear workspace data (mmff_vector schema)
 --       - master_record_workspaces (all workspaces for subscription)
---       - master_record_portfolio (mmff_vector copy if present)
+--       - master_record_portfolios (mmff_vector copy if present)
 --       - subscription_portfolio_model_state
 --       - obj_strategy_types_layers  (legacy mirror rows)
 --       - subscription_workflows     (legacy mirror rows)
@@ -34,7 +34,7 @@
 --       - subscription_artifacts     (legacy mirror rows)
 --       - o_flow_tenant              (tenant flow overrides)
 --
---   3.  Seed master_record_tenant (vector_artefacts)
+--   3.  Seed master_record_tenants (vector_artefacts)
 --       One row for the testbed workspace. The workspace_id used here
 --       is the well-known dev workspace UUID
 --       00000000-0000-0000-0000-000000000010 which the subsequent
@@ -161,11 +161,11 @@ BEGIN
     -- ──────────────────────────────────────────────────────────
     -- 3. Master record portfolio (adoption snapshot)
     -- ──────────────────────────────────────────────────────────
-    DELETE FROM vector_artefacts.master_record_portfolio
-     WHERE workspace_id = v_workspace_id;
+    DELETE FROM vector_artefacts.master_record_portfolios
+     WHERE master_record_portfolios_id_workspace = v_workspace_id;
 
     -- ──────────────────────────────────────────────────────────
-    -- 4a. Upsert master_record_tenant (vector_artefacts)
+    -- 4a. Upsert master_record_tenants (vector_artefacts)
     --     workspace_id references the well-known dev workspace.
     --     gadmin@mmffdev.com is the testbed owner.
     --     Note: the workspace row itself (master_record_workspaces
@@ -189,7 +189,7 @@ BEGIN
     -- Stored as NULL here — workspace seed sets this correctly once the
     -- workspace row exists and the caller's user_id is known.
 
-    INSERT INTO vector_artefacts.master_record_tenant (
+    INSERT INTO vector_artefacts.master_record_tenants (
         workspace_id,
         tenant_name,
         tenant_description,
@@ -264,7 +264,7 @@ BEGIN
         0
     );
 
-    RAISE NOTICE 'PART A complete: artefacts cleared, master_record_tenant upserted, topology root "ACME Bank" created (id=%)', v_node_id;
+    RAISE NOTICE 'PART A complete: artefacts cleared, master_record_tenants upserted, topology root "ACME Bank" created (id=%)', v_node_id;
 
 END $$;
 
@@ -340,15 +340,15 @@ BEGIN
      WHERE subscription_id = v_subscription_id;
 
     -- ──────────────────────────────────────────────────────────
-    -- 5d. mmff_vector master_record_tenant (workspace settings
+    -- 5d. mmff_vector master_record_tenants (workspace settings
     --     mirror). This row is keyed on subscription_id. We
     --     reset it to default values; the application will
     --     overwrite it on first workspace-settings save.
     --     We do NOT delete it — the subscription row must always
-    --     have exactly one master_record_tenant row (trigger
+    --     have exactly one master_record_tenants row (trigger
     --     on subscriptions INSERT enforces this).
     -- ──────────────────────────────────────────────────────────
-    UPDATE mmff_vector.master_record_tenant
+    UPDATE mmff_vector.master_record_tenants
        SET workspace_name          = 'ACME Bank',
            description             = 'MMFFDev Testbed',
            owner_user_id           = NULL,
@@ -368,7 +368,7 @@ BEGIN
     IF NOT FOUND THEN
         -- Auto-seed trigger should have created this on subscription INSERT,
         -- but guard against a missing row.
-        INSERT INTO mmff_vector.master_record_tenant (
+        INSERT INTO mmff_vector.master_record_tenants (
             subscription_id,
             workspace_name,
             description,
@@ -399,7 +399,7 @@ BEGIN
         ON CONFLICT (subscription_id) DO NOTHING;
     END IF;
 
-    RAISE NOTICE 'PART B complete: legacy adoption tables cleared, workspaces cleared, master_record_tenant reset to ACME Bank testbed defaults.';
+    RAISE NOTICE 'PART B complete: legacy adoption tables cleared, workspaces cleared, master_record_tenants reset to ACME Bank testbed defaults.';
 
 END $$;
 
@@ -415,7 +415,7 @@ COMMIT; -- PART B
 --   SELECT COUNT(*) FROM artefacts WHERE subscription_id = '00000000-0000-0000-0000-000000000001';
 --   -- expect: 0
 --
---   SELECT workspace_id, tenant_name, tenant_data_region FROM master_record_tenant;
+--   SELECT workspace_id, tenant_name, tenant_data_region FROM master_record_tenants;
 --   -- expect: 00000000-0000-0000-0000-000000000010 | ACME Bank | euw2
 --
 --   SELECT id, name, parent_id FROM topology_nodes WHERE subscription_id = '00000000-0000-0000-0000-000000000001';
@@ -426,7 +426,7 @@ COMMIT; -- PART B
 --   SELECT COUNT(*) FROM master_record_workspaces WHERE subscription_id = '00000000-0000-0000-0000-000000000001';
 --   -- expect: 0 (workspace seed has not yet run)
 --
---   SELECT workspace_name, data_region, primary_contact_email FROM master_record_tenant
+--   SELECT workspace_name, data_region, primary_contact_email FROM master_record_tenants
 --    WHERE subscription_id = '00000000-0000-0000-0000-000000000001';
 --   -- expect: ACME Bank | euw2 | cookra@me.com
 --
