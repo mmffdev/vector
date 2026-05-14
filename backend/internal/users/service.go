@@ -16,7 +16,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 var (
@@ -40,7 +40,7 @@ func New(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Servic
 
 type CreateInput struct {
 	Email    string
-	Role     models.Role
+	Role     roletypes.Role
 	SubscriptionID uuid.UUID
 }
 
@@ -50,7 +50,7 @@ type CreateInput struct {
 // actorRole is the role of the caller, used to enforce the role ceiling
 // (cannot create an account whose role outranks you). See
 // feedback_role_ceiling.md.
-func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.Role, createdBy uuid.UUID, ip string) (*models.User, string, error) {
+func (s *Service) Create(ctx context.Context, in CreateInput, actorRole roletypes.Role, createdBy uuid.UUID, ip string) (*roletypes.User, string, error) {
 	if in.Role.Rank() > actorRole.Rank() {
 		return nil, "", ErrRoleCeiling
 	}
@@ -78,7 +78,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 	// role enum to the corresponding system-role UUID via subquery so a
 	// future schema change (e.g. dropping the enum column) needs to
 	// touch only one place. PLA-0007 G4 retires the enum entirely.
-	u := &models.User{}
+	u := &roletypes.User{}
 	err = pgx.BeginTxFunc(ctx, s.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		roleStr := string(in.Role)
 		// The legacy `role` enum column only knows ('user','padmin','gadmin');
@@ -87,8 +87,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 		// Z-migration that drops users.role retires this branch — same
 		// pattern as migration 095. PLA-0007 G4 follow-up.
 		legacyRole := roleStr
-		if legacyRole != string(models.RoleUser) && legacyRole != string(models.RolePAdmin) && legacyRole != string(models.RoleGAdmin) {
-			legacyRole = string(models.RoleUser)
+		if legacyRole != string(roletypes.RoleUser) && legacyRole != string(roletypes.RolePAdmin) && legacyRole != string(roletypes.RoleGAdmin) {
+			legacyRole = string(roletypes.RoleUser)
 		}
 		if err := tx.QueryRow(ctx, sqlInsertUser,
 			in.SubscriptionID, email, hash, legacyRole, roleStr,
@@ -116,15 +116,15 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole models.R
 	return u, link, nil
 }
 
-func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.User, error) {
+func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]roletypes.User, error) {
 	rows, err := s.Pool.Query(ctx, sqlListUsersBySubscription, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []models.User{}
+	out := []roletypes.User{}
 	for rows.Next() {
-		u := models.User{}
+		u := roletypes.User{}
 		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive,
 			&u.FirstName, &u.LastName, &u.Department,
 			&u.LastLogin, &u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt,
@@ -137,7 +137,7 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]models.
 }
 
 type UpdateInput struct {
-	Role       *models.Role
+	Role       *roletypes.Role
 	IsActive   *bool
 	FirstName  *string
 	LastName   *string
@@ -155,10 +155,10 @@ type UpdateInput struct {
 //   3. If a NEW role is requested, it must not outrank actor —
 //      otherwise ErrRoleCeiling (no privilege escalation).
 // See feedback_role_ceiling.md.
-func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actorRole models.Role, actorTenant, actor uuid.UUID, ip string) error {
+func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actorRole roletypes.Role, actorTenant, actor uuid.UUID, ip string) error {
 	var (
 		targetTenant uuid.UUID
-		targetRole   models.Role
+		targetRole   roletypes.Role
 	)
 	err := s.Pool.QueryRow(ctx, sqlSelectUserTenantAndRole, id).
 		Scan(&targetTenant, &targetRole)
@@ -186,8 +186,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		// migration drops users.role.
 		roleStr := string(*in.Role)
 		legacyRole := roleStr
-		if legacyRole != string(models.RoleUser) && legacyRole != string(models.RolePAdmin) && legacyRole != string(models.RoleGAdmin) {
-			legacyRole = string(models.RoleUser)
+		if legacyRole != string(roletypes.RoleUser) && legacyRole != string(roletypes.RolePAdmin) && legacyRole != string(roletypes.RoleGAdmin) {
+			legacyRole = string(roletypes.RoleUser)
 		}
 		sets = append(sets, "role = $"+itoa(i))
 		args = append(args, legacyRole)
@@ -275,13 +275,13 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 // the same way as Update — actor cannot delete themselves, cannot
 // delete across tenants, and cannot delete a target whose role
 // outranks them.
-func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorRole models.Role, actorTenant, actor uuid.UUID, ip string) error {
+func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorRole roletypes.Role, actorTenant, actor uuid.UUID, ip string) error {
 	if id == actor {
 		return errors.New("cannot delete your own account")
 	}
 	var (
 		targetTenant uuid.UUID
-		targetRole   models.Role
+		targetRole   roletypes.Role
 		targetEmail  string
 	)
 	err := s.Pool.QueryRow(ctx, sqlSelectUserTenantRoleEmail, id).
@@ -311,10 +311,10 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID, actorRole models.Rol
 // target user and emails them the link. Returns the link string for
 // the gadmin UI (only meaningful in dev/console mailer mode; prod
 // should rely on the email send and ignore the returned URL).
-func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole models.Role, actorTenant, actor uuid.UUID, ip string) (string, error) {
+func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole roletypes.Role, actorTenant, actor uuid.UUID, ip string) (string, error) {
 	var (
 		targetTenant uuid.UUID
-		targetRole   models.Role
+		targetRole   roletypes.Role
 		targetEmail  string
 	)
 	err := s.Pool.QueryRow(ctx, sqlSelectUserTenantRoleEmail, id).
@@ -352,8 +352,8 @@ func (s *Service) IssueResetLink(ctx context.Context, id uuid.UUID, actorRole mo
 
 // FindByID returns the user iff they belong to actorTenant. Cross-tenant
 // existence is hidden — same ErrNotFound either way.
-func (s *Service) FindByID(ctx context.Context, id, actorTenant uuid.UUID) (*models.User, error) {
-	u := &models.User{}
+func (s *Service) FindByID(ctx context.Context, id, actorTenant uuid.UUID) (*roletypes.User, error) {
+	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByIDInTenant, id, actorTenant).
 		Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
 	if err == pgx.ErrNoRows {

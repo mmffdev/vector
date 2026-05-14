@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
@@ -44,7 +44,7 @@ func (c *AccessClaims) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func SignAccessToken(u *models.User) (string, error) {
+func SignAccessToken(u *roletypes.User) (string, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_ACCESS_SECRET not set")

@@ -34,7 +34,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/addressables"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // newAdminRouter mounts the admin endpoints used by the gadmin help
@@ -59,7 +59,7 @@ func newAdminRouter(pool *pgxpool.Pool) (*chi.Mux, *addressables.Service) {
 // request context. It mirrors the auth posture inside RequireAuth: the
 // router middleware would have called WithUserForTest, then the handler
 // reads back via UserFromCtx.
-func doJSONAs(t *testing.T, r http.Handler, method, path string, body any, u *models.User) *httptest.ResponseRecorder {
+func doJSONAs(t *testing.T, r http.Handler, method, path string, body any, u *roletypes.User) *httptest.ResponseRecorder {
 	t.Helper()
 	var buf *bytes.Buffer
 	if body != nil {
@@ -85,13 +85,13 @@ func doJSONAs(t *testing.T, r http.Handler, method, path string, body any, u *mo
 
 // loadGadminUser pulls a real user row from the dev DB to attribute the
 // edit. Skips if the table is empty (CI clean DB).
-func loadGadminUser(t *testing.T, pool *pgxpool.Pool) *models.User {
+func loadGadminUser(t *testing.T, pool *pgxpool.Pool) *roletypes.User {
 	t.Helper()
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `SELECT id FROM users LIMIT 1`).Scan(&id); err != nil {
 		t.Skipf("no users in dev DB to attribute edits: %v", err)
 	}
-	return &models.User{ID: id}
+	return &roletypes.User{ID: id}
 }
 
 // ─────────────────────────────────────────────────────────────────────

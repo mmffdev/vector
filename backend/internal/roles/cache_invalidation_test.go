@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -42,7 +42,7 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 
 	// Actor: gadmin so the route-level gate would pass; we bypass it
 	// here and exercise Handler.AssignPermissions directly.
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	// Make a tenant-custom target role.
 	ctx := context.Background()

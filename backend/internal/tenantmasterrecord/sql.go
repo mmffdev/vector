@@ -1,7 +1,7 @@
 // Package tenantsettings SQL constants.
 //
 // PLA-0048 / RF1.2.12. Sole writer for master_record_tenants (vector_artefacts).
-package tenantsettings
+package tenantmasterrecord
 
 // sqlEnsureTenantRow defensively inserts an empty row for workspaces
 // seeded before mig 036. ON CONFLICT keeps it idempotent.

@@ -51,7 +51,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/roles"
 )
@@ -130,7 +130,7 @@ type seenCtx struct {
 func runClamp(
 	t *testing.T,
 	lookup topology.WorkspaceLookup,
-	user *models.User,
+	user *roletypes.User,
 	queryString string,
 ) (*httptest.ResponseRecorder, *seenCtx) {
 	t.Helper()
@@ -175,7 +175,7 @@ func readErrCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 func TestWorkspaceClamp_NoSlug_FirstLive(t *testing.T) {
 	subID := uuid.New()
 	wsID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	lookup := &fakeWorkspaceLookup{
 		firstLive: map[uuid.UUID]uuid.UUID{subID: wsID},
@@ -196,7 +196,7 @@ func TestWorkspaceClamp_NoSlug_FirstLive(t *testing.T) {
 
 func TestWorkspaceClamp_NoSlug_NoLiveWorkspace_403(t *testing.T) {
 	subID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	// firstLive map is empty for this subscription → ErrNoWorkspace.
 	lookup := &fakeWorkspaceLookup{
@@ -219,7 +219,7 @@ func TestWorkspaceClamp_NoSlug_NoLiveWorkspace_403(t *testing.T) {
 
 func TestWorkspaceClamp_Slug_NotInTenant_404(t *testing.T) {
 	subID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	// bySlug map is empty → ErrWorkspaceNotFound.
 	lookup := &fakeWorkspaceLookup{
@@ -239,7 +239,7 @@ func TestWorkspaceClamp_Slug_NotInTenant_404(t *testing.T) {
 func TestWorkspaceClamp_Slug_Resolves_Passes(t *testing.T) {
 	subID := uuid.New()
 	wsID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	lookup := &fakeWorkspaceLookup{
 		bySlug: map[string]uuid.UUID{
@@ -267,7 +267,7 @@ func TestWorkspaceClamp_Slug_Resolves_Passes(t *testing.T) {
 func TestWorkspaceClamp_NoRoleOnWorkspace_403(t *testing.T) {
 	subID := uuid.New()
 	wsID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	lookup := &fakeWorkspaceLookup{
 		bySlug: map[string]uuid.UUID{
@@ -292,7 +292,7 @@ func TestWorkspaceClamp_NoRoleOnFirstLive_403(t *testing.T) {
 	// the slug is omitted.
 	subID := uuid.New()
 	wsID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	lookup := &fakeWorkspaceLookup{
 		firstLive: map[uuid.UUID]uuid.UUID{subID: wsID},
@@ -330,7 +330,7 @@ func TestWorkspaceClamp_NoAuth_401(t *testing.T) {
 func TestWorkspaceClamp_SeedsContext(t *testing.T) {
 	subID := uuid.New()
 	wsID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	lookup := &fakeWorkspaceLookup{
 		firstLive: map[uuid.UUID]uuid.UUID{subID: wsID},
@@ -351,7 +351,7 @@ func TestWorkspaceClamp_SeedsContext(t *testing.T) {
 // status code.
 func TestWorkspaceClamp_LookupError_500(t *testing.T) {
 	subID := uuid.New()
-	user := &models.User{ID: uuid.New(), SubscriptionID: subID}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: subID}
 
 	boom := errors.New("db down")
 	lookup := &fakeWorkspaceLookup{firstLiveErr: boom}
@@ -641,7 +641,7 @@ func TestWorkspaceClamp_LiveDB_PassesThrough(t *testing.T) {
 	wsID := seedWorkspace(t, pool, subID, userID, "Default", "default", false)
 	seedWorkspaceRole(t, pool, subID, wsID, userID, userID, "admin", false)
 
-	user := &models.User{ID: userID, SubscriptionID: subID}
+	user := &roletypes.User{ID: userID, SubscriptionID: subID}
 	lookup := topology.PoolWorkspaceLookup{Pool: pool}
 
 	rec, seen := runClamp(t, lookup, user, "")

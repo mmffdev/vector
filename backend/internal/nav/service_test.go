@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Integration tests hit the real Postgres via the SSH tunnel on :5434.
@@ -118,7 +118,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 	// dashboard + my-vista share tag 'personal'; portfolio is 'planning'.
 	// Order the pinned list so same-tag items stay contiguous.
 	startKey := "my-vista"
-	err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -127,7 +127,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Fatalf("ReplacePrefs: %v", err)
 	}
 
-	rows, err := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	rows, err := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser)
 	if err != nil {
 		t.Fatalf("GetPrefs: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Errorf("row 1 should be start page: %+v", rows[1])
 	}
 
-	href, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, models.RoleUser)
+	href, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, roletypes.RoleUser)
 	if err != nil || !ok {
 		t.Fatalf("start page lookup: ok=%v err=%v", ok, err)
 	}
@@ -160,7 +160,7 @@ func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dev", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrNotPinnable) {
@@ -175,7 +175,7 @@ func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "does-not-exist", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrUnknownItemKey) {
@@ -191,7 +191,7 @@ func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 
 	svc := newSvc(t, pool)
 	startKey := "planning"
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, &startKey, nil, nil)
 	if !errors.Is(err, ErrStartPageNotPinned) {
@@ -206,7 +206,7 @@ func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 2},
 	}, nil, nil, nil)
@@ -222,7 +222,7 @@ func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "dashboard", Position: 1},
 	}, nil, nil, nil)
@@ -240,7 +240,7 @@ func TestReplacePrefs_RejectsNonContiguousGroups(t *testing.T) {
 	svc := newSvc(t, pool)
 	// dashboard(personal), backlog(planning), my-vista(personal) —
 	// the 'personal' tag is split by a 'planning' item in the middle.
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "backlog", Position: 1},
 		{ItemKey: "my-vista", Position: 2},
@@ -260,7 +260,7 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	ctx := context.Background()
 
 	// First write: 3 items — dashboard+my-vista (personal), portfolio (planning).
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -269,14 +269,14 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	}
 
 	// Second write: 2 items, both 'planning' tag.
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "backlog", Position: 0},
 		{ItemKey: "planning", Position: 1},
 	}, nil, nil, nil); err != nil {
 		t.Fatalf("second write: %v", err)
 	}
 
-	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser)
 	// Backfill may add additional default-pinned rows; assert the two
 	// explicitly-set rows lead the list in the order ReplacePrefs placed them.
 	if len(rows) < 2 {
@@ -296,7 +296,7 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
-	_ = svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	_ = svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, nil, nil, nil)
 
@@ -307,7 +307,7 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 	// repopulate every default_pinned=TRUE page allowed for the role.
 	// That's the documented behavior — assert the originally-pinned key
 	// is back rather than asserting zero rows.
-	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser)
 	found := false
 	for _, r := range rows {
 		if r.ItemKey == "dashboard" {
@@ -327,7 +327,7 @@ func TestGetStartPageHref_NoneSet(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	_, ok, err := svc.GetStartPageHref(context.Background(), userID, subscriptionID, models.RoleUser)
+	_, ok, err := svc.GetStartPageHref(context.Background(), userID, subscriptionID, roletypes.RoleUser)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}
@@ -344,7 +344,7 @@ func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 
 	svc := newSvc(t, pool)
 	// workspace-settings is gadmin-only; a 'user' role must not pin it.
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrRoleForbidden) {
@@ -363,7 +363,7 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 	for i := range pinned {
 		pinned[i] = PinnedInput{ItemKey: "dashboard", Position: i}
 	}
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, pinned, nil, nil, nil)
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, pinned, nil, nil, nil)
 	if !errors.Is(err, ErrTooManyPinned) {
 		t.Fatalf("want ErrTooManyPinned, got %v", err)
 	}
@@ -380,14 +380,14 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 
 	// Seed as gadmin with workspace-settings as start page.
 	startKey := "workspace-settings"
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleGAdmin, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleGAdmin, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
 	}, &startKey, nil, nil); err != nil {
 		t.Fatalf("seed as gadmin: %v", err)
 	}
 
 	// Now query as a 'user' (role demoted) — must silently fall back.
-	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, models.RoleUser)
+	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, roletypes.RoleUser)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}

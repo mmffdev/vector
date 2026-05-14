@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // MaxPinned caps the server-side pinned list length. Mirrors MAX_PINNED in
@@ -101,7 +101,7 @@ type CustomGroupInput struct {
 // GetPrefs returns the user's prefs for the resolved profile (active
 // → Default → lazy-seed). Backwards-compatible signature kept for
 // tests + handlers that don't yet pass an explicit profile.
-func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) ([]PrefRow, error) {
+func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role) ([]PrefRow, error) {
 	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 // unpins stick. Auto-pin is per-profile so a custom profile starts clean
 // rather than inheriting the union of "every default-pinned page ever shipped"
 // from Default.
-func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) ([]PrefRow, error) {
+func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, profileID uuid.UUID) ([]PrefRow, error) {
 	// Non-default profiles with zero prefs are seeded from Default on first
 	// read. This covers profiles created before the CreateProfile clone was
 	// added, and any profile whose prefs were wiped externally. One-time per
@@ -217,7 +217,7 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 // wrapper kept so handlers + tests don't need updating.
 // Returns ("", false) if no start page set OR the caller's current role no
 // longer permits the stored item (e.g. demotion since prefs were written).
-func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) (string, bool, error) {
+func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role) (string, bool, error) {
 	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
 	if err != nil {
 		return "", false, err
@@ -226,7 +226,7 @@ func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID u
 }
 
 // GetStartPageHrefForProfile is the profile-scoped variant.
-func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) (string, bool, error) {
+func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, profileID uuid.UUID) (string, bool, error) {
 	var key string
 	err := s.Pool.QueryRow(ctx, sqlSelectStartPageKeyForProfile,
 		userID, subscriptionID, profileID).Scan(&key)
@@ -268,7 +268,7 @@ func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscr
 func (s *Service) ReplacePrefs(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
-	role models.Role,
+	role roletypes.Role,
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
@@ -296,7 +296,7 @@ func (s *Service) ReplacePrefs(
 func (s *Service) ReplacePrefsForProfile(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
-	role models.Role,
+	role roletypes.Role,
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
@@ -562,7 +562,7 @@ func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptio
 func validatePinned(
 	lookup func(string) (CatalogEntry, bool),
 	pinned []PinnedInput,
-	role models.Role,
+	role roletypes.Role,
 	knownGroupIDs map[string]struct{},
 ) error {
 	seen := make(map[string]struct{}, len(pinned))

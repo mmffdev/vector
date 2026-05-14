@@ -45,7 +45,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // TestAdoptStream_HappyPath drives the SSE endpoint over a real
@@ -362,7 +362,7 @@ loop:
 
 // injectUser is a test-only middleware that stuffs a padmin user into
 // the request context so handlers calling auth.UserFromCtx see them.
-func injectUser(u *models.User) func(http.Handler) http.Handler {
+func injectUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUserForTest(r.Context(), u)

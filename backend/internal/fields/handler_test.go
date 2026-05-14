@@ -33,12 +33,12 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // withUser injects a fake user into the request context — same pattern
 // as libraryreleases/handler_test.go.
-func withUser(u *models.User) func(http.Handler) http.Handler {
+func withUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if u == nil {
@@ -51,7 +51,7 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 	}
 }
 
-func newRouter(h *Handler, u *models.User) http.Handler {
+func newRouter(h *Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(withUser(u))
 	r.Get("/api/workspace/{id}/fields", h.List)
@@ -105,9 +105,9 @@ func vectorPoolForTest(t *testing.T) *pgxpool.Pool {
 // where the user has an active users_roles_workspaces grant on the workspace.
 // The user is NOT a tenant admin (so the membership branch — not the
 // role-bypass branch — is exercised). Skips when no such pair exists.
-func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID, u *models.User) {
+func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID, u *roletypes.User) {
 	t.Helper()
-	u = &models.User{}
+	u = &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.workspace_id
 		  FROM users_roles_workspaces rw
@@ -127,9 +127,9 @@ func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID,
 }
 
 // pickGadmin returns one gadmin user.
-func pickGadmin(t *testing.T, pool *pgxpool.Pool) *models.User {
+func pickGadmin(t *testing.T, pool *pgxpool.Pool) *roletypes.User {
 	t.Helper()
-	u := &models.User{}
+	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		SELECT id, subscription_id, email, role, is_active
 		  FROM users
@@ -282,11 +282,11 @@ func TestList_NonMember_Returns403(t *testing.T) {
 	g := pickGadmin(t, pool)
 	wsID := pickWorkspaceInTenant(t, pool, g.SubscriptionID)
 
-	stranger := models.User{
+	stranger := roletypes.User{
 		ID:             uuid.New(), // never granted on this workspace
 		SubscriptionID: g.SubscriptionID,
 		Email:          "stranger@test",
-		Role:           models.RoleUser,
+		Role:           roletypes.RoleUser,
 		IsActive:       true,
 	}
 

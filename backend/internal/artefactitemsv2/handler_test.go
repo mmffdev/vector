@@ -23,13 +23,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
 )
 
 // ── router helpers ────────────────────────────────────────────────────────────
 
-func newTestRouter(h *artefactitemsv2.Handler, u *models.User) http.Handler {
+func newTestRouter(h *artefactitemsv2.Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -54,8 +54,8 @@ func newTestRouter(h *artefactitemsv2.Handler, u *models.User) http.Handler {
 	return r
 }
 
-func newTestUser(subID uuid.UUID) *models.User {
-	return &models.User{
+func newTestUser(subID uuid.UUID) *roletypes.User {
+	return &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: subID,
 		IsActive:       true,
@@ -283,7 +283,7 @@ func TestHandler_List_WithDB(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	user := &models.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
+	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
 
@@ -323,7 +323,7 @@ func TestHandler_Create_ThenGet(t *testing.T) {
 		t.Skipf("no active user: %v", err)
 	}
 
-	user := &models.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
+	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
 
@@ -400,7 +400,7 @@ func TestHandler_Archive_Returns204(t *testing.T) {
 		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
 	})
 
-	user := &models.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
+	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
 
@@ -445,7 +445,7 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
 	})
 
-	user := &models.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
+	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
 

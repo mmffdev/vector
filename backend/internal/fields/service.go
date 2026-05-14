@@ -26,7 +26,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Sentinel errors. Handler maps these to HTTP statuses.
@@ -75,7 +75,7 @@ type FieldRow struct {
 // for wsID. Returns ErrWorkspaceNotFound, ErrForbidden, or a plumbing
 // error. See handler.go for the full rule semantics — this method is a
 // straight extraction.
-func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *models.User) error {
+func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *roletypes.User) error {
 	var wsTenant uuid.UUID
 	err := s.vectorPool.QueryRow(ctx, sqlSelectWorkspaceTenant, wsID).Scan(&wsTenant)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -87,7 +87,7 @@ func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *mo
 	if wsTenant != u.SubscriptionID {
 		return ErrWorkspaceNotFound
 	}
-	if u.Role == models.RoleGAdmin || u.Role == models.RolePAdmin {
+	if u.Role == roletypes.RoleGAdmin || u.Role == roletypes.RolePAdmin {
 		return nil
 	}
 	var member bool

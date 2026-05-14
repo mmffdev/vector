@@ -18,7 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 )
 
@@ -27,7 +27,7 @@ import (
 // withAuth injects a minimal auth.User into the request context so
 // handlers can call auth.UserFromCtx without panicking.
 func withAuth(r *http.Request, subID, wsID string) *http.Request {
-	u := &models.User{}
+	u := &roletypes.User{}
 	// SubscriptionID is uuid.UUID — parse from string.
 	// For test purposes we use zero UUID if parse fails.
 	_ = json.Unmarshal([]byte(`"`+subID+`"`), &u.SubscriptionID)

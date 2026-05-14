@@ -12,8 +12,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/security"
 )
 
@@ -51,7 +51,7 @@ type userPayload struct {
 	Permissions         []string    `json:"permissions"`
 }
 
-func (h *Handler) buildUserPayload(ctx context.Context, u *models.User) userPayload {
+func (h *Handler) buildUserPayload(ctx context.Context, u *roletypes.User) userPayload {
 	role, perms := h.Svc.LoadRoleAndPermissions(ctx, u.ID)
 	return userPayload{
 		ID:                  u.ID,
@@ -69,23 +69,23 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *models.User) userPayl
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	ip := security.ClientIP(r)
 	res, err := h.Svc.Login(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), req.Password, ip, r.UserAgent())
 	if err != nil {
 		status := http.StatusUnauthorized
-		msg := messages.AuthInvalidCredentials
+		msg := usermessages.AuthInvalidCredentials
 		if errors.Is(err, ErrAccountLocked) {
 			status = http.StatusLocked
-			msg = messages.AuthAccountLocked
+			msg = usermessages.AuthAccountLocked
 		} else if errors.Is(err, ErrAccountInactive) {
 			status = http.StatusForbidden
-			msg = messages.AuthAccountInactive
+			msg = usermessages.AuthAccountInactive
 		} else if !errors.Is(err, ErrInvalidCredentials) {
 			status = http.StatusInternalServerError
-			msg = messages.InternalError
+			msg = usermessages.InternalError
 		}
 		httperr.Write(w, r, status, msg)
 		return
@@ -98,13 +98,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("rt")
 	if err != nil || c.Value == "" {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)
 		return
 	}
 	res, err := h.Svc.Refresh(r.Context(), c.Value, security.ClientIP(r), r.UserAgent())
 	if err != nil {
 		clearRefreshCookie(w)
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthTokenExpired)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)
 		return
 	}
 	// Only overwrite the rt cookie when we issued a new token (normal rotation).
@@ -129,7 +129,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	writeJSON(w, 200, h.buildUserPayload(r.Context(), u))
@@ -143,17 +143,17 @@ type changePwdReq struct {
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	u := UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	var req changePwdReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.ChangePassword(r.Context(), u.ID, req.Current, req.New, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			httperr.Write(w, r, http.StatusUnauthorized, messages.AuthInvalidCurrentPassword)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthInvalidCurrentPassword)
 			return
 		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())
@@ -181,12 +181,12 @@ type resetConfirmReq struct {
 func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 	var req resetConfirmReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrTokenExpired) {
-			httperr.Write(w, r, http.StatusBadRequest, messages.AuthTokenExpired)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
 			return
 		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())

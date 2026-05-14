@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // WorkspaceLayersHandler serves the workspace-scoped strategy-layer GET.
@@ -79,7 +79,7 @@ func (h *WorkspaceLayersHandler) GetWorkspaceLayers(w http.ResponseWriter, r *ht
 	//    OR a tenant admin (Role == "gadmin"). gadmin override mirrors
 	//    the pattern used elsewhere in the codebase (orgdesign,
 	//    workspaces) so support staff can read every workspace.
-	if u.Role != models.RoleGAdmin {
+	if u.Role != roletypes.RoleGAdmin {
 		ok, err := h.Svc.IsWorkspaceMember(r.Context(), wsID, u.ID)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -127,7 +127,7 @@ func (h *WorkspaceLayersHandler) PatchWorkspaceLayers(w http.ResponseWriter, r *
 		return
 	}
 
-	if u.Role != models.RoleGAdmin {
+	if u.Role != roletypes.RoleGAdmin {
 		ok, err := h.Svc.IsWorkspaceMember(r.Context(), wsID, u.ID)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)

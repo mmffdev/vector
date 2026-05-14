@@ -21,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // System role UUIDs from migration 088. These are the five seeded
@@ -50,7 +50,7 @@ var systemRoleSet = map[uuid.UUID]struct{}{
 // clearer error before the round-trip.
 var reservedSystemRanks = map[int]struct{}{5: {}, 10: {}, 20: {}, 25: {}, 30: {}}
 
-// Sentinel errors. Same family/shape as entityrefs.
+// Sentinel errors. Same family/shape as polymorphicrefs.
 var (
 	// ErrNotFound — role doesn't exist OR belongs to another tenant.
 	// Existence is sensitive; same error either way.
@@ -134,7 +134,7 @@ func IsSystemRole(id uuid.UUID) bool {
 
 // List returns all roles visible to actorTenant — that is, every system
 // role plus every non-archived tenant-custom role belonging to actorTenant.
-func (s *Service) List(ctx context.Context, actorTenant uuid.UUID) ([]models.RoleRow, error) {
+func (s *Service) List(ctx context.Context, actorTenant uuid.UUID) ([]roletypes.RoleRow, error) {
 	rows, err := s.Pool.Query(ctx, sqlListRolesVisibleToTenant, actorTenant)
 	if err != nil {
 		return nil, err
@@ -146,8 +146,8 @@ func (s *Service) List(ctx context.Context, actorTenant uuid.UUID) ([]models.Rol
 // Get returns a single role by id, scoped to actorTenant. System roles
 // are visible to every tenant; tenant rows in another subscription return
 // ErrNotFound (no existence leak).
-func (s *Service) Get(ctx context.Context, id, actorTenant uuid.UUID) (*models.RoleRow, error) {
-	r := &models.RoleRow{}
+func (s *Service) Get(ctx context.Context, id, actorTenant uuid.UUID) (*roletypes.RoleRow, error) {
+	r := &roletypes.RoleRow{}
 	err := s.Pool.QueryRow(ctx, sqlSelectRoleByIDInTenant, id, actorTenant).
 		Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
 			&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
@@ -171,7 +171,7 @@ type CreateInput struct {
 // Create inserts a tenant-custom role under actorTenant. System rows can
 // only be created by SQL migration; this method always sets is_system=false
 // and subscription_id=actorTenant.
-func (s *Service) Create(ctx context.Context, in CreateInput, actorTenant, actor uuid.UUID, ip string) (*models.RoleRow, error) {
+func (s *Service) Create(ctx context.Context, in CreateInput, actorTenant, actor uuid.UUID, ip string) (*roletypes.RoleRow, error) {
 	if _, reserved := reservedSystemRanks[in.Rank]; reserved {
 		return nil, ErrReservedRank
 	}
@@ -185,7 +185,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorTenant, actor
 		return nil, fmt.Errorf("label is required")
 	}
 
-	r := &models.RoleRow{}
+	r := &roletypes.RoleRow{}
 	err := s.Pool.QueryRow(ctx, sqlInsertTenantRole,
 		actorTenant, in.Code, in.Label, in.Description, in.Rank, in.IsExternal, actor,
 	).Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
@@ -218,7 +218,7 @@ type UpdateInput struct {
 // Update edits a role. For system roles only Label and Description are
 // permitted; any attempt to change Rank on a system row returns
 // ErrSystemRoleImmutable.
-func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actorTenant, actor uuid.UUID, ip string) (*models.RoleRow, error) {
+func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, actorTenant, actor uuid.UUID, ip string) (*roletypes.RoleRow, error) {
 	existing, err := s.Get(ctx, id, actorTenant)
 	if err != nil {
 		return nil, err
@@ -251,7 +251,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		rank = *in.Rank
 	}
 
-	r := &models.RoleRow{}
+	r := &roletypes.RoleRow{}
 	err = s.Pool.QueryRow(ctx, sqlUpdateRole, id, label, description, rank).
 		Scan(&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
 			&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy)
@@ -408,15 +408,15 @@ func (s *Service) ListPermissionsForRole(ctx context.Context, roleID, actorTenan
 // catalogue ordered by (category, code). The catalogue is server-wide
 // (not tenant-scoped); the visibility check is the actor's
 // roles.list permission, enforced at the route layer.
-func (s *Service) ListPermissionsCatalogue(ctx context.Context) ([]models.PermissionRow, error) {
+func (s *Service) ListPermissionsCatalogue(ctx context.Context) ([]roletypes.PermissionRow, error) {
 	rows, err := s.Pool.Query(ctx, sqlListPermissionsCatalogue)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []models.PermissionRow{}
+	out := []roletypes.PermissionRow{}
 	for rows.Next() {
-		var p models.PermissionRow
+		var p roletypes.PermissionRow
 		if err := rows.Scan(&p.ID, &p.Code, &p.Label, &p.Category, &p.Description, &p.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -427,10 +427,10 @@ func (s *Service) ListPermissionsCatalogue(ctx context.Context) ([]models.Permis
 
 // ── helpers ─────────────────────────────────────────────────
 
-func scanRoleRows(rows pgx.Rows) ([]models.RoleRow, error) {
-	out := []models.RoleRow{}
+func scanRoleRows(rows pgx.Rows) ([]roletypes.RoleRow, error) {
+	out := []roletypes.RoleRow{}
 	for rows.Next() {
-		r := models.RoleRow{}
+		r := roletypes.RoleRow{}
 		if err := rows.Scan(
 			&r.ID, &r.SubscriptionID, &r.Code, &r.Label, &r.Description, &r.Rank,
 			&r.IsSystem, &r.IsExternal, &r.ArchivedAt, &r.CreatedAt, &r.UpdatedAt, &r.CreatedBy,

@@ -10,7 +10,7 @@
 // tenant_owner_user_id is accepted as a bare UUID — cross-DB user
 // existence is not validated here; the DB CHECK constraint on
 // email format is the only DB-enforced guard.
-package tenantsettings
+package tenantmasterrecord
 
 import (
 	"context"

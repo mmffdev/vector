@@ -7,7 +7,7 @@ package nav
 
 import (
 	"github.com/google/uuid"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 type NavItemKind string
@@ -23,7 +23,7 @@ type CatalogEntry struct {
 	Label         string        `json:"label"`
 	Href          string        `json:"href"`
 	Kind          NavItemKind   `json:"kind"`
-	Roles         []models.Role `json:"roles"`
+	Roles         []roletypes.Role `json:"roles"`
 	Pinnable      bool          `json:"pinnable"`
 	DefaultPinned bool          `json:"defaultPinned"`
 	DefaultOrder  int           `json:"defaultOrder"`
@@ -35,7 +35,7 @@ type CatalogEntry struct {
 	SubscriptionID *uuid.UUID `json:"-"`
 }
 
-func roleAllowed(r models.Role, allowed []models.Role) bool {
+func roleAllowed(r roletypes.Role, allowed []roletypes.Role) bool {
 	for _, a := range allowed {
 		if a == r {
 			return true

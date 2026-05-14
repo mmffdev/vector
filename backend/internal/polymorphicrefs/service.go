@@ -10,7 +10,7 @@
 // See docs/c_polymorphic_writes.md for the full pattern and
 // db/mmff_vector/schema/013_polymorphic_dispatch_triggers.sql for the trigger
 // implementations.
-package entityrefs
+package polymorphicrefs
 
 import (
 	"context"

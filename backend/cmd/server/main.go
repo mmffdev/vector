@@ -35,7 +35,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/permissions"
@@ -47,7 +47,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
-	"github.com/mmffdev/vector-backend/internal/tenantsettings"
+	"github.com/mmffdev/vector-backend/internal/tenantmasterrecord"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
@@ -420,8 +420,8 @@ func main() {
 	if vaPool != nil {
 		tenantSettingsPool = vaPool
 	}
-	tenantSettingsSvc := tenantsettings.New(tenantSettingsPool)
-	tenantSettingsH := tenantsettings.NewHandler(tenantSettingsSvc)
+	tenantSettingsSvc := tenantmasterrecord.New(tenantSettingsPool)
+	tenantSettingsH := tenantmasterrecord.NewHandler(tenantSettingsSvc)
 
 	// Webhooks (B9). Requires vector_artefacts (mig 037).
 	// webhookSvc is created in the vaPool block above when vaPool != nil.
@@ -513,7 +513,7 @@ func main() {
 	}
 	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, errorsReportPool))
 
-	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *models.User) {
+	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *roletypes.User) {
 		var tier string
 		if err := pool.QueryRow(ctx,
 			`SELECT tier FROM subscriptions WHERE id = $1`, u.SubscriptionID,

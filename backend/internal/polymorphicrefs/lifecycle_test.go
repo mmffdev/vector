@@ -1,4 +1,4 @@
-package entityrefs
+package polymorphicrefs
 
 import "testing"
 

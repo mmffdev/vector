@@ -17,7 +17,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 // withUser injects a fake user into the context — matches what
 // auth.RequireAuth does at runtime so handlers can be exercised without
 // minting a real JWT for every test.
-func withUser(u *models.User) func(http.Handler) http.Handler {
+func withUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUserForTest(r.Context(), u)
@@ -37,7 +37,7 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 	}
 }
 
-func newRouter(h *Handler, u *models.User) http.Handler {
+func newRouter(h *Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(withUser(u))
 	r.Get("/api/library/releases", h.List)
@@ -222,7 +222,7 @@ type subRef struct {
 }
 
 // testVectorPool returns a pool + a usable gadmin user for ack tests.
-func testVectorPool(t *testing.T) (*pgxpool.Pool, *subRef, *models.User) {
+func testVectorPool(t *testing.T) (*pgxpool.Pool, *subRef, *roletypes.User) {
 	t.Helper()
 	loadEnv()
 	dsn := fmt.Sprintf(
@@ -242,7 +242,7 @@ func testVectorPool(t *testing.T) (*pgxpool.Pool, *subRef, *models.User) {
 		t.Skipf("cannot ping mmff_vector: %v", err)
 	}
 
-	var u models.User
+	var u roletypes.User
 	var sub subRef
 	err = pool.QueryRow(context.Background(), `
 		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, s.id, s.tier

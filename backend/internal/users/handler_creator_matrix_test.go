@@ -15,7 +15,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -27,12 +27,12 @@ import (
 
 func TestTargetRoleCreateCode(t *testing.T) {
 	cases := []struct {
-		role models.Role
+		role roletypes.Role
 		want permissions.Code
 	}{
-		{models.RoleGAdmin, permissions.UsersCreateGadmin},
-		{models.RolePAdmin, permissions.UsersCreatePadmin},
-		{models.RoleUser, permissions.UsersCreateUser},
+		{roletypes.RoleGAdmin, permissions.UsersCreateGadmin},
+		{roletypes.RolePAdmin, permissions.UsersCreatePadmin},
+		{roletypes.RoleUser, permissions.UsersCreateUser},
 		{"team_lead", permissions.UsersCreateTeamLead},
 		{"external", permissions.UsersCreateExternal},
 		{"bogus", ""},
@@ -49,14 +49,14 @@ func TestTargetRoleCreateCode(t *testing.T) {
 // systemRoleIDFor mirrors the roles package's system-role UUID seeds.
 // We don't import internal/roles to avoid an import cycle; this is the
 // minimum needed to seed users.role_id (NOT NULL post-migration 088).
-func systemRoleIDFor(t *testing.T, role models.Role) uuid.UUID {
+func systemRoleIDFor(t *testing.T, role roletypes.Role) uuid.UUID {
 	t.Helper()
 	switch role {
-	case models.RoleGAdmin:
+	case roletypes.RoleGAdmin:
 		return uuid.MustParse("00000000-0000-0000-0000-00000000ad30")
-	case models.RolePAdmin:
+	case roletypes.RolePAdmin:
 		return uuid.MustParse("00000000-0000-0000-0000-00000000ad25")
-	case models.RoleUser:
+	case roletypes.RoleUser:
 		return uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
 	}
 	t.Fatalf("systemRoleIDFor: unsupported role %q", role)
@@ -66,11 +66,11 @@ func systemRoleIDFor(t *testing.T, role models.Role) uuid.UUID {
 // mkUserWithRoleID inserts a user with both the legacy enum and the
 // system-role UUID. Once migration 088 has shipped to all envs, the
 // service_test.go mkUser helper can adopt this shape too.
-func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role models.Role) *models.User {
+func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Role) *roletypes.User {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
 	roleID := systemRoleIDFor(t, role)
-	u := &models.User{}
+	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
 		VALUES ($1, $2, $3, $4, $5)
@@ -85,7 +85,7 @@ func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role mo
 	return u
 }
 
-func newCreatorMatrixRouter(h *Handler, actor *models.User) http.Handler {
+func newCreatorMatrixRouter(h *Handler, actor *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,13 +125,13 @@ func TestCreate_creatorMatrix_403_whenSpecificCodeMissing(t *testing.T) {
 	// which they don't either; so to isolate the *handler* discriminator
 	// we bypass the middleware and call the handler directly via a
 	// router that doesn't include RequireAnyPermission.
-	actor := mkUserWithRoleID(t, pool, subID, models.RoleUser)
+	actor := mkUserWithRoleID(t, pool, subID, roletypes.RoleUser)
 
 	h := newHandlerWithResolver(pool)
 	srv := httptest.NewServer(newCreatorMatrixRouter(h, actor))
 	defer srv.Close()
 
-	body, _ := json.Marshal(createReq{Email: "newgadmin@example.com", Role: models.RoleGAdmin})
+	body, _ := json.Marshal(createReq{Email: "newgadmin@example.com", Role: roletypes.RoleGAdmin})
 	resp, err := http.Post(srv.URL+"/api/users", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("POST: %v", err)
@@ -151,7 +151,7 @@ func TestCreate_creatorMatrix_400_unknownTargetRole(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "creator-400")
 	defer cleanup()
-	actor := mkUserWithRoleID(t, pool, subID, models.RoleGAdmin)
+	actor := mkUserWithRoleID(t, pool, subID, roletypes.RoleGAdmin)
 
 	h := newHandlerWithResolver(pool)
 	srv := httptest.NewServer(newCreatorMatrixRouter(h, actor))

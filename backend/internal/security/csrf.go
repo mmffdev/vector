@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 const (
@@ -68,12 +68,12 @@ func CSRF(next http.Handler) http.Handler {
 		}
 		cookie, err := r.Cookie(CSRFCookieName)
 		if err != nil || cookie.Value == "" {
-			httperr.Write(w, r, http.StatusForbidden, messages.AuthCSRFInvalid)
+			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthCSRFInvalid)
 			return
 		}
 		header := r.Header.Get(CSRFHeaderName)
 		if header == "" || subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(header)) != 1 {
-			httperr.Write(w, r, http.StatusForbidden, messages.AuthCSRFInvalid)
+			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthCSRFInvalid)
 			return
 		}
 		next.ServeHTTP(w, r)

@@ -30,7 +30,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // MaxContextBytes caps the encoded JSON size of the context payload.
@@ -62,13 +62,13 @@ type reportRequest struct {
 func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	var req reportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if req.Code == "" {
@@ -83,10 +83,10 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	ok, err := h.Svc.CodeExists(r.Context(), req.Code)
 	if err != nil {
 		if errors.Is(err, ErrLibPoolMissing) {
-			httperr.Write(w, r, http.StatusServiceUnavailable, messages.InternalError)
+			httperr.Write(w, r, http.StatusServiceUnavailable, usermessages.InternalError)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if !ok {
@@ -101,7 +101,7 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 		Context:        req.Context,
 		RequestID:      middleware.GetReqID(r.Context()),
 	}); err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

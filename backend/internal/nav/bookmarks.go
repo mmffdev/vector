@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/entityrefs"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/polymorphicrefs"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // EntityKind names a real-world thing a user can bookmark.
@@ -31,9 +31,9 @@ func (k EntityKind) Valid() bool {
 // underlying value lives in entityrefs and is shared across every
 // polymorphic writer.
 var (
-	ErrUnknownEntityKind = entityrefs.ErrUnknownEntityKind
-	ErrEntityNotFound    = entityrefs.ErrEntityNotFound
-	ErrEntityArchived    = entityrefs.ErrEntityArchived
+	ErrUnknownEntityKind = polymorphicrefs.ErrUnknownEntityKind
+	ErrEntityNotFound    = polymorphicrefs.ErrEntityNotFound
+	ErrEntityArchived    = polymorphicrefs.ErrEntityArchived
 	ErrBookmarkCap       = errors.New("bookmark cap reached")
 )
 
@@ -43,17 +43,17 @@ var (
 // are different (entity access checks vs. catalogue/role validation).
 //
 // Polymorphic concerns (parent existence, tenant fence, archive
-// rejection, page_entity_refs writes) delegate to entityrefs.Service —
+// rejection, page_entity_refs writes) delegate to polymorphicrefs.Service —
 // the same service every other writer uses, so the rules are expressed
 // once. See docs/c_polymorphic_writes.md.
 type Bookmarks struct {
 	Pool     *pgxpool.Pool
 	Registry *CachedRegistry
-	Refs     *entityrefs.Service
+	Refs     *polymorphicrefs.Service
 }
 
 func NewBookmarks(pool *pgxpool.Pool, registry *CachedRegistry) *Bookmarks {
-	return &Bookmarks{Pool: pool, Registry: registry, Refs: entityrefs.New(pool)}
+	return &Bookmarks{Pool: pool, Registry: registry, Refs: polymorphicrefs.New(pool)}
 }
 
 // itemKey returns the canonical item_key / pages.key_enum for an entity.
@@ -138,7 +138,7 @@ func iconFor(kind EntityKind) string {
 //  4. Ensure all roles have access via page_roles (idempotent)
 //  5. Insert users_nav_prefs at end of bookmarks group (idempotent)
 //  6. Bust the registry cache so the next catalogue read picks up the new page
-func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUID, role models.Role, kind EntityKind, entityID uuid.UUID) (string, error) {
+func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUID, role roletypes.Role, kind EntityKind, entityID uuid.UUID) (string, error) {
 	if !kind.Valid() {
 		return "", ErrUnknownEntityKind
 	}
@@ -196,13 +196,13 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// duplicate inside InsertPageEntityRef is cheap (FOR UPDATE on a row
 	// we've just selected) and keeps writers obliged to route through
 	// the shared service.
-	if err := b.Refs.InsertPageEntityRef(ctx, tx, pageID, entityrefs.EntityKind(kind), entityID, callerSubscription); err != nil {
+	if err := b.Refs.InsertPageEntityRef(ctx, tx, pageID, polymorphicrefs.EntityKind(kind), entityID, callerSubscription); err != nil {
 		return "", err
 	}
 
 	// Grant access to all roles. A bookmark sits in the user's own pinned
 	// list; per-tenant role gating on the page row itself is uniform.
-	for _, r := range []models.Role{models.RoleUser, models.RolePAdmin, models.RoleGAdmin} {
+	for _, r := range []roletypes.Role{roletypes.RoleUser, roletypes.RolePAdmin, roletypes.RoleGAdmin} {
 		_ = r // keep r in scope for the closure below
 		if _, err := tx.Exec(ctx, sqlUpsertPageRoleGrant, pageID, string(r)); err != nil {
 			return "", err

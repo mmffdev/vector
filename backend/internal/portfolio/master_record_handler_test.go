@@ -28,12 +28,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // withUser injects u into the request context the same way auth.RequireAuth
 // would. Mirrors the trick used in handler_test.go elsewhere.
-func withUser(req *http.Request, u *models.User) *http.Request {
+func withUser(req *http.Request, u *roletypes.User) *http.Request {
 	return req.WithContext(auth.WithUserForTest(req.Context(), u))
 }
 
@@ -60,7 +60,7 @@ func TestGetMasterRecord_Unauthenticated(t *testing.T) {
 func TestGetMasterRecord_MissingWorkspaceID(t *testing.T) {
 	t.Parallel()
 	h := NewHandler(NewService(nil))
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RolePAdmin}
 
 	rr := httptest.NewRecorder()
 	req := withUser(httptest.NewRequest(http.MethodGet, "/api/portfolio/master_record", nil), u)
@@ -73,7 +73,7 @@ func TestGetMasterRecord_MissingWorkspaceID(t *testing.T) {
 func TestGetMasterRecord_InvalidWorkspaceID(t *testing.T) {
 	t.Parallel()
 	h := NewHandler(NewService(nil))
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RolePAdmin}
 
 	rr := httptest.NewRecorder()
 	req := withUser(httptest.NewRequest(http.MethodGet,
@@ -90,7 +90,7 @@ func TestGetMasterRecord_InvalidWorkspaceID(t *testing.T) {
 func TestGetMasterRecord_NonAdminDeniedWithoutPool(t *testing.T) {
 	t.Parallel()
 	h := NewHandler(NewService(nil))
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser}
 
 	rr := httptest.NewRecorder()
 	req := withUser(httptest.NewRequest(http.MethodGet,
@@ -107,7 +107,7 @@ func TestGetMasterRecord_NonAdminDeniedWithoutPool(t *testing.T) {
 func TestGetMasterRecord_PadminPoolMissingIs500(t *testing.T) {
 	t.Parallel()
 	h := NewHandler(NewService(nil))
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RolePAdmin}
 
 	rr := httptest.NewRecorder()
 	req := withUser(httptest.NewRequest(http.MethodGet,
@@ -151,7 +151,7 @@ func TestGetMasterRecord_LiveUnadopted_404(t *testing.T) {
 	defer pool.Close()
 
 	h := NewHandler(NewService(pool)) // no vector pool → padmin-only authz
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RolePAdmin}
 
 	wsID := uuid.New() // guaranteed-unadopted random UUID
 	rr := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func TestGetMasterRecord_LiveAdopted_200(t *testing.T) {
 
 	svc := NewService(pool)
 	h := NewHandler(svc) // no vector pool → padmin-only authz
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RolePAdmin}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RolePAdmin}
 
 	wsID := uuid.New()
 	t.Cleanup(func() {

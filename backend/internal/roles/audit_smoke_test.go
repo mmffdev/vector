@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -23,7 +23,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "audit-smoke")
 	defer cleanup()
 
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 	svc := New(pool, audit.New(pool))
 	ctx := context.Background()
 

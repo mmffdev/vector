@@ -18,7 +18,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -92,7 +92,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	return subID, cleanup
 }
 
-func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role models.Role) *models.User {
+func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Role) *roletypes.User {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
 	// Map legacy enum to the system role UUID. role_id is NOT NULL after
@@ -100,16 +100,16 @@ func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role models.Role)
 	// retired in PLA-0007 G4.
 	var roleID uuid.UUID
 	switch role {
-	case models.RoleGAdmin:
+	case roletypes.RoleGAdmin:
 		roleID = SystemRoleGadmin
-	case models.RolePAdmin:
+	case roletypes.RolePAdmin:
 		roleID = SystemRolePadmin
-	case models.RoleUser:
+	case roletypes.RoleUser:
 		roleID = SystemRoleUser
 	default:
 		t.Fatalf("mkUser: unknown role %q", role)
 	}
-	u := &models.User{}
+	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
 		VALUES ($1, $2, $3, $4, $5)
@@ -126,7 +126,7 @@ func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role models.Role)
 
 // withUser injects a fake user into the request context, mirroring
 // what auth.RequireAuth does at runtime.
-func withUser(u *models.User) func(http.Handler) http.Handler {
+func withUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUserForTest(r.Context(), u)
@@ -135,7 +135,7 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 	}
 }
 
-func newRouter(h *Handler, u *models.User) http.Handler {
+func newRouter(h *Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(withUser(u))
 	r.Get("/api/users_roles", h.List)
@@ -170,7 +170,7 @@ func TestList_returnsRolesScopedToTenant(t *testing.T) {
 	subB, cleanB := mkTenant(t, pool, "list-b")
 	defer cleanB()
 
-	actor := mkUser(t, pool, subA, models.RoleGAdmin)
+	actor := mkUser(t, pool, subA, roletypes.RoleGAdmin)
 
 	// Insert a tenant-custom role into subA and another into subB.
 	ctx := context.Background()
@@ -202,7 +202,7 @@ func TestList_returnsRolesScopedToTenant(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status: want 200, got %d", resp.StatusCode)
 	}
-	var rows []models.RoleRow
+	var rows []roletypes.RoleRow
 	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestCreate_409onDuplicateCode(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "create-dup")
 	defer cleanup()
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	h := newHandler(pool)
 	srv := httptest.NewServer(newRouter(h, actor))
@@ -295,7 +295,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	defer cleanup()
 
 	// Actor with no role grid (role_id NULL) → empty permission set.
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	// Make a tenant-custom target role to grant against.
 	ctx := context.Background()
@@ -366,7 +366,7 @@ func TestArchive_403onSystemRole(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "arch-sys")
 	defer cleanup()
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	h := newHandler(pool)
 	srv := httptest.NewServer(newRouter(h, actor))

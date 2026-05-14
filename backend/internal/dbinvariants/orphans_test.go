@@ -1,4 +1,4 @@
-package dbcheck
+package dbinvariants
 
 import (
 	"context"

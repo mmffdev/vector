@@ -38,7 +38,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // LayoutMode is the closed vocabulary for topology_nodes.layout_mode.
@@ -998,7 +998,7 @@ type MyGrant struct {
 // sort, and Role is fixed to "admin" so any role-coded UI affordance
 // (e.g. role pill in the picker) renders meaningfully.
 func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.UUID, actorRole string) ([]MyGrant, error) {
-	if actorRole == string(models.RoleGAdmin) {
+	if actorRole == string(roletypes.RoleGAdmin) {
 		return s.listMyGrantsGadmin(ctx, subscriptionID)
 	}
 	rows, err := s.vaPool.Query(ctx, sqlListMyGrants, subscriptionID, userID)
@@ -1063,7 +1063,7 @@ func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UU
 // Archived nodes are excluded — a grant on a node that was later
 // archived has no useful scope to display.
 func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUserID uuid.UUID, actorRole string) ([]MyGrant, error) {
-	if actorRole != string(models.RoleGAdmin) {
+	if actorRole != string(roletypes.RoleGAdmin) {
 		return nil, ErrForbidden
 	}
 	rows, err := s.vaPool.Query(ctx, sqlListGrantsByUser, subscriptionID, targetUserID)

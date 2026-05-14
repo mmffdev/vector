@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/security"
 )
@@ -29,13 +29,13 @@ func NewHandler(s *Service, res *permissions.Resolver) *Handler {
 // is gated by RequireAnyPermission across all five codes; this map
 // turns that OR-gate into the AND-gate the creator matrix actually
 // requires (PLA-0007 AC #4). Returns "" for unknown roles.
-func targetRoleCreateCode(role models.Role) permissions.Code {
+func targetRoleCreateCode(role roletypes.Role) permissions.Code {
 	switch role {
-	case models.RoleGAdmin:
+	case roletypes.RoleGAdmin:
 		return permissions.UsersCreateGadmin
-	case models.RolePAdmin:
+	case roletypes.RolePAdmin:
 		return permissions.UsersCreatePadmin
-	case models.RoleUser:
+	case roletypes.RoleUser:
 		return permissions.UsersCreateUser
 	case "team_lead":
 		return permissions.UsersCreateTeamLead
@@ -47,11 +47,11 @@ func targetRoleCreateCode(role models.Role) permissions.Code {
 
 type createReq struct {
 	Email string      `json:"email"`
-	Role  models.Role `json:"role"`
+	Role  roletypes.Role `json:"role"`
 }
 
 type createResp struct {
-	User     *models.User `json:"user"`
+	User     *roletypes.User `json:"user"`
 	ResetURL string       `json:"reset_url,omitempty"` // only in dev; omit in prod
 }
 
@@ -59,11 +59,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
 	if req.Role == "" {
-		req.Role = models.RoleUser
+		req.Role = roletypes.RoleUser
 	}
 	// Creator-matrix discriminator (PLA-0007 AC #4).
 	// The route-level gate is RequireAnyPermission across the five
@@ -77,11 +77,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	set, err := h.PermResolver.PermissionsFor(r.Context(), actor.ID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
+		httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
 		return
 	}
 	if _, ok := set[want]; !ok {
-		httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
+		httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
 		return
 	}
 	// Tenant always comes from the verified session, never the payload.
@@ -96,7 +96,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, 201, createResp{User: u, ResetURL: link})
@@ -106,14 +106,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	out, err := h.Svc.List(r.Context(), actor.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, 200, out)
 }
 
 type patchReq struct {
-	Role       *models.Role `json:"role,omitempty"`
+	Role       *roletypes.Role `json:"role,omitempty"`
 	IsActive   *bool        `json:"is_active,omitempty"`
 	FirstName  *string      `json:"first_name,omitempty"`
 	LastName   *string      `json:"last_name,omitempty"`
@@ -124,12 +124,12 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.Update(r.Context(), id, UpdateInput{
@@ -140,14 +140,14 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		Department: req.Department,
 	}, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
 			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -157,19 +157,19 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Delete(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
 			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -184,20 +184,20 @@ func (h *Handler) IssueReset(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	link, err := h.Svc.IssueResetLink(r.Context(), id, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		if errors.Is(err, ErrRoleCeiling) {
 			httperr.Write(w, r, http.StatusForbidden, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	// Look up the email from the same row for the response payload.

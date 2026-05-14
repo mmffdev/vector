@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 var (
@@ -49,7 +49,7 @@ type Service struct {
 	// auth → libraryreleases import cycle. Slice (not single fn) so
 	// future cross-cutting concerns (presence, last-seen, analytics)
 	// register without rewiring this hook.
-	OnLogin []func(ctx context.Context, user *models.User)
+	OnLogin []func(ctx context.Context, user *roletypes.User)
 }
 
 func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
@@ -92,8 +92,8 @@ func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) 
 	return rp, perms
 }
 
-func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	u := &models.User{}
+func (s *Service) FindUserByEmail(ctx context.Context, email string) (*roletypes.User, error) {
+	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByEmail, email).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
@@ -108,8 +108,8 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.Us
 	return u, nil
 }
 
-func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	u := &models.User{}
+func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.User, error) {
+	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByID, id).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
@@ -122,7 +122,7 @@ func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*models.User,
 }
 
 type LoginResult struct {
-	User         *models.User
+	User         *roletypes.User
 	AccessToken  string
 	RefreshRaw   string
 	RefreshExpAt time.Time
@@ -181,7 +181,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }
 
-func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip string) {
+func (s *Service) recordFailedLogin(ctx context.Context, u *roletypes.User, ip string) {
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip})
 	threshold := envInt("LOCKOUT_THRESHOLD", 5)
 	if threshold == 0 {

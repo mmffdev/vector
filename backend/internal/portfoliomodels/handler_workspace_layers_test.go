@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // PLA-0026 / Story 00499 (B10): handler tests for
@@ -30,7 +30,7 @@ import (
 //   - 403 when the caller is in the right tenant but not a member.
 //   - 200 happy path: gadmin override returns the seeded strategy row.
 
-func newWorkspaceLayersRouter(h *WorkspaceLayersHandler, u *models.User) http.Handler {
+func newWorkspaceLayersRouter(h *WorkspaceLayersHandler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func TestWorkspaceLayers_Unauthorized(t *testing.T) {
 func TestWorkspaceLayers_BadUUID(t *testing.T) {
 	// UUID parse fails before any pool use.
 	h := NewWorkspaceLayersHandler(NewService(nil, nil, nil))
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser}
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, u))
 	defer srv.Close()
 
@@ -167,11 +167,11 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 
 	// Faux gadmin in the workspace's tenant. The handler's gadmin
 	// override skips the workspace_roles membership check.
-	gadmin := &models.User{
+	gadmin := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: subID,
 		Email:          "claude-gadmin-test@example.invalid",
-		Role:           models.RoleGAdmin,
+		Role:           roletypes.RoleGAdmin,
 		IsActive:       true,
 	}
 
@@ -249,11 +249,11 @@ func TestWorkspaceLayers_Forbidden_NonMember(t *testing.T) {
 
 	// Non-gadmin user in the same tenant with a random user id (not a
 	// member of the workspace).
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: subID,
 		Email:          "claude-nonmember-test@example.invalid",
-		Role:           models.RoleUser,
+		Role:           roletypes.RoleUser,
 		IsActive:       true,
 	}
 
@@ -294,11 +294,11 @@ func TestWorkspaceLayers_NotFound_CrossTenant(t *testing.T) {
 	}
 
 	// User in a different (random) tenant.
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(), // != subID
 		Email:          "claude-crosstenant-test@example.invalid",
-		Role:           models.RoleGAdmin, // even gadmin can't peek across tenants
+		Role:           roletypes.RoleGAdmin, // even gadmin can't peek across tenants
 		IsActive:       true,
 	}
 	if user.SubscriptionID == subID {

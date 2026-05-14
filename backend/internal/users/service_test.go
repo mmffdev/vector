@@ -14,7 +14,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Integration tests hit the real Postgres via the SSH tunnel on :5434.
@@ -88,16 +88,16 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 // mkUser inserts a user with the given role into the tenant.
 // role_id is NOT NULL post-migration 088, so we seed it from the
 // system-role UUID matching the legacy enum.
-func mkUser(t *testing.T, pool *pgxpool.Pool, subscriptionID uuid.UUID, role models.Role) uuid.UUID {
+func mkUser(t *testing.T, pool *pgxpool.Pool, subscriptionID uuid.UUID, role roletypes.Role) uuid.UUID {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
 	var roleID uuid.UUID
 	switch role {
-	case models.RoleGAdmin:
+	case roletypes.RoleGAdmin:
 		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad30")
-	case models.RolePAdmin:
+	case roletypes.RolePAdmin:
 		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad25")
-	case models.RoleUser:
+	case roletypes.RoleUser:
 		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
 	default:
 		t.Fatalf("mkUser: unsupported role %q", role)
@@ -131,11 +131,11 @@ func TestCreate_PadminCannotCreateGAdmin(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RolePAdmin)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RolePAdmin)
 
 	_, _, err := svc.Create(context.Background(), CreateInput{
-		Email: "new-gadmin@example.com", Role: models.RoleGAdmin, SubscriptionID: subscriptionID,
-	}, models.RolePAdmin, actor, "")
+		Email: "new-gadmin@example.com", Role: roletypes.RoleGAdmin, SubscriptionID: subscriptionID,
+	}, roletypes.RolePAdmin, actor, "")
 	if !errors.Is(err, ErrRoleCeiling) {
 		t.Fatalf("expected ErrRoleCeiling, got %v", err)
 	}
@@ -148,13 +148,13 @@ func TestCreate_GAdminCanCreateAnyRole(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RoleGAdmin)
 
-	for _, role := range []models.Role{models.RoleUser, models.RolePAdmin, models.RoleGAdmin} {
+	for _, role := range []roletypes.Role{roletypes.RoleUser, roletypes.RolePAdmin, roletypes.RoleGAdmin} {
 		suffix := uuid.NewString()[:6]
 		_, _, err := svc.Create(context.Background(), CreateInput{
 			Email: "new-" + suffix + "@example.com", Role: role, SubscriptionID: subscriptionID,
-		}, models.RoleGAdmin, actor, "")
+		}, roletypes.RoleGAdmin, actor, "")
 		if err != nil {
 			t.Fatalf("gadmin create %s: %v", role, err)
 		}
@@ -174,13 +174,13 @@ func TestUpdate_RejectsCrossTenantTarget(t *testing.T) {
 	defer cleanB()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, a, models.RoleGAdmin)
-	target := mkUser(t, pool, b, models.RoleUser)
+	actor := mkUser(t, pool, a, roletypes.RoleGAdmin)
+	target := mkUser(t, pool, b, roletypes.RoleUser)
 
 	active := false
 	err := svc.Update(context.Background(), target,
 		UpdateInput{IsActive: &active},
-		models.RoleGAdmin, a, actor, "")
+		roletypes.RoleGAdmin, a, actor, "")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound on cross-subscription Update, got %v", err)
 	}
@@ -197,13 +197,13 @@ func TestUpdate_PadminCannotPokeGAdmin(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RolePAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RolePAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RoleGAdmin)
 
 	active := false
 	err := svc.Update(context.Background(), target,
 		UpdateInput{IsActive: &active},
-		models.RolePAdmin, subscriptionID, actor, "")
+		roletypes.RolePAdmin, subscriptionID, actor, "")
 	if !errors.Is(err, ErrRoleCeiling) {
 		t.Fatalf("expected ErrRoleCeiling, got %v", err)
 	}
@@ -220,13 +220,13 @@ func TestUpdate_PadminCannotPromoteUserToGAdmin(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RolePAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RolePAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RoleUser)
 
-	gadmin := models.RoleGAdmin
+	gadmin := roletypes.RoleGAdmin
 	err := svc.Update(context.Background(), target,
 		UpdateInput{Role: &gadmin},
-		models.RolePAdmin, subscriptionID, actor, "")
+		roletypes.RolePAdmin, subscriptionID, actor, "")
 	if !errors.Is(err, ErrRoleCeiling) {
 		t.Fatalf("expected ErrRoleCeiling on padmin→gadmin promotion, got %v", err)
 	}
@@ -243,13 +243,13 @@ func TestUpdate_GAdminCanModifyAnyone(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RolePAdmin)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RolePAdmin)
 
 	active := false
 	if err := svc.Update(context.Background(), target,
 		UpdateInput{IsActive: &active},
-		models.RoleGAdmin, subscriptionID, actor, "",
+		roletypes.RoleGAdmin, subscriptionID, actor, "",
 	); err != nil {
 		t.Fatalf("gadmin update padmin: %v", err)
 	}
@@ -262,13 +262,13 @@ func TestUpdate_PadminCanDeactivateUser(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RolePAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RolePAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RoleUser)
 
 	active := false
 	if err := svc.Update(context.Background(), target,
 		UpdateInput{IsActive: &active},
-		models.RolePAdmin, subscriptionID, actor, "",
+		roletypes.RolePAdmin, subscriptionID, actor, "",
 	); err != nil {
 		t.Fatalf("padmin deactivate user: %v", err)
 	}
@@ -312,14 +312,14 @@ func TestUpdate_RoleChange_RevokesSessions(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RoleUser)
 	insertSession(t, pool, target)
 
-	padmin := models.RolePAdmin
+	padmin := roletypes.RolePAdmin
 	if err := svc.Update(context.Background(), target,
 		UpdateInput{Role: &padmin},
-		models.RoleGAdmin, subscriptionID, actor, "",
+		roletypes.RoleGAdmin, subscriptionID, actor, "",
 	); err != nil {
 		t.Fatalf("gadmin promote user→padmin: %v", err)
 	}
@@ -336,14 +336,14 @@ func TestUpdate_NoRoleChange_DoesNotRevokeSessions(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RoleUser)
 	insertSession(t, pool, target)
 
 	active := true
 	if err := svc.Update(context.Background(), target,
 		UpdateInput{IsActive: &active},
-		models.RoleGAdmin, subscriptionID, actor, "",
+		roletypes.RoleGAdmin, subscriptionID, actor, "",
 	); err != nil {
 		t.Fatalf("gadmin update IsActive: %v", err)
 	}
@@ -363,14 +363,14 @@ func TestUpdate_SameRole_DoesNotRevokeSessions(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(pool)
-	actor := mkUser(t, pool, subscriptionID, models.RoleGAdmin)
-	target := mkUser(t, pool, subscriptionID, models.RoleUser)
+	actor := mkUser(t, pool, subscriptionID, roletypes.RoleGAdmin)
+	target := mkUser(t, pool, subscriptionID, roletypes.RoleUser)
 	insertSession(t, pool, target)
 
-	user := models.RoleUser
+	user := roletypes.RoleUser
 	if err := svc.Update(context.Background(), target,
 		UpdateInput{Role: &user},
-		models.RoleGAdmin, subscriptionID, actor, "",
+		roletypes.RoleGAdmin, subscriptionID, actor, "",
 	); err != nil {
 		t.Fatalf("gadmin reassign user→user: %v", err)
 	}
@@ -393,7 +393,7 @@ func TestFindByID_RejectsCrossTenant(t *testing.T) {
 	defer cleanB()
 
 	svc := newSvc(pool)
-	target := mkUser(t, pool, b, models.RoleUser)
+	target := mkUser(t, pool, b, roletypes.RoleUser)
 
 	if _, err := svc.FindByID(context.Background(), target, a); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound on cross-subscription FindByID, got %v", err)

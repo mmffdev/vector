@@ -7,7 +7,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // POST /_site/flows/reset/preview
@@ -37,11 +37,11 @@ func (h *Handler) ResetPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, ErrFlowNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -76,11 +76,11 @@ func (h *Handler) ResetApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, ErrFlowNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)

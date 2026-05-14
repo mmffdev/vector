@@ -24,11 +24,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 )
 
-func newOriginGatedServer(t *testing.T, user *models.User) *httptest.Server {
+func newOriginGatedServer(t *testing.T, user *roletypes.User) *httptest.Server {
 	t.Helper()
 	hub := realtime.NewHub()
 	r := chi.NewRouter()
@@ -42,7 +42,7 @@ func newOriginGatedServer(t *testing.T, user *models.User) *httptest.Server {
 func TestWS_ForeignOrigin_Rejected(t *testing.T) {
 	t.Setenv("FRONTEND_ORIGIN", "http://app.example.com")
 
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(),
 		Email:          "test@mmffdev.com",
@@ -66,7 +66,7 @@ func TestWS_ForeignOrigin_Rejected(t *testing.T) {
 func TestWS_AllowedOrigin_Accepted(t *testing.T) {
 	t.Setenv("FRONTEND_ORIGIN", "http://app.example.com")
 
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(),
 		Email:          "test@mmffdev.com",
@@ -95,7 +95,7 @@ func TestWS_AllowedOrigin_Accepted(t *testing.T) {
 func TestWS_FrontendOriginUnset_SameOriginOnly(t *testing.T) {
 	t.Setenv("FRONTEND_ORIGIN", "")
 
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(),
 		Email:          "test@mmffdev.com",

@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 type Handler struct {
@@ -28,12 +28,12 @@ func (h *Handler) Mount(r chi.Router) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	types, err := h.Svc.List(r.Context(), u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if types == nil {
@@ -48,7 +48,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
@@ -81,10 +81,10 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)

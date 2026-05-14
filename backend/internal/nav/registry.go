@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Registry holds the catalogue loaded from the pages / page_tags /
@@ -150,9 +150,9 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 			return nil, fmt.Errorf("nav registry: scan page: %w", err)
 		}
 		e.Kind = NavItemKind(kind)
-		e.Roles = make([]models.Role, 0, len(roleStrs))
+		e.Roles = make([]roletypes.Role, 0, len(roleStrs))
 		for _, r := range roleStrs {
-			e.Roles = append(e.Roles, models.Role(r))
+			e.Roles = append(e.Roles, roletypes.Role(r))
 		}
 		if _, ok := tagsByEnum[e.TagEnum]; !ok {
 			return nil, fmt.Errorf("nav registry: page %q references unknown tag %q", e.Key, e.TagEnum)
@@ -189,7 +189,7 @@ func (r *Registry) IsPinnable(key string) bool {
 // order. Static pages (SubscriptionID == nil) appear for every tenant; entity
 // pages appear only for users in their owning tenant. Roles still gate
 // regardless of kind.
-func (r *Registry) CatalogFor(role models.Role, subscriptionID uuid.UUID) []CatalogEntry {
+func (r *Registry) CatalogFor(role roletypes.Role, subscriptionID uuid.UUID) []CatalogEntry {
 	out := make([]CatalogEntry, 0, len(r.entries))
 	for _, e := range r.entries {
 		if !roleAllowed(role, e.Roles) {

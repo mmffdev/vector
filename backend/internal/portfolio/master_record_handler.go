@@ -31,7 +31,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler is the HTTP surface for master_record_portfolios reads.
@@ -72,18 +72,18 @@ func (h *Handler) Mount(r chi.Router) {
 func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	wsRaw := r.URL.Query().Get("workspace_id")
 	if wsRaw == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	workspaceID, err := uuid.Parse(wsRaw)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 
@@ -93,24 +93,24 @@ func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 	// your tenant").
 	ok, err := h.Svc.CanReadMasterRecord(r.Context(), u, workspaceID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if !ok {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 
 	row, err := h.Svc.Get(r.Context(), workspaceID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		// ErrPoolMissing falls through to 500 — vector_artefacts is
 		// required for this endpoint to function and a misconfigured
 		// boot is an operator-visible 500, not a silent empty.
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

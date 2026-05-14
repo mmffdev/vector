@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes webhook subscription CRUD over HTTP.
@@ -33,7 +33,7 @@ func (h *Handler) Mount(r chi.Router) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	wsID, ok := workspaceIDFromPath(w, r)
@@ -42,7 +42,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	subs, err := h.svc.List(r.Context(), wsID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if subs == nil {
@@ -54,7 +54,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	wsID, ok := workspaceIDFromPath(w, r)
@@ -63,7 +63,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	var in CreateInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	sub, err := h.svc.Create(r.Context(), wsID, in)
@@ -72,7 +72,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			httperr.Write(w, r, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, sub)
@@ -81,7 +81,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	wsID, ok := workspaceIDFromPath(w, r)
@@ -95,10 +95,10 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	sub, err := h.svc.Get(r.Context(), wsID, whID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, sub)
@@ -107,7 +107,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	wsID, ok := workspaceIDFromPath(w, r)
@@ -120,20 +120,20 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	var in UpdateInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	sub, err := h.svc.Update(r.Context(), wsID, whID, in)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		if errors.Is(err, ErrInvalidInput) {
 			httperr.Write(w, r, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, sub)
@@ -142,7 +142,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	wsID, ok := workspaceIDFromPath(w, r)
@@ -155,10 +155,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.svc.Delete(r.Context(), wsID, whID); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

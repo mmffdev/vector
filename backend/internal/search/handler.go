@@ -6,7 +6,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes POST /search over HTTP.
@@ -24,7 +24,7 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		TypeIDs     []string `json:"type_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if body.WorkspaceID == "" {
@@ -50,7 +50,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		Limit:       body.Limit,
 	})
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

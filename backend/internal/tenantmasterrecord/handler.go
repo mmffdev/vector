@@ -1,4 +1,4 @@
-package tenantsettings
+package tenantmasterrecord
 
 // HTTP surface for the master_record_tenants sole-writer service.
 // Mounts under /api/tenant-settings; both routes require auth +
@@ -16,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 type Handler struct {
@@ -34,16 +34,16 @@ func (h *Handler) Mount(r chi.Router) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	row, err := h.Svc.Get(r.Context(), u.SubscriptionID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, row)
@@ -54,12 +54,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	var in PatchInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	row, err := h.Svc.Patch(r.Context(), u.SubscriptionID, u.ID, in)
@@ -73,7 +73,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			httperr.WriteValidation(w, r, vs)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, row)

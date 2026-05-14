@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes the timeboxsprints domain over HTTP.
@@ -55,7 +55,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	sprints, err := h.svc.List(r.Context(), wsID, f)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -77,10 +77,10 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	sprint, err := h.svc.Get(r.Context(), wsID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		OrgNodeID         *string `json:"timeboxes_sprints_id_topology_node"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
@@ -135,10 +135,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "timeboxes_sprints_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_sprints_date_start", Message: usermessages.Conflict},
 			})
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -169,7 +169,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		Status            *string `json:"timeboxes_sprints_status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
@@ -190,17 +190,17 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrInvalidInput):
 			httperr.WriteValidation(w, r, []httperr.Violation{
 				{Field: "body", Message: err.Error()},
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "timeboxes_sprints_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_sprints_date_start", Message: usermessages.Conflict},
 			})
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -220,11 +220,11 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.Delete(r.Context(), wsID, id); err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrLifecycle):
 			httperr.Write(w, r, http.StatusConflict, "Active or completed sprints cannot be deleted.")
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -244,11 +244,11 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrStartLifecycle):
 			httperr.Write(w, r, http.StatusConflict, ErrStartLifecycle.Error())
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -269,11 +269,11 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrCloseLifecycle):
 			httperr.Write(w, r, http.StatusConflict, ErrCloseLifecycle.Error())
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -303,7 +303,7 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		} `json:"sprints"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if len(body.Sprints) == 0 {
@@ -338,10 +338,10 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprints", Message: messages.Conflict},
+				{Field: "sprints", Message: usermessages.Conflict},
 			})
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}

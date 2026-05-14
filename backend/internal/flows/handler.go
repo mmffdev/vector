@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes the flows domain over HTTP.
@@ -27,7 +27,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	out, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID.String())
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -49,7 +49,7 @@ func (h *Handler) PatchFlowState(w http.ResponseWriter, r *http.Request) {
 
 	st, err := h.Svc.PatchFlowState(r.Context(), u.SubscriptionID.String(), stateID, in)
 	if errors.Is(err, ErrStateNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
@@ -72,7 +72,7 @@ func (h *Handler) CreateFlowState(w http.ResponseWriter, r *http.Request) {
 
 	st, err := h.Svc.CreateState(r.Context(), u.SubscriptionID.String(), flowID, in)
 	if errors.Is(err, ErrFlowNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
@@ -89,11 +89,11 @@ func (h *Handler) DeleteFlowState(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Svc.DeleteState(r.Context(), u.SubscriptionID.String(), stateID)
 	if errors.Is(err, ErrStateNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -112,7 +112,7 @@ func (h *Handler) CreateTransition(w http.ResponseWriter, r *http.Request) {
 
 	tr, err := h.Svc.CreateTransition(r.Context(), u.SubscriptionID.String(), flowID, in)
 	if errors.Is(err, ErrFlowNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if errors.Is(err, ErrTransitionExists) {
@@ -139,11 +139,11 @@ func (h *Handler) DeleteTransition(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Svc.DeleteTransition(r.Context(), u.SubscriptionID.String(), flowID, in)
 	if errors.Is(err, ErrTransitionNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -158,11 +158,11 @@ func (h *Handler) ListExitRules(w http.ResponseWriter, r *http.Request) {
 
 	rules, err := h.Svc.ListExitRules(r.Context(), u.SubscriptionID.String(), stateID)
 	if errors.Is(err, ErrStateNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, rules)
@@ -183,7 +183,7 @@ func (h *Handler) CreateExitRule(w http.ResponseWriter, r *http.Request) {
 
 	rule, err := h.Svc.CreateExitRule(r.Context(), u.SubscriptionID.String(), stateID, in)
 	if errors.Is(err, ErrStateNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
@@ -208,7 +208,7 @@ func (h *Handler) PatchExitRule(w http.ResponseWriter, r *http.Request) {
 
 	rule, err := h.Svc.PatchExitRule(r.Context(), u.SubscriptionID.String(), ruleID, in)
 	if errors.Is(err, ErrExitRuleNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
@@ -225,11 +225,11 @@ func (h *Handler) DeleteExitRule(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Svc.DeleteExitRule(r.Context(), u.SubscriptionID.String(), ruleID)
 	if errors.Is(err, ErrExitRuleNotFound) {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

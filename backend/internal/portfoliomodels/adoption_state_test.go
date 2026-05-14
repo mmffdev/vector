@@ -16,7 +16,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // PLA-0026 / Story 00501 (B12): smoke tests for GET
@@ -30,7 +30,7 @@ import (
 // (RequirePermission) and asserted in auth/middleware tests; these
 // tests exercise the handler body directly with a faked-in user.
 
-func newAdoptionStateRouter(h *AdoptionStateHandler, u *models.User) http.Handler {
+func newAdoptionStateRouter(h *AdoptionStateHandler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func TestGetAdoptionState_NoWorkspace(t *testing.T) {
 	// Synthetic user pointing at a fresh subscription_id with no rows
 	// in workspaces — guarantees the resolveWorkspace path returns
 	// notStarted without polluting real fixtures.
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(),
 		Email:          "synthetic-noworkspace@adoption-state.test",
@@ -377,7 +377,7 @@ func TestGetAdoptionState_Adopted(t *testing.T) {
 
 // testVectorPoolPadmin opens the vector pool and returns a padmin user
 // for the request. Skips when the cluster or a usable padmin is absent.
-func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *models.User) {
+func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *roletypes.User) {
 	t.Helper()
 	for _, rel := range []string{".env.local", "../../.env.local"} {
 		abs, _ := filepath.Abs(rel)
@@ -403,7 +403,7 @@ func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *models.User) {
 		t.Skipf("cannot ping mmff_vector: %v", err)
 	}
 
-	var u models.User
+	var u roletypes.User
 	err = pool.QueryRow(context.Background(), `
 		SELECT id, subscription_id, email, role, is_active
 		  FROM users

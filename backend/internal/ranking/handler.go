@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes the rank service over HTTP. One generic endpoint
@@ -38,19 +38,19 @@ type moveReq struct {
 func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	var body moveReq
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
 	rowID, err := uuid.Parse(body.RowID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 	if body.Before != nil {
 		id, err := uuid.Parse(*body.Before)
 		if err != nil {
-			httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 			return
 		}
 		req.Before = &id
@@ -72,7 +72,7 @@ func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
 	if body.After != nil {
 		id, err := uuid.Parse(*body.After)
 		if err != nil {
-			httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 			return
 		}
 		req.After = &id
@@ -98,7 +98,7 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrScopeMismatch):
 		httperr.Write(w, r, http.StatusConflict, err.Error())
 	default:
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 	}
 }
 
