@@ -33,10 +33,8 @@ func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.
 		desc      *string
 		layersRaw []byte
 	)
-	err = pool.QueryRow(ctx,
-		`SELECT name, description, layers FROM portfolio_templates WHERE id = $1`,
-		templateID,
-	).Scan(&name, &desc, &layersRaw)
+	err = pool.QueryRow(ctx, sqlSelectTemplateByID, templateID).
+		Scan(&name, &desc, &layersRaw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrBundleNotFound
 	}
@@ -92,7 +90,7 @@ func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.
 // loadTagDefinitions fetches all rows from portfolio_template_layer_definitions and returns
 // a map of tag → *description for use during template synthesis.
 func loadTagDefinitions(ctx context.Context, pool *pgxpool.Pool) (map[string]*string, error) {
-	rows, err := pool.Query(ctx, `SELECT tag, description FROM portfolio_template_layer_definitions`)
+	rows, err := pool.Query(ctx, sqlListTagDefinitions)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: load tag definitions: %w", err)
 	}
@@ -177,10 +175,6 @@ func fetchInTx(ctx context.Context, pool *pgxpool.Pool, loadSpine func(pgx.Tx) (
 	}, nil
 }
 
-const modelCols = `id, model_family_id, key, name, description, instructions_md,
-	scope, owner_subscription_id, visibility, feature_flags, default_view, icon,
-	version, library_version, archived_at, created_at, updated_at`
-
 func scanModel(row pgx.Row) (*Model, error) {
 	var m Model
 	err := row.Scan(
@@ -195,7 +189,7 @@ func scanModel(row pgx.Row) (*Model, error) {
 }
 
 func loadModelByID(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) (*Model, error) {
-	row := tx.QueryRow(ctx, `SELECT `+modelCols+` FROM portfolio_models WHERE id = $1`, modelID)
+	row := tx.QueryRow(ctx, sqlSelectModelByID, modelID)
 	m, err := scanModel(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrBundleNotFound
@@ -207,11 +201,7 @@ func loadModelByID(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) (*Model, e
 }
 
 func loadLatestByFamily(ctx context.Context, tx pgx.Tx, familyID uuid.UUID) (*Model, error) {
-	row := tx.QueryRow(ctx, `SELECT `+modelCols+`
-		FROM portfolio_models
-		WHERE model_family_id = $1 AND archived_at IS NULL
-		ORDER BY version DESC
-		LIMIT 1`, familyID)
+	row := tx.QueryRow(ctx, sqlSelectLatestModelByFamily, familyID)
 	m, err := scanModel(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrBundleNotFound
@@ -223,13 +213,7 @@ func loadLatestByFamily(ctx context.Context, tx pgx.Tx, familyID uuid.UUID) (*Mo
 }
 
 func loadLayers(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Layer, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT id, model_id, name, tag, sort_order, parent_layer_id, icon, colour,
-		       description_md, help_md, allows_children, is_leaf,
-		       archived_at, created_at, updated_at
-		FROM portfolio_model_layers
-		WHERE model_id = $1
-		ORDER BY sort_order, name`, modelID)
+	rows, err := tx.Query(ctx, sqlListLayersForModel, modelID)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query layers: %w", err)
 	}
@@ -251,13 +235,7 @@ func loadLayers(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Layer, err
 }
 
 func loadWorkflows(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Workflow, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT id, model_id, layer_id, state_key, state_label, sort_order,
-		       is_initial, is_terminal, colour,
-		       archived_at, created_at, updated_at
-		FROM portfolio_model_workflows
-		WHERE model_id = $1
-		ORDER BY layer_id, sort_order, state_key`, modelID)
+	rows, err := tx.Query(ctx, sqlListWorkflowsForModel, modelID)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query workflows: %w", err)
 	}
@@ -279,12 +257,7 @@ func loadWorkflows(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Workflo
 }
 
 func loadTransitions(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]WorkflowTransition, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT id, model_id, from_state_id, to_state_id,
-		       archived_at, created_at, updated_at
-		FROM portfolio_model_workflow_transitions
-		WHERE model_id = $1
-		ORDER BY from_state_id, to_state_id`, modelID)
+	rows, err := tx.Query(ctx, sqlListTransitionsForModel, modelID)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query transitions: %w", err)
 	}
@@ -305,12 +278,7 @@ func loadTransitions(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Workf
 }
 
 func loadArtifacts(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Artifact, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT id, model_id, artifact_key, enabled, config,
-		       archived_at, created_at, updated_at
-		FROM portfolio_model_artifacts
-		WHERE model_id = $1
-		ORDER BY artifact_key`, modelID)
+	rows, err := tx.Query(ctx, sqlListArtifactsForModel, modelID)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query artifacts: %w", err)
 	}
@@ -331,12 +299,7 @@ func loadArtifacts(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Artifac
 }
 
 func loadTerminology(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Terminology, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT id, model_id, key, value,
-		       archived_at, created_at, updated_at
-		FROM portfolio_model_terminology
-		WHERE model_id = $1
-		ORDER BY key`, modelID)
+	rows, err := tx.Query(ctx, sqlListTerminologyForModel, modelID)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query terminology: %w", err)
 	}

@@ -184,24 +184,13 @@ func ListReleasesSinceAck(
 	return outstanding, nil
 }
 
-const releaseCols = `id, library_version, title, summary_md, body_md, severity,
-	audience_tier, audience_subscription_ids, affects_model_family_id,
-	released_at, expires_at, archived_at, created_at, updated_at`
-
 func loadActiveReleases(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	subscriptionID uuid.UUID,
 	subscriptionTier string,
 ) ([]Release, error) {
-	rows, err := pool.Query(ctx, `
-		SELECT `+releaseCols+`
-		FROM library_releases
-		WHERE archived_at IS NULL
-		  AND (expires_at IS NULL OR expires_at > NOW())
-		  AND (audience_tier IS NULL OR $1 = ANY(audience_tier))
-		  AND (audience_subscription_ids IS NULL OR $2 = ANY(audience_subscription_ids))
-		ORDER BY released_at DESC, id`,
+	rows, err := pool.Query(ctx, sqlListActiveReleasesForAudience,
 		subscriptionTier, subscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query active releases: %w", err)
@@ -232,11 +221,7 @@ func loadActionsForReleases(
 	if len(releaseIDs) == 0 {
 		return out, nil
 	}
-	rows, err := pool.Query(ctx, `
-		SELECT id, release_id, action_key, label, payload, sort_order, created_at, updated_at
-		FROM library_release_actions
-		WHERE release_id = ANY($1)
-		ORDER BY release_id, sort_order, action_key`, releaseIDs)
+	rows, err := pool.Query(ctx, sqlListActionsForReleases, releaseIDs)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query release actions: %w", err)
 	}
@@ -264,10 +249,7 @@ func loadAckedSet(
 	if len(releaseIDs) == 0 {
 		return out, nil
 	}
-	rows, err := acksPool.Query(ctx, `
-		SELECT release_id
-		FROM library_acknowledgements
-		WHERE subscription_id = $1 AND release_id = ANY($2)`,
+	rows, err := acksPool.Query(ctx, sqlListAckedReleaseIDs,
 		subscriptionID, releaseIDs)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: query acks: %w", err)
@@ -306,11 +288,7 @@ func AckRelease(
 	if !IsValidAction(actionTaken) {
 		return false, ErrInvalidAction
 	}
-	tag, err := acksPool.Exec(ctx, `
-		INSERT INTO library_acknowledgements (
-		    subscription_id, release_id, acknowledged_by_user_id, action_taken
-		) VALUES ($1, $2, $3, $4)
-		ON CONFLICT (subscription_id, release_id) DO NOTHING`,
+	tag, err := acksPool.Exec(ctx, sqlInsertReleaseAck,
 		subscriptionID, releaseID, userID, actionTaken)
 	if err != nil {
 		return false, fmt.Errorf("librarydb: insert ack: %w", err)
@@ -324,10 +302,7 @@ func AckRelease(
 //
 // Returns ErrReleaseNotFound for missing or archived rows.
 func FindRelease(ctx context.Context, libRO *pgxpool.Pool, releaseID uuid.UUID) (*Release, error) {
-	row := libRO.QueryRow(ctx, `
-		SELECT `+releaseCols+`
-		FROM library_releases
-		WHERE id = $1 AND archived_at IS NULL`, releaseID)
+	row := libRO.QueryRow(ctx, sqlSelectReleaseByID, releaseID)
 	var r Release
 	err := row.Scan(
 		&r.ID, &r.LibraryVersion, &r.Title, &r.SummaryMD, &r.BodyMD, &r.Severity,
