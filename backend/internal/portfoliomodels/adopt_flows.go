@@ -1,7 +1,7 @@
 package portfoliomodels
 
 // PLA-0026 / Story 00493 (B4): adoption-saga step 3+4 rewrite — write
-// flows + flow_states + flow_transitions into vector_artefacts.
+// flows + flows_states + flows_transitions into vector_artefacts.
 //
 // This file is the second VA writer in the adoption saga, paired with
 // adopt_strategy_types.go (B3). The legacy writeWorkflows /
@@ -16,8 +16,8 @@ package portfoliomodels
 //   stepWorkflows    → writeFlowsAndStates        (B4, this file)
 //   stepTransitions  → writeFlowTransitions       (B4, this file)
 //
-// flow_states.flow_id depends on flows; flow_transitions.from_state_id /
-// to_state_id depend on flow_states. We bundle flows + flow_states into
+// flows_states.flow_id depends on flows; flows_transitions.from_state_id /
+// to_state_id depend on flows_states. We bundle flows + flows_states into
 // the same tx (stepWorkflows) because the library has only one
 // "workflow" concept and that maps to "states". Transitions get their
 // own tx in stepTransitions so it can be retried independently when
@@ -25,18 +25,18 @@ package portfoliomodels
 //
 // Schema targets:
 //   vector_artefacts.flows         — 004_flows.sql + 023 (library_layer_id)
-//   vector_artefacts.flow_states   — 004_flows.sql + 022 (library_workflow_id)
-//   vector_artefacts.flow_transitions — 004_flows.sql
+//   vector_artefacts.flows_states   — 004_flows.sql + 022 (library_workflow_id)
+//   vector_artefacts.flows_transitions — 004_flows.sql
 //
 // Idempotency keys:
 //   flows:            partial unique flows_one_default_per_type
 //                     (artefact_type_id) WHERE is_default=true
 //                     AND archived_at IS NULL.
-//   flow_states:      partial unique uq_flow_states_flow_lib_workflow
+//   flows_states:      partial unique uq_flow_states_flow_lib_workflow
 //                     (flow_id, library_workflow_id) WHERE archived_at
 //                     IS NULL AND library_workflow_id IS NOT NULL
 //                     (added by 022).
-//   flow_transitions: full unique flow_transitions_unique_edge
+//   flows_transitions: full unique flow_transitions_unique_edge
 //                     (flow_id, from_state_id, to_state_id).
 
 import (
@@ -52,7 +52,7 @@ import (
 
 // writeFlowsAndStates mirrors every live library Layer into a default
 // flow row (one per strategy artefact_type) and every live library
-// Workflow into a flow_states row (one per workflow row). Two-phase:
+// Workflow into a flows_states row (one per workflow row). Two-phase:
 //
 //	Phase 1 — INSERT flows ON CONFLICT DO NOTHING for every live layer
 //	          that has a strategy artefact_type mirror in this workspace.
@@ -60,7 +60,7 @@ import (
 //	          (DO NOTHING + RETURNING is unreliable when conflict skips).
 //	Phase 2 — for each live library Workflow row, look up its flow_id via
 //	          (workflow.LayerID → strategy artefact_type → flow), classify
-//	          its kind, and INSERT into flow_states ON CONFLICT DO NOTHING
+//	          its kind, and INSERT into flows_states ON CONFLICT DO NOTHING
 //	          on (flow_id, library_workflow_id).
 //
 // Caller MUST have already run writeStrategyArtefactTypes for this
@@ -113,7 +113,7 @@ func writeFlowsAndStates(
 		return err
 	}
 
-	// Phase 2: insert one flow_states row per live library Workflow.
+	// Phase 2: insert one flows_states row per live library Workflow.
 	for _, wf := range bundle.Workflows {
 		if wf.ArchivedAt != nil {
 			continue
@@ -142,12 +142,12 @@ func writeFlowsAndStates(
 }
 
 // writeFlowTransitions mirrors every live library WorkflowTransition
-// into a flow_transitions row. Resolves from_state_id / to_state_id
+// into a flows_transitions row. Resolves from_state_id / to_state_id
 // via library_workflow_id → flow_state_id map. Idempotent on
 // (flow_id, from_state_id, to_state_id).
 //
 // Caller MUST have already run writeFlowsAndStates for this workspace —
-// flow_transitions.flow_id and *_state_id all chase rows from there.
+// flows_transitions.flow_id and *_state_id all chase rows from there.
 func writeFlowTransitions(
 	ctx context.Context,
 	vaTx pgx.Tx,
@@ -202,8 +202,8 @@ func writeFlowTransitions(
 // live flow_state in this workspace's strategy flows. Used by
 // writeFlowTransitions to translate library uuids into VA uuids.
 //
-// Joins flow_states → flows → artefact_types so the workspace_id filter
-// can be applied. flow_states itself is workspace-agnostic (its parent
+// Joins flows_states → flows → artefact_types so the workspace_id filter
+// can be applied. flows_states itself is workspace-agnostic (its parent
 // flow scopes it).
 func loadFlowStateMap(
 	ctx context.Context,
@@ -276,7 +276,7 @@ func loadFlowStateFlowMap(
 	return m, rows.Err()
 }
 
-// classifyWorkflowKind picks the flow_states.kind bucket for one
+// classifyWorkflowKind picks the flows_states.kind bucket for one
 // library Workflow row. Rules per the card spec:
 //
 //	IsInitial  → 'todo'

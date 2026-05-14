@@ -18,7 +18,7 @@ package flows
 
 // sqlListFlowsByScope returns every flow and its states for a
 // subscription, scoped by artefact-type scope ('work' or 'strategy').
-// Joins flows → artefact_types → flow_states; the listByScope helper
+// Joins flows → artefact_types → flows_states; the listByScope helper
 // then de-duplicates flows in Go.
 const sqlListFlowsByScope = `
 		SELECT
@@ -38,7 +38,7 @@ const sqlListFlowsByScope = `
 		    fs.description AS state_description
 		FROM flows f
 		JOIN artefact_types at ON at.id = f.artefact_type_id
-		JOIN flow_states    fs ON fs.flow_id = f.id AND fs.archived_at IS NULL
+		JOIN flows_states    fs ON fs.flow_id = f.id AND fs.archived_at IS NULL
 		WHERE at.subscription_id = $1
 		  AND at.scope = $2
 		  AND at.archived_at IS NULL
@@ -51,7 +51,7 @@ const sqlListFlowsByScope = `
 // when rendering the catalogue list.
 const sqlListExitRulesForStates = `
 		SELECT id, flow_state_id, sort_order, name, colour
-		FROM   flow_state_exit_rules
+		FROM   flows_states_exit_rules
 		WHERE  flow_state_id = ANY($1)
 		  AND  archived_at IS NULL
 		ORDER  BY flow_state_id, sort_order, created_at;
@@ -61,7 +61,7 @@ const sqlListExitRulesForStates = `
 // of flows in one round-trip. Used by loadTransitions.
 const sqlListTransitionsForFlows = `
 		SELECT flow_id, from_state_id, to_state_id
-		FROM   flow_transitions
+		FROM   flows_transitions
 		WHERE  flow_id = ANY($1)
 		ORDER  BY flow_id, from_state_id, to_state_id;
 	`
@@ -73,7 +73,7 @@ const sqlListTransitionsForFlows = `
 // nil-as-no-change for everything except description, which uses a
 // $9 boolean flag so callers can clear it to NULL.
 const sqlPatchFlowState = `
-		UPDATE flow_states fs
+		UPDATE flows_states fs
 		SET    colour      = COALESCE($1, fs.colour),
 		       name        = COALESCE($4, fs.name),
 		       sort_order  = COALESCE($5, fs.sort_order),
@@ -98,7 +98,7 @@ const sqlPatchFlowState = `
 const sqlExistsFlowStateInTenant = `
 		SELECT EXISTS(
 			SELECT 1
-			FROM   flow_states fs
+			FROM   flows_states fs
 			JOIN   flows f         ON f.id = fs.flow_id
 			JOIN   artefact_types at ON at.id = f.artefact_type_id
 			WHERE  fs.id = $1
@@ -114,7 +114,7 @@ const sqlExistsFlowStateInTenant = `
 // sqlExistsFlowStateInTenant.
 const sqlListExitRulesForState = `
 		SELECT id, sort_order, name, colour
-		FROM   flow_state_exit_rules
+		FROM   flows_states_exit_rules
 		WHERE  flow_state_id = $1
 		  AND  archived_at IS NULL
 		ORDER  BY sort_order, created_at
@@ -127,7 +127,7 @@ const sqlListExitRulesForState = `
 const sqlInsertExitRuleAppend = `
 		WITH ok AS (
 			SELECT fs.id
-			FROM   flow_states fs
+			FROM   flows_states fs
 			JOIN   flows f         ON f.id = fs.flow_id
 			JOIN   artefact_types at ON at.id = f.artefact_type_id
 			WHERE  fs.id = $1
@@ -138,11 +138,11 @@ const sqlInsertExitRuleAppend = `
 		),
 		next_order AS (
 			SELECT COALESCE(MAX(sort_order), 0) + 10 AS so
-			FROM   flow_state_exit_rules
+			FROM   flows_states_exit_rules
 			WHERE  flow_state_id = $1
 			  AND  archived_at IS NULL
 		)
-		INSERT INTO flow_state_exit_rules (flow_state_id, sort_order, name, colour)
+		INSERT INTO flows_states_exit_rules (flow_state_id, sort_order, name, colour)
 		SELECT ok.id, next_order.so, $3, $4
 		FROM   ok, next_order
 		RETURNING id, sort_order, name, colour
@@ -152,11 +152,11 @@ const sqlInsertExitRuleAppend = `
 // subscription. Colour uses a $3 boolean flag so callers can clear it
 // to NULL or leave it untouched (same convention as sqlPatchFlowState).
 const sqlPatchExitRule = `
-		UPDATE flow_state_exit_rules r
+		UPDATE flows_states_exit_rules r
 		SET    name       = COALESCE($1, r.name),
 		       sort_order = COALESCE($2, r.sort_order),
 		       colour     = CASE WHEN $3::boolean THEN $4 ELSE r.colour END
-		FROM   flow_states fs
+		FROM   flows_states fs
 		JOIN   flows f         ON f.id = fs.flow_id
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
 		WHERE  r.id            = $5
@@ -171,9 +171,9 @@ const sqlPatchExitRule = `
 
 // sqlArchiveExitRule soft-archives one exit rule scoped to subscription.
 const sqlArchiveExitRule = `
-		UPDATE flow_state_exit_rules r
+		UPDATE flows_states_exit_rules r
 		SET    archived_at = NOW()
-		FROM   flow_states fs
+		FROM   flows_states fs
 		JOIN   flows f         ON f.id = fs.flow_id
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
 		WHERE  r.id            = $1
@@ -186,13 +186,13 @@ const sqlArchiveExitRule = `
 // used by CreateState to compute the append position when the caller
 // passes sort_order=0.
 const sqlSelectMaxFlowStateSortOrder = `
-		SELECT COALESCE(MAX(sort_order), 0) FROM flow_states WHERE flow_id = $1 AND archived_at IS NULL
+		SELECT COALESCE(MAX(sort_order), 0) FROM flows_states WHERE flow_id = $1 AND archived_at IS NULL
 	`
 
 // sqlInsertFlowState appends a new state to a flow, tenancy-gated via
 // the artefact_types join. Returns the hydrated state row.
 const sqlInsertFlowState = `
-		INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
+		INSERT INTO flows_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
 		SELECT f.id, $3, $4, $5, $6, $7
 		FROM   flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
@@ -205,7 +205,7 @@ const sqlInsertFlowState = `
 
 // sqlArchiveFlowState soft-archives one state scoped to subscription.
 const sqlArchiveFlowState = `
-		UPDATE flow_states fs
+		UPDATE flows_states fs
 		SET    archived_at = NOW()
 		FROM   flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
@@ -219,7 +219,7 @@ const sqlArchiveFlowState = `
 // DO NOTHING + RETURNING shape lets the caller distinguish
 // "already exists" from "flow not found" via pgx.ErrNoRows.
 const sqlInsertTransition = `
-		INSERT INTO flow_transitions (flow_id, from_state_id, to_state_id)
+		INSERT INTO flows_transitions (flow_id, from_state_id, to_state_id)
 		SELECT f.id, $3, $4
 		FROM   flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
@@ -235,13 +235,13 @@ const sqlInsertTransition = `
 // distinguish ErrTransitionExists from ErrFlowNotFound when
 // sqlInsertTransition's RETURNING comes back empty.
 const sqlExistsTransition = `
-		SELECT EXISTS(SELECT 1 FROM flow_transitions WHERE flow_id=$1 AND from_state_id=$2 AND to_state_id=$3)
+		SELECT EXISTS(SELECT 1 FROM flows_transitions WHERE flow_id=$1 AND from_state_id=$2 AND to_state_id=$3)
 	`
 
 // sqlDeleteTransition removes an allowed edge from a flow, scoped to
 // subscription via the USING join.
 const sqlDeleteTransition = `
-		DELETE FROM flow_transitions ft
+		DELETE FROM flows_transitions ft
 		USING  flows f
 		JOIN   artefact_types at ON at.id = f.artefact_type_id
 		WHERE  ft.flow_id      = f.id
@@ -267,27 +267,27 @@ const sqlSelectDefaultFlowForArtefactType = `
 		 WHERE artefact_type_id = $1 AND is_default = TRUE AND archived_at IS NULL
 	`
 
-// sqlListLiveFlowStateRows returns active flow_states rows for one
+// sqlListLiveFlowStateRows returns active flows_states rows for one
 // flow ordered by sort_order — the "live" side of the reset diff.
 const sqlListLiveFlowStateRows = `
 		SELECT id, name, kind, sort_order, is_initial, is_pullable, colour
-		FROM   flow_states
+		FROM   flows_states
 		WHERE  flow_id = $1 AND archived_at IS NULL
 		ORDER  BY sort_order
 	`
 
-// sqlSelectFlowDefaultID returns the flow_defaults snapshot row id for
+// sqlSelectFlowDefaultID returns the flows_defaults snapshot row id for
 // an artefact type. pgx.ErrNoRows → ErrNoSnapshot in the caller.
 const sqlSelectFlowDefaultID = `
-		SELECT id FROM flow_defaults WHERE artefact_type_id = $1
+		SELECT id FROM flows_defaults WHERE artefact_type_id = $1
 	`
 
-// sqlListSnapshotFlowStateRows returns flow_state_defaults rows for
-// one flow_defaults snapshot ordered by sort_order — the "snapshot"
+// sqlListSnapshotFlowStateRows returns flows_states_defaults rows for
+// one flows_defaults snapshot ordered by sort_order — the "snapshot"
 // side of the reset diff.
 const sqlListSnapshotFlowStateRows = `
 		SELECT id, name, kind, sort_order, is_initial, is_pullable, colour
-		FROM   flow_state_defaults
+		FROM   flows_states_defaults
 		WHERE  flow_default_id = $1
 		ORDER  BY sort_order
 	`
@@ -297,20 +297,20 @@ const sqlListSnapshotFlowStateRows = `
 // since IDs differ between live and snapshot once any edits land.
 const sqlListLiveTransitionsWithNames = `
 		SELECT ft.from_state_id, ft.to_state_id, fs_from.name, fs_to.name
-		FROM   flow_transitions ft
-		JOIN   flow_states fs_from ON fs_from.id = ft.from_state_id
-		JOIN   flow_states fs_to   ON fs_to.id   = ft.to_state_id
+		FROM   flows_transitions ft
+		JOIN   flows_states fs_from ON fs_from.id = ft.from_state_id
+		JOIN   flows_states fs_to   ON fs_to.id   = ft.to_state_id
 		WHERE  ft.flow_id = $1
 	`
 
 // sqlListSnapshotTransitionsWithNames mirrors
-// sqlListLiveTransitionsWithNames for the flow_transition_defaults /
-// flow_state_defaults pair.
+// sqlListLiveTransitionsWithNames for the flows_transitions_defaults /
+// flows_states_defaults pair.
 const sqlListSnapshotTransitionsWithNames = `
 		SELECT ftd.from_state_id, ftd.to_state_id, fsd_from.name, fsd_to.name
-		FROM   flow_transition_defaults ftd
-		JOIN   flow_state_defaults fsd_from ON fsd_from.id = ftd.from_state_id
-		JOIN   flow_state_defaults fsd_to   ON fsd_to.id   = ftd.to_state_id
+		FROM   flows_transitions_defaults ftd
+		JOIN   flows_states_defaults fsd_from ON fsd_from.id = ftd.from_state_id
+		JOIN   flows_states_defaults fsd_to   ON fsd_to.id   = ftd.to_state_id
 		WHERE  ftd.flow_default_id = $1
 	`
 
@@ -335,20 +335,20 @@ const sqlRebindArtefactsToSuccessor = `
 // ApplyReset. The tenancy gate was already enforced by loadResetData;
 // inside the tx we trust the diff and archive by id only.
 const sqlArchiveFlowStateByID = `
-		UPDATE flow_states SET archived_at = now() WHERE id = $1
+		UPDATE flows_states SET archived_at = now() WHERE id = $1
 	`
 
 // sqlUpdateFlowStateOrderAndFlags rewrites sort_order + is_initial +
 // is_pullable on a kept-but-changed pill during ApplyReset.
 const sqlUpdateFlowStateOrderAndFlags = `
-		UPDATE flow_states SET sort_order = $1, is_initial = $2, is_pullable = $3 WHERE id = $4
+		UPDATE flows_states SET sort_order = $1, is_initial = $2, is_pullable = $3 WHERE id = $4
 	`
 
 // sqlInsertFlowStateForReset adds a missing pill back to the live flow
 // during ApplyReset. No subscription gate inside the tx — the parent
 // flow + subscription gate was enforced by loadResetData upstream.
 const sqlInsertFlowStateForReset = `
-		INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
+		INSERT INTO flows_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
@@ -356,14 +356,14 @@ const sqlInsertFlowStateForReset = `
 // ApplyReset (transitions are never soft-archived; they're cheap to
 // recreate).
 const sqlDeleteFlowTransitionByFlowFromTo = `
-		DELETE FROM flow_transitions WHERE flow_id = $1 AND from_state_id = $2 AND to_state_id = $3
+		DELETE FROM flows_transitions WHERE flow_id = $1 AND from_state_id = $2 AND to_state_id = $3
 	`
 
 // sqlInsertFlowTransitionIdempotent adds a transition back during
 // ApplyReset. ON CONFLICT DO NOTHING handles the case where a parallel
 // reset (or a prior partial run) already restored the edge.
 const sqlInsertFlowTransitionIdempotent = `
-		INSERT INTO flow_transitions (flow_id, from_state_id, to_state_id)
+		INSERT INTO flows_transitions (flow_id, from_state_id, to_state_id)
 		VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
 	`
 
@@ -371,5 +371,5 @@ const sqlInsertFlowTransitionIdempotent = `
 // one flow. Used by ApplyReset post-mutation to remap snapshot edges
 // to the new state ids before reinserting transitions.
 const sqlListFlowStateNameIDs = `
-		SELECT id, name FROM flow_states WHERE flow_id = $1 AND archived_at IS NULL
+		SELECT id, name FROM flows_states WHERE flow_id = $1 AND archived_at IS NULL
 	`

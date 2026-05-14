@@ -248,7 +248,7 @@ func (h *AdoptStreamHandler) Stream(w http.ResponseWriter, r *http.Request) {
 // PLA-0026 (B7) — every step event now ALSO carries:
 //
 //   - `substrate` — machine-readable name of the vector_artefacts
-//     target the step writes to (e.g. "flow_transitions"). Frontend
+//     target the step writes to (e.g. "flows_transitions"). Frontend
 //     handlers can key off this to render substrate-aware progress
 //     copy. The legacy `name` slug (validate/layers/…) is preserved
 //     unchanged so existing handler keys keep working.
@@ -285,8 +285,8 @@ func writeStepEvent(w http.ResponseWriter, flusher http.Flusher, msg streamMsg) 
 //
 //   - validate     → "library_snapshot"            (REPEATABLE READ open)
 //   - layers       → "artefact_types/strategy"     (strategy hierarchy)
-//   - workflows    → "flows + flow_states"         (flow header + states)
-//   - transitions  → "flow_transitions"            (state→state edges)
+//   - workflows    → "flows + flows_states"         (flow header + states)
+//   - transitions  → "flows_transitions"            (state→state edges)
 //   - artifacts    → "artefact_types/work"         (work-item leaf types)
 //   - terminology  → "legacy/subscription_terminology" (no VA equivalent yet)
 //   - finalize     → "master_record_portfolios"     (portfolio-adoption row)
@@ -300,9 +300,9 @@ func stepSubstrate(stepName string) string {
 	case stepLayers:
 		return "artefact_types/strategy"
 	case stepWorkflows:
-		return "flows + flow_states"
+		return "flows + flows_states"
 	case stepTransitions:
-		return "flow_transitions"
+		return "flows_transitions"
 	case stepArtifacts:
 		return "artefact_types/work"
 	case stepTerminology:

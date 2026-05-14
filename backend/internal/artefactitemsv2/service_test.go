@@ -157,7 +157,7 @@ func defaultFlowStateIDForType(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, 
 	ctx := context.Background()
 	var id uuid.UUID
 	err := va.QueryRow(ctx, `
-		SELECT fs.id FROM flow_states fs
+		SELECT fs.id FROM flows_states fs
 		JOIN flows f ON f.id = fs.flow_id
 		JOIN artefact_types at ON at.id = f.artefact_type_id
 		WHERE at.subscription_id = $1

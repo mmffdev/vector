@@ -83,7 +83,7 @@ const sqlWorkItemColumns = `
 const sqlCountWorkItemsTemplate = `
 		SELECT count(*) FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
 		  AND at.scope = $2%s
@@ -96,7 +96,7 @@ const sqlListWorkItemsTemplate = `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
@@ -111,7 +111,7 @@ const sqlSelectWorkItemByID = `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.id = $2
 		  AND a.subscription_id = $1
@@ -125,7 +125,7 @@ const sqlListChildWorkItems = `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		WHERE a.subscription_id = $1
 		  AND a.parent_artefact_id = $2
@@ -147,7 +147,7 @@ const sqlSummariseTotalTemplate = `
 			) AS blocked
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		WHERE %s
 	`
 
@@ -157,7 +157,7 @@ const sqlSummariseByTypeTemplate = `
 		SELECT lower(at.name) AS name, COUNT(*)
 		FROM artefacts a
 		JOIN artefact_types at ON at.id = a.artefact_type_id
-		LEFT JOIN flow_states fs ON fs.id = a.flow_state_id
+		LEFT JOIN flows_states fs ON fs.id = a.flow_state_id
 		WHERE %s
 		GROUP BY lower(at.name)
 	`
@@ -166,7 +166,7 @@ const sqlSummariseByTypeTemplate = `
 
 const sqlListWorkScopeFlowStates = `
 		SELECT fs.id, fs.sort_order, fs.name, fs.kind
-		FROM flow_states fs
+		FROM flows_states fs
 		JOIN flows f ON f.id = fs.flow_id
 		WHERE f.artefact_type_id = (
 			SELECT at.id FROM artefact_types at
@@ -205,7 +205,7 @@ const sqlAllocateArtefactNumber = `
 	`
 
 const sqlSelectDefaultInitialFlowState = `
-		SELECT fs.id FROM flow_states fs
+		SELECT fs.id FROM flows_states fs
 		JOIN flows f ON f.id = fs.flow_id
 		WHERE f.artefact_type_id = $1
 		  AND f.is_default = TRUE
@@ -241,7 +241,7 @@ const sqlInsertArtefact = `
 
 const sqlExistsFlowStateInSubscription = `
 		SELECT EXISTS(
-			SELECT 1 FROM flow_states fs
+			SELECT 1 FROM flows_states fs
 			JOIN flows f ON f.id = fs.flow_id
 			JOIN artefact_types at ON at.id = f.artefact_type_id
 			WHERE fs.id = $1

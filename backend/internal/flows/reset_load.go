@@ -23,7 +23,7 @@ type resetData struct {
 
 // loadResetData gathers the live default flow + its snapshot for one artefact
 // type, scoped to the caller's subscription. Returns ErrNoSnapshot when the
-// type has no row in flow_defaults (seed bug or post-seed type).
+// type has no row in flows_defaults (seed bug or post-seed type).
 func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTypeID string) (*resetData, error) {
 	out := &resetData{typeID: artefactTypeID}
 
@@ -66,7 +66,7 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 		return nil, err
 	}
 
-	// 4. Snapshot pills via flow_defaults → flow_state_defaults.
+	// 4. Snapshot pills via flows_defaults → flows_states_defaults.
 	var snapFlowID string
 	err = s.vaPool.QueryRow(ctx, sqlSelectFlowDefaultID, artefactTypeID).Scan(&snapFlowID)
 	if errors.Is(err, pgx.ErrNoRows) {

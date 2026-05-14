@@ -308,7 +308,7 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 }
 
 // ListFlowStates returns the flow states for the work artefact type belonging
-// to the subscription. Queries flow_states via the default flow for the
+// to the subscription. Queries flows_states via the default flow for the
 // first work-scoped artefact_type owned by this subscription.
 func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) ([]WorkItemFlowState, error) {
 	if s.vectorArtefactsPool == nil {
@@ -817,7 +817,7 @@ func (s *Service) decorateOwners(ctx context.Context, items []WorkItem) error {
 
 // statusToFlowKind maps both v1 status vocabulary (open/in_progress/done/cancelled)
 // and v2 flow_state_code vocabulary (backlog/doing/completed/cancelled) to the
-// flow_states.kind column value used in the v2 schema.
+// flows_states.kind column value used in the v2 schema.
 func statusToFlowKind(status string) string {
 	switch status {
 	case "open", "backlog":

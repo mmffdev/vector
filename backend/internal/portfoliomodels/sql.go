@@ -245,7 +245,7 @@ const sqlInsertDefaultFlowForLayer = `
 	`
 
 const sqlInsertFlowStateForWorkflow = `
-		INSERT INTO flow_states (
+		INSERT INTO flows_states (
 			flow_id, name, kind, colour, sort_order, is_initial,
 			library_workflow_id
 		) VALUES (
@@ -257,7 +257,7 @@ const sqlInsertFlowStateForWorkflow = `
 	`
 
 const sqlInsertFlowTransitionForLibrary = `
-		INSERT INTO flow_transitions (
+		INSERT INTO flows_transitions (
 			flow_id, from_state_id, to_state_id, required_permission
 		) VALUES (
 			$1, $2, $3, NULL
@@ -268,7 +268,7 @@ const sqlInsertFlowTransitionForLibrary = `
 
 const sqlSelectFlowStateLibMap = `
 		SELECT fs.library_workflow_id, fs.id
-		  FROM flow_states fs
+		  FROM flows_states fs
 		  JOIN flows f          ON f.id = fs.flow_id
 		  JOIN artefact_types t ON t.id = f.artefact_type_id
 		 WHERE t.workspace_id = $1
@@ -292,7 +292,7 @@ const sqlSelectDefaultFlowMap = `
 
 const sqlSelectFlowStateFlowMap = `
 		SELECT fs.id, fs.flow_id
-		  FROM flow_states fs
+		  FROM flows_states fs
 		  JOIN flows f          ON f.id = fs.flow_id
 		  JOIN artefact_types t ON t.id = f.artefact_type_id
 		 WHERE t.workspace_id = $1

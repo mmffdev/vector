@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ErrNoSnapshot is returned when an artefact type has no flow_defaults row —
+// ErrNoSnapshot is returned when an artefact type has no flows_defaults row —
 // the seed never captured one (or the type was created post-seed).
 var ErrNoSnapshot = errors.New("flows: no factory default snapshot for this artefact type")
 
@@ -18,7 +18,7 @@ var ErrNoSnapshot = errors.New("flows: no factory default snapshot for this arte
 // it so the UI can show a clear error rather than silently wiping the flow.
 var ErrNoSurvivor = errors.New("flows: snapshot has no pill to rebind artefacts to")
 
-// snapshotPill is one row from flow_state_defaults.
+// snapshotPill is one row from flows_states_defaults.
 type snapshotPill struct {
 	ID         string
 	Name       string
@@ -29,12 +29,12 @@ type snapshotPill struct {
 	Colour     *string
 }
 
-// snapshotEdge is one row from flow_transition_defaults, paired with names.
+// snapshotEdge is one row from flows_transitions_defaults, paired with names.
 type snapshotEdge struct {
 	FromID, ToID, FromName, ToName string
 }
 
-// livePill is one row from the live flow_states table, plus the surviving flag.
+// livePill is one row from the live flows_states table, plus the surviving flag.
 type livePill struct {
 	ID          string
 	Name        string
