@@ -35,7 +35,12 @@ const sqlInsertUser = `
 // Create (initial setup, 24h TTL) and IssueResetLink (admin re-issue,
 // 1h TTL) — TTL is decided by the caller via $3.
 const sqlInsertPasswordReset = `
-		INSERT INTO users_password_resets (user_id, token_hash, expires_at, requested_ip)
+		INSERT INTO users_password_resets (
+			users_password_resets_id_user,
+			users_password_resets_token_hash,
+			users_password_resets_expires_at,
+			users_password_resets_requested_ip
+		)
 		VALUES ($1, $2, $3, $4)
 	`
 

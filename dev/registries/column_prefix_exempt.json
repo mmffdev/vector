@@ -13,14 +13,17 @@
     "Baseline captured: 2026-05-14 (245 findings, 9 packages, post RF1.4.2 sweep).",
     "Per-package counts at baseline (sanity for next run):",
     "  artefactitemsv2:  6",
-    "  auth:            15",
+    "  auth:            15  →  9 after mig 186 (users_password_resets done)",
     "  flows:           26",
     "  nav:             87",
     "  portfoliomodels: 74",
     "  roles:           17",
     "  tenantmasterrecord: 1",
-    "  users:            5",
-    "  workspaces:      14"
+    "  users:            5  →  1 after mig 186 (users_password_resets done; users_sessions still pending)",
+    "  workspaces:      14",
+    "",
+    "Pay-down log (newest first):",
+    "  2026-05-14 — mig 186 — users_password_resets fully prefixed → 245→236 total (-9). users + auth packages stay on ledger (users_sessions still bare in both)."
   ],
   "exempt_packages": [
     "artefactitemsv2",

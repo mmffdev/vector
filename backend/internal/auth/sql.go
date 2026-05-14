@@ -127,17 +127,28 @@ const sqlUpdatePasswordHashAndClearForceFlag = `
 
 // ── password reset (RequestPasswordReset, ConfirmPasswordReset) ─────────────
 
-// sqlInsertPasswordReset opens a new users_password_resets row. token_hash
-// is SHA-256 of the raw reset token (raw is only emailed, never stored).
+// sqlInsertPasswordReset opens a new users_password_resets row.
+// users_password_resets_token_hash is SHA-256 of the raw reset token
+// (raw is only emailed, never stored).
 const sqlInsertPasswordReset = `
-		INSERT INTO users_password_resets (user_id, token_hash, expires_at, requested_ip)
+		INSERT INTO users_password_resets (
+			users_password_resets_id_user,
+			users_password_resets_token_hash,
+			users_password_resets_expires_at,
+			users_password_resets_requested_ip
+		)
 		VALUES ($1, $2, $3, $4)
 	`
 
 // sqlSelectPasswordResetByHash returns the reset-token row needed to
 // validate the confirmation request (expiry + used_at gate).
 const sqlSelectPasswordResetByHash = `
-		SELECT id, user_id, expires_at, used_at FROM users_password_resets WHERE token_hash = $1
+		SELECT users_password_resets_id,
+		       users_password_resets_id_user,
+		       users_password_resets_expires_at,
+		       users_password_resets_used_at
+		  FROM users_password_resets
+		 WHERE users_password_resets_token_hash = $1
 	`
 
 // sqlUpdatePasswordHashAndClearLockout rewrites password_hash and ALSO
@@ -152,4 +163,4 @@ const sqlUpdatePasswordHashAndClearLockout = `
 // sqlMarkPasswordResetUsed stamps used_at=NOW() so the reset token
 // cannot be replayed. Run inside the confirmation tx alongside the
 // password update and session revoke.
-const sqlMarkPasswordResetUsed = `UPDATE users_password_resets SET used_at = NOW() WHERE id = $1`
+const sqlMarkPasswordResetUsed = `UPDATE users_password_resets SET users_password_resets_used_at = NOW() WHERE users_password_resets_id = $1`
