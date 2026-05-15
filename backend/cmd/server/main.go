@@ -48,7 +48,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
-	"github.com/mmffdev/vector-backend/internal/tenantmasterrecord"
+	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
@@ -441,12 +441,12 @@ func main() {
 	// master_record_tenants by migration 067 on 2026-05-15). M2: reads/writes
 	// vector_artefacts (mig 036). Falls back to mmff_vector pool until 036 is
 	// applied on dev.
-	tenantSettingsPool := pool
+	workspaceSettingsPool := pool
 	if vaPool != nil {
-		tenantSettingsPool = vaPool
+		workspaceSettingsPool = vaPool
 	}
-	tenantSettingsSvc := tenantmasterrecord.New(tenantSettingsPool)
-	tenantSettingsH := tenantmasterrecord.NewHandler(tenantSettingsSvc)
+	workspaceSettingsSvc := workspacemasterrecord.New(workspaceSettingsPool)
+	workspaceSettingsH := workspacemasterrecord.NewHandler(workspaceSettingsSvc)
 
 	// Webhooks (B9). Requires vector_artefacts (mig 037).
 	// webhookSvc is created in the vaPool block above when vaPool != nil.
@@ -1197,7 +1197,7 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
-		tenantSettingsH.Mount(r)
+		workspaceSettingsH.Mount(r)
 	})
 
 	} // end mountSiteRoutes

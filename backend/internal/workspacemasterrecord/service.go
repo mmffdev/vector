@@ -1,4 +1,4 @@
-// Package tenantsettings is the SOLE writer for the
+// Package workspacemasterrecord is the SOLE writer for the
 // master_record_workspaces table in vector_artefacts.
 //
 // One row exists per workspace (the table's PRIMARY KEY). Get
@@ -10,7 +10,7 @@
 // tenant_owner_user_id is accepted as a bare UUID — cross-DB user
 // existence is not validated here; the DB CHECK constraint on
 // email format is the only DB-enforced guard.
-package tenantmasterrecord
+package workspacemasterrecord
 
 import (
 	"context"
