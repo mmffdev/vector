@@ -38,6 +38,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -144,6 +145,66 @@ var inheritableFields = []string{
 	"tenant_notes",
 }
 
+// ─── fake inheritance wiring ──────────────────────────────────────────
+//
+// fakeSubsResolver returns a stashed workspace→subscription mapping.
+// Production reads fdw_workspaces; tests just hand it the pair the
+// fixture set up.
+type fakeSubsResolver struct {
+	mapping map[uuid.UUID]uuid.UUID
+}
+
+func (f *fakeSubsResolver) SubscriptionFor(_ context.Context, workspaceID uuid.UUID) (uuid.UUID, error) {
+	if sub, ok := f.mapping[workspaceID]; ok {
+		return sub, nil
+	}
+	return uuid.Nil, pgx.ErrNoRows
+}
+
+// dbTenantReader reads tenant defaults from vector_artefacts.master_record_tenants
+// using the same pool tests already have. Adapts the raw DB row into the
+// tenantSettings shape Service.mergeInheritance consumes.
+type dbTenantReader struct{ pool *pgxpool.Pool }
+
+func (r *dbTenantReader) Get(ctx context.Context, subscriptionID uuid.UUID) (*tenantSettings, error) {
+	const q = `
+		SELECT master_record_tenants_data_region,
+		       master_record_tenants_timezone,
+		       master_record_tenants_date_format,
+		       master_record_tenants_datetime_format,
+		       master_record_tenants_workdays,
+		       master_record_tenants_week_start,
+		       master_record_tenants_rank_method,
+		       master_record_tenants_build_changeset_tracking,
+		       master_record_tenants_primary_contact_email,
+		       master_record_tenants_description,
+		       master_record_tenants_notes,
+		       master_record_tenants_archived_at
+		  FROM master_record_tenants
+		 WHERE master_record_tenants_id_subscription = $1`
+	var t tenantSettings
+	err := r.pool.QueryRow(ctx, q, subscriptionID).Scan(
+		&t.DataRegion, &t.Timezone, &t.DateFormat, &t.DatetimeFormat,
+		&t.Workdays, &t.WeekStart, &t.RankMethod, &t.BuildChangesetTracking,
+		&t.PrimaryContactEmail, &t.Description, &t.Notes,
+		&t.ArchivedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// makeInheritingSvc wires a Service with a fake resolver + real DB
+// tenant reader so the fixture's (workspace, subscription) pair lights
+// up the inheritance path.
+func makeInheritingSvc(pool *pgxpool.Pool, fx testFixture) *Service {
+	return New(pool).WithInheritance(
+		&fakeSubsResolver{mapping: map[uuid.UUID]uuid.UUID{fx.workspaceID: fx.subscriptionID}},
+		&dbTenantReader{pool: pool},
+	)
+}
+
 // ─── 1. workspace override → source=workspace ──────────────────────────
 
 func TestGet_WorkspaceOverridePresent_SourceIsWorkspace(t *testing.T) {
@@ -161,7 +222,7 @@ func TestGet_WorkspaceOverridePresent_SourceIsWorkspace(t *testing.T) {
 		t.Fatalf("seed override: %v", err)
 	}
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 	s, err := svc.Get(context.Background(), fx.workspaceID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
@@ -201,7 +262,7 @@ func TestGet_WorkspaceNullTenantPresent_SourceIsTenant(t *testing.T) {
 		t.Fatalf("null workspace value (mig 069 should permit this): %v", err)
 	}
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 	s, err := svc.Get(context.Background(), fx.workspaceID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
@@ -237,7 +298,7 @@ func TestGet_BothNull_SourceIsSystemDefault(t *testing.T) {
 		t.Fatalf("null workspace value: %v", err)
 	}
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 	s, err := svc.Get(context.Background(), fx.workspaceID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
@@ -261,7 +322,7 @@ func TestGet_AllInheritableFieldsCovered(t *testing.T) {
 	fx := makeFixture(t, pool)
 	defer fx.cleanup()
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 	s, err := svc.Get(context.Background(), fx.workspaceID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
@@ -324,7 +385,7 @@ func TestPatch_ExplicitNullClearsOverride(t *testing.T) {
 		t.Fatalf("seed override: %v", err)
 	}
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 
 	// PATCH with explicit null. PLA-0051 Story 5: PatchInput.TenantTimezone
 	// is a tri-state (absent / explicit-null / value). Calling Patch with
@@ -364,7 +425,7 @@ func TestPatch_ExplicitValueSetsOverride(t *testing.T) {
 		t.Fatalf("null workspace value: %v", err)
 	}
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 	override := "Europe/Paris"
 	if _, err := svc.Patch(ctx, fx.workspaceID, /* actorID */ uuid.Nil, PatchInput{
 		TenantTimezone: &override,
@@ -414,7 +475,15 @@ func TestGet_CrossSubscriptionIsolation(t *testing.T) {
 		}
 	}
 
-	svc := New(pool)
+	// Wire a resolver that knows both pairs so each workspace finds
+	// its own tenant. Important: A must not silently fall to B's tenant.
+	svc := New(pool).WithInheritance(
+		&fakeSubsResolver{mapping: map[uuid.UUID]uuid.UUID{
+			fxA.workspaceID: fxA.subscriptionID,
+			fxB.workspaceID: fxB.subscriptionID,
+		}},
+		&dbTenantReader{pool: pool},
+	)
 	sA, err := svc.Get(ctx, fxA.workspaceID)
 	if err != nil {
 		t.Fatalf("Get A: %v", err)
@@ -462,7 +531,7 @@ func TestGet_TenantArchived_FallsToSystemDefault(t *testing.T) {
 		t.Fatalf("null workspace value: %v", err)
 	}
 
-	svc := New(pool)
+	svc := makeInheritingSvc(pool, fx)
 	s, err := svc.Get(ctx, fx.workspaceID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
