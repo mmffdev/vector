@@ -30,6 +30,7 @@ import {
 } from "react";
 import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { notify } from "@/app/lib/toast";
 
 interface PageAccessResp {
   version: number;
@@ -51,13 +52,30 @@ export function PageAccessProvider({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
   const [pages, setPages] = useState<ReadonlySet<string>>(() => new Set());
   const inFlight = useRef(false);
+  // PLA-0049 Phase 1.5: toast on access change. Tracks the last
+  // version we toasted so a single bump produces exactly one toast.
+  // 5s debounce window prevents toast spam if a gadmin clicks fast.
+  const lastToastVersion = useRef<number>(0);
+  const lastToastAt = useRef<number>(0);
 
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
     try {
       const resp = await apiSite<PageAccessResp>("/me/page-access");
-      setVersion(resp.version);
+      setVersion((prev) => {
+        // First load (prev=0) is silent — no "your access changed" toast
+        // before the user has even seen the page set once.
+        if (prev !== 0 && resp.version !== prev) {
+          const now = Date.now();
+          if (resp.version !== lastToastVersion.current && now - lastToastAt.current > 5000) {
+            notify.info("Your page access changed. Some pages may now be unavailable.");
+            lastToastVersion.current = resp.version;
+            lastToastAt.current = now;
+          }
+        }
+        return resp.version;
+      });
       setPages(new Set(resp.pages));
     } catch {
       // On failure leave the cached set intact — better to over-allow
