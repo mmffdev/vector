@@ -1165,7 +1165,7 @@ Run all of the following. Each must pass.
 - [ ] Manual smoke: open `/portfolio-model`, run an adoption — 200, telemetry payload contains `tenant_id`
 - [ ] `docs/c_plan_index.md` shows PLA-0024 as `complete`
 
-If every box is checked, the cutover is done. Run `<stories>` to register the 16 task IDs (00476–00499 plus skips for the omitted numbers in the spec preview) once Planka cards are needed for tracking — or skip Planka entirely if executing this plan inline.
+If every box is checked, the cutover is done. Run `<stories>` to register the 16 task IDs (00476–00499 plus skips for the omitted numbers in the spec preview) as `work_item_backlog` entries in the plan JSON — or skip tracking entirely if executing this plan inline.
 
 ## Rollback decision points
 

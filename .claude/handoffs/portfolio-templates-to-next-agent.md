@@ -4,6 +4,9 @@ description: Summary of R010 portfolio model redesign; what shipped, what's next
 type: project
 ---
 
+> **Historical document.** Planka was decommissioned 2026-05-15; references to Planka cards or boards below are frozen snapshots from when this handoff was written. Current story tracker = `dev/plans/PLA-NNNN.json` `work_item_backlog`.
+
+
 ## What Just Shipped
 
 **Stories 00167–00170** — Portfolio model table restructure (R010):

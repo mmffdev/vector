@@ -211,9 +211,11 @@ When a new counter is needed, propose the next sequential number; user confirms,
 
 ---
 
-## Registry (Planka label IDs)
+## Registry
 
-| Area | Label | Counter | Planka ID | Status | Notes |
+> The `Legacy ID` column below holds the historical kanban-label ID for each feature tag. Planka was decommissioned 2026-05-15; values are retained only for traceability with archived plans. Do not write new entries to that column — use `—`.
+
+| Area | Label | Counter | Legacy ID | Status | Notes |
 |---|---|---|---|---|---|
 | POR | `FE-POR0001` | 1/? | `1761991021719193091` | Active | Portfolio layer customisation (rename, reorder) |
 | POR | `FE-POR0002` | 2/? | `1764908162969765183` | Active | (reserved) |

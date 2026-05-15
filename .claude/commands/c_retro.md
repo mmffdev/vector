@@ -32,7 +32,7 @@ From the current session jsonl (path: `~/.claude/projects/<slug>/<session-id>.js
 - Identify retries: same tool + same file/url within 2 minutes.
 - Wallclock minutes from first user message of segment to now.
 - Tool call count.
-- Linked plan: scan recent context for `PLA-NNNN`. Linked cards: scan for Planka card IDs / URLs.
+- Linked plan: scan recent context for `PLA-NNNN`.
 
 Persist these as `signals` in the retro JSON (schema below).
 
@@ -151,7 +151,6 @@ Ledger entry shape:
 
 Per user directive 2026-05-04: auto-actions execute immediately on retro completion. No approval prompt. Quotas:
 
-- <!-- PLANKA SUSPENDED: Severity-4+ findings previously created Planka cards on the Continuous Improvement board (ID 1767896664086938708, Backlog list 1767896919369057368). Cap: 5 per retro. Only when confidence ≥ 90%. Title format: RETRO-NNN/<idx> — <Issue>. Hard: never the main workflow board (1760699595475649556). Bin files and API scripts remain intact for future re-activation. -->
 - **Tech-debt appends** — to `docs/c_tech_debt.md`. Idempotent on `RETRO-NNN` reference. S1 promotion when ledger hit_count ≥ 3 unresolved. S2 cap when severity = 4 and not yet recurring.
 - **CLAUDE.md proposals** — write to `dev/retros/RETRO-NNN.proposed-claudemd.md` ONLY. Never edit CLAUDE.md directly. The proposed file shows the exact diff the user can apply.
 
@@ -167,8 +166,7 @@ Schema for `dev/retros/RETRO-NNN.json`:
   "triggered_by": "user|loop-detector",
   "scope": "segment|full",
   "session_jsonl": "/Users/rick/.claude/projects/<slug>/<sid>.jsonl",
-  "linked_plan": "PLA-NNNN" ,
-  "linked_cards": ["card-id-1", "card-id-2"],
+  "linked_plan": "PLA-NNNN",
   "signals": {
     "wallclock_minutes": 47,
     "tool_call_count": 132,
@@ -205,7 +203,6 @@ Schema for `dev/retros/RETRO-NNN.json`:
       "confidence": 0.92,
       "fingerprint": "stale-binary:tmp/vector-backend:a3f2b1c0",
       "ledger_entry_id": "LDG-001",
-      "planka_card_id": null,
       "tech_debt_ref": "S1#23"
     }
   ],
@@ -255,10 +252,7 @@ def sync_retro(retro_doc):
         if retro_doc.claudemd_proposals:
             write(f"dev/retros/{retro_doc.id}.proposed-claudemd.md", retro_doc.claudemd_proposals)
 
-        # 7. PLANKA SUSPENDED: previously auto-created CI board cards (cap 5, severity≥4, conf≥90%)
-        # create_retro_cards(retro_doc)
-
-        # 8. SELF-CHECK — re-read every touched file and verify
+        # 7. SELF-CHECK — re-read every touched file and verify
         self_check(retro_doc)
 
     except SelfCheckFailure as e:
@@ -269,17 +263,11 @@ def sync_retro(retro_doc):
 def self_check(retro_doc):
     failures = []
 
-    # 8a. Retro JSON parses and id matches
+    # 7a. Retro JSON parses and id matches
     parsed = read_json(f"dev/retros/{retro_doc.id}.json")
     if parsed.get("id") != retro_doc.id: failures.append("id mismatch")
 
-    # 8b. PLANKA SUSPENDED: card link verification skipped
-    # for f in retro_doc.table_1_root_causes:
-    #     if f.planka_card_id:
-    #         if not planka_card_exists(f.planka_card_id):
-    #             failures.append(f"card {f.planka_card_id} missing")
-
-    # 8c. Every ledger entry referenced in JSON contains back-reference to RETRO-NNN
+    # 7b. Every ledger entry referenced in JSON contains back-reference to RETRO-NNN
     ledger = read_json("dev/retros/LEDGER.json")
     for f in retro_doc.table_1_root_causes:
         if f.ledger_entry_id:
@@ -288,13 +276,13 @@ def self_check(retro_doc):
             elif retro_doc.id not in [h["retro_id"] for h in entry["hits"]]:
                 failures.append(f"ledger {f.ledger_entry_id} missing back-ref to {retro_doc.id}")
 
-    # 8d. tech_debt appends reference RETRO-NNN
+    # 7c. tech_debt appends reference RETRO-NNN
     debt = read("docs/c_tech_debt.md")
     for f in retro_doc.table_1_root_causes:
         if f.tech_debt_ref and retro_doc.id not in debt:
             failures.append(f"tech debt missing {retro_doc.id} ref")
 
-    # 8e. Index counter bumped
+    # 7d. Index counter bumped
     idx = read("docs/c_retro_index.md")
     if retro_doc.id not in idx: failures.append("index not bumped")
 

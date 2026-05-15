@@ -12,7 +12,7 @@ Load when the user invokes a shortcut, command, or skill not listed in CLAUDE.md
 - **Shortcuts reference (`<?>`, `<?> -u`)** → [`.claude/commands/c_shortcuts.md`](commands/c_shortcuts.md) — open `dev/shortcuts.html` in browser; `-u` rescans all command + skill docs and regenerates the page.
 - **Service status (`<services>`)** → [`.claude/commands/c_services.md`](commands/c_services.md) — read-only status check for backend (`:5100`), next (`:5101`), and the active env's DB tunnel (port per top-of-file `ACTIVE_BACKEND_ENV` marker).
 - **Switch DB env (`<server> -d|-s|-p`)** → [`.claude/commands/c_server.md`](commands/c_server.md) — restarts backend on dev/staging/production env, ensures tunnel + frontend are up, rewrites top-of-file `ACTIVE_BACKEND_ENV` marker; `-p` requires typed confirmation.
-- **Accounts & credentials (`<accounts>`)** → [`.claude/commands/c_accounts.md`](commands/c_accounts.md) — source of truth for all dev user accounts, passwords, and Planka creds.
+- **Accounts & credentials (`<accounts>`)** → [`.claude/commands/c_accounts.md`](commands/c_accounts.md) — source of truth for all dev user accounts and passwords.
 - **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
 - **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.
 - **Bash commands** → [`docs/c_bash.md`](../docs/c_bash.md) — verified commands only; grouped by domain.
@@ -34,7 +34,6 @@ Load when the user invokes a shortcut, command, or skill not listed in CLAUDE.md
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
 - **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
-- ~~**Planka REST templates**~~ → <!-- PLANKA SUSPENDED: doc preserved at docs/c_c_planka_rest.md for future re-activation; do not load while Planka is retired. -->
 - **Dev Plans tab** → [`dev/pages/DevPlansPanel.tsx`](../dev/pages/DevPlansPanel.tsx) — first tab in `/dev`; renders `dev/plans/PLA-NNNN.json` via `/api/dev/plans` (lazy-loaded body).
 - **Dev Retros tab** → [`dev/pages/DevRetrosPanel.tsx`](../dev/pages/DevRetrosPanel.tsx) — Ledger + Retrospectives sub-tabs; reads via `/api/dev/retros` (list, `?id=`, `?view=ledger`).
 
@@ -42,7 +41,7 @@ Load when the user invokes a shortcut, command, or skill not listed in CLAUDE.md
 
 - **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` as single source of truth; `-r` opens discussion on in-flight items, `-a` adds from session context, `-u` runs codebase check and applies ✅/🔵/❌/⚠️ markers + P1–P5 priority; commit hook appends notes per item; session-start hook surfaces in-flight count.
 
-- **Retro skill (`<r>`, `/retro`)** → [`.claude/skills/retro/SKILL.md`](skills/retro/SKILL.md) — 5-Whys + reversal; auto-fires on LOOP DETECTED; writes `dev/retros/RETRO-NNN.json` + LEDGER; sev-4+ findings logged to tech debt; index at [`docs/c_retro_index.md`](../docs/c_retro_index.md). <!-- PLANKA SUSPENDED: sev-4+ previously created Planka CI board cards (1767896664086938708); skipped while Planka is retired. -->
+- **Retro skill (`<r>`, `/retro`)** → [`.claude/skills/retro/SKILL.md`](skills/retro/SKILL.md) — 5-Whys + reversal; auto-fires on LOOP DETECTED; writes `dev/retros/RETRO-NNN.json` + LEDGER; sev-4+ findings logged to tech debt; index at [`docs/c_retro_index.md`](../docs/c_retro_index.md).
 - **`/writeweb` skill** → [`.claude/skills/writeweb/SKILL.md`](skills/writeweb/SKILL.md) — Human-AI collaborative website copy; flags `-t hero|feature|faq|about|explainer`, `-len`, `-context`, `-h`.
 - **`<theme>` skill** → [`.claude/skills/theme/SKILL.md`](skills/theme/SKILL.md) — image → Vector theme pack; deterministic L/C/H bucket → role mapping; spec at [`docs/c_theme_rules.md`](../docs/c_theme_rules.md).
 - **`<chart>` skill (`-m` make from image, `-p` place from plan)** → [`.claude/skills/chart/SKILL.md`](skills/chart/SKILL.md) — themed chart component in `app/components/`, stub data, sanitised preview random generator, dashboard catalog entry.

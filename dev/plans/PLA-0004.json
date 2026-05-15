@@ -1,20 +1,20 @@
 {
   "id": "PLA-0004",
-  "title": "Reusable per-panel Help popover with paneId registry → backend-served help store",
+  "title": "Reusable per-panel Help popover with paneId registry \u2192 backend-served help store",
   "date_created": "2026-05-02",
   "date_started": "2026-05-02",
   "date_last_updated": "2026-05-03",
   "date_finished": "2026-05-03",
   "phase": "PH-0005",
   "scope": "<p>Every panel on every page gets a small <code>TbHelpHexagon</code> icon top-right. Clicking it opens a popover that shows: (1) a <strong>unique <code>paneId</code></strong> the user can quote in bug reports and chat, (2) a short help body explaining what the panel does, and (3) a close affordance.</p><p>The paneId is sourced from a build-time registry; the help copy is sourced from the backend so gadmins can edit it without a deploy. First adopter is <code>/preferences/navigation</code> (5 panels).</p>",
-  "value": "<ul><li>Users can reference any panel unambiguously (e.g. \"the popover on <code>nav-prefs.pinned</code> is wrong\") instead of describing it.</li><li>Onboarding cost drops — every panel self-explains.</li><li>Gadmins iterate help copy live; no PR cycle.</li></ul>",
+  "value": "<ul><li>Users can reference any panel unambiguously (e.g. \"the popover on <code>nav-prefs.pinned</code> is wrong\") instead of describing it.</li><li>Onboarding cost drops \u2014 every panel self-explains.</li><li>Gadmins iterate help copy live; no PR cycle.</li></ul>",
   "implementation_plan": [
     "Build <PaneHeader paneId title> wrapper component with TbHelpHexagon trigger, click popover, ESC + outside-click dismiss, ARIA, focus return.",
     "Adopt <PaneHeader> across the 5 panels on /preferences/navigation as the first consumer.",
     "Add dev/registries/paneIds.json + a build-time lint check that every paneId on screen is registered.",
     "Migration 071: pane_help table (paneid PK, body_html, updated_at, updated_by_user_id).",
     "Go API: GET /api/pane-help (bulk, 60s server cache) + PUT /api/pane-help/:paneId (gadmin-only, sanitised).",
-    "Gadmin /dev/pane-help editor page (list → edit → preview → save).",
+    "Gadmin /dev/pane-help editor page (list \u2192 edit \u2192 preview \u2192 save).",
     "Docs: docs/c_c_pane_help.md leaf doc, CLAUDE.md pointer, c_scope.md Underway row."
   ],
   "areas_impacted": [
@@ -39,49 +39,49 @@
       "order": 1,
       "title": "UI: <PaneHeader> wrapper component with TbHelpHexagon trigger + click popover",
       "story_id": "00237",
-      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 2,
       "title": "UI: adopt <PaneHeader> on /preferences/navigation page (5 panels)",
       "story_id": "00238",
-      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 3,
       "title": "DEV: paneIds.json registry + lint check that every paneId on screen is registered",
       "story_id": "00239",
-      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 4,
       "title": "SQL: pane_help table migration + seed (migration 071)",
       "story_id": "00240",
-      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 5,
       "title": "API: GET /api/pane-help (bulk) + PUT /api/pane-help/:paneId (gadmin only)",
       "story_id": "00241",
-      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 6,
       "title": "GOV: gadmin /dev/pane-help editor page (list, edit, preview, save)",
       "story_id": "00242",
-      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 7,
-      "title": "DEV: closure card — pane_help docs superseded by PLA-0005 addressables substrate (c_c_addressables.md, CLAUDE.md pointer, c_scope.md row all shipped under story 00262)",
+      "title": "DEV: closure card \u2014 pane_help docs superseded by PLA-0005 addressables substrate (c_c_addressables.md, CLAUDE.md pointer, c_scope.md row all shipped under story 00262)",
       "story_id": "00243",
-      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "card_url": null,
       "status": "completed"
     }
   ],
@@ -91,7 +91,7 @@
       "criterion": "<PaneHeader paneId title> renders title left and TbHelpHexagon button top-right within the panel header",
       "proven_by": "component render test",
       "story_id": "00237",
-      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "card_url": null,
       "done": true
     },
     {
@@ -99,7 +99,7 @@
       "criterion": "Clicking the help button opens a popover with paneId pill (click-to-copy), help body, and close button; ESC + outside-click dismiss; focus returns to trigger",
       "proven_by": "interaction test",
       "story_id": "00237",
-      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "card_url": null,
       "done": true
     },
     {
@@ -107,7 +107,7 @@
       "criterion": "Trigger has aria-expanded toggling; popover has role=dialog and aria-labelledby; tab order trapped while open",
       "proven_by": "ARIA snapshot",
       "story_id": "00237",
-      "card_url": "http://localhost:3333/cards/1765776115328091209",
+      "card_url": null,
       "done": true
     },
     {
@@ -115,7 +115,7 @@
       "criterion": "All five nav-prefs panels (Custom Navigation, Pinned, Available, New Custom Page, New Custom Group) show the help icon top-right",
       "proven_by": "visual render",
       "story_id": "00238",
-      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "card_url": null,
       "done": true
     },
     {
@@ -123,7 +123,7 @@
       "criterion": "Each help icon opens a popover with a distinct paneId (nav-prefs.custom-nav, nav-prefs.pinned, nav-prefs.available, nav-prefs.new-page, nav-prefs.new-group) and seeded help copy",
       "proven_by": "paneId rendering test",
       "story_id": "00238",
-      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "card_url": null,
       "done": true
     },
     {
@@ -131,7 +131,7 @@
       "criterion": "Existing pane descriptions, drag-reorder, pin/unpin, and add-page flows still work; CSS catalog classes used",
       "proven_by": "no-regression check",
       "story_id": "00238",
-      "card_url": "http://localhost:3333/cards/1765776204163449932",
+      "card_url": null,
       "done": true
     },
     {
@@ -139,7 +139,7 @@
       "criterion": "dev/registries/paneIds.json exists with one entry per paneId (paneId, page, panel, defaultTitle, defaultBody) seeded with 5 nav-prefs entries",
       "proven_by": "file existence",
       "story_id": "00239",
-      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "card_url": null,
       "done": true
     },
     {
@@ -147,15 +147,15 @@
       "criterion": "npm run lint:panes greps the codebase for <PaneHeader paneId> usages, fails on missing entries, prints offending file and line",
       "proven_by": "npm script run",
       "story_id": "00239",
-      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "card_url": null,
       "done": true
     },
     {
       "order": 9,
-      "criterion": "lint runs in pre-commit hook; result appears in /dev → Reports tab as a row labelled paneIds",
+      "criterion": "lint runs in pre-commit hook; result appears in /dev \u2192 Reports tab as a row labelled paneIds",
       "proven_by": "CI surface check",
       "story_id": "00239",
-      "card_url": "http://localhost:3333/cards/1765776267447108687",
+      "card_url": null,
       "done": true
     },
     {
@@ -163,7 +163,7 @@
       "criterion": "db/schema/071_pane_help.sql creates pane_help with paneid PK, body_html NOT NULL DEFAULT '', updated_at, updated_by_user_id FK to users",
       "proven_by": "migration file",
       "story_id": "00240",
-      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "card_url": null,
       "done": true
     },
     {
@@ -171,7 +171,7 @@
       "criterion": "Migration inserts 5 seed rows for nav-prefs.custom-nav, nav-prefs.pinned, nav-prefs.available, nav-prefs.new-page, nav-prefs.new-group",
       "proven_by": "seed insertion",
       "story_id": "00240",
-      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "card_url": null,
       "done": true
     },
     {
@@ -179,7 +179,7 @@
       "criterion": "SELECT count(*) FROM pane_help returns 5 against dev DB; \\d pane_help shows PK and FK as specified",
       "proven_by": "psql verification",
       "story_id": "00240",
-      "card_url": "http://localhost:3333/cards/1765776335696823378",
+      "card_url": null,
       "done": true
     },
     {
@@ -187,15 +187,15 @@
       "criterion": "GET /api/pane-help returns {paneId: body_html} map for all rows, served from a 60s server-side cache (cache hit/miss in headers)",
       "proven_by": "GET integration test",
       "story_id": "00241",
-      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "card_url": null,
       "done": true
     },
     {
       "order": 14,
-      "criterion": "PUT /api/pane-help/:paneId with gadmin auth + valid body writes row, sets updated_by/updated_at, busts cache, returns 200; non-gadmin → 403; unknown paneId → 404",
+      "criterion": "PUT /api/pane-help/:paneId with gadmin auth + valid body writes row, sets updated_by/updated_at, busts cache, returns 200; non-gadmin \u2192 403; unknown paneId \u2192 404",
       "proven_by": "PUT integration test",
       "story_id": "00241",
-      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "card_url": null,
       "done": true
     },
     {
@@ -203,7 +203,7 @@
       "criterion": "PUT body containing <script> and onclick= is sanitised on write so persisted body_html contains neither",
       "proven_by": "sanitisation test",
       "story_id": "00241",
-      "card_url": "http://localhost:3333/cards/1765776419431908437",
+      "card_url": null,
       "done": true
     },
     {
@@ -211,7 +211,7 @@
       "criterion": "/dev/pane-help lists every paneId from paneIds.json with current body preview, last-updated timestamp, last editor; gadmin-only role gate (403 view for others)",
       "proven_by": "page render",
       "story_id": "00242",
-      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "card_url": null,
       "done": true
     },
     {
@@ -219,7 +219,7 @@
       "criterion": "Clicking a row opens inline editor with sanitised rich-text input + live preview; Save calls PUT and shows success toast; Cancel discards",
       "proven_by": "edit flow",
       "story_id": "00242",
-      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "card_url": null,
       "done": true
     },
     {
@@ -227,31 +227,31 @@
       "criterion": "Page appears as a new tab in /dev tab bar alongside Plans, Reports, Research; saved edits visible on next bulk fetch from any page",
       "proven_by": "integration",
       "story_id": "00242",
-      "card_url": "http://localhost:3333/cards/1765776484040967256",
+      "card_url": null,
       "done": true
     },
     {
       "order": 19,
-      "criterion": "Repurposed 2026-05-03: pane_help leaf doc replaced by docs/c_c_addressables.md (the substrate-keyed successor system); covers <Panel> API, address scheme, page_help table, gadmin editor link — superset of the original c_c_pane_help.md scope",
-      "proven_by": "docs/c_c_addressables.md shipped under PLA-0005 story 00262 covers <Panel> API + addressing scheme + page_help table + /dev/page-help editor — all of the original c_c_pane_help.md scope plus the new substrate; writing a separate c_c_pane_help.md would document a removed system (pane_help table dropped in migration 076, /api/pane-help returns 410 Gone)",
+      "criterion": "Repurposed 2026-05-03: pane_help leaf doc replaced by docs/c_c_addressables.md (the substrate-keyed successor system); covers <Panel> API, address scheme, page_help table, gadmin editor link \u2014 superset of the original c_c_pane_help.md scope",
+      "proven_by": "docs/c_c_addressables.md shipped under PLA-0005 story 00262 covers <Panel> API + addressing scheme + page_help table + /dev/page-help editor \u2014 all of the original c_c_pane_help.md scope plus the new substrate; writing a separate c_c_pane_help.md would document a removed system (pane_help table dropped in migration 076, /api/pane-help returns 410 Gone)",
       "story_id": "00243",
-      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "card_url": null,
       "done": true
     },
     {
       "order": 20,
       "criterion": "Repurposed 2026-05-03: .claude/CLAUDE.md pointer to docs/c_c_addressables.md exists per the Authoring rule (replaces the obsolete pointer to c_c_pane_help.md)",
-      "proven_by": ".claude/CLAUDE.md line 'Addressable element substrate (PLA-0005) → docs/c_c_addressables.md' shipped under PLA-0005 story 00262; no separate c_c_pane_help.md pointer needed because the leaf doc was never created (system superseded before authoring)",
+      "proven_by": ".claude/CLAUDE.md line 'Addressable element substrate (PLA-0005) \u2192 docs/c_c_addressables.md' shipped under PLA-0005 story 00262; no separate c_c_pane_help.md pointer needed because the leaf doc was never created (system superseded before authoring)",
       "story_id": "00243",
-      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "card_url": null,
       "done": true
     },
     {
       "order": 21,
-      "criterion": "Repurposed 2026-05-03: docs/c_scope.md Underway row exists for the addressable substrate (migrations 074–080, stories 00244–00262) with explicit '**supersedes PLA-0004**' note, replacing the original pane_help-only scope row",
-      "proven_by": "docs/c_scope.md row 16 shipped under PLA-0005 story 00262: 'Addressable element substrate (PLA-0005) | UI / API / SQL / GOV | 074–080 | 00244–00262 | underway | … **supersedes PLA-0004** (pane_help dropped, <PaneHeader> → <Panel>)' — captures the supersession in the canonical place a c_scope.md pane_help row would have lived",
+      "criterion": "Repurposed 2026-05-03: docs/c_scope.md Underway row exists for the addressable substrate (migrations 074\u2013080, stories 00244\u201300262) with explicit '**supersedes PLA-0004**' note, replacing the original pane_help-only scope row",
+      "proven_by": "docs/c_scope.md row 16 shipped under PLA-0005 story 00262: 'Addressable element substrate (PLA-0005) | UI / API / SQL / GOV | 074\u2013080 | 00244\u201300262 | underway | \u2026 **supersedes PLA-0004** (pane_help dropped, <PaneHeader> \u2192 <Panel>)' \u2014 captures the supersession in the canonical place a c_scope.md pane_help row would have lived",
       "story_id": "00243",
-      "card_url": "http://localhost:3333/cards/1765776551594427483",
+      "card_url": null,
       "done": true
     }
   ],
@@ -275,7 +275,7 @@
   "references": [
     {
       "kind": "internal",
-      "label": "First adopter — navigation preferences page",
+      "label": "First adopter \u2014 navigation preferences page",
       "href": "app/(user)/preferences/navigation/page.tsx"
     },
     {

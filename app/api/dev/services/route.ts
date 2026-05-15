@@ -46,12 +46,11 @@ export async function GET() {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const [backend, devTunnel, stagingTunnel, prodTunnel, planka, apiDocs] = await Promise.all([
+  const [backend, devTunnel, stagingTunnel, prodTunnel, apiDocs] = await Promise.all([
     httpProbe("http://localhost:5100/healthz"),
     tcpProbe(5435),
     tcpProbe(5436),
     tcpProbe(5434),
-    httpProbe("http://localhost:3333"),
     httpProbe("http://localhost:8083"),
   ]);
 
@@ -101,14 +100,6 @@ export async function GET() {
     tunnelRow("db-tunnel-dev",     "DB Tunnel · dev",        5435, "dev",        devTunnel,     "vector-dev-pg"),
     tunnelRow("db-tunnel-staging", "DB Tunnel · staging",    5436, "staging",    stagingTunnel, "vector-staging-pg"),
     tunnelRow("db-tunnel-prod",    "DB Tunnel · production", 5434, "production", prodTunnel,    "mmffdev-pg"),
-    {
-      id: "planka",
-      label: "Planka Board",
-      group: "Tools",
-      status: planka.ok ? "up" : "down",
-      latencyMs: planka.ok ? planka.latencyMs : undefined,
-      detail: planka.ok ? "localhost:3333" : "tunnel not running",
-    },
     {
       id: "api-docs",
       label: "API Reference",

@@ -106,7 +106,7 @@ After the paper is written and the user is asked **"Want stories?"**, apply thes
 - Clear implementation work is implied
 - The topic is a feature request or architectural decision
 
-If the user accepts, [`c_addpaper-stories.md`](c_addpaper-stories.md) takes over — it proposes story candidates and hands off to the project's `/stories` skill (which writes stories to plan JSON through the 7-gate system). <!-- PLANKA SUSPENDED: previously created Planka cards; now writes to dev/plans/ JSON only. -->
+If the user accepts, [`c_addpaper-stories.md`](c_addpaper-stories.md) takes over — it proposes story candidates and hands off to the project's `/stories` skill (which writes stories to plan JSON through the 7-gate system).
 
 ---
 

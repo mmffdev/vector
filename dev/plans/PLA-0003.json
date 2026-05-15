@@ -5,20 +5,20 @@
   "date_started": "2026-05-02",
   "date_last_updated": "2026-05-03",
   "date_finished": "2026-05-03",
-  "scope": "<p>Wire the generic ranking primitives (<code>useResourceRank</code>, <code>useOptimisticReorder</code>, <code>&lt;DragHandleColumn&gt;</code>) onto the work-items table at <code>app/(user)/work-items/page.tsx</code>; subscribe to <code>rankTopic(\"work_item\", …)</code> via <code>useRefetchOnPush</code> for cross-tab/user fan-out; verify the canonical <code>ORDER BY coalesce(sprint_position, backlog_position) NULLS LAST, key_num ASC</code> across all callers; cover with a Playwright spec; confirm parent-drag cascades children server-side.</p><p>The work-items table is the last first-class table not yet using the shared rank pattern landed in commit 43d7468.</p>",
+  "scope": "<p>Wire the generic ranking primitives (<code>useResourceRank</code>, <code>useOptimisticReorder</code>, <code>&lt;DragHandleColumn&gt;</code>) onto the work-items table at <code>app/(user)/work-items/page.tsx</code>; subscribe to <code>rankTopic(\"work_item\", \u2026)</code> via <code>useRefetchOnPush</code> for cross-tab/user fan-out; verify the canonical <code>ORDER BY coalesce(sprint_position, backlog_position) NULLS LAST, key_num ASC</code> across all callers; cover with a Playwright spec; confirm parent-drag cascades children server-side.</p><p>The work-items table is the last first-class table not yet using the shared rank pattern landed in commit 43d7468.</p>",
   "value": "<p>Users (and gadmin/dev) gain consistent drag-to-reorder behaviour on work items in both backlog and per-sprint views, with reorders surviving reload and propagating to other tabs and users in real time. The change closes the generic-ranking adoption rollout and removes the last bespoke ordering surface in the app.</p>",
   "implementation_plan": [
     "Frontend: render <DragHandleColumn> as the new first cell in the work-items table; spread rank.rowProps(row.id) on each <tr>; pass onMoved/onError to the optimistic reorder hook.",
     "Frontend: subscribe to rankTopic(\"work_item\", subscriptionID, scope, scopeID) using useRefetchOnPush, mirroring the LayersTable pattern; scope is (\"sprint\", sprintID) when a sprint is selected, else (\"backlog\", subscriptionID).",
     "Backend: add an integration test in backend/internal/workitems/service_test.go pinning the canonical ORDER BY for sprint, backlog, and my-vista list paths.",
     "Frontend UX: confirm parent-drag PATCH body sends parent.id only; add a backend follow-up if cascade is missing.",
-    "DEV: add dev/tests/playwright/work-items-drag.spec.ts — leaf drag persistence + parent-drag subtree-bundle ghost; reuse helpers from rank-drag.spec.ts."
+    "DEV: add dev/tests/playwright/work-items-drag.spec.ts \u2014 leaf drag persistence + parent-drag subtree-bundle ghost; reuse helpers from rank-drag.spec.ts."
   ],
   "areas_impacted": [
-    "UI: app/(user)/work-items/page.tsx — table render path, row props, drag handle column",
-    "API: backend/internal/workitems/service.go — verify-only (already complete in 43d7468)",
-    "API: backend/internal/workitems/service_test.go — new integration test for ORDER BY",
-    "DEV: dev/tests/playwright/work-items-drag.spec.ts — new spec",
+    "UI: app/(user)/work-items/page.tsx \u2014 table render path, row props, drag handle column",
+    "API: backend/internal/workitems/service.go \u2014 verify-only (already complete in 43d7468)",
+    "API: backend/internal/workitems/service_test.go \u2014 new integration test for ORDER BY",
+    "DEV: dev/tests/playwright/work-items-drag.spec.ts \u2014 new spec",
     "SQL: no schema changes (work_items already has backlog_position + sprint_position)"
   ],
   "feature_list": [
@@ -28,7 +28,7 @@
     "Parent drag cascades children server-side; subtree-bundle ghost on the wire"
   ],
   "features_extended": [
-    "Generic ranking adopters: portfolio-model LayersTable → <strong>+ work-items table</strong>",
+    "Generic ranking adopters: portfolio-model LayersTable \u2192 <strong>+ work-items table</strong>",
     "<strong>Playwright coverage</strong> extended from rank-drag.spec.ts to a work-items-drag.spec.ts mirror"
   ],
   "features_removed": [],
@@ -37,42 +37,42 @@
       "order": 1,
       "title": "Frontend: drag-handle column + reorder hooks on work-items table",
       "story_id": "00231",
-      "card_url": "http://localhost:3333/cards/1765772999052494769",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 2,
       "title": "Frontend: rankTopic subscription on work-items table",
       "story_id": "00232",
-      "card_url": "http://localhost:3333/cards/1765773090463156148",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 3,
       "title": "Backend: ORDER BY integration test for work_item callers",
       "story_id": "00233",
-      "card_url": "http://localhost:3333/cards/1765773151960041399",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 4,
       "title": "Frontend: parent-drag payload sends parent.id only",
       "story_id": "00234",
-      "card_url": "http://localhost:3333/cards/1765773236391380923",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 5,
       "title": "DEV: Playwright spec for work-items DnD persistence + subtree ghost",
       "story_id": "00235",
-      "card_url": "http://localhost:3333/cards/1765773291110270910",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 6,
       "title": "Frontend: rankTopic scope rewires on sprint selector change",
       "story_id": "00236",
-      "card_url": "http://localhost:3333/cards/1765773349184604097",
+      "card_url": null,
       "status": "completed"
     }
   ],
@@ -80,9 +80,9 @@
     {
       "order": 1,
       "criterion": "A new drag-handle column renders as the first cell of every work-items row, before the existing toggle column",
-      "proven_by": "browser — inspect app/(user)/work-items/page.tsx around line 611",
+      "proven_by": "browser \u2014 inspect app/(user)/work-items/page.tsx around line 611",
       "story_id": "00231",
-      "card_url": "http://localhost:3333/cards/1765772999052494769",
+      "card_url": null,
       "done": true
     },
     {
@@ -90,7 +90,7 @@
       "criterion": "Dragging a row issues a PATCH to the rank endpoint with the moved id and target position; table reflects the new order optimistically",
       "proven_by": "network panel",
       "story_id": "00231",
-      "card_url": "http://localhost:3333/cards/1765772999052494769",
+      "card_url": null,
       "done": true
     },
     {
@@ -98,7 +98,7 @@
       "criterion": "Refreshing the page preserves post-drag order; on a forced backend error the optimistic move rolls back",
       "proven_by": "reload + induced 5xx",
       "story_id": "00231",
-      "card_url": "http://localhost:3333/cards/1765772999052494769",
+      "card_url": null,
       "done": true
     },
     {
@@ -106,7 +106,7 @@
       "criterion": "app/(user)/work-items/page.tsx imports useRefetchOnPush and subscribes to rankTopic on mount",
       "proven_by": "code search",
       "story_id": "00232",
-      "card_url": "http://localhost:3333/cards/1765773090463156148",
+      "card_url": null,
       "done": true
     },
     {
@@ -114,7 +114,7 @@
       "criterion": "With tab A and tab B open on the same view, dragging a row in tab A causes tab B to refetch and display the new order within 1 second",
       "proven_by": "two-browser test",
       "story_id": "00232",
-      "card_url": "http://localhost:3333/cards/1765773090463156148",
+      "card_url": null,
       "done": true
     },
     {
@@ -122,7 +122,7 @@
       "criterion": "Subscription scope tuple is (\"sprint\", sprintID) when a sprint is selected, else (\"backlog\", subscriptionID), mirroring LayersTable",
       "proven_by": "code review",
       "story_id": "00232",
-      "card_url": "http://localhost:3333/cards/1765773090463156148",
+      "card_url": null,
       "done": true
     },
     {
@@ -130,7 +130,7 @@
       "criterion": "service_test.go seeds rows with mixed sprint/backlog positions and asserts coalesce(sprint_position, backlog_position) NULLS LAST then key_num ASC across sprint/backlog/my-vista paths",
       "proven_by": "go test pass",
       "story_id": "00233",
-      "card_url": "http://localhost:3333/cards/1765773151960041399",
+      "card_url": null,
       "done": true
     },
     {
@@ -138,7 +138,7 @@
       "criterion": "Temporarily swapping the ORDER BY in service.go causes the test to fail",
       "proven_by": "induced regression",
       "story_id": "00233",
-      "card_url": "http://localhost:3333/cards/1765773151960041399",
+      "card_url": null,
       "done": true
     },
     {
@@ -146,7 +146,7 @@
       "criterion": "Test runs via go test ./backend/... and passes on current main",
       "proven_by": "CI green",
       "story_id": "00233",
-      "card_url": "http://localhost:3333/cards/1765773151960041399",
+      "card_url": null,
       "done": true
     },
     {
@@ -154,7 +154,7 @@
       "criterion": "Dragging a parent row with expanded children issues a PATCH whose body contains a single id (parent's), no children ids",
       "proven_by": "network capture",
       "story_id": "00234",
-      "card_url": "http://localhost:3333/cards/1765773236391380923",
+      "card_url": null,
       "done": true
     },
     {
@@ -162,7 +162,7 @@
       "criterion": "After the drag, refreshing the page shows the parent and all its children in their new position with parent-child links intact",
       "proven_by": "reload",
       "story_id": "00234",
-      "card_url": "http://localhost:3333/cards/1765773236391380923",
+      "card_url": null,
       "done": true
     },
     {
@@ -170,7 +170,7 @@
       "criterion": "Backend service confirmed to cascade on parent move; if cascade is missing, a backend story is filed and linked in the card comment before this story closes",
       "proven_by": "code review or follow-up",
       "story_id": "00234",
-      "card_url": "http://localhost:3333/cards/1765773236391380923",
+      "card_url": null,
       "done": true
     },
     {
@@ -178,7 +178,7 @@
       "criterion": "dev/tests/playwright/work-items-drag.spec.ts exists, imports drag helpers from rank-drag.spec.ts, and runs against /work-items",
       "proven_by": "spec file present",
       "story_id": "00235",
-      "card_url": "http://localhost:3333/cards/1765773291110270910",
+      "card_url": null,
       "done": true
     },
     {
@@ -186,7 +186,7 @@
       "criterion": "A test drags a leaf row to a new position, reloads the page, and asserts the row index matches the post-drag position",
       "proven_by": "spec passes",
       "story_id": "00235",
-      "card_url": "http://localhost:3333/cards/1765773291110270910",
+      "card_url": null,
       "done": true
     },
     {
@@ -194,7 +194,7 @@
       "criterion": "A test expands a parent with children, drags the parent, and asserts the visual ghost contains the bundled subtree during the drag",
       "proven_by": "spec passes",
       "story_id": "00235",
-      "card_url": "http://localhost:3333/cards/1765773291110270910",
+      "card_url": null,
       "done": true
     },
     {
@@ -202,7 +202,7 @@
       "criterion": "useRefetchOnPush receives a topic computed from the current sprintID so React re-runs when sprintID changes",
       "proven_by": "code review",
       "story_id": "00236",
-      "card_url": "http://localhost:3333/cards/1765773349184604097",
+      "card_url": null,
       "done": true
     },
     {
@@ -210,7 +210,7 @@
       "criterion": "Switching the sprint selector emits an unsubscribe on the old channel and a subscribe on the new channel",
       "proven_by": "WebSocket frame inspection",
       "story_id": "00236",
-      "card_url": "http://localhost:3333/cards/1765773349184604097",
+      "card_url": null,
       "done": true
     },
     {
@@ -218,14 +218,14 @@
       "criterion": "Reordering rows in sprint A while viewing sprint B does not cause sprint B's table to refetch",
       "proven_by": "behavioural test",
       "story_id": "00236",
-      "card_url": "http://localhost:3333/cards/1765773349184604097",
+      "card_url": null,
       "done": true
     }
   ],
   "risks": [
     {
       "impact": 2,
-      "risk": "Subtree cascade payload mismatch — frontend sends children ids while backend expects parent-only, causing concurrent reorders to split the subtree",
+      "risk": "Subtree cascade payload mismatch \u2014 frontend sends children ids while backend expects parent-only, causing concurrent reorders to split the subtree",
       "mitigation": "Story 00234 explicitly asserts the PATCH body shape; Playwright spec 00235 asserts post-reload subtree integrity"
     },
     {
@@ -252,7 +252,7 @@
     },
     {
       "kind": "internal",
-      "label": "Reference adopter — portfolio-model LayersTable",
+      "label": "Reference adopter \u2014 portfolio-model LayersTable",
       "href": "app/(user)/portfolio-model/LayersTable.tsx"
     },
     {

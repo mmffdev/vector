@@ -1,7 +1,6 @@
 # Feature Backlog
 
 > Owned by Rick. Claude does not surface, prioritise, scope, or act on any item here unless Rick explicitly points at one by name. Treat as roadmap context only.
-> Active sprint work lives in Planka: `http://localhost:3333`
 
 ---
 
@@ -87,5 +86,4 @@
 - 2026-04-28 — Feature flag control — enable/disable features per tenant or globally without a deploy
 
 ### Breakout Ideas
-- 2026-04-25 — Rebuild Planka container from fork: add column/list headers showing X/X item counts and rolling averages (cycle time, lead time) across lists.
 - 2026-04-25 — Support-ticket reply flow ("Respond above this line") — separate sub-system. Outbound: unique From per thread `support+ticket-12345@vector.xxx` (routing token, lands in shared support@ mailbox). Inbound: mailbox poller parses ticket ID from recipient, strips quoted history at marker, posts body as a comment on ticket #12345. Auth: verify sender email matches a ticket participant, or unauthenticated path with token-in-address — decide before building.

@@ -171,7 +171,7 @@ cd .. && npx tsc --noEmit  # ignore pre-existing TS errors unrelated to this wor
 - **HARD RULE — human accounts off limits.** `gadmin@`, `padmin@`, `user@mmffdev.com` — never modify. Create `claude-*` accounts if you need test logins.
 - **Never wipe uncommitted work.** Always check `git status` before any destructive op.
 - **Push commits often, don't stack.** This branch is pushed.
-- **Card lifecycle.** Every task moves through Backlog → To Do → Doing → Completed in the plan JSON (Planka is suspended). Story IDs for this PLA: see `dev/plans/PLA-0043.md`.
+- **Work-item lifecycle.** Every task moves through `todo` → `doing` → `completed` on its `work_item_backlog` entry in the plan JSON. Story IDs for this PLA: see `dev/plans/PLA-0043.md`.
 - **Bracket-tag commits with scope ref.** All four commits on this branch use `[FE-POR-API-0002]` or `[FE-POR-0003.1]` — keep this going.
 
 ---

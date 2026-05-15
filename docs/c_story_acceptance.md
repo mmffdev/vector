@@ -13,11 +13,9 @@ Every card MUST have ALL of these before exiting `<stories>` skill:
 - **Example:** `00050 — Backend: archive old portfolio layers before adopting new model`
 - **Gate:** Must match regex `^\d{5} — .{10,}$` (title min 10 chars)
 
-### 2. Label: AIGEN (creation source)
+### 2. Tag: AIGEN (creation source)
 - **Name:** `AIGEN` (AI-generated stories)
-- **Color:** (assign a distinct color — suggest: sky-blue or similar)
-- **Planka ID:** TBD (will be created and retrofitted to all existing storify cards)
-- **Gate:** Card MUST carry this label; no exceptions
+- **Gate:** Work item MUST carry this tag; no exceptions
 
 ### 3. Label: Phase (e.g., `PH-0005`)
 - **Format:** `PH-NNNN` (4-digit zero-padded phase counter)

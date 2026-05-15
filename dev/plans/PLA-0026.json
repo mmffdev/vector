@@ -5,18 +5,18 @@
   "date_started": "2026-05-07",
   "date_last_updated": "2026-05-07",
   "date_finished": null,
-  "scope": "<p>Cut the portfolio-adoption pipeline over from the legacy <code>mmff_vector.obj_*</code> tables to the per-workspace <code>vector_artefacts</code> substrate. The cutover introduces an explicit scope discriminator on the renamed <code>artefact_field_library</code> table (<code>global</code> / <code>tenant</code> / <code>workspace</code>), a deny-by-default <code>artefact_workspace_fields</code> whitelist, and a <code>master_record_portfolio</code> row per adopted workspace so that BundleView and the adoption-state handler stop reading from <code>mmff_library</code> at request time.</p><p>The adoption saga is rewritten to write strategy + work types into <code>artefact_types</code> (scope = strategy or work, with <code>library_layer_id</code>/<code>library_layer_tag</code> provenance), workflows + transitions into <code>flows</code> + <code>flow_transitions</code>, and the model prose into <code>master_record_portfolio</code>. Re-adoption preserves the <code>parent_artefact_id NOT NULL</code> invariant by inserting a placeholder strategy artefact before deleting old strategy rows, then repointing orphaned work artefacts onto the placeholder.</p><p>Sanitisation of the legacy <code>obj_*</code> + <code>subscription_*</code> tables is gradual per CLAUDE.md hard rule: each drop is its own follow-up PR triggered by 7 days of zero observed reads after its replacement ships. The five sanitisation cards (S1–S5) are filed on the same plan but tracked as deferred.</p>",
+  "scope": "<p>Cut the portfolio-adoption pipeline over from the legacy <code>mmff_vector.obj_*</code> tables to the per-workspace <code>vector_artefacts</code> substrate. The cutover introduces an explicit scope discriminator on the renamed <code>artefact_field_library</code> table (<code>global</code> / <code>tenant</code> / <code>workspace</code>), a deny-by-default <code>artefact_workspace_fields</code> whitelist, and a <code>master_record_portfolio</code> row per adopted workspace so that BundleView and the adoption-state handler stop reading from <code>mmff_library</code> at request time.</p><p>The adoption saga is rewritten to write strategy + work types into <code>artefact_types</code> (scope = strategy or work, with <code>library_layer_id</code>/<code>library_layer_tag</code> provenance), workflows + transitions into <code>flows</code> + <code>flow_transitions</code>, and the model prose into <code>master_record_portfolio</code>. Re-adoption preserves the <code>parent_artefact_id NOT NULL</code> invariant by inserting a placeholder strategy artefact before deleting old strategy rows, then repointing orphaned work artefacts onto the placeholder.</p><p>Sanitisation of the legacy <code>obj_*</code> + <code>subscription_*</code> tables is gradual per CLAUDE.md hard rule: each drop is its own follow-up PR triggered by 7 days of zero observed reads after its replacement ships. The five sanitisation cards (S1\u2013S5) are filed on the same plan but tracked as deferred.</p>",
   "value": "<p>Closes the residual cross-DB read coupling between tenant pages and <code>mmff_library</code> (BundleView, layer list, field schema, adoption-state) and provides a clean per-workspace scoping substrate for portfolio metadata. Removes the post-reset 404 on the adoption-state endpoint observed today, fixes the animation hang on adoption stream, and gives the team a stable foundation to retire <code>obj_strategy_types_layers</code>, <code>subscription_artifacts</code>, <code>subscription_workflows</code> + transitions, and <code>strategy_layers_adopted</code> in subsequent gradual drops.</p>",
   "implementation_plan": [
-    "Phase 1 — Migrations (M1-M7): audit, rename + scope, whitelist join, artefact_types extension, master_record_portfolio create, backfill + parity (T1), drop strategy_layers_adopted.",
-    "Phase 2 — Backend service + saga rewrites (B1-B8): MasterRecordService, scope resolver, saga steps 2/3+4/5/7, SSE refit, re-adoption flow.",
-    "Phase 3 — Backend handlers (B9-B13): GET /api/portfolio/master_record, /api/workspace/:id/portfolio/layers, /api/workspace/:id/fields, /api/portfolio/adoption-state rewrite, workspace deletion hook (deferred).",
-    "Phase 4 — Frontend cutover (F1-F5): BundleView swap, adoption-stream assertion test, layer-list URL swap, field-schema URL swap, re-adoption placeholder UX.",
-    "Phase 5 — Tests + lint (T1-T7 already woven through earlier phases; T7 standalone lint rule lands with F1+F4).",
-    "Phase 6 — Sanitisation drops (S1-S5): filed but deferred per gradual-sanitisation rule; each drop is its own follow-up PR after replacement ships."
+    "Phase 1 \u2014 Migrations (M1-M7): audit, rename + scope, whitelist join, artefact_types extension, master_record_portfolio create, backfill + parity (T1), drop strategy_layers_adopted.",
+    "Phase 2 \u2014 Backend service + saga rewrites (B1-B8): MasterRecordService, scope resolver, saga steps 2/3+4/5/7, SSE refit, re-adoption flow.",
+    "Phase 3 \u2014 Backend handlers (B9-B13): GET /api/portfolio/master_record, /api/workspace/:id/portfolio/layers, /api/workspace/:id/fields, /api/portfolio/adoption-state rewrite, workspace deletion hook (deferred).",
+    "Phase 4 \u2014 Frontend cutover (F1-F5): BundleView swap, adoption-stream assertion test, layer-list URL swap, field-schema URL swap, re-adoption placeholder UX.",
+    "Phase 5 \u2014 Tests + lint (T1-T7 already woven through earlier phases; T7 standalone lint rule lands with F1+F4).",
+    "Phase 6 \u2014 Sanitisation drops (S1-S5): filed but deferred per gradual-sanitisation rule; each drop is its own follow-up PR after replacement ships."
   ],
   "areas_impacted": [
-    "SQL: rename field_library → artefact_field_library, add scope column, create artefact_workspace_fields, extend artefact_types, create master_record_portfolio + trigger, backfill currently-adopted workspaces, drop legacy obj_/subscription_ tables in follow-ups",
+    "SQL: rename field_library \u2192 artefact_field_library, add scope column, create artefact_workspace_fields, extend artefact_types, create master_record_portfolio + trigger, backfill currently-adopted workspaces, drop legacy obj_/subscription_ tables in follow-ups",
     "API: portfolio.MasterRecordService package, scope resolver, adoption saga rewrite, 5 new/rewritten handlers, integration tests for saga + re-adoption + scope matrix + cross-DB canary",
     "UI: BundleView + layer list + field schema URL cutover, adoption-stream assertion test, re-adoption placeholder UX, lint:portfolio-library-read",
     "DEV: lint:portfolio-library-read script + exemption ledger, c_c_v2_workitems_cutover_followups.md sanitisation register entries",
@@ -28,8 +28,8 @@
     "artefact_types extended with workspace_id NOT NULL + library_layer_id + library_layer_tag",
     "master_record_portfolio table per adopted workspace + touch trigger",
     "portfolio.MasterRecordService Go package as sole writer boundary",
-    "Server-side scope resolver (workspace_id, field_id) → admit/deny",
-    "Adoption saga rewrite — writes strategy + work types + flows + master_record_portfolio in vector_artefacts",
+    "Server-side scope resolver (workspace_id, field_id) \u2192 admit/deny",
+    "Adoption saga rewrite \u2014 writes strategy + work types + flows + master_record_portfolio in vector_artefacts",
     "Re-adoption placeholder pattern preserving parent_artefact_id NOT NULL",
     "5 new/rewritten REST handlers under /api/portfolio + /api/workspace",
     "Integration tests: saga end-to-end, re-adoption, scope matrix, cross-DB canary",
@@ -42,259 +42,259 @@
       "order": 1,
       "title": "M1: Pre-migration audit of artefact_field_library NULL subscription_id rows",
       "story_id": "00476",
-      "card_url": "http://localhost:3333/cards/1769516989446882318",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 2,
       "title": "M2: Rename field_library to artefact_field_library and add scope discriminator",
       "story_id": "00477",
-      "card_url": "http://localhost:3333/cards/1769516994043839510",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 3,
       "title": "M3: Create artefact_workspace_fields whitelist join table",
       "story_id": "00478",
-      "card_url": "http://localhost:3333/cards/1769516998498190366",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 4,
       "title": "M4: Extend artefact_types with workspace_id, library_layer_id, library_layer_tag",
       "story_id": "00479",
-      "card_url": "http://localhost:3333/cards/1769517003002872870",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 5,
       "title": "M5: Create master_record_portfolio table with touch trigger",
       "story_id": "00480",
-      "card_url": "http://localhost:3333/cards/1769517007331394606",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 6,
       "title": "M6: Backfill master_record_portfolio for currently-adopted workspaces",
       "story_id": "00481",
-      "card_url": "http://localhost:3333/cards/1769517011559253046",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 7,
       "title": "M7: Drop strategy_layers_adopted after B5 deployed >=1 day",
       "story_id": "00482",
-      "card_url": "http://localhost:3333/cards/1769517016156210238",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 8,
       "title": "T1: Migration parity test: adopted workspace count matches master_record_portfolio rowcount",
       "story_id": "00483",
-      "card_url": "http://localhost:3333/cards/1769517020518286406",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 9,
       "title": "T2: Pre-migration audit assertion: zero NULL subscription_id orphans",
       "story_id": "00484",
-      "card_url": "http://localhost:3333/cards/1769517024981025870",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 10,
       "title": "S1: Drop obj_strategy_types_layers after B3 deployed 7 days zero reads",
       "story_id": "00485",
-      "card_url": "http://localhost:3333/cards/1769517030081299542",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 11,
       "title": "S2: Drop subscription_workflows and subscription_workflow_transitions after B4 7 days",
       "story_id": "00486",
-      "card_url": "http://localhost:3333/cards/1769517034426598494",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 12,
       "title": "S3: Drop subscription_artifacts after B5 deployed 7 days",
       "story_id": "00487",
-      "card_url": "http://localhost:3333/cards/1769517038830617702",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 13,
       "title": "S4: Drop strategy_layers_adopted register row after M7 lands",
       "story_id": "00488",
-      "card_url": "http://localhost:3333/cards/1769517042974590062",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 14,
       "title": "S5: Drop subscription_terminology after terminology design lands",
       "story_id": "00489",
-      "card_url": "http://localhost:3333/cards/1769517047252780150",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 15,
-      "title": "B1: portfolio.MasterRecordService — CRUD on master_record_portfolio",
+      "title": "B1: portfolio.MasterRecordService \u2014 CRUD on master_record_portfolio",
       "story_id": "00490",
-      "card_url": "http://localhost:3333/cards/1769517051581301886",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 16,
-      "title": "B2: Field scope resolver — admit/deny against scope + workspace whitelist",
+      "title": "B2: Field scope resolver \u2014 admit/deny against scope + workspace whitelist",
       "story_id": "00491",
-      "card_url": "http://localhost:3333/cards/1769517055859491974",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 17,
       "title": "B3: Adoption saga step 2 rewrite: write artefact_types scope=strategy",
       "story_id": "00492",
-      "card_url": "http://localhost:3333/cards/1769517060146070670",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 18,
       "title": "B4: Adoption saga steps 3+4 rewrite: write flows + flow_transitions",
       "story_id": "00493",
-      "card_url": "http://localhost:3333/cards/1769517064399094934",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 19,
       "title": "B5: Adoption saga step 5 rewrite: write artefact_types scope=work with parent chain",
       "story_id": "00494",
-      "card_url": "http://localhost:3333/cards/1769517068626953374",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 20,
       "title": "B6: Adoption saga step 7 finalize: upsert master_record_portfolio",
       "story_id": "00495",
-      "card_url": "http://localhost:3333/cards/1769517072921920678",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 21,
       "title": "B7: Adoption saga SSE progress events refitted for new step targets",
       "story_id": "00496",
-      "card_url": "http://localhost:3333/cards/1769517077292385454",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 22,
       "title": "B8: Re-adoption flow: insert placeholder strategy artefact and repoint orphaned work artefacts",
       "story_id": "00497",
-      "card_url": "http://localhost:3333/cards/1769517081503466678",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 23,
       "title": "B9: Handler GET /api/portfolio/master_record",
       "story_id": "00498",
-      "card_url": "http://localhost:3333/cards/1769517085941040318",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 24,
       "title": "B10: Handler GET /api/workspace/:id/portfolio/layers",
       "story_id": "00499",
-      "card_url": "http://localhost:3333/cards/1769517090303116486",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 25,
       "title": "B11: Handler GET /api/workspace/:id/fields invoking scope resolver",
       "story_id": "00500",
-      "card_url": "http://localhost:3333/cards/1769517094522586318",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 26,
       "title": "B12: Handler GET /api/portfolio/adoption-state/:workspaceId rewrite",
       "story_id": "00501",
-      "card_url": "http://localhost:3333/cards/1769517098817553622",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 27,
       "title": "B13: Workspace deletion hook: scan vector_artefacts for orphans and reject",
       "story_id": "00502",
-      "card_url": "http://localhost:3333/cards/1769517103154463966",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 28,
       "title": "T3: Integration test: adoption saga writes only to vector_artefacts",
       "story_id": "00503",
-      "card_url": "http://localhost:3333/cards/1769517108607059174",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 29,
       "title": "T4: Integration test: re-adoption preserves parent_artefact_id NOT NULL",
       "story_id": "00504",
-      "card_url": "http://localhost:3333/cards/1769517112969135342",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 30,
       "title": "T5: Integration test: scope resolver admit/deny matrix",
       "story_id": "00505",
-      "card_url": "http://localhost:3333/cards/1769517117440263414",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 31,
       "title": "T6: Canary nightly test: cross-DB workspace_id integrity",
       "story_id": "00506",
-      "card_url": "http://localhost:3333/cards/1769517121651344638",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 32,
       "title": "F1: BundleView: switch model description read to /api/portfolio/master_record",
       "story_id": "00507",
-      "card_url": "http://localhost:3333/cards/1769517125468161286",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 33,
       "title": "F2: Adoption stream: assertion test for SSE event handling against rewritten saga",
       "story_id": "00508",
-      "card_url": "http://localhost:3333/cards/1769517129746351374",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 34,
       "title": "F3: Layer list: swap /api/subscription/layers to /api/workspace/:id/portfolio/layers",
       "story_id": "00509",
-      "card_url": "http://localhost:3333/cards/1769517134175536406",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 35,
       "title": "F4: Field schema consumer: switch to /api/workspace/:id/fields",
       "story_id": "00510",
-      "card_url": "http://localhost:3333/cards/1769517138487280926",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 36,
       "title": "F5: Re-adoption UX: surface placeholder strategy artefact as Pending re-classification bucket",
       "story_id": "00511",
-      "card_url": "http://localhost:3333/cards/1769517142832579878",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 37,
       "title": "T7: Lint rule lint:portfolio-library-read",
       "story_id": "00512",
-      "card_url": "http://localhost:3333/cards/1769517147186267438",
+      "card_url": null,
       "status": "completed"
     },
     {
@@ -339,7 +339,7 @@
       "criterion": "Audit query returns zero NULL-subscription orphans before M2 runs",
       "proven_by": "audit script + schema_migrations row",
       "story_id": "00476",
-      "card_url": "http://localhost:3333/cards/1769516989446882318",
+      "card_url": null,
       "done": true
     },
     {
@@ -347,7 +347,7 @@
       "criterion": "field_library renamed to artefact_field_library with scope discriminator",
       "proven_by": "migration commit + DOWN script",
       "story_id": "00477",
-      "card_url": "http://localhost:3333/cards/1769516994043839510",
+      "card_url": null,
       "done": true
     },
     {
@@ -355,7 +355,7 @@
       "criterion": "artefact_workspace_fields whitelist join table exists with PK + FK",
       "proven_by": "migration commit + schema_migrations row",
       "story_id": "00478",
-      "card_url": "http://localhost:3333/cards/1769516998498190366",
+      "card_url": null,
       "done": true
     },
     {
@@ -363,7 +363,7 @@
       "criterion": "artefact_types carries workspace_id NOT NULL + library_layer_id + library_layer_tag with backfill",
       "proven_by": "migration commit + parity check",
       "story_id": "00479",
-      "card_url": "http://localhost:3333/cards/1769517003002872870",
+      "card_url": null,
       "done": true
     },
     {
@@ -371,7 +371,7 @@
       "criterion": "master_record_portfolio table exists with touch trigger",
       "proven_by": "migration commit + DOWN script",
       "story_id": "00480",
-      "card_url": "http://localhost:3333/cards/1769517007331394606",
+      "card_url": null,
       "done": true
     },
     {
@@ -379,7 +379,7 @@
       "criterion": "master_record_portfolio backfilled with parity assertion (T1) gating promotion",
       "proven_by": "migration log + T1 assertion",
       "story_id": "00481",
-      "card_url": "http://localhost:3333/cards/1769517011559253046",
+      "card_url": null,
       "done": true
     },
     {
@@ -387,7 +387,7 @@
       "criterion": "strategy_layers_adopted dropped after B5 deployed >=1 day",
       "proven_by": "migration commit gated on B5 deploy date",
       "story_id": "00482",
-      "card_url": "http://localhost:3333/cards/1769517016156210238",
+      "card_url": null,
       "done": false
     },
     {
@@ -395,7 +395,7 @@
       "criterion": "Adopted-workspace count == master_record_portfolio rowcount post-M6",
       "proven_by": "assertion runs inside M6",
       "story_id": "00483",
-      "card_url": "http://localhost:3333/cards/1769517020518286406",
+      "card_url": null,
       "done": false
     },
     {
@@ -403,7 +403,7 @@
       "criterion": "Audit query returns zero NULL-subscription orphans (assertion gate for M2)",
       "proven_by": "assertion runs inside M1",
       "story_id": "00484",
-      "card_url": "http://localhost:3333/cards/1769517024981025870",
+      "card_url": null,
       "done": false
     },
     {
@@ -411,7 +411,7 @@
       "criterion": "obj_strategy_types_layers dropped after B3 deployed 7 days zero reads",
       "proven_by": "drop PR + cutover register row",
       "story_id": "00485",
-      "card_url": "http://localhost:3333/cards/1769517030081299542",
+      "card_url": null,
       "done": false
     },
     {
@@ -419,7 +419,7 @@
       "criterion": "subscription_workflows + subscription_workflow_transitions dropped after B4 7 days",
       "proven_by": "drop PR + cutover register row",
       "story_id": "00486",
-      "card_url": "http://localhost:3333/cards/1769517034426598494",
+      "card_url": null,
       "done": false
     },
     {
@@ -427,7 +427,7 @@
       "criterion": "subscription_artifacts dropped after B5 deployed 7 days",
       "proven_by": "drop PR + cutover register row",
       "story_id": "00487",
-      "card_url": "http://localhost:3333/cards/1769517038830617702",
+      "card_url": null,
       "done": false
     },
     {
@@ -435,7 +435,7 @@
       "criterion": "strategy_layers_adopted drop registered in cutover follow-ups",
       "proven_by": "register row references M7",
       "story_id": "00488",
-      "card_url": "http://localhost:3333/cards/1769517042974590062",
+      "card_url": null,
       "done": false
     },
     {
@@ -443,7 +443,7 @@
       "criterion": "subscription_terminology dropped only after terminology design lands",
       "proven_by": "card stays Backlog WAITING-ON-12.2",
       "story_id": "00489",
-      "card_url": "http://localhost:3333/cards/1769517047252780150",
+      "card_url": null,
       "done": false
     },
     {
@@ -451,7 +451,7 @@
       "criterion": "portfolio.MasterRecordService is sole writer of master_record_portfolio with lint:writer-boundary entry",
       "proven_by": "package commit + lint output",
       "story_id": "00490",
-      "card_url": "http://localhost:3333/cards/1769517051581301886",
+      "card_url": null,
       "done": true
     },
     {
@@ -459,7 +459,7 @@
       "criterion": "ResolveField(workspaceID, fieldID) admit/deny with 5-cell matrix unit test",
       "proven_by": "package commit + test output",
       "story_id": "00491",
-      "card_url": "http://localhost:3333/cards/1769517055859491974",
+      "card_url": null,
       "done": true
     },
     {
@@ -467,7 +467,7 @@
       "criterion": "Saga step 2 writes artefact_types scope=strategy with library_layer_id + library_layer_tag idempotently",
       "proven_by": "saga commit + idempotency test",
       "story_id": "00492",
-      "card_url": "http://localhost:3333/cards/1769517060146070670",
+      "card_url": null,
       "done": true
     },
     {
@@ -475,7 +475,7 @@
       "criterion": "Saga steps 3+4 write flows + flow_transitions atomically and idempotently",
       "proven_by": "saga commit + idempotency test",
       "story_id": "00493",
-      "card_url": "http://localhost:3333/cards/1769517064399094934",
+      "card_url": null,
       "done": true
     },
     {
@@ -483,7 +483,7 @@
       "criterion": "Saga step 5 writes artefact_types scope=work with parent_type_id chain idempotently",
       "proven_by": "saga commit + idempotency test",
       "story_id": "00494",
-      "card_url": "http://localhost:3333/cards/1769517068626953374",
+      "card_url": null,
       "done": true
     },
     {
@@ -491,7 +491,7 @@
       "criterion": "Saga step 7 upserts master_record_portfolio with copied prose transactionally",
       "proven_by": "saga commit + transactional test",
       "story_id": "00495",
-      "card_url": "http://localhost:3333/cards/1769517072921920678",
+      "card_url": null,
       "done": true
     },
     {
@@ -499,7 +499,7 @@
       "criterion": "SSE progress events refer to new substrate names with idempotency keys preserved",
       "proven_by": "saga commit + frontend test",
       "story_id": "00496",
-      "card_url": "http://localhost:3333/cards/1769517077292385454",
+      "card_url": null,
       "done": true
     },
     {
@@ -507,7 +507,7 @@
       "criterion": "Re-adoption inserts placeholder strategy artefact then repoints orphans, parent_artefact_id NEVER NULL",
       "proven_by": "saga commit + integration test (T4)",
       "story_id": "00497",
-      "card_url": "http://localhost:3333/cards/1769517081503466678",
+      "card_url": null,
       "done": true
     },
     {
@@ -515,7 +515,7 @@
       "criterion": "GET /api/portfolio/master_record returns 200 for adopted, 404 for unadopted",
       "proven_by": "handler commit + integration test",
       "story_id": "00498",
-      "card_url": "http://localhost:3333/cards/1769517085941040318",
+      "card_url": null,
       "done": true
     },
     {
@@ -523,7 +523,7 @@
       "criterion": "GET /api/workspace/:id/portfolio/layers returns artefact_types scope=strategy with tenant+workspace ownership check",
       "proven_by": "handler commit",
       "story_id": "00499",
-      "card_url": "http://localhost:3333/cards/1769517090303116486",
+      "card_url": null,
       "done": true
     },
     {
@@ -531,7 +531,7 @@
       "criterion": "GET /api/workspace/:id/fields returns ResolveField-admitted union with 403 on tenant mismatch",
       "proven_by": "handler commit + T5 matrix test",
       "story_id": "00500",
-      "card_url": "http://localhost:3333/cards/1769517094522586318",
+      "card_url": null,
       "done": true
     },
     {
@@ -539,7 +539,7 @@
       "criterion": "GET /api/portfolio/adoption-state/:workspaceId reads new substrate and returns 200 (not 404) post-reset",
       "proven_by": "handler commit + integration test",
       "story_id": "00501",
-      "card_url": "http://localhost:3333/cards/1769517098817553622",
+      "card_url": null,
       "done": true
     },
     {
@@ -547,7 +547,7 @@
       "criterion": "DELETE /api/workspace/:id refuses with 409 if vector_artefacts has rows referencing the workspace",
       "proven_by": "handler commit + integration test (deferred)",
       "story_id": "00502",
-      "card_url": "http://localhost:3333/cards/1769517103154463966",
+      "card_url": null,
       "done": true
     },
     {
@@ -555,7 +555,7 @@
       "criterion": "Adoption saga end-to-end writes only to vector_artefacts (zero obj_* writes)",
       "proven_by": "integration test green",
       "story_id": "00503",
-      "card_url": "http://localhost:3333/cards/1769517108607059174",
+      "card_url": null,
       "done": true
     },
     {
@@ -563,7 +563,7 @@
       "criterion": "Re-adoption preserves parent_artefact_id NOT NULL invariant across two adoption cycles",
       "proven_by": "integration test green",
       "story_id": "00504",
-      "card_url": "http://localhost:3333/cards/1769517112969135342",
+      "card_url": null,
       "done": true
     },
     {
@@ -571,7 +571,7 @@
       "criterion": "ResolveField admit/deny matrix covers all 10 cells (5 scopes x read/write)",
       "proven_by": "parameterised test green",
       "story_id": "00505",
-      "card_url": "http://localhost:3333/cards/1769517117440263414",
+      "card_url": null,
       "done": true
     },
     {
@@ -579,7 +579,7 @@
       "criterion": "Nightly canary asserts every vector_artefacts.workspace_id exists in mmff_vector.workspaces",
       "proven_by": "scheduled job + alert wiring",
       "story_id": "00506",
-      "card_url": "http://localhost:3333/cards/1769517121651344638",
+      "card_url": null,
       "done": true
     },
     {
@@ -587,7 +587,7 @@
       "criterion": "BundleView reads /api/portfolio/master_record (no library URL); lint:portfolio-library-read returns zero hits",
       "proven_by": "frontend commit + lint output",
       "story_id": "00507",
-      "card_url": "http://localhost:3333/cards/1769517125468161286",
+      "card_url": null,
       "done": true
     },
     {
@@ -595,7 +595,7 @@
       "criterion": "Adoption stream renders correctly against B7 events without animation hang",
       "proven_by": "vitest assertion green",
       "story_id": "00508",
-      "card_url": "http://localhost:3333/cards/1769517129746351374",
+      "card_url": null,
       "done": true
     },
     {
@@ -603,7 +603,7 @@
       "criterion": "Every caller of /api/subscription/layers swapped to /api/workspace/:id/portfolio/layers",
       "proven_by": "frontend commit + grep verification",
       "story_id": "00509",
-      "card_url": "http://localhost:3333/cards/1769517134175536406",
+      "card_url": null,
       "done": true
     },
     {
@@ -611,7 +611,7 @@
       "criterion": "Field schema consumers call /api/workspace/:id/fields; zero direct field_library reads in frontend",
       "proven_by": "frontend commit + grep verification",
       "story_id": "00510",
-      "card_url": "http://localhost:3333/cards/1769517138487280926",
+      "card_url": null,
       "done": true
     },
     {
@@ -619,7 +619,7 @@
       "criterion": "Placeholder strategy artefact rendered as Pending re-classification bucket with move-out flow",
       "proven_by": "frontend commit + visual smoke (deferred)",
       "story_id": "00511",
-      "card_url": "http://localhost:3333/cards/1769517142832579878",
+      "card_url": null,
       "done": true
     },
     {
@@ -627,7 +627,7 @@
       "criterion": "lint:portfolio-library-read fails on /api/library/ imports in tenant code paths",
       "proven_by": "lint script + npm-run pass",
       "story_id": "00512",
-      "card_url": "http://localhost:3333/cards/1769517147186267438",
+      "card_url": null,
       "done": true
     },
     {
@@ -706,42 +706,42 @@
   "references": [
     {
       "kind": "internal",
-      "label": "R047 — DATABASE Schema research paper (full design)",
+      "label": "R047 \u2014 DATABASE Schema research paper (full design)",
       "href": "dev/research/R047.json"
     },
     {
       "kind": "internal",
-      "label": "docs/c_c_vector_artefacts_backfill.md — companion production cutover plan",
+      "label": "docs/c_c_vector_artefacts_backfill.md \u2014 companion production cutover plan",
       "href": "docs/c_c_vector_artefacts_backfill.md"
     },
     {
       "kind": "internal",
-      "label": "docs/c_c_v2_workitems_cutover_followups.md — sanitisation register",
+      "label": "docs/c_c_v2_workitems_cutover_followups.md \u2014 sanitisation register",
       "href": "docs/c_c_v2_workitems_cutover_followups.md"
     },
     {
       "kind": "internal",
-      "label": "PLA-0023 — Vector Artefacts Cutover (predecessor)",
+      "label": "PLA-0023 \u2014 Vector Artefacts Cutover (predecessor)",
       "href": "dev/plans/PLA-0023.json"
     },
     {
       "kind": "internal",
-      "label": "PLA-0025 — Work-Items Full v2 Cutover (sibling)",
+      "label": "PLA-0025 \u2014 Work-Items Full v2 Cutover (sibling)",
       "href": "dev/plans/PLA-0025.json"
     },
     {
       "kind": "internal",
-      "label": "PLA-0024 — Subscriptions → master_record_tenant (pattern source for master_record_portfolio)",
+      "label": "PLA-0024 \u2014 Subscriptions \u2192 master_record_tenant (pattern source for master_record_portfolio)",
       "href": "dev/plans/PLA-0024.json"
     },
     {
       "kind": "internal",
-      "label": "MEMORY: feedback_gradual_db_sanitisation — drop one at a time as last reader migrates",
+      "label": "MEMORY: feedback_gradual_db_sanitisation \u2014 drop one at a time as last reader migrates",
       "href": ".claude/memory/feedback_gradual_db_sanitisation.md"
     },
     {
       "kind": "internal",
-      "label": "MEMORY: feedback_table_naming_prefixes — domain prefix mandatory",
+      "label": "MEMORY: feedback_table_naming_prefixes \u2014 domain prefix mandatory",
       "href": ".claude/memory/feedback_table_naming_prefixes.md"
     }
   ]

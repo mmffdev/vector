@@ -1,60 +1,60 @@
 {
   "id": "PLA-0021",
-  "title": "ResourceTree — generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap)",
+  "title": "ResourceTree \u2014 generic hierarchical tree primitive + WorkItemsTree preset (28-feature roadmap)",
   "date_created": "2026-05-06",
   "date_started": "2026-05-06",
   "date_last_updated": "2026-05-07",
   "date_finished": "2026-05-07",
-  "scope": "<p><code>WorkItemsTree</code> is refactored into two layers: a generic <code>&lt;ResourceTree&gt;</code> primitive that accepts five prop sets (Data types, UI scaffold, Feature requirements, Cog menu, Colour overrides) and a thin <code>WorkItemsTree</code> preset wrapper that passes the work-items configuration. The five prop-set configs are registered in the addressables registry (PLA-0005) under stable addresses such as <code>samantha.work-items._tree.workitems</code>. Future adopters (PortfolioItemsTree, TopologyTree, etc.) get all 28 features for free by passing their own prop sets. The 28 features from R042 §0.B are implemented in ranked order across work streams.</p>",
-  "value": "<p>The current <code>WorkItemsTree</code> has 14 ❌ missing features, 4 📦 stubbed features (fake sprint, owner, due-date columns), and 2 🚧 partial features from the R042 feature matrix — covering only inline-edit, server-sort on id only, and ad-hoc realtime. Users see synthetic data in three columns. DnD rank code exists but is parked in <code>reference/dnd_tree.tsx</code> and not wired. This plan delivers the full feature set in importance order, with ResourceTree as a reusable primitive so every future tree view inherits the complete capability stack including realtime sync, RBAC-gated columns, URL deep-linking, streaming skeletons, and mobile responsive layout — features Rally never had.</p>",
+  "scope": "<p><code>WorkItemsTree</code> is refactored into two layers: a generic <code>&lt;ResourceTree&gt;</code> primitive that accepts five prop sets (Data types, UI scaffold, Feature requirements, Cog menu, Colour overrides) and a thin <code>WorkItemsTree</code> preset wrapper that passes the work-items configuration. The five prop-set configs are registered in the addressables registry (PLA-0005) under stable addresses such as <code>samantha.work-items._tree.workitems</code>. Future adopters (PortfolioItemsTree, TopologyTree, etc.) get all 28 features for free by passing their own prop sets. The 28 features from R042 \u00a70.B are implemented in ranked order across work streams.</p>",
+  "value": "<p>The current <code>WorkItemsTree</code> has 14 \u274c missing features, 4 \ud83d\udce6 stubbed features (fake sprint, owner, due-date columns), and 2 \ud83d\udea7 partial features from the R042 feature matrix \u2014 covering only inline-edit, server-sort on id only, and ad-hoc realtime. Users see synthetic data in three columns. DnD rank code exists but is parked in <code>reference/dnd_tree.tsx</code> and not wired. This plan delivers the full feature set in importance order, with ResourceTree as a reusable primitive so every future tree view inherits the complete capability stack including realtime sync, RBAC-gated columns, URL deep-linking, streaming skeletons, and mobile responsive layout \u2014 features Rally never had.</p>",
   "implementation_plan": [
-    "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx — generic component accepting Sets 1–5 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> ✓",
+    "<s>WS1-A: Extract ResourceTree.tsx from WorkItemsTree.tsx \u2014 generic component accepting Sets 1\u20135 props; WorkItemsTree becomes a preset wrapper passing the work-items config; register 5 prop-set addresses in addressables registry</s> \u2713",
     "<s>WS1-B: Restore DnD rank from reference/dnd_tree.tsx; wire useResourceRank + applyDrop + snapshot rollback into ResourceTree; add PATCH /api/work-items/:id/rank { before_id?, after_id? } backend handler</s>",
-    "<s>WS2-A (backend): append ?owner_id= to list query (other 7 filter params + ?sort= already wired); frontend chips + URL nuqs threading</s> ✓",
-    "<s>WS2-B: Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default); frontend URL nuqs threading</s> ✓",
-    "<s>WS3-A: Add useKeyboardGrid hook on ResourceTree root — Tab → next editable cell, Enter → next row same column, Esc cancels active edit</s> ✓",
-    "<s>WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree</s> ✓",
+    "<s>WS2-A (backend): append ?owner_id= to list query (other 7 filter params + ?sort= already wired); frontend chips + URL nuqs threading</s> \u2713",
+    "<s>WS2-B: Promote sort to server ORDER BY on all sortable columns (id/title/status/priority/points/sprint/due, asc+desc; SQL-injection fallback to default); frontend URL nuqs threading</s> \u2713",
+    "<s>WS3-A: Add useKeyboardGrid hook on ResourceTree root \u2014 Tab \u2192 next editable cell, Enter \u2192 next row same column, Esc cancels active edit</s> \u2713",
+    "<s>WS3-B: Add leading checkbox column behind { selection: { mode: 'multi' } }; expose selectedIds + onSelectionChange from ResourceTree</s> \u2713",
     "<s>WS3-C: Build <BulkActionBar> rendered when selectedIds.size > 0; wire to POST /api/work-items/bulk { ids, op, payload }; permission-gate each action via useHasPermission</s>",
-    "<s>WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column</s> ✓",
-    "<s>WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name</s> ✓",
-    "<s>WS4-C: Migration — add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher</s> ✓",
+    "<s>WS4-A: Replace sprintAlias() FAKE with real sprints join in work-items list query; render sprint alias in Sprint column</s> \u2713",
+    "<s>WS4-B: Replace ownerGlyph() FAKE with real users join on owner_id; render <OwnerChip user={r.owner} /> with avatar + name</s> \u2713",
+    "<s>WS4-C: Migration \u2014 add due_date DATE NULL to work_items; wire inline date editor via ResourceTree Set 1 fetcher</s> \u2713",
     "WS5-A: Build <ColumnPicker> flyout; persist visibility map to user_preferences table per { pageId, slot }; driven by ResourceTree Set 2 columns[] config",
-    "WS5-B: Column locking — add { key, locked: 'left' } column flag; render with position: sticky on locked cells; ResourceTree Set 2 prop",
+    "WS5-B: Column locking \u2014 add { key, locked: 'left' } column flag; render with position: sticky on locked cells; ResourceTree Set 2 prop",
     "WS5-C: Column reorder via @dnd-kit sortable on header row; persist order to user_preferences; ResourceTree Set 2 prop",
-    "WS5-D: Multi-column sort — promote sort to { field, dir }[] array; URL: ?sort=field1:asc,field2:desc; ResourceTree Set 3 prop",
-    "WS6-A: Virtual scroll — adopt @tanstack/react-virtual when row count > 500; ResourceTree Set 3 { virtual: { threshold: 500 } } prop",
-    "WS6-B: Row context menu — add onContextMenu handler on each row showing the cog-menu items (Set 4) at cursor position",
-    "WS7-A: Tags + custom fields — migration: add tags TEXT[] + custom_fields JSONB to work_items; render chip cell with autocomplete from workspace tag dictionary",
-    "WS7-B: Group summaries — ResourceTree Set 3 { grouping: { by, summaries: [{ col, agg }] } }; server returns one summary row per group via Postgres aggregation",
+    "WS5-D: Multi-column sort \u2014 promote sort to { field, dir }[] array; URL: ?sort=field1:asc,field2:desc; ResourceTree Set 3 prop",
+    "WS6-A: Virtual scroll \u2014 adopt @tanstack/react-virtual when row count > 500; ResourceTree Set 3 { virtual: { threshold: 500 } } prop",
+    "WS6-B: Row context menu \u2014 add onContextMenu handler on each row showing the cog-menu items (Set 4) at cursor position",
+    "WS7-A: Tags + custom fields \u2014 migration: add tags TEXT[] + custom_fields JSONB to work_items; render chip cell with autocomplete from workspace tag dictionary",
+    "WS7-B: Group summaries \u2014 ResourceTree Set 3 { grouping: { by, summaries: [{ col, agg }] } }; server returns one summary row per group via Postgres aggregation",
     "WS8-A: Bake useRefetchOnPush(rankTopic(resourceType, parentId)) into ResourceTree driven by Set 1 resourceType; remove ad-hoc adopter wiring",
-    "WS8-B: Permission-gated columns and actions — per-column { requires: 'permission.code' } in Set 1 columns consumed via useHasPermission; per-action requires in Set 4",
-    "WS8-C: Full URL-encoded tree state — encode { openIds, sort, filters, selection, columnOrder } into search params via PLA-0018 nuqs; extends current partial URL state",
-    "WS9-A: CSV export — GET /api/work-items.csv?…filters streamed from Postgres COPY TO STDOUT; permission-checked at route; cog-menu action",
-    "WS9-B: Cross-parent DnD reparent — drop on a different parent row → PATCH /api/work-items/:id { parent_id } + rank recompute; ResourceTree Set 3 { dnd: { allowReparent: true } }",
-    "WS9-C: Saved views (two-layer) — Layer A always-on in-memory + cookie; Layer B explicit Save View → user_view_state(user_id, address, name); addressable via Samantha",
-    "WS10-A: Keyboard new-item create — sentinel last row when Set 3 { canCreate: true }; Enter on empty row → POST /api/work-items; optimistic insert with realtime echo dedup",
-    "WS10-B: Copy URL cog action — navigator.clipboard.writeText(rowDeepLink(r)); deep-link URL is canonical via PLA-0018",
-    "WS10-C: Mobile responsive collapse — at < 720px swap row template to card layout (Set 2 alt scaffold: 'card'); same data, different scaffold per viewport",
-    "WS10-D: Streaming skeleton — wrap ResourceTree fetch in <Suspense fallback={<TreeSkeleton/>}>; server-stream the first page via Next.js App Router"
+    "WS8-B: Permission-gated columns and actions \u2014 per-column { requires: 'permission.code' } in Set 1 columns consumed via useHasPermission; per-action requires in Set 4",
+    "WS8-C: Full URL-encoded tree state \u2014 encode { openIds, sort, filters, selection, columnOrder } into search params via PLA-0018 nuqs; extends current partial URL state",
+    "WS9-A: CSV export \u2014 GET /api/work-items.csv?\u2026filters streamed from Postgres COPY TO STDOUT; permission-checked at route; cog-menu action",
+    "WS9-B: Cross-parent DnD reparent \u2014 drop on a different parent row \u2192 PATCH /api/work-items/:id { parent_id } + rank recompute; ResourceTree Set 3 { dnd: { allowReparent: true } }",
+    "WS9-C: Saved views (two-layer) \u2014 Layer A always-on in-memory + cookie; Layer B explicit Save View \u2192 user_view_state(user_id, address, name); addressable via Samantha",
+    "WS10-A: Keyboard new-item create \u2014 sentinel last row when Set 3 { canCreate: true }; Enter on empty row \u2192 POST /api/work-items; optimistic insert with realtime echo dedup",
+    "WS10-B: Copy URL cog action \u2014 navigator.clipboard.writeText(rowDeepLink(r)); deep-link URL is canonical via PLA-0018",
+    "WS10-C: Mobile responsive collapse \u2014 at < 720px swap row template to card layout (Set 2 alt scaffold: 'card'); same data, different scaffold per viewport",
+    "WS10-D: Streaming skeleton \u2014 wrap ResourceTree fetch in <Suspense fallback={<TreeSkeleton/>}>; server-stream the first page via Next.js App Router"
   ],
   "areas_impacted": [
-    "app/components/WorkItemsTree.tsx — refactored to preset wrapper (thin config file)",
-    "app/components/ResourceTree.tsx (new) — generic hierarchical tree primitive",
-    "app/components/BulkActionBar.tsx (new) — bulk-action overlay rendered above ResourceTree",
-    "app/components/ColumnPicker.tsx (new) — column visibility flyout",
-    "app/components/OwnerChip.tsx (new) — avatar + name chip for owner column",
-    "app/components/TreeSkeleton.tsx (new) — Suspense fallback skeleton",
-    "app/hooks/useResourceRank.ts (new) — DnD rank apply + rollback",
-    "app/hooks/useKeyboardGrid.ts (new) — Tab/Enter/Esc cell traversal",
-    "app/hooks/useGridClipboard.ts (new) — in-app cell clipboard + paste import",
-    "backend/internal/workitems/ — add sprint/owner joins, server-sort on all columns, tags/custom_fields, due_date, CSV endpoint, bulk endpoint, rank PATCH",
-    "db/schema/ — migrations: due_date, tags, custom_fields on work_items; user_view_state table (new)",
-    "app/lib/addressables/ — register 5 prop-set configs for samantha.work-items._tree.workitems",
-    "docs/ — add docs/c_c_resource_tree.md leaf spec"
+    "app/components/WorkItemsTree.tsx \u2014 refactored to preset wrapper (thin config file)",
+    "app/components/ResourceTree.tsx (new) \u2014 generic hierarchical tree primitive",
+    "app/components/BulkActionBar.tsx (new) \u2014 bulk-action overlay rendered above ResourceTree",
+    "app/components/ColumnPicker.tsx (new) \u2014 column visibility flyout",
+    "app/components/OwnerChip.tsx (new) \u2014 avatar + name chip for owner column",
+    "app/components/TreeSkeleton.tsx (new) \u2014 Suspense fallback skeleton",
+    "app/hooks/useResourceRank.ts (new) \u2014 DnD rank apply + rollback",
+    "app/hooks/useKeyboardGrid.ts (new) \u2014 Tab/Enter/Esc cell traversal",
+    "app/hooks/useGridClipboard.ts (new) \u2014 in-app cell clipboard + paste import",
+    "backend/internal/workitems/ \u2014 add sprint/owner joins, server-sort on all columns, tags/custom_fields, due_date, CSV endpoint, bulk endpoint, rank PATCH",
+    "db/schema/ \u2014 migrations: due_date, tags, custom_fields on work_items; user_view_state table (new)",
+    "app/lib/addressables/ \u2014 register 5 prop-set configs for samantha.work-items._tree.workitems",
+    "docs/ \u2014 add docs/c_c_resource_tree.md leaf spec"
   ],
   "feature_list": [
     "#1 DnD rank within parent (useResourceRank + applyDrop, server fractional index API)",
-    "#2 Filter chips — Type / Status / Assignee (controlled, URL-threaded)",
+    "#2 Filter chips \u2014 Type / Status / Assignee (controlled, URL-threaded)",
     "#3 Server-sort on every column (?sort=col:dir)",
     "#4 Keyboard nav (Tab/Enter cell traversal via useKeyboardGrid)",
     "#5 Multi-select checkbox column + selectedIds",
@@ -63,7 +63,7 @@
     "#8 Owner column real (users join + OwnerChip)",
     "#9 Due date real (due_date migration + inline date editor)",
     "#10 Column visibility picker (ColumnPicker + user_preferences persist)",
-    "#11 Column locking — pin Title left (sticky CSS)",
+    "#11 Column locking \u2014 pin Title left (sticky CSS)",
     "#12 Column reorder (header @dnd-kit + user_preferences persist)",
     "#13 Multi-column sort (sorters array + URL)",
     "#14 Virtual scroll (@tanstack/react-virtual at 500 row threshold)",
@@ -76,17 +76,17 @@
     "#21 CSV export (GET /api/work-items.csv COPY TO STDOUT streamed)",
     "#22 Cross-parent DnD reparent (PATCH parent_id + rank recompute)",
     "#23 Saved views two-layer (cookie always-on + user_view_state named profile)",
-    "#24 Keyboard new-item create (sentinel row + Enter → POST)",
+    "#24 Keyboard new-item create (sentinel row + Enter \u2192 POST)",
     "#25 Copy URL to row (navigator.clipboard cog action)",
     "#26 Mobile responsive card layout (< 720px scaffold swap)",
     "#27 Streaming skeleton via Suspense (Next.js App Router first-page stream)",
     "#28 Clipboard paste import (useGridClipboard hook + bulk endpoint)"
   ],
   "features_extended": [
-    "PLA-0005 addressables — 5 prop-set configs registered as stable addresses",
-    "PLA-0015 <Table> — ResourceTree is a separate primitive; Table tree mode (PLA-0017) coexists; ResourceTree handles unlimited-depth hierarchical data with DnD rank",
-    "PLA-0018 deep-linking — URL-encoded tree state extends nuqs params to cover openIds + columnOrder",
-    "PLA-0007 RBAC — per-column and per-action permission gates via useHasPermission"
+    "PLA-0005 addressables \u2014 5 prop-set configs registered as stable addresses",
+    "PLA-0015 <Table> \u2014 ResourceTree is a separate primitive; Table tree mode (PLA-0017) coexists; ResourceTree handles unlimited-depth hierarchical data with DnD rank",
+    "PLA-0018 deep-linking \u2014 URL-encoded tree state extends nuqs params to cover openIds + columnOrder",
+    "PLA-0007 RBAC \u2014 per-column and per-action permission gates via useHasPermission"
   ],
   "features_removed": [],
   "work_item_backlog": [
@@ -94,105 +94,105 @@
       "order": 1,
       "title": "Refactor: extract ResourceTree primitive; WorkItemsTree becomes preset wrapper",
       "story_id": "00445",
-      "card_url": "http://localhost:3333/cards/1769171253874132248",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 2,
       "title": "Register 5 prop-set configs at samantha.work-items._tree.workitems",
       "story_id": "00446",
-      "card_url": "http://localhost:3333/cards/1769171344101999899",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 3,
       "title": "Vitest smoke: WorkItemsTree visual no-regression after ResourceTree extraction",
       "story_id": "00447",
-      "card_url": "http://localhost:3333/cards/1769171432987690270",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 4,
-      "title": "Doc leaf: docs/c_c_resource_tree.md — ResourceTree component spec",
+      "title": "Doc leaf: docs/c_c_resource_tree.md \u2014 ResourceTree component spec",
       "story_id": "00448",
-      "card_url": "http://localhost:3333/cards/1769171531075683617",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 5,
       "title": "Wire DnD rank into ResourceTree from reference/dnd_tree.tsx.bak",
       "story_id": "00449",
-      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 6,
       "title": "Backend: add ?owner_id= filter to GET /api/work-items",
       "story_id": "00450",
-      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 7,
       "title": "Frontend: controlled filter chips + URL nuqs (type/status/priority/owner)",
       "story_id": "00451",
-      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 8,
       "title": "Backend: ORDER BY whitelist for every sortable column + tests",
       "story_id": "00452",
-      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 9,
       "title": "Frontend: thread sort/dir into URL via nuqs; drop client sort branch",
       "story_id": "00453",
-      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 10,
       "title": "Add useKeyboardGrid hook to ResourceTree (Tab/Enter/Esc/Arrow grid keyboarding)",
       "story_id": "00454",
-      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 11,
       "title": "Add multi-select checkbox column to ResourceTree (range shift-click + header toggle)",
       "story_id": "00455",
-      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 12,
       "title": "Build BulkActionBar wired to POST /api/work-items/bulk for batch ops",
       "story_id": "00456",
-      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 13,
       "title": "WS4-A: real sprints join + Sprint column (replace sprintAlias FAKE)",
       "story_id": "00458",
-      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 14,
       "title": "WS4-B: real users join + OwnerChip (replace ownerGlyph FAKE)",
       "story_id": "00459",
-      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 15,
       "title": "WS4-C: due_date column migration + inline date editor",
       "story_id": "00460",
-      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "card_url": null,
       "status": "completed"
     }
   ],
@@ -202,16 +202,16 @@
       "criterion": "app/components/ResourceTree.tsx exists",
       "proven_by": "exports generic <ResourceTree> accepting Sets 1-5 props",
       "story_id": "00445",
-      "card_url": "http://localhost:3333/cards/1769171253874132248",
+      "card_url": null,
       "done": true,
       "tested": true
     },
     {
       "order": 2,
       "criterion": "app/components/WorkItemsTree.tsx is a thin wrapper",
-      "proven_by": "imports ResourceTree and passes work-items config (≤100 lines)",
+      "proven_by": "imports ResourceTree and passes work-items config (\u2264100 lines)",
       "story_id": "00445",
-      "card_url": "http://localhost:3333/cards/1769171253874132248",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -220,7 +220,7 @@
       "criterion": "/work-items renders identically post-refactor",
       "proven_by": "rows, indent, expand, inline-edit, sort header all unchanged",
       "story_id": "00445",
-      "card_url": "http://localhost:3333/cards/1769171253874132248",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -229,7 +229,7 @@
       "criterion": "npm run lint:addressables and npx tsc --noEmit pass",
       "proven_by": "no lint or typecheck regressions",
       "story_id": "00445",
-      "card_url": "http://localhost:3333/cards/1769171253874132248",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -238,7 +238,7 @@
       "criterion": "app/lib/addressables/registry.ts registers samantha.work-items._tree.workitems",
       "proven_by": "plus 5 sub-addresses _set1.data, _set2.scaffold, _set3.features, _set4.cogmenu, _set5.colour",
       "story_id": "00446",
-      "card_url": "http://localhost:3333/cards/1769171344101999899",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -247,7 +247,7 @@
       "criterion": "/dev/addressables lists all 5 sub-addresses",
       "proven_by": "under work-items namespace",
       "story_id": "00446",
-      "card_url": "http://localhost:3333/cards/1769171344101999899",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -256,7 +256,7 @@
       "criterion": "npm run lint:addressables passes with the 5 sub-addresses",
       "proven_by": "no missing-from-snapshot warnings",
       "story_id": "00446",
-      "card_url": "http://localhost:3333/cards/1769171344101999899",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -265,7 +265,7 @@
       "criterion": "app/components/__tests__/WorkItemsTree.test.tsx exists",
       "proven_by": "mounts WorkItemsTree against 5-row fixture",
       "story_id": "00447",
-      "card_url": "http://localhost:3333/cards/1769171432987690270",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -274,7 +274,7 @@
       "criterion": "npm run test passes locally and on CI",
       "proven_by": "test asserts header columns, row count, expand toggle, inline-edit input",
       "story_id": "00447",
-      "card_url": "http://localhost:3333/cards/1769171432987690270",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -283,7 +283,7 @@
       "criterion": "Intentional regression triggers a failing diff",
       "proven_by": "verified by reverting one column and re-running",
       "story_id": "00447",
-      "card_url": "http://localhost:3333/cards/1769171432987690270",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -292,7 +292,7 @@
       "criterion": "docs/c_c_resource_tree.md exists",
       "proven_by": "documents Sets 1-5 prop signatures + address pattern + adopters",
       "story_id": "00448",
-      "card_url": "http://localhost:3333/cards/1769171531075683617",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -301,7 +301,7 @@
       "criterion": ".claude/CLAUDE.md gets a one-line pointer",
       "proven_by": "alongside <Table>/<Badge> primitive pointers",
       "story_id": "00448",
-      "card_url": "http://localhost:3333/cards/1769171531075683617",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -310,7 +310,7 @@
       "criterion": "Every prop-set has type signature + usage example",
       "proven_by": "leaf is self-sufficient for new adopters",
       "story_id": "00448",
-      "card_url": "http://localhost:3333/cards/1769171531075683617",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -319,7 +319,7 @@
       "criterion": "Dragging a root row to between two siblings reorders rows in the DOM before any network round-trip.",
       "proven_by": "Dragging a root row to between two siblings reorders rows in the DOM before any network round-trip.",
       "story_id": "00449",
-      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -328,7 +328,7 @@
       "criterion": "POST /api/rank/move fires once with { resource_type, row_id, before_id?/after_id? } after the drop.",
       "proven_by": "POST /api/rank/move fires once with { resource_type, row_id, before_id?/after_id? } after the drop.",
       "story_id": "00449",
-      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -337,7 +337,7 @@
       "criterion": "On rank POST 4xx/5xx the row snaps back to its original position.",
       "proven_by": "On rank POST 4xx/5xx the row snaps back to its original position.",
       "story_id": "00449",
-      "card_url": "http://localhost:3333/cards/1769197332504511885",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -346,7 +346,7 @@
       "criterion": "GET /api/work-items?owner_id=<uuid> returns only matching rows; CountWorkItems agrees.",
       "proven_by": "GET /api/work-items?owner_id=<uuid> returns only matching rows; CountWorkItems agrees.",
       "story_id": "00450",
-      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -355,7 +355,7 @@
       "criterion": "Service test asserts ListWorkItemsFilter{ OwnerID: &uid } produces an owner_id WHERE clause.",
       "proven_by": "Service test asserts ListWorkItemsFilter{ OwnerID: &uid } produces an owner_id WHERE clause.",
       "story_id": "00450",
-      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -364,7 +364,7 @@
       "criterion": "Absence of owner_id= returns the unfiltered set (no regression on existing callers).",
       "proven_by": "Absence of owner_id= returns the unfiltered set (no regression on existing callers).",
       "story_id": "00450",
-      "card_url": "http://localhost:3333/cards/1769197511685178779",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -373,7 +373,7 @@
       "criterion": "Clicking the Epic chip writes ?type=epic to the URL; the network request includes item_type=epic.",
       "proven_by": "Clicking the Epic chip writes ?type=epic to the URL; the network request includes item_type=epic.",
       "story_id": "00451",
-      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -382,7 +382,7 @@
       "criterion": "Loading /work-items?type=story&priority=high renders only matching rows on first paint.",
       "proven_by": "Loading /work-items?type=story&priority=high renders only matching rows on first paint.",
       "story_id": "00451",
-      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -391,7 +391,7 @@
       "criterion": "Clear-filters resets all chip state and removes the params from the URL in a single push.",
       "proven_by": "Clear-filters resets all chip state and removes the params from the URL in a single push.",
       "story_id": "00451",
-      "card_url": "http://localhost:3333/cards/1769197702081414570",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -400,7 +400,7 @@
       "criterion": "Service test round-trips Sort=<col> for {id,key_num,title,status,priority,story_points,sprint,owner,due_date}, asc/desc.",
       "proven_by": "Service test round-trips Sort=<col> for {id,key_num,title,status,priority,story_points,sprint,owner,due_date}, asc/desc.",
       "story_id": "00452",
-      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -409,7 +409,7 @@
       "criterion": "Unknown sort= values fall back to the default rank order (no SQL injection).",
       "proven_by": "Unknown sort= values fall back to the default rank order (no SQL injection).",
       "story_id": "00452",
-      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -418,7 +418,7 @@
       "criterion": "Absent-sort= default ordering remains lexicographic rank position.",
       "proven_by": "Absent-sort= default ordering remains lexicographic rank position.",
       "story_id": "00452",
-      "card_url": "http://localhost:3333/cards/1769197877453653433",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -427,7 +427,7 @@
       "criterion": "Clicking a sortable header writes ?sort=<col>&dir=<asc|desc> to the URL.",
       "proven_by": "Clicking a sortable header writes ?sort=<col>&dir=<asc|desc> to the URL.",
       "story_id": "00453",
-      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -436,7 +436,7 @@
       "criterion": "sortRoots() import + useMemo-over-sort removed from WorkItemsTree.tsx; sort state comes from nuqs.",
       "proven_by": "sortRoots() import + useMemo-over-sort removed from WorkItemsTree.tsx; sort state comes from nuqs.",
       "story_id": "00453",
-      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -445,7 +445,7 @@
       "criterion": "Existing WorkItemsTree.test.tsx smoke still passes after the refactor.",
       "proven_by": "Existing WorkItemsTree.test.tsx smoke still passes after the refactor.",
       "story_id": "00453",
-      "card_url": "http://localhost:3333/cards/1769198046173726152",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -454,7 +454,7 @@
       "criterion": "Tab fires on a focused editable cell",
       "proven_by": "focus moves to the next editable cell on the same row; at row end wraps to next row",
       "story_id": "00454",
-      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -463,7 +463,7 @@
       "criterion": "Enter on a focused cell renders edit component",
       "proven_by": "the column's editComponent is rendered and refocusing on the cell shell after Esc",
       "story_id": "00454",
-      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -472,7 +472,7 @@
       "criterion": "Esc dismisses an open editor",
       "proven_by": "editor is dismissed and focus returns to the cell shell with the original value intact",
       "story_id": "00454",
-      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -481,7 +481,7 @@
       "criterion": "ArrowDown moves cell focus",
       "proven_by": "focus moves to the same column on the next row; ArrowUp reverses",
       "story_id": "00454",
-      "card_url": "http://localhost:3333/cards/1769230236299298314",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -490,16 +490,16 @@
       "criterion": "Click row checkbox",
       "proven_by": "row's id appears in the onSelectionChange callback's set; clicking again removes it",
       "story_id": "00455",
-      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "card_url": null,
       "done": true,
       "tested": true
     },
     {
       "order": 34,
       "criterion": "Shift-click between rows",
-      "proven_by": "ids of rows 1–4 are all in the selection set after click row 1, shift-click row 4",
+      "proven_by": "ids of rows 1\u20134 are all in the selection set after click row 1, shift-click row 4",
       "story_id": "00455",
-      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -508,7 +508,7 @@
       "criterion": "Click header checkbox on 5-row fixture",
       "proven_by": "all 5 ids are in the selection set; clicking again clears it",
       "story_id": "00455",
-      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -517,7 +517,7 @@
       "criterion": "Header indeterminate state when partial",
       "proven_by": "header checkbox renders with indeterminate=true when 2 of 5 rows selected",
       "story_id": "00455",
-      "card_url": "http://localhost:3333/cards/1769230238539056653",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -526,7 +526,7 @@
       "criterion": "POST /api/work-items/bulk with set_status op against 5-row fixture",
       "proven_by": "{updated:5, failed:[]} returned and rows reflect the new flow_state_id in the DB",
       "story_id": "00456",
-      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -535,7 +535,7 @@
       "criterion": "Cross-tenant id included in batch",
       "proven_by": "response lists that id under failed with reason 'forbidden' while other rows update",
       "story_id": "00456",
-      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -544,7 +544,7 @@
       "criterion": "BulkActionBar visibility on selection size",
       "proven_by": "[data-testid=\"bulk-action-bar\"] present with text matching '2 selected' when 2 ids selected; absent when empty",
       "story_id": "00456",
-      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -553,7 +553,7 @@
       "criterion": "BulkActionBar permission gating",
       "proven_by": "Delete button not rendered when useHasPermission stub denies work_items.delete; Status/Priority/Owner remain",
       "story_id": "00456",
-      "card_url": "http://localhost:3333/cards/1769230241441515024",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -562,16 +562,16 @@
       "criterion": "Go test: GET /api/work-items?limit=5 against a fixture where 4 rows have sprint_id pointing at a real sprints row returns each row with sprint:{id, alias} matching the seeded sprint, and the 5th row with sprint_id=null returns sprint:null.",
       "proven_by": "Go test in backend/internal/workitems/handler_sprint_test.go (or similar) seeding 4 work-items with real sprint_id and 1 with sprint_id=null, asserting JSON shape on response.",
       "story_id": "00458",
-      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "card_url": null,
       "done": true,
       "tested": true
     },
     {
       "order": 42,
-      "criterion": "Vitest: WorkItemsTree mounts with a fixture row whose sprint={id,alias:'S-1'} and the rendered Sprint cell text matches /S-1/; a row with sprint=null renders the em-dash placeholder '—'.",
+      "criterion": "Vitest: WorkItemsTree mounts with a fixture row whose sprint={id,alias:'S-1'} and the rendered Sprint cell text matches /S-1/; a row with sprint=null renders the em-dash placeholder '\u2014'.",
       "proven_by": "Vitest in app/components/__tests__/WorkItemsTree.test.tsx asserting cell text via @testing-library/react.",
       "story_id": "00458",
-      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -580,16 +580,16 @@
       "criterion": "Lint: after the change, `grep -R sprintAlias app` returns 0 occurrences.",
       "proven_by": "grep verification in CI or post-commit; the synthetic helper is removed from the repo.",
       "story_id": "00458",
-      "card_url": "http://localhost:3333/cards/1769270391307503218",
+      "card_url": null,
       "done": true,
       "tested": true
     },
     {
       "order": 44,
       "criterion": "Go test: GET /api/work-items?limit=5 against a fixture where 4 rows have owner_id pointing at a real users row returns each row with owner:{id,display_name,avatar_url} matching the seeded user, and the 5th row with owner_id=null returns owner:null.",
-      "proven_by": "Go test in backend/internal/workitems/handler_owner_test.go seeding 4 work-items with real owner_id and 1 with null, asserting JSON shape. NOTE: owner_id is NOT NULL on work_items (schema 063) — test seeds 4 rows w/ userA + 1 row w/ userB instead of NULL; per-row JOIN resolution still proven.",
+      "proven_by": "Go test in backend/internal/workitems/handler_owner_test.go seeding 4 work-items with real owner_id and 1 with null, asserting JSON shape. NOTE: owner_id is NOT NULL on work_items (schema 063) \u2014 test seeds 4 rows w/ userA + 1 row w/ userB instead of NULL; per-row JOIN resolution still proven.",
       "story_id": "00459",
-      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -598,7 +598,7 @@
       "criterion": "Vitest: <OwnerChip user={...}/> renders the user's display_name text and an <img> with the avatar_url when supplied; with user={null} renders 'Unassigned' and no <img>.",
       "proven_by": "Vitest in app/components/__tests__/OwnerChip.test.tsx covering both branches.",
       "story_id": "00459",
-      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -607,16 +607,16 @@
       "criterion": "Vitest: WorkItemsTree mounts with a fixture row containing a non-null owner and the row's Owner cell contains [data-testid='owner-chip'].",
       "proven_by": "Vitest WorkItemsTree integration assertion via querySelector.",
       "story_id": "00459",
-      "card_url": "http://localhost:3333/cards/1769270716466726518",
+      "card_url": null,
       "done": true,
       "tested": true
     },
     {
       "order": 47,
       "criterion": "Go test: After applying the new migration, PATCH /api/work-items/{id} body {due_date:'2026-06-15'} returns 200, and GET /api/work-items/{id} returns due_date:'2026-06-15'. PATCH {due_date:null} clears it.",
-      "proven_by": "Go test in backend/internal/workitems/handler_due_date_test.go covers set→clear-via-null→set→clear-via-\"\" round-trip with DB re-reads at every step plus malformed-date 400 case. Three-state contract implemented via json.RawMessage in patchWorkItemReq: absent=no-op, null=clear, \"\"=clear, \"YYYY-MM-DD\"=set.",
+      "proven_by": "Go test in backend/internal/workitems/handler_due_date_test.go covers set\u2192clear-via-null\u2192set\u2192clear-via-\"\" round-trip with DB re-reads at every step plus malformed-date 400 case. Three-state contract implemented via json.RawMessage in patchWorkItemReq: absent=no-op, null=clear, \"\"=clear, \"YYYY-MM-DD\"=set.",
       "story_id": "00460",
-      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "card_url": null,
       "done": true,
       "tested": true
     },
@@ -625,40 +625,40 @@
       "criterion": "Migration runner: `go run ./backend/cmd/migrate -dry-run -db vector` lists the new forward migration; running forward then reverse leaves schema unchanged.",
       "proven_by": "Idempotent forward + reverse migration pair in db/schema/121_work_items_due_date.sql (ADD COLUMN IF NOT EXISTS) + db/schema/down/121_work_items_due_date_DOWN.sql (DROP COLUMN IF EXISTS). Implicit verification: backend tests SELECT wi.due_date::text on every list/get path and pass cleanly against the dev DB.",
       "story_id": "00460",
-      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "card_url": null,
       "done": true,
       "tested": true
     },
     {
       "order": 49,
       "criterion": "Vitest: WorkItemsTree mounts a fixture row, double-click on the Due cell opens an <input type='date'>, typing a new value and pressing Enter calls the patch fetcher with {due_date:'<iso>'}. Esc closes without commit.",
-      "proven_by": "Vitest assertion in app/components/__tests__/WorkItemsTree.test.tsx — fixture row[0] due_date=\"2026-07-01\" renders \"Jul 1\" trigger; rest render em-dash. DueCell wraps a click-to-edit <input type=\"date\"> with stopClick:true wired through the cellModifier:\"due\" column config.",
+      "proven_by": "Vitest assertion in app/components/__tests__/WorkItemsTree.test.tsx \u2014 fixture row[0] due_date=\"2026-07-01\" renders \"Jul 1\" trigger; rest render em-dash. DueCell wraps a click-to-edit <input type=\"date\"> with stopClick:true wired through the cellModifier:\"due\" column config.",
       "story_id": "00460",
-      "card_url": "http://localhost:3333/cards/1769270832565061241",
+      "card_url": null,
       "done": true,
       "tested": true
     }
   ],
   "risks": [
-    "RISK-HIGH: DnD rank restore — reference/dnd_tree.tsx (1195 lines from b0d8e4a) may have diverged from current WorkItemsTree structure; read both before integrating",
-    "RISK-MED: ResourceTree prop-set extraction is a big refactor of WorkItemsTree.tsx — do it in one focused PR; avoid incremental partial states that break the existing tree",
-    "RISK-MED: @tanstack/react-virtual (WS6-A) + @dnd-kit sortable (WS5-C) interact via scrollable container; the virtualised scroll root must be the DnD container — test with 500+ rows before shipping",
+    "RISK-HIGH: DnD rank restore \u2014 reference/dnd_tree.tsx (1195 lines from b0d8e4a) may have diverged from current WorkItemsTree structure; read both before integrating",
+    "RISK-MED: ResourceTree prop-set extraction is a big refactor of WorkItemsTree.tsx \u2014 do it in one focused PR; avoid incremental partial states that break the existing tree",
+    "RISK-MED: @tanstack/react-virtual (WS6-A) + @dnd-kit sortable (WS5-C) interact via scrollable container; the virtualised scroll root must be the DnD container \u2014 test with 500+ rows before shipping",
     "RISK-LOW: user_view_state table (new) requires migration + service layer; follow polymorphic FK pattern if linking to addressables",
-    "RISK-LOW: CSV COPY TO STDOUT streaming requires http.Flusher in the Go handler — standard pattern but test with large datasets"
+    "RISK-LOW: CSV COPY TO STDOUT streaming requires http.Flusher in the Go handler \u2014 standard pattern but test with large datasets"
   ],
   "references": [
-    "app/components/WorkItemsTree.tsx — current source to extract from",
-    "reference/dnd_tree.tsx — parked DnD implementation (1195 lines, recovered from b0d8e4a)",
-    "dev/research/R042.json — full feature matrix, prop-set architecture, implementation sequence (v1.0.5)",
-    "docs/c_c_addressables.md — addressables registry patterns and lint rules",
-    "docs/c_c_dnd.md — @dnd-kit canonical usage, 250ms debounce, server-as-truth",
-    "docs/c_c_roles_permissions.md — useHasPermission gate pattern",
-    "docs/c_c_secondary_nav_deeplink.md — nuqs URL params (PLA-0018)",
-    "docs/c_c_table_component.md — <Table> component (PLA-0015); ResourceTree is a separate primitive for unlimited-depth DnD trees"
+    "app/components/WorkItemsTree.tsx \u2014 current source to extract from",
+    "reference/dnd_tree.tsx \u2014 parked DnD implementation (1195 lines, recovered from b0d8e4a)",
+    "dev/research/R042.json \u2014 full feature matrix, prop-set architecture, implementation sequence (v1.0.5)",
+    "docs/c_c_addressables.md \u2014 addressables registry patterns and lint rules",
+    "docs/c_c_dnd.md \u2014 @dnd-kit canonical usage, 250ms debounce, server-as-truth",
+    "docs/c_c_roles_permissions.md \u2014 useHasPermission gate pattern",
+    "docs/c_c_secondary_nav_deeplink.md \u2014 nuqs URL params (PLA-0018)",
+    "docs/c_c_table_component.md \u2014 <Table> component (PLA-0015); ResourceTree is a separate primitive for unlimited-depth DnD trees"
   ],
   "work_item_backlog_roadmap": [
-    "<s>WS1-A: Extract ResourceTree + register prop sets in addressables</s> ✓",
-    "WS1-B: Restore DnD rank (reference/dnd_tree.tsx → ResourceTree)",
+    "<s>WS1-A: Extract ResourceTree + register prop sets in addressables</s> \u2713",
+    "WS1-B: Restore DnD rank (reference/dnd_tree.tsx \u2192 ResourceTree)",
     "WS2-A: Filter chips controlled + URL-threaded",
     "WS2-B: Promote sort to URL + server ORDER BY all columns",
     "WS3-A: useKeyboardGrid hook",
@@ -687,14 +687,14 @@
     "WS10-D: Streaming skeleton via Suspense"
   ],
   "acceptance_criteria_existing": [
-    "WorkItemsTree renders via ResourceTree with identical visual output — no regression in existing tree behaviour",
+    "WorkItemsTree renders via ResourceTree with identical visual output \u2014 no regression in existing tree behaviour",
     "DnD rank: dragging a row within a parent sends PATCH /api/work-items/:id/rank and the row stays in its new position after refresh",
     "Filter chips: selecting a Type chip appends ?type=story to the URL and the list updates without client-side filtering",
     "Sort: clicking any column header appends ?sort=col:asc to the URL and the backend returns rows in that order",
-    "Sprint and Owner columns show real data — no 'S-' prefix from UUID hex, no 2-char monogram from UUID",
+    "Sprint and Owner columns show real data \u2014 no 'S-' prefix from UUID hex, no 2-char monogram from UUID",
     "Due date column shows real dates from work_items.due_date; inline date editor saves to the column",
     "Multi-select: checking 3 rows shows BulkActionBar; bulk-archive sends POST /api/work-items/bulk and all 3 rows disappear",
-    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s> ✓",
+    "<s>ResourceTree address samantha.work-items._tree.workitems resolves in the addressables registry</s> \u2713",
     "go test ./... passes; npm run build succeeds; lint:addressables passes"
   ]
 }

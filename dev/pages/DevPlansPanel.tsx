@@ -365,7 +365,7 @@ export default function DevPlansPanel() {
           <div>
             <h1 className="dui-page__title">Plans</h1>
             <p className="dui-page__subtitle">
-              Plans uploaded by the <code>&lt;stories&gt;</code> skill. Each plan groups the stories created in one shot of the skill and tracks their progress on the Planka board.
+              Plans uploaded by the <code>&lt;stories&gt;</code> skill. Each plan groups the stories created in one shot of the skill and tracks their progress.
             </p>
           </div>
           <button

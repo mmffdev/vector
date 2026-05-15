@@ -1,6 +1,6 @@
 # `<accounts>` — source of truth for credentials and users
 
-Use this before guessing any credentials. Do not substitute Planka creds for app creds or vice versa.
+Use this before guessing any credentials.
 
 ## Provisioned dev accounts
 
@@ -37,21 +37,6 @@ This is the authoritative list. If login fails, check this first — the user ma
 | MASTER_KEY (encryption) | `backend/.env.local` — `MASTER_KEY` |
 | JWT secret | `backend/.env.local` — `JWT_SECRET` |
 | App user passwords | Hashed in `users.password_hash` — cannot be read, only reset |
-
-## Planka board (not the app)
-
-| Field | Value |
-|---|---|
-| URL | `http://localhost:3333` |
-| Human admin email | `admin@mmffdev.com` |
-| Human admin password | `changeme123!` (browser login only) |
-| **Agent email** | `claude@mmffdev.com` |
-| **Agent password** | `myApples27@` |
-
-**Agents MUST use the agent credentials** (`claude@mmffdev.com` / `myApples27@`). The admin password is for browser login only and will auth-fail from scripts. The `.env.local` vars `PLANKA_AGENT_USER` / `PLANKA_AGENT_PASS` hold these — the `bin/planka` helper reads them automatically. Never hardcode `changeme123!` in any skill or script.
-
-**Agents MUST USE the Planka API**
-The API for Planka must be used at all times, curl is not an option
 
 ## Reset an app user password
 

@@ -185,7 +185,7 @@ To verify from another shell:
 ## What this shortcut does NOT do
 
 - Does **not** restart a frontend that is already running — only starts one if `:5101` is free (so HMR state is preserved).
-- Does **not** start Planka / Adminer tunnels — use the dev launcher.
+- Does **not** start Adminer tunnels — use the dev launcher.
 - Does **not** run migrations against the new DB — use `<backupsql>` and the migration tooling separately.
 - Does **not** touch `.env.local`. That file remains the no-flag default for `go run` invocations outside this shortcut.
 

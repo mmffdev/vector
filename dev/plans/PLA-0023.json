@@ -1,25 +1,25 @@
 {
   "id": "PLA-0023",
-  "title": "Vector Artefacts Cutover — move work-items + artefacts from mmff_vector to a dedicated vector_artefacts database",
+  "title": "Vector Artefacts Cutover \u2014 move work-items + artefacts from mmff_vector to a dedicated vector_artefacts database",
   "date_created": "2026-05-07",
   "date_started": "2026-05-07",
   "date_last_updated": "2026-05-07",
   "date_finished": null,
-  "scope": "<p>Migrate the work-items / artefacts read+write path off the legacy <code>mmff_vector.obj_*</code> tables and onto a new dedicated Postgres database <code>vector_artefacts</code> with a unified <code>artefacts</code> table. Five-phase rollout: <strong>Phase 1</strong> stand up <code>vector_artefacts</code> schema and dev fixture (migrations 010–014, 15-artefact seed, deferred-work register); <strong>Phase 2</strong> build the <code>backend/internal/workitemsv2</code> Go package (dual-pool service against <code>vector_artefacts</code> + <code>mmff_vector</code>, list query with <code>rollup_points</code> recursive CTE + 5→44 flow-state translation, 8 filter slots, 7-key sort whitelist, cross-DB owner decoration); <strong>Phase 3</strong> wire <code>GET /v1/api/v2/work-items</code> with auth context (subscription_id from JWT, not query param), <code>RequireAuth</code> + <code>RequireFreshPassword</code> + <code>LimitByIP</code>, and the <code>WORK_ITEMS_V2</code> env gate (503 when unset); <strong>Phase 4</strong> ETL backfill via <code>postgres_fdw</code> from <code>mmff_vector.obj_work_items</code> into <code>vector_artefacts.artefacts</code>; <strong>Phase 5</strong> parity smoke test, flag flip + frontend burn-in, finalisation docs and PLA close-out.</p>",
-  "value": "<p>The legacy <code>mmff_vector.obj_*</code> work-items model conflates write-path mutation with read-path materialisation in one schema, blocks horizontal scaling because <em>every</em> tenant action shares one pgxpool, and forces every artefact-shaped resource (work-items, defects, sprints, events) to live as a sibling table inside the tenant DB. Moving artefacts into their own <code>vector_artefacts</code> database unlocks: <em>(a)</em> unified artefact storage in one wide <code>artefacts</code> table with type discrimination, ready for cross-tenant analytics that the per-tenant DB cannot serve; <em>(b)</em> independent connection pooling and tuning targets for the artefact workload (typically high-volume read with bursty writes) versus the tenant control-plane workload (low-volume but transactional); <em>(c)</em> a clean cutover surface for v2 endpoints — the <code>WORK_ITEMS_V2</code> env gate lets per-environment opt-in without redeploy, and the parity smoke test gives a single command to assert that v1 and v2 return identical shapes for any client; <em>(d)</em> a place for future artefact subtypes (defects, sprints, retrospectives) to land without polluting the tenant schema. Five phases land zero-data-loss, gated by the env flag, with a per-phase rollback path: phase 1–3 are additive (new DB, new package, new route); phase 4 is idempotent ETL; phase 5 is the only step that takes user-visible reads off the v1 path.</p>",
+  "scope": "<p>Migrate the work-items / artefacts read+write path off the legacy <code>mmff_vector.obj_*</code> tables and onto a new dedicated Postgres database <code>vector_artefacts</code> with a unified <code>artefacts</code> table. Five-phase rollout: <strong>Phase 1</strong> stand up <code>vector_artefacts</code> schema and dev fixture (migrations 010\u2013014, 15-artefact seed, deferred-work register); <strong>Phase 2</strong> build the <code>backend/internal/workitemsv2</code> Go package (dual-pool service against <code>vector_artefacts</code> + <code>mmff_vector</code>, list query with <code>rollup_points</code> recursive CTE + 5\u219244 flow-state translation, 8 filter slots, 7-key sort whitelist, cross-DB owner decoration); <strong>Phase 3</strong> wire <code>GET /v1/api/v2/work-items</code> with auth context (subscription_id from JWT, not query param), <code>RequireAuth</code> + <code>RequireFreshPassword</code> + <code>LimitByIP</code>, and the <code>WORK_ITEMS_V2</code> env gate (503 when unset); <strong>Phase 4</strong> ETL backfill via <code>postgres_fdw</code> from <code>mmff_vector.obj_work_items</code> into <code>vector_artefacts.artefacts</code>; <strong>Phase 5</strong> parity smoke test, flag flip + frontend burn-in, finalisation docs and PLA close-out.</p>",
+  "value": "<p>The legacy <code>mmff_vector.obj_*</code> work-items model conflates write-path mutation with read-path materialisation in one schema, blocks horizontal scaling because <em>every</em> tenant action shares one pgxpool, and forces every artefact-shaped resource (work-items, defects, sprints, events) to live as a sibling table inside the tenant DB. Moving artefacts into their own <code>vector_artefacts</code> database unlocks: <em>(a)</em> unified artefact storage in one wide <code>artefacts</code> table with type discrimination, ready for cross-tenant analytics that the per-tenant DB cannot serve; <em>(b)</em> independent connection pooling and tuning targets for the artefact workload (typically high-volume read with bursty writes) versus the tenant control-plane workload (low-volume but transactional); <em>(c)</em> a clean cutover surface for v2 endpoints \u2014 the <code>WORK_ITEMS_V2</code> env gate lets per-environment opt-in without redeploy, and the parity smoke test gives a single command to assert that v1 and v2 return identical shapes for any client; <em>(d)</em> a place for future artefact subtypes (defects, sprints, retrospectives) to land without polluting the tenant schema. Five phases land zero-data-loss, gated by the env flag, with a per-phase rollback path: phase 1\u20133 are additive (new DB, new package, new route); phase 4 is idempotent ETL; phase 5 is the only step that takes user-visible reads off the v1 path.</p>",
   "implementation_plan": [
-    "Phase 1 — Schema + fixture + register (00461–00463): migrations 012 (priority/story_points/due_date columns + indexes on artefacts), 013 (sprints table + FK artefacts.sprint_id), 014 (catch-up seed_system_artefact_types invocation for dev tenant), append self-invoke to 010 for fresh installs; seed/01_work_items_fixture.sql with 15 idempotent artefacts (3 epic / 6 story / 4 task / 2 defect); docs/c_schema.md vector_artefacts section + docs/c_c_v2_workitems_cutover_followups.md deferred-work register + .claude/handoffs/v2-cutover/ design artefacts.",
-    "Phase 2 — workitemsv2 Go package (00464–00468): Handler + Service + types mirroring v1 wire shape; second pgxpool for vector_artefacts (VECTOR_ARTEFACTS_DB_URL) with nil-tolerant fallback; ListWorkItems with rollup_points recursive CTE and flow_state_code translation (5-state internal vocabulary → 4-state external vocabulary); 8 filter slots (parent_id/item_type/status/priority/sprint_id/owner_id/limit/offset); ORDER BY whitelist (item_type/title/status/priority/points/sprint_id/due_date) with direction clamp; cross-DB owner decoration from mmff_vector.users via mainPool as a post-fetch batch; migrate runner gains a vector_artefacts case (VA_DB_* env vars).",
-    "Phase 3 — Auth wiring + env gate (00469, 00471): handler.go switches to auth.UserFromCtx for subscription_id (was a query param in stub); main.go promotes the route to r.Route with RequireAuth + RequireFreshPassword + LimitByIP(120/min); WORK_ITEMS_V2 env gate — 503 when unset, authenticated v2 route when \"true\".",
-    "Phase 4 — ETL backfill (00472): postgres_fdw foreign-server + foreign-table linking mmff_vector.obj_work_items as a remote source inside vector_artefacts; idempotent upsert into artefacts keyed on (subscription_id, source_id); column mapping covers item_type, flow_state, owner_id, story_points, due_date, sprint_id; restartable; produces a row-count audit table.",
-    "Phase 5 — Parity smoke test + flip + finalise (00473–00475): parity smoke test that hits /api/work-items and /api/v2/work-items with the same filter set + diff/asserts identical response shape; WORK_ITEMS_V2=true in dev .env, exercise the work-items page through the frontend until no regressions are observed; finalise documentation — backfill leaf doc closes, c_scope.md flips to v2, c_tech_debt.md records the v1 obj_work_items deprecation, PLA-0023 closes."
+    "Phase 1 \u2014 Schema + fixture + register (00461\u201300463): migrations 012 (priority/story_points/due_date columns + indexes on artefacts), 013 (sprints table + FK artefacts.sprint_id), 014 (catch-up seed_system_artefact_types invocation for dev tenant), append self-invoke to 010 for fresh installs; seed/01_work_items_fixture.sql with 15 idempotent artefacts (3 epic / 6 story / 4 task / 2 defect); docs/c_schema.md vector_artefacts section + docs/c_c_v2_workitems_cutover_followups.md deferred-work register + .claude/handoffs/v2-cutover/ design artefacts.",
+    "Phase 2 \u2014 workitemsv2 Go package (00464\u201300468): Handler + Service + types mirroring v1 wire shape; second pgxpool for vector_artefacts (VECTOR_ARTEFACTS_DB_URL) with nil-tolerant fallback; ListWorkItems with rollup_points recursive CTE and flow_state_code translation (5-state internal vocabulary \u2192 4-state external vocabulary); 8 filter slots (parent_id/item_type/status/priority/sprint_id/owner_id/limit/offset); ORDER BY whitelist (item_type/title/status/priority/points/sprint_id/due_date) with direction clamp; cross-DB owner decoration from mmff_vector.users via mainPool as a post-fetch batch; migrate runner gains a vector_artefacts case (VA_DB_* env vars).",
+    "Phase 3 \u2014 Auth wiring + env gate (00469, 00471): handler.go switches to auth.UserFromCtx for subscription_id (was a query param in stub); main.go promotes the route to r.Route with RequireAuth + RequireFreshPassword + LimitByIP(120/min); WORK_ITEMS_V2 env gate \u2014 503 when unset, authenticated v2 route when \"true\".",
+    "Phase 4 \u2014 ETL backfill (00472): postgres_fdw foreign-server + foreign-table linking mmff_vector.obj_work_items as a remote source inside vector_artefacts; idempotent upsert into artefacts keyed on (subscription_id, source_id); column mapping covers item_type, flow_state, owner_id, story_points, due_date, sprint_id; restartable; produces a row-count audit table.",
+    "Phase 5 \u2014 Parity smoke test + flip + finalise (00473\u201300475): parity smoke test that hits /api/work-items and /api/v2/work-items with the same filter set + diff/asserts identical response shape; WORK_ITEMS_V2=true in dev .env, exercise the work-items page through the frontend until no regressions are observed; finalise documentation \u2014 backfill leaf doc closes, c_scope.md flips to v2, c_tech_debt.md records the v1 obj_work_items deprecation, PLA-0023 closes."
   ],
   "areas_impacted": [
-    "Database (new): vector_artefacts — artefacts wide table + sprints + system artefact type seed + work_items fixture; migrations 010 (self-invoke append), 012 (artefact columns), 013 (sprints), 014 (seed catch-up).",
+    "Database (new): vector_artefacts \u2014 artefacts wide table + sprints + system artefact type seed + work_items fixture; migrations 010 (self-invoke append), 012 (artefact columns), 013 (sprints), 014 (seed catch-up).",
     "Backend (Go, new): backend/internal/workitemsv2/ (Handler + Service + types); dual pgxpool with VECTOR_ARTEFACTS_DB_URL pool + nil-tolerant fallback to mmff_vector pool for owner decoration.",
-    "Backend (Go, modified): backend/cmd/server/main.go — NewService two-arg signature, GET /v1/api/v2/work-items stub then promotion to authenticated r.Route under WORK_ITEMS_V2 env gate; backend/cmd/migrate — vector_artefacts case + VA_DB_* env-var resolution.",
+    "Backend (Go, modified): backend/cmd/server/main.go \u2014 NewService two-arg signature, GET /v1/api/v2/work-items stub then promotion to authenticated r.Route under WORK_ITEMS_V2 env gate; backend/cmd/migrate \u2014 vector_artefacts case + VA_DB_* env-var resolution.",
     "Backend (Go, deferred phase 4): postgres_fdw foreign-server + foreign-table wiring inside vector_artefacts; idempotent ETL job that runs against mmff_vector.obj_work_items.",
-    "Frontend: WORK_ITEMS_V2 env gate flip in dev .env (phase 5); existing /work-items page exercised end-to-end against v2 — no code change expected if the wire shape parity smoke test passes (story 00473 is the gate).",
+    "Frontend: WORK_ITEMS_V2 env gate flip in dev .env (phase 5); existing /work-items page exercised end-to-end against v2 \u2014 no code change expected if the wire shape parity smoke test passes (story 00473 is the gate).",
     "Documentation: docs/c_schema.md (vector_artefacts section), docs/c_c_v2_workitems_cutover_followups.md (deferred-work register), docs/c_c_vector_artefacts_backfill.md (production cutover plan), docs/c_scope.md + docs/c_tech_debt.md (close-out updates in 00475)."
   ],
   "feature_list": [
@@ -28,7 +28,7 @@
     "Catch-up seed_system_artefact_types invocation for dev tenant",
     "15-artefact idempotent dev fixture (3 epic / 6 story / 4 task / 2 defect)",
     "backend/internal/workitemsv2 dual-pool Service + Handler + types",
-    "ListWorkItems with rollup_points recursive CTE + 5→44 flow-state translation",
+    "ListWorkItems with rollup_points recursive CTE + 5\u219244 flow-state translation",
     "8 filter slots (parent_id/item_type/status/priority/sprint_id/owner_id/limit/offset)",
     "ORDER BY whitelist (item_type/title/status/priority/points/sprint_id/due_date) + direction clamp",
     "Cross-DB owner decoration from mmff_vector.users via mainPool",
@@ -36,15 +36,15 @@
     "auth.UserFromCtx subscription_id wiring (replaces query-param stub)",
     "WORK_ITEMS_V2 env gate (503 when unset; authenticated route when \"true\")",
     "ETL backfill from mmff_vector.obj_work_items via postgres_fdw (idempotent)",
-    "Parity smoke test — v1 vs v2 response-shape diff",
+    "Parity smoke test \u2014 v1 vs v2 response-shape diff",
     "Frontend cutover + burn-in (WORK_ITEMS_V2=true in dev)",
-    "Finalisation docs — backfill leaf, scope flip, tech-debt record"
+    "Finalisation docs \u2014 backfill leaf, scope flip, tech-debt record"
   ],
   "features_extended": [
-    "<strong>backend/cmd/server/main.go</strong> — extended with WORK_ITEMS_V2 env gate, two-pool workitemsv2.NewService wiring, and authenticated r.Route block mirroring v1 conventions",
-    "<strong>backend/cmd/migrate</strong> — extended with a vector_artefacts target case + VA_DB_* env-var resolution (host/port/db/user/password)",
-    "<strong>db/schema/</strong> (vector_artefacts) — 010 self-invoke append, 012 artefact column additions, 013 sprints + FK, 014 seed catch-up; matching DOWN scripts under db/schema/down/",
-    "<strong>docs/c_schema.md</strong> — new vector_artefacts DB section enumerating tables and conventions"
+    "<strong>backend/cmd/server/main.go</strong> \u2014 extended with WORK_ITEMS_V2 env gate, two-pool workitemsv2.NewService wiring, and authenticated r.Route block mirroring v1 conventions",
+    "<strong>backend/cmd/migrate</strong> \u2014 extended with a vector_artefacts target case + VA_DB_* env-var resolution (host/port/db/user/password)",
+    "<strong>db/schema/</strong> (vector_artefacts) \u2014 010 self-invoke append, 012 artefact column additions, 013 sprints + FK, 014 seed catch-up; matching DOWN scripts under db/schema/down/",
+    "<strong>docs/c_schema.md</strong> \u2014 new vector_artefacts DB section enumerating tables and conventions"
   ],
   "features_removed": [],
   "work_item_backlog": [
@@ -52,23 +52,23 @@
       "order": 1,
       "title": "vector_artefacts migrations 010 (self-invoke append), 012 (artefact columns), 013 (sprints + FK), 014 (seed catch-up) + matching DOWN scripts",
       "story_id": "00461",
-      "card_url": "http://localhost:3333/cards/1769369074027988759",
+      "card_url": null,
       "commit": "2c81e50",
       "status": "todo"
     },
     {
       "order": 2,
-      "title": "seed/01_work_items_fixture.sql — 15-artefact idempotent dev fixture (3 epic / 6 story / 4 task / 2 defect)",
+      "title": "seed/01_work_items_fixture.sql \u2014 15-artefact idempotent dev fixture (3 epic / 6 story / 4 task / 2 defect)",
       "story_id": "00462",
-      "card_url": "http://localhost:3333/cards/1769369087399429925",
+      "card_url": null,
       "commit": "2c81e50",
       "status": "todo"
     },
     {
       "order": 3,
-      "title": "docs — c_schema vector_artefacts section + c_c_v2_workitems_cutover_followups.md deferred-work register + .claude/handoffs/v2-cutover/ design artefacts",
+      "title": "docs \u2014 c_schema vector_artefacts section + c_c_v2_workitems_cutover_followups.md deferred-work register + .claude/handoffs/v2-cutover/ design artefacts",
       "story_id": "00463",
-      "card_url": "http://localhost:3333/cards/1769369101433571124",
+      "card_url": null,
       "commit": "2c81e50",
       "status": "todo"
     },
@@ -76,15 +76,15 @@
       "order": 4,
       "title": "backend/internal/workitemsv2 package skeleton + dual pgxpool (vector_artefacts read pool + mmff_vector main pool) + migrate runner vector_artefacts case",
       "story_id": "00464",
-      "card_url": "http://localhost:3333/cards/1769369115518043971",
+      "card_url": null,
       "commit": "2d5c85d",
       "status": "todo"
     },
     {
       "order": 5,
-      "title": "ListWorkItems list query — rollup_points recursive CTE + 5→4 flow_state translation",
+      "title": "ListWorkItems list query \u2014 rollup_points recursive CTE + 5\u21924 flow_state translation",
       "story_id": "00465",
-      "card_url": "http://localhost:3333/cards/1769369129610905426",
+      "card_url": null,
       "commit": "2d5c85d",
       "status": "todo"
     },
@@ -92,37 +92,37 @@
       "order": 6,
       "title": "Eight filter slots (parent_id / item_type / status / priority / sprint_id / owner_id / limit / offset) parsed in workitemsv2 handler",
       "story_id": "00466",
-      "card_url": "http://localhost:3333/cards/1769369145868027747",
+      "card_url": null,
       "commit": "2d5c85d",
       "status": "todo"
     },
     {
       "order": 7,
-      "title": "ORDER BY whitelist — 7 sort keys (item_type / title / status / priority / points / sprint_id / due_date) + direction clamp",
+      "title": "ORDER BY whitelist \u2014 7 sort keys (item_type / title / status / priority / points / sprint_id / due_date) + direction clamp",
       "story_id": "00467",
-      "card_url": "http://localhost:3333/cards/1769369159692453746",
+      "card_url": null,
       "commit": "2d5c85d",
       "status": "todo"
     },
     {
       "order": 8,
-      "title": "Cross-DB owner decoration — decorateOwners() best-effort batch lookup against mmff_vector.users via mainPool",
+      "title": "Cross-DB owner decoration \u2014 decorateOwners() best-effort batch lookup against mmff_vector.users via mainPool",
       "story_id": "00468",
-      "card_url": "http://localhost:3333/cards/1769369173969864577",
+      "card_url": null,
       "commit": "2d5c85d",
       "status": "todo"
     },
     {
       "order": 9,
-      "title": "auth.UserFromCtx subscription_id wiring — replaces query-param tenant scope with JWT-derived context",
+      "title": "auth.UserFromCtx subscription_id wiring \u2014 replaces query-param tenant scope with JWT-derived context",
       "story_id": "00469",
-      "card_url": "http://localhost:3333/cards/1769369189958551442",
+      "card_url": null,
       "commit": "62f6197",
       "status": "todo"
     },
     {
       "order": 10,
-      "title": "main.go r.Route promotion — RequireAuth + RequireFreshPassword + LimitByIP + WORK_ITEMS_V2 env gate (503 when unset)",
+      "title": "main.go r.Route promotion \u2014 RequireAuth + RequireFreshPassword + LimitByIP + WORK_ITEMS_V2 env gate (503 when unset)",
       "story_id": "00471",
       "card_url": null,
       "commit": "62f6197",
@@ -132,28 +132,28 @@
       "order": 11,
       "title": "Backfill production work-items into vector_artefacts via postgres_fdw ETL",
       "story_id": "00472",
-      "card_url": "http://localhost:3333/cards/1769415585503905724",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 12,
       "title": "Parity smoke test: /api/work-items vs /api/v2/work-items",
       "story_id": "00473",
-      "card_url": "http://localhost:3333/cards/1769415587978545087",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 13,
       "title": "Frontend cutover + WORK_ITEMS_V2=true burn-in (dev)",
       "story_id": "00474",
-      "card_url": "http://localhost:3333/cards/1769415590260246466",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 14,
       "title": "Docs finalise: backfill, scope, tech-debt; close PLA-0023",
       "story_id": "00475",
-      "card_url": "http://localhost:3333/cards/1769415592533559237",
+      "card_url": null,
       "status": "completed"
     }
   ],
@@ -192,7 +192,7 @@
     },
     {
       "order": 5,
-      "criterion": "Fixture is idempotent — re-running does not duplicate rows",
+      "criterion": "Fixture is idempotent \u2014 re-running does not duplicate rows",
       "proven_by": "ON CONFLICT clause keyed on natural key + commit",
       "story_id": "00462",
       "card_url": null,
@@ -264,7 +264,7 @@
     },
     {
       "order": 14,
-      "criterion": "rollup_points recursive CTE computes parent → child accumulation correctly",
+      "criterion": "rollup_points recursive CTE computes parent \u2192 child accumulation correctly",
       "proven_by": "CTE inspection + commit",
       "story_id": "00465",
       "card_url": null,
@@ -403,7 +403,7 @@
       "criterion": "vector_artefacts.artefacts row count after backfill equals obj_work_items row count for every subscription",
       "proven_by": "row-count parity audit",
       "story_id": "00472",
-      "card_url": "http://localhost:3333/cards/1769415585503905724",
+      "card_url": null,
       "done": true
     },
     {
@@ -411,7 +411,7 @@
       "criterion": "Running the ETL a second time produces zero new rows (no duplicates on (subscription_id, source_legacy_id))",
       "proven_by": "re-run idempotency check",
       "story_id": "00472",
-      "card_url": "http://localhost:3333/cards/1769415585503905724",
+      "card_url": null,
       "done": true
     },
     {
@@ -419,7 +419,7 @@
       "criterion": "Sample row's flow_kind / parent_id / owner_id / priority / due_date match the source obj_work_items row exactly",
       "proven_by": "field round-trip diff",
       "story_id": "00472",
-      "card_url": "http://localhost:3333/cards/1769415585503905724",
+      "card_url": null,
       "done": true
     },
     {
@@ -427,7 +427,7 @@
       "criterion": "Parity script exits 0 with no diffs across at least 12 filter/sort permutations",
       "proven_by": "script exit code",
       "story_id": "00473",
-      "card_url": "http://localhost:3333/cards/1769415587978545087",
+      "card_url": null,
       "done": true
     },
     {
@@ -435,7 +435,7 @@
       "criterion": "Any introduced wire-shape divergence (e.g. adding a field) trips the parity script with a structured diff",
       "proven_by": "negative-test artefact",
       "story_id": "00473",
-      "card_url": "http://localhost:3333/cards/1769415587978545087",
+      "card_url": null,
       "done": true
     },
     {
@@ -443,7 +443,7 @@
       "criterion": "Output file dev/research/RNNN-pla0023-parity.json records the test matrix and each permutation's pass/fail",
       "proven_by": "research file present + content",
       "story_id": "00473",
-      "card_url": "http://localhost:3333/cards/1769415587978545087",
+      "card_url": null,
       "done": true
     },
     {
@@ -451,7 +451,7 @@
       "criterion": "/work-items page renders v2 data with no console errors after the flag flip",
       "proven_by": "browser console + screenshot",
       "story_id": "00474",
-      "card_url": "http://localhost:3333/cards/1769415590260246466",
+      "card_url": null,
       "done": true
     },
     {
@@ -459,7 +459,7 @@
       "criterion": "Filter chips, sort headers, DnD reorder, bulk-action bar, and inline due-date editor each work against v2",
       "proven_by": "manual smoke checklist",
       "story_id": "00474",
-      "card_url": "http://localhost:3333/cards/1769415590260246466",
+      "card_url": null,
       "done": true
     },
     {
@@ -467,15 +467,15 @@
       "criterion": "A 30-minute burn-in produces no 5xx on /api/v2/work-items and no client-side error toasts",
       "proven_by": "logs + toast surface clean",
       "story_id": "00474",
-      "card_url": "http://localhost:3333/cards/1769415590260246466",
+      "card_url": null,
       "done": true
     },
     {
       "order": 40,
-      "criterion": "docs/c_c_vector_artefacts_backfill.md reflects as-built state with shipping commit hashes for 00461–00475",
+      "criterion": "docs/c_c_vector_artefacts_backfill.md reflects as-built state with shipping commit hashes for 00461\u201300475",
       "proven_by": "doc diff + commit list",
       "story_id": "00475",
-      "card_url": "http://localhost:3333/cards/1769415592533559237",
+      "card_url": null,
       "done": true
     },
     {
@@ -483,7 +483,7 @@
       "criterion": "docs/c_plan_index.md shows PLA-0023 ... | complete | and dev/plans/PLA-0023.json.date_finished is set to today's date",
       "proven_by": "index + plan JSON",
       "story_id": "00475",
-      "card_url": "http://localhost:3333/cards/1769415592533559237",
+      "card_url": null,
       "done": true
     },
     {
@@ -491,19 +491,19 @@
       "criterion": "Any deferred work has a row in docs/c_c_v2_workitems_cutover_followups.md with trigger + owner + status",
       "proven_by": "register row presence",
       "story_id": "00475",
-      "card_url": "http://localhost:3333/cards/1769415592533559237",
+      "card_url": null,
       "done": true
     }
   ],
   "risks": [
     {
       "impact": 3,
-      "risk": "Wire-shape divergence between v1 obj_work_items and v2 vector_artefacts.artefacts — a missed column mapping or flow-state translation gap silently breaks the work-items UI when WORK_ITEMS_V2=true",
+      "risk": "Wire-shape divergence between v1 obj_work_items and v2 vector_artefacts.artefacts \u2014 a missed column mapping or flow-state translation gap silently breaks the work-items UI when WORK_ITEMS_V2=true",
       "mitigation": "Story 00473 parity smoke test is a hard gate before story 00474 flag flip; the smoke test diffs every field of every row across the two endpoints with the same filter inputs and exits non-zero on mismatch."
     },
     {
       "impact": 3,
-      "risk": "ETL backfill via postgres_fdw is non-trivially correct — missing source rows, duplicate inserts on retry, or cross-DB transaction boundary surprises could produce a vector_artefacts state that disagrees with the live mmff_vector source",
+      "risk": "ETL backfill via postgres_fdw is non-trivially correct \u2014 missing source rows, duplicate inserts on retry, or cross-DB transaction boundary surprises could produce a vector_artefacts state that disagrees with the live mmff_vector source",
       "mitigation": "Story 00472 is idempotent (upsert keyed on (subscription_id, source_id)) and produces an audit table of source row counts vs target row counts; the smoke test in 00473 catches any residual divergence."
     },
     {
@@ -518,49 +518,49 @@
     },
     {
       "impact": 1,
-      "risk": "Cross-DB owner decoration adds a per-request join window where mmff_vector.users could be unreachable while vector_artefacts is healthy — a transient mainPool outage would degrade the response",
+      "risk": "Cross-DB owner decoration adds a per-request join window where mmff_vector.users could be unreachable while vector_artefacts is healthy \u2014 a transient mainPool outage would degrade the response",
       "mitigation": "decorateOwners is best-effort: missing users degrade to a placeholder owner record rather than failing the request; the failure mode is logged at warn and surfaced on /api/status/pipeline."
     }
   ],
   "references": [
     {
       "kind": "internal",
-      "label": "docs/c_c_vector_artefacts_backfill.md — production cutover plan + ETL outline",
+      "label": "docs/c_c_vector_artefacts_backfill.md \u2014 production cutover plan + ETL outline",
       "href": "docs/c_c_vector_artefacts_backfill.md"
     },
     {
       "kind": "internal",
-      "label": "docs/c_c_v2_workitems_cutover_followups.md — deferred-work register",
+      "label": "docs/c_c_v2_workitems_cutover_followups.md \u2014 deferred-work register",
       "href": "docs/c_c_v2_workitems_cutover_followups.md"
     },
     {
       "kind": "internal",
-      "label": "docs/c_schema.md — schema overview (vector_artefacts section added in phase 1)",
+      "label": "docs/c_schema.md \u2014 schema overview (vector_artefacts section added in phase 1)",
       "href": "docs/c_schema.md"
     },
     {
       "kind": "internal",
-      "label": "backend/internal/workitemsv2/ — v2 service, handler, types",
+      "label": "backend/internal/workitemsv2/ \u2014 v2 service, handler, types",
       "href": "backend/internal/workitemsv2/"
     },
     {
       "kind": "internal",
-      "label": "backend/cmd/server/main.go — WORK_ITEMS_V2 env gate + r.Route promotion",
+      "label": "backend/cmd/server/main.go \u2014 WORK_ITEMS_V2 env gate + r.Route promotion",
       "href": "backend/cmd/server/main.go"
     },
     {
       "kind": "internal",
-      "label": "db/schema/ (vector_artefacts) — 010, 012, 013, 014 + matching DOWN scripts",
+      "label": "db/schema/ (vector_artefacts) \u2014 010, 012, 013, 014 + matching DOWN scripts",
       "href": "db/schema/"
     },
     {
       "kind": "external",
-      "label": "PostgreSQL — postgres_fdw (foreign-data wrapper used by phase 4 ETL)",
+      "label": "PostgreSQL \u2014 postgres_fdw (foreign-data wrapper used by phase 4 ETL)",
       "href": "https://www.postgresql.org/docs/current/postgres-fdw.html"
     },
     {
       "kind": "external",
-      "label": "pgx — pgxpool (per-database pools for two-pool service)",
+      "label": "pgx \u2014 pgxpool (per-database pools for two-pool service)",
       "href": "https://pkg.go.dev/github.com/jackc/pgx/v5/pgxpool"
     }
   ]

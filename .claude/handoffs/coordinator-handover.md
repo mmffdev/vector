@@ -4,6 +4,9 @@ description: Supervisor briefing for an agent coordinating Agent-A (portfolio te
 type: project
 ---
 
+> **Historical document.** Planka was decommissioned 2026-05-15; references to Planka cards, boards, or card-lifecycle moves below are frozen snapshots from when this handoff was written. Current story tracker = `dev/plans/PLA-NNNN.json` `work_item_backlog`.
+
+
 ## Your Role
 
 You are the **coordinator** above two working agents on this repo. Both agents have been operating in parallel on adjacent but distinct DB/feature work. Your job is to:

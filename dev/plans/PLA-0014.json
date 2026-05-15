@@ -1,18 +1,18 @@
 {
   "id": "PLA-0014",
-  "title": "Tab reorder primitive — drag-and-drop substrate + per-user tab order",
+  "title": "Tab reorder primitive \u2014 drag-and-drop substrate + per-user tab order",
   "date_created": "2026-05-05",
   "date_started": "2026-05-05",
   "date_last_updated": "2026-05-07",
   "date_finished": "2026-05-07",
-  "scope": "<p>Add a reusable per-user tab-reorder capability to <code>SecondaryNavigation</code> so any page that uses the component can opt-in via a <code>reorderable</code> prop and a stable <code>pageId</code>. Default order is alphabetical (via optional <code>sortKey</code>); when a user rearranges tabs, the new order is persisted per-user/per-page and overlays the default on subsequent loads.</p><ul><li>New table <code>user_tab_order</code> (user_id, tenant_id, page_id, tab_key, position) with the same DEFERRABLE-unique pattern as <code>user_nav_prefs</code>.</li><li>New Go service <code>internal/usertaborder</code> as sole writer; REST surface <code>GET /api/user/tab-order/{pageId}</code> and <code>PUT /api/user/tab-order/{pageId}</code>.</li><li><code>SecondaryNavigation</code> gains an edit-mode toggle (far-right <code>MdOutlineSwapVert</code> icon). In edit mode, a numbered position chip (1, 2, 3 …) renders to the left of each tab label and updates live during drag. Save is instant on drop.</li><li>DnD substrate is <code>@dnd-kit/sortable</code> (already installed); a short convention doc <code>docs/c_c_dnd.md</code> codifies it as the project DnD library so future work doesn't drift to a competing lib.</li><li>Wire <code>pageId</code> into existing callers: <code>workspace-settings</code>, <code>theme</code>, <code>work-items</code>. Add <code>lint:secondary-nav</code> rule to require <code>pageId</code> when <code>reorderable</code> is set.</li></ul>",
-  "value": "<p>Lets every user shape their own information architecture without admin intervention or schema changes. The same primitive works on every <code>SecondaryNavigation</code> instance the moment a caller passes <code>pageId + reorderable</code>, so the cost of adding personal tab order to a new page collapses to two props.</p><ul><li><strong>For users:</strong> tabs land in the order they actually use them — not the order Vector shipped them in.</li><li><strong>For developers:</strong> a single substrate, not a bespoke implementation per page.</li><li><strong>For the codebase:</strong> establishes <code>@dnd-kit</code> as the canonical DnD library, preventing the four-libraries-doing-the-same-thing trap.</li></ul>",
+  "scope": "<p>Add a reusable per-user tab-reorder capability to <code>SecondaryNavigation</code> so any page that uses the component can opt-in via a <code>reorderable</code> prop and a stable <code>pageId</code>. Default order is alphabetical (via optional <code>sortKey</code>); when a user rearranges tabs, the new order is persisted per-user/per-page and overlays the default on subsequent loads.</p><ul><li>New table <code>user_tab_order</code> (user_id, tenant_id, page_id, tab_key, position) with the same DEFERRABLE-unique pattern as <code>user_nav_prefs</code>.</li><li>New Go service <code>internal/usertaborder</code> as sole writer; REST surface <code>GET /api/user/tab-order/{pageId}</code> and <code>PUT /api/user/tab-order/{pageId}</code>.</li><li><code>SecondaryNavigation</code> gains an edit-mode toggle (far-right <code>MdOutlineSwapVert</code> icon). In edit mode, a numbered position chip (1, 2, 3 \u2026) renders to the left of each tab label and updates live during drag. Save is instant on drop.</li><li>DnD substrate is <code>@dnd-kit/sortable</code> (already installed); a short convention doc <code>docs/c_c_dnd.md</code> codifies it as the project DnD library so future work doesn't drift to a competing lib.</li><li>Wire <code>pageId</code> into existing callers: <code>workspace-settings</code>, <code>theme</code>, <code>work-items</code>. Add <code>lint:secondary-nav</code> rule to require <code>pageId</code> when <code>reorderable</code> is set.</li></ul>",
+  "value": "<p>Lets every user shape their own information architecture without admin intervention or schema changes. The same primitive works on every <code>SecondaryNavigation</code> instance the moment a caller passes <code>pageId + reorderable</code>, so the cost of adding personal tab order to a new page collapses to two props.</p><ul><li><strong>For users:</strong> tabs land in the order they actually use them \u2014 not the order Vector shipped them in.</li><li><strong>For developers:</strong> a single substrate, not a bespoke implementation per page.</li><li><strong>For the codebase:</strong> establishes <code>@dnd-kit</code> as the canonical DnD library, preventing the four-libraries-doing-the-same-thing trap.</li></ul>",
   "implementation_plan": [
-    "Story 00416 — Document @dnd-kit as the project DnD convention. Write docs/c_c_dnd.md describing when to use core/sortable/utilities, list the existing adopters (preferences/navigation, work-items table), and add a CLAUDE.md pointer.",
-    "Story 00417 — Migration NNN_user_tab_order.sql. New table with FK CASCADE to users + tenants, UNIQUE (user, tenant, page, tab) and DEFERRABLE UNIQUE (user, tenant, page, position), updated_at trigger, lookup index.",
-    "Story 00418 — internal/usertaborder/service.go sole writer (List, Replace) + handler GET/PUT /api/user/tab-order/{pageId}. Replace uses DELETE-then-INSERT in tx; clamp predicate scopes to current tenant + user; permission predicate gates write.",
-    "Story 00419 — Extend SecondaryNavigation: add pageId, reorderable props; far-right MdOutlineSwapVert toggle; @dnd-kit/sortable wrapping when in edit mode; numbered chip prefix per tab while edit mode active; instant save (debounced 250 ms collapser) on drop.",
-    "Story 00420 — Add optional sortKey to SecondaryNavigationItem; wire pageId='workspace-settings'|'theme'|'work-items' into the three current callers; ship lint:secondary-nav python checker (reorderable ⇒ pageId required) under dev/scripts/."
+    "Story 00416 \u2014 Document @dnd-kit as the project DnD convention. Write docs/c_c_dnd.md describing when to use core/sortable/utilities, list the existing adopters (preferences/navigation, work-items table), and add a CLAUDE.md pointer.",
+    "Story 00417 \u2014 Migration NNN_user_tab_order.sql. New table with FK CASCADE to users + tenants, UNIQUE (user, tenant, page, tab) and DEFERRABLE UNIQUE (user, tenant, page, position), updated_at trigger, lookup index.",
+    "Story 00418 \u2014 internal/usertaborder/service.go sole writer (List, Replace) + handler GET/PUT /api/user/tab-order/{pageId}. Replace uses DELETE-then-INSERT in tx; clamp predicate scopes to current tenant + user; permission predicate gates write.",
+    "Story 00419 \u2014 Extend SecondaryNavigation: add pageId, reorderable props; far-right MdOutlineSwapVert toggle; @dnd-kit/sortable wrapping when in edit mode; numbered chip prefix per tab while edit mode active; instant save (debounced 250 ms collapser) on drop.",
+    "Story 00420 \u2014 Add optional sortKey to SecondaryNavigationItem; wire pageId='workspace-settings'|'theme'|'work-items' into the three current callers; ship lint:secondary-nav python checker (reorderable \u21d2 pageId required) under dev/scripts/."
   ],
   "areas_impacted": [
     "DEV: docs/c_c_dnd.md, CLAUDE.md pointer, lint:secondary-nav script",
@@ -24,11 +24,11 @@
   "feature_list": [
     "Per-user, per-page tab ordering persisted in Postgres",
     "Edit-mode toggle on SecondaryNavigation (far-right swap-vert icon)",
-    "Numbered position chip prefix per tab during edit mode (live-updating 1,2,3…)",
+    "Numbered position chip prefix per tab during edit mode (live-updating 1,2,3\u2026)",
     "Instant save on drop (250 ms debounce collapses fast successive drags)",
     "Optional alphabetical default via sortKey",
     "@dnd-kit codified as the project DnD library (convention doc)",
-    "lint:secondary-nav rule — reorderable cannot ship without pageId"
+    "lint:secondary-nav rule \u2014 reorderable cannot ship without pageId"
   ],
   "features_extended": [
     "<strong>SecondaryNavigation:</strong> gains <code>pageId</code>, <code>reorderable</code> props and an internal edit-mode state machine; existing callers without the new props are unaffected.",
@@ -40,35 +40,35 @@
       "order": 1,
       "title": "Document @dnd-kit as the project DnD convention",
       "story_id": "00416",
-      "card_url": "http://localhost:3333/cards/1768060167972194037",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 2,
       "title": "Migration for user_tab_order table",
       "story_id": "00417",
-      "card_url": "http://localhost:3333/cards/1768060278391441144",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 3,
       "title": "Go service + REST endpoints for tab order",
       "story_id": "00418",
-      "card_url": "http://localhost:3333/cards/1768060387091023611",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 4,
       "title": "SecondaryNavigation reorder mode (numbered chips + dnd-kit + instant save)",
       "story_id": "00419",
-      "card_url": "http://localhost:3333/cards/1768060532591429374",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 5,
       "title": "Wire pageId into SecondaryNavigation callers + lint rule",
       "story_id": "00420",
-      "card_url": "http://localhost:3333/cards/1768060643446884097",
+      "card_url": null,
       "status": "completed"
     }
   ],
@@ -78,7 +78,7 @@
       "criterion": "docs/c_c_dnd.md exists and names @dnd-kit/core, /sortable, /utilities as the canonical DnD libraries",
       "proven_by": "file present at the path with the three packages listed and rationale paragraph",
       "story_id": "00416",
-      "card_url": "http://localhost:3333/cards/1768060167972194037",
+      "card_url": null,
       "done": true
     },
     {
@@ -86,7 +86,7 @@
       "criterion": "CLAUDE.md gains a pointer line linking to docs/c_c_dnd.md",
       "proven_by": "grep finds 'c_c_dnd.md' in .claude/CLAUDE.md as a single-line entry",
       "story_id": "00416",
-      "card_url": "http://localhost:3333/cards/1768060167972194037",
+      "card_url": null,
       "done": true
     },
     {
@@ -94,7 +94,7 @@
       "criterion": "Convention doc lists existing adopters (preferences/navigation, work-items table) so future contributors don't reinvent DnD",
       "proven_by": "the doc cites at least those two file paths",
       "story_id": "00416",
-      "card_url": "http://localhost:3333/cards/1768060167972194037",
+      "card_url": null,
       "done": true
     },
     {
@@ -102,7 +102,7 @@
       "criterion": "Migration up creates user_tab_order with FK CASCADE on user_id and tenant_id",
       "proven_by": "psql \\d user_tab_order shows both FKs with ON DELETE CASCADE",
       "story_id": "00417",
-      "card_url": "http://localhost:3333/cards/1768060278391441144",
+      "card_url": null,
       "done": true
     },
     {
@@ -110,7 +110,7 @@
       "criterion": "Position uniqueness is DEFERRABLE INITIALLY DEFERRED so a transaction can swap two positions",
       "proven_by": "pg_constraint shows condeferrable=true for the (user_id, tenant_id, page_id, position) constraint",
       "story_id": "00417",
-      "card_url": "http://localhost:3333/cards/1768060278391441144",
+      "card_url": null,
       "done": true
     },
     {
@@ -118,7 +118,7 @@
       "criterion": "Migration down drops the table cleanly",
       "proven_by": "running the DOWN migration leaves no user_tab_order objects in the schema",
       "story_id": "00417",
-      "card_url": "http://localhost:3333/cards/1768060278391441144",
+      "card_url": null,
       "done": true
     },
     {
@@ -126,7 +126,7 @@
       "criterion": "internal/usertaborder.Service exposes List(pageId) and Replace(pageId, []TabKey) and is the only writer to user_tab_order",
       "proven_by": "ripgrep for 'user_tab_order' outside internal/usertaborder returns only read paths and migration files",
       "story_id": "00418",
-      "card_url": "http://localhost:3333/cards/1768060387091023611",
+      "card_url": null,
       "done": true
     },
     {
@@ -134,7 +134,7 @@
       "criterion": "GET /api/user/tab-order/{pageId} returns ordered tab keys for current user+tenant",
       "proven_by": "curl with auth cookie returns JSON {pageId, items:[{tabKey, position}]} sorted ascending by position",
       "story_id": "00418",
-      "card_url": "http://localhost:3333/cards/1768060387091023611",
+      "card_url": null,
       "done": true
     },
     {
@@ -142,7 +142,7 @@
       "criterion": "PUT /api/user/tab-order/{pageId} accepts {items:[{tabKey, position}]} and atomically replaces the per-user/per-page order",
       "proven_by": "after PUT, GET reflects the new order; mid-transaction failure leaves the previous order intact",
       "story_id": "00418",
-      "card_url": "http://localhost:3333/cards/1768060387091023611",
+      "card_url": null,
       "done": true
     },
     {
@@ -150,15 +150,15 @@
       "criterion": "SecondaryNavigation renders a far-right MdOutlineSwapVert toggle when reorderable is true",
       "proven_by": "DOM inspection of any reorderable instance shows the icon button at the end of the tablist",
       "story_id": "00419",
-      "card_url": "http://localhost:3333/cards/1768060532591429374",
+      "card_url": null,
       "done": true
     },
     {
       "order": 11,
       "criterion": "While in edit mode, each tab shows a numbered chip prefix that updates live during drag",
-      "proven_by": "dragging tab 4 to position 1 produces chips 1,2,3,4 → 1,2,3,4 reflecting the new order before drop",
+      "proven_by": "dragging tab 4 to position 1 produces chips 1,2,3,4 \u2192 1,2,3,4 reflecting the new order before drop",
       "story_id": "00419",
-      "card_url": "http://localhost:3333/cards/1768060532591429374",
+      "card_url": null,
       "done": true
     },
     {
@@ -166,7 +166,7 @@
       "criterion": "Drop triggers a debounced PUT (250 ms collapser) that persists the new order",
       "proven_by": "network panel shows one PUT 250 ms after drop; reload preserves the new order for the same user",
       "story_id": "00419",
-      "card_url": "http://localhost:3333/cards/1768060532591429374",
+      "card_url": null,
       "done": true
     },
     {
@@ -174,7 +174,7 @@
       "criterion": "Default order is alphabetical by sortKey (or label when sortKey absent) when no user prefs exist",
       "proven_by": "a fresh test user loading workspace-settings sees tabs in alphabetical order before any drag",
       "story_id": "00420",
-      "card_url": "http://localhost:3333/cards/1768060643446884097",
+      "card_url": null,
       "done": true
     },
     {
@@ -182,7 +182,7 @@
       "criterion": "workspace-settings, theme, and work-items pages pass pageId and reorderable",
       "proven_by": "ripgrep for 'reorderable' across app/(user) returns at least these three call sites with pageId values 'workspace-settings', 'theme', 'work-items'",
       "story_id": "00420",
-      "card_url": "http://localhost:3333/cards/1768060643446884097",
+      "card_url": null,
       "done": true
     },
     {
@@ -190,7 +190,7 @@
       "criterion": "lint:secondary-nav fails when reorderable is set without pageId",
       "proven_by": "npm run lint:secondary-nav exits non-zero on a fixture that omits pageId; passes on the real callers",
       "story_id": "00420",
-      "card_url": "http://localhost:3333/cards/1768060643446884097",
+      "card_url": null,
       "done": true
     }
   ],
@@ -202,7 +202,7 @@
     },
     {
       "impact": 1,
-      "risk": "Tab key drift — if a caller renames a tab key, persisted user prefs become orphaned rows",
+      "risk": "Tab key drift \u2014 if a caller renames a tab key, persisted user prefs become orphaned rows",
       "mitigation": "Service silently drops unknown keys on read; orphan rows are harmless and decay as users re-save"
     },
     {

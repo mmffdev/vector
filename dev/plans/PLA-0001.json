@@ -5,12 +5,12 @@
   "date_started": null,
   "date_last_updated": "2026-05-02",
   "date_finished": null,
-  "scope": "<p>Add a Plans tab under <code>/dev/</code> that stores plan documents created by the <code>&lt;stories&gt;</code> skill, extend the skill so every invocation drafts a plan, scans existing plans for overlap, and labels every Planka card with its <code>PLA-NNNN</code> identifier. Live state (started/last-updated/finished, acceptance ticks) is reconciled from Planka card transitions.</p>",
-  "value": "<p>Plans are currently scattered across <code>dev/planning/*.md</code> markdown files with no link to the Planka cards they spawn. Centralising them in a structured, queryable page (a) gives a single source of truth for what we are building and why, (b) lets the agent confirm whether new work overlaps an existing plan before issuing fresh story IDs, and (c) makes acceptance progress visible without leaving the dev page.</p>",
+  "scope": "<p>Add a Plans tab under <code>/dev/</code> that stores plan documents created by the <code>&lt;stories&gt;</code> skill, extend the skill so every invocation drafts a plan, scans existing plans for overlap, and labels every kanban card with its <code>PLA-NNNN</code> identifier. Live state (started/last-updated/finished, acceptance ticks) is reconciled from kanban card transitions.</p>",
+  "value": "<p>Plans are currently scattered across <code>dev/planning/*.md</code> markdown files with no link to the kanban board cards they spawn. Centralising them in a structured, queryable page (a) gives a single source of truth for what we are building and why, (b) lets the agent confirm whether new work overlaps an existing plan before issuing fresh story IDs, and (c) makes acceptance progress visible without leaving the dev page.</p>",
   "implementation_plan": [
     "Pass 1: Extract a shared DevAccordion component, define the PLA-NNNN JSON shape, scaffold the /api/dev/plans GET route, build the Plans tab panel rendering an accordion of plan cards with a sectioned body.",
-    "Pass 2: Add docs/c_plan_index.md (PLA counter + registry), extend the stories skill so every run drafts a plan, reaches 95% confidence (asks for web access if needed), searches research papers, scans existing PLA titles + scope for overlap, and adds a PLA-NNNN label to every Planka card.",
-    "Pass 3: When a plan accordion opens, fetch the current state of its tagged Planka cards and recompute date_started / date_last_updated / date_finished plus acceptance criteria ticks on the fly."
+    "Pass 2: Add docs/c_plan_index.md (PLA counter + registry), extend the stories skill so every run drafts a plan, reaches 95% confidence (asks for web access if needed), searches research papers, scans existing PLA titles + scope for overlap, and adds a PLA-NNNN label to every kanban card.",
+    "Pass 3: When a plan accordion opens, fetch the current state of its tagged kanban board cards and recompute date_started / date_last_updated / date_finished plus acceptance criteria ticks on the fly."
   ],
   "areas_impacted": [
     "dev/components/DevAccordion.tsx (new shared component)",
@@ -31,8 +31,8 @@
     "Plan-overlap detection: stories skill scans existing plan titles + scope, asks before merging into an existing plan, otherwise allocates a fresh PLA-NNNN"
   ],
   "features_extended": [
-    "<code>&lt;stories&gt;</code> skill — adds Step -1 (plan draft + 95% confidence loop), Step 0.5 (plan-overlap scan), Step 6.5 (write plan JSON), and a new PLA-NNNN mandatory label on every card",
-    "Shared DevAccordion replaces the inline accordion in DevReportsPanel and DevResearchPanel — visual parity preserved"
+    "<code>&lt;stories&gt;</code> skill \u2014 adds Step -1 (plan draft + 95% confidence loop), Step 0.5 (plan-overlap scan), Step 6.5 (write plan JSON), and a new PLA-NNNN mandatory label on every card",
+    "Shared DevAccordion replaces the inline accordion in DevReportsPanel and DevResearchPanel \u2014 visual parity preserved"
   ],
   "features_removed": [],
   "work_item_backlog": [
@@ -54,7 +54,7 @@
     },
     {
       "order": 3,
-      "title": "Pull-on-load Planka sync for plan progress",
+      "title": "Pull-on-load kanban board sync for plan progress",
       "story_id": null,
       "card_url": null,
       "status": "todo",
@@ -96,19 +96,14 @@
     },
     {
       "order": 5,
-      "criterion": "Plan dates and acceptance ticks reflect the current Planka card states",
-      "proven_by": "Pull-on-load: opening a plan row triggers a fetch of its tagged Planka cards; date_started / date_finished / acceptance done flags recompute from card list states",
+      "criterion": "Plan dates and acceptance ticks reflect the current kanban card states",
+      "proven_by": "Pull-on-load: opening a plan row triggers a fetch of its tagged kanban board cards; date_started / date_finished / acceptance done flags recompute from card list states",
       "story_id": null,
       "card_url": null,
       "done": false
     }
   ],
   "risks": [
-    {
-      "impact": 3,
-      "risk": "Live Planka sync depends on the planka helper at .claude/bin/planka being reachable from the Next.js API route",
-      "mitigation": "Fail open — if the helper is unavailable, render the JSON's stored dates and emit a non-blocking 'sync unavailable' notice; the page still works without live state."
-    },
     {
       "impact": 2,
       "risk": "Plan-overlap scan could produce false positives, blocking new work behind a phantom existing plan",
@@ -117,7 +112,7 @@
     {
       "impact": 1,
       "risk": "PLA-NNNN counter drift if multiple agents create plans in parallel",
-      "mitigation": "Same approach as story IDs — read docs/c_plan_index.md AND scan dev/plans/ for the highest existing PLA-NNNN; use max+1."
+      "mitigation": "Same approach as story IDs \u2014 read docs/c_plan_index.md AND scan dev/plans/ for the highest existing PLA-NNNN; use max+1."
     }
   ],
   "references": [

@@ -4,7 +4,6 @@
 - [Deferrals always go in the tech-debt register](feedback_deferrals_register.md) — When I defer work ("hold until", "out of scope", "needs its own plan", "follow-up"), file it in docs/c_tech_debt.md with severity + trigger BEFORE the commit that creates the deferral. Spoken deferrals decay; register entries persist.
 - [Never create debt — fix now, flag if detected](feedback_no_debt.md) — Overrides cap-and-defer; introduce no new debt, surface detected debt immediately.
 - [No hardcoded order/list from DB data](feedback_no_hardcoded_order_from_db_data.md) — Never invent an order/mapping in TSX or Go when the data is DB-driven; if the column doesn't carry the signal, STOP and surface the gap — don't paper over with a hardcoded list.
-- [Card lifecycle — move states on every task](feedback_card_lifecycle.md) — Backlog→To Do→Doing→Completed on every task, including quick fixes; no code before card is in Doing.
 - [Stories all layers before starting](feedback_stories_all_layers.md) — Decompose across backend, frontend, migration, tests before /stories; never one layer at a time.
 - [Stories acceptance system — 7 gates, Fibonacci, risk](feedback_stories_system.md) — Hard gates: AIGEN+phase+feature+EST+RISK+description; F21+ auto-splits; 85%/90% confidence thresholds.
 - [All stories MUST go through /stories shortcut](feedback_stories_shortcut_mandatory.md) — No exceptions, no direct Planka writes; every story routes through the 7-gate skill.
