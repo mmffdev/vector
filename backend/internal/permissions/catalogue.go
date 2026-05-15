@@ -46,12 +46,17 @@ const (
 	UsersUpdateActive  Code = "users.update_active"
 	UsersIssueReset    Code = "users.issue_reset"
 
-	// users creator-matrix (one per target role)
-	UsersCreateGadmin   Code = "users.create.gadmin"
-	UsersCreatePadmin   Code = "users.create.padmin"
-	UsersCreateTeamLead Code = "users.create.team_lead"
-	UsersCreateUser     Code = "users.create.user"
-	UsersCreateExternal Code = "users.create.external"
+	// users creator-matrix (one per target system role).
+	// PLA-0049: renamed from users.create.<old_code> to users.create.grp_*
+	// in mig 197 alongside the role rename. Two new codes added for the
+	// brand-new system roles (grp_product, grp_stakeholder).
+	UsersCreateGrpGlobal      Code = "users.create.grp_global"
+	UsersCreateGrpPortfolio   Code = "users.create.grp_portfolio"
+	UsersCreateGrpProduct     Code = "users.create.grp_product"
+	UsersCreateGrpTeamLead    Code = "users.create.grp_team_lead"
+	UsersCreateGrpTeamMember  Code = "users.create.grp_team_member"
+	UsersCreateGrpStakeholder Code = "users.create.grp_stakeholder"
+	UsersCreateGrpExternal    Code = "users.create.grp_external"
 
 	// roles CRUD
 	RolesList              Code = "roles.list"
@@ -103,11 +108,13 @@ var All = []Code{
 	UsersUpdateActive,
 	UsersIssueReset,
 
-	UsersCreateGadmin,
-	UsersCreatePadmin,
-	UsersCreateTeamLead,
-	UsersCreateUser,
-	UsersCreateExternal,
+	UsersCreateGrpGlobal,
+	UsersCreateGrpPortfolio,
+	UsersCreateGrpProduct,
+	UsersCreateGrpTeamLead,
+	UsersCreateGrpTeamMember,
+	UsersCreateGrpStakeholder,
+	UsersCreateGrpExternal,
 
 	RolesList,
 	RolesRead,

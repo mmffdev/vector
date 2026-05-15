@@ -42,9 +42,9 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
-	cat := reg.CatalogFor(u.Role, u.SubscriptionID)
+	cat := reg.CatalogFor(u.RoleID, u.SubscriptionID)
 
-	extras, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
+	extras, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
@@ -100,7 +100,7 @@ func (h *Handler) GetPrefs(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
-	rows, err := h.Svc.GetPrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, pid)
+	rows, err := h.Svc.GetPrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID, pid)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
@@ -143,13 +143,13 @@ func (h *Handler) PutPrefs(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
-	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role)
+	extraEntries, err := h.customPageEntriesFor(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID)
 	if err != nil {
 		log.Printf("nav.PutPrefs: customPageEntriesFor user=%s sub=%s: %v", u.ID, u.SubscriptionID, err)
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
-	if err := h.Svc.ReplacePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, req.Pinned, req.StartPageKey, req.Groups, extraEntries, pid); err != nil {
+	if err := h.Svc.ReplacePrefsForProfile(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID, req.Pinned, req.StartPageKey, req.Groups, extraEntries, pid); err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownItemKey),
 			errors.Is(err, ErrNotPinnable),
@@ -257,7 +257,7 @@ type startPageResp struct {
 // GET /api/nav/start-page — resolved href, falls back to /dashboard.
 func (h *Handler) StartPage(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.SubscriptionID, u.Role)
+	href, ok, err := h.Svc.GetStartPageHref(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
@@ -285,7 +285,7 @@ func (h *Handler) PinBookmark(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
-	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.SubscriptionID, u.Role, EntityKind(req.EntityKind), req.EntityID)
+	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID, EntityKind(req.EntityKind), req.EntityID)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUnknownEntityKind):
@@ -354,11 +354,14 @@ func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
 
 // customPageEntriesFor returns the caller's custom pages as synthetic
 // CatalogEntry rows keyed "custom:<page.id>". The map lets prefs validation
-// resolve user_custom keys that aren't in the shared registry.
+// resolve user_custom keys that aren't in the shared registry. PLA-0049:
+// roleID populated from u.RoleID; the legacy enum role is unused here
+// (custom pages have no DB role-grant rows — visibility is per-user).
 func (h *Handler) customPageEntriesFor(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
 	role roletypes.Role,
+	roleID uuid.UUID,
 ) (map[string]CatalogEntry, error) {
 	if h.CustomPages == nil {
 		return nil, nil
@@ -375,7 +378,7 @@ func (h *Handler) customPageEntriesFor(
 			Label:    p.Label,
 			Href:     fmt.Sprintf("/p/%s", p.ID),
 			Kind:     KindUserCustom,
-			Roles:    []roletypes.Role{role},
+			RoleIDs:  []uuid.UUID{roleID},
 			Pinnable: true,
 			Icon:     p.Icon,
 			TagEnum:  "personal",

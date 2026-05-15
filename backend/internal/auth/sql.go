@@ -38,9 +38,11 @@ const sqlSelectRoleByID = `
 // ── user hydration (FindUserByEmail, FindUserByID) ──────────────────────────
 
 // sqlSelectUserByEmail returns the full user row for a given email.
-// Used by Login + RequestPasswordReset.
+// Used by Login + RequestPasswordReset. PLA-0049: includes role_id so
+// the hydrated User carries the UUID source-of-truth alongside the
+// dual-read enum role string.
 const sqlSelectUserByEmail = `
-		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
+		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
 		       failed_login_count, locked_until, created_at, updated_at
 		FROM users WHERE email = $1
@@ -49,7 +51,7 @@ const sqlSelectUserByEmail = `
 // sqlSelectUserByID returns the full user row for a given UUID. Used
 // by Refresh / ConfirmPasswordReset / ChangePassword post-token-validation.
 const sqlSelectUserByID = `
-		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
+		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
 		       failed_login_count, locked_until, created_at, updated_at
 		FROM users WHERE id = $1

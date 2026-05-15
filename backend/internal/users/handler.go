@@ -24,23 +24,26 @@ func NewHandler(s *Service, res *permissions.Resolver) *Handler {
 	return &Handler{Svc: s, PermResolver: res}
 }
 
-// targetRoleCreateCode maps a requested target Role to the specific
-// users.create.<target> permission code the actor must hold. The route
-// is gated by RequireAnyPermission across all five codes; this map
-// turns that OR-gate into the AND-gate the creator matrix actually
-// requires (PLA-0007 AC #4). Returns "" for unknown roles.
+// targetRoleCreateCode maps a requested target Role (legacy user_role
+// enum: 'gadmin'/'padmin'/'user') to the specific users.create.<target>
+// permission code the actor must hold. The route is gated by
+// RequireAnyPermission across all seven grp_* codes; this map turns
+// that OR-gate into the AND-gate the creator matrix actually requires
+// (PLA-0007 AC #4). Returns "" for unknown roles.
+//
+// PLA-0049: the legacy wire enum has only three values, so this only
+// gates creation of grp_global / grp_portfolio / grp_team_member.
+// Creating grp_product / grp_team_lead / grp_stakeholder / grp_external
+// requires a follow-up wire-shape change to accept role_id directly
+// (deferred to Phase 1.x — until then those roles are admin-grid-only).
 func targetRoleCreateCode(role roletypes.Role) permissions.Code {
 	switch role {
 	case roletypes.RoleGAdmin:
-		return permissions.UsersCreateGadmin
+		return permissions.UsersCreateGrpGlobal
 	case roletypes.RolePAdmin:
-		return permissions.UsersCreatePadmin
+		return permissions.UsersCreateGrpPortfolio
 	case roletypes.RoleUser:
-		return permissions.UsersCreateUser
-	case "team_lead":
-		return permissions.UsersCreateTeamLead
-	case "external":
-		return permissions.UsersCreateExternal
+		return permissions.UsersCreateGrpTeamMember
 	}
 	return ""
 }

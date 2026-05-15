@@ -95,7 +95,7 @@ func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) 
 func (s *Service) FindUserByEmail(ctx context.Context, email string) (*roletypes.User, error) {
 	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByEmail, email).Scan(
-		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
 	)
@@ -111,7 +111,7 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*roletypes
 func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.User, error) {
 	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByID, id).Scan(
-		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
 	)

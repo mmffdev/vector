@@ -35,7 +35,16 @@ type User struct {
 	SubscriptionID            uuid.UUID  `json:"subscription_id"`
 	Email               string     `json:"email"`
 	PasswordHash        string     `json:"-"`
+	// Role is the legacy user_role enum (gadmin/padmin/user) kept
+	// during the dual-read window. Authoritative gating moved to RoleID
+	// in PLA-0049 — most call sites should use RoleID and reserve Role
+	// for cosmetic display only.
 	Role                Role       `json:"role"`
+	// RoleID is the UUID of the user's grp_* system or tenant role
+	// in users_roles. Source of truth for all post-PLA-0049 page-grant
+	// and permission lookups. Populated in auth.RequireAuth from
+	// users.role_id.
+	RoleID              uuid.UUID  `json:"role_id"`
 	IsActive            bool       `json:"is_active"`
 	FirstName           *string    `json:"first_name,omitempty"`
 	LastName            *string    `json:"last_name,omitempty"`

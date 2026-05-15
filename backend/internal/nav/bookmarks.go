@@ -138,7 +138,7 @@ func iconFor(kind EntityKind) string {
 //  4. Ensure all roles have access via page_roles (idempotent)
 //  5. Insert users_nav_prefs at end of bookmarks group (idempotent)
 //  6. Bust the registry cache so the next catalogue read picks up the new page
-func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUID, role roletypes.Role, kind EntityKind, entityID uuid.UUID) (string, error) {
+func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUID, role roletypes.Role, roleID uuid.UUID, kind EntityKind, entityID uuid.UUID) (string, error) {
 	if !kind.Valid() {
 		return "", ErrUnknownEntityKind
 	}
@@ -200,13 +200,15 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 		return "", err
 	}
 
-	// Grant access to all roles. A bookmark sits in the user's own pinned
-	// list; per-tenant role gating on the page row itself is uniform.
-	for _, r := range []roletypes.Role{roletypes.RoleUser, roletypes.RolePAdmin, roletypes.RoleGAdmin} {
-		_ = r // keep r in scope for the closure below
-		if _, err := tx.Exec(ctx, sqlUpsertPageRoleGrant, pageID, string(r)); err != nil {
-			return "", err
-		}
+	// PLA-0049: grant access only to the actor's role. Previously the
+	// loop granted access to all three legacy enum values (user/padmin/
+	// gadmin) which silently widened bookmark visibility to every user
+	// in the tenant carrying any of those roles. Post-rename, the right
+	// invariant is "the user pinning the bookmark gets the grant; nobody
+	// else sees it via this path." Pages may still be granted to other
+	// roles via the admin grid in Phase 1.
+	if _, err := tx.Exec(ctx, sqlUpsertPageRoleGrant, pageID, roleID); err != nil {
+		return "", err
 	}
 
 	// Append to user's bookmarks group. Compute next position as

@@ -9,8 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Registry holds the catalogue loaded from the pages / page_tags /
@@ -142,18 +140,13 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 	for pageRows.Next() {
 		var e CatalogEntry
 		var kind string
-		var roleStrs []string
 		if err := pageRows.Scan(
 			&e.Key, &e.Label, &e.Href, &e.Icon, &e.TagEnum, &kind,
-			&e.Pinnable, &e.DefaultPinned, &e.DefaultOrder, &e.SubscriptionID, &roleStrs,
+			&e.Pinnable, &e.DefaultPinned, &e.DefaultOrder, &e.SubscriptionID, &e.RoleIDs,
 		); err != nil {
 			return nil, fmt.Errorf("nav registry: scan page: %w", err)
 		}
 		e.Kind = NavItemKind(kind)
-		e.Roles = make([]roletypes.Role, 0, len(roleStrs))
-		for _, r := range roleStrs {
-			e.Roles = append(e.Roles, roletypes.Role(r))
-		}
 		if _, ok := tagsByEnum[e.TagEnum]; !ok {
 			return nil, fmt.Errorf("nav registry: page %q references unknown tag %q", e.Key, e.TagEnum)
 		}
@@ -185,14 +178,14 @@ func (r *Registry) IsPinnable(key string) bool {
 	return ok && e.Pinnable
 }
 
-// CatalogFor returns entries visible to (role, tenant), in canonical
+// CatalogFor returns entries visible to (roleID, tenant), in canonical
 // order. Static pages (SubscriptionID == nil) appear for every tenant; entity
 // pages appear only for users in their owning tenant. Roles still gate
-// regardless of kind.
-func (r *Registry) CatalogFor(role roletypes.Role, subscriptionID uuid.UUID) []CatalogEntry {
+// regardless of kind. PLA-0049: keyed by users_roles UUID, not enum.
+func (r *Registry) CatalogFor(roleID uuid.UUID, subscriptionID uuid.UUID) []CatalogEntry {
 	out := make([]CatalogEntry, 0, len(r.entries))
 	for _, e := range r.entries {
-		if !roleAllowed(role, e.Roles) {
+		if !roleAllowed(roleID, e.RoleIDs) {
 			continue
 		}
 		if e.SubscriptionID != nil && *e.SubscriptionID != subscriptionID {

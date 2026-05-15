@@ -166,6 +166,13 @@ func main() {
 	// roles + role_permissions; the handler is a thin translation layer.
 	rolesSvc := roles.New(pool, auditLog)
 	rolesSvc.Resolver = permResolver
+	// PLA-0049: resolve the seven grp_* system role UUIDs at boot. Random
+	// gen_random_uuid() values mean we can't use compile-time constants;
+	// LoadSystemRoles populates Service.SystemRoles once. Failure here is
+	// fatal — every downstream gate keys off these UUIDs.
+	if err := rolesSvc.LoadSystemRoles(ctx); err != nil {
+		log.Fatalf("roles: load system role ids: %v", err)
+	}
 	rolesH := roles.NewHandler(rolesSvc, permResolver)
 
 	// Page registry: cached DB-backed catalogue. 60s TTL trades a tiny
@@ -199,7 +206,7 @@ func main() {
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
-	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry)
+	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc)
 
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
 	// Sole writer for users_tab_order; mounted at /api/user/tab-order below.
@@ -777,8 +784,8 @@ func main() {
 		r.Use(userWriteLimiter)
 
 		r.Get("/", navGrantsAdminH.List)
-		r.Put("/{page_id}/{role}", navGrantsAdminH.Grant)
-		r.Delete("/{page_id}/{role}", navGrantsAdminH.Revoke)
+		r.Put("/{page_id}/{role_id}", navGrantsAdminH.Grant)
+		r.Delete("/{page_id}/{role_id}", navGrantsAdminH.Revoke)
 	})
 
 	// /user/tab-order
@@ -878,11 +885,13 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 
 			r.With(auth.RequireAnyPermission(permResolver,
-				permissions.UsersCreateGadmin,
-				permissions.UsersCreatePadmin,
-				permissions.UsersCreateTeamLead,
-				permissions.UsersCreateUser,
-				permissions.UsersCreateExternal,
+				permissions.UsersCreateGrpGlobal,
+				permissions.UsersCreateGrpPortfolio,
+				permissions.UsersCreateGrpProduct,
+				permissions.UsersCreateGrpTeamLead,
+				permissions.UsersCreateGrpTeamMember,
+				permissions.UsersCreateGrpStakeholder,
+				permissions.UsersCreateGrpExternal,
 			)).Post("/users", usersH.Create)
 			r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
 				Patch("/users/{id}", usersH.Patch)

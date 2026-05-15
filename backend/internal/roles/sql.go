@@ -164,6 +164,20 @@ const sqlDeleteRolePermissions = `
 // tenant visibility via Get.
 const sqlListPermissionIDsForRole = `SELECT users_roles_permissions_id_permission FROM users_roles_permissions WHERE users_roles_permissions_id_role = $1`
 
+// sqlSelectSystemRoleIDsByCode returns (code, id) for the seven seeded
+// grp_* system rows. Called once at boot from Service.LoadSystemRoles.
+// Per PLA-0049, system role UUIDs are random — code is the contract.
+const sqlSelectSystemRoleIDsByCode = `
+		SELECT users_roles_code, users_roles_id
+		  FROM users_roles
+		 WHERE users_roles_is_system = TRUE
+		   AND users_roles_id_subscription IS NULL
+		   AND users_roles_code IN (
+		       'grp_global','grp_portfolio','grp_product',
+		       'grp_team_lead','grp_team_member','grp_stakeholder','grp_external'
+		   )
+	`
+
 // sqlListPermissionsCatalogue returns the server-wide users_permissions
 // catalogue ordered by (category, code) for the admin grid. Not
 // tenant-scoped — visibility is enforced by the actor's users_roles.list

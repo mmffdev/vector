@@ -24,31 +24,27 @@ import (
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
-// System role UUIDs from migration 088. These are the five seeded
-// is_system rows and they cannot be deleted, archived, or have their
-// permission grids edited.
-var (
-	SystemRoleGadmin   = uuid.MustParse("00000000-0000-0000-0000-00000000ad30")
-	SystemRolePadmin   = uuid.MustParse("00000000-0000-0000-0000-00000000ad25")
-	SystemRoleTeamLead = uuid.MustParse("00000000-0000-0000-0000-00000000ad20")
-	SystemRoleUser     = uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
-	SystemRoleExternal = uuid.MustParse("00000000-0000-0000-0000-00000000ad05")
-)
-
-// systemRoleSet is the lookup used by mutation guards.
-var systemRoleSet = map[uuid.UUID]struct{}{
-	SystemRoleGadmin:   {},
-	SystemRolePadmin:   {},
-	SystemRoleTeamLead: {},
-	SystemRoleUser:     {},
-	SystemRoleExternal: {},
+// SystemRoleIDs holds the UUIDs of the seven seeded grp_* system rows
+// resolved at boot from the live database. Per PLA-0049, system role
+// UUIDs are random gen_random_uuid() values — there is no compile-time
+// constant for them. The single source of truth is the
+// users_roles_code column; LoadSystemRoles() resolves codes → ids
+// once at startup.
+type SystemRoleIDs struct {
+	GrpGlobal      uuid.UUID
+	GrpPortfolio   uuid.UUID
+	GrpProduct     uuid.UUID
+	GrpTeamLead    uuid.UUID
+	GrpTeamMember  uuid.UUID
+	GrpStakeholder uuid.UUID
+	GrpExternal    uuid.UUID
 }
 
-// Reserved tenant-rank bands. Tenant-custom roles must NOT use ranks
-// 5/10/20/25/30 — those belong to system roles. The DB has the same
-// CHECK constraint (roles_tenant_rank_band); we mirror it here for a
-// clearer error before the round-trip.
-var reservedSystemRanks = map[int]struct{}{5: {}, 10: {}, 20: {}, 25: {}, 30: {}}
+// Reserved system ranks. Tenant-custom roles must NOT use ranks
+// 10/20/30/40/50/60/70 — those belong to the seven grp_* system roles.
+// The DB has the same CHECK constraint (users_roles_tenant_rank_band);
+// we mirror it here for a clearer error before the round-trip.
+var reservedSystemRanks = map[int]struct{}{10: {}, 20: {}, 30: {}, 40: {}, 50: {}, 60: {}, 70: {}}
 
 // Sentinel errors. Same family/shape as polymorphicrefs.
 var (
@@ -83,13 +79,71 @@ type PermissionResolver interface {
 }
 
 type Service struct {
-	Pool     *pgxpool.Pool
-	Audit    *audit.Logger
-	Resolver PermissionResolver
+	Pool        *pgxpool.Pool
+	Audit       *audit.Logger
+	Resolver    PermissionResolver
+	SystemRoles SystemRoleIDs
 }
 
 func New(pool *pgxpool.Pool, a *audit.Logger) *Service {
 	return &Service{Pool: pool, Audit: a}
+}
+
+// LoadSystemRoles resolves the seven grp_* system role UUIDs from the
+// database and caches them on the Service. Call once at boot from
+// main.go BEFORE the service is used; package init() would race with
+// migrations. Returns ErrNotFound if any of the seven codes are
+// missing from users_roles (which means mig 194 was not applied).
+func (s *Service) LoadSystemRoles(ctx context.Context) error {
+	rows, err := s.Pool.Query(ctx, sqlSelectSystemRoleIDsByCode)
+	if err != nil {
+		return fmt.Errorf("roles: load system role ids: %w", err)
+	}
+	defer rows.Close()
+	got := map[string]uuid.UUID{}
+	for rows.Next() {
+		var code string
+		var id uuid.UUID
+		if err := rows.Scan(&code, &id); err != nil {
+			return fmt.Errorf("roles: scan system role id: %w", err)
+		}
+		got[code] = id
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	want := []string{"grp_global", "grp_portfolio", "grp_product", "grp_team_lead", "grp_team_member", "grp_stakeholder", "grp_external"}
+	for _, c := range want {
+		if _, ok := got[c]; !ok {
+			return fmt.Errorf("roles: system role %q missing from users_roles (mig 194 not applied?): %w", c, ErrNotFound)
+		}
+	}
+	s.SystemRoles = SystemRoleIDs{
+		GrpGlobal:      got["grp_global"],
+		GrpPortfolio:   got["grp_portfolio"],
+		GrpProduct:     got["grp_product"],
+		GrpTeamLead:    got["grp_team_lead"],
+		GrpTeamMember:  got["grp_team_member"],
+		GrpStakeholder: got["grp_stakeholder"],
+		GrpExternal:    got["grp_external"],
+	}
+	return nil
+}
+
+// systemRoleSet returns the lookup of seven grp_* role ids used by
+// mutation guards. Computed lazily from SystemRoles each call — the
+// struct is set once at boot via LoadSystemRoles and never mutates,
+// so this is allocation-cheap and lock-free.
+func (s *Service) systemRoleSet() map[uuid.UUID]struct{} {
+	return map[uuid.UUID]struct{}{
+		s.SystemRoles.GrpGlobal:      {},
+		s.SystemRoles.GrpPortfolio:   {},
+		s.SystemRoles.GrpProduct:     {},
+		s.SystemRoles.GrpTeamLead:    {},
+		s.SystemRoles.GrpTeamMember:  {},
+		s.SystemRoles.GrpStakeholder: {},
+		s.SystemRoles.GrpExternal:    {},
+	}
 }
 
 // ResolveActorPermissionIDs returns the set of permission row IDs for
@@ -124,11 +178,11 @@ func (s *Service) ResolveActorPermissionIDs(ctx context.Context, actorID uuid.UU
 	return out, rows.Err()
 }
 
-// IsSystemRole returns true if the given role id is one of the five
-// seeded system rows. Exposed for use by other packages (e.g. the
-// users service when checking role-ceiling moves).
-func IsSystemRole(id uuid.UUID) bool {
-	_, ok := systemRoleSet[id]
+// IsSystemRole returns true if the given role id is one of the seven
+// grp_* seeded system rows. Method (not function) because the system
+// role UUIDs are random and resolved per-Service via LoadSystemRoles.
+func (s *Service) IsSystemRole(id uuid.UUID) bool {
+	_, ok := s.systemRoleSet()[id]
 	return ok
 }
 

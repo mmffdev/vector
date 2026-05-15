@@ -101,12 +101,12 @@ type CustomGroupInput struct {
 // GetPrefs returns the user's prefs for the resolved profile (active
 // → Default → lazy-seed). Backwards-compatible signature kept for
 // tests + handlers that don't yet pass an explicit profile.
-func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role) ([]PrefRow, error) {
+func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID) ([]PrefRow, error) {
 	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
 	if err != nil {
 		return nil, err
 	}
-	return s.GetPrefsForProfile(ctx, userID, subscriptionID, role, pid)
+	return s.GetPrefsForProfile(ctx, userID, subscriptionID, role, roleID, pid)
 }
 
 // GetPrefsForProfile returns prefs scoped to a specific profile.
@@ -121,7 +121,7 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 // unpins stick. Auto-pin is per-profile so a custom profile starts clean
 // rather than inheriting the union of "every default-pinned page ever shipped"
 // from Default.
-func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, profileID uuid.UUID) ([]PrefRow, error) {
+func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID, profileID uuid.UUID) ([]PrefRow, error) {
 	// Non-default profiles with zero prefs are seeded from Default on first
 	// read. This covers profiles created before the CreateProfile clone was
 	// added, and any profile whose prefs were wiped externally. One-time per
@@ -145,7 +145,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 	// them — auto-pinning every new system page across every profile
 	// would silently grow customer profiles forever.
 	if _, err := s.Pool.Exec(ctx, sqlBackfillDefaultPinnedPages,
-		userID, subscriptionID, string(role), profileID); err != nil {
+		userID, subscriptionID, roleID, profileID); err != nil {
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
@@ -212,16 +212,16 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 // wrapper kept so handlers + tests don't need updating.
 // Returns ("", false) if no start page set OR the caller's current role no
 // longer permits the stored item (e.g. demotion since prefs were written).
-func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role) (string, bool, error) {
+func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID) (string, bool, error) {
 	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
 	if err != nil {
 		return "", false, err
 	}
-	return s.GetStartPageHrefForProfile(ctx, userID, subscriptionID, role, pid)
+	return s.GetStartPageHrefForProfile(ctx, userID, subscriptionID, role, roleID, pid)
 }
 
 // GetStartPageHrefForProfile is the profile-scoped variant.
-func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, profileID uuid.UUID) (string, bool, error) {
+func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID, profileID uuid.UUID) (string, bool, error) {
 	var key string
 	err := s.Pool.QueryRow(ctx, sqlSelectStartPageKeyForProfile,
 		userID, subscriptionID, profileID).Scan(&key)
@@ -239,7 +239,7 @@ func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscr
 	if !ok {
 		return "", false, nil
 	}
-	if !roleAllowed(role, entry.Roles) {
+	if !roleAllowed(roleID, entry.RoleIDs) {
 		return "", false, nil
 	}
 	return entry.Href, true, nil
@@ -264,6 +264,7 @@ func (s *Service) ReplacePrefs(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
 	role roletypes.Role,
+	roleID uuid.UUID,
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
@@ -273,7 +274,7 @@ func (s *Service) ReplacePrefs(
 	if err != nil {
 		return err
 	}
-	return s.ReplacePrefsForProfile(ctx, userID, subscriptionID, role, pinned, startPageKey, groups, extraEntries, pid)
+	return s.ReplacePrefsForProfile(ctx, userID, subscriptionID, role, roleID, pinned, startPageKey, groups, extraEntries, pid)
 }
 
 // ReplacePrefsForProfile is the profile-scoped variant. Wipes + re-inserts
@@ -292,6 +293,7 @@ func (s *Service) ReplacePrefsForProfile(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
 	role roletypes.Role,
+	roleID uuid.UUID,
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
@@ -399,7 +401,7 @@ func (s *Service) ReplacePrefsForProfile(
 		return CatalogEntry{}, false
 	}
 
-	if err := validatePinned(lookup, translated, role, knownGroupIDs); err != nil {
+	if err := validatePinned(lookup, translated, roleID, knownGroupIDs); err != nil {
 		return err
 	}
 	if startPageKey != nil {
@@ -407,7 +409,7 @@ func (s *Service) ReplacePrefsForProfile(
 		if !ok || !entry.Pinnable {
 			return fmt.Errorf("%w: start_page_key=%s", ErrNotPinnable, *startPageKey)
 		}
-		if !roleAllowed(role, entry.Roles) {
+		if !roleAllowed(roleID, entry.RoleIDs) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
 		found := false
@@ -599,7 +601,7 @@ func (s *Service) ResetAllForUser(ctx context.Context, userID, subscriptionID uu
 func validatePinned(
 	lookup func(string) (CatalogEntry, bool),
 	pinned []PinnedInput,
-	role roletypes.Role,
+	roleID uuid.UUID,
 	knownGroupIDs map[string]struct{},
 ) error {
 	seen := make(map[string]struct{}, len(pinned))
@@ -619,7 +621,7 @@ func validatePinned(
 		if !entry.Pinnable {
 			return fmt.Errorf("%w: %s", ErrNotPinnable, p.ItemKey)
 		}
-		if !roleAllowed(role, entry.Roles) {
+		if !roleAllowed(roleID, entry.RoleIDs) {
 			return fmt.Errorf("%w: %s", ErrRoleForbidden, p.ItemKey)
 		}
 		if _, dup := seen[p.ItemKey]; dup {

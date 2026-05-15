@@ -64,24 +64,25 @@ const sqlUpsertSharedEntityPage = `
 	`
 
 // sqlUpsertPageRoleGrant idempotently grants a role access to a page.
-// Pin loops over the three role codes (user/padmin/gadmin) inside the
-// pin tx; ON CONFLICT lets the second/third call be a quiet no-op.
+// PLA-0049: keyed by (id_page, id_role) UUID after mig 195/196.
+// $1 = page UUID, $2 = role UUID.
 const sqlUpsertPageRoleGrant = `
-		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_role) VALUES ($1, $2)
-		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_role) DO NOTHING
+		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role) VALUES ($1, $2)
+		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_id_role) DO NOTHING
 	`
 
 // sqlListSystemPagesForGrantsAdmin returns every system page (created_by
 // IS NULL AND subscription_id IS NULL) with its tag bucket position so
 // the admin grid can group / order rows the same way the rail does.
-// users_roles_pages_role is folded into a sorted text array so the
-// padmin/user toggles can be derived in one pass without N+1.
+// PLA-0049: roles are now UUIDs, not enum strings. The aggregate folds
+// users_roles_pages_id_role into a sorted UUID array so the grid can
+// match cells against role columns without N+1.
 const sqlListSystemPagesForGrantsAdmin = `
 		SELECT p.id, p.key_enum, p.label, p.href, p.tag_enum, p.default_order,
 		       COALESCE(t.pages_tags_display_name, p.tag_enum)        AS bucket_label,
 		       COALESCE(t.pages_tags_default_order, 9999)             AS bucket_order,
-		       COALESCE(array_agg(pr.users_roles_pages_role::text ORDER BY pr.users_roles_pages_role)
-		                FILTER (WHERE pr.users_roles_pages_role IS NOT NULL), '{}') AS roles
+		       COALESCE(array_agg(pr.users_roles_pages_id_role ORDER BY pr.users_roles_pages_id_role)
+		                FILTER (WHERE pr.users_roles_pages_id_role IS NOT NULL), '{}'::uuid[]) AS role_ids
 		FROM pages p
 		LEFT JOIN pages_tags t ON t.pages_tags_tag_enum = p.tag_enum
 		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
@@ -91,13 +92,13 @@ const sqlListSystemPagesForGrantsAdmin = `
 		ORDER BY bucket_order, bucket_label, p.default_order, p.label
 	`
 
-// sqlDeletePageRoleGrant revokes one (page, role) pair. The handler
-// refuses gadmin in $2 so gadmin's universal-access guarantee is
-// preserved by the API surface.
+// sqlDeletePageRoleGrant revokes one (page, role) pair. PLA-0049:
+// role identified by UUID ($2). The admin handler refuses the
+// grp_global UUID and avatar-bucket page UUIDs (Phase 1 invariants).
 const sqlDeletePageRoleGrant = `
 		DELETE FROM users_roles_pages
 		 WHERE users_roles_pages_id_page = $1
-		   AND users_roles_pages_role    = $2
+		   AND users_roles_pages_id_role = $2
 	`
 
 // sqlPageExistsForGrantsAdmin probes that a page id refers to a system
@@ -194,10 +195,13 @@ const sqlListPageTags = `
 // avoids N+1 against users_roles_pages. WHERE clause covers two catalogue
 // shapes: system pages (created_by IS NULL AND subscription_id IS NULL)
 // and tenant-scoped entity bookmarks (kind='entity').
+// PLA-0049: role identifier is now a UUID (id_role), not the dropped
+// user_role enum. Aggregate emits uuid[] which the registry scans
+// straight into []uuid.UUID on CatalogEntry.Roles.
 const sqlListSystemPagesWithRoles = `
 		SELECT p.key_enum, p.label, p.href, p.icon, p.tag_enum, p.kind,
 		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
-		       COALESCE(array_agg(pr.users_roles_pages_role::text ORDER BY pr.users_roles_pages_role) FILTER (WHERE pr.users_roles_pages_role IS NOT NULL), '{}') AS users_roles
+		       COALESCE(array_agg(pr.users_roles_pages_id_role ORDER BY pr.users_roles_pages_id_role) FILTER (WHERE pr.users_roles_pages_id_role IS NOT NULL), '{}'::uuid[]) AS role_ids
 		FROM pages p
 		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
 		WHERE p.created_by IS NULL
@@ -509,7 +513,8 @@ const sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead = `
 // default_pinned=TRUE that the user's role is allowed to see, when the
 // user has no row for it on Default. One-time per (user, page, profile).
 // Only fires for Default — custom profiles must explicitly choose what
-// they show.
+// they show. PLA-0049: $3 is the user's role UUID (not the legacy
+// user_role enum).
 const sqlBackfillDefaultPinnedPages = `
 		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page)
 		SELECT
@@ -533,7 +538,7 @@ const sqlBackfillDefaultPinnedPages = `
 		  AND p.subscription_id IS NULL
 		  AND p.default_pinned = TRUE
 		  AND p.pinnable = TRUE
-		  AND pr.users_roles_pages_role = $3::user_role
+		  AND pr.users_roles_pages_id_role = $3::uuid
 		  AND NOT EXISTS (
 			  SELECT 1 FROM users_nav_prefs unp
 			  WHERE unp.users_nav_prefs_id_user = $1::uuid

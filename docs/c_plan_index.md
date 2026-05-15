@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0048`
+**Last issued:** `PLA-0049`
 
 ## Format
 
@@ -69,6 +69,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0046` | Topology Permissions page — gadmin user-pivot surface hosting UserNodeAssignment (B6.8) | 2026-05-12 | complete (2026-05-12) |
 | `PLA-0047` | Samantha SDK v2 — Fluent Declarative Mount API (`_viewport` → `_app` → `_panel` chain) | 2026-05-13 | drafted |
 | `PLA-0048` | Codebase Recovery — Lock conventions, install drift gates, consolidate SQL, normalise names | 2026-05-13 | drafted |
+| `PLA-0049` | Page-permissions grid + role rename + page-access enforcement (Phase 0/0.5/1/1.5/2) | 2026-05-14 | drafted |
 
 ## Scope linkage rule
 
