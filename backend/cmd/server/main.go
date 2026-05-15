@@ -478,6 +478,14 @@ func main() {
 			workspacemasterrecord.NewFDWSubscriptionResolver(workspaceSettingsPool),
 			workspacemasterrecord.NewPGTenantDefaultsReader(workspaceSettingsPool),
 		)
+		// TD-WS-001 pay-down — handler resolves the active workspace_id
+		// from the caller's subscription via FDWActiveWorkspaceResolver.
+		// No URL params, no client involvement. The user never sees a
+		// workspace UUID.
+		// See: .claude/memory/project_workspace_scope_invisible.md
+		workspaceSettingsH.WithResolver(
+			workspacemasterrecord.NewFDWActiveWorkspaceResolver(workspaceSettingsPool),
+		)
 	}
 
 	// Webhooks (B9). Requires vector_artefacts (mig 037).

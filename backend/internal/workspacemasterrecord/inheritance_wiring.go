@@ -40,46 +40,68 @@ func NewFDWSubscriptionResolver(pool *pgxpool.Pool) *FDWSubscriptionResolver {
 }
 
 // SubscriptionFor returns the subscription_id that owns the given
-// workspace. Two-step lookup with a defensive fallback:
+// workspace. Single-purpose lookup against fdw_workspaces (FDW shadow
+// over mmff_vector.master_record_workspaces).
 //
-//  1. Treat the input as a workspace_id and look it up in fdw_workspaces.
-//     This is the canonical path.
-//  2. If the workspace lookup misses, treat the input as a subscription_id
-//     and verify it exists in fdw_subscriptions. This guards against the
-//     pre-existing /_site/workspace-settings handler bug (TD-WS-NNN) where
-//     it passes user.SubscriptionID where workspace_id was intended. Until
-//     that handler is rewired to carry an explicit active-workspace, this
-//     fallback keeps inheritance working for the single-workspace-per-
-//     subscription common case.
+// The defensive subscription_id→subscription_id fallback that used to
+// live here (capping TD-WS-001) was removed on 2026-05-16 once the
+// handler started resolving an explicit workspace_id via
+// ActiveWorkspaceResolver. Re-introducing the fallback would mask any
+// future "wrong ID handed to merge" regression.
 //
-// Returns ErrNotFound only when neither lookup matches — Service.merge-
-// Inheritance then falls to schema defaults so the surface degrades
-// gracefully rather than crashes.
-func (r *FDWSubscriptionResolver) SubscriptionFor(ctx context.Context, workspaceOrSubID uuid.UUID) (uuid.UUID, error) {
+// Returns ErrNotFound when the workspace row doesn't exist — Service.
+// mergeInheritance treats that as "no tenant tier" and falls through
+// to schema defaults.
+func (r *FDWSubscriptionResolver) SubscriptionFor(ctx context.Context, workspaceID uuid.UUID) (uuid.UUID, error) {
 	var subID uuid.UUID
 	err := r.Pool.QueryRow(ctx,
 		`SELECT subscription_id FROM fdw_workspaces WHERE id = $1`,
-		workspaceOrSubID,
+		workspaceID,
 	).Scan(&subID)
-	if err == nil {
-		return subID, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, fmt.Errorf("resolve subscription via workspace: %w", err)
-	}
-	// Fallback: maybe the caller handed us a subscription_id directly.
-	var found uuid.UUID
-	err = r.Pool.QueryRow(ctx,
-		`SELECT id FROM fdw_subscriptions WHERE id = $1`,
-		workspaceOrSubID,
-	).Scan(&found)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, ErrNotFound
 		}
-		return uuid.Nil, fmt.Errorf("resolve subscription direct: %w", err)
+		return uuid.Nil, fmt.Errorf("resolve subscription via workspace: %w", err)
 	}
-	return found, nil
+	return subID, nil
+}
+
+// ─── ActiveWorkspaceResolver: subscription → active workspace ──────────
+
+// FDWActiveWorkspaceResolver implements ActiveWorkspaceResolver by
+// finding the workspace owned by a given subscription via fdw_workspaces.
+//
+// Today: one workspace per subscription, so this is a single-row lookup.
+// When multi-workspace tenants land, this becomes "the workspace the
+// caller is permitted to act on by their topology assignment + user
+// prefs" — but the surface stays the same (subscription → workspace),
+// so handlers don't change and the URL never grows a workspace param.
+//
+// See: .claude/memory/project_workspace_scope_invisible.md
+type FDWActiveWorkspaceResolver struct{ Pool *pgxpool.Pool }
+
+func NewFDWActiveWorkspaceResolver(pool *pgxpool.Pool) *FDWActiveWorkspaceResolver {
+	return &FDWActiveWorkspaceResolver{Pool: pool}
+}
+
+// ActiveWorkspaceFor returns the workspace_id owned by subscriptionID.
+// Single-workspace assumption holds today (mig 067 era); LIMIT 1 with
+// a stable ORDER BY id keeps the choice deterministic if a stray
+// second row ever appears so production behaviour doesn't flap.
+func (r *FDWActiveWorkspaceResolver) ActiveWorkspaceFor(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	var wsID uuid.UUID
+	err := r.Pool.QueryRow(ctx,
+		`SELECT id FROM fdw_workspaces WHERE subscription_id = $1 ORDER BY id LIMIT 1`,
+		subscriptionID,
+	).Scan(&wsID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, ErrNoActiveWorkspace
+		}
+		return uuid.Nil, fmt.Errorf("resolve active workspace: %w", err)
+	}
+	return wsID, nil
 }
 
 // ─── TenantDefaultsReader: NULL-aware read of master_record_tenants ────

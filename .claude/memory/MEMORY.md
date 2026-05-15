@@ -47,6 +47,8 @@
 - [Helper icon — always wire through `<Panel>`](feedback_helper_icon.md) — Never render inline TbHelpHexagon + popover; wrap host block in `<Panel name="..." title="...">` so help ties into Page Help admin via the addressable substrate.
 - [Shared cross-runtime methods home (PLA-0045)](feedback_shared_methods_home.md) — `app/lib/shared/<domain>/` (TS) + `backend/internal/shared/<domain>/` (Go) + `dev/fixtures/shared/<domain>/` parity fixtures; catalogue in `docs/c_shared_methods.md`.
 - [Dev Setup page — route + source](reference_dev_page.md) — Route `/dev` → `app/(user)/dev/page.tsx` re-exports `dev/pages/DevPage.tsx`; rail cog icon links here.
+- [Tracker <rg> API key (Vector-clamped)](project_tracker_rg_api_key.md) — `trk_d6fd154a…` plaintext for rg-runner POSTs to Tracker; project_id auto-resolves from key.
+- [Workspace scope is invisible to the user](project_workspace_scope_invisible.md) — Backend-only mechanism: no URL params, no pickers, no UUIDs in client code; UI labels + permissions are the only legitimate signals.
 
 ### Rules
 
