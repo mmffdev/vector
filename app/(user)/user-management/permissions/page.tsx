@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { usePageAccess } from "@/app/contexts/PageAccessContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
+import PageAccessDenied from "@/app/components/PageAccessDenied";
 
 // Page-permissions matrix (PLA-0049). Rows = system pages, columns =
 // editable system + tenant roles (everything except grp_global, which
@@ -59,9 +60,12 @@ const EXCLUDED_ROLE_CODES = new Set(["grp_global", "grp_external"]);
 export default function PermissionsPage() {
   const { full } = usePageTitle();
   const { user, role } = useAuth();
-  const router = useRouter();
 
   const isGadmin = role?.code === "grp_global";
+  // PLA-0049 Phase 0.5: defer to page-access set as the live truth.
+  // The role check above is kept as a fast-path for the common case;
+  // a stale grant change is caught by the live access set below.
+  const access = usePageAccess("um-permissions");
 
   const [rows, setRows] = useState<PageGrantRow[] | null>(null);
   const [allRoles, setAllRoles] = useState<RoleRow[] | null>(null);
@@ -69,11 +73,16 @@ export default function PermissionsPage() {
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (user && !isGadmin) router.replace("/user-management");
-  }, [user, isGadmin, router]);
+    // Only redirect when we know the answer AND the user is denied.
+    // Loading state lets the page render its own skeleton.
+    if (!user) return;
+    if (access.loading) return;
+    if (!access.allowed) return; // PageAccessDenied handles the UI
+  }, [user, access.loading, access.allowed]);
 
   useEffect(() => {
     if (!isGadmin) return;
+    if (!access.allowed) return;
     let cancelled = false;
     (async () => {
       try {
@@ -203,7 +212,10 @@ export default function PermissionsPage() {
   );
 
   if (!user) return null;
-  if (!isGadmin) return null;
+  // PLA-0049 Phase 0.5: server is authoritative. Render denial card
+  // when the live access set excludes this page; loading state lets the
+  // grid render its own skeleton via the Table loading prop.
+  if (access.allowed === false) return <PageAccessDenied pageLabel="Page Permissions" />;
 
   const pageCount = rows?.length ?? 0;
 

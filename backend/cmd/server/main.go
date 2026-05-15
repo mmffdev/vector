@@ -37,6 +37,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
+	"github.com/mmffdev/vector-backend/internal/pageaccess"
 	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
@@ -207,6 +208,20 @@ func main() {
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc)
+
+	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
+	// caches the global pages_access_version (1s in-process) and a
+	// per-user key_enum access set (re-fetched on version mismatch).
+	// auth.RequirePageAccess(keyEnum) middleware reads from this same
+	// instance so the cache is shared across all gated routes.
+	pageAccessResolver := pageaccess.New(pool, 1*time.Second)
+	pageAccessH := pageaccess.NewHandler(pageAccessResolver, func(ctx context.Context) (uuid.UUID, bool) {
+		u := auth.UserFromCtx(ctx)
+		if u == nil {
+			return uuid.Nil, false
+		}
+		return u.ID, true
+	})
 
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
 	// Sole writer for users_tab_order; mounted at /api/user/tab-order below.
@@ -742,6 +757,11 @@ func main() {
 
 		r.Get("/theme-pack", usersH.GetThemePack)
 		r.Put("/theme-pack", usersH.SetThemePack)
+
+		// PLA-0049 Phase 0.5.3: per-user page-access set + global version.
+		// Drives usePageAccess() in the frontend; client polls/re-fetches
+		// when the version bumps.
+		r.Get("/page-access", pageAccessH.MeAccess)
 	})
 
 	// /nav
@@ -774,12 +794,18 @@ func main() {
 
 	// /admin/page-grants — gadmin-only matrix at /user-management/permissions.
 	// Grants and revokes (page × role) rows in users_roles_pages. The
-	// {role} URL param is rejected for "gadmin" inside the handler so this
-	// surface can never strip gadmin's universal page access (mig 193).
+	// {role_id} URL param is rejected for grp_global inside the handler so
+	// this surface can never strip gadmin's universal page access.
+	//
+	// PLA-0049 Phase 0.5.6: also gated by RequirePageAccess("um-permissions")
+	// so a hand-typed URL or stale bookmark from a user whose grant on
+	// the page-permissions page has been revoked is denied at the API
+	// layer — not just rendered as a blank UI.
 	r.Route("/admin/page-grants", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions))
+		r.Use(auth.RequirePageAccess(pageAccessResolver, "um-permissions"))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 

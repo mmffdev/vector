@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "./styles/typecase.css";
 import { AuthProvider } from "@/app/contexts/AuthContext";
+import { PageAccessProvider } from "@/app/contexts/PageAccessContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
 import { Toaster } from "@/app/components/Toaster";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
 import AddressDevtool from "@/app/components/AddressDevtool";
 import AddressAnchorResolver from "@/app/components/AddressAnchorResolver";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const satoshi = localFont({
+  src: [
+    { path: "./fonts/satoshi/fonts/Satoshi-Variable.woff2",       style: "normal", weight: "300 900" },
+    { path: "./fonts/satoshi/fonts/Satoshi-VariableItalic.woff2", style: "italic", weight: "300 900" },
+  ],
   variable: "--font-sans",
   display: "swap",
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -34,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${satoshi.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -46,9 +51,11 @@ export default function RootLayout({
         <Toaster />
         <DevTabProvider>
           <AuthProvider>
-            {children}
-            <AddressDevtool />
-            <AddressAnchorResolver />
+            <PageAccessProvider>
+              {children}
+              <AddressDevtool />
+              <AddressAnchorResolver />
+            </PageAccessProvider>
           </AuthProvider>
         </DevTabProvider>
         <DevStatusFloat />

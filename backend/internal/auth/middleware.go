@@ -7,9 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/usermessages"
-	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/pageaccess"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 type ctxKey string
@@ -110,6 +111,46 @@ func RequirePermission(res *permissions.Resolver, codes ...permissions.Code) fun
 					httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
 					return
 				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequirePageAccess gates a route on the actor having a users_roles_pages
+// grant covering the page identified by keyEnum. PLA-0049 Phase 0.5.
+//
+// This is the page-level enforcement layer that defends against
+// hand-typed URLs and stale bookmarks. Where RequirePermission gates on
+// a permission code (e.g. "roles.assign_permissions"), RequirePageAccess
+// gates on the actual users_roles_pages grant matrix — the same matrix
+// that drives nav-rail visibility. The two layers are complementary:
+// permission codes describe capabilities, page access describes which
+// pages those capabilities apply to.
+//
+// API key auth (no user context) passes through without page-access
+// checks — API keys are scoped to specific routes by their own
+// middleware, not by the page model.
+func RequirePageAccess(res *pageaccess.Resolver, keyEnum string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u := UserFromCtx(r.Context())
+			if u == nil {
+				if r.Context().Value("api_key_subscription_id") != nil {
+					next.ServeHTTP(w, r)
+					return
+				}
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
+			ok, err := res.Allowed(r.Context(), u.ID, keyEnum)
+			if err != nil {
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+				return
+			}
+			if !ok {
+				httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
+				return
 			}
 			next.ServeHTTP(w, r)
 		})
