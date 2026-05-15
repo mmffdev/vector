@@ -1,6 +1,16 @@
 -- ============================================================
--- ETL: master_record_tenant (mmff_vector) → master_record_tenant (vector_artefacts)
+-- ETL: master_record_tenant (mmff_vector) → master_record_workspaces (vector_artefacts)
 -- M2.3.2
+--
+-- ⚠ STALE BODY (2026-05-15): The INSERT/SELECT below still uses
+-- migration-036 column names (workspace_id, tenant_name, ...). The
+-- current schema (post migrations 063 + 067) uses
+-- master_record_workspaces_* prefixed columns. This file has been
+-- broken since migration 063 (2026-05-14) — predates today's rename.
+-- Preserved + renamed from etl_tenant_settings.sql on 2026-05-15
+-- (PLA-0032 Story 00567) along with the table rename. Fixing the
+-- column refs is covered by PLA-0032 work-item order 3 ("ETL script:
+-- unverified") — out of scope for the vocabulary rename.
 --
 -- Run in two steps:
 --

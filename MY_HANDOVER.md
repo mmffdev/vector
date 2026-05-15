@@ -137,7 +137,34 @@ The "transparency" the user wanted comes from **renaming**, not moving.
 
 These are stories worth creating, in order. Each one is small and additive. None of them require moving rows across databases.
 
-### Story 1 — Rename `master_record_tenant` → `master_record_workspace` (in vector_artefacts)
+### Story 1 — Rename `master_record_tenants` → `master_record_workspaces` (in vector_artefacts) — **PARTIALLY SHIPPED 2026-05-15 (00564 + 00565a + 00566 + 00567-rename done; 00565b directory rename deferred for review)**
+
+> Allocated under [dev/plans/PLA-0032.json](dev/plans/PLA-0032.json) (merged, not a fresh PLA). 4 stories: SQL migration (00564), Go package rename (00565 — split into 00565a SQL strings, 00565b directory rename), frontend helper rename (00566), dev ETL script (00567). Plural plural plural — the handover originally said "workspace" singular but project convention is plural per migrations 060/063. NB: renamed table lives in vector_artefacts and shares a NAME with `master_record_workspaces` in mmff_vector (different DBs, different purposes — anchor identity vs settings sidecar). Documented as risk #3 in the plan.
+
+#### What landed (2026-05-15, atomic cutover, unsupervised)
+
+- **00564** — `db/vector_artefacts/schema/067_rename_master_record_tenants_to_workspaces.sql` written + applied to dev DB. Forward migration succeeded; `schema_migrations` backfilled. DOWN migration also written at `db/vector_artefacts/schema/down/067_*_DOWN.sql` for rollback.
+- **00565a** — Go code SQL string updates: `backend/internal/tenantmasterrecord/{sql.go,service.go,handler.go}` + `backend/internal/portfoliomodels/{sql.go,dev_reset.go}` + `backend/internal/portfoliomodels/master_reset_crossdb_test.go` + `backend/cmd/server/main.go` (comment). All references to `master_record_tenants*` in vector_artefacts code paths updated to `master_record_workspaces*`. The two remaining `master_record_tenants` mentions in dev_reset.go (lines 64, 218) explicitly refer to the **mmff_vector vestigial table** which was never renamed — keep as-is. `go build ./...` is clean.
+- **00566** — Frontend rename: `app/lib/tenantSettingsApi.ts` → `app/lib/workspaceSettingsApi.ts` (new file, old deleted). Type names `TenantSettings*` → `WorkspaceSettings*`. 3 consumers updated: `app/contexts/TenantContext.tsx`, `app/(user)/vector-admin/tenant-details/page.tsx`, `app/(user)/workspace-settings/workspace-settings/organisation/page.tsx`. JSON property keys kept as `tenant_*` (honest to the Go wire shape — Go JSON tags are deferred per TD-NAME-001). `tsc --noEmit` clean on touched files. **NOT renamed:** `app/contexts/TenantContext.tsx` filename itself (would cascade into every importer — separate scope).
+- **00567 (file-rename half)** — `dev/scripts/etl_tenant_settings.sql` → `dev/scripts/etl_workspace_settings.sql` via `git mv` (preserves history). Header updated. **Body NOT updated** because it was already stale pre-rename (uses migration-036 column names that were renamed in migration 063 last week). Fixing the body is covered by PLA-0032 work-item order 3 (the existing "unverified ETL" entry) — out of scope for vocabulary rename.
+
+#### What's deferred (next sit-down)
+
+- **00565b** — directory + package rename `backend/internal/tenantmasterrecord/` → `workspacemasterrecord/` + update main.go service construction, portfoliomodels callers, test imports. **Not done in atomic cutover** because it's an ergonomic change that doesn't affect runtime correctness, and touches main.go service wiring (which carries higher restart risk).
+- **00567 body rewrite** — `dev/scripts/etl_workspace_settings.sql` body still uses migration-036 column names. Covered by PLA-0032 order 3 already (separate work-item).
+
+#### Known broken state when you return
+
+The dev backend at `localhost:5100` is running an OLD BINARY (built before my code edits) that still queries `master_record_tenants`. The DB no longer has that table. **Authenticated requests to `/_site/workspace-settings` (e.g. the `/vector-admin/tenant-details` page) will 500** until the backend is restarted. Unauthenticated requests return 401 (auth gate hits first) — most users see nothing wrong. **Fix: restart the backend** (via launcher or `<server>` skill); new binary picks up my code changes which match the renamed schema. I did not restart it myself to avoid leaving the dev launcher in an uncertain state unsupervised — per the project_launcher_stale_binary trap memory.
+
+#### Pre-existing stale file I found (out of scope, not touched)
+
+`db/seed/010_master_reset.sql` line 192–243 INSERTs into `vector_artefacts.master_record_tenants` using the **old column names** from migration 036 (`workspace_id`, `tenant_name`, `tenant_description`, etc.) — but migration 063 (2026-05-14) renamed those columns to `master_record_tenants_*`. The seed was already broken before today's rename. After 067, it's still broken (now wrong table name AND wrong column names). This file is `psql -f` invoked manually, not run automatically by anything I could find. Filed as a separate concern — covered by PLA-0032's existing "ETL script: unverified" work-item (order 3). Not in scope for 00564/00565a.
+
+#### Rollback if needed
+
+If something is wrong, `db/vector_artefacts/schema/down/067_rename_master_record_tenants_to_workspaces_DOWN.sql` reverses the rename in one transaction. Then `git revert` the commit.
+
 
 - Pure rename; zero data risk.
 - Pattern precedent: [`063_master_record_tenants_column_prefix_RF1_4_4.sql`](db/vector_artefacts/schema/063_master_record_tenants_column_prefix_RF1_4_4.sql) — the RF1.4.4 column-prefix rename. Mirror the pattern: table + indexes + constraints + trigger + comment + all column prefixes `tenant_*` → `workspace_*`.

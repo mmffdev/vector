@@ -437,8 +437,10 @@ func main() {
 	// vaPool may be nil; MasterReset skips the VA leg gracefully when nil.
 	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool)
 
-	// Tenant settings (master_record_tenants). M2: reads/writes vector_artefacts
-	// (mig 036). Falls back to mmff_vector pool until 036 is applied on dev.
+	// Tenant settings (master_record_workspaces — renamed from
+	// master_record_tenants by migration 067 on 2026-05-15). M2: reads/writes
+	// vector_artefacts (mig 036). Falls back to mmff_vector pool until 036 is
+	// applied on dev.
 	tenantSettingsPool := pool
 	if vaPool != nil {
 		tenantSettingsPool = vaPool

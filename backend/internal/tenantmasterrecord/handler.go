@@ -1,6 +1,7 @@
 package tenantmasterrecord
 
-// HTTP surface for the master_record_tenants sole-writer service.
+// HTTP surface for the master_record_workspaces sole-writer service
+// (table renamed from master_record_tenants by migration 067 on 2026-05-15).
 // Mounts under /api/tenant-settings; both routes require auth +
 // fresh-password (handled by main.go middlewares). Reads are open
 // to any authenticated user in the tenant; writes inherit the same

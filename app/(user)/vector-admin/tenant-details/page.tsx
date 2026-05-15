@@ -3,7 +3,7 @@
 // Tenant Details page — single-record editor for master_record_tenant.
 // Backend: backend/internal/tenantsettings (PATCH validates server-side
 // and returns 422 with violations[] on failure). Wire shape lives in
-// app/lib/tenantSettingsApi.ts.
+// app/lib/workspaceSettingsApi.ts.
 //
 // UX contract:
 //   • Form state is seeded from the server on mount; every field is
@@ -31,13 +31,13 @@ import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
-  tenantSettingsApi,
+  workspaceSettingsApi,
   type DayCode,
   type RankMethod,
-  type TenantSettings,
-  type TenantSettingsPatch,
+  type WorkspaceSettings,
+  type WorkspaceSettingsPatch,
   type WeekStart,
-} from "@/app/lib/tenantSettingsApi";
+} from "@/app/lib/workspaceSettingsApi";
 
 const REGIONS: Array<{ group: string; options: Array<{ value: string; label: string }> }> = [
   {
@@ -163,7 +163,7 @@ const WEEKDAYS: Array<{ key: DayCode; label: string }> = [
   { key: "sun", label: "Sun" },
 ];
 
-// Fields the form actually edits. Keep this in sync with TenantSettingsPatch.
+// Fields the form actually edits. Keep this in sync with WorkspaceSettingsPatch.
 type FormState = {
   tenant_name: string;
   tenant_description: string;
@@ -179,7 +179,7 @@ type FormState = {
   tenant_primary_contact_email: string;
 };
 
-function fromServer(row: TenantSettings): FormState {
+function fromServer(row: WorkspaceSettings): FormState {
   return {
     tenant_name: row.tenant_name,
     tenant_description: row.tenant_description ?? "",
@@ -200,8 +200,8 @@ function fromServer(row: TenantSettings): FormState {
 // from the original server snapshot. Sets are compared by membership;
 // a nullable text that the user has cleared is sent as null so the
 // server stores NULL rather than an empty string.
-function diffPatch(orig: FormState, cur: FormState): TenantSettingsPatch {
-  const out: TenantSettingsPatch = {};
+function diffPatch(orig: FormState, cur: FormState): WorkspaceSettingsPatch {
+  const out: WorkspaceSettingsPatch = {};
   if (cur.tenant_name !== orig.tenant_name) out.tenant_name = cur.tenant_name;
   if (cur.tenant_description !== orig.tenant_description) out.tenant_description = cur.tenant_description === "" ? null : cur.tenant_description;
   if (cur.tenant_data_region !== orig.tenant_data_region) out.tenant_data_region = cur.tenant_data_region;
@@ -327,7 +327,7 @@ export default function TenantDetailsPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const row = await tenantSettingsApi.get();
+      const row = await workspaceSettingsApi.get();
       subscriptionId.current = row.tenant_id;
       const seeded = fromServer(row);
       setOriginal(seeded);
@@ -371,7 +371,7 @@ export default function TenantDetailsPage() {
     if (Object.keys(patch).length === 0) return;
     setSaving(true);
     try {
-      const fresh = await tenantSettingsApi.patch(patch);
+      const fresh = await workspaceSettingsApi.patch(patch);
       setTenantCtx(fresh);
       const seeded = fromServer(fresh);
       setOriginal(seeded);

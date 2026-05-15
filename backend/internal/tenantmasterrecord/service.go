@@ -1,5 +1,5 @@
 // Package tenantsettings is the SOLE writer for the
-// master_record_tenants table in vector_artefacts.
+// master_record_workspaces table in vector_artefacts.
 //
 // One row exists per workspace (the table's PRIMARY KEY). Get
 // auto-creates the row on demand (defensive — covers workspaces
@@ -31,7 +31,7 @@ var (
 )
 
 // Settings is the wire shape returned to the frontend. Every field
-// maps 1:1 to a column on master_record_tenants. Pointer types are
+// maps 1:1 to a column on master_record_workspaces. Pointer types are
 // nullable on the wire.
 type Settings struct {
 	TenantID                     uuid.UUID  `json:"tenant_id"`
@@ -187,28 +187,28 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 		} else if len(v) > 128 {
 			violations = append(violations, Violation{Field: "tenant_name", Message: "must be 128 characters or fewer"})
 		} else {
-			addSet("master_record_tenants_name", v)
+			addSet("master_record_workspaces_name", v)
 		}
 	}
 	if in.TenantDescription != nil {
 		if len(*in.TenantDescription) > 2000 {
 			violations = append(violations, Violation{Field: "tenant_description", Message: "must be 2000 characters or fewer"})
 		} else if *in.TenantDescription == "" {
-			addSet("master_record_tenants_description", nil)
+			addSet("master_record_workspaces_description", nil)
 		} else {
-			addSet("master_record_tenants_description", *in.TenantDescription)
+			addSet("master_record_workspaces_description", *in.TenantDescription)
 		}
 	}
 	if in.TenantOwnerUserID != nil {
 		v := strings.TrimSpace(*in.TenantOwnerUserID)
 		if v == "" {
-			addSet("master_record_tenants_id_user_owner", nil)
+			addSet("master_record_workspaces_id_user_owner", nil)
 		} else {
 			id, err := uuid.Parse(v)
 			if err != nil {
 				violations = append(violations, Violation{Field: "tenant_owner_user_id", Message: "must be a valid UUID"})
 			} else {
-				addSet("master_record_tenants_id_user_owner", id)
+				addSet("master_record_workspaces_id_user_owner", id)
 			}
 		}
 	}
@@ -216,7 +216,7 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 		if _, ok := regionSet[*in.TenantDataRegion]; !ok {
 			violations = append(violations, Violation{Field: "tenant_data_region", Message: "not a valid region code"})
 		} else {
-			addSet("master_record_tenants_data_region", *in.TenantDataRegion)
+			addSet("master_record_workspaces_data_region", *in.TenantDataRegion)
 		}
 	}
 	if in.TenantTimezone != nil {
@@ -226,21 +226,21 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 		} else if len(v) > 128 {
 			violations = append(violations, Violation{Field: "tenant_timezone", Message: "must be 128 characters or fewer"})
 		} else {
-			addSet("master_record_tenants_timezone", v)
+			addSet("master_record_workspaces_timezone", v)
 		}
 	}
 	if in.TenantDateFormat != nil {
 		if _, ok := dateFormatSet[*in.TenantDateFormat]; !ok {
 			violations = append(violations, Violation{Field: "tenant_date_format", Message: "not a valid date format"})
 		} else {
-			addSet("master_record_tenants_date_format", *in.TenantDateFormat)
+			addSet("master_record_workspaces_date_format", *in.TenantDateFormat)
 		}
 	}
 	if in.TenantDatetimeFormat != nil {
 		if _, ok := datetimeFormatSet[*in.TenantDatetimeFormat]; !ok {
 			violations = append(violations, Violation{Field: "tenant_datetime_format", Message: "not a valid date/time format"})
 		} else {
-			addSet("master_record_tenants_datetime_format", *in.TenantDatetimeFormat)
+			addSet("master_record_workspaces_datetime_format", *in.TenantDatetimeFormat)
 		}
 	}
 	if in.TenantWorkdays != nil {
@@ -264,7 +264,7 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 			} else if len(seen) != len(days) {
 				violations = append(violations, Violation{Field: "tenant_workdays", Message: "duplicates not allowed"})
 			} else {
-				addSet("master_record_tenants_workdays", days)
+				addSet("master_record_workspaces_workdays", days)
 			}
 		}
 	}
@@ -272,36 +272,36 @@ func (s *Service) Patch(ctx context.Context, workspaceID, actorID uuid.UUID, in 
 		if _, ok := weekStartSet[*in.TenantWeekStart]; !ok {
 			violations = append(violations, Violation{Field: "tenant_week_start", Message: "must be 'mon' or 'sun'"})
 		} else {
-			addSet("master_record_tenants_week_start", *in.TenantWeekStart)
+			addSet("master_record_workspaces_week_start", *in.TenantWeekStart)
 		}
 	}
 	if in.TenantRankMethod != nil {
 		if _, ok := rankMethodSet[*in.TenantRankMethod]; !ok {
 			violations = append(violations, Violation{Field: "tenant_rank_method", Message: "must be 'manual' or 'dragdrop'"})
 		} else {
-			addSet("master_record_tenants_rank_method", *in.TenantRankMethod)
+			addSet("master_record_workspaces_rank_method", *in.TenantRankMethod)
 		}
 	}
 	if in.TenantBuildChangesetTracking != nil {
-		addSet("master_record_tenants_build_changeset_tracking", *in.TenantBuildChangesetTracking)
+		addSet("master_record_workspaces_build_changeset_tracking", *in.TenantBuildChangesetTracking)
 	}
 	if in.TenantNotes != nil {
 		if len(*in.TenantNotes) > 4000 {
 			violations = append(violations, Violation{Field: "tenant_notes", Message: "must be 4000 characters or fewer"})
 		} else if *in.TenantNotes == "" {
-			addSet("master_record_tenants_notes", nil)
+			addSet("master_record_workspaces_notes", nil)
 		} else {
-			addSet("master_record_tenants_notes", *in.TenantNotes)
+			addSet("master_record_workspaces_notes", *in.TenantNotes)
 		}
 	}
 	if in.TenantPrimaryContactEmail != nil {
 		v := strings.TrimSpace(*in.TenantPrimaryContactEmail)
 		if v == "" {
-			addSet("master_record_tenants_primary_contact_email", nil)
+			addSet("master_record_workspaces_primary_contact_email", nil)
 		} else if !emailRe.MatchString(v) {
 			violations = append(violations, Violation{Field: "tenant_primary_contact_email", Message: "not a valid email address"})
 		} else {
-			addSet("master_record_tenants_primary_contact_email", v)
+			addSet("master_record_workspaces_primary_contact_email", v)
 		}
 	}
 

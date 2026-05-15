@@ -470,40 +470,40 @@ const sqlDeleteAllTopologyNodesForSubscription = `DELETE FROM topology_nodes WHE
 const sqlDeleteMasterRecordPortfolioForWorkspace = `DELETE FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`
 
 const sqlUpsertTestbedTenantRecord = `
-		INSERT INTO master_record_tenants (
-			master_record_tenants_id_workspace,
-			master_record_tenants_name,
-			master_record_tenants_description,
-			master_record_tenants_id_user_owner,
-			master_record_tenants_data_region,
-			master_record_tenants_timezone,
-			master_record_tenants_date_format,
-			master_record_tenants_datetime_format,
-			master_record_tenants_workdays,
-			master_record_tenants_week_start,
-			master_record_tenants_rank_method,
-			master_record_tenants_build_changeset_tracking,
-			master_record_tenants_primary_contact_email
+		INSERT INTO master_record_workspaces (
+			master_record_workspaces_id_workspace,
+			master_record_workspaces_name,
+			master_record_workspaces_description,
+			master_record_workspaces_id_user_owner,
+			master_record_workspaces_data_region,
+			master_record_workspaces_timezone,
+			master_record_workspaces_date_format,
+			master_record_workspaces_datetime_format,
+			master_record_workspaces_workdays,
+			master_record_workspaces_week_start,
+			master_record_workspaces_rank_method,
+			master_record_workspaces_build_changeset_tracking,
+			master_record_workspaces_primary_contact_email
 		) VALUES (
 			$1, 'ACME Bank', 'MMFFDev Testbed', $2,
 			'euw2', 'Europe/London', 'DD/MM/YYYY', 'DD/MM/YYYY HH:mm',
 			ARRAY['mon','tue','wed','thu','fri']::text[],
 			'mon', 'manual', FALSE, 'cookra@me.com'
 		)
-		ON CONFLICT (master_record_tenants_id_workspace) DO UPDATE
-		   SET master_record_tenants_name                     = EXCLUDED.master_record_tenants_name,
-		       master_record_tenants_description              = EXCLUDED.master_record_tenants_description,
-		       master_record_tenants_id_user_owner            = EXCLUDED.master_record_tenants_id_user_owner,
-		       master_record_tenants_data_region              = EXCLUDED.master_record_tenants_data_region,
-		       master_record_tenants_timezone                 = EXCLUDED.master_record_tenants_timezone,
-		       master_record_tenants_date_format              = EXCLUDED.master_record_tenants_date_format,
-		       master_record_tenants_datetime_format          = EXCLUDED.master_record_tenants_datetime_format,
-		       master_record_tenants_workdays                 = EXCLUDED.master_record_tenants_workdays,
-		       master_record_tenants_week_start               = EXCLUDED.master_record_tenants_week_start,
-		       master_record_tenants_rank_method              = EXCLUDED.master_record_tenants_rank_method,
-		       master_record_tenants_build_changeset_tracking = EXCLUDED.master_record_tenants_build_changeset_tracking,
-		       master_record_tenants_primary_contact_email    = EXCLUDED.master_record_tenants_primary_contact_email,
-		       master_record_tenants_updated_at               = now()
+		ON CONFLICT (master_record_workspaces_id_workspace) DO UPDATE
+		   SET master_record_workspaces_name                     = EXCLUDED.master_record_workspaces_name,
+		       master_record_workspaces_description              = EXCLUDED.master_record_workspaces_description,
+		       master_record_workspaces_id_user_owner            = EXCLUDED.master_record_workspaces_id_user_owner,
+		       master_record_workspaces_data_region              = EXCLUDED.master_record_workspaces_data_region,
+		       master_record_workspaces_timezone                 = EXCLUDED.master_record_workspaces_timezone,
+		       master_record_workspaces_date_format              = EXCLUDED.master_record_workspaces_date_format,
+		       master_record_workspaces_datetime_format          = EXCLUDED.master_record_workspaces_datetime_format,
+		       master_record_workspaces_workdays                 = EXCLUDED.master_record_workspaces_workdays,
+		       master_record_workspaces_week_start               = EXCLUDED.master_record_workspaces_week_start,
+		       master_record_workspaces_rank_method              = EXCLUDED.master_record_workspaces_rank_method,
+		       master_record_workspaces_build_changeset_tracking = EXCLUDED.master_record_workspaces_build_changeset_tracking,
+		       master_record_workspaces_primary_contact_email    = EXCLUDED.master_record_workspaces_primary_contact_email,
+		       master_record_workspaces_updated_at               = now()
 	`
 
 const sqlInsertTestbedRootTopologyNode = `

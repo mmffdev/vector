@@ -7,7 +7,7 @@ package portfoliomodels
 //   1. masterResetVA(vaPool)        — clears artefacts, types, flows,
 //                                      timeboxes, topology, master_record_*,
 //                                      adoption state, then re-seeds
-//                                      master_record_tenants + root topology
+//                                      master_record_workspaces + root topology
 //                                      node + dev strategy artefacts.
 //   2. masterResetVector(vectorPool) — clears workspaces + role grants
 //                                      in mmff_vector.

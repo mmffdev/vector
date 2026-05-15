@@ -31,8 +31,9 @@ func NewDevResetHandler(vectorPool *pgxpool.Pool, vaPool *pgxpool.Pool) *DevRese
 // ResetAdoptionState — POST /_site/admin/dev/adoption-reset
 //
 // Legacy adoption-only reset: clears mirror tables and portfolio model
-// state. Leaves artefacts, topology, workspaces, and master_record_tenants
-// untouched. Prefer MasterReset for a full testbed rebuild.
+// state. Leaves artefacts, topology, workspaces, and master_record_workspaces
+// (settings sidecar in vector_artefacts) untouched. Prefer MasterReset for
+// a full testbed rebuild.
 func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
@@ -54,10 +55,11 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 // MasterReset — POST /_site/admin/dev/master-reset
 //
 // Full testbed reset. Clears all tenant data across both DBs and
-// re-seeds master_record_tenants + one root topology node.
+// re-seeds vector_artefacts.master_record_workspaces (the workspace
+// settings sidecar) + one root topology node.
 //
 // Cleared (mmff_vector):
-//   - master_record_workspaces + roles_workspaces (all workspaces)
+//   - master_record_workspaces + roles_workspaces (all workspaces — anchor identity)
 //   - o_flow_tenant overrides
 //   (mmff_vector.master_record_tenants is vestigial since M2 — not reset here)
 //
@@ -72,7 +74,7 @@ func (h *DevResetHandler) ResetAdoptionState(w http.ResponseWriter, r *http.Requ
 //   - master_record_portfolios
 //
 // Re-seeded (vector_artefacts):
-//   - master_record_tenants: ACME Bank testbed identity
+//   - master_record_workspaces: ACME Bank testbed identity
 //   - topology_nodes: single root node "ACME Bank"
 //
 // NOT touched: users, sessions, roles, permissions, pages, nav prefs,
@@ -190,9 +192,9 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 		return fmt.Errorf("master_record_portfolios: %w", err)
 	}
 
-	// 8. Upsert master_record_tenants with ACME Bank testbed identity.
+	// 8. Upsert master_record_workspaces with ACME Bank testbed identity.
 	if _, err = tx.Exec(ctx, sqlUpsertTestbedTenantRecord, devWorkspaceID, ownerUserID); err != nil {
-		return fmt.Errorf("master_record_tenants upsert: %w", err)
+		return fmt.Errorf("master_record_workspaces upsert: %w", err)
 	}
 
 	// 9. Seed root topology node "ACME Bank".
@@ -214,7 +216,8 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 
 // masterResetVector clears tenant data from mmff_vector.
 // Note: mmff_vector.master_record_tenants is vestigial (superseded by
-// vector_artefacts.master_record_tenants in M2) — not written here.
+// vector_artefacts.master_record_workspaces in M2 — renamed from
+// master_record_tenants by migration 067 on 2026-05-15) — not written here.
 func (h *DevResetHandler) masterResetVector(ctx context.Context, subscriptionID uuid.UUID) error {
 	tx, err := h.VectorPool.Begin(ctx)
 	if err != nil {
