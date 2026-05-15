@@ -6,22 +6,17 @@
 
 ## PARKED — pick up after <rg> skill ships
 
-Two unfinished pieces from today's work are intentionally parked here (not actioned) to avoid piling more debt on top of what we're about to file as TD-TEST-003. Resume **after** the `<rg>` red-green-refactor skill + Dev Mode test page are in place:
+Picking these up after the `<rg>` substrate shipped to Tracker's `001_red_green` branch (commits `22233a7`, `3539edb`, `4ff4369`, `3421fbe`, `3793372`, `5cd2fa7`). Working `/red-green` page at http://localhost:5103/red-green renders 12 groups + 160 planned tests + 10 auto-discovered tests for the Vector project.
 
-1. **PLA-0050 runtime verification.** Backend was respawned successfully (commit `b547294`) but mid-run my SIGKILL→air race left the supervisor stuck. Recovery is mechanical (kill the orphan air processes + relaunch via launcher). Once the backend is back, run ACs 5/6/7/10/11 of `dev/plans/PLA-0050.json` — they're curl smoke + browser smoke against `/_site/tenant-settings` and the two pages. Estimated 15 min. Recovery PIDs were 11580 + 31817 + four orphaned `go run`s — those numbers may have changed; re-check `ps -ef | grep -E "air|go run"`.
+**PLA-0050 runtime smoke + AC7 gap CLOSED 2026-05-15.** AC5/AC6/AC7 verified via curl. Discovered + closed gap: route had no `RequirePageAccess` middleware despite the AC7 contract; added `auth.RequirePageAccess(pageAccessResolver, "va-tenant-settings")` to the `/tenant-settings` route in `cmd/server/main.go` + migration 201 seeded the `grp_global` grant in `users_roles_pages`. ACs 10/11 (browser smoke) still want a human in the loop.
 
-2. **Cleanup-register Story 3 — inheritance read-path.** Unblocked by PLA-0050 ship. This is the natural place to break the no-tests streak (decision recorded 2026-05-15: TDD test-first from scratch using the `<rg>` skill once it exists). Plan needs drafting as PLA-0051 (or next free). The substrate is: `workspacemasterrecord.Service.Get(workspaceID)` does the COALESCE/merge from `tenantmasterrecord` when a workspace column is NULL → frontend gets one coherent payload with an "inherited from tenant" marker per field. UI shows greyed value + "inherit/override" toggle per user's framing.
+1. **PLA-0050 browser smoke (ACs 10/11).** Manual 5-min job: log in as gadmin → `/vector-admin/tenant-settings` → confirm all 16 fields render with current values, edit one, save, see toast confirmation. Then log out, log in as user-tier (`claude_1_test@mmffdev.com` / `password123!`) → navigate to same URL → see PageAccessDenied component (not the editor). Once both confirmed, flip AC10/AC11 to done in `dev/plans/PLA-0050.json`.
+
+2. **Cleanup-register Story 3 — inheritance read-path.** Unblocked by PLA-0050 ship. **Designated first marquee use of `<rg>` TDD** (decision recorded 2026-05-15). Plan needs drafting as PLA-0051 (or next free). The substrate: `workspacemasterrecord.Service.Get(workspaceID)` does a COALESCE/merge from `tenantmasterrecord` when a workspace column is NULL → frontend gets one coherent payload with an "inherited from tenant" marker per field. UI shows greyed value + "inherit/override" toggle per user's framing. Tests land in Tracker's `/red-green` page under `Group 2 — Backend Workspaces & Tenancy`.
 
 3. **Cleanup-register Story 4 + Story 6.** Story 4 (drop legacy singular `workspace` table in mmff_vector) and Story 6 (verify topology permissioning after `roles_org_nodes` was dropped in migration 175) remain unstarted. Both are small follow-ups. Story 4 needs a `grep -rn '\bworkspace\b' backend/ app/` audit first.
 
-4. **`<rg>` skill build (THIS is the next focus).** Locked-in scope from 2026-05-15 chat:
-   - `<rg>` skill = interactive R→G→R loop, blocks each step until the previous proves itself (red test fails, then green test passes, then refactor keeps all green).
-   - Auto-fires when Edit/Write touches any file referenced in an active PLA-NNNN.json work_item_backlog entry; one-line override `<rg> --skip <reason>` recorded for audit.
-   - Test plan storage: each work_item_backlog row gains `tests: [{ name, file, kind: "unit"|"integration"|"vitest", covers: "<one-line behaviour>" }]`. `<plan>`/`<stories>` requires this field non-empty.
-   - Dev Mode page: 4 widgets — test results list (pass/fail/timestamp from `go test -json` + Vitest JSON), test→story map (which PLA/story_id claims coverage of each test), test source preview side-by-side with the prod file, file-coverage heatmap (any-vs-none, file-level).
-   - Sync mechanisms (all three): commit-time hook warns when a file changed without its test touching, nightly `/loop` runs the full suite and appends failures to MY_HANDOVER.md, story-close gate refuses `status: todo → done` until tests are green.
-   - Phase 1 ship = everything at once (skill + page + hooks). User's call.
-   - First user-facing target after the skill exists: backfill `workspacemasterrecord` + `tenantmasterrecord` tests as part of Story 3 (above), since the Get() refactor for COALESCE is the natural seam to write tests around.
+4. **Page-access auto-grant trigger (filed for follow-up).** Migration 193 documented the intent of a Postgres trigger that would auto-grant `grp_global` + `grp_padmin` on every new `pages` INSERT, but it was never built. Until then, every new system page needs an explicit grant-seed migration (see 201 for the pattern). Worth filing as TD when it bites again.
 
 **Parking principle:** files this stale grow stale fast. If we don't pick these up within ~2 sessions, the parked notes should be re-grilled against the live code before action.
 

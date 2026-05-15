@@ -1,47 +1,47 @@
 {
   "id": "PLA-0050",
-  "title": "Tenant-level defaults table — master_record_tenants (subscription-tier) in vector_artefacts + seed-trigger repair + URL hygiene",
+  "title": "Tenant-level defaults table \u2014 master_record_tenants (subscription-tier) in vector_artefacts + seed-trigger repair + URL hygiene",
   "date_created": "2026-05-15",
   "date_started": "2026-05-15",
   "date_last_updated": "2026-05-15",
   "date_finished": null,
-  "status_note": "Drafted + shipped end-to-end 2026-05-15 (unsupervised run). All 7 stories landed: DB migration 068 applied to dev (33 subscriptions backfilled), broken seed trigger dropped (mmff_vector migration 200), Go tenantmasterrecord package wired into main.go, frontend tenantSettingsApi.ts + /vector-admin/tenant-settings page created, /workspace-admin/workspace-details rename done, docs updated. Runtime smoke incomplete: backend respawn failed mid-run (SIGKILL → air bind race → port held briefly → air gave up after one retry). Code on disk is correct and builds cleanly; needs a fresh restart to take effect. ACs 5/6/7/10/11 (runtime smoke) deferred until backend is back up. Drafted 2026-05-15 from MY_HANDOVER.md cleanup register Stories 2 + 5. Story 2 substrate: introduce a real tenant-defaults table keyed by subscription_id (the 'London HQ' defaults that workspaces inherit from). Story 5 substrate: rename the existing /vector-admin/tenant-details page to /workspace-admin/workspace-details so the new tenant page can take the now-correctly-named tenant URL. Inheritance read-path (cleanup register Story 3) is the next plan after this one — explicitly deferred. Pre-existing bug discovered during scoping: fn_master_record_tenant_seed_for_subscription trigger on subscriptions table references the legacy mmff_vector.master_record_tenant table which no longer exists (any INSERT INTO subscriptions currently fails). Story 00568 repairs this by dropping the trigger and moving seed responsibility to the Go subscription-create path.",
-  "scope": "<p>Add a real tenant-level defaults table to vector_artefacts, sibling to the workspace-level settings sidecar that PLA-0032 produced. PK = <code>subscription_id</code> — one row per paying customer / legal entity. Columns mirror <code>master_record_workspaces</code>'s locale/calendar/owner fields (timezone, date_format, workdays, region, week_start, primary_contact_email, etc.) but at the tenant tier. New gadmin-only page at <code>/vector-admin/tenant-settings</code> renders the editor. The existing page at <code>/vector-admin/tenant-details</code> (which actually edits workspace-level data after PLA-0032's rename) moves to <code>/workspace-admin/workspace-details</code> to free the tenant URL family.</p><p>Repairs a pre-existing DB bug: <code>fn_master_record_tenant_seed_for_subscription</code> on the <code>subscriptions</code> table still references the dropped legacy <code>mmff_vector.master_record_tenant</code> singular table. Any <code>INSERT INTO subscriptions</code> currently fails. PLA-0050 drops the trigger and moves seed responsibility to the Go subscription-create path (sole-writer pattern, works across the cross-DB boundary that triggers cannot).</p><p>Inheritance read-path (when a <code>master_record_workspaces.*</code> field is NULL, COALESCE to the tenant default) is explicitly <strong>deferred to the next plan</strong> — this plan only builds the substrate.</p>",
-  "value": "<p>Today the only thing called &quot;tenant&quot; in vector_artefacts is actually workspace-keyed (PLA-0032 surfaced this and renamed that table to master_record_workspaces). The real tenant tier — the paying customer / legal entity that owns N workspaces — has no defaults table at all. Workspaces don't inherit anything; every workspace re-enters London/UK defaults independently. This plan creates the substrate for the user's framing: <em>&quot;tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure.&quot;</em></p><p>Two additional payoffs land here: (a) the broken seed trigger gets fixed (subscription creation will work end-to-end again — currently broken at the DB layer), and (b) the confusing URL <code>/vector-admin/tenant-details</code> (which after PLA-0032 actually edits workspace data) gets renamed to <code>/workspace-admin/workspace-details</code>, freeing the tenant URL family for the new tenant editor.</p>",
+  "status_note": "Drafted + shipped end-to-end 2026-05-15 (unsupervised run). All 7 stories landed: DB migration 068 applied to dev (33 subscriptions backfilled), broken seed trigger dropped (mmff_vector migration 200), Go tenantmasterrecord package wired into main.go, frontend tenantSettingsApi.ts + /vector-admin/tenant-settings page created, /workspace-admin/workspace-details rename done, docs updated. Runtime smoke incomplete: backend respawn failed mid-run (SIGKILL \u2192 air bind race \u2192 port held briefly \u2192 air gave up after one retry). Code on disk is correct and builds cleanly; needs a fresh restart to take effect. ACs 5/6/7/10/11 (runtime smoke) deferred until backend is back up. Drafted 2026-05-15 from MY_HANDOVER.md cleanup register Stories 2 + 5. Story 2 substrate: introduce a real tenant-defaults table keyed by subscription_id (the 'London HQ' defaults that workspaces inherit from). Story 5 substrate: rename the existing /vector-admin/tenant-details page to /workspace-admin/workspace-details so the new tenant page can take the now-correctly-named tenant URL. Inheritance read-path (cleanup register Story 3) is the next plan after this one \u2014 explicitly deferred. Pre-existing bug discovered during scoping: fn_master_record_tenant_seed_for_subscription trigger on subscriptions table references the legacy mmff_vector.master_record_tenant table which no longer exists (any INSERT INTO subscriptions currently fails). Story 00568 repairs this by dropping the trigger and moving seed responsibility to the Go subscription-create path. RUNTIME SMOKE 2026-05-15: AC5/AC6/AC7 verified end-to-end via curl with the live backend. Gap discovered: the route had no RequirePageAccess middleware despite the AC7 contract; added the gate + migration 201 seeded grp_global grant for va-tenant-settings. AC8 (subscription-create seeds tenant row) remains done-partial \u2014 no production subscription-create path exists. ACs 10/11 (browser smoke) still need a human in the browser.",
+  "scope": "<p>Add a real tenant-level defaults table to vector_artefacts, sibling to the workspace-level settings sidecar that PLA-0032 produced. PK = <code>subscription_id</code> \u2014 one row per paying customer / legal entity. Columns mirror <code>master_record_workspaces</code>'s locale/calendar/owner fields (timezone, date_format, workdays, region, week_start, primary_contact_email, etc.) but at the tenant tier. New gadmin-only page at <code>/vector-admin/tenant-settings</code> renders the editor. The existing page at <code>/vector-admin/tenant-details</code> (which actually edits workspace-level data after PLA-0032's rename) moves to <code>/workspace-admin/workspace-details</code> to free the tenant URL family.</p><p>Repairs a pre-existing DB bug: <code>fn_master_record_tenant_seed_for_subscription</code> on the <code>subscriptions</code> table still references the dropped legacy <code>mmff_vector.master_record_tenant</code> singular table. Any <code>INSERT INTO subscriptions</code> currently fails. PLA-0050 drops the trigger and moves seed responsibility to the Go subscription-create path (sole-writer pattern, works across the cross-DB boundary that triggers cannot).</p><p>Inheritance read-path (when a <code>master_record_workspaces.*</code> field is NULL, COALESCE to the tenant default) is explicitly <strong>deferred to the next plan</strong> \u2014 this plan only builds the substrate.</p>",
+  "value": "<p>Today the only thing called &quot;tenant&quot; in vector_artefacts is actually workspace-keyed (PLA-0032 surfaced this and renamed that table to master_record_workspaces). The real tenant tier \u2014 the paying customer / legal entity that owns N workspaces \u2014 has no defaults table at all. Workspaces don't inherit anything; every workspace re-enters London/UK defaults independently. This plan creates the substrate for the user's framing: <em>&quot;tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure.&quot;</em></p><p>Two additional payoffs land here: (a) the broken seed trigger gets fixed (subscription creation will work end-to-end again \u2014 currently broken at the DB layer), and (b) the confusing URL <code>/vector-admin/tenant-details</code> (which after PLA-0032 actually edits workspace data) gets renamed to <code>/workspace-admin/workspace-details</code>, freeing the tenant URL family for the new tenant editor.</p>",
   "implementation_plan": [
-    "Task 1: vector_artefacts migration 068. CREATE TABLE master_record_tenants with subscription_id PK + 16 fields mirroring master_record_workspaces (drop the owner_user_id — tenants are owned by the subscription stakeholders table). Indexes + check constraints + trigger function. Forward + DOWN migration files.",
-    "Task 2: Backfill in same migration 068 — INSERT one row per existing subscription with system defaults (timezone=Europe/London, date_format=DD/MM/YYYY, workdays=mon–fri, region=euw2, week_start=mon, rank_method=manual, build_changeset_tracking=false). ON CONFLICT DO NOTHING for idempotence.",
-    "Task 3: mmff_vector migration (separate file, vector pool) — DROP TRIGGER trg_subscriptions_seed_master_record + DROP FUNCTION fn_master_record_tenant_seed_for_subscription. Restores INSERT INTO subscriptions to working state.",
-    "Task 4: Go — new backend/internal/tenantmasterrecord/ package (handler.go, service.go, sql.go). Mirrors workspacemasterrecord's shape: sole-writer over master_record_tenants on vaPool. Methods: Get(subscriptionID), Patch(subscriptionID, input), SeedForSubscription(subscriptionID).",
+    "Task 1: vector_artefacts migration 068. CREATE TABLE master_record_tenants with subscription_id PK + 16 fields mirroring master_record_workspaces (drop the owner_user_id \u2014 tenants are owned by the subscription stakeholders table). Indexes + check constraints + trigger function. Forward + DOWN migration files.",
+    "Task 2: Backfill in same migration 068 \u2014 INSERT one row per existing subscription with system defaults (timezone=Europe/London, date_format=DD/MM/YYYY, workdays=mon\u2013fri, region=euw2, week_start=mon, rank_method=manual, build_changeset_tracking=false). ON CONFLICT DO NOTHING for idempotence.",
+    "Task 3: mmff_vector migration (separate file, vector pool) \u2014 DROP TRIGGER trg_subscriptions_seed_master_record + DROP FUNCTION fn_master_record_tenant_seed_for_subscription. Restores INSERT INTO subscriptions to working state.",
+    "Task 4: Go \u2014 new backend/internal/tenantmasterrecord/ package (handler.go, service.go, sql.go). Mirrors workspacemasterrecord's shape: sole-writer over master_record_tenants on vaPool. Methods: Get(subscriptionID), Patch(subscriptionID, input), SeedForSubscription(subscriptionID).",
     "Task 5: Mount /_site/tenant-settings GET + PATCH in main.go (gadmin-gated). Distinct route from the existing /_site/workspace-settings.",
-    "Task 6: Find every Go path that creates a subscription. Add tenantmasterrecord.SeedForSubscription call inside the same control flow. Since the seed lives in vector_artefacts and subscriptions in mmff_vector, this is a two-write operation — use the existing eventual-consistency pattern (write-and-retry, no cross-DB tx).",
-    "Task 7: Frontend API helper app/lib/tenantSettingsApi.ts (the name is now free — was renamed to workspaceSettingsApi.ts in PLA-0032/00566). Typed client for /_site/tenant-settings.",
-    "Task 8: Frontend new page at app/(user)/vector-admin/tenant-settings/page.tsx — gadmin-only tenant defaults editor. Form shape matches the existing workspace editor; same field-by-field PATCH semantics.",
-    "Task 9: Rename existing app/(user)/vector-admin/tenant-details/ → app/(user)/workspace-admin/workspace-details/. Update pages row in mmff_vector.pages (delete va-tenant-details if it still keys the rename target; insert new wa-workspace-details). Move the workspace editor URL into the correct group.",
-    "Task 10: Docs — extend docs/c_c_db_routing.md (new table), update MY_HANDOVER.md cleanup register (Story 2 + Story 5 IN FLIGHT → done), open follow-up note for Story 3 (inheritance read path), file PLA-0050 reference in docs/c_plan_index.md."
+    "Task 6: Find every Go path that creates a subscription. Add tenantmasterrecord.SeedForSubscription call inside the same control flow. Since the seed lives in vector_artefacts and subscriptions in mmff_vector, this is a two-write operation \u2014 use the existing eventual-consistency pattern (write-and-retry, no cross-DB tx).",
+    "Task 7: Frontend API helper app/lib/tenantSettingsApi.ts (the name is now free \u2014 was renamed to workspaceSettingsApi.ts in PLA-0032/00566). Typed client for /_site/tenant-settings.",
+    "Task 8: Frontend new page at app/(user)/vector-admin/tenant-settings/page.tsx \u2014 gadmin-only tenant defaults editor. Form shape matches the existing workspace editor; same field-by-field PATCH semantics.",
+    "Task 9: Rename existing app/(user)/vector-admin/tenant-details/ \u2192 app/(user)/workspace-admin/workspace-details/. Update pages row in mmff_vector.pages (delete va-tenant-details if it still keys the rename target; insert new wa-workspace-details). Move the workspace editor URL into the correct group.",
+    "Task 10: Docs \u2014 extend docs/c_c_db_routing.md (new table), update MY_HANDOVER.md cleanup register (Story 2 + Story 5 IN FLIGHT \u2192 done), open follow-up note for Story 3 (inheritance read path), file PLA-0050 reference in docs/c_plan_index.md."
   ],
   "areas_impacted": [
     "SQL (vector_artefacts): new migration 068 creates master_record_tenants + backfill",
     "SQL (mmff_vector): drop the broken fn_master_record_tenant_seed_for_subscription trigger",
     "API: new Go package backend/internal/tenantmasterrecord/ (sole writer) + new /_site/tenant-settings endpoint",
     "API: subscription-create call sites gain a SeedForSubscription invocation",
-    "UI: new gadmin-only /vector-admin/tenant-settings page; rename of /vector-admin/tenant-details → /workspace-admin/workspace-details",
+    "UI: new gadmin-only /vector-admin/tenant-settings page; rename of /vector-admin/tenant-details \u2192 /workspace-admin/workspace-details",
     "UI: new app/lib/tenantSettingsApi.ts typed client",
     "Docs: c_c_db_routing.md extension + cleanup register update"
   ],
   "feature_list": [
     "master_record_tenants table in vector_artefacts (subscription-keyed)",
-    "/_site/tenant-settings — GET + PATCH (gadmin-gated)",
+    "/_site/tenant-settings \u2014 GET + PATCH (gadmin-gated)",
     "tenantmasterrecord.Service Go module (sole writer)",
     "Subscription-create path seeds tenant defaults row",
     "Pre-existing broken trigger fn_master_record_tenant_seed_for_subscription removed",
     "/vector-admin/tenant-settings frontend editor page",
-    "/vector-admin/tenant-details → /workspace-admin/workspace-details rename (cleanup register Story 5)",
+    "/vector-admin/tenant-details \u2192 /workspace-admin/workspace-details rename (cleanup register Story 5)",
     "app/lib/tenantSettingsApi.ts typed client"
   ],
   "features_extended": [
     "<strong>Cleanup-register Story 2</strong> shipped: real tenant-defaults table at the subscription tier (the &quot;London HQ&quot; defaults).",
-    "<strong>Cleanup-register Story 5</strong> shipped: URL hygiene — tenant-details page renamed to workspace-details (it always edited workspace data).",
+    "<strong>Cleanup-register Story 5</strong> shipped: URL hygiene \u2014 tenant-details page renamed to workspace-details (it always edited workspace data).",
     "<strong>Pre-existing bug fix:</strong> dropped fn_master_record_tenant_seed_for_subscription trigger which was breaking every subscription INSERT."
   ],
   "features_removed": [
@@ -49,13 +49,62 @@
     "/vector-admin/tenant-details URL (renamed to /workspace-admin/workspace-details)"
   ],
   "work_item_backlog": [
-    { "order": 1, "title": "SQL: create master_record_tenants (subscription-keyed) in vector_artefacts + backfill + drop broken seed trigger", "story_id": "00568", "card_url": null, "status": "done", "note": "FE-SQL-0021, EST F3, RISK MED. Shipped 2026-05-15. db/vector_artefacts/schema/068 — CREATE TABLE master_record_tenants, 16 columns master_record_tenants_* prefixed, 7 check constraints, trigger function, fdw_subscriptions FDW shadow, backfill from fdw_subscriptions ON CONFLICT DO NOTHING (33 rows). db/mmff_vector/schema/200 — DROP TRIGGER trg_subscriptions_seed_master_record + DROP FUNCTION fn_master_record_tenant_seed_for_subscription. Both with DOWN files. Applied to dev DB; schema_migrations backfilled. Subscription INSERT canary passes." },
-    { "order": 2, "title": "Go: new tenantmasterrecord package + /_site/tenant-settings endpoint (sole writer)", "story_id": "00569", "card_url": null, "status": "done", "note": "FE-API-0028, EST F5, RISK MED. Shipped 2026-05-15. backend/internal/tenantmasterrecord/{handler,service,sql}.go created. Public surface: Get(subscriptionID), Patch(subscriptionID, actorID, input), SeedForSubscription(subscriptionID). /_site/tenant-settings GET + PATCH mounted in main.go with RequireAuth + RequireFreshPassword + LimitByIP + userWriteLimiter middleware chain. Reads/writes vaPool. Wire shape mirrors WorkspaceSettings minus owner_user_id (tenants are owned via subscriptions_stakeholders bridge). go build clean. Runtime smoke deferred — backend currently stale (see status_note + handover)." },
-    { "order": 3, "title": "Go: wire tenantmasterrecord.SeedForSubscription into subscription-create path", "story_id": "00570", "card_url": null, "status": "done-partial", "note": "FE-API-0029, EST F2, RISK MED. Investigation 2026-05-15: NO production Go code path creates subscriptions. Subscriptions are only seeded via migrations + test fixtures. The Service.SeedForSubscription method was shipped in 00569 and is callable; auto-create-on-first-Get (sqlEnsureTenantRow) covers any subscription that lacks a tenant row at read time. Explicit wiring deferred until a real subscription-create production path exists (admin onboarding flow, signup, billing webhook, etc.). Test fixtures intentionally not updated — they don't call Get() on tenantmasterrecord so the missing seed is invisible to them." },
-    { "order": 4, "title": "Frontend: API helper tenantSettingsApi.ts (typed client for new endpoint)", "story_id": "00571", "card_url": null, "status": "done", "note": "FE-UI-0017, EST F1, RISK LOW. Shipped 2026-05-15. app/lib/tenantSettingsApi.ts created (name freed by PLA-0032/00566). Exports TenantSettings, TenantSettingsPatch, tenantSettingsApi.{get,patch}. tsc clean." },
-    { "order": 5, "title": "Frontend: gadmin-only /vector-admin/tenant-settings page (tenant defaults editor)", "story_id": "00572", "card_url": null, "status": "done", "note": "FE-UI-0018, EST F3, RISK LOW. Shipped 2026-05-15. app/(user)/vector-admin/tenant-settings/page.tsx created via cp from existing workspace editor, then sed/Edit-renamed Tenant→Workspace for the workspace one and back here. Component name TenantSettingsPage. Page row inserted into mmff_vector.pages: key_enum va-tenant-settings, tag_enum vector_admin, href /vector-admin/tenant-settings. setTenantCtx mutation removed (tenant settings DO NOT mutate TenantContext which is workspace-tier; documented in file header). tsc clean. Browser smoke pending (backend stale)." },
-    { "order": 6, "title": "Frontend: route rename /vector-admin/tenant-details → /workspace-admin/workspace-details", "story_id": "00573", "card_url": null, "status": "done", "note": "FE-UI-0019, EST F1, RISK LOW. Shipped 2026-05-15. cp app/(user)/vector-admin/tenant-details/page.tsx → app/(user)/workspace-admin/workspace-details/page.tsx. Component renamed TenantDetailsPage → WorkspaceDetailsPage. Old directory deleted. pages row updated: key_enum va-tenant-details → ws-workspace-details, label Tenant Details → Workspace Details, href + tag_enum updated. tsc clean. Cleanup-register Story 5 done." },
-    { "order": 7, "title": "Docs: c_c_db_routing.md + cleanup register update + Story 3 unblocking note", "story_id": "00574", "card_url": null, "status": "done", "note": "FE-DEV-0027, EST F1, RISK LOW. Shipped 2026-05-15. docs/c_c_db_routing.md: replaced stale tenantmasterrecord entry with two distinct rows for workspacemasterrecord (master_record_workspaces) and the new tenantmasterrecord (master_record_tenants). docs/c_plan_index.md Last issued bumped to PLA-0050 + new row added. MY_HANDOVER.md cleanup register updated — Stories 2 + 5 marked SHIPPED, Story 3 marked NOW UNBLOCKED with the service-layer fallback approach recorded." }
+    {
+      "order": 1,
+      "title": "SQL: create master_record_tenants (subscription-keyed) in vector_artefacts + backfill + drop broken seed trigger",
+      "story_id": "00568",
+      "card_url": null,
+      "status": "done",
+      "note": "FE-SQL-0021, EST F3, RISK MED. Shipped 2026-05-15. db/vector_artefacts/schema/068 \u2014 CREATE TABLE master_record_tenants, 16 columns master_record_tenants_* prefixed, 7 check constraints, trigger function, fdw_subscriptions FDW shadow, backfill from fdw_subscriptions ON CONFLICT DO NOTHING (33 rows). db/mmff_vector/schema/200 \u2014 DROP TRIGGER trg_subscriptions_seed_master_record + DROP FUNCTION fn_master_record_tenant_seed_for_subscription. Both with DOWN files. Applied to dev DB; schema_migrations backfilled. Subscription INSERT canary passes."
+    },
+    {
+      "order": 2,
+      "title": "Go: new tenantmasterrecord package + /_site/tenant-settings endpoint (sole writer)",
+      "story_id": "00569",
+      "card_url": null,
+      "status": "done",
+      "note": "FE-API-0028, EST F5, RISK MED. Shipped 2026-05-15. backend/internal/tenantmasterrecord/{handler,service,sql}.go created. Public surface: Get(subscriptionID), Patch(subscriptionID, actorID, input), SeedForSubscription(subscriptionID). /_site/tenant-settings GET + PATCH mounted in main.go with RequireAuth + RequireFreshPassword + LimitByIP + userWriteLimiter middleware chain. Reads/writes vaPool. Wire shape mirrors WorkspaceSettings minus owner_user_id (tenants are owned via subscriptions_stakeholders bridge). go build clean. Runtime smoke deferred \u2014 backend currently stale (see status_note + handover)."
+    },
+    {
+      "order": 3,
+      "title": "Go: wire tenantmasterrecord.SeedForSubscription into subscription-create path",
+      "story_id": "00570",
+      "card_url": null,
+      "status": "done-partial",
+      "note": "FE-API-0029, EST F2, RISK MED. Investigation 2026-05-15: NO production Go code path creates subscriptions. Subscriptions are only seeded via migrations + test fixtures. The Service.SeedForSubscription method was shipped in 00569 and is callable; auto-create-on-first-Get (sqlEnsureTenantRow) covers any subscription that lacks a tenant row at read time. Explicit wiring deferred until a real subscription-create production path exists (admin onboarding flow, signup, billing webhook, etc.). Test fixtures intentionally not updated \u2014 they don't call Get() on tenantmasterrecord so the missing seed is invisible to them."
+    },
+    {
+      "order": 4,
+      "title": "Frontend: API helper tenantSettingsApi.ts (typed client for new endpoint)",
+      "story_id": "00571",
+      "card_url": null,
+      "status": "done",
+      "note": "FE-UI-0017, EST F1, RISK LOW. Shipped 2026-05-15. app/lib/tenantSettingsApi.ts created (name freed by PLA-0032/00566). Exports TenantSettings, TenantSettingsPatch, tenantSettingsApi.{get,patch}. tsc clean."
+    },
+    {
+      "order": 5,
+      "title": "Frontend: gadmin-only /vector-admin/tenant-settings page (tenant defaults editor)",
+      "story_id": "00572",
+      "card_url": null,
+      "status": "done",
+      "note": "FE-UI-0018, EST F3, RISK LOW. Shipped 2026-05-15. app/(user)/vector-admin/tenant-settings/page.tsx created via cp from existing workspace editor, then sed/Edit-renamed Tenant\u2192Workspace for the workspace one and back here. Component name TenantSettingsPage. Page row inserted into mmff_vector.pages: key_enum va-tenant-settings, tag_enum vector_admin, href /vector-admin/tenant-settings. setTenantCtx mutation removed (tenant settings DO NOT mutate TenantContext which is workspace-tier; documented in file header). tsc clean. Browser smoke pending (backend stale)."
+    },
+    {
+      "order": 6,
+      "title": "Frontend: route rename /vector-admin/tenant-details \u2192 /workspace-admin/workspace-details",
+      "story_id": "00573",
+      "card_url": null,
+      "status": "done",
+      "note": "FE-UI-0019, EST F1, RISK LOW. Shipped 2026-05-15. cp app/(user)/vector-admin/tenant-details/page.tsx \u2192 app/(user)/workspace-admin/workspace-details/page.tsx. Component renamed TenantDetailsPage \u2192 WorkspaceDetailsPage. Old directory deleted. pages row updated: key_enum va-tenant-details \u2192 ws-workspace-details, label Tenant Details \u2192 Workspace Details, href + tag_enum updated. tsc clean. Cleanup-register Story 5 done."
+    },
+    {
+      "order": 7,
+      "title": "Docs: c_c_db_routing.md + cleanup register update + Story 3 unblocking note",
+      "story_id": "00574",
+      "card_url": null,
+      "status": "done",
+      "note": "FE-DEV-0027, EST F1, RISK LOW. Shipped 2026-05-15. docs/c_c_db_routing.md: replaced stale tenantmasterrecord entry with two distinct rows for workspacemasterrecord (master_record_workspaces) and the new tenantmasterrecord (master_record_tenants). docs/c_plan_index.md Last issued bumped to PLA-0050 + new row added. MY_HANDOVER.md cleanup register updated \u2014 Stories 2 + 5 marked SHIPPED, Story 3 marked NOW UNBLOCKED with the service-layer fallback approach recorded."
+    }
   ],
   "acceptance_criteria": [
     {
@@ -79,7 +128,7 @@
     {
       "order": 3,
       "criterion": "Broken seed trigger removed; subscription INSERT works again",
-      "proven_by": "BEGIN; INSERT INTO subscriptions (name, slug) VALUES ('canary', 'canary-' || gen_random_uuid()) RETURNING id; ROLLBACK; succeeds — verified 2026-05-15.",
+      "proven_by": "BEGIN; INSERT INTO subscriptions (name, slug) VALUES ('canary', 'canary-' || gen_random_uuid()) RETURNING id; ROLLBACK; succeeds \u2014 verified 2026-05-15.",
       "story_id": "00568",
       "card_url": null,
       "done": true,
@@ -97,26 +146,29 @@
     {
       "order": 5,
       "criterion": "Authenticated GET /_site/tenant-settings returns 200 with the caller's subscription's row",
-      "proven_by": "curl with gadmin JWT against /_site/tenant-settings returns JSON with all 16 fields populated by the backfill defaults",
+      "proven_by": "curl with gadmin (claude_3_test@mmffdev.com) JWT against /_site/tenant-settings returned HTTP 200 with all 16 tenant_* fields populated by the backfill defaults (tenant_timezone=Europe/London, tenant_data_region=use1, tenant_date_format=DD/MM/YYYY, tenant_workdays=[mon,tue,wed,thu,fri]). Verified 2026-05-15.",
       "story_id": "00569",
       "card_url": null,
-      "done": false
+      "done": true,
+      "verified_at": "2026-05-15"
     },
     {
       "order": 6,
       "criterion": "Authenticated PATCH /_site/tenant-settings round-trips and trigger fires",
-      "proven_by": "curl PATCH with a single field change returns 200 with the new value; tenant_updated_at bumped to PATCH timestamp; psql confirms persisted",
+      "proven_by": "curl PATCH with X-CSRF-Token header + csrf_token cookie returned HTTP 200; tenant_notes round-tripped; tenant_updated_at bumped from 23:02:04 to 23:05:17; psql confirms master_record_tenants_notes + master_record_tenants_updated_at persisted on row id_subscription=00000000-0000-0000-0000-000000000001. Verified 2026-05-15.",
       "story_id": "00569",
       "card_url": null,
-      "done": false
+      "done": true,
+      "verified_at": "2026-05-15"
     },
     {
       "order": 7,
       "criterion": "Non-gadmin users get 403 on /_site/tenant-settings",
-      "proven_by": "curl with claude_1_test (user-tier) JWT returns 403 — confirms the gate",
+      "proven_by": "Closing the gap discovered during smoke: the original route had NO gadmin gate (comment in main.go admitted enforcement was deferred to RequirePageAccess but the middleware was never wired). PLA-0050 smoke added auth.RequirePageAccess(pageAccessResolver, 'va-tenant-settings') to the route + migration 201 seeded grp_global access in users_roles_pages. After fix: curl with claude_1_test@mmffdev.com (grp_team_member) returned HTTP 403 with body {title: Forbidden, detail: You don't have permission to do that.}. Verified 2026-05-15.",
       "story_id": "00569",
       "card_url": null,
-      "done": false
+      "done": true,
+      "verified_at": "2026-05-15"
     },
     {
       "order": 8,
@@ -129,7 +181,7 @@
     {
       "order": 9,
       "criterion": "Frontend API helper exposes typed client",
-      "proven_by": "tsc --noEmit clean; app/lib/tenantSettingsApi.ts exports TenantSettings, TenantSettingsPatch, tenantSettingsApi.{get,patch} — verified 2026-05-15.",
+      "proven_by": "tsc --noEmit clean; app/lib/tenantSettingsApi.ts exports TenantSettings, TenantSettingsPatch, tenantSettingsApi.{get,patch} \u2014 verified 2026-05-15.",
       "story_id": "00571",
       "card_url": null,
       "done": true,
@@ -163,7 +215,7 @@
     {
       "order": 13,
       "criterion": "docs/c_c_db_routing.md lists master_record_tenants under vaPool",
-      "proven_by": "grep 'master_record_tenants' docs/c_c_db_routing.md returns the new entry (NEW table; subscription-keyed; distinct from master_record_workspaces above) — verified 2026-05-15.",
+      "proven_by": "grep 'master_record_tenants' docs/c_c_db_routing.md returns the new entry (NEW table; subscription-keyed; distinct from master_record_workspaces above) \u2014 verified 2026-05-15.",
       "story_id": "00574",
       "card_url": null,
       "done": true,
@@ -172,7 +224,7 @@
     {
       "order": 14,
       "criterion": "MY_HANDOVER.md cleanup register reflects Stories 2 + 5 done; Story 3 marked unblocked",
-      "proven_by": "MY_HANDOVER.md Story 2 + Story 5 marked 'SHIPPED 2026-05-15 (PLA-0050)'; Story 3 marked 'NOW UNBLOCKED by PLA-0050' with the service-layer fallback decision recorded — verified 2026-05-15.",
+      "proven_by": "MY_HANDOVER.md Story 2 + Story 5 marked 'SHIPPED 2026-05-15 (PLA-0050)'; Story 3 marked 'NOW UNBLOCKED by PLA-0050' with the service-layer fallback decision recorded \u2014 verified 2026-05-15.",
       "story_id": "00574",
       "card_url": null,
       "done": true,
@@ -182,32 +234,60 @@
   "risks": [
     {
       "impact": 2,
-      "risk": "Two-write across DBs (mmff_vector.subscriptions + vector_artefacts.master_record_tenants) — no cross-DB tx in Postgres; failure mid-write leaves orphans",
+      "risk": "Two-write across DBs (mmff_vector.subscriptions + vector_artefacts.master_record_tenants) \u2014 no cross-DB tx in Postgres; failure mid-write leaves orphans",
       "mitigation": "Use the existing eventual-consistency pattern: Go path writes subscription first (anchor), then seeds tenant defaults; if the tenant write fails, log + queue retry. SeedForSubscription uses ON CONFLICT DO NOTHING so retries are idempotent. Same approach the project uses for other cross-DB writes (per docs/c_polymorphic_writes.md)."
     },
     {
       "impact": 2,
       "risk": "Backfill might miss some subscriptions if migration runs concurrently with new subscription creates",
-      "mitigation": "Migration 068 runs in a single transaction; the broken trigger drop runs in a separate mmff_vector migration. Backfill uses INSERT ... SELECT FROM subscriptions ON CONFLICT DO NOTHING — safe against races. Anyway, dev DB has 1 subscription and the seed trigger has been broken (no new subscriptions creatable) so race window is effectively zero."
+      "mitigation": "Migration 068 runs in a single transaction; the broken trigger drop runs in a separate mmff_vector migration. Backfill uses INSERT ... SELECT FROM subscriptions ON CONFLICT DO NOTHING \u2014 safe against races. Anyway, dev DB has 1 subscription and the seed trigger has been broken (no new subscriptions creatable) so race window is effectively zero."
     },
     {
       "impact": 1,
       "risk": "Renaming the existing tenant-details page route may break bookmarks / external links",
-      "mitigation": "Dev-only environment; no external bookmarks. Add a Next.js redirect from /vector-admin/tenant-details → /workspace-admin/workspace-details as a courtesy. Document in MY_HANDOVER.md."
+      "mitigation": "Dev-only environment; no external bookmarks. Add a Next.js redirect from /vector-admin/tenant-details \u2192 /workspace-admin/workspace-details as a courtesy. Document in MY_HANDOVER.md."
     },
     {
       "impact": 2,
-      "risk": "Story 3 (inheritance read-path) is the natural follow-up but is OUT of scope here — risk that we leave a half-built feature where the tenant table exists but workspaces don't actually inherit",
+      "risk": "Story 3 (inheritance read-path) is the natural follow-up but is OUT of scope here \u2014 risk that we leave a half-built feature where the tenant table exists but workspaces don't actually inherit",
       "mitigation": "Plan explicitly flags this. The new tenant page is a standalone editor; nothing breaks if Story 3 doesn't ship immediately. Filed in MY_HANDOVER.md cleanup register as Story 3, now unblocked."
     }
   ],
   "references": [
-    { "kind": "internal", "label": "PLA-0032 — settings sidecar rename (predecessor)", "href": "dev/plans/PLA-0032.json" },
-    { "kind": "internal", "label": "R028 — portfolio hierarchy & scoping synthesis (decision A.2)", "href": "dev/research/R028.json" },
-    { "kind": "internal", "label": "MY_HANDOVER.md cleanup register — Stories 2 + 5 source", "href": "MY_HANDOVER.md" },
-    { "kind": "internal", "label": "Migration 067 — master_record_workspaces template (forward + DOWN)", "href": "db/vector_artefacts/schema/067_rename_master_record_tenants_to_workspaces.sql" },
-    { "kind": "internal", "label": "Polymorphic / cross-DB writer pattern", "href": "docs/c_polymorphic_writes.md" },
-    { "kind": "internal", "label": "DB routing map (will be extended in story 00574)", "href": "docs/c_c_db_routing.md" },
-    { "kind": "internal", "label": "Existing workspacemasterrecord service (structural template for new tenant service)", "href": "backend/internal/workspacemasterrecord/" }
+    {
+      "kind": "internal",
+      "label": "PLA-0032 \u2014 settings sidecar rename (predecessor)",
+      "href": "dev/plans/PLA-0032.json"
+    },
+    {
+      "kind": "internal",
+      "label": "R028 \u2014 portfolio hierarchy & scoping synthesis (decision A.2)",
+      "href": "dev/research/R028.json"
+    },
+    {
+      "kind": "internal",
+      "label": "MY_HANDOVER.md cleanup register \u2014 Stories 2 + 5 source",
+      "href": "MY_HANDOVER.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Migration 067 \u2014 master_record_workspaces template (forward + DOWN)",
+      "href": "db/vector_artefacts/schema/067_rename_master_record_tenants_to_workspaces.sql"
+    },
+    {
+      "kind": "internal",
+      "label": "Polymorphic / cross-DB writer pattern",
+      "href": "docs/c_polymorphic_writes.md"
+    },
+    {
+      "kind": "internal",
+      "label": "DB routing map (will be extended in story 00574)",
+      "href": "docs/c_c_db_routing.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Existing workspacemasterrecord service (structural template for new tenant service)",
+      "href": "backend/internal/workspacemasterrecord/"
+    }
   ]
 }

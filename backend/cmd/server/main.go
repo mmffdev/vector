@@ -1212,14 +1212,16 @@ func main() {
 	})
 
 	// ---- /tenant-settings (PLA-0050) ----
-	// Subscription-tier defaults editor. Same auth + rate-limit middleware
-	// as /workspace-settings; gadmin-only enforcement is delegated to the
-	// page-access middleware once the va-tenant-settings page row is seeded
-	// by story 00572. Until then, any authenticated user in the subscription
-	// can read/PATCH their own tenant-defaults row.
+	// Subscription-tier defaults editor. va-tenant-settings page-access row
+	// is seeded by story 00572 in the `pages` table; RequirePageAccess gates
+	// the API on the same grant the UI uses, so a hand-typed URL or stale
+	// bookmark from a user whose grant has been revoked is denied at the API
+	// layer — not just rendered as a blank UI. PLA-0050 AC7 verification:
+	// non-gadmin users 403 here.
 	r.Route("/tenant-settings", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequirePageAccess(pageAccessResolver, "va-tenant-settings"))
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		tenantSettingsH.Mount(r)
