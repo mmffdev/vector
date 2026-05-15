@@ -36,12 +36,16 @@ import { notify } from "@/app/lib/toast";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
   workspaceSettingsApi,
+  INHERITABLE_FIELDS,
   type DayCode,
+  type FieldSource,
+  type InheritableField,
   type RankMethod,
   type WorkspaceSettings,
   type WorkspaceSettingsPatch,
   type WeekStart,
 } from "@/app/lib/workspaceSettingsApi";
+import InheritanceIndicator from "@/app/components/InheritanceIndicator";
 
 const REGIONS: Array<{ group: string; options: Array<{ value: string; label: string }> }> = [
   {
@@ -323,9 +327,23 @@ export default function WorkspaceDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // PLA-0051 Story 6 — per-field source markers from the latest server
+  // response. The form itself only holds resolved values; the markers
+  // live alongside it so the inheritance indicator can render the right
+  // chip + button per field. Reset on every successful load / save.
+  const [sources, setSources] = useState<Record<string, FieldSource | undefined>>({});
   // Reflects the row's tenant_id from the server; falls back to
   // the auth context subscription_id if the fetch hasn't completed yet.
   const subscriptionId = useRef<string | null>(null);
+
+  const extractSources = (row: WorkspaceSettings): Record<string, FieldSource | undefined> => {
+    const out: Record<string, FieldSource | undefined> = {};
+    for (const f of INHERITABLE_FIELDS) {
+      const key = `${f}_source` as keyof WorkspaceSettings;
+      out[f] = row[key] as FieldSource | undefined;
+    }
+    return out;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -336,11 +354,35 @@ export default function WorkspaceDetailsPage() {
       const seeded = fromServer(row);
       setOriginal(seeded);
       setForm(cloneState(seeded));
+      setSources(extractSources(row));
       setErrors({});
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load settings.");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  // PLA-0051 Story 6 — drop a workspace-level override, falling the
+  // field back to inherit from the tenant tier. Single-field, one-shot
+  // patch using the clear_overrides wire convention from Story 5.
+  // Re-seeds form + sources from the response so the UI reflects the
+  // new resolved value (now inherited) immediately.
+  const revertOverride = useCallback(async (field: InheritableField) => {
+    setSaving(true);
+    try {
+      const fresh = await workspaceSettingsApi.patch({ clear_overrides: [field] });
+      setTenantCtx(fresh);
+      const seeded = fromServer(fresh);
+      setOriginal(seeded);
+      setForm(cloneState(seeded));
+      setSources(extractSources(fresh));
+      setErrors({});
+      notify.success(`${field.replace(/_/g, " ")} now inherits from tenant.`);
+    } catch (err) {
+      notify.apiError(err, "Failed to clear override.");
+    } finally {
+      setSaving(false);
     }
   }, []);
 
@@ -380,6 +422,7 @@ export default function WorkspaceDetailsPage() {
       const seeded = fromServer(fresh);
       setOriginal(seeded);
       setForm(cloneState(seeded));
+      setSources(extractSources(fresh));
       setErrors({});
       notify.success("Tenant settings saved.");
     } catch (err) {
@@ -486,6 +529,16 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_data_region">
             Data region
+            <InheritanceIndicator
+              source={sources.tenant_data_region}
+              onRevert={() => void revertOverride("tenant_data_region")}
+              onOverride={() => {
+                // No-op: focusing the select is enough — saving the form
+                // with a changed value will create the override.
+                document.getElementById("tenant_data_region")?.focus();
+              }}
+              busy={saving}
+            />
             <select
               id="tenant_data_region"
               name="tenant_data_region"
@@ -512,6 +565,14 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_timezone">
             Time zone
+            <InheritanceIndicator
+              source={sources.tenant_timezone}
+              onRevert={() => void revertOverride("tenant_timezone")}
+              onOverride={() => {
+                document.getElementById("tenant_timezone")?.focus();
+              }}
+              busy={saving}
+            />
             <select
               id="tenant_timezone"
               name="tenant_timezone"

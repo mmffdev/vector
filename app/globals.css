@@ -13776,3 +13776,17 @@ input[type="reset"] {
     min-height: 0;
   }
 }
+
+/* ─── InheritanceIndicator (PLA-0051 / Story 6) ────────────────────────────
+   Inline-flex grouping for the source chip + override/revert button shown
+   next to inheritable fields on workspace-details. Atoms are catalog
+   (.pill, .btn) — this rule only handles the layout that joins them
+   beside a field label.
+*/
+.inheritance-indicator__Root {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+}

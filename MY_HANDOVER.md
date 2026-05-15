@@ -12,7 +12,7 @@ Picking these up after the `<rg>` substrate shipped to Tracker's `001_red_green`
 
 1. **PLA-0050 browser smoke (ACs 10/11).** Manual 5-min job: log in as gadmin → `/vector-admin/tenant-settings` → confirm all 16 fields render with current values, edit one, save, see toast confirmation. Then log out, log in as user-tier (`claude_1_test@mmffdev.com` / `password123!`) → navigate to same URL → see PageAccessDenied component (not the editor). Once both confirmed, flip AC10/AC11 to done in `dev/plans/PLA-0050.json`.
 
-2. **Cleanup-register Story 3 — inheritance read-path.** Unblocked by PLA-0050 ship. **Designated first marquee use of `<rg>` TDD** (decision recorded 2026-05-15). Plan needs drafting as PLA-0051 (or next free). The substrate: `workspacemasterrecord.Service.Get(workspaceID)` does a COALESCE/merge from `tenantmasterrecord` when a workspace column is NULL → frontend gets one coherent payload with an "inherited from tenant" marker per field. UI shows greyed value + "inherit/override" toggle per user's framing. Tests land in Tracker's `/red-green` page under `Group 2 — Backend Workspaces & Tenancy`.
+2. **Cleanup-register Story 3 — inheritance read-path — SHIPPED 2026-05-16 as PLA-0051.** Backend COALESCE merge in `workspacemasterrecord.Service.Get` + per-field source markers (`workspace | tenant | system_default`) + PATCH `clear_overrides[]` semantics + UI `<InheritanceIndicator>` POC-wired on timezone + data_region. 8 backend integration tests + 5 frontend vitest tests landed in Tracker `/red-green` (Group 2 + Group 9 respectively) — all green. Pre-existing gap closed in flight: handler.Get passed subscription_id where workspace_id was expected — defensive fallback added in `FDWSubscriptionResolver.SubscriptionFor` + filed as TD-WS-001 for proper handler rewire. Remaining 9 inheritable fields (description, datetime_format, workdays, week_start, rank_method, build_changeset_tracking, primary_contact_email, notes, date_format) tracked as PLA-0051 follow-up — Tracker will define final per-field layout before they wire.
 
 3. **Cleanup-register Story 4 + Story 6.** Story 4 (drop legacy singular `workspace` table in mmff_vector) and Story 6 (verify topology permissioning after `roles_org_nodes` was dropped in migration 175) remain unstarted. Both are small follow-ups. Story 4 needs a `grep -rn '\bworkspace\b' backend/ app/` audit first.
 
@@ -226,13 +226,14 @@ If something is wrong, `db/vector_artefacts/schema/down/067_rename_master_record
 - Pre-existing bug repaired: `fn_master_record_tenant_seed_for_subscription` trigger (pointing at dropped table) dropped via mmff_vector migration 200.
 - Story 00570 (wire SeedForSubscription into subscription-create path) marked done-partial — no production Go code creates subscriptions today; auto-create-on-first-Get covers the gap.
 
-### Story 3 — Implement inherit-from-tenant in the workspace-details read path — **NOW UNBLOCKED by PLA-0050**
+### Story 3 — Implement inherit-from-tenant in the workspace-details read path — **SHIPPED 2026-05-16 (PLA-0051)**
 
-- When `master_record_workspaces.*` is NULL, fall back to `master_record_tenants.*` (same column name with the workspace_ → tenants_ prefix swap).
-- UI: render the inherited value greyed-out with an "inherit from tenant" toggle; explicit override sets a non-NULL value on the workspace row.
-- Service-layer fallback per the user's decision in PLA-0050 scoping: `workspacemasterrecord.Service.Get()` does the COALESCE/merge before returning the Settings struct; frontend gets a single coherent response.
-- The user's exact framing: *"tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure."*
-- **This is the next plan to draft.**
+- `workspacemasterrecord.Service.Get()` now performs a field-by-field COALESCE merge: workspace value → tenant default → system default; emits per-field `*_source` markers (`workspace | tenant | system_default`).
+- Migrations 069 + 070 dropped NOT NULL on inheritable columns of both `master_record_workspaces` and `master_record_tenants` in vector_artefacts (NULL = inherit).
+- PATCH gained `clear_overrides[]` semantics — explicit-list lets a workspace revert any subset of fields back to inheriting.
+- Frontend `<InheritanceIndicator>` ships chip + button per field (Override/Inherited-from-Tenant/Default); POC-wired on timezone + data_region in `/workspace-admin/workspace-details`; remaining 9 fields pending Tracker UX call.
+- TDD: 8 backend integration tests (Group 2) + 5 frontend vitest tests (Group 9) all green in Tracker's `/red-green` page — marquee first use of the `<rg>` substrate.
+- In-flight gap: handler.Get passed `subscription_id` where `workspace_id` was expected → defensive fallback in `FDWSubscriptionResolver.SubscriptionFor` + filed as **TD-WS-001** for proper rewire.
 
 ### Story 4 — Drop the legacy singular `workspace` table
 

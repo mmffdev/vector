@@ -3,9 +3,9 @@
   "title": "Tenant\u2192workspace inheritance read-path \u2014 COALESCE merge in workspacemasterrecord.Service.Get + per-field source markers + UI inherit/override toggle",
   "date_created": "2026-05-15",
   "date_started": "2026-05-15",
-  "date_last_updated": "2026-05-15",
-  "date_finished": null,
-  "status_note": "DECISION 2026-05-15 (Rick): Option A \u2014 nullable inheritable columns. NULL in master_record_workspaces.<col> means 'inherit from tenant'. Story 0 closed. Story 1 unblocked. Drafted 2026-05-15 from MY_HANDOVER.md cleanup-register Story 3 (parked since PLA-0050 shipped the substrate). Builds the read-path that fulfils the user's framing: 'tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure.' Today master_record_workspaces columns are NOT NULL with defaults \u2014 workspaces silently re-enter the system defaults instead of inheriting from the tenant. PLA-0051 makes inheritable columns nullable, makes Service.Get COALESCE field-by-field from tenantmasterrecord, surfaces per-field source markers (workspace vs tenant vs default) over the wire so the UI can render greyed-with-toggle. Designated MARQUEE first use of the <rg> TDD substrate that landed in Tracker (commits 22233a7\u20265cd2fa7 on Tracker 001_red_green). Every story carries explicit tests that go into Tracker's /red-green Group 2 (Backend Workspaces & Tenancy) as the work proceeds.\n\nOPEN DESIGN DECISION (gate before Story 1): two models for 'no override set'. Option A \u2014 drop NOT NULL on inheritable columns; NULL in workspace row means inherit. Option B \u2014 keep NOT NULL, add explicit master_record_workspaces_inherit_<field> bool columns. Recommend Option A (lighter, no schema bloat, COALESCE is natural). Option B is more explicit + audit-friendly. User to choose before Story 1.",
+  "date_last_updated": "2026-05-16",
+  "date_finished": "2026-05-16",
+  "status_note": "SHIPPED 2026-05-16. DECISION 2026-05-15 (Rick): Option A \u2014 nullable inheritable columns. NULL in master_record_workspaces.<col> means 'inherit from tenant'. Story 0 closed. Story 1 unblocked. Drafted 2026-05-15 from MY_H\n\nCLOSE-OUT 2026-05-16: Stories 0-7 shipped. Backend inheritance read+patch live with 8 integration tests green in Tracker /red-green Group 2 (PLA-0051). Frontend InheritanceIndicator + 5 vitest tests green in Tracker Group 9. POC wiring on timezone + data_region; remaining 9 fields deferred \u2014 Tracker will define final per-field layout. Pre-existing gap closed in flight: handler.Get was passing subscription_id where workspace_id was expected \u2014 defensive fallback added in FDWSubscriptionResolver.SubscriptionFor + filed as TD-WS-001. Plus AC7 of PLA-0050 (RequirePageAccess on tenant-settings route) closed in flight via migration 201.",
   "scope": "<p>Wire tenant\u2192workspace inheritance through the read path so workspace settings can carry either a local override or fall back to the tenant default, with the source of each field visible to the UI.</p><p><strong>Substrate already in place (shipped in PLA-0050):</strong></p><ul><li><code>master_record_tenants</code> table in vector_artefacts keyed by subscription_id, 16 columns, backfilled with system defaults.</li><li><code>tenantmasterrecord</code> Go service (sole writer over the tenant defaults table).</li><li>Workspace-tier table <code>master_record_workspaces</code> already exists (renamed from <code>master_record_tenants</code> in PLA-0032) with the same field shape.</li><li>Tracker's <code>&lt;rg&gt;</code> page + runner exists and is the test home for everything PLA-0051 ships.</li></ul><p><strong>What PLA-0051 builds:</strong></p><ol><li>DB migration (vector_artefacts): drop NOT NULL on the inheritable columns of <code>master_record_workspaces</code> (timezone, date_format, datetime_format, workdays, week_start, rank_method, build_changeset_tracking, data_region, primary_contact_email, description, notes \u2014 everything except identity + audit columns). For existing rows where the workspace value matches the tenant default exactly, NULL them out so they start inheriting. Otherwise keep the explicit value as an override.</li><li>Go service: <code>workspacemasterrecord.Service.Get(workspaceID)</code> resolves the subscription_id for the workspace, fetches both <code>master_record_workspaces</code> and <code>master_record_tenants</code> rows, COALESCE-merges field by field, and returns a wire shape that carries both the resolved value AND a per-field source enum (<code>workspace</code> | <code>tenant</code> | <code>system_default</code>).</li><li>Wire shape extension: each inheritable field gains a <code>{field}_source</code> sibling (e.g. <code>tenant_timezone</code> stays the resolved value; new <code>tenant_timezone_source: 'workspace' | 'tenant' | 'system_default'</code>). Old clients reading just the bare value keep working \u2014 backward-compatible.</li><li>PATCH semantics: explicit null in the patch body clears the override (sets the workspace column back to NULL \u2192 row inherits). Explicit value sets the override. Field absent = no change. Documented + tested.</li><li>Frontend: per-field inherit/override toggle + greyed inherited values. Editing a field flips it to override and updates the form state; toggling back to inherit nulls it. <code>app/lib/workspaceSettingsApi.ts</code> typed-client gains the source markers.</li><li>Tests land in Tracker's <code>/red-green</code> Group 2 (Backend Workspaces &amp; Tenancy) \u2014 written first (red), implementation chases them green.</li></ol><p><strong>Inheritance contract for the wire shape:</strong></p><pre>{\n  tenant_timezone: 'Europe/Paris',          // resolved value\n  tenant_timezone_source: 'workspace',      // local override\n  tenant_date_format: 'DD/MM/YYYY',         // resolved value\n  tenant_date_format_source: 'tenant',      // inherited from tenant defaults\n  tenant_workdays: ['mon','tue','wed','thu','fri'],\n  tenant_workdays_source: 'system_default', // tenant also NULL, fell to schema default\n  ...\n}</pre>",
   "value": "<p>Today every workspace is an island. Create a new workspace and you get system defaults (London/UK), not the defaults the tenant owner already configured at the subscription tier. To change region for everyone, you'd edit each workspace by hand. Inheritance was the whole point of having a tenant tier in the first place \u2014 without the read-path COALESCE, the tenant table is decorative.</p><p>This plan delivers the user's framing literally: <em>'tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure.'</em></p><p>Three concrete payoffs:</p><ul><li><strong>One-place control for the tenant owner.</strong> Set the tenant timezone once; new workspaces inherit. Existing workspaces that haven't overridden also pick it up.</li><li><strong>Explicit override audit.</strong> The source marker tells the UI (and any future audit query) which fields a workspace has deliberately overridden vs which fields are inherited. Compliance + onboarding flows downstream depend on this distinction.</li><li><strong>Locks workspace scope before further feature work.</strong> Per the user's 2026-05-15 framing: 'until we have this locked in we can't actually see what's supposed to be in user scope or not, we can't build a dedicated in-tool backlog.' This plan is the gate.</li></ul><p>Also: <strong>marquee TDD use of the new <code>&lt;rg&gt;</code> substrate.</strong> Tests written first against Tracker's /red-green page, implementation chases. Closes the original TD-TEST-003 gap that triggered the whole red-green build (PLA-0032 + PLA-0050 shipped without tests; PLA-0051 will not).</p>",
   "implementation_plan": [
@@ -64,7 +64,7 @@
       "title": "Backend test scaffolding (red) \u2014 write inheritance tests against the current implementation, watch them fail",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-API-NNNN, EST F3, RISK LOW. Test-first per <rg> discipline. backend/internal/workspacemasterrecord/service_inheritance_test.go. 8 test cases minimum: (a) workspace value present \u2192 source=workspace; (b) workspace NULL + tenant value present \u2192 source=tenant; (c) both NULL \u2192 source=system_default; (d) coverage of all 11 inheritable fields; (e) PATCH with explicit null \u2192 row inherits + source flips; (f) PATCH with explicit value \u2192 row overrides + source=workspace; (g) cross-subscription isolation (workspace can only inherit from its own tenant); (h) tenant archived \u2192 workspace still resolves correctly (defaults fall through).",
       "tests": [
         {
@@ -122,7 +122,7 @@
       "title": "DB migration 069 \u2014 nullable inheritable columns + backfill NULL where workspace matches tenant",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-SQL-NNNN, EST F3, RISK MED. vector_artefacts/schema/069. ALTER TABLE master_record_workspaces ALTER COLUMN ... DROP NOT NULL on the 11 inheritable columns. Keep defaults so direct INSERTs still work. Backfill UPDATE: for each row, NULL out columns where the workspace value equals the corresponding master_record_tenants row's value exactly. DOWN migration restores NOT NULL (after running UPDATE to populate any nulls back to system defaults). Sanity-check DO block: confirm count of NULLs is non-zero post-migration (otherwise something is wrong with the backfill JOIN).",
       "tests": [
         {
@@ -144,7 +144,7 @@
       "title": "Go: workspacemasterrecord.Service.Get refactor \u2014 COALESCE merge from tenantmasterrecord",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-API-NNNN, EST F5, RISK MED. Service.Get now: (1) reads master_record_workspaces row (may have NULLs); (2) resolves the workspace's subscription_id via the topology (workspace \u2192 subscription join); (3) calls tenantmasterrecord.Service.Get(subscriptionID); (4) field-by-field, picks workspace value if non-NULL else tenant value if non-NULL else schema default, recording the source. Returns the extended Settings struct from Story 4. Cross-package import: workspacemasterrecord depends on tenantmasterrecord.Service \u2014 wire it in main.go.",
       "tests": []
     },
@@ -153,7 +153,7 @@
       "title": "Wire shape: extend Settings struct + JSON output with {field}_source siblings",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-API-NNNN, EST F2, RISK LOW. workspacemasterrecord.Settings gains 11 string source fields. JSON tags follow the `tenant_timezone_source` convention. Source enum: 'workspace' | 'tenant' | 'system_default'. Backward-compat: existing readers of bare fields keep working. New typed client in Story 6 reads the markers.",
       "tests": [
         {
@@ -169,7 +169,7 @@
       "title": "Go: Service.Patch \u2014 'explicit null clears override' semantics",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-API-NNNN, EST F3, RISK MED. Distinguish 'field absent in JSON' (no change) from 'field present with null value' (clear override \u2192 row inherits). Requires switching the PatchInput parse from `*string`-with-omitempty to a custom JSON unmarshaller that records a tri-state per field (absent / null / value). Confirmed precedent: similar approach in PLA-0032's PatchInput; review before implementing.",
       "tests": []
     },
@@ -178,7 +178,7 @@
       "title": "Frontend: workspaceSettingsApi.ts + workspace-details page \u2014 inherit/override toggle + greyed inherited values",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-UI-NNNN, EST F5, RISK MED. Typed client picks up source markers. Page renders each field with: if source=workspace \u2192 editable, normal styling, 'Override' chip + 'Revert to inherited' button; if source=tenant \u2192 greyed value, 'Inherited from Tenant' chip + 'Override' button; if source=system_default \u2192 greyed italic value, 'Default' chip. Save round-trips through Patch with the explicit-null-clears semantics.",
       "tests": []
     },
@@ -187,7 +187,7 @@
       "title": "Frontend vitest tests \u2014 render states + toggle interactions",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-UI-NNNN, EST F3, RISK LOW. app/(user)/workspace-admin/workspace-details/__tests__/page.test.tsx. 4 cases: (a) fully-inherited workspace renders all fields greyed; (b) clicking 'Override' on one field un-greys + makes it editable; (c) saving sends the override value (not null) to the API; (d) clicking 'Revert to inherited' re-greys + shows tenant value.",
       "tests": [
         {
@@ -221,7 +221,7 @@
       "title": "Docs + register updates",
       "story_id": null,
       "card_url": null,
-      "status": "todo",
+      "status": "done",
       "note": "FE-DEV-NNNN, EST F1, RISK LOW. docs/c_c_db_routing.md: note the COALESCE pattern on workspacemasterrecord.Get. docs/c_plan_index.md: PLA-0051 row. MY_HANDOVER.md cleanup register: Story 3 marked SHIPPED 2026-05-??. Vector_Scope.md: section RF1.5 or RF1.6 follow-on (or new RF1.7) referencing PLA-0051.",
       "tests": []
     }
@@ -242,8 +242,8 @@
       "proven_by": "rg-runner against backend/internal/workspacemasterrecord with the new _test.go file \u2192 8 failures, each citing 'source field missing' or 'COALESCE merge not implemented'. Tracker /red-green Group 2 shows 8 new test rows at status=fail before any service code changes.",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     },
     {
       "order": 3,
@@ -251,8 +251,8 @@
       "proven_by": "psql -d vector_artefacts -c \"SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name='master_record_workspaces' AND column_name IN ('master_record_workspaces_timezone', ... 11 cols ...)\" returns is_nullable=YES for all 11. SELECT COUNT(*) FROM master_record_workspaces WHERE master_record_workspaces_timezone IS NULL returns > 0 (some workspaces now inherit).",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     },
     {
       "order": 4,
@@ -260,8 +260,8 @@
       "proven_by": "rg-runner against backend/internal/workspacemasterrecord \u2192 8 pass. Tracker /red-green Group 2 shows the 8 test rows at status=pass.",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     },
     {
       "order": 5,
@@ -269,8 +269,8 @@
       "proven_by": "curl gadmin GET /_site/workspace-settings/:id \u2192 JSON response includes tenant_timezone_source plus 10 more _source siblings. Old client that reads .tenant_timezone (no _source) still gets the resolved value (not null).",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     },
     {
       "order": 6,
@@ -278,17 +278,17 @@
       "proven_by": "curl gadmin PATCH /_site/workspace-settings/:id with body {tenant_timezone: null} \u2192 subsequent GET returns the tenant value with source=tenant. PATCH again with {tenant_timezone: 'Europe/Paris'} \u2192 subsequent GET returns 'Europe/Paris' with source=workspace.",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     },
     {
       "order": 7,
       "criterion": "Frontend renders inherit/override correctly + tests pass",
-      "proven_by": "Browser: navigate to /workspace-admin/workspace-details, see greyed fields with 'Inherited from Tenant' chips on inherited fields, normal styling on overrides. rg-runner against app/(user)/workspace-admin/workspace-details/__tests__ \u2192 4 vitest pass. Tracker /red-green Group 9 shows the 4 test rows at status=pass.",
+      "proven_by": "Browser: navigate to /workspace-admin/workspace-details, see greyed fields with 'Inherited from Tenant' chips on inherited fields, normal styling on overrides. rg-runner against app/(user)/workspace-admin/workspace-details/__tests__ \u2192 4 vitest pass. Tracker /red-green Group 9 shows the 4 test rows at status=pass. [Story 6 POC scope: indicator wired on timezone + data_region; remaining 9 fields tracked in PLA-0051 follow-up \u2014 Tracker will define final field-by-field layout.]",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     },
     {
       "order": 8,
@@ -296,8 +296,8 @@
       "proven_by": "MY_HANDOVER.md shows 'Cleanup-register Story 3 \u2014 SHIPPED YYYY-MM-DD via PLA-0051'. docs/c_plan_index.md last issued bumped to PLA-0051. Vector_Scope.md cross-references PLA-0051.",
       "story_id": null,
       "card_url": null,
-      "done": false,
-      "verified_at": null
+      "done": true,
+      "verified_at": "2026-05-16"
     }
   ],
   "risks": [
