@@ -459,6 +459,27 @@ func main() {
 	tenantSettingsSvc := tenantmasterrecord.New(tenantSettingsPool)
 	tenantSettingsH := tenantmasterrecord.NewHandler(tenantSettingsSvc)
 
+	// PLA-0051 Story 3.5 — wire tenant→workspace inheritance read-path.
+	// SubscriptionResolver reads fdw_workspaces in vector_artefacts to
+	// resolve workspace_id → subscription_id; TenantDefaultsReader
+	// reads master_record_tenants with pointer types so NULLs survive
+	// the scan (the merge in workspacemasterrecord.Service uses NULL
+	// to mean "fall through to schema default"). Both share the
+	// workspace-settings pool which is vaPool when available.
+	//
+	// Both pools land in the same DB (vector_artefacts) but the wiring
+	// is intentionally conservative: if vaPool is nil (test env / pool
+	// fallback to mmff_vector), the resolver would fail on fdw_workspaces
+	// — Service.mergeInheritance treats that as "no tenant tier" and
+	// falls to schema defaults, so the surface degrades gracefully
+	// rather than crashes.
+	if vaPool != nil {
+		workspaceSettingsSvc.WithInheritance(
+			workspacemasterrecord.NewFDWSubscriptionResolver(workspaceSettingsPool),
+			workspacemasterrecord.NewPGTenantDefaultsReader(workspaceSettingsPool),
+		)
+	}
+
 	// Webhooks (B9). Requires vector_artefacts (mig 037).
 	// webhookSvc is created in the vaPool block above when vaPool != nil.
 	var webhooksH *webhooks.Handler
