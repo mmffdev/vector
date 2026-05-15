@@ -40,6 +40,25 @@ type SystemRoleIDs struct {
 	GrpExternal    uuid.UUID
 }
 
+// Package-level UUID handles for the seven grp_* system roles. Set by
+// LoadSystemRoles() once at boot from main.go. Other packages that need
+// to gate on a specific system role (topology, portfolio, fields,
+// portfoliomodels) read these instead of growing a *Service dependency.
+//
+// Single-writer: only LoadSystemRoles writes. Boot is single-goroutine
+// until the HTTP server starts so there is no concurrency hazard. uuid.Nil
+// is the zero-value before LoadSystemRoles runs — guards on these MUST
+// run after boot or they will incorrectly match nil-valued role_ids.
+var (
+	SystemGrpGlobalID      uuid.UUID
+	SystemGrpPortfolioID   uuid.UUID
+	SystemGrpProductID     uuid.UUID
+	SystemGrpTeamLeadID    uuid.UUID
+	SystemGrpTeamMemberID  uuid.UUID
+	SystemGrpStakeholderID uuid.UUID
+	SystemGrpExternalID    uuid.UUID
+)
+
 // Reserved system ranks. Tenant-custom roles must NOT use ranks
 // 10/20/30/40/50/60/70 — those belong to the seven grp_* system roles.
 // The DB has the same CHECK constraint (users_roles_tenant_rank_band);
@@ -127,6 +146,16 @@ func (s *Service) LoadSystemRoles(ctx context.Context) error {
 		GrpStakeholder: got["grp_stakeholder"],
 		GrpExternal:    got["grp_external"],
 	}
+	// Mirror onto package-level vars so other packages (topology,
+	// portfolio, fields, portfoliomodels) can compare against them
+	// without growing a *Service dependency.
+	SystemGrpGlobalID = s.SystemRoles.GrpGlobal
+	SystemGrpPortfolioID = s.SystemRoles.GrpPortfolio
+	SystemGrpProductID = s.SystemRoles.GrpProduct
+	SystemGrpTeamLeadID = s.SystemRoles.GrpTeamLead
+	SystemGrpTeamMemberID = s.SystemRoles.GrpTeamMember
+	SystemGrpStakeholderID = s.SystemRoles.GrpStakeholder
+	SystemGrpExternalID = s.SystemRoles.GrpExternal
 	return nil
 }
 
