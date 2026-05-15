@@ -164,6 +164,23 @@ const sqlDeleteRolePermissions = `
 // tenant visibility via Get.
 const sqlListPermissionIDsForRole = `SELECT users_roles_permissions_id_permission FROM users_roles_permissions WHERE users_roles_permissions_id_role = $1`
 
+// sqlInsertAvatarGrantsForRole inserts grants on every avatar_menu
+// page for the named role. Idempotent. Called from
+// roles.Service.Create as the auto-seed step so new tenant roles get
+// the avatar-bucket floor on creation per PLA-0049 Q5d. The SQL
+// touches users_roles_pages (the page-grant table) but the operation
+// is semantically owned by roles — when a role is born, it gets its
+// avatar floor.
+const sqlInsertAvatarGrantsForRole = `
+		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
+		SELECT p.id, $1
+		  FROM pages p
+		 WHERE p.tag_enum        = 'avatar_menu'
+		   AND p.created_by      IS NULL
+		   AND p.subscription_id IS NULL
+		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_id_role) DO NOTHING
+	`
+
 // sqlSelectSystemRoleIDsByCode returns (code, id) for the seven seeded
 // grp_* system rows. Called once at boot from Service.LoadSystemRoles.
 // Per PLA-0049, system role UUIDs are random — code is the contract.

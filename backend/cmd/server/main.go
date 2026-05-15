@@ -207,7 +207,7 @@ func main() {
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
-	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc)
+	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc, auditLog)
 
 	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
 	// caches the global pages_access_version (1s in-process) and a
@@ -812,6 +812,9 @@ func main() {
 		r.Get("/", navGrantsAdminH.List)
 		r.Put("/{page_id}/{role_id}", navGrantsAdminH.Grant)
 		r.Delete("/{page_id}/{role_id}", navGrantsAdminH.Revoke)
+		// PLA-0049 Phase 1.2: bucket-row toggle. Body: {"checked": bool}.
+		// Atomic grant/revoke for every system page in the named bucket.
+		r.Put("/bucket/{tag_enum}/{role_id}", navGrantsAdminH.BucketToggle)
 	})
 
 	// /user/tab-order

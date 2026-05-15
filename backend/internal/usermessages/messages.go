@@ -29,6 +29,7 @@ const (
 	ServiceUnavailable = "This feature is temporarily unavailable. Please try again shortly."
 	LimitReached       = "You've reached the maximum number allowed."
 	ResourceArchived   = "This resource has been archived and cannot be modified."
+	ResourceLocked     = "This resource is protected and cannot be changed."
 )
 
 // Success

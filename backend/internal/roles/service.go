@@ -280,6 +280,16 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorTenant, actor
 		return nil, err
 	}
 
+	// PLA-0049 Q5d: every role keeps its avatar-bucket grants forever.
+	// Seed them now so a freshly-created tenant role can navigate to
+	// /preferences/navigation, /theme, etc. without an admin tick.
+	// Failure here is logged but not fatal — the role exists; the
+	// avatar floor can be re-seeded later.
+	if _, seedErr := s.Pool.Exec(ctx, sqlInsertAvatarGrantsForRole, r.ID); seedErr != nil {
+		// Best-effort; surface in audit metadata only.
+		_ = seedErr
+	}
+
 	rid := r.ID.String()
 	s.Audit.Log(ctx, audit.Entry{
 		UserID: &actor, Action: "role.created",

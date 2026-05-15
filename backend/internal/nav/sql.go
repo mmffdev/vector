@@ -111,6 +111,45 @@ const sqlPageExistsForGrantsAdmin = `
 		   AND subscription_id IS NULL
 	`
 
+// sqlPageTagEnumByID returns the tag_enum bucket for a page. Used by
+// the avatar-floor guard: any DELETE against a page whose tag_enum is
+// 'avatar_menu' is refused (409 ResourceLocked) so every role keeps
+// access to their personal-account pages.
+const sqlPageTagEnumByID = `
+		SELECT tag_enum FROM pages WHERE id = $1
+	`
+
+// sqlBatchGrantSystemPagesByBucket inserts (page_id, role_id) for
+// every system page whose tag_enum matches $1 that does not already
+// have a grant for $2. ON CONFLICT DO NOTHING makes the call
+// idempotent so a partial state (some children granted, some not)
+// converges to all-on in a single statement.
+const sqlBatchGrantSystemPagesByBucket = `
+		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
+		SELECT p.id, $2
+		  FROM pages p
+		 WHERE p.tag_enum        = $1
+		   AND p.created_by      IS NULL
+		   AND p.subscription_id IS NULL
+		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_id_role) DO NOTHING
+	`
+
+// sqlBatchRevokeSystemPagesByBucket deletes every (page_id, role_id)
+// row for system pages in the named bucket. Used by the bucket-row
+// "all off" toggle. Avatar bucket is REFUSED at the handler layer
+// before this query is reached.
+const sqlBatchRevokeSystemPagesByBucket = `
+		DELETE FROM users_roles_pages
+		 WHERE users_roles_pages_id_role = $2
+		   AND users_roles_pages_id_page IN (
+		     SELECT id FROM pages
+		      WHERE tag_enum        = $1
+		        AND created_by      IS NULL
+		        AND subscription_id IS NULL
+		   )
+	`
+
+
 // sqlNextUserNavPrefPosition returns the next free position for a
 // user's pinned list (max(position) + 1 or 0 when empty). Profile-NULL
 // scope (the legacy/Default lane) — Pin only touches that lane today.

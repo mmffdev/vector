@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
@@ -17,8 +17,14 @@ import PageAccessDenied from "@/app/components/PageAccessDenied";
 // has universal access enforced server-side, and grp_external which
 // is an archetype hidden from the grid).
 //
-// Save model: instant. Each toggle fires a PUT or DELETE against the
-// per-cell endpoint; UI flips optimistically and reverts on error.
+// Save model: instant per-cell PUT/DELETE, plus an atomic bucket-row
+// tri-state checkbox at each header that flips every child page in
+// that bucket via PUT /admin/page-grants/bucket/{tag_enum}/{role_id}.
+//
+// Avatar bucket (tag_enum='avatar_menu') is filtered out of the grid
+// entirely. The server enforces an avatar floor — every role keeps
+// avatar pages forever, server returns 409 ResourceLocked on any
+// attempt to revoke an avatar page.
 
 interface RoleRow {
   id: string;
@@ -49,22 +55,30 @@ interface FlatRow {
   kind: "header" | "page";
   key: string;
   bucket_label: string;
+  tag_enum: string;
   page?: PageGrantRow;
+  /** For header rows: the page_ids of all child pages in this bucket. */
+  child_page_ids?: string[];
 }
 
-// Roles excluded from the grid as columns. grp_global has universal
-// access (cannot be revoked); grp_external is an archetype template,
-// not directly assignable.
 const EXCLUDED_ROLE_CODES = new Set(["grp_global", "grp_external"]);
+const HIDDEN_BUCKET_TAG = "avatar_menu";
+
+type TriState = "all" | "none" | "mixed";
+
+function bucketState(children: PageGrantRow[], roleID: string): TriState {
+  let on = 0;
+  for (const c of children) if (c.role_ids.includes(roleID)) on += 1;
+  if (on === 0) return "none";
+  if (on === children.length) return "all";
+  return "mixed";
+}
 
 export default function PermissionsPage() {
   const { full } = usePageTitle();
   const { user, role } = useAuth();
 
   const isGadmin = role?.code === "grp_global";
-  // PLA-0049 Phase 0.5: defer to page-access set as the live truth.
-  // The role check above is kept as a fast-path for the common case;
-  // a stale grant change is caught by the live access set below.
   const access = usePageAccess("um-permissions");
 
   const [rows, setRows] = useState<PageGrantRow[] | null>(null);
@@ -73,45 +87,35 @@ export default function PermissionsPage() {
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Only redirect when we know the answer AND the user is denied.
-    // Loading state lets the page render its own skeleton.
     if (!user) return;
     if (access.loading) return;
     if (!access.allowed) return; // PageAccessDenied handles the UI
   }, [user, access.loading, access.allowed]);
 
+  const refresh = useCallback(async () => {
+    try {
+      const [grants, roles] = await Promise.all([
+        apiSite<PageGrantsResp>("/admin/page-grants"),
+        apiSite<RoleRow[]>("/roles"),
+      ]);
+      // Hide avatar bucket entirely — server enforces the floor.
+      setRows(grants.pages.filter((p) => p.tag_enum !== HIDDEN_BUCKET_TAG));
+      setAllRoles(roles);
+    } catch (err) {
+      notify.apiError(err, "Failed to load page grants.");
+      setRows([]);
+      setAllRoles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isGadmin) return;
     if (!access.allowed) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const [grants, roles] = await Promise.all([
-          apiSite<PageGrantsResp>("/admin/page-grants"),
-          apiSite<RoleRow[]>("/roles"),
-        ]);
-        if (!cancelled) {
-          setRows(grants.pages);
-          setAllRoles(roles);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          notify.apiError(err, "Failed to load page grants.");
-          setRows([]);
-          setAllRoles([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isGadmin]);
+    void refresh();
+  }, [isGadmin, access.allowed, refresh]);
 
-  // Editable role columns: every role except grp_global (universal) and
-  // grp_external (archetype). Sorted system-block-rank-desc, then
-  // tenant-block-rank-desc.
   const editableRoles = useMemo<RoleRow[]>(() => {
     if (!allRoles) return [];
     const filtered = allRoles.filter((r) => !EXCLUDED_ROLE_CODES.has(r.code));
@@ -121,14 +125,23 @@ export default function PermissionsPage() {
     });
   }, [allRoles]);
 
+  // Group rows by bucket for the header-row computation.
+  const rowsByBucket = useMemo<Map<string, PageGrantRow[]>>(() => {
+    const out = new Map<string, PageGrantRow[]>();
+    if (!rows) return out;
+    for (const p of rows) {
+      const arr = out.get(p.tag_enum) ?? [];
+      arr.push(p);
+      out.set(p.tag_enum, arr);
+    }
+    return out;
+  }, [rows]);
+
+  // Per-cell toggle (single page × single role).
   const onToggle = useCallback(
     async (pageId: string, roleID: string, nextChecked: boolean) => {
       const cellKey = `${pageId}:${roleID}`;
-      setBusy((s) => {
-        const n = new Set(s);
-        n.add(cellKey);
-        return n;
-      });
+      setBusy((s) => new Set(s).add(cellKey));
       const flip = (rs: PageGrantRow[] | null, on: boolean) =>
         rs?.map((r) =>
           r.page_id === pageId
@@ -158,21 +171,73 @@ export default function PermissionsPage() {
     [],
   );
 
-  // Flatten rows with header pseudo-rows per nav bucket so the grid
-  // can be scanned by section.
+  // Bucket-row toggle (every page in tag_enum × single role).
+  const onBucketToggle = useCallback(
+    async (tagEnum: string, roleID: string, nextChecked: boolean) => {
+      const cellKey = `bucket:${tagEnum}:${roleID}`;
+      setBusy((s) => new Set(s).add(cellKey));
+      // Optimistic: flip every child page in the bucket.
+      const flip = (rs: PageGrantRow[] | null, on: boolean) =>
+        rs?.map((r) =>
+          r.tag_enum === tagEnum
+            ? {
+                ...r,
+                role_ids: on
+                  ? Array.from(new Set([...r.role_ids, roleID])).sort()
+                  : r.role_ids.filter((x) => x !== roleID),
+              }
+            : r,
+        ) ?? rs;
+      setRows((prev) => flip(prev, nextChecked));
+      try {
+        const path = `/admin/page-grants/bucket/${encodeURIComponent(tagEnum)}/${encodeURIComponent(roleID)}`;
+        await apiSite<void>(path, {
+          method: "PUT",
+          body: JSON.stringify({ checked: nextChecked }),
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        // Revert and re-fetch authoritative state.
+        notify.apiError(err, "Bucket toggle failed.");
+        await refresh();
+      } finally {
+        setBusy((s) => {
+          const n = new Set(s);
+          n.delete(cellKey);
+          return n;
+        });
+      }
+    },
+    [refresh],
+  );
+
+  // Flatten rows into header + page rows for the Table.
   const flat = useMemo<FlatRow[]>(() => {
     if (!rows) return [];
     const out: FlatRow[] = [];
     let lastBucket = "";
     for (const p of rows) {
       if (p.bucket_label !== lastBucket) {
-        out.push({ kind: "header", key: `h:${p.bucket_label}`, bucket_label: p.bucket_label });
+        const children = rowsByBucket.get(p.tag_enum) ?? [];
+        out.push({
+          kind: "header",
+          key: `h:${p.tag_enum}`,
+          bucket_label: p.bucket_label,
+          tag_enum: p.tag_enum,
+          child_page_ids: children.map((c) => c.page_id),
+        });
         lastBucket = p.bucket_label;
       }
-      out.push({ kind: "page", key: `p:${p.page_id}`, bucket_label: p.bucket_label, page: p });
+      out.push({
+        kind: "page",
+        key: `p:${p.page_id}`,
+        bucket_label: p.bucket_label,
+        tag_enum: p.tag_enum,
+        page: p,
+      });
     }
     return out;
-  }, [rows]);
+  }, [rows, rowsByBucket]);
 
   const columns: Column<FlatRow>[] = useMemo(
     () => [
@@ -182,8 +247,7 @@ export default function PermissionsPage() {
         kind: "custom",
         render: (r) => {
           if (r.kind === "header") return <strong>{r.bucket_label}</strong>;
-          const p = r.page!;
-          return <span>{p.label}</span>;
+          return <span>{r.page!.label}</span>;
         },
       },
       ...editableRoles.map<Column<FlatRow>>((roleRow) => ({
@@ -192,7 +256,19 @@ export default function PermissionsPage() {
         width: 140,
         kind: "center",
         render: (r) => {
-          if (r.kind !== "page") return null;
+          if (r.kind === "header") {
+            const children = rowsByBucket.get(r.tag_enum) ?? [];
+            const state = bucketState(children, roleRow.id);
+            const cellKey = `bucket:${r.tag_enum}:${roleRow.id}`;
+            return (
+              <BucketCheckbox
+                state={state}
+                disabled={busy.has(cellKey)}
+                onClick={(next) => onBucketToggle(r.tag_enum, roleRow.id, next)}
+                ariaLabel={`${roleRow.label} access to all ${r.bucket_label} pages`}
+              />
+            );
+          }
           const p = r.page!;
           const checked = (p.role_ids ?? []).includes(roleRow.id);
           const cellKey = `${p.page_id}:${roleRow.id}`;
@@ -208,13 +284,10 @@ export default function PermissionsPage() {
         },
       })),
     ],
-    [editableRoles, busy, onToggle],
+    [editableRoles, rowsByBucket, busy, onToggle, onBucketToggle],
   );
 
   if (!user) return null;
-  // PLA-0049 Phase 0.5: server is authoritative. Render denial card
-  // when the live access set excludes this page; loading state lets the
-  // grid render its own skeleton via the Table loading prop.
   if (access.allowed === false) return <PageAccessDenied pageLabel="Page Permissions" />;
 
   const pageCount = rows?.length ?? 0;
@@ -231,7 +304,7 @@ export default function PermissionsPage() {
         name="panel_page_permissions_grid"
         className="page-panel-heading"
         title="Page permissions"
-        description="Tick a cell to grant a role access to that page. Saves on click. Global Admin has universal access and is not shown; External is an archetype hidden from the grid."
+        description="Tick a cell to grant a role access to that page. Bucket-row checkboxes toggle every page in the bucket. Saves on click. Global Admin has universal access and is not shown; External is an archetype hidden from the grid; avatar pages (Personal Settings, Navigation, Themes) are a locked floor for every role."
       >
         <Table<FlatRow>
           pageId="user-management-permissions"
@@ -249,5 +322,39 @@ export default function PermissionsPage() {
         />
       </Panel>
     </PageContent>
+  );
+}
+
+// BucketCheckbox: tri-state native checkbox. State cycles
+// indeterminate → all-on → all-off on click. Uses the imperative
+// `indeterminate` DOM property because React doesn't expose it via JSX.
+function BucketCheckbox({
+  state,
+  disabled,
+  onClick,
+  ariaLabel,
+}: {
+  state: TriState;
+  disabled: boolean;
+  onClick: (nextChecked: boolean) => void;
+  ariaLabel: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = state === "mixed";
+  }, [state]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={state === "all"}
+      disabled={disabled}
+      onChange={() => {
+        // Cycle: mixed/none → on, on → off.
+        const nextChecked = state !== "all";
+        onClick(nextChecked);
+      }}
+      aria-label={ariaLabel}
+    />
   );
 }
