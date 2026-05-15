@@ -1,72 +1,221 @@
-# Handover — Table catalog restyle + permissions tree-lines
+# Handover — Workspace ↔ Topology hierarchy clarification + tenant-details rename
 
-**Branch:** `001_redesign` · **Commits this session:** `51a0ae3` (pending push) · already-local: `5bab6ec` and 4 ancestors.
+**Branch:** `001_redesign` · **Machine handoff:** moving to Mac Studio · **Date:** 2026-05-15
 
-## What I changed
+---
 
-### 1. `<Table>` column header (catalog)
-[`app/globals.css`](app/globals.css) §`tree_accordion-dense__head` / `__th`. Adopted the ObjectTree treatment so every catalog table now reads the same:
+## TL;DR for the next agent
 
-| Property | Value |
-|---|---|
-| Header bar `background` | `var(--surface-sunken)` |
-| `<th>` `font-size` / `font-weight` / `letter-spacing` | `13px` / `500` / `0.12em` |
-| `text-transform` / `color` | `uppercase` / `var(--ink)` (black) |
-| `padding` | `14px 16px` |
+The user is in the middle of clarifying **where the workspace concept lives in Vector's hierarchy** — strategic-portfolio spine or topology spine. Answer: **topology spine, exactly as already built**. The architecture R028 intended is already shipped. The discomfort the user felt was real but came from **misleading table/route names**, not from a wrong architecture. The next step is a cleanup-and-rename register, not a DB move.
 
-Sticky-on-`<th>` + opaque background preserved.
+**Do NOT move `master_record_workspaces` from mmff_vector to vector_artefacts.** That instinct was the wrong call (would orphan 5 FKs, including `users_roles_workspaces` → users/subscriptions cross-DB). Reasoning below.
 
-### 2. Panel ↔ Table flush rendering
-Any `<Panel>` containing a `<Table>` loses horizontal + bottom padding so the table sits edge-to-edge against the panel border. The scroll container's redundant 1px border was dropped (was stacking against the panel border) and its bottom corners were radiused to match `border-radius: 10px` on `.panel`. Implemented via `.panel:has(.tree_accordion-dense__table)` — pure CSS, zero call-site changes.
+**First story to draft (when user confirms):** rename `master_record_tenant` (in vector_artefacts) → `master_record_workspace`. Pure rename, RF1.4.4 column-prefix pattern is the precedent. Then route rename, then real tenant-defaults table, then inheritance.
 
-### 3. Group / bucket rows
-New body-row modifier `.tree_accordion-dense__row--group`:
+---
 
-- Same `var(--surface-sunken)` band as the column header, normal-case, body font-size, `color: var(--ink)`.
-- `padding: 10px 16px`, `border-bottom: none` so the bucket header flows directly into its first child.
-- Rows under a `__row--group` lose their inter-row bottom border (the SVG tree-lines are the connector); the last row before the next group retains its border so buckets are visually separated. Two adjacent groups get a top border on the second group so empty buckets still divide.
+## What I changed in code this session
 
-### 4. Permissions matrix — SVG tree-lines
-[`app/(user)/user-management/permissions/page.tsx`](app/(user)/user-management/permissions/page.tsx):
+### 1. `<CircularAdditor>` source-state rail — 1-based index pill
 
-- `FlatRow.isLastInBucket` is now computed during flatten so the elbow vs T-junction renders correctly.
-- The page-name cell wraps the label in a new `.permissions__page-cell` element and renders `<PrimaryCellTreeLines depth={1} isLast={r.isLastInBucket} hasVisibleChildren={false} continuations={[false]} />` from `<ResourceTree>` — exact same SVG geometry as `<ObjectTree>`.
-- `.permissions__page-cell` in `globals.css` is `display: block; position: relative; padding-left: 26px; line-height: 28px; height: 28px;` with the SVG absolutely positioned `top: 0 / bottom: 0 / width: 20px`. Row pinned to 28px so adjacent rows' tree-line strokes butt edge-to-edge — no gap between branches.
-- Bucket grouping flagged on the table via `rowClassName={r => r.kind === "header" ? "tree_accordion-dense__row--group" : undefined}`.
+[`app/components/catalogue/c_circular_additor/circularAdditor.tsx`](app/components/catalogue/c_circular_additor/circularAdditor.tsx)
 
-### 5. `<Table>` sort (opt-in)
-[`app/components/Table.tsx`](app/components/Table.tsx):
+Left rail rows now show `[1] • Name`, `[2] • Name`, … before the colour dot, so the rail position matches the digit inside the orbit node.
 
-- New types: `SortValue`, `SortDir`, `SortState`.
-- `Column<R>` gained `sortable?: boolean` and `sortAccessor?: (row) => SortValue`.
-- `TableProps<R>` gained `initialSort?: SortState`.
-- Component owns sort state; click cycles `asc → desc → off`. Comparator: nullish last, locale-aware natural compare for strings, native compare for numbers/booleans/dates.
-- Renders the existing catalog primitives `__th-sortable` + `__sort-btn` + `__sort-btn--active` — no CSS additions.
-- `aria-sort` set on the active `<th>`.
-- Defaults to off; every existing call site renders identically.
+```diff
+- {items.map((s) => (
++ {items.map((s, i) => (
+    <li key={s.id}>
+      <button … className="flow-rules__rail-row" …>
++       <span className="flow-rules__rail-index" aria-hidden>{i + 1}</span>
+        <span className="flow-rules__rail-dot" style={{ background: s.colour }} aria-hidden />
+        <span className="flow-rules__rail-name">{s.label}</span>
+      </button>
+    </li>
+  ))}
+```
 
-### 6. Doc + memory
-- [`docs/c_c_table_component.md`](docs/c_c_table_component.md) — `initialSort` added to props table; header-styling guidance superseded by the catalog rules themselves.
-- [`.claude/memory/MEMORY.md`](.claude/memory/MEMORY.md), [`reference_design_system.md`](.claude/memory/reference_design_system.md), new feedback memory `feedback_no_hardcoded_order_from_db_data.md`.
-- `Vector_Scope.md` and `BACKLOG.md` ticked.
+CSS in [`app/globals.css`](app/globals.css):
+- `.flow-rules__rail-row` grid changed from `10px 1fr` → `22px 10px 1fr`.
+- New `.flow-rules__rail-index` rule — pill style using `--surface-sunken` + `--border`, tabular-nums, hover variant uses `--accent`.
 
-### 7. Tooling / gitignore
-- Satoshi font added under [`app/fonts/satoshi/`](app/fonts/satoshi/).
-- `.gitignore` excludes `MMFFDev - Vector Assets/db-backups/` — real DB dumps were sitting untracked; deliberately kept out of the repo.
+### 2. Page rename — `workspace-admin/organisation` → `vector-admin/tenant-details`
 
-## How to verify
+- **Source:** `app/(user)/workspace-admin/organisation/` (deleted entire directory).
+- **Target:** [`app/(user)/vector-admin/tenant-details/page.tsx`](app/(user)/vector-admin/tenant-details/page.tsx) — was a 24-line stub, now holds the full 691-line content from organisation. Component renamed `OrganisationPage` → `TenantDetailsPage`. Heading/Panel text updated to "Tenant Details".
+- **DB nav:** deleted `pages` row `ws-organisation` (id `995a21a2-0c4c-4772-83b9-eff6f2082370`) from `pages` in mmff_vector. Kept `va-tenant-details` (id `15ecf170-e896-4e1b-bbc1-014c0b40fb07`).
+- **Caveat for next agent:** the route URL still says "tenant" but the page edits **workspace-level** data (`master_record_tenant` in vector_artefacts is keyed `workspace_id`, not `subscription_id`). Item #3 in the cleanup register below addresses this.
 
-1. Open `/user-management/permissions` as gadmin.
-2. The column header bar should be sunken with black uppercase 13px tracked labels.
-3. The table should sit flush with the panel — no horizontal or bottom padding visible.
-4. Each bucket row should render as a sunken band in normal-case black 13px.
-5. Below each bucket, pages should show SVG branch lines: `├` for every page except the last, `└` for the last page of each bucket. Adjacent pages' branch lines should connect edge-to-edge with **no vertical gap**.
-6. Click a column header that opts into sort: glyph cycles `↕ → ↑ → ↓ → ↕`, rows reorder, `aria-sort` updates.
+### 3. Plan files touched
 
-## What's still in flight
+`dev/plans/PLA-0031.json`, `PLA-0032.json`, `PLA-0033.json`, `PLA-0034.json` — modified (need to review what changed before commit; likely incidental from previous session).
 
-44 items in [Vector_Scope.md](Vector_Scope.md). The PLA-0049 page-access work (Phases 0, 0.5, 1, 1.5, 2) is the most recent active scope and remains untouched by this session.
+`docs/c_c_v1_v2_cutover.md` — modified, likewise.
 
-## What did NOT get pushed
+---
 
-`MMFFDev - Vector Assets/db-backups/` — three files totalling 3.1 MB (`.dump`, `.sql`, `rowcounts.txt`). Now gitignored. Move them out of the repo or delete them when convenient.
+## The hierarchy question (the real meat — read this before doing anything)
+
+### What the user asked
+
+> "Need to clarify how the workspace as an object exists in the hierarchy. My feeling is we made it part of the strategic portfolio hierarchy and it should I think be part of the topology hierarchy. Can you look through our research papers, to see how Rally does it, check if we captured the workspace and how it sets the overall scope/focus of the tool."
+
+### Sources I read
+
+- [`dev/research/R028.json`](dev/research/R028.json) — synthesis paper, "Portfolio hierarchy & scoping — synthesis + Vector recommendations" (2026-05-02). This is the **load-bearing document**.
+- [`docs/c_c_topology.md`](docs/c_c_topology.md) — the topology doc.
+- Migration files [`082_org_nodes.sql`](db/mmff_vector/schema/082_org_nodes.sql), [`098_workspaces.sql`](db/mmff_vector/schema/098_workspaces.sql), [`099_org_nodes_workspace_id.sql`](db/mmff_vector/schema/099_org_nodes_workspace_id.sql), [`131_rename_workspaces_to_master_record_workspaces.sql`](db/mmff_vector/schema/131_rename_workspaces_to_master_record_workspaces.sql), [`036_master_record_tenant.sql`](db/vector_artefacts/schema/036_master_record_tenant.sql).
+- Briefly: [`dev/research/R022.json`](dev/research/R022.json) (Rally portfolio hierarchy) — confirmed Rally treats workspace as the **top-level scope container above projects**; PortfolioItems sit at workspace level above projects, deliberately decoupling strategy from execution.
+
+### What R028 actually decided (Decision A.2)
+
+The workspace container is **itself a tree**, mirroring how real organisations are structured. Schema: `org_nodes` table with self-referential `parent_id`. Scale target: Lloyds-scale, 1,000–3,000 nodes; depth/width arbitrary; tenant-named levels (no fixed taxonomy). Clamp policy per-node (`inherit`/`open`/`restrict-subtree`/`restrict-node`). **It's a designed product surface — canvas-based block-diagram editor, not a settings list.** Working name "Org Design", now realised as **"Topology"** (see `c_c_topology.md` for the locked naming decisions).
+
+### Where the build actually stands (already shipped!)
+
+The architecture R028 intended is **already migrated and live**:
+
+| Layer | Built? | Where |
+|---|---|---|
+| `org_nodes` self-referential tree | ✅ | mmff_vector (migration 082) |
+| Workspace tier above org_nodes | ✅ | mmff_vector (migration 098, renamed in 131 → `master_record_workspaces`) |
+| `org_nodes.workspace_id` NOT NULL FK | ✅ | mmff_vector (migration 099) |
+| `/topology` canvas page | ✅ | `app/(user)/topology/`, `backend/internal/orgdesign/` |
+| Federated handoff (gadmin → padmin per office) | ✅ | covered in `c_c_topology.md` |
+| Clamp predicate middleware | ✅ | `ClampPredicate(user_id)` in orgdesign service |
+| Per-workspace locale/calendar (UAE doesn't work Fridays) | ✅ | `master_record_tenant` in **vector_artefacts**, keyed `workspace_id` |
+
+### The chain (this is the answer to the user's question)
+
+```
+subscriptions  (tenant — paying customer / legal entity, in mmff_vector)
+    │ 1..N
+    ▼
+master_record_workspaces  (workspace tier — top scope container, in mmff_vector)
+    │ 1..N
+    ▼
+org_nodes  (org tree — Office/Team/Squad/…, free-form depth, in mmff_vector)
+    │
+    ▼
+portfolio_items  (strategic spine: Theme → Initiative → Feature)
+user_stories    (execution spine: Story → Task)
+    ↑ both clamped via org_node_id, narrowed via workspace_id
+```
+
+**The strategic-portfolio hierarchy lives INSIDE the topology spine.** Portfolio items are content that exists within a workspace + org_node scope. The user's instinct is correct. The code already reflects it. The naming hides it.
+
+---
+
+## What's actually misnamed (the fog the user is sensing)
+
+1. **`master_record_workspaces` (mmff_vector)** — name says "master record" (anchor identity) but the **real per-workspace anchor with locale/calendar/owner is `master_record_tenant` in vector_artefacts**. Two "master records" for the same workspace, two databases, different jobs.
+
+2. **`master_record_tenant` (vector_artefacts) is keyed by `workspace_id`** — comment line 6 of [`036_master_record_tenant.sql`](db/vector_artefacts/schema/036_master_record_tenant.sql) says outright: *"One row per workspace holding canonical identity, time/date conventions, and planning defaults."* The "tenant" name preserves an old mental model from before the workspace-tier split (PLA-0006).
+
+3. **`/workspace-admin/tenant-details`** (now `/vector-admin/tenant-details` after this session's move) edits `master_record_tenant` — i.e. **workspace-level** locale. URL says tenant, table says tenant, row is workspace-scoped.
+
+4. **Legacy singular `workspace` table** still exists in mmff_vector alongside `master_record_workspaces` (migration 131 explicitly leaves it untouched). Likely dead — needs audit.
+
+5. **`org_node_roles` was dropped in migration [175](db/mmff_vector/schema/175_drop_roles_org_nodes.sql)** — was renamed to `roles_org_nodes` in [133](db/mmff_vector/schema/133_rename_org_node_roles_to_roles_org_nodes.sql) then dropped in 175. Topology permissioning now resolves a different way (likely via the unified `users_roles_permissions` matrix introduced by PLA-0049). **Verify before storifying anything that depends on node-level roles** — read the orgdesign service and migration 175.
+
+---
+
+## Why NOT to move `master_record_workspaces` to vector_artefacts
+
+User's earlier instinct: "move it for transparency." This is the wrong move. Why:
+
+- `master_record_workspaces` in mmff_vector is the **transactional anchor**. Other mmff_vector tables FK against it — at minimum `users_roles_workspaces.users_roles_workspaces_id_workspace`. Cross-DB FKs aren't possible in Postgres.
+- `users_roles_workspaces` itself has 4 other FKs pointing at `users` and `subscriptions` in mmff_vector. Cascade-moving everything would mean moving the whole identity platform.
+- `master_record_tenant` in vector_artefacts (keyed `workspace_id`) is the **settings sidecar**. It already lives in vector_artefacts. That's where the "transparency" the user wanted **already is**.
+- The pattern is correct: anchor in mmff_vector, settings/artefacts in vector_artefacts. Mirrors `artefact_types`, `flows`, `field_library` — they all key off a bare UUID in vector_artefacts and trust the anchor lives in mmff_vector. No FK across DBs; the application is sole writer of the join.
+
+The "transparency" the user wanted comes from **renaming**, not moving.
+
+---
+
+## Cleanup register (priority order)
+
+These are stories worth creating, in order. Each one is small and additive. None of them require moving rows across databases.
+
+### Story 1 — Rename `master_record_tenant` → `master_record_workspace` (in vector_artefacts)
+
+- Pure rename; zero data risk.
+- Pattern precedent: [`063_master_record_tenants_column_prefix_RF1_4_4.sql`](db/vector_artefacts/schema/063_master_record_tenants_column_prefix_RF1_4_4.sql) — the RF1.4.4 column-prefix rename. Mirror the pattern: table + indexes + constraints + trigger + comment + all column prefixes `tenant_*` → `workspace_*`.
+- Update all Go code that references the table — `backend/internal/tenantmasterrecord/sql.go` (which should also be renamed).
+- Update frontend API + page references.
+- **This is the first thing to storify.** Establishes correct vocabulary; unblocks Story 3.
+
+### Story 2 — Add a real tenant-defaults table
+
+- New table `master_record_tenant` in vector_artefacts, PK = `subscription_id`, holding **tenant-level** defaults: timezone, date format, workdays, region, week_start, etc.
+- Seed one row per existing subscription with sensible defaults (or NULLs — depends on inheritance design).
+- This is the "London HQ" defaults table the user described.
+
+### Story 3 — Implement inherit-from-tenant in the workspace-details read path
+
+- When `master_record_workspace.workspace_timezone` (after the Story 1 rename) is NULL, fall back to `master_record_tenant.tenant_timezone`.
+- UI: render the inherited value greyed-out with an "inherit from tenant" toggle; explicit override sets a non-NULL value on the workspace row.
+- The user's exact framing: *"tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure."*
+
+### Story 4 — Drop the legacy singular `workspace` table
+
+- Audit any remaining references in code (`grep -rn '\bworkspace\b' backend/ app/`).
+- If unused, write a drop migration. If still referenced, file a TD-* entry.
+
+### Story 5 — Rename the route
+
+- `/vector-admin/tenant-details` → `/workspace-admin/workspace-details` (or whatever the user prefers).
+- Update the `pages` row in mmff_vector.
+- Tenant-level concerns (subscription identity, billing, legal entity) get a **separate** new page under `/vector-admin/` — gadmin-only — wired to the new Story-2 table.
+
+### Story 6 — Verify topology permissioning still works after `roles_org_nodes` drop
+
+- Read migration [`175_drop_roles_org_nodes.sql`](db/mmff_vector/schema/175_drop_roles_org_nodes.sql) and the current `backend/internal/orgdesign/` code.
+- Confirm node-level roles resolve correctly via the unified roles/permissions matrix (PLA-0049).
+- If they don't, this is a P0 regression — file immediately.
+
+---
+
+## What to do on the Mac Studio
+
+1. **Pull this branch** (`001_redesign`); commits will be there after the push below.
+2. **Read this handover and `dev/research/R028.json`** (specifically §8 Decision A.2).
+3. **Read `docs/c_c_topology.md`** end-to-end — that's the canonical source of truth for the topology spine.
+4. **Confirm with the user** which story to start with (recommendation: Story 1 first).
+5. **Run `<stories>` to draft the chosen story.** Use RF1.4.4 column-prefix rename as the structural template. Storify across all layers (DB migration, Go code, frontend, tests).
+
+---
+
+## Open questions to confirm with user
+
+- Is the rename of `master_record_tenant` → `master_record_workspace` accepted as Story 1? (The user agreed in principle but said "lets take a breath" before any DB move; this is a rename not a move, but still worth confirming.)
+- Does the user want a separate "tenant defaults" page at `/vector-admin/tenant-details` (gadmin-only) holding the **real** tenant-level fields (Story 2), and a workspace-level page at `/workspace-admin/workspace-details` (Stories 3 + 5)?
+- Should Story 1 also drop the legacy `workspace` (singular) table at the same time, or is that a separate story (Story 4)? Recommendation: separate, because it has its own audit risk.
+
+---
+
+## Files modified this session (for context)
+
+```
+M  app/(user)/vector-admin/tenant-details/page.tsx           ← stub replaced w/ organisation page content
+D  app/(user)/workspace-admin/organisation/page.tsx          ← whole dir deleted
+M  app/components/catalogue/c_circular_additor/circularAdditor.tsx  ← rail index pill
+M  app/globals.css                                            ← .flow-rules__rail-index + grid template change
+M  dev/plans/PLA-0031.json … PLA-0034.json                   ← incidental, verify before commit
+M  docs/c_c_v1_v2_cutover.md                                  ← incidental, verify before commit
+M  package-lock.json                                           ← incidental
+```
+
+DB-only change: deleted `pages` row `ws-organisation` (id `995a21a2-0c4c-4772-83b9-eff6f2082370`) from `pages` in mmff_vector.
+
+---
+
+## Hard rules to keep in mind
+
+- **HUMAN ACCOUNTS ARE OFF LIMITS:** never touch credential fields on `gadmin@mmffdev.com`, `padmin@mmffdev.com`, `user@mmffdev.com`.
+- **NEVER ASSUME A DATABASE:** trace handler → main.go pool → check `docs/c_c_db_routing.md` before any psql.
+- **BACKEND ENV PINNED TO `dev`:** marker file in CLAUDE.md; never switch without explicit chat instruction.
+- **CSS/HTML NAMING CONVENTION:** propose chain, show TSX + CSS, confirm before edit.
+- **DEV-UI PRIMITIVES on `/dev`:** `.dui-*` catalog only, no bespoke classes.
+
+— end of handover —

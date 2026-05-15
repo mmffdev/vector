@@ -235,7 +235,7 @@ export default function CircularAdditor({
         <div className="flow-rules__rail aftd__rail" role="group" aria-label="Item list">
           <p className="flow-rules__eyebrow">{railEyebrow}</p>
           <ul className="flow-rules__rail-list">
-            {items.map((s) => (
+            {items.map((s, i) => (
               <li key={s.id}>
                 <button
                   type="button"
@@ -243,6 +243,7 @@ export default function CircularAdditor({
                   onClick={() => handleRemove(s.id)}
                   title={`Remove ${s.label}`}
                 >
+                  <span className="flow-rules__rail-index" aria-hidden>{i + 1}</span>
                   <span className="flow-rules__rail-dot" style={{ background: s.colour }} aria-hidden />
                   <span className="flow-rules__rail-name">{s.label}</span>
                 </button>

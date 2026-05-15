@@ -2,9 +2,10 @@
   "id": "PLA-0031",
   "title": "Flows Migration — obj_flow_tenant → vector_artefacts flows/flow_states tables",
   "date_created": "2026-05-08",
-  "date_started": null,
-  "date_last_updated": "2026-05-08",
+  "date_started": "2026-05-08",
+  "date_last_updated": "2026-05-14",
   "date_finished": null,
+  "status_note": "Substantially complete on handler/route side as of 2026-05-14. flows.Service constructed with (vaPool, mainPool) at main.go ~L476; route registered under /_site/flows (PLA-0031 / M1) at main.go ~L1396. Every data read goes to vaPool; mainPool is tenancy gate only. ETL state from obj_flow_tenant → vector_artefacts.flows is unverified — needs row-count check before formal close. PLA-0033 obsoleted this plan's deferrals; remaining work is verification + openapi paperwork.",
   "scope": "<p>Migrate the <code>/flows</code> API endpoint from the legacy <code>obj_flow_tenant</code> table in mmff_vector to the <code>flows</code> / <code>flow_states</code> / <code>flow_transitions</code> tables that already exist in vector_artefacts. The legacy schema is subscription-scoped with polymorphic type FKs (<code>system_artefact_type_id</code>, <code>tenant_artefact_type_id</code>, <code>portfolio_item_type_id</code>). The vaPool schema uses a single <code>artefact_type_id</code> FK into <code>artefact_types</code> with a standard <code>workspace_id</code> tenancy gate. A one-time ETL step migrates live data; the handler service is rewritten to query vaPool; the route is registered under <code>/samantha/v2</code>; the v1 registration is removed.</p>",
   "value": "<p>Unblocks <code>/flows</code> from v1, removing one of the major blockers to PLA-0030 Task 10 (v1 block removal). Collapses the dual-pool complexity from the flows handler. Enables the work-items flow-state assignment to resolve from the same DB as the artefact, eliminating a cross-DB join that currently runs in-process.</p>",
   "implementation_plan": [
@@ -35,13 +36,13 @@
     "/samantha/v1/flows registration"
   ],
   "work_item_backlog": [
-    { "order": 1, "title": "Schema audit: obj_flow_tenant → flows/flow_states column mapping", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 2, "title": "ETL migration script: obj_flow_tenant → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 3, "title": "Rewrite flows.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 4, "title": "Register /flows under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 5, "title": "Switch frontend callers to apiV2('/flows')", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 6, "title": "Update openapi-v2.yaml + mark v1 deprecated", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 7, "title": "Update cutover register + PLA-0030", "story_id": null, "card_url": null, "status": "todo" }
+    { "order": 1, "title": "Schema audit: obj_flow_tenant → flows/flow_states column mapping", "story_id": null, "card_url": null, "status": "done" },
+    { "order": 2, "title": "ETL migration script: obj_flow_tenant → vector_artefacts", "story_id": null, "card_url": null, "status": "unverified", "note": "Code is in place but row-count parity vs obj_flow_tenant has not been confirmed against dev DB on 2026-05-14" },
+    { "order": 3, "title": "Rewrite flows.Service to query vaPool", "story_id": null, "card_url": null, "status": "done", "note": "Verified at backend/internal/flows/service.go — all reads/writes use vaPool; mainPool is tenancy gate only" },
+    { "order": 4, "title": "Register /flows under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "done", "note": "Mounted at /_site/flows in main.go ~L1400; /samantha/v1 block entirely removed from main.go" },
+    { "order": 5, "title": "Switch frontend callers to apiV2('/flows')", "story_id": null, "card_url": null, "status": "unverified", "note": "check_callers.py run needed to confirm zero api('/flows') call sites remain" },
+    { "order": 6, "title": "Update openapi-v2.yaml + mark v1 deprecated", "story_id": null, "card_url": null, "status": "unverified", "note": "openapi.yaml v1-deprecation paperwork (PLA-0030 Task 9) still pending project-wide" },
+    { "order": 7, "title": "Update cutover register + PLA-0030", "story_id": null, "card_url": null, "status": "done", "note": "c_c_v1_v2_cutover.md reconciled with reality on 2026-05-14" }
   ],
   "acceptance_criteria": [
     {
@@ -58,7 +59,8 @@
       "proven_by": "curl smoke test",
       "story_id": null,
       "card_url": null,
-      "done": false
+      "done": true,
+      "note": "Achieved by stronger means — the entire /samantha/v1 r.Route(...) block was removed from main.go under PLA-0039 transport restructure. Any /samantha/v1/* request now hits chi's 404 path."
     },
     {
       "order": 3,

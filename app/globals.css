@@ -13275,7 +13275,7 @@ input[type="reset"] {
 
 .flow-rules__rail-row {
   display: grid;
-  grid-template-columns: 10px 1fr;
+  grid-template-columns: 22px 10px 1fr;
   align-items: center;
   gap: var(--space-2);
   width: 100%;
@@ -13301,6 +13301,27 @@ input[type="reset"] {
 
 .flow-rules__rail-row.is-focused {
   background: var(--accent-muted);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.flow-rules__rail-index {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-subtle);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 0;
+  min-width: 22px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.flow-rules__rail-row:hover .flow-rules__rail-index,
+.flow-rules__rail-row.is-focused .flow-rules__rail-index {
+  background: var(--surface);
   border-color: var(--accent);
   color: var(--ink);
 }

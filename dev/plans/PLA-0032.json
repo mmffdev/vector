@@ -2,9 +2,10 @@
   "id": "PLA-0032",
   "title": "Tenant-Settings Migration — master_record_tenant → vector_artefacts",
   "date_created": "2026-05-08",
-  "date_started": null,
-  "date_last_updated": "2026-05-08",
+  "date_started": "2026-05-08",
+  "date_last_updated": "2026-05-14",
   "date_finished": null,
+  "status_note": "Substantially complete on handler/route side as of 2026-05-14. Service moved to backend/internal/tenantmasterrecord (no longer a `tenantsettings` package); route renamed /tenant-settings → /workspace-settings and mounted under /_site (main.go ~L1136). Reads from vaPool. ETL state of master_record_tenant rows mmff_vector → vector_artefacts is unverified — needs row-count check. Frontend caller migration + openapi paperwork pending project-wide.",
   "scope": "<p>Migrate the <code>/tenant-settings</code> API endpoint from <code>master_record_tenant</code> in mmff_vector to a new <code>master_record_tenant</code> table in vector_artefacts. The existing table stores subscription-scoped org configuration (name, brand colours, timezone, etc.). The new table uses workspace_id as the tenancy key (consistent with the rest of vector_artefacts). A one-time ETL step copies live data. The handler service is rewritten to query vaPool. The route is registered under <code>/samantha/v2</code>; the v1 registration is removed. This unblocks PLA-0030 T4b, completing Task 4.</p>",
   "value": "<p>Eliminates the last subscription-scoped config table blocking v2 promotion. After this plan, every non-topology non-legacy route will be backed by vector_artefacts, making PLA-0030 Task 10 (v1 block removal) dependent only on topology, defects, user-stories, flows, and portfolio-items migrations.</p>",
   "implementation_plan": [
@@ -36,13 +37,13 @@
     "/samantha/v1/tenant-settings registration"
   ],
   "work_item_backlog": [
-    { "order": 1, "title": "Schema audit: master_record_tenant column mapping", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 2, "title": "artefacts_schema migration: master_record_tenant in vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 3, "title": "ETL script: master_record_tenant mmff_vector → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 4, "title": "Rewrite tenantsettings.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 5, "title": "Register /tenant-settings under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 6, "title": "Switch frontend callers to apiV2/apiInfra", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 7, "title": "Update openapi specs + cutover register + PLA-0030 T4 done", "story_id": null, "card_url": null, "status": "todo" }
+    { "order": 1, "title": "Schema audit: master_record_tenant column mapping", "story_id": null, "card_url": null, "status": "done" },
+    { "order": 2, "title": "artefacts_schema migration: master_record_tenant in vector_artefacts", "story_id": null, "card_url": null, "status": "done", "note": "Table exists in vector_artefacts; later renamed/refactored via the column-prefix sweep migration 063_master_record_tenants_column_prefix_RF1_4_4.sql (2026-05-14)" },
+    { "order": 3, "title": "ETL script: master_record_tenant mmff_vector → vector_artefacts", "story_id": null, "card_url": null, "status": "unverified", "note": "Row-count parity vs mmff_vector source not verified on 2026-05-14" },
+    { "order": 4, "title": "Rewrite tenantsettings.Service to query vaPool", "story_id": null, "card_url": null, "status": "done", "note": "Package renamed to tenantmasterrecord; constructed at main.go ~L424 as tenantmasterrecord.NewHandler(tenantSettingsSvc)" },
+    { "order": 5, "title": "Register /tenant-settings under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "done", "note": "Route renamed to /workspace-settings under /_site mount (PLA-0039 transport restructure); /samantha/v1 block entirely removed" },
+    { "order": 6, "title": "Switch frontend callers to apiV2/apiInfra", "story_id": null, "card_url": null, "status": "unverified", "note": "check_callers.py run needed; note that the route name itself changed too (tenant-settings → workspace-settings)" },
+    { "order": 7, "title": "Update openapi specs + cutover register + PLA-0030 T4 done", "story_id": null, "card_url": null, "status": "done", "note": "c_c_v1_v2_cutover.md reconciled 2026-05-14; openapi paperwork tracked under PLA-0030 T9" }
   ],
   "acceptance_criteria": [
     {
