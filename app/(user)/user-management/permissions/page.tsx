@@ -5,6 +5,7 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
+import { PrimaryCellTreeLines } from "@/app/components/ResourceTree";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageAccess } from "@/app/contexts/PageAccessContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
@@ -59,6 +60,9 @@ interface FlatRow {
   page?: PageGrantRow;
   /** For header rows: the page_ids of all child pages in this bucket. */
   child_page_ids?: string[];
+  /** For page rows: true when this is the final page in its bucket
+   * (drives <PrimaryCellTreeLines> elbow vs T-junction). */
+  isLastInBucket?: boolean;
 }
 
 const EXCLUDED_ROLE_CODES = new Set(["grp_global", "grp_external"]);
@@ -211,7 +215,9 @@ export default function PermissionsPage() {
     [refresh],
   );
 
-  // Flatten rows into header + page rows for the Table.
+  // Flatten rows into header + page rows for the Table. isLastInBucket
+  // is computed against the rowsByBucket map so the SVG branch glyphs
+  // render an elbow on the final child of each bucket.
   const flat = useMemo<FlatRow[]>(() => {
     if (!rows) return [];
     const out: FlatRow[] = [];
@@ -228,12 +234,15 @@ export default function PermissionsPage() {
         });
         lastBucket = p.bucket_label;
       }
+      const bucketPages = rowsByBucket.get(p.tag_enum) ?? [];
+      const isLast = bucketPages[bucketPages.length - 1]?.page_id === p.page_id;
       out.push({
         kind: "page",
         key: `p:${p.page_id}`,
         bucket_label: p.bucket_label,
         tag_enum: p.tag_enum,
         page: p,
+        isLastInBucket: isLast,
       });
     }
     return out;
@@ -246,8 +255,18 @@ export default function PermissionsPage() {
         header: "Page",
         kind: "custom",
         render: (r) => {
-          if (r.kind === "header") return <strong>{r.bucket_label}</strong>;
-          return <span>{r.page!.label}</span>;
+          if (r.kind === "header") return r.bucket_label;
+          return (
+            <span className="permissions__page-cell">
+              <PrimaryCellTreeLines
+                depth={1}
+                isLast={r.isLastInBucket ?? false}
+                hasVisibleChildren={false}
+                continuations={[false]}
+              />
+              <span>{r.page!.label}</span>
+            </span>
+          );
         },
       },
       ...editableRoles.map<Column<FlatRow>>((roleRow) => ({
@@ -313,6 +332,9 @@ export default function PermissionsPage() {
           columns={columns}
           rows={flat}
           rowKey={(r) => r.key}
+          rowClassName={(r) =>
+            r.kind === "header" ? "tree_accordion-dense__row--group" : undefined
+          }
           loading={loading}
           empty="No system pages found."
           noScroll

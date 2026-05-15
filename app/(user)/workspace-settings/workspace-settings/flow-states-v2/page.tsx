@@ -1,18 +1,18 @@
 "use client";
 
 // Flow States v2 — Orbit PoC.
-// Thin wrapper around <ArtefactFlowTransitionDesigner>. The rail + canvas
+// Thin wrapper around <CircularAdditor>. The rail + canvas
 // sub-panel, its geometry, anchor logic and SVG decoration all live in the
 // reusable component under
-// app/components/catalogue/c_artefact_flow_transition_designer/.
+// app/components/catalogue/c_circular_additor/.
 
 import { useState } from "react";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import ArtefactFlowTransitionDesigner, {
+import CircularAdditor, {
   type OrbitItem,
-} from "@/app/components/catalogue/c_artefact_flow_transition_designer/c_artefact_flow_transition_designer";
+} from "@/app/components/catalogue/c_circular_additor/circularAdditor";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const SEED: OrbitItem[] = [
@@ -66,7 +66,7 @@ export default function FlowStatesV2OrbitPocPage() {
             </span>
           </div>
 
-          <ArtefactFlowTransitionDesigner
+          <CircularAdditor
             key={resetKey}
             defaultItems={SEED}
             onInsert={() => setCount((c) => c + 1)}

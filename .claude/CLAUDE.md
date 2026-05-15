@@ -42,8 +42,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Dev-UI primitives (HARD RULE — `/dev` pages)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — `.dui-*` catalog only.
 - **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming reference + state classes.
 - **Naming conventions (HARD RULE — load before any new package/table/route/column)** → [`docs/c_c_naming_conventions.md`](../docs/c_c_naming_conventions.md) — canonical spec; deviation needs a `TD-*` entry.
-- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — story tracking via plan JSON.
-- ~~**Planka (suspended)**~~ — board ops frozen; track via plan JSON status fields.
+- **Backlog (`<backlog>`)** → [`.claude/commands/c_backlog.md`](commands/c_backlog.md) — opens root [`BACKLOG.md`](../BACKLOG.md); Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).
+- ~~**Planka (suspended)**~~ — old `<backlog>` doc archived at [`docs/archive/c_backlog_planka.md`](../docs/archive/c_backlog_planka.md); board ops frozen.
 - **DB routing (HARD RULE — load before any psql)** → [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) — service → pool → DB → tables map.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.

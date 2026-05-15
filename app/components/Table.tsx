@@ -98,6 +98,10 @@ export interface TableProps<R> {
   cellClassName?: (r: R, c: Column<R>) => string | undefined;
   onRowClick?: (r: R) => void;
   className?: string;
+  // When true, the table grows to the natural height of its rows
+  // (no max-height, no internal vertical scroll). Use for short
+  // catalogue-style grids that should never paginate.
+  noScroll?: boolean;
 }
 
 // ---------- Internal helpers ----------
@@ -464,6 +468,7 @@ export default function Table<R>(props: TableProps<R>) {
     cellClassName,
     onRowClick,
     className,
+    noScroll = false,
   } = props;
 
   // PLA-0005 — keep the addressable substrate working. The old Table
@@ -518,7 +523,7 @@ export default function Table<R>(props: TableProps<R>) {
         data-address={address}
       >
         {toolbar ? <Toolbar config={toolbar} /> : null}
-        <div className="tree_accordion-dense__scroll">
+        <div className={joinClass("tree_accordion-dense__scroll", noScroll && "tree_accordion-dense__scroll-noscroll")}>
           <table className="tree_accordion-dense__table" aria-label={ariaLabel}>
             {columns.some((c) => c.width !== undefined) ? (
               <colgroup>

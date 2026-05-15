@@ -828,6 +828,70 @@
   text-align: center;
 }
 
+/* ─── Scope section accordion (Dev → Scope) ────────────────── */
+/* Each top-level section in Vector_Scope.md renders as a <details> */
+/* collapsed by default. Sits inside .dui-doc, so child markup       */
+/* inherits the doc typography.                                      */
+
+.dui-scope-section {
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+.dui-scope-section:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.dui-scope-section__summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+  transition: background 0.15s ease;
+}
+
+.dui-scope-section__summary::-webkit-details-marker {
+  display: none;
+}
+
+.dui-scope-section__summary:hover {
+  background: var(--surface-sunken);
+}
+
+.dui-scope-section__chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--ink-muted);
+  transition: transform 120ms ease;
+  flex: 0 0 auto;
+}
+
+.dui-scope-section[open] > .dui-scope-section__summary .dui-scope-section__chevron {
+  transform: rotate(90deg);
+}
+
+.dui-scope-section__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dui-scope-section__body {
+  padding: var(--space-2) var(--space-2) var(--space-5);
+}
+
+.dui-scope-section__body > *:first-child {
+  margin-top: 0;
+}
+
 
 /* ─── 10. Meta strip (id badge + title + dates) ────────────── */
 

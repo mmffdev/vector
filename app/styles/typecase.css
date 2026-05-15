@@ -2,9 +2,9 @@
    typecase.css — site typographic scale
    Single source of truth for h1–h6 sizing, body font-family,
    and the .text-size-* / .h1-.h6 helper classes.
-   Inter is loaded via next/font in app/layout.tsx and exposed
-   as var(--font-sans); we reference that here rather than
-   re-importing from Google Fonts.
+   Satoshi is loaded via Fontshare in app/layout.tsx and bound
+   to var(--font-sans) on <html>; we reference that here rather
+   than re-importing the stylesheet.
    ============================================================ */
 
 html {
@@ -22,7 +22,7 @@ body {
   --text-size-600: 2.488rem;
   --text-size-700: 2.986rem;
 
-  font-family: var(--font-sans), 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-weight: 500;
   line-height: 1.6;
 }

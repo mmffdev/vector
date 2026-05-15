@@ -62,11 +62,11 @@
   --status-info-bg:      #E1ECF5;
 
   /* ── 7. TYPE ───────────────────────────────────────────────
-     Typefaces and scale. */
-  --font-sans:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
-  --font-numeric: 'Inter', system-ui, sans-serif;
+     Typefaces and scale. --font-sans / --font-mono are bound by
+     Next.js in app/layout.tsx (Satoshi local + JetBrains Mono).
+     Display + numeric chain off --font-sans so theme swaps propagate. */
+  --font-display: var(--font-sans), system-ui, sans-serif;
+  --font-numeric: var(--font-sans), system-ui, sans-serif;
 
   --text-xs:   11px;  --leading-xs:   16px;
   --text-sm:   13px;  --leading-sm:   20px;

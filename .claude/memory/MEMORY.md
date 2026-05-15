@@ -24,7 +24,7 @@
 - [CSS canonical — buttons, tables, inline styles, tokens](css_canonical.md) — `.btn` + variant on every button; `tree_accordion-dense__*` for every table; no inline `style={{}}`; `--accent`/`--accent-ink` for interactive state, never `--brand`.
 - [CSS/HTML naming convention — hierarchical semantic pattern](css_naming_convention.md) — `root__Container_Child_leaf`; `__` once at root boundary, `_` for deeper nesting, `-` for modifiers only; propose full TSX+CSS chain before writing any class name.
 - [Test accounts — Claude-owned + human-owned](test_accounts.md) — All test logins (claude@, claude_N_test@, gadmin/padmin/user@) consolidated; HARD RULE on human accounts.
-- [Vector Design System](reference_design_system.md) — `/MMFFDev - Vector Assets/Vector Design System/`; skill `/vector-design`; Inter font, warm neutrals.
+- [Vector Design System](reference_design_system.md) — `/MMFFDev - Vector Assets/Vector Design System/`; skill `/vector-design`; Satoshi font, warm neutrals.
 - [Role boundaries — gadmin vs padmin vs user](project_role_boundaries.md) — gadmin=tech/support, padmin=product owner, user=consumer; portfolio model = padmin-only.
 - [BlockingReleaseGate — gadmin page gating pattern](project_blocking_release_gate.md) — Wrap gadmin pages; padmin pages must NOT import it.
 - [Dev launcher uses `go run`](project_dev_launcher_runtime.md) — Backend runs from `go run`; check /healthz commit vs HEAD, not file mtimes.

@@ -436,6 +436,27 @@
 }
 .nav-primary-rail-2__PageList_Group_Row.is-nested {
   padding-left: 38px;
+  position: relative;
+}
+/* Vertical spine connecting nested rows under their parent. Drawn as a
+   pseudo-element so consecutive nested rows form one continuous line
+   from the top edge of the first nested row through the bottom edge of
+   the last — no per-row gap. The horizontal connector comes from the
+   row's icon glyph (e.g. ─). */
+.nav-primary-rail-2__PageList_Group_Row.is-nested::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+/* Last nested row in a group: spine stops at the row's vertical centre
+   so it terminates into the horizontal connector glyph (elbow shape).
+   The +sibling check identifies "no more nested rows after me." */
+.nav-primary-rail-2__PageList_Group_Row.is-nested:not(:has(+ .is-nested))::before {
+  bottom: 50%;
 }
 .nav-primary-rail-2__PageList_Group_Row_Icon {
   display: flex;

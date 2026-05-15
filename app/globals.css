@@ -174,7 +174,7 @@ input[type="reset"] {
 /* =============================================================
    Sidebar — Vector Design System (story 00071)
    Surface bg, 1px border-right, eyebrow group labels, surface-sunken
-   hover/active, Inter 13px items, 240px expanded / 64px collapsed.
+   hover/active, 13px items, 240px expanded / 64px collapsed.
    No shadow on the rail. Use BEM-lite app-sidebar-* class names.
    ============================================================= */
 .app-sidebar-container {
@@ -1238,7 +1238,7 @@ input[type="reset"] {
    Buttons — Vector Design System (story 00074)
    Five variants: primary (ink), secondary (surface+border), ghost
    (transparent), danger (danger-bg/danger), sm + icon-only sizes.
-   40px default height, --radius-md, Inter 14px / 500. One primary
+   40px default height, --radius-md, 14px / 500. One primary
    per region. No box-shadow ever.
    ============================================================ */
 /* Default button — Vector design system. Resting state: black surface,
@@ -2341,7 +2341,7 @@ input[type="reset"] {
 
 /* ============================================================
    Pills + status badges — Vector Design System (story 00076)
-   Semantic bg/fg pairs, --radius-full, 11px / 500 / Inter, icon + label.
+   Semantic bg/fg pairs, --radius-full, 11px / 500, icon + label.
    Always render an icon next to the label — never colour alone.
    The legacy .tag classes are aliased here so JSX migrates cleanly.
    ============================================================ */
@@ -9098,6 +9098,30 @@ input[type="reset"] {
   margin-bottom: 20px;
 }
 
+/* When a panel wraps a <Table>, drop horizontal padding so the table
+   sits flush to the panel border (sunken header bar runs edge-to-edge),
+   and drop padding-bottom so the table's last row butts directly against
+   the panel's bottom border (no phantom empty row). Header/toolbar get a
+   counter-shift so their text keeps the same inset as a normal panel. */
+.panel:has(.tree_accordion-dense__table) {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+.panel:has(.tree_accordion-dense__table) > .panel__header,
+.panel:has(.tree_accordion-dense__table) .ui-table > .toolbar {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+/* Drop the scroll container's redundant border — the panel already
+   owns the outer edge. Round the bottom corners to match the panel
+   so the sunken-header table flows into the panel border. */
+.panel:has(.tree_accordion-dense__table) .tree_accordion-dense__scroll {
+  border: none;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
 .panel__header {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -11992,28 +12016,35 @@ input[type="reset"] {
   background: var(--surface);
 }
 
-/* Header row */
+/* Opt-in: caller-side no-scroll modifier. Table grows to natural row
+   height; no internal scroll bar. Used for short catalogue grids
+   (e.g. page-permissions matrix) that should never paginate. */
+.tree_accordion-dense__scroll-noscroll {
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* Header row — ObjectTree-aligned treatment (sunken surface wash, 13px
+   tracked caps, --ink-muted). Sticky-on-<th> kept for scroll behaviour;
+   the <th> background must stay opaque so body rows don't bleed through. */
 .tree_accordion-dense__head {
-  background: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  background: var(--surface-sunken);
 }
 .tree_accordion-dense__th {
   text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-subtle);
-  padding: 8px 12px;
+  color: var(--ink);
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   user-select: none;
-  /* Freeze: stick each th to the top of the scroll container. Sticky on
-     <th> (not <thead>) is the cross-browser pattern. Background is opaque
-     so body rows don't bleed through during scroll. */
   position: sticky;
   top: 0;
   z-index: 2;
-  background: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  background: var(--surface-sunken);
 }
 .tree_accordion-dense__th--mono {
   font-family: var(--font-mono);
@@ -12126,6 +12157,77 @@ input[type="reset"] {
 }
 .tree_accordion-dense__row--child {
   /* purely structural — no background change so stripes stay clean */
+}
+
+/* Group / bucket header row — body-level heading that introduces a set
+   of child rows (e.g. permissions matrix bucket label). Same visual
+   treatment as the column header bar so the eye reads them as the same
+   stratum: sunken surface wash + 13px tracked caps + extra vertical
+   padding. Selectors are specific enough to beat the :nth-child(even)
+   zebra stripe. */
+.tree_accordion-dense__table tbody .tree_accordion-dense__row--group,
+.tree_accordion-dense__table tbody .tree_accordion-dense__row--group:nth-child(even),
+.tree_accordion-dense__table tbody .tree_accordion-dense__row--group:hover,
+.tree_accordion-dense__table tbody .tree_accordion-dense__row--group:nth-child(even):hover {
+  background: var(--surface-sunken);
+  cursor: default;
+  height: auto;
+}
+.tree_accordion-dense__row--group .tree_accordion-dense__cell {
+  background: var(--surface-sunken);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+  padding: 10px 16px;
+  border-bottom: none;
+  user-select: none;
+}
+
+/* Rows under a __row--group render their hierarchy via the caller's
+   custom cell content (typically <PrimaryCellTreeLines> from ResourceTree,
+   so flat-table buckets share the same SVG branch geometry as proper
+   trees). The catalog does not draw branch glyphs itself; it only owns
+   the __row--group bucket-header styling above.
+
+   No row borders between a group header and its children, and no border
+   between child rows themselves — the SVG tree-line geometry is the
+   visual connector. The next __row--group restores the border to
+   visually break between buckets. */
+.tree_accordion-dense__row--group
+  ~ .tree_accordion-dense__row:not(.tree_accordion-dense__row--group)
+  > .tree_accordion-dense__cell {
+  border-bottom: none;
+}
+.tree_accordion-dense__row--group + .tree_accordion-dense__row--group
+  > .tree_accordion-dense__cell {
+  border-top: 1px solid var(--border);
+}
+.tree_accordion-dense__row--group
+  ~ .tree_accordion-dense__row:not(.tree_accordion-dense__row--group):has(+ .tree_accordion-dense__row--group)
+  > .tree_accordion-dense__cell {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Permissions page — page-name cell layout pairs the SVG branch
+   geometry with the page label, vertically centred. Row height is
+   pinned to 28px (matching <PrimaryCellTreeLines>'s default rowH) so
+   adjacent rows' SVG strokes meet edge-to-edge with zero gap. */
+.permissions__page-cell {
+  display: block;
+  position: relative;
+  padding-left: 26px;
+  line-height: 28px;
+  height: 28px;
+}
+.permissions__page-cell > .tree_accordion-dense__svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  width: 20px;
 }
 
 /* Cells */

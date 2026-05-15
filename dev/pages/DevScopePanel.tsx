@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { ScopeDoc, ScopeSection } from "@/app/api/dev/scope/route";
 
+// Strip the leading <h2>…</h2> from each section's html — the summary
+// renders the title, so we don't want a duplicate heading in the body.
+function stripLeadingH2(html: string): string {
+  return html.replace(/^\s*<h2>[^<]*<\/h2>\s*/, "");
+}
+
 function ScopeContent({ sections }: { sections: ScopeSection[] }) {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(
@@ -13,13 +19,16 @@ function ScopeContent({ sections }: { sections: ScopeSection[] }) {
     const el = contentRef.current;
     if (!el) return;
 
-    const headings = Array.from(el.querySelectorAll<HTMLElement>("h2[id]"));
+    const detailsEls = Array.from(
+      el.querySelectorAll<HTMLDetailsElement>("details.dui-scope-section")
+    );
     const links = Array.from(
       el.querySelectorAll<HTMLAnchorElement>(".dui-toc__list a")
     );
     const linkById = new Map(
       links.map((a) => [a.getAttribute("href")?.slice(1) ?? "", a])
     );
+    const detailsById = new Map(detailsEls.map((d) => [d.id, d]));
     let clickLockUntil = 0;
 
     const setActive = (id: string | null) => {
@@ -28,16 +37,28 @@ function ScopeContent({ sections }: { sections: ScopeSection[] }) {
       if (id) linkById.get(id)?.classList.add("is-active");
     };
 
-    links.forEach((a) =>
-      a.addEventListener("click", () => {
+    const tocClickHandlers: Array<() => void> = [];
+    links.forEach((a) => {
+      const handler = (ev: Event) => {
         const id = a.getAttribute("href")?.slice(1);
         if (!id) return;
         clickLockUntil = Date.now() + 800;
         setActive(id);
-      })
-    );
+        const target = detailsById.get(id);
+        if (target) {
+          ev.preventDefault();
+          target.open = true;
+          // Wait a tick for the details to expand before scrolling.
+          requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }
+      };
+      a.addEventListener("click", handler);
+      tocClickHandlers.push(() => a.removeEventListener("click", handler));
+    });
 
-    if (!headings.length) return;
+    if (!detailsEls.length) return;
 
     const visible = new Map<string, number>();
     const io = new IntersectionObserver(
@@ -52,9 +73,9 @@ function ScopeContent({ sections }: { sections: ScopeSection[] }) {
           let topId: string | null = null;
           let topY = Infinity;
           visible.forEach((_, id) => {
-            const h = headings.find((h) => h.id === id);
-            if (!h) return;
-            const y = h.getBoundingClientRect().top;
+            const d = detailsEls.find((d) => d.id === id);
+            if (!d) return;
+            const y = d.getBoundingClientRect().top;
             if (y < topY) {
               topY = y;
               topId = id;
@@ -62,8 +83,8 @@ function ScopeContent({ sections }: { sections: ScopeSection[] }) {
           });
           setActive(topId);
         } else {
-          const above = headings
-            .filter((h) => h.getBoundingClientRect().top < 80)
+          const above = detailsEls
+            .filter((d) => d.getBoundingClientRect().top < 80)
             .pop();
           if (above) setActive(above.id);
         }
@@ -71,10 +92,13 @@ function ScopeContent({ sections }: { sections: ScopeSection[] }) {
       { rootMargin: "-72px 0px -65% 0px", threshold: [0, 0.1, 0.5, 1] }
     );
 
-    headings.forEach((h) => io.observe(h));
-    setActive(headings[0].id);
+    detailsEls.forEach((d) => io.observe(d));
+    setActive(detailsEls[0].id);
 
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      tocClickHandlers.forEach((off) => off());
+    };
   }, [sections]);
 
   const tocItems = sections.map((s) => (
@@ -85,28 +109,28 @@ function ScopeContent({ sections }: { sections: ScopeSection[] }) {
     </li>
   ));
 
-  // Stamp each section's h2 with the id so scroll-spy and TOC links work.
-  // The API already returns rendered HTML but without ids on h2 tags —
-  // we inject them client-side via dangerouslySetInnerHTML after replacing.
-  const body = sections
-    .map((s) =>
-      s.html.replace(
-        /^<h2>([^<]+)<\/h2>/m,
-        `<h2 id="${s.id}">$1</h2>`
-      )
-    )
-    .join("");
-
   return (
     <div ref={contentRef} className="dui-toc-layout">
       <nav className="dui-toc">
         <p className="dui-toc__label">Sections</p>
         <ul className="dui-toc__list">{tocItems}</ul>
       </nav>
-      <div
-        className="dui-doc"
-        dangerouslySetInnerHTML={{ __html: body }}
-      />
+      <div className="dui-doc">
+        {sections.map((s) => (
+          <details key={s.id} id={s.id} className="dui-scope-section">
+            <summary className="dui-scope-section__summary">
+              <span className="dui-scope-section__chevron" aria-hidden="true" />
+              <span className="dui-scope-section__title">
+                {s.number}. {s.title}
+              </span>
+            </summary>
+            <div
+              className="dui-scope-section__body"
+              dangerouslySetInnerHTML={{ __html: stripLeadingH2(s.html) }}
+            />
+          </details>
+        ))}
+      </div>
     </div>
   );
 }

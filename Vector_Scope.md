@@ -271,6 +271,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -428,6 +433,15 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -509,6 +523,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -652,6 +673,12 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -684,6 +711,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -717,6 +745,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -750,6 +781,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `d888b88` (2026-05-12): docs(.claude): register PageDescription + h2 hard rules + helper-icon memory + FE-GOV scope refs
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -767,6 +799,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
 > Commit `2c4fc9b` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_password_resets (§2.3) [RF1.4.4.users_pw]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -848,6 +885,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d9dfe8e` (2026-05-13): feat(001_redesign): Available panel mirrors Pinned bucket order with animated reflow [FE-POR-0003.1]
 > Commit `c7c00c2` (2026-05-13): fix(PLA-0023): remove stale o_flow_tenant DELETE from dev_reset, clarify P5 blockers
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -898,6 +937,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -930,6 +975,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -970,6 +1019,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1002,6 +1055,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1112,6 +1171,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1240,6 +1307,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -1297,6 +1368,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -1342,6 +1414,16 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -1407,6 +1489,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -1432,6 +1522,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `40421fe` (2026-05-14): refactor(PLA-0048 / RF1.4.2.flows): pluralise flow_* root family [RF1.4.2.flows]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -1463,6 +1554,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1932,6 +2024,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -1961,6 +2058,14 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -1977,6 +2082,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
 > Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -2011,6 +2119,8 @@ Full lifecycle management for tasks, bugs, epics.
   > Plan `PLA-0046` (2026-05-12): Topology Permissions page — gadmin user-pivot surface hosting UserNodeAssignment (B6.8) — shipped: backend `ListGrantsByUser` + dual-mount handler, `topology.grants.manage_others` permission (migration 147 on gadmin), frontend page at `/workspace-settings/users/[userId]/topology-permissions` reached via entry button on the Users row-expand. Single-role MVP; per-row role dropdown deferred.
   >
 - **B6.9** Workspace setting — "Default node access for new users" `[P3]`
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
   > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
   >
 > Commit `8825bab` (2026-05-13): feat(PLA-0043): add Workspace Admin / User Management / Vector Admin nav entries [FE-POR-0003.1]
@@ -2021,6 +2131,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -2038,12 +2153,17 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
 > Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
 > Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
 > Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   >
 > Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
 > Commit `e6a5bd3` (2026-05-14): refactor(PLA-0048 / RF1.4.2.topology): rename topology_role_grants + view_state plural + column-prefix [RF1.4.2.topology]
@@ -2051,11 +2171,16 @@ Full lifecycle management for tasks, bugs, epics.
 - **B6.11** Bulk grant CSV import/export `[P4]`
 > Commit `4a3a43e` (2026-05-14): refactor(PLA-0048 / RF1.4.2.library): rename library_* + column-prefix [RF1.4.2.library]
 > Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
   > Rally-validated bulk pattern (R054 §bulk): in-product UI does per-user grant only; bulk lives in CSV templates consumed by an external toolkit. Vector ships the same: a per-user CSV download on the B6.8 page (current grant set across the active workspace), plus a gadmin-only `/dev` panel that accepts a CSV (cols: `user_email,workspace_id,node_id,role`) and runs it through `Service.GrantRoleBatch`. Validation rules: caller is gadmin or workspace-admin; reject row if user doesn't exist or node is archived; report row-level success/fail in the response. Distinct from `RallyTools/Rally-User-Management` (Rally's external Ruby toolkit, R054 §sources [5]): Vector keeps the bulk path inside the app to avoid the "drives the web UI under the hood" hack Rally's toolkit had to adopt because the WSAPI never opened permission writes (R054 §CORRECTION C1).
 > Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
   >
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -2117,6 +2242,15 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
+> Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -2220,6 +2354,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2414,6 +2552,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -2804,6 +2943,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -2874,6 +3020,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -2910,6 +3063,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 > Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -2966,6 +3123,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -3045,6 +3207,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -3131,11 +3299,17 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
 > Commit `39986c0` (2026-05-09): feat(B21 PLA-0037): scope-parameterise artefactitemsv2; mount /portfolio-items [B21] [B21.1.1] [B21.1.2] [B21.1.3] [B21.1.4] [B21.1.5] [B21.1.6] [B21.1.7] [B21.1.8]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
   > Currently returns hardcoded `{total, epics, stories, tasks, defects, blocked}`. Make summary buckets data-driven from artefact-types of the current scope. Strategy summary should return `{total, themes, objectives, features}` per existing portfolio page contract. Pattern: GROUP BY `at.code`, project into stable JSON keys per scope config.
   >
 - **B21.1.7** Register `/portfolio-items` routes against `artefactitemsv2.New(db, "strategy")` in `main.go` `[P1]` `[ ]B21.1.4` `[ ]B21.1.6`
@@ -3181,6 +3355,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 > Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -3255,6 +3434,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -3330,6 +3517,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -3396,6 +3585,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -3445,6 +3636,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -3512,6 +3704,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -3566,6 +3760,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -3592,6 +3787,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -3637,6 +3833,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `1222483` (2026-05-14): docs: add MY_HANDOVER.md — session handover for 2026-05-14 RF1.4.4 conveyor
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -3710,6 +3913,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `5cff509` (2026-05-14): feat(nav): Reset to defaults button on /preferences/navigation
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -3742,6 +3954,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `f173b93` (2026-05-14): chore(PLA-0048 / RF1.5): cross-DB writer hardening — lint + stubs [RF1.5]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -3787,6 +4001,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
+> Commit `1222483` (2026-05-14): docs: add MY_HANDOVER.md — session handover for 2026-05-14 RF1.4.4 conveyor
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
+> Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -3847,6 +4068,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -3876,6 +4100,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -3898,6 +4123,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `4e1e171` (2026-05-14): docs(PLA-0048 / RF1.6): documentation pass — regenerate docs to post-rename truth [RF1.6]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -3944,6 +4170,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -4012,6 +4239,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
+> Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
+> Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -4051,6 +4280,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f223f8a` (2026-05-13): feat(PLA-0023 P6): finish topology cutover — move commit checkpoint from mmff_vector to vector_artefacts [TD-ORG-001]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
+> Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -4068,6 +4298,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3032e79` (2026-05-14): refactor(PLA-0048 / RF1.4.2.{webhooks,audit,errors,admin}): rename + column-prefix [RF1.4.2]
 > Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 

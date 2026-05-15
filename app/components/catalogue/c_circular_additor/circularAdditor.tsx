@@ -1,6 +1,6 @@
 "use client";
 
-// Artefact Flow Transition Designer
+// CircularAdditor (formerly ArtefactFlowTransitionDesigner)
 // -----------------------------------------------------------------------------
 // Standalone, reusable sub-panel for designing a cyclical sequence of items.
 //
@@ -29,7 +29,7 @@ export interface OrbitItem {
   colour: string;
 }
 
-export interface ArtefactFlowTransitionDesignerProps {
+export interface CircularAdditorProps {
   // Controlled mode
   items?: OrbitItem[];
   onInsert?: (index: number, angle: number) => void;
@@ -86,7 +86,7 @@ function layoutAngles(count: number): { stateAngles: number[]; innerGap: number;
   return { stateAngles, innerGap, wrapGap };
 }
 
-export default function ArtefactFlowTransitionDesigner({
+export default function CircularAdditor({
   items: controlledItems,
   onInsert: controlledInsert,
   onRemove: controlledRemove,
@@ -104,7 +104,7 @@ export default function ArtefactFlowTransitionDesigner({
   plusRadius = 14,
   showFlowDecoration = true,
   transitionMs = 360,
-}: ArtefactFlowTransitionDesignerProps) {
+}: CircularAdditorProps) {
   const isControlled = controlledItems !== undefined;
   const [localItems, setLocalItems] = useState<OrbitItem[]>(defaultItems);
   const [counter, setCounter] = useState(0);
