@@ -4,6 +4,31 @@
 
 ---
 
+## PARKED — pick up after <rg> skill ships
+
+Two unfinished pieces from today's work are intentionally parked here (not actioned) to avoid piling more debt on top of what we're about to file as TD-TEST-003. Resume **after** the `<rg>` red-green-refactor skill + Dev Mode test page are in place:
+
+1. **PLA-0050 runtime verification.** Backend was respawned successfully (commit `b547294`) but mid-run my SIGKILL→air race left the supervisor stuck. Recovery is mechanical (kill the orphan air processes + relaunch via launcher). Once the backend is back, run ACs 5/6/7/10/11 of `dev/plans/PLA-0050.json` — they're curl smoke + browser smoke against `/_site/tenant-settings` and the two pages. Estimated 15 min. Recovery PIDs were 11580 + 31817 + four orphaned `go run`s — those numbers may have changed; re-check `ps -ef | grep -E "air|go run"`.
+
+2. **Cleanup-register Story 3 — inheritance read-path.** Unblocked by PLA-0050 ship. This is the natural place to break the no-tests streak (decision recorded 2026-05-15: TDD test-first from scratch using the `<rg>` skill once it exists). Plan needs drafting as PLA-0051 (or next free). The substrate is: `workspacemasterrecord.Service.Get(workspaceID)` does the COALESCE/merge from `tenantmasterrecord` when a workspace column is NULL → frontend gets one coherent payload with an "inherited from tenant" marker per field. UI shows greyed value + "inherit/override" toggle per user's framing.
+
+3. **Cleanup-register Story 4 + Story 6.** Story 4 (drop legacy singular `workspace` table in mmff_vector) and Story 6 (verify topology permissioning after `roles_org_nodes` was dropped in migration 175) remain unstarted. Both are small follow-ups. Story 4 needs a `grep -rn '\bworkspace\b' backend/ app/` audit first.
+
+4. **`<rg>` skill build (THIS is the next focus).** Locked-in scope from 2026-05-15 chat:
+   - `<rg>` skill = interactive R→G→R loop, blocks each step until the previous proves itself (red test fails, then green test passes, then refactor keeps all green).
+   - Auto-fires when Edit/Write touches any file referenced in an active PLA-NNNN.json work_item_backlog entry; one-line override `<rg> --skip <reason>` recorded for audit.
+   - Test plan storage: each work_item_backlog row gains `tests: [{ name, file, kind: "unit"|"integration"|"vitest", covers: "<one-line behaviour>" }]`. `<plan>`/`<stories>` requires this field non-empty.
+   - Dev Mode page: 4 widgets — test results list (pass/fail/timestamp from `go test -json` + Vitest JSON), test→story map (which PLA/story_id claims coverage of each test), test source preview side-by-side with the prod file, file-coverage heatmap (any-vs-none, file-level).
+   - Sync mechanisms (all three): commit-time hook warns when a file changed without its test touching, nightly `/loop` runs the full suite and appends failures to MY_HANDOVER.md, story-close gate refuses `status: todo → done` until tests are green.
+   - Phase 1 ship = everything at once (skill + page + hooks). User's call.
+   - First user-facing target after the skill exists: backfill `workspacemasterrecord` + `tenantmasterrecord` tests as part of Story 3 (above), since the Get() refactor for COALESCE is the natural seam to write tests around.
+
+**Parking principle:** files this stale grow stale fast. If we don't pick these up within ~2 sessions, the parked notes should be re-grilled against the live code before action.
+
+---
+
+---
+
 ## TL;DR for the next agent
 
 The user is in the middle of clarifying **where the workspace concept lives in Vector's hierarchy** — strategic-portfolio spine or topology spine. Answer: **topology spine, exactly as already built**. The architecture R028 intended is already shipped. The discomfort the user felt was real but came from **misleading table/route names**, not from a wrong architecture. The next step is a cleanup-and-rename register, not a DB move.
