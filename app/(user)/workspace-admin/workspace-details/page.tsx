@@ -290,17 +290,19 @@ function FeatureToggle({
   hint,
   value,
   onChange,
+  indicator,
 }: {
   field: string;
   label: string;
   hint: string;
   value: boolean;
   onChange: (v: boolean) => void;
+  indicator?: React.ReactNode;
 }) {
   return (
     <div className="feature-toggle" data-field={field}>
       <div className="feature-toggle__text">
-        <span className="feature-toggle__label">{label}</span>
+        <span className="feature-toggle__label">{label}{indicator}</span>
         <span className="feature-toggle__hint">{hint}</span>
       </div>
       <ToggleBtn value={value} onChange={onChange} size="sm" />
@@ -506,6 +508,12 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_description">
             Description
+            <InheritanceIndicator
+              source={sources.tenant_description}
+              onRevert={() => void revertOverride("tenant_description")}
+              onOverride={() => document.getElementById("tenant_description")?.focus()}
+              busy={saving}
+            />
             <textarea
               id="tenant_description"
               name="tenant_description"
@@ -591,6 +599,12 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_date_format">
             Date format
+            <InheritanceIndicator
+              source={sources.tenant_date_format}
+              onRevert={() => void revertOverride("tenant_date_format")}
+              onOverride={() => document.getElementById("tenant_date_format")?.focus()}
+              busy={saving}
+            />
             <select
               id="tenant_date_format"
               name="tenant_date_format"
@@ -608,6 +622,12 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_datetime_format">
             Date &amp; time format
+            <InheritanceIndicator
+              source={sources.tenant_datetime_format}
+              onRevert={() => void revertOverride("tenant_datetime_format")}
+              onOverride={() => document.getElementById("tenant_datetime_format")?.focus()}
+              busy={saving}
+            />
             <select
               id="tenant_datetime_format"
               name="tenant_datetime_format"
@@ -628,7 +648,15 @@ export default function WorkspaceDetailsPage() {
       <h3 className="eyebrow">Workdays</h3>
       <div className="form">
         <div className="form__row" data-field="tenant_workdays">
-          <label className="form__label">Active workdays</label>
+          <label className="form__label">
+            Active workdays
+            <InheritanceIndicator
+              source={sources.tenant_workdays}
+              onRevert={() => void revertOverride("tenant_workdays")}
+              onOverride={() => {/* picker itself is the affordance */}}
+              busy={saving}
+            />
+          </label>
           <WorkdaysPicker value={form.tenant_workdays} onChange={(next) => update("tenant_workdays", next)} />
           {errors.tenant_workdays
             ? <span className="form__error">{errors.tenant_workdays}</span>
@@ -642,6 +670,12 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_week_start">
             Week starts on
+            <InheritanceIndicator
+              source={sources.tenant_week_start}
+              onRevert={() => void revertOverride("tenant_week_start")}
+              onOverride={() => document.getElementById("tenant_week_start")?.focus()}
+              busy={saving}
+            />
             <select
               id="tenant_week_start"
               name="tenant_week_start"
@@ -661,7 +695,15 @@ export default function WorkspaceDetailsPage() {
       <h3 className="eyebrow">Planning</h3>
       <div className="form">
         <div className="form__row" data-field="tenant_rank_method">
-          <label className="form__label">Ranking method</label>
+          <label className="form__label">
+            Ranking method
+            <InheritanceIndicator
+              source={sources.tenant_rank_method}
+              onRevert={() => void revertOverride("tenant_rank_method")}
+              onOverride={() => {/* toggle itself is the affordance */}}
+              busy={saving}
+            />
+          </label>
           <ToggleBtn
             value={form.tenant_rank_method === "dragdrop"}
             onChange={(v) => update("tenant_rank_method", v ? "dragdrop" : "manual")}
@@ -684,6 +726,14 @@ export default function WorkspaceDetailsPage() {
           hint="Allows connectors (e.g. GitHub) to associate commits and build runs with work items."
           value={form.tenant_build_changeset_tracking}
           onChange={(v) => update("tenant_build_changeset_tracking", v)}
+          indicator={
+            <InheritanceIndicator
+              source={sources.tenant_build_changeset_tracking}
+              onRevert={() => void revertOverride("tenant_build_changeset_tracking")}
+              onOverride={() => {/* toggle itself is the affordance */}}
+              busy={saving}
+            />
+          }
         />
       </div>
 
@@ -693,6 +743,12 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_notes">
             Tenant notes
+            <InheritanceIndicator
+              source={sources.tenant_notes}
+              onRevert={() => void revertOverride("tenant_notes")}
+              onOverride={() => document.getElementById("tenant_notes")?.focus()}
+              busy={saving}
+            />
             <textarea
               id="tenant_notes"
               name="tenant_notes"
@@ -714,6 +770,12 @@ export default function WorkspaceDetailsPage() {
         <div className="form__row">
           <label className="form__label" htmlFor="tenant_primary_contact_email">
             Primary contact email
+            <InheritanceIndicator
+              source={sources.tenant_primary_contact_email}
+              onRevert={() => void revertOverride("tenant_primary_contact_email")}
+              onOverride={() => document.getElementById("tenant_primary_contact_email")?.focus()}
+              busy={saving}
+            />
             <input
               type="email"
               id="tenant_primary_contact_email"
