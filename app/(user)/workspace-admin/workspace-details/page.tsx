@@ -1,7 +1,11 @@
 "use client";
 
-// Tenant Details page — single-record editor for master_record_tenant.
-// Backend: backend/internal/tenantsettings (PATCH validates server-side
+// Workspace Details page (PLA-0050 / Story 00573) — single-record editor
+// for master_record_workspaces (workspace-tier settings sidecar). Renamed
+// from /vector-admin/tenant-details on 2026-05-15 to surface the page's
+// actual scope (workspace, not tenant). Cleanup-register Story 5.
+//
+// Backend: backend/internal/workspacemasterrecord (PATCH validates server-side
 // and returns 422 with violations[] on failure). Wire shape lives in
 // app/lib/workspaceSettingsApi.ts.
 //
@@ -300,7 +304,7 @@ function FeatureToggle({
   );
 }
 
-export default function TenantDetailsPage() {
+export default function WorkspaceDetailsPage() {
   const { user } = useAuth();
   const canAccess = useHasPermission("workspace.archive");
   const { setSettings: setTenantCtx } = useTenant();
@@ -429,7 +433,7 @@ export default function TenantDetailsPage() {
       <Panel
         name="panel_tenant_details_header"
         className="page-panel-heading"
-        title="Tenant Details"
+        title="Workspace Details"
         description="Manage the tenant master record — identity, address, and structural configuration."
       />
     <div className="settings-panel">

@@ -276,6 +276,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -447,6 +448,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -537,6 +540,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -962,6 +966,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -1204,6 +1209,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1338,6 +1344,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -1530,6 +1537,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2179,6 +2187,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -2410,6 +2419,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2606,6 +2616,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -3006,6 +3017,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -3084,6 +3096,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -3125,6 +3138,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -3187,6 +3201,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -3274,6 +3289,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -3366,6 +3382,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -3424,6 +3441,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -3507,6 +3525,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -3586,6 +3605,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -3656,6 +3676,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -3778,6 +3799,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -3862,6 +3884,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -3999,6 +4022,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `069f621` (2026-05-15): feat(pageaccess): PLA-0049 Phase 0.5 — page-access enforcement primitive [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -4153,6 +4177,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
+> Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`

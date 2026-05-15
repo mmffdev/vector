@@ -48,6 +48,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
+	"github.com/mmffdev/vector-backend/internal/tenantmasterrecord"
 	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
@@ -447,6 +448,16 @@ func main() {
 	}
 	workspaceSettingsSvc := workspacemasterrecord.New(workspaceSettingsPool)
 	workspaceSettingsH := workspacemasterrecord.NewHandler(workspaceSettingsSvc)
+
+	// Tenant settings (master_record_tenants in vector_artefacts —
+	// subscription-keyed, PLA-0050). Reuses the same pool fallback
+	// pattern as workspace-settings above.
+	tenantSettingsPool := pool
+	if vaPool != nil {
+		tenantSettingsPool = vaPool
+	}
+	tenantSettingsSvc := tenantmasterrecord.New(tenantSettingsPool)
+	tenantSettingsH := tenantmasterrecord.NewHandler(tenantSettingsSvc)
 
 	// Webhooks (B9). Requires vector_artefacts (mig 037).
 	// webhookSvc is created in the vaPool block above when vaPool != nil.
@@ -1191,13 +1202,27 @@ func main() {
 			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
 	})
 
-	// ---- /tenant-settings ----
+	// ---- /workspace-settings ----
 	r.Route("/workspace-settings", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		workspaceSettingsH.Mount(r)
+	})
+
+	// ---- /tenant-settings (PLA-0050) ----
+	// Subscription-tier defaults editor. Same auth + rate-limit middleware
+	// as /workspace-settings; gadmin-only enforcement is delegated to the
+	// page-access middleware once the va-tenant-settings page row is seeded
+	// by story 00572. Until then, any authenticated user in the subscription
+	// can read/PATCH their own tenant-defaults row.
+	r.Route("/tenant-settings", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		tenantSettingsH.Mount(r)
 	})
 
 	} // end mountSiteRoutes

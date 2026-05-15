@@ -51,7 +51,8 @@ All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on 
 | `libraryreleases` (acks) | `libraryreleases.NewService(libPools.RO, pool, pool)` + `libReleasesSvc.SetAcksPool(vaPool)` | `library_releases_acknowledgements` (post RF1.4.2.library — hierarchically re-anchored under releases per §2.2) |
 | `topology` | `topology.New(pool, vaPool)` — **vaPool is the canonical write target** | `topology_nodes`, `topology_view_states`, `users_roles_topology_nodes`, `topology_commits` (post RF1.4.2.topology + RF1.4.1 orgdesign→topology rename) |
 | `portfolio` (master record) | `portfolio.NewService(vaPool).WithVectorPool(pool)` | `master_record_portfolios`, `master_record_tenants` (post RF1.4.2.master_record) |
-| `tenantmasterrecord` | `tenantmasterrecord.New(tenantSettingsPool)` — **vaPool if available, else falls back to `pool`** | `master_record_tenants` (post RF1.4.1 package rename + RF1.4.2.master_record table rename) |
+| `workspacemasterrecord` | `workspacemasterrecord.New(workspaceSettingsPool)` — **vaPool if available, else falls back to `pool`** | `master_record_workspaces` (renamed from `master_record_tenants` by mig 067 / PLA-0032 on 2026-05-15; workspace-tier settings sidecar keyed by `workspace_id`) |
+| `tenantmasterrecord` | `tenantmasterrecord.New(tenantSettingsPool)` — **vaPool if available, else falls back to `pool`** | `master_record_tenants` (NEW table in vector_artefacts, mig 068 / PLA-0050 on 2026-05-15; subscription-tier defaults keyed by `subscription_id`; distinct from `master_record_workspaces` above) |
 
 ### Services on `libPools` (mmff_library)
 

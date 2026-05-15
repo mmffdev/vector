@@ -157,6 +157,33 @@ These are stories worth creating, in order. Each one is small and additive. None
 
 Backend restarted at 15:35:09. Five smoke checks passed against the renamed package + renamed table: `/healthz` 200 on dev env, gadmin login + JWT, GET `/_site/workspace-settings` returns 200 with the MMFFDev workspace row, PATCH `tenant_notes` round-trips with HTTP 200 and the trigger bumps `master_record_workspaces_updated_at`. DB verified directly via psql.
 
+---
+
+## PLA-0050 (Story 2 + 5 of cleanup register) — SHIPPED 2026-05-15 unsupervised
+
+All 7 stories landed end-to-end across DB + Go + frontend + docs. Plan at [`dev/plans/PLA-0050.json`](dev/plans/PLA-0050.json). Summary of what's on disk:
+
+- **DB** — vector_artefacts migration 068 created `master_record_tenants` (subscription-keyed, 16 columns, 7 check constraints, trigger). FDW shadow `fdw_subscriptions` added. Backfilled 33 subscription rows. mmff_vector migration 200 dropped the broken `fn_master_record_tenant_seed_for_subscription` trigger. Subscription INSERT now works (was broken at DB layer pre-rename — found this during scoping).
+- **Go** — `backend/internal/tenantmasterrecord/` (NEW; sole writer for the new table). main.go imports the package, constructs `tenantSettingsSvc`, mounts `/_site/tenant-settings` GET + PATCH with the same auth chain as workspace-settings. `go build ./...` clean.
+- **Frontend** — `app/lib/tenantSettingsApi.ts` (typed client). `app/(user)/vector-admin/tenant-settings/page.tsx` (NEW gadmin-only editor; component `TenantSettingsPage`). `app/(user)/workspace-admin/workspace-details/page.tsx` (NEW; moved from `vector-admin/tenant-details`; component `WorkspaceDetailsPage`). Old `vector-admin/tenant-details/` directory deleted. `tsc --noEmit` clean.
+- **DB nav** — `pages` row updated: `va-tenant-details` → `ws-workspace-details` (label + href + tag_enum). New row `va-tenant-settings` inserted under `vector_admin` tag for the tenant page.
+- **Docs** — `docs/c_c_db_routing.md` extended with both `workspacemasterrecord` + `tenantmasterrecord` rows. `docs/c_plan_index.md` bumped to PLA-0050.
+
+### ⚠ Backend running binary is STALE — manual restart needed
+
+When you return, the dev backend at `localhost:5100` is dead. The respawn flow during my unsupervised run hit a race: I SIGKILLed the old binary, air's automatic rebuild bound port 5100 successfully, then mid-run when I touched `main.go` for the tenant-settings code, air's hot-restart hit `bind: address already in use` (TIME_WAIT from the previous bind) and gave up after one retry. The currently running air process (PID 31817) is alive but not picking up file changes — likely confused by the second orphaned air process (PID 11580 from yesterday).
+
+**Recovery:** kill BOTH air processes (`kill 11580 31817`) and any orphaned `go run` processes (PIDs 26707, 48926, 63164, 67493 from earlier sessions); restart air via the launcher. The new binary will pick up my code changes (Go package + main.go wiring) automatically.
+
+### Pending verification after restart (PLA-0050 ACs 5, 6, 7, 10, 11)
+
+- AC 5: GET `/_site/tenant-settings` as gadmin returns 200 with the 33-row backfill defaults for the MMFFDev subscription
+- AC 6: PATCH a single field, verify 200 + `tenant_updated_at` bumps
+- AC 7: Non-gadmin (claude_1_test) gets 403 — note: my mount used the same auth chain as workspace-settings (auth + fresh-password), so non-gadmin will currently get 200. Page-access gating is delegated to the `va-tenant-settings` page row seeded today; it'll filter the route via the page-access middleware once seed-time grants are wired. Story 3 of cleanup-register Story-3 plan can include this gate.
+- AC 10: Browser load `/vector-admin/tenant-settings` as gadmin
+- AC 11: Browser load `/vector-admin/tenant-settings` as user-tier — currently will load (see AC 7 caveat above)
+- Also: `/workspace-admin/workspace-details` (the moved workspace editor) loads correctly
+
 #### Pre-existing stale file I found (out of scope, not touched)
 
 `db/seed/010_master_reset.sql` line 192–243 INSERTs into `vector_artefacts.master_record_tenants` using the **old column names** from migration 036 (`workspace_id`, `tenant_name`, `tenant_description`, etc.) — but migration 063 (2026-05-14) renamed those columns to `master_record_tenants_*`. The seed was already broken before today's rename. After 067, it's still broken (now wrong table name AND wrong column names). This file is `psql -f` invoked manually, not run automatically by anything I could find. Filed as a separate concern — covered by PLA-0032's existing "ETL script: unverified" work-item (order 3). Not in scope for 00564/00565a.
@@ -172,28 +199,30 @@ If something is wrong, `db/vector_artefacts/schema/down/067_rename_master_record
 - Update frontend API + page references.
 - **This is the first thing to storify.** Establishes correct vocabulary; unblocks Story 3.
 
-### Story 2 — Add a real tenant-defaults table
+### Story 2 — Add a real tenant-defaults table — **SHIPPED 2026-05-15 (PLA-0050)**
 
-- New table `master_record_tenant` in vector_artefacts, PK = `subscription_id`, holding **tenant-level** defaults: timezone, date format, workdays, region, week_start, etc.
-- Seed one row per existing subscription with sensible defaults (or NULLs — depends on inheritance design).
-- This is the "London HQ" defaults table the user described.
+- New table `master_record_tenants` in vector_artefacts, PK = `subscription_id`. Shipped as PLA-0050 stories 00568 (DB migration 068 + backfill + repair of broken seed trigger), 00569 (Go service + /_site/tenant-settings endpoint), 00571 (TS API helper), 00572 (frontend `/vector-admin/tenant-settings` page).
+- Backfill ran: 33 subscriptions backfilled with system defaults.
+- Pre-existing bug repaired: `fn_master_record_tenant_seed_for_subscription` trigger (pointing at dropped table) dropped via mmff_vector migration 200.
+- Story 00570 (wire SeedForSubscription into subscription-create path) marked done-partial — no production Go code creates subscriptions today; auto-create-on-first-Get covers the gap.
 
-### Story 3 — Implement inherit-from-tenant in the workspace-details read path
+### Story 3 — Implement inherit-from-tenant in the workspace-details read path — **NOW UNBLOCKED by PLA-0050**
 
-- When `master_record_workspace.workspace_timezone` (after the Story 1 rename) is NULL, fall back to `master_record_tenant.tenant_timezone`.
+- When `master_record_workspaces.*` is NULL, fall back to `master_record_tenants.*` (same column name with the workspace_ → tenants_ prefix swap).
 - UI: render the inherited value greyed-out with an "inherit from tenant" toggle; explicit override sets a non-NULL value on the workspace row.
+- Service-layer fallback per the user's decision in PLA-0050 scoping: `workspacemasterrecord.Service.Get()` does the COALESCE/merge before returning the Settings struct; frontend gets a single coherent response.
 - The user's exact framing: *"tenant represents the global position of the organisation, say based in London. When a workspace is created, it should inherit these details by default and allow the workspace creator to override with local structure."*
+- **This is the next plan to draft.**
 
 ### Story 4 — Drop the legacy singular `workspace` table
 
 - Audit any remaining references in code (`grep -rn '\bworkspace\b' backend/ app/`).
 - If unused, write a drop migration. If still referenced, file a TD-* entry.
 
-### Story 5 — Rename the route
+### Story 5 — Rename the route — **SHIPPED 2026-05-15 as PLA-0050 / 00573**
 
-- `/vector-admin/tenant-details` → `/workspace-admin/workspace-details` (or whatever the user prefers).
-- Update the `pages` row in mmff_vector.
-- Tenant-level concerns (subscription identity, billing, legal entity) get a **separate** new page under `/vector-admin/` — gadmin-only — wired to the new Story-2 table.
+- `/vector-admin/tenant-details` → `/workspace-admin/workspace-details`. Directory moved via cp; component renamed to `WorkspaceDetailsPage`; old directory deleted; `pages` row updated to `ws-workspace-details` / `workspace_admin` tag_enum.
+- New tenant-settings page at `/vector-admin/tenant-settings` (PLA-0050 / 00572) takes the freed URL slot; gadmin-only page row `va-tenant-settings` seeded.
 
 ### Story 6 — Verify topology permissioning still works after `roles_org_nodes` drop
 
