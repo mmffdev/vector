@@ -445,6 +445,23 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
 	})
 
+	// PLA-0055 / story 00595+00597 — bulk set_priority payload is now a
+	// priority_id UUID. Resolve the workspace's pri_high row at runtime
+	// so the test survives gadmin renames and per-workspace customisation.
+	var priHighID string
+	if err := va.QueryRow(ctx, `
+		SELECT p.id::text
+		  FROM artefact_priorities p
+		  JOIN artefacts_types at ON at.artefacts_types_id_workspace = p.workspace_id
+		  JOIN artefacts a ON a.artefact_type_id = at.artefacts_types_id
+		 WHERE a.id = $1::uuid
+		   AND p.slot = 'pri_high'
+		   AND p.archived_at IS NULL
+		 LIMIT 1
+	`, wi.ID).Scan(&priHighID); err != nil {
+		t.Fatalf("resolve pri_high for workspace: %v", err)
+	}
+
 	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
 	srv := httptest.NewServer(newTestRouter(h, user))
 	defer srv.Close()
@@ -452,7 +469,7 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"ids":     []string{wi.ID},
 		"op":      "set_priority",
-		"payload": map[string]any{"priority": "high"},
+		"payload": map[string]any{"priority_id": priHighID},
 	})
 	resp, err := http.Post(srv.URL+"/api/v2/work-items/bulk", "application/json",
 		bytes.NewReader(body))
