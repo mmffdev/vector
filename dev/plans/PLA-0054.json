@@ -2,9 +2,9 @@
   "id": "PLA-0054",
   "title": "Chip foundation — artefact_type slot enum + UUID wire + ArtefactTypeCatalogueProvider + Type/Status chip refactor + localStorage state",
   "date_created": "2026-05-16",
-  "date_started": null,
+  "date_started": "2026-05-16",
   "date_last_updated": "2026-05-16",
-  "date_finished": null,
+  "date_finished": "2026-05-16",
   "scope": "<p>Replaces name-based artefact_type filtering with a project-locked slot enum + per-workspace UUID resolution. Adds an ArtefactTypeCatalogueProvider that fetches once per workspace and exposes <code>useArtefactTypeBySlot</code> for sidecar/page resolution. Migrates the work-items filter chip (Type / Status) to send UUIDs, enumerate from the catalogue, and persist state to localStorage keyed by workspace_id (per the URL-path-only rule).</p><p><strong>Depends on PLA-0053</strong> for workspace_id JWT claim + workspace-scoped artefacttypes service.</p><p><strong>What PLA-0054 builds:</strong></p><ol><li>DB: <code>artefacts_types_slot TEXT NULL</code> column with CHECK constraint (project-locked vocabulary: <code>wrk_epic</code>, <code>wrk_story</code>, <code>wrk_defect</code>, <code>wrk_task</code>, <code>wrk_risk</code>) + UNIQUE partial index per workspace.</li><li>Backfill: assigns slots to the 5 system artefact types per workspace via name match (one-shot data migration; future system-type provisioning hands out slots at insert time).</li><li>Backend: artefacttypes DTO includes <code>slot</code>; artefactitems handler accepts <code>?item_type_id=&lt;uuid&gt;[,&lt;uuid&gt;...]</code> (multi-value, UUID-validated); <code>?item_type=&lt;name&gt;</code> path dropped. Service Filters change from <code>*string</code> to <code>[]uuid.UUID</code>; SQL emits <code>WHERE artefact_type_id = ANY($N::uuid[])</code>. Closes TD-FILTER-MULTI for the type filter.</li><li>Frontend: <code>ArtefactTypeCatalogueProvider</code> context fetching <code>/_site/artefact-types</code> on mount, cached by workspace_id (via PLA-0053's <code>useActiveWorkspace</code>). Exposes <code>useArtefactTypeBySlot(slot)</code> hook (null-tolerant when slot not adopted) and <code>useArtefactTypes()</code> list hook.</li><li>NavigationPie Type chip: <code>TYPE_CHIP_OPTIONS</code> literal deleted; options come from <code>useArtefactTypes()</code> sorted by <code>artefacts_types_sort_order</code>; chip onChange writes UUIDs; filter shape becomes <code>string[]</code> of UUIDs.</li><li>Filter state moves off <code>useSearchParams</code> to <code>localStorage</code>, keyed <code>filters:work-items:&lt;workspace_id&gt;</code>. URL stays clean per the new URL-path-only rule.</li><li>Sidecar: <code>p_wizard_risks.json</code> changes from <code>\"resourceUrl\": \"/work-items?item_type=risk\"</code> to <code>\"artefact_type_slot\": \"wrk_risk\"</code>; risk page resolves slot → UUID at mount and seeds the chip's default filter.</li><li>Status chip becomes context-aware: when exactly one Type is selected, Status enumerates that type's flow_states; when none or multiple, Status falls back to the kind primitives.</li><li>Empty-state UI: when the active workspace hasn't adopted a sidecar-referenced slot (e.g. no Risk type), the page renders a clear empty-state message instead of a 404.</li><li>Tests: gadmin-rename invariance (rename Risk display name → chip still filters via UUID); catalogue null-tolerance; chip sends UUIDs; localStorage key scoping per workspace.</li></ol>",
   "value": "<p>Closes the chip's three structural bugs in one coherent change:</p><ul><li><strong>Chip refetches the tree</strong> — state moves off useSearchParams to localStorage; the chip's onChange directly drives tree refetches.</li><li><strong>Gadmin rename doesn't break filters</strong> — UUID wire means the Risk type's display name can change to 'Issue' or 'Hazard' without breaking the chip or the sidecar.</li><li><strong>Multi-select works end-to-end</strong> — backend accepts comma-joined UUIDs and emits <code>= ANY($N::uuid[])</code>; closes TD-FILTER-MULTI for the type filter.</li></ul><p>Architecture wins:</p><ul><li><strong>Stable system-vs-display layer separation.</strong> Per the new feedback_system_vs_display_layers rule: UUIDs/slots are project-locked + invisible; catalogue names/labels are tenant-free + visible. The chip surfaces names; the system flows UUIDs.</li><li><strong>Sidecar stays static + tenant-agnostic.</strong> Per feedback the sidecar carries the role/slot string; the page resolves to the per-workspace UUID at mount.</li><li><strong>Foundation for strategic-layer chips.</strong> Future per-type pages (custom Bug page, Initiative page, Objective page) reuse the same catalogue + chip without code changes.</li></ul>",
   "implementation_plan": [
@@ -56,7 +56,7 @@
       "title": "00582 — SQL: artefacts_types_slot column + CHECK + unique partial index per workspace",
       "story_id": "00582",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend engineer, I wish a project-locked slot enum on artefact_types, so that the system can reference types stably across gadmin renames.\n\nNew migration adds artefacts_types_slot TEXT NULL with CHECK constraint enumerating the 5 system slots (wrk_epic, wrk_story, wrk_defect, wrk_task, wrk_risk). Unique partial index ensures one slot per workspace (NULL allowed for custom types). Append-only vocabulary; renames forbidden.\n\n**Feature membership:** Part of feature group F3 — Slot enum substrate. Tests for this story live in the feature-level test suite (see the `TEST(F3)` story in this plan). This story's green commit does not land until the F3 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by CHECK constraint:** INSERT with slot='bogus' is rejected; slot='wrk_risk' is accepted; slot=NULL is accepted.\n- **As Proven by unique partial index:** INSERT a second artefact_type with slot='wrk_risk' in the same workspace is rejected; INSERT in a different workspace succeeds.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -75,7 +75,7 @@
       "title": "00583 — SQL: backfill slots on existing 5 system artefact types per workspace",
       "story_id": "00583",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend engineer, I wish the 5 system artefact types backfilled with their slot values, so that the chip can resolve them on day one without UI churn.\n\nData migration walks each workspace's artefact_types and assigns slot values by name match: 'Epic' → wrk_epic, 'Story' → wrk_story, 'Defect' → wrk_defect, 'Task' → wrk_task, 'Risk' → wrk_risk. Custom-named system types in any workspace are surfaced as an audit warning, not silently skipped.\n\n**Feature membership:** Part of feature group F3 — Slot enum substrate. Tests for this story live in the feature-level test suite (see the `TEST(F3)` story in this plan). This story's green commit does not land until the F3 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by idempotency:** re-running the migration is a no-op (already-assigned slots are not re-written).\n- **As Proven by audit log:** any workspace whose Risk type has been renamed away from 'Risk' is logged with workspace_id + current type name for manual triage.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -94,7 +94,7 @@
       "title": "00584 — API: extend artefact_types DTO with slot field",
       "story_id": "00584",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a frontend engineer, I wish the artefact_types DTO to expose slot, so that the catalogue context can resolve sidecar references at runtime.\n\nArtefactType Go struct + JSON response shape gains a slot field (nullable string). artefacttypes.Service queries select it; handler serialises it.\n\n**Feature membership:** Part of feature group F3 — Slot enum substrate. Tests for this story live in the feature-level test suite (see the `TEST(F3)` story in this plan). This story's green commit does not land until the F3 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by handler response:** GET /_site/artefact-types returns a slot field on every row (null for custom types).\n- **As Proven by unit test:** unmarshal a sample response and assert slot is populated for wrk_risk row and null for a custom Bug row.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -113,7 +113,7 @@
       "title": "00585 — API: rewrite artefactitems handler to accept ?item_type_id=<uuid>[,uuid...] (drop slug path)",
       "story_id": "00585",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend engineer, I wish the artefactitems handler to filter by artefact_type UUID, so that gadmin renames don't break filters.\n\nHandler accepts ?item_type_id=<uuid>[,<uuid>...] with comma-separated parsing + per-value UUID validation (400 on parse failure). The legacy ?item_type=<name> query param is removed entirely.\n\n**Feature membership:** Part of feature group F4 — UUID wire end-to-end (closes TD-FILTER-MULTI). Tests for this story live in the feature-level test suite (see the `TEST(F4)` story in this plan). This story's green commit does not land until the F4 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by handler test:** GET /_site/work-items?item_type_id=<uuid1>,<uuid2> returns the union (multi-value works).\n- **As Proven by handler test:** GET /_site/work-items?item_type_id=not-a-uuid returns 400 with a clear error.\n- **As Proven by handler test:** GET /_site/work-items?item_type=epic returns 400 (legacy path removed).\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -132,7 +132,7 @@
       "title": "00586 — API: artefactitems service Filters []uuid.UUID + WHERE ANY($1::uuid[]) (closes TD-FILTER-MULTI)",
       "story_id": "00586",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend engineer, I wish artefactitems.Filters to carry multi-value UUID arrays, so that multi-select chips actually return matching rows.\n\nFilters struct changes: ItemTypeIDs []uuid.UUID (was ItemType *string). SQL builder emits WHERE a.artefact_type_id = ANY($N::uuid[]). Closes the TD-FILTER-MULTI cap. Same shape applied to OwnerID (priority + status follow in PLA-0055 / a separate Status story).\n\n**Feature membership:** Part of feature group F4 — UUID wire end-to-end (closes TD-FILTER-MULTI). Tests for this story live in the feature-level test suite (see the `TEST(F4)` story in this plan). This story's green commit does not land until the F4 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by SQL inspection:** ListWorkItems WHERE clause uses artefact_type_id = ANY($N::uuid[]).\n- **As Proven by integration test:** ?item_type_id=<u1>,<u2> returns the union of both types' artefacts; no rows from a third type leak in.\n- **As Proven by TD-FILTER-MULTI closure:** the register entry can be struck through with the resolution date.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -151,7 +151,7 @@
       "title": "00587 — UI: ArtefactTypeCatalogueProvider + useArtefactTypeBySlot + useArtefactTypes",
       "story_id": "00587",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a frontend engineer, I wish a workspace-scoped artefact_type catalogue context, so that pages and chips can resolve slots to UUIDs without per-component fetches.\n\nNew ArtefactTypeCatalogueProvider mounts in app/(user)/layout.tsx. On mount + on workspace_id change (via useActiveWorkspace), fetches /_site/artefact-types and caches by workspace_id. Exposes useArtefactTypeBySlot(slot) and useArtefactTypes() hooks.\n\n**Feature membership:** Part of feature group F5 — Catalogue + chip integration. Tests for this story live in the feature-level test suite (see the `TEST(F5)` story in this plan). This story's green commit does not land until the F5 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by cache test:** two components calling useArtefactTypes() trigger one fetch, not two.\n- **As Proven by workspace-switch test:** when useActiveWorkspace returns a new workspace_id, the catalogue refetches and the hooks return the new workspace's types.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -170,7 +170,7 @@
       "title": "00588 — UI: NavigationPie Type chip enumerates from catalogue + sends UUIDs (drop TYPE_CHIP_OPTIONS literal)",
       "story_id": "00588",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a frontend engineer, I wish the Type chip to enumerate from the live catalogue, so that custom artefact types appear automatically and renames are reflected.\n\nDeletes TYPE_CHIP_OPTIONS literal in work-items-tree-config.tsx. Chip's options prop comes from useArtefactTypes() filtered to scope='work' and sorted by artefacts_types_sort_order. WorkItemsFilters.type becomes UUID[]; chip onChange writes UUIDs.\n\n**Feature membership:** Part of feature group F5 — Catalogue + chip integration. Tests for this story live in the feature-level test suite (see the `TEST(F5)` story in this plan). This story's green commit does not land until the F5 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by vitest:** NavigationPie Type chip renders one segment per artefact_type in the mocked catalogue, sorted by sort_order.\n- **As Proven by vitest:** clicking a segment fires onChange with the artefact_type's UUID, not its slug.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -189,7 +189,7 @@
       "title": "00589 — UI: filter state in localStorage keyed by workspace_id (drop useSearchParams)",
       "story_id": "00589",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a frontend engineer, I wish filter state to live in localStorage scoped by workspace, so that the URL stays clean and workspace switches don't carry stale filters.\n\nuseWorkItemsFilters reworked: reads/writes localStorage key 'filters:work-items:<workspace_id>'. URL stays free of filter params. When workspace_id changes (workspace switch), the hook re-reads from the new key (effectively a per-workspace filter memory).\n\n**Feature membership:** Part of feature group F5 — Catalogue + chip integration. Tests for this story live in the feature-level test suite (see the `TEST(F5)` story in this plan). This story's green commit does not land until the F5 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by persistence test:** filter selection survives a page reload (localStorage rehydrate).\n- **As Proven by workspace-switch test:** switching active workspace loads that workspace's filter state from its own localStorage key; the prior workspace's state is preserved.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -208,7 +208,7 @@
       "title": "00590 — Sidecar: p_wizard_risks.json references artefact_type_slot 'wrk_risk' + page resolves at mount",
       "story_id": "00590",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a frontend engineer, I wish the risk sidecar to reference a project-locked slot, so that gadmin renames don't break the /risk page.\n\np_wizard_risks.json drops resourceUrl '/work-items?item_type=risk' and adds 'artefact_type_slot': 'wrk_risk'. /risk page mount reads the sidecar, resolves slot → UUID via useArtefactTypeBySlot, and seeds the chip's default filter with the resolved UUID.\n\n**Feature membership:** Part of feature group F5 — Catalogue + chip integration. Tests for this story live in the feature-level test suite (see the `TEST(F5)` story in this plan). This story's green commit does not land until the F5 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by page mount test:** /risk page in a workspace with Risk adopted seeds the chip with the Risk UUID.\n- **As Proven by rename test:** rename the Risk type to 'Issue' (display name only); /risk page still renders the same rows because the slot resolution is UUID-based.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -227,7 +227,7 @@
       "title": "00591 — UI: Status chip context-aware (per-type flow_states when one Type selected)",
       "story_id": "00591",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a user, I wish the Status chip to show my type's flow_states when I'm filtering one type, so that I see the actual states I can be in for that type.\n\nStatus chip enumeration depends on Type chip state: no Type or multiple Types selected → falls back to kind primitives (todo/in_progress/done/cancelled/accepted/in_review). Exactly one Type selected → enumerates that artefact_type's flow_states by UUID.\n\nWhen Type changes invalidate the current Status selection (selected flow_state no longer exists in the new type's flow), Status auto-clears with a soft toast.\n\n**Feature membership:** Part of feature group F6 — Status context-aware + rename invariance. Tests for this story live in the feature-level test suite (see the `TEST(F6)` story in this plan). This story's green commit does not land until the F6 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by vitest:** with one Type selected, Status chip enumerates that type's flow_states from the flowStatesApi.\n- **As Proven by vitest:** changing Type from one with state X to one without state X clears the Status selection and emits a toast.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -246,7 +246,7 @@
       "title": "00592 — UI: empty-state when workspace hasn't adopted a sidecar-referenced slot",
       "story_id": "00592",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a user, I wish a clear empty-state when my workspace doesn't have a referenced type adopted, so that I understand the page is not broken.\n\nWhen a page mounts with a sidecar slot reference (e.g. wrk_risk) and the catalogue returns null for that slot, the page renders an in-place empty-state card explaining: 'This workspace doesn't have a [Risk] type configured. Ask your administrator to add one.' No 404, no crash, no blank grid.\n\n**Feature membership:** Part of feature group F5 — Catalogue + chip integration. Tests for this story live in the feature-level test suite (see the `TEST(F5)` story in this plan). This story's green commit does not land until the F5 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by copy:** card text names the missing type (using the slot's display intent, e.g. 'Risk') and offers an actionable next step.\n- **As Proven by no-crash:** page does not navigate to 404; the chip is hidden; no tree fetch is attempted.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -265,7 +265,7 @@
       "title": "00603 — TEST(F3): slot column + backfill + DTO surface test suite",
       "story_id": "00603",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F3 (Slot enum substrate), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00582, 00583, 00584.\n\nSingle Go test suite asserting the slot enum substrate works end-to-end.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (slot column doesn't exist). Commit: `test(artefacttypes): red — F3 slot substrate [00603]`. Register in Tracker under group `frontend-chip-foundation`, feature `F3`.\n2. **GREEN:** stories 00582 → 00583 → 00584 land in order; suite passes after 00584.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- Migration applied: artefacts_types_slot exists with CHECK + unique partial index.\n- CHECK rejects slot='bogus'; accepts 'wrk_risk' and NULL.\n- Unique partial index rejects duplicate slot per workspace; allows same slot across workspaces.\n- After backfill: SELECT slot, COUNT(*) GROUP BY slot returns 5 rows × workspace_count.\n- Backfill is idempotent (re-run is no-op).\n- GET /_site/artefact-types returns slot field; populated for wrk_risk row, null for custom Bug.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** suite committed and failing on `main`.\n- **As Proven by green commit:** stories 00582–00584 land; suite green.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -290,7 +290,7 @@
       "title": "00604 — TEST(F4): UUID-wire multi-value filter integration suite (closes TD-FILTER-MULTI)",
       "story_id": "00604",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F4 (UUID wire end-to-end (closes TD-FILTER-MULTI)), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00585, 00586.\n\nSingle Go integration suite for the UUID wire + multi-value filter slice. Closes TD-FILTER-MULTI when this suite goes green.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (handler still accepts ?item_type=epic and Filters is *string). Commit: `test(artefactitems): red — F4 UUID wire [00604]`. Register in Tracker under group `frontend-chip-foundation`, feature `F4`.\n2. **GREEN:** stories 00585 → 00586 land; suite passes after 00586.\n3. **REGRESSION LOCK:** suite stays in Tracker library. Strike TD-FILTER-MULTI through.\n\n## Test scope\n\n- ?item_type_id=<valid-uuid> returns rows matching artefact_type.\n- ?item_type_id=<u1>,<u2> returns union of both.\n- ?item_type_id=not-a-uuid returns 400.\n- ?item_type=epic returns 400 (legacy path removed).\n- Filters.ItemTypeIDs is []uuid.UUID; *string field is gone (compile guard).\n- SQL emits WHERE artefact_type_id = ANY($N::uuid[]).\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** suite committed and failing on `main`.\n- **As Proven by green commit:** stories 00585–00586 land; suite green; TD-FILTER-MULTI struck through.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -314,7 +314,7 @@
       "title": "00605 — TEST(F5): catalogue context + chip + localStorage + sidecar slot vitest suite",
       "story_id": "00605",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F5 (Catalogue + chip integration), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00587, 00588, 00589, 00590, 00592.\n\nSingle vitest suite for the frontend catalogue + chip + localStorage + sidecar slice.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (no catalogue provider, chip reads TYPE_CHIP_OPTIONS, useSearchParams writes URL). Commit: `test(chip): red — F5 catalogue + chip [00605]`. Register in Tracker under group `frontend-chip-foundation`, feature `F5`.\n2. **GREEN:** stories 00587 → 00588 → 00589 → 00590 → 00592 land; suite passes after 00592.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- useArtefactTypeBySlot('wrk_risk') returns workspace UUID when adopted; null when not.\n- Two consumers of useArtefactTypes() trigger one fetch (cache).\n- Workspace switch invalidates catalogue; new workspace's types appear.\n- TYPE_CHIP_OPTIONS literal not present in work-items-tree-config.tsx (code-inspection assertion).\n- Type chip renders one segment per catalogue row, sorted by sort_order.\n- Chip onChange fires with UUID (not slug).\n- Chip toggle does not write to window.location.search.\n- Filter selection survives page reload (localStorage rehydrate).\n- Workspace switch loads filter state from new workspace's localStorage key.\n- /risk page in adopted workspace seeds chip with Risk UUID via slot resolution.\n- /risk page in workspace without Risk type renders empty-state card.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** vitest suite committed and failing on `main`.\n- **As Proven by green commit:** stories 00587–00592 land; suite green.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
@@ -341,7 +341,7 @@
       "title": "00606 — TEST(F6): Status context-awareness + gadmin-rename invariance vitest suite",
       "story_id": "00606",
       "card_url": null,
-      "status": "todo",
+      "status": "completed",
       "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F6 (Status context-aware + rename invariance), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00591.\n\nSingle vitest suite for the cross-cutting Status chip behaviour and gadmin-rename invariance.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (Status chip is static; no rename-invariance proof). Commit: `test(chip): red — F6 Status + rename [00606]`. Register in Tracker under group `frontend-chip-foundation`, feature `F6`.\n2. **GREEN:** story 00591 lands; suite passes.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- Status chip with no Type selected enumerates 6 kind primitives.\n- With one Type selected, Status enumerates that type's flow_states from flowStatesApi.\n- Type change invalidating Status selection clears it; toast emitted.\n- Rename Risk display name to 'Issue' (mock catalogue): chip filters via UUID, /risk page renders same rows.\n- Workspace switch: catalogue invalidates; new workspace's types appear; old workspace's types gone.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** vitest suite committed and failing on `main`.\n- **As Proven by green commit:** story 00591 lands; suite green.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",

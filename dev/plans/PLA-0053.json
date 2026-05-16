@@ -1,30 +1,30 @@
 {
   "id": "PLA-0053",
-  "title": "Workspace foundation — JWT workspace_id claim + WorkspaceClampMiddleware on artefact routes + drop ?ws= URL surface",
+  "title": "Workspace foundation \u2014 JWT workspace_id claim + WorkspaceClampMiddleware on artefact routes + drop ?ws= URL surface",
   "date_created": "2026-05-16",
-  "date_started": null,
+  "date_started": "2026-05-16",
   "date_last_updated": "2026-05-16",
-  "date_finished": null,
-  "scope": "<p>Promote workspace from a URL-resolved <code>?ws=&lt;slug&gt;</code> parameter (today's WorkspaceClampMiddleware behaviour, PLA-0006 / story 00378) to a JWT-clamped dimension. Mounts the existing middleware on the artefact-types + work-items + portfolio-items route groups (currently only on topology). Adds <code>workspace_id</code> to <code>artefact_types</code> so the clamp predicate has a column to filter on. Honours the new URL-path-only rule by dropping the <code>?ws=</code> URL surface entirely (replaced by JWT claim).</p><p><strong>Substrate already in place</strong> (discovered 2026-05-16 during plan rebuild — original PLA-0053 was unaware):</p><ul><li><code>WorkspaceClampMiddleware</code> exists at <code>backend/internal/topology/middleware.go:318</code>. Resolves workspace from <code>?ws=&lt;slug&gt;</code> or first-live fallback; checks role; seeds <code>workspaceCtxKey</code> on context.</li><li><code>WorkspaceIDFromCtx(ctx) (uuid.UUID, bool)</code> exists as the context accessor.</li><li><code>WorkspaceLookup</code> interface exists with <code>FirstLiveWorkspace</code>, <code>ResolveRef</code>, <code>ResolveSlug</code>, <code>HasActiveRole</code> methods.</li><li><code>PoolWorkspaceLookup</code> is the production adapter (pure SELECTs against <code>workspaces</code> + <code>users_roles_workspaces</code>).</li><li><code>workspaces</code> table supports N workspaces per subscription (not 1:1 — multiple live workspaces per tenant is fully schema-supported).</li><li>7 unit + integration tests for the middleware in <code>middleware_workspace_test.go</code>.</li><li>Middleware is mounted on topology routes only (2 sites in main.go: line 1156, 1482).</li></ul><p><strong>What PLA-0053 builds:</strong></p><ol><li>Login flow attaches <code>workspace_id</code> to the JWT claim alongside <code>subscription_id</code>. Default workspace = the user's first live workspace in their tenant (reuses the existing FirstLiveWorkspace lookup).</li><li>WorkspaceClampMiddleware reshaped: reads workspace from JWT claim first; falls back to <code>FirstLiveWorkspace</code> only when the JWT carries no workspace_id (legacy tokens during rollout window). Drops the <code>r.URL.Query().Get(\"ws\")</code> path entirely. Existing tests updated.</li><li>Migration: <code>artefact_types</code> gains a <code>workspace_id</code> column (NOT NULL, FK to workspaces); existing rows backfilled per subscription. For subscriptions with multiple live workspaces, the backfill assigns the artefact_type to the workspace where its seed migration landed (per <code>077_adopt_risk_into_existing_workspaces.sql</code> pattern); ambiguous cases fall back to FirstLiveWorkspace and audit-log.</li><li>Mount WorkspaceClampMiddleware on <code>/artefact-types</code>, <code>/work-items</code>, <code>/portfolio-items</code> route groups in main.go.</li><li>artefacttypes + artefactitems services read <code>topology.WorkspaceIDFromCtx(ctx)</code> and clamp queries by workspace_id (admin tools that bypass the middleware fall back to subscription-only).</li><li>Frontend <code>useActiveWorkspace()</code> hook surfaces the workspace_id from the JWT claim for client-side cache keying.</li></ol>",
-  "value": "<p>Honours the URL-path-only rule (feedback_url_is_path_only) by removing the <code>?ws=</code> URL surface — workspace becomes a JWT-anchored backend clamp, not a URL parameter. Unblocks PLA-0054 + PLA-0055 (chip work + priority customisation), which both need the artefact_type catalogue to be workspace-scoped.</p><p>Three concrete payoffs:</p><ul><li><strong>Workspace becomes a JWT-anchored clamp on artefact routes.</strong> Today the <code>?ws=</code> parameter is the surface; tomorrow it's the JWT claim. URL stays clean per the new rule.</li><li><strong>Reuses existing substrate.</strong> WorkspaceClampMiddleware + WorkspaceLookup + WorkspaceIDFromCtx already work and are tested on topology routes. PLA-0053 extends the mount, not the design.</li><li><strong>Foundation for chip + catalogue work.</strong> PLA-0054 can key the catalogue context by workspace_id (via useActiveWorkspace); localStorage filter keys can scope per workspace; multi-workspace users get clean isolation.</li></ul>",
+  "date_finished": "2026-05-16",
+  "scope": "<p>Promote workspace from a URL-resolved <code>?ws=&lt;slug&gt;</code> parameter (today's WorkspaceClampMiddleware behaviour, PLA-0006 / story 00378) to a JWT-clamped dimension. Mounts the existing middleware on the artefact-types + work-items + portfolio-items route groups (currently only on topology). Adds <code>workspace_id</code> to <code>artefact_types</code> so the clamp predicate has a column to filter on. Honours the new URL-path-only rule by dropping the <code>?ws=</code> URL surface entirely (replaced by JWT claim).</p><p><strong>Substrate already in place</strong> (discovered 2026-05-16 during plan rebuild \u2014 original PLA-0053 was unaware):</p><ul><li><code>WorkspaceClampMiddleware</code> exists at <code>backend/internal/topology/middleware.go:318</code>. Resolves workspace from <code>?ws=&lt;slug&gt;</code> or first-live fallback; checks role; seeds <code>workspaceCtxKey</code> on context.</li><li><code>WorkspaceIDFromCtx(ctx) (uuid.UUID, bool)</code> exists as the context accessor.</li><li><code>WorkspaceLookup</code> interface exists with <code>FirstLiveWorkspace</code>, <code>ResolveRef</code>, <code>ResolveSlug</code>, <code>HasActiveRole</code> methods.</li><li><code>PoolWorkspaceLookup</code> is the production adapter (pure SELECTs against <code>workspaces</code> + <code>users_roles_workspaces</code>).</li><li><code>workspaces</code> table supports N workspaces per subscription (not 1:1 \u2014 multiple live workspaces per tenant is fully schema-supported).</li><li>7 unit + integration tests for the middleware in <code>middleware_workspace_test.go</code>.</li><li>Middleware is mounted on topology routes only (2 sites in main.go: line 1156, 1482).</li></ul><p><strong>What PLA-0053 builds:</strong></p><ol><li>Login flow attaches <code>workspace_id</code> to the JWT claim alongside <code>subscription_id</code>. Default workspace = the user's first live workspace in their tenant (reuses the existing FirstLiveWorkspace lookup).</li><li>WorkspaceClampMiddleware reshaped: reads workspace from JWT claim first; falls back to <code>FirstLiveWorkspace</code> only when the JWT carries no workspace_id (legacy tokens during rollout window). Drops the <code>r.URL.Query().Get(\"ws\")</code> path entirely. Existing tests updated.</li><li>Migration: <code>artefact_types</code> gains a <code>workspace_id</code> column (NOT NULL, FK to workspaces); existing rows backfilled per subscription. For subscriptions with multiple live workspaces, the backfill assigns the artefact_type to the workspace where its seed migration landed (per <code>077_adopt_risk_into_existing_workspaces.sql</code> pattern); ambiguous cases fall back to FirstLiveWorkspace and audit-log.</li><li>Mount WorkspaceClampMiddleware on <code>/artefact-types</code>, <code>/work-items</code>, <code>/portfolio-items</code> route groups in main.go.</li><li>artefacttypes + artefactitems services read <code>topology.WorkspaceIDFromCtx(ctx)</code> and clamp queries by workspace_id (admin tools that bypass the middleware fall back to subscription-only).</li><li>Frontend <code>useActiveWorkspace()</code> hook surfaces the workspace_id from the JWT claim for client-side cache keying.</li></ol>",
+  "value": "<p>Honours the URL-path-only rule (feedback_url_is_path_only) by removing the <code>?ws=</code> URL surface \u2014 workspace becomes a JWT-anchored backend clamp, not a URL parameter. Unblocks PLA-0054 + PLA-0055 (chip work + priority customisation), which both need the artefact_type catalogue to be workspace-scoped.</p><p>Three concrete payoffs:</p><ul><li><strong>Workspace becomes a JWT-anchored clamp on artefact routes.</strong> Today the <code>?ws=</code> parameter is the surface; tomorrow it's the JWT claim. URL stays clean per the new rule.</li><li><strong>Reuses existing substrate.</strong> WorkspaceClampMiddleware + WorkspaceLookup + WorkspaceIDFromCtx already work and are tested on topology routes. PLA-0053 extends the mount, not the design.</li><li><strong>Foundation for chip + catalogue work.</strong> PLA-0054 can key the catalogue context by workspace_id (via useActiveWorkspace); localStorage filter keys can scope per workspace; multi-workspace users get clean isolation.</li></ul>",
   "implementation_plan": [
     "RED-GREEN FEATURE-DRIVEN PROTOCOL (HARD RULE per feedback_feature_driven_testing_sop): tests live at the feature level, not the story level. Two features in this plan: F1 (workspace clamp end-to-end via JWT), F2 (frontend workspace awareness). Each feature has exactly one test suite (stories 00601, 00602) and must ship RED before its implementation stories land. Implementation stories chase the feature test green.",
     "TRACKER REGRESSION LIBRARY: every test written by this plan is registered in Tracker under group `backend-workspace-foundation` and becomes a permanent regression check. Future plans' Tracker runs re-execute this group's tests. Red AND green commits both POST to Tracker (via `<rg>` / `rg-runner`); the green POST closes the cycle and locks the test into the library. Verify `rg-runner` flag syntax against `cmd/rg-runner --help` in the MMFFDev - Tracker project before the first story in this plan ships.",
-    "Phase 0 — Feature tests RED first (stories 00601, 00602): write failing suites; commit red; register in Tracker.",
-    "Phase 1 — JWT claim + middleware reshape (stories 00575, 00576): JWT claim + WorkspaceClampMiddleware reads from JWT, drops ?ws= URL surface.",
-    "Phase 2 — Schema + backfill (story 00577): workspace_id on artefact_types; backfill.",
-    "Phase 3 — Mount middleware + service clamp (stories 00578, 00579): wire artefact routes through the middleware; services read context.",
-    "Phase 4 — Frontend (story 00580): useActiveWorkspace hook.",
-    "Phase 5 — Verify GREEN: F1 + F2 suites pass; green commits POST to Tracker; suites locked into regression library."
+    "Phase 0 \u2014 Feature tests RED first (stories 00601, 00602): write failing suites; commit red; register in Tracker.",
+    "Phase 1 \u2014 JWT claim + middleware reshape (stories 00575, 00576): JWT claim + WorkspaceClampMiddleware reads from JWT, drops ?ws= URL surface.",
+    "Phase 2 \u2014 Schema + backfill (story 00577): workspace_id on artefact_types; backfill.",
+    "Phase 3 \u2014 Mount middleware + service clamp (stories 00578, 00579): wire artefact routes through the middleware; services read context.",
+    "Phase 4 \u2014 Frontend (story 00580): useActiveWorkspace hook.",
+    "Phase 5 \u2014 Verify GREEN: F1 + F2 suites pass; green commits POST to Tracker; suites locked into regression library."
   ],
   "areas_impacted": [
-    "SEC: backend/internal/auth/tokens — JWT claim (workspace_id) + signing/verification + login response.",
-    "SEC: backend/internal/topology/middleware.go — WorkspaceClampMiddleware reads JWT claim; drops ?ws= URL surface.",
-    "SQL: db/vector_artefacts/schema/NNN — artefact_types.workspace_id column + backfill.",
-    "API: backend/cmd/server/main.go — mount WorkspaceClampMiddleware on /artefact-types, /work-items, /portfolio-items.",
-    "API: backend/internal/artefacttypes/service.go — read WorkspaceIDFromCtx + clamp queries.",
-    "API: backend/internal/artefactitems/service.go — read WorkspaceIDFromCtx + clamp queries.",
-    "UI: app/hooks/useActiveWorkspace.ts — read workspace_id from AuthContext."
+    "SEC: backend/internal/auth/tokens \u2014 JWT claim (workspace_id) + signing/verification + login response.",
+    "SEC: backend/internal/topology/middleware.go \u2014 WorkspaceClampMiddleware reads JWT claim; drops ?ws= URL surface.",
+    "SQL: db/vector_artefacts/schema/NNN \u2014 artefact_types.workspace_id column + backfill.",
+    "API: backend/cmd/server/main.go \u2014 mount WorkspaceClampMiddleware on /artefact-types, /work-items, /portfolio-items.",
+    "API: backend/internal/artefacttypes/service.go \u2014 read WorkspaceIDFromCtx + clamp queries.",
+    "API: backend/internal/artefactitems/service.go \u2014 read WorkspaceIDFromCtx + clamp queries.",
+    "UI: app/hooks/useActiveWorkspace.ts \u2014 read workspace_id from AuthContext."
   ],
   "feature_list": [
     "workspace_id JWT claim on login + auth.User context",
@@ -35,10 +35,10 @@
     "useActiveWorkspace frontend hook"
   ],
   "features_extended": [
-    "<strong>auth.User</strong> — gains WorkspaceID field alongside SubscriptionID.",
-    "<strong>WorkspaceClampMiddleware</strong> — input source changes from URL param to JWT claim (with FirstLiveWorkspace fallback for legacy tokens).",
-    "<strong>artefact_types row shape</strong> — gains workspace_id column.",
-    "<strong>artefacttypes + artefactitems handlers</strong> — gain workspace clamp via existing middleware pattern."
+    "<strong>auth.User</strong> \u2014 gains WorkspaceID field alongside SubscriptionID.",
+    "<strong>WorkspaceClampMiddleware</strong> \u2014 input source changes from URL param to JWT claim (with FirstLiveWorkspace fallback for legacy tokens).",
+    "<strong>artefact_types row shape</strong> \u2014 gains workspace_id column.",
+    "<strong>artefacttypes + artefactitems handlers</strong> \u2014 gain workspace clamp via existing middleware pattern."
   ],
   "features_removed": [
     "?ws=<slug> URL query parameter on workspace-clamped routes (replaced by JWT claim)",
@@ -47,11 +47,11 @@
   "work_item_backlog": [
     {
       "order": 1,
-      "title": "00601 — TEST(F1): workspace clamp end-to-end via JWT claim (no ?ws= URL)",
+      "title": "00601 \u2014 TEST(F1): workspace clamp end-to-end via JWT claim (no ?ws= URL)",
       "story_id": "00601",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a backend engineer, I wish a single feature-level test suite covering feature F1 (Workspace clamp end-to-end via JWT), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00575, 00576, 00577, 00578, 00579.\n**Feature:** F1 — Workspace clamp end-to-end via JWT.\n**Tracker group:** `backend-workspace-foundation`.\n\nSingle Go integration test suite asserting the workspace clamp works end-to-end via the JWT claim (NOT via ?ws= URL). Replaces per-story plumbing tests for the JWT claim + middleware reshape + schema + service-clamp work in stories 00575–00579.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write the failing test suite below. Test must fail on `main` because today's JWT has no workspace_id claim, middleware reads ?ws= URL, and artefact_types has no workspace_id column. Commit: `test(workspace): red — F1 workspace clamp via JWT [00601]`. Register in Tracker under group `backend-workspace-foundation`, feature `F1` via `<rg>` / rg-runner.\n2. **GREEN:** stories 00575 → 00576 → 00577 → 00578 → 00579 land in order; each implementation moves the needle on this suite. The story 00579 green commit must turn this suite green; POST green to Tracker.\n3. **REGRESSION LOCK:** test stays in Tracker library under `backend-workspace-foundation/F1`; future plans' runs re-execute it.\n\n## Test scope (one suite, multiple assertions)\n\n- POST /v1/api/auth/login as user-A in workspace-A → JWT decoded carries subscription_id AND workspace_id; workspace_id matches workspace A's UUID.\n- auth.UserFromCtx(ctx) returns User with non-zero WorkspaceID after RequireAuth.\n- Run migration; SELECT COUNT(*) FROM artefact_types WHERE workspace_id IS NULL → 0.\n- GET /_site/artefact-types (no ?ws= query) as user-A → only workspace A's rows. ?ws=<anything> is rejected or ignored (URL path-only rule).\n- GET /_site/work-items (no ?ws=) as user-A → only workspace A's artefacts (rows joined via artefact_type → workspace_id clamp).\n- GET /_site/work-items/{workspace-B-item-id} as user-A → 404 (not 403, no existence leak).\n- WorkspaceClampMiddleware: when JWT carries workspace_id, middleware uses it directly (no DB lookup for FirstLiveWorkspace). When JWT has no workspace_id (legacy token during rollout), middleware falls back to FirstLiveWorkspace (existing path).\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** test suite committed and failing on `main`; red POSTed to Tracker dashboard under `backend-workspace-foundation/F1` via rg-runner.\n- **As Proven by green commit:** after stories 00575–00579 all merged, the suite passes; green POSTed to Tracker.\n- **As Proven by regression entry:** suite is registered in Tracker's library so future plans (PLA-0056+) re-run it on every push.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a backend engineer, I wish a single feature-level test suite covering feature F1 (Workspace clamp end-to-end via JWT), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00575, 00576, 00577, 00578, 00579.\n**Feature:** F1 \u2014 Workspace clamp end-to-end via JWT.\n**Tracker group:** `backend-workspace-foundation`.\n\nSingle Go integration test suite asserting the workspace clamp works end-to-end via the JWT claim (NOT via ?ws= URL). Replaces per-story plumbing tests for the JWT claim + middleware reshape + schema + service-clamp work in stories 00575\u201300579.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write the failing test suite below. Test must fail on `main` because today's JWT has no workspace_id claim, middleware reads ?ws= URL, and artefact_types has no workspace_id column. Commit: `test(workspace): red \u2014 F1 workspace clamp via JWT [00601]`. Register in Tracker under group `backend-workspace-foundation`, feature `F1` via `<rg>` / rg-runner.\n2. **GREEN:** stories 00575 \u2192 00576 \u2192 00577 \u2192 00578 \u2192 00579 land in order; each implementation moves the needle on this suite. The story 00579 green commit must turn this suite green; POST green to Tracker.\n3. **REGRESSION LOCK:** test stays in Tracker library under `backend-workspace-foundation/F1`; future plans' runs re-execute it.\n\n## Test scope (one suite, multiple assertions)\n\n- POST /v1/api/auth/login as user-A in workspace-A \u2192 JWT decoded carries subscription_id AND workspace_id; workspace_id matches workspace A's UUID.\n- auth.UserFromCtx(ctx) returns User with non-zero WorkspaceID after RequireAuth.\n- Run migration; SELECT COUNT(*) FROM artefact_types WHERE workspace_id IS NULL \u2192 0.\n- GET /_site/artefact-types (no ?ws= query) as user-A \u2192 only workspace A's rows. ?ws=<anything> is rejected or ignored (URL path-only rule).\n- GET /_site/work-items (no ?ws=) as user-A \u2192 only workspace A's artefacts (rows joined via artefact_type \u2192 workspace_id clamp).\n- GET /_site/work-items/{workspace-B-item-id} as user-A \u2192 404 (not 403, no existence leak).\n- WorkspaceClampMiddleware: when JWT carries workspace_id, middleware uses it directly (no DB lookup for FirstLiveWorkspace). When JWT has no workspace_id (legacy token during rollout), middleware falls back to FirstLiveWorkspace (existing path).\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** test suite committed and failing on `main`; red POSTed to Tracker dashboard under `backend-workspace-foundation/F1` via rg-runner.\n- **As Proven by green commit:** after stories 00575\u201300579 all merged, the suite passes; green POSTed to Tracker.\n- **As Proven by regression entry:** suite is registered in Tracker's library so future plans (PLA-0056+) re-run it on every push.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -64,11 +64,11 @@
     },
     {
       "order": 2,
-      "title": "00602 — TEST(F2): useActiveWorkspace + per-workspace cache key vitest",
+      "title": "00602 \u2014 TEST(F2): useActiveWorkspace + per-workspace cache key vitest",
       "story_id": "00602",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a frontend engineer, I wish a single feature-level vitest covering feature F2 (Frontend workspace awareness), so that the suite becomes a permanent regression check in Tracker's library.\n\n**Covers stories:** 00580.\n**Feature:** F2 — Frontend workspace awareness.\n**Tracker group:** `backend-workspace-foundation`.\n\nSingle vitest suite for the frontend workspace-awareness slice.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write the failing vitest. Must fail on `main` because useActiveWorkspace doesn't exist. Commit: `test(workspace): red — F2 useActiveWorkspace [00602]`. Register in Tracker under group `backend-workspace-foundation`, feature `F2`.\n2. **GREEN:** story 00580 implements the hook; suite goes green; POST green to Tracker.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- useActiveWorkspace() returns workspace_id string from AuthContext (sourced from JWT claim).\n- AuthContext refresh with a different workspace_id → components using the hook re-render with the new value.\n- Hook returns null before /me resolves; consumers handle loading.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** vitest committed and failing on `main`; red POSTed to Tracker.\n- **As Proven by green commit:** story 00580 lands; vitest green; green POSTed to Tracker.\n- **As Proven by regression entry:** suite locked into Tracker library under `backend-workspace-foundation/F2`.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a frontend engineer, I wish a single feature-level vitest covering feature F2 (Frontend workspace awareness), so that the suite becomes a permanent regression check in Tracker's library.\n\n**Covers stories:** 00580.\n**Feature:** F2 \u2014 Frontend workspace awareness.\n**Tracker group:** `backend-workspace-foundation`.\n\nSingle vitest suite for the frontend workspace-awareness slice.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write the failing vitest. Must fail on `main` because useActiveWorkspace doesn't exist. Commit: `test(workspace): red \u2014 F2 useActiveWorkspace [00602]`. Register in Tracker under group `backend-workspace-foundation`, feature `F2`.\n2. **GREEN:** story 00580 implements the hook; suite goes green; POST green to Tracker.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- useActiveWorkspace() returns workspace_id string from AuthContext (sourced from JWT claim).\n- AuthContext refresh with a different workspace_id \u2192 components using the hook re-render with the new value.\n- Hook returns null before /me resolves; consumers handle loading.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** vitest committed and failing on `main`; red POSTed to Tracker.\n- **As Proven by green commit:** story 00580 lands; vitest green; green POSTed to Tracker.\n- **As Proven by regression entry:** suite locked into Tracker library under `backend-workspace-foundation/F2`.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -81,11 +81,11 @@
     },
     {
       "order": 3,
-      "title": "00575 — SEC: add workspace_id JWT claim to login + auth.User",
+      "title": "00575 \u2014 SEC: add workspace_id JWT claim to login + auth.User",
       "story_id": "00575",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a backend engineer, I wish login to attach workspace_id to the JWT alongside subscription_id, so that downstream middleware can clamp by workspace without re-querying.\n\n**Feature membership:** Part of feature group F1 — Workspace clamp end-to-end via JWT. Green ships when F1 test suite (story 00601) passes.\n\nLogin today returns a JWT carrying subscription_id only. The user's active workspace is resolved per-request by WorkspaceClampMiddleware (via ?ws= URL or FirstLiveWorkspace fallback). This story moves the workspace resolution to login time: the JWT claim carries workspace_id; middleware reads from claim. Default workspace = the user's first live workspace in their tenant (reuses existing FirstLiveWorkspace lookup at login time).\n\n## Acceptance Criteria\n\n- **As Proven by login response:** POST /v1/api/auth/login returns a JWT whose decoded payload contains both subscription_id and workspace_id fields.\n- **As Proven by auth.User struct:** auth.User has a WorkspaceID uuid.UUID field populated from the JWT on every authenticated request.\n- **As Proven by integration test:** a user with access to workspace A logs in, JWT carries workspace A's UUID. Same user re-logs after their default workspace changes (e.g. archived original); JWT carries the new first-live workspace's UUID.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a backend engineer, I wish login to attach workspace_id to the JWT alongside subscription_id, so that downstream middleware can clamp by workspace without re-querying.\n\n**Feature membership:** Part of feature group F1 \u2014 Workspace clamp end-to-end via JWT. Green ships when F1 test suite (story 00601) passes.\n\nLogin today returns a JWT carrying subscription_id only. The user's active workspace is resolved per-request by WorkspaceClampMiddleware (via ?ws= URL or FirstLiveWorkspace fallback). This story moves the workspace resolution to login time: the JWT claim carries workspace_id; middleware reads from claim. Default workspace = the user's first live workspace in their tenant (reuses existing FirstLiveWorkspace lookup at login time).\n\n## Acceptance Criteria\n\n- **As Proven by login response:** POST /v1/api/auth/login returns a JWT whose decoded payload contains both subscription_id and workspace_id fields.\n- **As Proven by auth.User struct:** auth.User has a WorkspaceID uuid.UUID field populated from the JWT on every authenticated request.\n- **As Proven by integration test:** a user with access to workspace A logs in, JWT carries workspace A's UUID. Same user re-logs after their default workspace changes (e.g. archived original); JWT carries the new first-live workspace's UUID.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -98,11 +98,11 @@
     },
     {
       "order": 4,
-      "title": "00576 — SEC: WorkspaceClampMiddleware reads JWT claim (drop ?ws= URL surface)",
+      "title": "00576 \u2014 SEC: WorkspaceClampMiddleware reads JWT claim (drop ?ws= URL surface)",
       "story_id": "00576",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a backend engineer, I wish WorkspaceClampMiddleware to read workspace from the JWT claim, so that the URL stays free of workspace state per the URL-path-only rule.\n\n**Feature membership:** Part of feature group F1 — Workspace clamp end-to-end via JWT.\n\nWorkspaceClampMiddleware today (topology/middleware.go:318) reads workspace from `r.URL.Query().Get(\"ws\")` and falls back to FirstLiveWorkspace when absent. This story reshapes it: read workspace from `auth.UserFromCtx(ctx).WorkspaceID` first; fall back to FirstLiveWorkspace only when the JWT has no workspace_id claim (legacy tokens during rollout window). The `?ws=<slug>` URL parameter path is removed entirely — honours feedback_url_is_path_only.\n\nExisting tests in `middleware_workspace_test.go` updated to reflect the new resolution order. The 7 existing tests should mostly carry over with JWT-mode fixtures replacing the URL-mode fixtures.\n\n## Acceptance Criteria\n\n- **As Proven by middleware test:** request with JWT carrying workspace_id W1 and URL `?ws=W2` → middleware seeds workspaceCtxKey with W1 (JWT wins; URL ignored).\n- **As Proven by middleware test:** request with JWT carrying no workspace_id and URL `?ws=` absent → middleware falls back to FirstLiveWorkspace; existing test green.\n- **As Proven by middleware test:** request with JWT workspace_id pointing at a workspace the user has no active role on → 403 no_workspace_role (HasActiveRole check still runs after JWT resolution).\n- **As Proven by code inspection:** `r.URL.Query().Get(\"ws\")` removed from WorkspaceClampMiddleware.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a backend engineer, I wish WorkspaceClampMiddleware to read workspace from the JWT claim, so that the URL stays free of workspace state per the URL-path-only rule.\n\n**Feature membership:** Part of feature group F1 \u2014 Workspace clamp end-to-end via JWT.\n\nWorkspaceClampMiddleware today (topology/middleware.go:318) reads workspace from `r.URL.Query().Get(\"ws\")` and falls back to FirstLiveWorkspace when absent. This story reshapes it: read workspace from `auth.UserFromCtx(ctx).WorkspaceID` first; fall back to FirstLiveWorkspace only when the JWT has no workspace_id claim (legacy tokens during rollout window). The `?ws=<slug>` URL parameter path is removed entirely \u2014 honours feedback_url_is_path_only.\n\nExisting tests in `middleware_workspace_test.go` updated to reflect the new resolution order. The 7 existing tests should mostly carry over with JWT-mode fixtures replacing the URL-mode fixtures.\n\n## Acceptance Criteria\n\n- **As Proven by middleware test:** request with JWT carrying workspace_id W1 and URL `?ws=W2` \u2192 middleware seeds workspaceCtxKey with W1 (JWT wins; URL ignored).\n- **As Proven by middleware test:** request with JWT carrying no workspace_id and URL `?ws=` absent \u2192 middleware falls back to FirstLiveWorkspace; existing test green.\n- **As Proven by middleware test:** request with JWT workspace_id pointing at a workspace the user has no active role on \u2192 403 no_workspace_role (HasActiveRole check still runs after JWT resolution).\n- **As Proven by code inspection:** `r.URL.Query().Get(\"ws\")` removed from WorkspaceClampMiddleware.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -115,11 +115,11 @@
     },
     {
       "order": 5,
-      "title": "00576.5 — SEC+UI: /auth/switch-workspace endpoint + topology switcher rewire (replaces ?ws= URL toggle)",
+      "title": "00576.5 \u2014 SEC+UI: /auth/switch-workspace endpoint + topology switcher rewire (replaces ?ws= URL toggle)",
       "story_id": "00576.5",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a user, I wish to switch active workspace without the URL changing, so that the URL stays clean per the path-only rule and the JWT remains the workspace clamp.\n\n**Feature membership:** Part of feature group F1 — Workspace clamp end-to-end via JWT.\n\nStory 00576 reshaped WorkspaceClampMiddleware to read workspace from the JWT claim (dropping the ?ws= URL surface). The topology page's workspace switcher (PLA-0006) still writes ?ws=<uuid> to the URL via topologyApi + useTopologyData + app/(overlay)/topology/page.tsx. With 00576 landed those URL writes are silently ignored — switcher degrades to a no-op (not a hard break, but a real UX regression).\n\nThis story restores the switcher behaviour through a JWT-mode mechanism:\n\n- Backend: new POST /_site/auth/switch-workspace {workspace_id} endpoint that validates the target workspace exists in the actor's subscription, checks HasActiveRole, then re-issues a JWT with the new workspace_id claim and sets the access-token cookie. Same pattern as /auth/refresh.\n- Frontend: useTopologyData.setWsRef → POST /_site/auth/switch-workspace then soft-reload (so the new JWT cookie takes effect). Drop the URL writes in useTopologyData.reloadWorkspaces + topology/page.tsx. Drop wsRef from topologyApi.tree() — middleware reads the JWT.\n- Tests: switch-workspace handler rejects (a) non-existent workspace_id (404), (b) workspace_id in another subscription (404 — existence not leaked), (c) workspace_id user has no role on (403 no_workspace_role). Frontend vitest for useTopologyData.setWsRef.\n\n## Acceptance Criteria\n\n- **As Proven by handler test:** POST /_site/auth/switch-workspace with valid workspace_id returns 200 + new JWT cookie carrying that workspace_id claim.\n- **As Proven by handler test:** POST with workspace_id from another subscription returns 404.\n- **As Proven by handler test:** POST with workspace_id user has no role on returns 403 no_workspace_role.\n- **As Proven by frontend test:** clicking a workspace in the switcher calls POST /_site/auth/switch-workspace and soft-reloads; no ?ws= URL write.\n- **As Proven by URL inspection:** /topology page URL stays as /topology (no query string) after switching workspaces.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a user, I wish to switch active workspace without the URL changing, so that the URL stays clean per the path-only rule and the JWT remains the workspace clamp.\n\n**Feature membership:** Part of feature group F1 \u2014 Workspace clamp end-to-end via JWT.\n\nStory 00576 reshaped WorkspaceClampMiddleware to read workspace from the JWT claim (dropping the ?ws= URL surface). The topology page's workspace switcher (PLA-0006) still writes ?ws=<uuid> to the URL via topologyApi + useTopologyData + app/(overlay)/topology/page.tsx. With 00576 landed those URL writes are silently ignored \u2014 switcher degrades to a no-op (not a hard break, but a real UX regression).\n\nThis story restores the switcher behaviour through a JWT-mode mechanism:\n\n- Backend: new POST /_site/auth/switch-workspace {workspace_id} endpoint that validates the target workspace exists in the actor's subscription, checks HasActiveRole, then re-issues a JWT with the new workspace_id claim and sets the access-token cookie. Same pattern as /auth/refresh.\n- Frontend: useTopologyData.setWsRef \u2192 POST /_site/auth/switch-workspace then soft-reload (so the new JWT cookie takes effect). Drop the URL writes in useTopologyData.reloadWorkspaces + topology/page.tsx. Drop wsRef from topologyApi.tree() \u2014 middleware reads the JWT.\n- Tests: switch-workspace handler rejects (a) non-existent workspace_id (404), (b) workspace_id in another subscription (404 \u2014 existence not leaked), (c) workspace_id user has no role on (403 no_workspace_role). Frontend vitest for useTopologyData.setWsRef.\n\n## Acceptance Criteria\n\n- **As Proven by handler test:** POST /_site/auth/switch-workspace with valid workspace_id returns 200 + new JWT cookie carrying that workspace_id claim.\n- **As Proven by handler test:** POST with workspace_id from another subscription returns 404.\n- **As Proven by handler test:** POST with workspace_id user has no role on returns 403 no_workspace_role.\n- **As Proven by frontend test:** clicking a workspace in the switcher calls POST /_site/auth/switch-workspace and soft-reloads; no ?ws= URL write.\n- **As Proven by URL inspection:** /topology page URL stays as /topology (no query string) after switching workspaces.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -132,11 +132,11 @@
     },
     {
       "order": 6,
-      "title": "00577 — SQL: add workspace_id to artefact_types + backfill per subscription",
+      "title": "00577 \u2014 SQL: add workspace_id to artefact_types + backfill per subscription",
       "story_id": "00577",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a backend engineer, I wish artefact_types to carry a workspace_id FK, so that workspace-clamped queries can filter by it.\n\n**Feature membership:** Part of feature group F1 — Workspace clamp end-to-end via JWT.\n\nNew vector_artefacts migration adds NOT NULL artefacts_types_id_workspace UUID column with FK to workspaces(id). Backfill walks each artefact_type row: artefact_types.subscription_id → look up that subscription's workspaces → pick the workspace where the type was seeded (per 077_adopt_risk_into_existing_workspaces pattern: the workspace that adopted the artefact type via system seed migrations). If a subscription has multiple live workspaces and the seed-attribution is ambiguous, pick the first-live workspace by created_at ASC (matches FirstLiveWorkspace semantics) and log an audit warning for manual triage.\n\n## Acceptance Criteria\n\n- **As Proven by migration applied:** artefact_types.artefacts_types_id_workspace is NOT NULL with FK to workspaces(id).\n- **As Proven by post-migration query:** SELECT COUNT(*) FROM artefact_types WHERE artefacts_types_id_workspace IS NULL returns 0.\n- **As Proven by FK constraint:** INSERT with non-existent workspace_id is rejected at the DB layer.\n- **As Proven by audit log:** any subscription with multiple workspaces where backfill picked the first-live by fallback is logged with subscription_id, workspace_id, and a manual-triage note.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a backend engineer, I wish artefact_types to carry a workspace_id FK, so that workspace-clamped queries can filter by it.\n\n**Feature membership:** Part of feature group F1 \u2014 Workspace clamp end-to-end via JWT.\n\nNew vector_artefacts migration adds NOT NULL artefacts_types_id_workspace UUID column with FK to workspaces(id). Backfill walks each artefact_type row: artefact_types.subscription_id \u2192 look up that subscription's workspaces \u2192 pick the workspace where the type was seeded (per 077_adopt_risk_into_existing_workspaces pattern: the workspace that adopted the artefact type via system seed migrations). If a subscription has multiple live workspaces and the seed-attribution is ambiguous, pick the first-live workspace by created_at ASC (matches FirstLiveWorkspace semantics) and log an audit warning for manual triage.\n\n## Acceptance Criteria\n\n- **As Proven by migration applied:** artefact_types.artefacts_types_id_workspace is NOT NULL with FK to workspaces(id).\n- **As Proven by post-migration query:** SELECT COUNT(*) FROM artefact_types WHERE artefacts_types_id_workspace IS NULL returns 0.\n- **As Proven by FK constraint:** INSERT with non-existent workspace_id is rejected at the DB layer.\n- **As Proven by audit log:** any subscription with multiple workspaces where backfill picked the first-live by fallback is logged with subscription_id, workspace_id, and a manual-triage note.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -149,11 +149,11 @@
     },
     {
       "order": 7,
-      "title": "00578 — API: mount WorkspaceClampMiddleware on /artefact-types, /work-items, /portfolio-items",
+      "title": "00578 \u2014 API: mount WorkspaceClampMiddleware on /artefact-types, /work-items, /portfolio-items",
       "story_id": "00578",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a backend engineer, I wish the artefact route groups to run through WorkspaceClampMiddleware, so that workspace clamp applies to every read.\n\n**Feature membership:** Part of feature group F1 — Workspace clamp end-to-end via JWT.\n\nAdd `r.Use(topology.WorkspaceClampMiddleware(wsLookup))` to the three artefact route groups in main.go:\n- /_site/artefact-types (currently line 1220)\n- /_site/work-items (currently line 1123 via mountArtefactSite)\n- /_site/portfolio-items (currently line 1124 via mountArtefactSite)\n\nAlso mount on the /samantha/v2 siblings if they exist (work-items + portfolio-items at lines 1339, 1340). The wsLookup adapter is already constructed for the topology mount; reuse the same instance.\n\nMust run AFTER RequireAuth + RequireFreshPassword in middleware order (per the middleware's MUST run after RequireAuth contract).\n\n## Acceptance Criteria\n\n- **As Proven by code inspection in main.go:** r.Use(topology.WorkspaceClampMiddleware(wsLookup)) appears in all three artefact route groups, after RequireAuth/RequireFreshPassword.\n- **As Proven by handler test:** GET /_site/artefact-types with no JWT → 401 (RequireAuth blocks). With JWT but no role on resolved workspace → 403 no_workspace_role. With JWT + role → 200 with workspace-scoped rows.\n- **As Proven by handler test:** GET /_site/work-items same three cases.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a backend engineer, I wish the artefact route groups to run through WorkspaceClampMiddleware, so that workspace clamp applies to every read.\n\n**Feature membership:** Part of feature group F1 \u2014 Workspace clamp end-to-end via JWT.\n\nAdd `r.Use(topology.WorkspaceClampMiddleware(wsLookup))` to the three artefact route groups in main.go:\n- /_site/artefact-types (currently line 1220)\n- /_site/work-items (currently line 1123 via mountArtefactSite)\n- /_site/portfolio-items (currently line 1124 via mountArtefactSite)\n\nAlso mount on the /samantha/v2 siblings if they exist (work-items + portfolio-items at lines 1339, 1340). The wsLookup adapter is already constructed for the topology mount; reuse the same instance.\n\nMust run AFTER RequireAuth + RequireFreshPassword in middleware order (per the middleware's MUST run after RequireAuth contract).\n\n## Acceptance Criteria\n\n- **As Proven by code inspection in main.go:** r.Use(topology.WorkspaceClampMiddleware(wsLookup)) appears in all three artefact route groups, after RequireAuth/RequireFreshPassword.\n- **As Proven by handler test:** GET /_site/artefact-types with no JWT \u2192 401 (RequireAuth blocks). With JWT but no role on resolved workspace \u2192 403 no_workspace_role. With JWT + role \u2192 200 with workspace-scoped rows.\n- **As Proven by handler test:** GET /_site/work-items same three cases.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -166,11 +166,11 @@
     },
     {
       "order": 8,
-      "title": "00579 — API: artefacttypes + artefactitems services read WorkspaceIDFromCtx and clamp queries",
+      "title": "00579 \u2014 API: artefacttypes + artefactitems services read WorkspaceIDFromCtx and clamp queries",
       "story_id": "00579",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a backend engineer, I wish artefacttypes + artefactitems services to clamp queries by workspace_id, so that the middleware's context value actually narrows the SQL.\n\n**Feature membership:** Part of feature group F1 — Workspace clamp end-to-end via JWT.\n\nartefacttypes.Service.List and artefactitems.Service queries call `topology.WorkspaceIDFromCtx(ctx)` to retrieve the clamp. When present, queries gain a `AND workspace_id = $N` predicate (via the new column from story 00577). When absent (admin tools that bypass the middleware, or migrations), fall back to the existing subscription-only path so we don't break dev/migration tooling.\n\nFor artefactitems: artefact_type_id already FKs artefact_types, so the workspace clamp threads via JOIN to at.artefacts_types_id_workspace. Alternative: denormalise workspace_id onto artefacts directly. Pick whichever the existing SQL shape supports without restructure (likely JOIN).\n\n## Acceptance Criteria\n\n- **As Proven by service test:** artefacttypes.Service.List with WorkspaceIDFromCtx returning W1 → only W1's rows.\n- **As Proven by service test:** artefacttypes.Service.List with WorkspaceIDFromCtx returning false (no clamp) → all rows in the subscription (admin path).\n- **As Proven by service test:** artefactitems.Service ListWorkItems with WorkspaceIDFromCtx returning W1 → only artefacts whose artefact_type belongs to W1.\n- **As Proven by integration test:** cross-workspace artefact ID returns 404 (existence not leaked).\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a backend engineer, I wish artefacttypes + artefactitems services to clamp queries by workspace_id, so that the middleware's context value actually narrows the SQL.\n\n**Feature membership:** Part of feature group F1 \u2014 Workspace clamp end-to-end via JWT.\n\nartefacttypes.Service.List and artefactitems.Service queries call `topology.WorkspaceIDFromCtx(ctx)` to retrieve the clamp. When present, queries gain a `AND workspace_id = $N` predicate (via the new column from story 00577). When absent (admin tools that bypass the middleware, or migrations), fall back to the existing subscription-only path so we don't break dev/migration tooling.\n\nFor artefactitems: artefact_type_id already FKs artefact_types, so the workspace clamp threads via JOIN to at.artefacts_types_id_workspace. Alternative: denormalise workspace_id onto artefacts directly. Pick whichever the existing SQL shape supports without restructure (likely JOIN).\n\n## Acceptance Criteria\n\n- **As Proven by service test:** artefacttypes.Service.List with WorkspaceIDFromCtx returning W1 \u2192 only W1's rows.\n- **As Proven by service test:** artefacttypes.Service.List with WorkspaceIDFromCtx returning false (no clamp) \u2192 all rows in the subscription (admin path).\n- **As Proven by service test:** artefactitems.Service ListWorkItems with WorkspaceIDFromCtx returning W1 \u2192 only artefacts whose artefact_type belongs to W1.\n- **As Proven by integration test:** cross-workspace artefact ID returns 404 (existence not leaked).\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -183,11 +183,11 @@
     },
     {
       "order": 9,
-      "title": "00580 — UI: useActiveWorkspace hook reads workspace_id from AuthContext",
+      "title": "00580 \u2014 UI: useActiveWorkspace hook reads workspace_id from AuthContext",
       "story_id": "00580",
       "card_url": null,
-      "status": "todo",
-      "description": "## As a frontend engineer, I wish a useActiveWorkspace hook, so that client-side caches can be keyed by workspace.\n\n**Feature membership:** Part of feature group F2 — Frontend workspace awareness.\n\nFrontend hook reads the workspace_id from AuthContext (which is populated from the JWT claim via /me) and exposes it as a stable React value. Used by future catalogue providers (PLA-0054) to key cached data per workspace.\n\n## Acceptance Criteria\n\n- **As Proven by hook test:** vitest: useActiveWorkspace() returns the workspace_id string from the AuthContext.\n- **As Proven by reactivity:** when AuthContext refreshes with a different workspace_id, components using the hook re-render with the new value.\n- **As Proven by null-safety:** before /me resolves, the hook returns null and consumers handle the loading state.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "status": "completed",
+      "description": "## As a frontend engineer, I wish a useActiveWorkspace hook, so that client-side caches can be keyed by workspace.\n\n**Feature membership:** Part of feature group F2 \u2014 Frontend workspace awareness.\n\nFrontend hook reads the workspace_id from AuthContext (which is populated from the JWT claim via /me) and exposes it as a stable React value. Used by future catalogue providers (PLA-0054) to key cached data per workspace.\n\n## Acceptance Criteria\n\n- **As Proven by hook test:** vitest: useActiveWorkspace() returns the workspace_id string from the AuthContext.\n- **As Proven by reactivity:** when AuthContext refreshes with a different workspace_id, components using the hook re-render with the new value.\n- **As Proven by null-safety:** before /me resolves, the hook returns null and consumers handle the loading state.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
       "tags": [
         "AIGEN",
         "PH-0005",
@@ -206,15 +206,15 @@
       "proven_by": "red commit",
       "story_id": "00601",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 2,
-      "criterion": "F1 suite green after 00575–00579 land; green POSTed to Tracker",
+      "criterion": "F1 suite green after 00575\u201300579 land; green POSTed to Tracker",
       "proven_by": "green commit",
       "story_id": "00601",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -222,7 +222,7 @@
       "proven_by": "regression entry",
       "story_id": "00601",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 4,
@@ -230,7 +230,7 @@
       "proven_by": "red commit",
       "story_id": "00602",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 5,
@@ -238,7 +238,7 @@
       "proven_by": "green commit",
       "story_id": "00602",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -246,7 +246,7 @@
       "proven_by": "regression entry",
       "story_id": "00602",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 7,
@@ -254,7 +254,7 @@
       "proven_by": "login response",
       "story_id": "00575",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -262,7 +262,7 @@
       "proven_by": "auth.User struct",
       "story_id": "00575",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 9,
@@ -270,7 +270,7 @@
       "proven_by": "integration test",
       "story_id": "00575",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 10,
@@ -278,7 +278,7 @@
       "proven_by": "middleware test",
       "story_id": "00576",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 11,
@@ -286,7 +286,7 @@
       "proven_by": "middleware test",
       "story_id": "00576",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 12,
@@ -294,7 +294,7 @@
       "proven_by": "middleware test",
       "story_id": "00576",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 13,
@@ -302,7 +302,7 @@
       "proven_by": "code inspection",
       "story_id": "00576",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 14,
@@ -310,7 +310,7 @@
       "proven_by": "migration applied",
       "story_id": "00577",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 15,
@@ -318,7 +318,7 @@
       "proven_by": "post-migration query",
       "story_id": "00577",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 16,
@@ -326,7 +326,7 @@
       "proven_by": "FK constraint test",
       "story_id": "00577",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 17,
@@ -334,7 +334,7 @@
       "proven_by": "audit log entry",
       "story_id": "00577",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 18,
@@ -342,7 +342,7 @@
       "proven_by": "main.go inspection",
       "story_id": "00578",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 19,
@@ -350,7 +350,7 @@
       "proven_by": "handler test",
       "story_id": "00578",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 20,
@@ -358,7 +358,7 @@
       "proven_by": "handler test",
       "story_id": "00578",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 21,
@@ -366,7 +366,7 @@
       "proven_by": "service test",
       "story_id": "00579",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 22,
@@ -374,7 +374,7 @@
       "proven_by": "service test",
       "story_id": "00579",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 23,
@@ -382,7 +382,7 @@
       "proven_by": "service test",
       "story_id": "00579",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 24,
@@ -390,7 +390,7 @@
       "proven_by": "integration test",
       "story_id": "00579",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 25,
@@ -398,7 +398,7 @@
       "proven_by": "vitest",
       "story_id": "00580",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 26,
@@ -406,7 +406,7 @@
       "proven_by": "vitest reactivity test",
       "story_id": "00580",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 27,
@@ -414,13 +414,13 @@
       "proven_by": "null-safety test",
       "story_id": "00580",
       "card_url": null,
-      "done": false
+      "done": true
     }
   ],
   "risks": [
     {
       "impact": 3,
-      "risk": "Backfill on artefact_types ambiguous for subscriptions with multiple live workspaces — the artefact_type's correct workspace isn't deterministically derivable from current schema (no seed-attribution column).",
+      "risk": "Backfill on artefact_types ambiguous for subscriptions with multiple live workspaces \u2014 the artefact_type's correct workspace isn't deterministically derivable from current schema (no seed-attribution column).",
       "mitigation": "Story 00577 falls back to FirstLiveWorkspace (created_at ASC) and audit-logs every fallback. Manual triage post-migration; if zero ambiguous cases on dev, the heuristic is fine. If many, file TD for a deterministic backfill source (e.g. seed-attribution column on artefact_types_seeds tracking table)."
     },
     {
@@ -447,7 +447,7 @@
     },
     {
       "kind": "internal",
-      "label": "PLA-0006 (Topology — established workspaces tier + WorkspaceClampMiddleware)",
+      "label": "PLA-0006 (Topology \u2014 established workspaces tier + WorkspaceClampMiddleware)",
       "href": "dev/plans/PLA-0006.json"
     },
     {
@@ -457,7 +457,7 @@
     },
     {
       "kind": "internal",
-      "label": "PLA-0051 (tenant→workspace inheritance + <rg> substrate)",
+      "label": "PLA-0051 (tenant\u2192workspace inheritance + <rg> substrate)",
       "href": "dev/plans/PLA-0051.json"
     },
     {
