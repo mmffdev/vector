@@ -14,10 +14,19 @@ const sqlSelectWorkspaceTenant = `SELECT subscription_id FROM master_record_work
 // sqlExistsActiveWorkspaceMembership probes whether a user holds any
 // live role grant on a workspace. Used by AssertCallerMayRead for
 // non-admin users_roles.
+//
+// PLA-0049 / RF1.4.4 — column-prefix shape (mig 188): user_id →
+// users_roles_workspaces_id_user, workspace_id →
+// users_roles_workspaces_id_workspace, revoked_at →
+// users_roles_workspaces_revoked_at. Pre-rename this query silently
+// 500'd on every non-admin GET /api/workspace/{id}/fields call;
+// resolved by TD-FIELDS-WSPERMS-RENAME.
 const sqlExistsActiveWorkspaceMembership = `
 		SELECT EXISTS (
 			SELECT 1 FROM users_roles_workspaces
-			 WHERE user_id = $1 AND workspace_id = $2 AND revoked_at IS NULL
+			 WHERE users_roles_workspaces_id_user      = $1
+			   AND users_roles_workspaces_id_workspace = $2
+			   AND users_roles_workspaces_revoked_at IS NULL
 		)
 	`
 
