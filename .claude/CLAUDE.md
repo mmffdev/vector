@@ -48,6 +48,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Backlog (`<backlog>`)** → [`.claude/commands/c_backlog.md`](commands/c_backlog.md) — opens root [`BACKLOG.md`](../BACKLOG.md); Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).
 - **DB routing (HARD RULE — load before any psql)** → [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) — service → pool → DB → tables map.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
+- **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
 - **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.
 - **v2 work-items cutover follow-ups** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — PLA-0023 deferral register.
 - **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.
