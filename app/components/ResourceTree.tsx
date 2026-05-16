@@ -174,6 +174,9 @@ export interface ResourceTreeProps<T> {
 
   // ── Set 3: Features (opt-in) ──
   pagination?: PaginationConfig;
+  // "both" renders pager above and below the table (legacy default);
+  // "bottom" renders only below — used by ObjectTree post-chrome-rebuild.
+  paginationPosition?: "both" | "bottom";
   search?: SearchConfig<T>;
   sort?: SortConfig;
   dnd?: DnDConfig;
@@ -742,6 +745,7 @@ function ResourceTreeImpl<T>({
   indentStep = DEFAULT_STEP,
   // Features
   pagination,
+  paginationPosition = "both",
   search,
   sort,
   dnd,
@@ -1365,7 +1369,7 @@ function ResourceTreeImpl<T>({
         </span>
       </div>
 
-      {pagination && (
+      {pagination && paginationPosition === "both" && (
         <Pagination
           totalRoots={total}
           pageSize={pageSize}
