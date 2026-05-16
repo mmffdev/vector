@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -17,6 +18,27 @@ import (
 func jsonErrBody(err error) []byte {
 	msg, _ := json.Marshal(err.Error())
 	return append([]byte(`{"error":`), append(msg, '}')...)
+}
+
+// parseUUIDList splits a comma-separated query param into a slice of
+// uuid.UUID, rejecting the whole list on the first malformed entry.
+// Empty input → nil slice + nil error (caller treats absence + empty
+// as "no filter"). PLA-0054 / story 00585.
+func parseUUIDList(raw string) ([]uuid.UUID, error) {
+	parts := strings.Split(raw, ",")
+	out := make([]uuid.UUID, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		id, err := uuid.Parse(p)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 // Handler exposes the v2 work-items domain over HTTP.
@@ -59,20 +81,66 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("parent_id"); v != "" {
 		f.ParentID = &v
 	}
-	if v := q.Get("item_type"); v != "" {
-		f.ItemType = &v
+
+	// PLA-0054 / story 00587: reject legacy slug paths so a stale
+	// frontend learns about the break at the edge rather than getting
+	// silently-unfiltered results. The frontend migrates in story 00590
+	// (catalogue + chip rewire); the two stories ship together in the
+	// same commit window so there is no transition shim and no debt.
+	if q.Get("item_type") != "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"?item_type=<slug> is removed; use ?item_type_id=<uuid>[,<uuid>] (PLA-0054)"}`))
+		return
 	}
-	if v := q.Get("status"); v != "" {
-		f.Status = &v
+	if q.Get("status") != "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"?status=<slug> is removed; use ?flow_state_id=<uuid>[,<uuid>] (PLA-0054)"}`))
+		return
+	}
+
+	// PLA-0054 / story 00585: multi-value UUID parsers.
+	if v := q.Get("item_type_id"); v != "" {
+		ids, perr := parseUUIDList(v)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid item_type_id"}`))
+			return
+		}
+		f.ItemType = ids
+	}
+	if v := q.Get("flow_state_id"); v != "" {
+		ids, perr := parseUUIDList(v)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid flow_state_id"}`))
+			return
+		}
+		f.Status = ids
 	}
 	if v := q.Get("priority"); v != "" {
-		f.Priority = &v
+		// Multi-value text list (priority is a project-locked enum, not
+		// a per-tenant UUID — list shape only).
+		parts := strings.Split(v, ",")
+		out := make([]string, 0, len(parts))
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				out = append(out, p)
+			}
+		}
+		f.Priority = out
 	}
 	if v := q.Get("sprint_id"); v != "" {
 		f.SprintID = &v
 	}
 	if v := q.Get("owner_id"); v != "" {
-		f.OwnerID = &v
+		ids, perr := parseUUIDList(v)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid owner_id"}`))
+			return
+		}
+		f.OwnerID = ids
 	}
 	if v := q.Get("sort"); v != "" {
 		f.Sort = v

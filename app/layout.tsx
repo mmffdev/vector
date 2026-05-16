@@ -6,6 +6,7 @@ import "./styles/typecase.css";
 import { AuthProvider } from "@/app/contexts/AuthContext";
 import { PageAccessProvider } from "@/app/contexts/PageAccessContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
+import { ArtefactTypeCatalogueProvider } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { Toaster } from "@/app/components/Toaster";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
 import AddressDevtool from "@/app/components/AddressDevtool";
@@ -51,11 +52,13 @@ export default function RootLayout({
         <Toaster />
         <DevTabProvider>
           <AuthProvider>
-            <PageAccessProvider>
-              {children}
-              <AddressDevtool />
-              <AddressAnchorResolver />
-            </PageAccessProvider>
+            <ArtefactTypeCatalogueProvider>
+              <PageAccessProvider>
+                {children}
+                <AddressDevtool />
+                <AddressAnchorResolver />
+              </PageAccessProvider>
+            </ArtefactTypeCatalogueProvider>
           </AuthProvider>
         </DevTabProvider>
         <DevStatusFloat />

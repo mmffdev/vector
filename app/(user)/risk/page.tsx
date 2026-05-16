@@ -29,6 +29,8 @@ import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import { apiSite } from "@/app/lib/api";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
+import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { RisksPanelHeader, RisksFilterChips } from "@/app/components/risk-tree-config";
 import risksWizardJson from "@/app/components/ObjectTree/configs/p_wizard_risks.json";
 
@@ -62,8 +64,20 @@ export default function RiskPage() {
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<RisksSummary | null>(null);
 
+  // PLA-0054 / story 00592 — resolve sidecar slot refs ("wrk_risk")
+  // to per-tenant UUIDs at mount, so the rendered ObjectTree's
+  // resourceUrl carries `?item_type_id=<uuid>` instead of the legacy
+  // `?item_type=risk` slug. Catalogue is loaded by the provider in
+  // app/layout.tsx; on first render before the catalogue resolves,
+  // the URL keeps its raw form and the chip is empty — the
+  // useMemo re-runs when `types` populates.
+  const { types } = useArtefactTypeCatalogue();
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
-    const resolved = resolveWizardConfig(risksWizardJson as any);
+    const resolvedSlots = resolveSlotRefs(
+      risksWizardJson as unknown as Record<string, unknown>,
+      types,
+    );
+    const resolved = resolveWizardConfig(resolvedSlots as any);
     const funcs = buildWorkItemsFunctions();
     return {
       ...resolved,
@@ -73,7 +87,7 @@ export default function RiskPage() {
       panelHeader: resolved.panelHeaderComponent === "RisksPanelHeader" ? <RisksPanelHeader /> : undefined,
       filterChips: resolved.filterChipsComponent === "RisksFilterChips" ? <RisksFilterChips /> : undefined,
     } as ObjectTreeDataConfig;
-  }, []);
+  }, [types]);
 
   const refetch = useCallback(() => {
     return apiSite<RisksSummary>("/risks/summary")

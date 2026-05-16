@@ -8,6 +8,11 @@ export interface ArtefactType {
   prefix: string;
   description: string | null;
   colour: string | null;
+  // PLA-0054 / story 00584. Project-locked handle (wrk_epic, wrk_story,
+  // wrk_defect, wrk_task, wrk_risk) for canonical work types; null on
+  // custom tenant types. The frontend resolves slot → id via the
+  // workspace catalogue so chip filters survive gadmin renames.
+  slot: string | null;
   parent_type_id: string | null;
   allows_children: boolean;
   layer_depth: number | null;

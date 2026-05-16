@@ -12,6 +12,7 @@
 // imports are dynamic and wrapped so this file always loads.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 
 const mockAuthState: {
   user: { id: string; subscription_id: string; workspace_id: string; email: string; is_active: boolean } | null;
@@ -19,6 +20,46 @@ const mockAuthState: {
 
 vi.mock("@/app/contexts/AuthContext", () => ({
   useAuth: () => mockAuthState,
+}));
+
+// Mock the catalogue context so the hook sees a known set of types.
+vi.mock("@/app/contexts/ArtefactTypeCatalogueContext", () => ({
+  useArtefactTypeCatalogue: () => ({
+    workspaceId: "ws-A-uuid",
+    types: [
+      { id: "uuid-risk-type", slot: "wrk_risk", name: "Risk", scope: "work", archived_at: null, sort_order: 50 },
+      { id: "uuid-task-type", slot: "wrk_task", name: "Task", scope: "work", archived_at: null, sort_order: 40 },
+    ],
+    loading: false,
+    error: null,
+  }),
+  catalogueCacheKey: (workspaceId: string | null) =>
+    workspaceId == null ? "artefact-types::no-workspace" : `artefact-types::ws::${workspaceId}`,
+}));
+
+// Mock flowStatesApi.list() so the per-type Status fetch returns
+// known UUIDs without hitting the backend.
+vi.mock("@/app/lib/flowStatesApi", () => ({
+  flowStatesApi: {
+    list: async () => ({
+      work: [
+        {
+          flow_id: "uuid-risk-flow",
+          flow_name: "Risk flow",
+          is_default: true,
+          type_id: "uuid-risk-type",
+          type_name: "Risk",
+          type_scope: "work",
+          states: [
+            { id: "11111111-1111-1111-1111-111111111111", name: "Identified", kind: "todo", sort_order: 0, is_initial: true, is_pullable: true, exit_rule_count: 0 },
+            { id: "22222222-2222-2222-2222-222222222222", name: "Mitigating",  kind: "in_progress", sort_order: 1, is_initial: false, is_pullable: true, exit_rule_count: 0 },
+          ],
+          transitions: [],
+        },
+      ],
+      strategy: [],
+    }),
+  },
 }));
 
 beforeEach(() => {
@@ -49,10 +90,8 @@ describe("F6 — Status chip context-awareness + rename invariance", () => {
       useStatusChipOptions?: (singleTypeId: string | null) => { value: string; label: string }[];
     };
     expect(mod.useStatusChipOptions).toBeDefined();
-    // Contract: when called with null (no Type, or multi-Type), returns
-    // the project-locked 6 kind primitives. The asserted values are the
-    // kind enum spec — not slugs of any single flow.
-    const kinds = mod.useStatusChipOptions!(null).map((o) => o.value).sort();
+    const { result } = renderHook(() => mod.useStatusChipOptions!(null));
+    const kinds = result.current.map((o) => o.value).sort();
     expect(kinds).toEqual(
       ["accepted", "cancelled", "done", "in_progress", "in_review", "todo"].sort(),
     );
@@ -63,11 +102,16 @@ describe("F6 — Status chip context-awareness + rename invariance", () => {
       useStatusChipOptions?: (singleTypeId: string | null) => { value: string; label: string }[];
     };
     expect(mod.useStatusChipOptions).toBeDefined();
-    // With a Type selected the returned values must be UUID-shaped, not
-    // slug-shaped — sourced from the type's flow_states catalogue.
-    const opts = mod.useStatusChipOptions!("uuid-risk-type");
+    const { result, rerender } = renderHook(() => mod.useStatusChipOptions!("uuid-risk-type"));
+    // Initial render: per-type fetch is in flight, hook returns the
+    // kind primitives as the loading fallback.
+    expect(result.current.length).toBeGreaterThan(0);
+    // Wait one microtask tick for the mocked fetch to settle, then
+    // assert the UUID-shaped options replaced the primitives.
+    await new Promise((r) => setTimeout(r, 0));
+    rerender();
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const slugs = opts.filter((o) => !uuidRe.test(o.value));
+    const slugs = result.current.filter((o) => !uuidRe.test(o.value));
     expect(slugs, `Status options should be UUIDs when Type is fixed: ${JSON.stringify(slugs)}`).toEqual([]);
   });
 

@@ -338,20 +338,40 @@ func TestListWorkItems_Pagination(t *testing.T) {
 	}
 }
 
-// TestListWorkItems_ItemTypeFilter verifies that ?item_type= narrows results.
+// TestListWorkItems_ItemTypeFilter verifies that the UUID-list type
+// filter narrows results to artefacts whose type ID is in the list.
+// PLA-0054 / story 00586: filter shape moved from *string slug to
+// []uuid.UUID, so this test picks a story-typed artefact's type ID
+// at runtime rather than hardcoding the slug.
 func TestListWorkItems_ItemTypeFilter(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
 	svc := artefactitems.NewService(va, nil, "work")
 	ctx := context.Background()
 
-	itemType := "story"
+	var typeIDStr string
+	err := va.QueryRow(ctx, `
+		SELECT artefacts_types_id::text
+		  FROM artefacts_types
+		 WHERE artefacts_types_id_subscription = $1::uuid
+		   AND lower(artefacts_types_name) = 'story'
+		   AND artefacts_types_archived_at IS NULL
+		 LIMIT 1
+	`, sub.String()).Scan(&typeIDStr)
+	if err != nil {
+		t.Skipf("no story-typed artefact_type in fixture subscription: %v", err)
+	}
+	typeID, err := uuid.Parse(typeIDStr)
+	if err != nil {
+		t.Fatalf("parse type uuid: %v", err)
+	}
+
 	stories, _, err := svc.ListWorkItems(ctx, sub, artefactitems.Filters{
-		ItemType: &itemType,
+		ItemType: []uuid.UUID{typeID},
 		Limit:    100,
 	})
 	if err != nil {
-		t.Fatalf("ListWorkItems item_type=story: %v", err)
+		t.Fatalf("ListWorkItems item_type_id=<story uuid>: %v", err)
 	}
 	for _, item := range stories {
 		if item.ItemType != "story" {

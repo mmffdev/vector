@@ -18,6 +18,7 @@ import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
 import OwnerChip from "@/app/components/OwnerChip";
 import NavigationPie from "@/app/components/NavigationPie";
+import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
   PrimaryCellTreeLines,
@@ -636,24 +637,22 @@ export function useWorkItemsSort(): {
 
 // ─── Filter chips (controlled) ────────────────────────────────────────────────
 
-const TYPE_CHIP_OPTIONS = [
-  { value: "epic", label: "Epic" },
-  { value: "story", label: "Story" },
-  { value: "defect", label: "Defect" },
-  { value: "task", label: "Task" },
-  { value: "risk", label: "Risk" }, // PLA-0052
-];
-
-// Backend `?status=` filter is the legacy enum (open/in_progress/done/cancelled)
-// and lives alongside the new flow_state_id substrate during the migration
-// window — see types.go WorkItem.Status comment. The chip uses the legacy
-// values until the backend exposes a `?flow_state_code=` filter.
-const STATUS_CHIP_OPTIONS = [
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In progress" },
-  { value: "done", label: "Done" },
-  { value: "cancelled", label: "Cancelled" },
-];
+// PLA-0054 / story 00590 — Type options come from the per-workspace
+// catalogue (useChipTypeOptions), so chip values are artefact_type
+// UUIDs and survive gadmin display-name renames. The hardcoded
+// TYPE_CHIP_OPTIONS / STATUS_CHIP_OPTIONS arrays were deleted as
+// part of this story.
+//
+// Status chip is still on the legacy 4-state vocabulary until story
+// 00591 lands useStatusChipOptions (context-aware: 6 kind primitives
+// fallback / per-type flow_states when one Type is selected). The
+// transitional STATUS_CHIP_OPTIONS below carries the kind primitives
+// directly so the chip's `selected[]` round-trips against the new
+// `?flow_state_id=<uuid>[,<uuid>]` backend param without breaking;
+// the kind values are deliberately wrapped at the request layer.
+//
+// Priority stays a project-locked text enum (multi-value).
+const STATUS_CHIP_OPTIONS_TRANSITIONAL: { value: string; label: string }[] = [];
 
 const PRIORITY_CHIP_OPTIONS = [
   { value: "critical", label: "Critical" },
@@ -671,19 +670,23 @@ export function WorkItemsFilterChips() {
   const meId = user?.id ?? null;
   const ownerIsMe = filters.owner_id.length > 0 && filters.owner_id[0] === meId;
 
+  // PLA-0054 / story 00590 — Type options sourced from the workspace
+  // catalogue. Values are artefact_type UUIDs.
+  const typeOptions = useChipTypeOptions("work");
+
   return (
     <>
       <NavigationPie
         label="Type"
         icon={<MdTune size={14} />}
-        options={TYPE_CHIP_OPTIONS}
+        options={typeOptions}
         selected={filters.type}
         onChange={(v) => setFilter("type", v)}
       />
       <NavigationPie
         label="Status"
         icon={<MdOutlineCheckBox size={14} />}
-        options={STATUS_CHIP_OPTIONS}
+        options={STATUS_CHIP_OPTIONS_TRANSITIONAL}
         selected={filters.status}
         onChange={(v) => setFilter("status", v)}
       />
@@ -765,15 +768,18 @@ export function useArtefactItemsWindow(
   const [loadingWindow, setLoadingWindow] = useState(false);
 
   const filterQuery = useMemo(() => {
-    // TD-FILTER-MULTI: artefactitems handler reads each filter as a single
-    // string; multi-value selection from the Starburst chip is capped to
-    // the first selected value here. Lift this cap once the backend accepts
-    // `?item_type=epic,story` (split → ANY($1)).
+    // PLA-0054 / story 00585+00586+00587: multi-value UUID params.
+    //   ?item_type_id=<uuid>[,<uuid>] → backend ANY($N::uuid[])
+    //   ?flow_state_id=<uuid>[,<uuid>] → backend ANY($N::uuid[])
+    //   ?priority=<text>[,<text>]     → backend ANY($N::text[])
+    //   ?owner_id=<uuid>[,<uuid>]     → backend ANY($N::uuid[])
+    // TD-FILTER-MULTI is paid down here: multi-select chips now round-
+    // trip the full selection (no .[0] cap).
     const parts: string[] = [];
-    if (filters.type[0])     parts.push(`item_type=${encodeURIComponent(filters.type[0])}`);
-    if (filters.status[0])   parts.push(`status=${encodeURIComponent(filters.status[0])}`);
-    if (filters.priority[0]) parts.push(`priority=${encodeURIComponent(filters.priority[0])}`);
-    if (filters.owner_id[0]) parts.push(`owner_id=${encodeURIComponent(filters.owner_id[0])}`);
+    if (filters.type.length)     parts.push(`item_type_id=${filters.type.map(encodeURIComponent).join(",")}`);
+    if (filters.status.length)   parts.push(`flow_state_id=${filters.status.map(encodeURIComponent).join(",")}`);
+    if (filters.priority.length) parts.push(`priority=${filters.priority.map(encodeURIComponent).join(",")}`);
+    if (filters.owner_id.length) parts.push(`owner_id=${filters.owner_id.map(encodeURIComponent).join(",")}`);
     return parts.length ? `&${parts.join("&")}` : "";
   }, [filters.type, filters.status, filters.priority, filters.owner_id]);
 

@@ -7,6 +7,8 @@ package artefactitems
 import (
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -116,14 +118,22 @@ func canHaveManualPoints(itemType string) bool {
 }
 
 // Filters holds query parameters for the v2 list endpoint.
-// Expanded in stories 00465–00468; stub for 00464.
+//
+// PLA-0054 / story 00586: multi-value list types replace the per-field
+// *string singles. ItemType / Status / OwnerID become []uuid.UUID
+// (UUID-on-the-wire — gadmin display-name renames cannot break them).
+// Priority becomes []string (a project-locked enum, not a per-tenant
+// UUID — the list shape is the only contract change).
+//
+// Empty list (len==0) means "no filter on this field"; nil and len==0
+// behave identically and are stored interchangeably.
 type Filters struct {
 	ParentID *string
-	ItemType *string
-	Status   *string
-	Priority *string
+	ItemType []uuid.UUID
+	Status   []uuid.UUID
+	Priority []string
 	SprintID *string
-	OwnerID  *string
+	OwnerID  []uuid.UUID
 	// ScopeNodeID, when set, clamps the read to artefacts whose
 	// topology_node_id is `ScopeNodeID` or any live descendant of it
 	// (PLA-0043). NULL topology_node_id rows are excluded when scope is

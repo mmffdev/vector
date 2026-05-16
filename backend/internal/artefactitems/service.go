@@ -131,23 +131,29 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		extra = append(extra, fmt.Sprintf("a.parent_artefact_id = $%d::uuid", n))
 		args = append(args, *filters.ParentID)
 		n++
-	} else if filters.ItemType == nil {
+	} else if len(filters.ItemType) == 0 {
 		// Default: top-level items only (mirrors v1 ListWorkItems default).
 		extra = append(extra, "a.parent_artefact_id IS NULL")
 	}
-	if filters.ItemType != nil {
-		extra = append(extra, fmt.Sprintf("lower(at.artefacts_types_name) = $%d", n))
-		args = append(args, *filters.ItemType)
+	// PLA-0054 / story 00586: multi-value UUID filters. Empty slice is a
+	// no-op; otherwise emit ANY($N::uuid[]) so the JOIN predicate matches
+	// any artefact_type whose UUID is in the chip's selection. Rename-
+	// invariant: matching by ID instead of lower(name).
+	if len(filters.ItemType) > 0 {
+		extra = append(extra, fmt.Sprintf("at.artefacts_types_id = ANY($%d::uuid[])", n))
+		args = append(args, filters.ItemType)
 		n++
 	}
-	if filters.Status != nil {
-		extra = append(extra, fmt.Sprintf("fs.kind = $%d", n))
-		args = append(args, statusToFlowKind(*filters.Status))
+	if len(filters.Status) > 0 {
+		// PLA-0054 / story 00585: Status filter is now flow_state_id list
+		// (the artefact's current flow state, not a translated kind slug).
+		extra = append(extra, fmt.Sprintf("a.flow_state_id = ANY($%d::uuid[])", n))
+		args = append(args, filters.Status)
 		n++
 	}
-	if filters.Priority != nil {
-		extra = append(extra, fmt.Sprintf("a.priority = $%d", n))
-		args = append(args, *filters.Priority)
+	if len(filters.Priority) > 0 {
+		extra = append(extra, fmt.Sprintf("a.priority = ANY($%d::text[])", n))
+		args = append(args, filters.Priority)
 		n++
 	}
 	if filters.SprintID != nil {
@@ -155,9 +161,9 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		args = append(args, *filters.SprintID)
 		n++
 	}
-	if filters.OwnerID != nil {
-		extra = append(extra, fmt.Sprintf("a.owned_by_user_id = $%d::uuid", n))
-		args = append(args, *filters.OwnerID)
+	if len(filters.OwnerID) > 0 {
+		extra = append(extra, fmt.Sprintf("a.owned_by_user_id = ANY($%d::uuid[])", n))
+		args = append(args, filters.OwnerID)
 		n++
 	}
 	// PLA-0053 / story 00579: workspace clamp via the artefact_type's
@@ -861,24 +867,6 @@ func (s *Service) decorateOwners(ctx context.Context, items []WorkItem) error {
 		}
 	}
 	return nil
-}
-
-// statusToFlowKind maps both v1 status vocabulary (open/in_progress/done/cancelled)
-// and v2 flow_state_code vocabulary (backlog/doing/completed/cancelled) to the
-// flows_states.kind column value used in the v2 schema.
-func statusToFlowKind(status string) string {
-	switch status {
-	case "open", "backlog":
-		return "todo"
-	case "in_progress", "doing":
-		return "in_progress"
-	case "done", "completed":
-		return "done"
-	case "cancelled":
-		return "cancelled"
-	default:
-		return status
-	}
 }
 
 // buildOrderBy returns the ORDER BY clause for the data query.
