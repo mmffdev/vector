@@ -42,6 +42,12 @@ type loginResp struct {
 type userPayload struct {
 	ID                  uuid.UUID   `json:"id"`
 	SubscriptionID      uuid.UUID   `json:"subscription_id"`
+	// WorkspaceID surfaces the user's active workspace_id from the JWT
+	// claim (PLA-0053 / story 00580). Frontend's useActiveWorkspace
+	// hook reads this off AuthContext to key per-workspace caches.
+	// Zero (uuid.Nil) when the JWT predates PLA-0053 — frontend
+	// treats this as "no workspace clamp yet" and falls back as needed.
+	WorkspaceID         uuid.UUID   `json:"workspace_id"`
 	Email               string      `json:"email"`
 	Role                RolePayload `json:"role"`
 	IsActive            bool        `json:"is_active"`
@@ -56,6 +62,7 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *roletypes.User) userP
 	return userPayload{
 		ID:                  u.ID,
 		SubscriptionID:      u.SubscriptionID,
+		WorkspaceID:         u.WorkspaceID,
 		Email:               u.Email,
 		Role:                role,
 		IsActive:            u.IsActive,

@@ -22,6 +22,11 @@ export interface Role {
 export interface AuthUser {
   id: string;
   subscription_id: string;
+  // workspace_id is the user's active workspace within their subscription
+  // (PLA-0053 / story 00580). Sourced from the JWT claim via /me.
+  // Empty string when the backend's JWT predates PLA-0053 — useActiveWorkspace
+  // exposes this as null to keep consumers' loading-state handling clean.
+  workspace_id: string;
   email: string;
   role: Role;
   is_active: boolean;
