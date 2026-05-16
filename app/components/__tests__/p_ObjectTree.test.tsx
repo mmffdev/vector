@@ -112,7 +112,6 @@ vi.mock("@/app/components/work-items-tree-config", async () => {
     ...actual,
     useArtefactItemsWindow: stub,
     useWorkItemsWindow: stub,
-    WorkItemsPanelHeader: () => <header data-testid="wi-panel-head" />,
     WorkItemsFilterChips: () => <div data-testid="wi-filter-chips" />,
   };
 });

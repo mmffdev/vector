@@ -46,6 +46,5 @@
     "options": [10, 25, 50],
     "defaultPageSize": 25
   },
-  "panelHeader": null,
   "filterChips": null
 }

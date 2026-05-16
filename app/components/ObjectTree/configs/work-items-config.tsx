@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { WorkItemsPanelHeader } from "@/app/components/work-items-tree-config";
 import { WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
 import type { WorkItem } from "@/app/components/work-items-tree-config";
 import type { ObjectTreeConfig } from "@/app/components/ObjectTree/p_ObjectTreeRegistry";
@@ -45,6 +44,5 @@ export const workItemsConfig: ObjectTreeConfig<WorkItem> = {
     options: [10, 25, 50, 100],
     defaultPageSize: 25,
   },
-  panelHeader: <WorkItemsPanelHeader />,
   filterChips: <WorkItemsFilterChips />,
 };

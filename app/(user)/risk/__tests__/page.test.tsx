@@ -68,7 +68,6 @@ vi.mock("@/app/lib/wizardLoader", () => ({
 // risk-tree-config — stub the named exports the page imports.
 vi.mock("@/app/components/risk-tree-config", () => ({
   __esModule: true,
-  RisksPanelHeader: () => <div data-testid="risks-panel-header" />,
   RisksFilterChips: () => <div data-testid="risks-filter-chips" />,
 }));
 

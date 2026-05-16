@@ -518,22 +518,6 @@ export function buildWorkItemsColumns(
   ];
 }
 
-// ─── Panel header + filter chips ──────────────────────────────────────────────
-
-export function WorkItemsPanelHeader() {
-  return (
-    <header className="tree_accordion-dense__panel-head">
-      <span className="tree_accordion-dense__panel-head-num">05</span>
-      <div className="tree_accordion-dense__panel-head-body">
-        <h3 className="tree_accordion-dense__panel-head-title">Dense grid</h3>
-        <p className="tree_accordion-dense__panel-head-subtitle">
-          Spreadsheet-fast. 28px rows, single-character status, mono ID column.
-        </p>
-      </div>
-    </header>
-  );
-}
-
 // ─── Filter state (URL-backed) ────────────────────────────────────────────────
 
 // Multi-value chips (NavigationPie): URL stores comma-joined lists per param.

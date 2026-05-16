@@ -14,22 +14,6 @@
 
 import React from "react";
 
-// ─── Panel header ─────────────────────────────────────────────────────────
-
-export function RisksPanelHeader() {
-  return (
-    <header className="tree_accordion-dense__panel-head">
-      <span className="tree_accordion-dense__panel-head-num">RSK</span>
-      <div className="tree_accordion-dense__panel-head-body">
-        <h3 className="tree_accordion-dense__panel-head-title">Risk register</h3>
-        <p className="tree_accordion-dense__panel-head-subtitle">
-          Identify, score, mitigate. Severity × likelihood drives the matrix above.
-        </p>
-      </div>
-    </header>
-  );
-}
-
 // ─── Filter chips ─────────────────────────────────────────────────────────
 //
 // Severity / likelihood / state chips. Wire to URL search params identical

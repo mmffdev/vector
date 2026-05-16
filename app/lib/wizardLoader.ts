@@ -8,7 +8,6 @@ import type { WorkItem } from "@/app/components/work-items-tree-config";
 
 interface RawWizardConfig extends Partial<ObjectTreeDataConfig> {
   columnsComponent?: string;
-  panelHeaderComponent?: string;
   filterChipsComponent?: string;
   _functions?: {
     getParentId?: string;

@@ -1,5 +1,5 @@
 {
-  "_comment": "PLA-0052 Story 13 — Risk filtered ObjectTree sidecar. dataType='risks' so the registry can resolve a separate config; resourceUrl filters the existing /work-items list endpoint by item_type=risk (no separate backend listing needed). panelHeaderComponent + filterChipsComponent strings resolve in wizardLoader.ts.",
+  "_comment": "PLA-0052 Story 13 — Risk filtered ObjectTree sidecar. dataType='risks' so the registry can resolve a separate config; resourceUrl filters the existing /work-items list endpoint by item_type=risk (no separate backend listing needed). filterChipsComponent string resolves in wizardLoader.ts.",
   "dataType": "risks",
   "label": "Risks",
   "searchPlaceholder": "Search risks…",
@@ -13,7 +13,6 @@
   "defaultSortDir": "asc",
   "paginationOptions": [10, 25, 50, 100],
   "defaultPageSize": 25,
-  "panelHeaderComponent": "RisksPanelHeader",
   "filterChipsComponent": "RisksFilterChips",
   "columnsComponent": "buildWorkItemsColumns"
 }
