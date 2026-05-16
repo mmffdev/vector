@@ -559,6 +559,17 @@ func main() {
 	// Serves GET + PATCH for name/prefix/description/colour on all live types.
 	artefactTypesH := artefacttypes.NewHandler(artefacttypes.NewService(vaPool))
 
+	// PLA-0053 / story 00578: hoist the workspace-clamp lookup once so
+	// every route group that needs the JWT-anchored workspace clamp
+	// reuses the same adapter (topology, artefact-types, work-items,
+	// portfolio-items). Backed by the mmff_vector pool because the
+	// `master_record_workspaces` + `users_roles_workspaces` tables live
+	// there (per docs/c_c_db_routing.md). The middleware itself reads
+	// auth.User.WorkspaceID (the JWT claim) for the workspace; the
+	// lookup runs the HasActiveRole check and the legacy-token
+	// FirstLiveWorkspace fallback.
+	workspaceLookup := topology.PoolWorkspaceLookup{Pool: pool}
+
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
 	// Only available when vaPool is up (vector_artefacts has the search columns).
 	var searchH *search.Handler
@@ -1107,6 +1118,9 @@ func main() {
 		mountArtefactSite := func(r chi.Router, h *artefactitems.Handler) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
+			// PLA-0053 / story 00578: workspace clamp via JWT claim.
+			// Runs after auth so middleware has u.WorkspaceID populated.
+			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 			r.With(readLimit17).Get("/", h.List)
 			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
@@ -1151,9 +1165,10 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 
-		wsLookup := topology.PoolWorkspaceLookup{Pool: pool}
 		r.Group(func(r chi.Router) {
-			r.Use(topology.WorkspaceClampMiddleware(wsLookup))
+			// PLA-0053 / story 00578: reuses the hoisted workspaceLookup
+			// (was inline PoolWorkspaceLookup pre-00578).
+			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 
 			r.Get("/tree", orgDesignH.Tree)
 			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
@@ -1217,9 +1232,14 @@ func main() {
 	// Artefact-types settings: GET (list all) + PATCH /{id} (name/prefix/description/colour).
 	// No permission gate beyond auth — every authenticated user can read types;
 	// writes require workspace.archive (padmin+), enforced client-side and tightened later.
+	//
+	// PLA-0053 / story 00578: mounted under WorkspaceClampMiddleware so
+	// every read clamps to the JWT-resolved workspace. The middleware
+	// runs after RequireAuth + RequireFreshPassword per its contract.
 	r.Route("/artefact-types", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 		artefactTypesH.Mount(r)
 	})
 
@@ -1323,6 +1343,9 @@ func main() {
 			mountArtefactRoutes := func(r chi.Router, h *artefactitems.Handler) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
+				// PLA-0053 / story 00578: workspace clamp via JWT claim
+				// on the /samantha/v2 surface too (parity with /_site).
+				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 				r.With(readLimit).Get("/", h.List)
 				r.With(writeLimit, userWriteLimiter).Post("/", h.Create)
 				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
@@ -1475,11 +1498,13 @@ func main() {
 			r.Use(userWriteLimiter)
 
 			// Workspace clamp: every list-style read narrows to one
-			// workspace resolved from ?ws=<slug|uuid>. Middleware stashes
-			// workspace_id on context; service reads splice it into WHERE.
-			wsLookup := topology.PoolWorkspaceLookup{Pool: pool}
+			// workspace resolved from the JWT workspace_id claim
+			// (PLA-0053 / story 00576 dropped the ?ws= URL surface;
+			// story 00578 hoisted workspaceLookup to top-level).
+			// Middleware stashes workspace_id on context; service reads
+			// splice it into WHERE.
 			r.Group(func(r chi.Router) {
-				r.Use(topology.WorkspaceClampMiddleware(wsLookup))
+				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 
 				r.Get("/tree", orgDesignH.Tree)
 				r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
