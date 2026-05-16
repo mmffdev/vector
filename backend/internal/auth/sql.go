@@ -209,3 +209,26 @@ const sqlSelectFirstLiveWorkspaceID = `
 		 ORDER BY created_at ASC
 		 LIMIT 1
 	`
+
+// sqlAssertWorkspaceMemberLive checks that (subscription_id, workspace_id,
+// user_id) all line up against a non-archived workspace AND a live
+// users_roles_workspaces grant for the user. Used by SwitchWorkspace
+// (PLA-0053 story 00576.5) to gate the JWT re-mint — same membership
+// rule as fields.AssertCallerMayRead, just specialised to a single
+// workspace assertion.
+//
+// Returns 1 row iff the user can read the workspace; pgx.ErrNoRows
+// otherwise. Cross-subscription IDs and revoked grants are silently
+// excluded (no existence leak).
+const sqlAssertWorkspaceMemberLive = `
+		SELECT 1
+		  FROM master_record_workspaces ws
+		  JOIN users_roles_workspaces urw
+		    ON urw.users_roles_workspaces_id_workspace = ws.id
+		   AND urw.users_roles_workspaces_id_user      = $3::uuid
+		   AND urw.users_roles_workspaces_revoked_at IS NULL
+		 WHERE ws.subscription_id = $1::uuid
+		   AND ws.id              = $2::uuid
+		   AND ws.archived_at IS NULL
+		 LIMIT 1
+	`

@@ -50,6 +50,13 @@ interface AuthState {
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  // PLA-0053 / story 00576.5 — POST /auth/switch-workspace re-mints
+  // the JWT with a new workspace_id claim + rotates the refresh
+  // session, then updates user state in-place. Callers that depend
+  // on the active workspace (chip filters, catalogue providers,
+  // localStorage keys via useActiveWorkspace) re-render automatically.
+  // Throws on 403 (no live grant for that workspace).
+  switchWorkspace: (workspaceID: string) => Promise<AuthUser>;
   setUser: (u: AuthUser) => void;
 }
 
@@ -160,6 +167,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyLogin]
   );
 
+  // PLA-0053 / story 00576.5 — switch active workspace.
+  const switchWorkspace = useCallback(
+    async (workspaceID: string) => {
+      const res = await apiSite<LoginResp>("/auth/switch-workspace", {
+        method: "POST",
+        body: JSON.stringify({ workspace_id: workspaceID }),
+      });
+      // Reuse applyLogin so the access token + user payload land
+      // exactly as they do after login/refresh.
+      applyLogin(res);
+      return res.user;
+    },
+    [applyLogin]
+  );
+
   const logout = useCallback(async () => {
     const departingId = user?.id ?? null;
     try {
@@ -191,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const role = user?.role ?? null;
 
   return (
-    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, logout, refresh, setUser }}>
+    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, logout, refresh, switchWorkspace, setUser }}>
       {children}
     </Ctx.Provider>
   );

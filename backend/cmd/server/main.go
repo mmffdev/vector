@@ -800,6 +800,10 @@ func main() {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Get("/me", authH.Me)
+			// PLA-0053 / story 00576.5 — re-mint JWT with a new
+			// workspace_id claim. Mounted alongside /me so the
+			// auth+fresh-password gates already on this group apply.
+			r.Post("/switch-workspace", authH.SwitchWorkspace)
 		})
 	})
 

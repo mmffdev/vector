@@ -142,6 +142,45 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, h.buildUserPayload(r.Context(), u))
 }
 
+// PLA-0053 / story 00576.5 — re-mint the JWT + rotate the refresh
+// session with a new workspace_id claim. Frontend switcher posts here
+// then calls AuthContext.refresh() to pick up the new claim. The
+// response mirrors /auth/refresh's shape so the frontend code path
+// is a thin call-then-apply.
+type switchWorkspaceReq struct {
+	WorkspaceID string `json:"workspace_id"`
+}
+
+func (h *Handler) SwitchWorkspace(w http.ResponseWriter, r *http.Request) {
+	u := UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	var req switchWorkspaceReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	wsID, err := uuid.Parse(req.WorkspaceID)
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid workspace_id")
+		return
+	}
+	res, err := h.Svc.SwitchWorkspace(r.Context(), u, wsID, security.ClientIP(r), r.UserAgent())
+	if err != nil {
+		if errors.Is(err, ErrWorkspaceForbidden) {
+			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
+	issueCSRF(w)
+	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
+}
+
 type changePwdReq struct {
 	Current string `json:"current"`
 	New     string `json:"new"`

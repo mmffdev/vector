@@ -2,60 +2,54 @@
 
 // PLA-0006/00332 — data hook lifted out of page.tsx.
 //
-// Owns workspaces fetch (with workspaces:changed subscription),
-// tree fetch, and the wsRef state. The setters return so the page
-// body can clear selection / re-arm fitView on workspace switch.
+// Owns workspaces fetch (with workspaces:changed subscription) and
+// tree fetch. The active workspace is sourced from useActiveWorkspace
+// (the JWT-anchored truth), NOT a URL param — PLA-0053 / story 00576.5
+// moved workspace switching to AuthContext.switchWorkspace which
+// re-mints the JWT. The tree re-fetches whenever the active workspace
+// changes because workspaceId is in the reload deps.
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { topologyApi, type OrgNode } from "@/app/lib/topologyApi";
 import {
   workspacesApi,
   WORKSPACES_CHANGED_EVENT,
   type Workspace,
 } from "@/app/lib/workspacesApi";
+import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 
 export function useTopologyData() {
-  const search = useSearchParams();
-  const [wsRef, setWsRef] = useState<string | null>(() => search.get("ws"));
+  const workspaceId = useActiveWorkspace();
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
   const [tree, setTree] = useState<OrgNode[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
-      const res = await topologyApi.tree(undefined, wsRef ?? undefined);
+      const res = await topologyApi.tree();
       setTree(res);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load topology");
     }
-  }, [wsRef]);
+  }, []);
 
+  // Tree narrows server-side via the JWT claim; refetch on workspace switch.
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [reload, workspaceId]);
 
-  // Adopts the first workspace's UUID into ?ws= when none is provided
-  // so deep-links survive renames; subscribes to workspaces:changed so
-  // dropdown stays in sync with mutations from other panels.
+  // Workspaces dropdown — fetch list, subscribe to mutations from
+  // other panels. Active workspace tracking moved to useActiveWorkspace
+  // / AuthContext; this list is purely the dropdown's option set.
   const reloadWorkspaces = useCallback(async () => {
     try {
       const res = await workspacesApi.list();
       setWorkspaces(res);
-      if (wsRef == null && res.length > 0) {
-        const first = res[0]!;
-        if (typeof window !== "undefined") {
-          const url = new URL(window.location.href);
-          url.searchParams.set("ws", first.id);
-          window.history.replaceState(null, "", url.toString());
-        }
-        setWsRef(first.id);
-      }
     } catch {
       // Silently leave workspaces null — dropdown hides when unavailable.
     }
-  }, [wsRef]);
+  }, []);
 
   useEffect(() => {
     void reloadWorkspaces();
@@ -72,8 +66,10 @@ export function useTopologyData() {
   }, []);
 
   return {
-    wsRef,
-    setWsRef,
+    // wsRef is now the active workspace from the JWT-anchored hook.
+    // Kept as `wsRef` rather than renamed because the topology page
+    // already destructures it under that name; rename is a follow-up.
+    wsRef: workspaceId,
     workspaces,
     tree,
     setTree,

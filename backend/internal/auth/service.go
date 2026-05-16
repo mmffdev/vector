@@ -22,6 +22,11 @@ var (
 	ErrAccountInactive    = errors.New("account inactive")
 	ErrNotFound           = errors.New("not found")
 	ErrTokenExpired       = errors.New("token expired or used")
+	// ErrWorkspaceForbidden — caller asked SwitchWorkspace for a
+	// workspace that either doesn't exist, lives in another subscription,
+	// or carries no live role grant for this user. Single sentinel for
+	// all three so we don't leak existence (PLA-0053 / story 00576.5).
+	ErrWorkspaceForbidden = errors.New("workspace forbidden")
 )
 
 // PermissionResolver is the small surface auth.Service needs from the
@@ -476,4 +481,71 @@ func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uu
 		return uuid.Nil, err
 	}
 	return id, nil
+}
+
+// SwitchWorkspace re-mints the access token + rotates the refresh
+// session with the target workspace stamped into the JWT claim.
+// PLA-0053 / story 00576.5.
+//
+// Authoritative membership check (sqlAssertWorkspaceMemberLive) runs
+// in one round trip and excludes:
+//   - workspaces in another subscription (cross-tenant leak guard),
+//   - archived workspaces,
+//   - users with no non-revoked users_roles_workspaces grant.
+//
+// All three failure modes collapse to ErrWorkspaceForbidden so the
+// handler returns the same 403 regardless of root cause (no existence
+// leak — same shape as fields.AssertCallerMayRead). On success, the
+// returned LoginResult carries a new access token + rotated refresh
+// raw; the handler updates the rt cookie + returns the userPayload
+// the frontend uses to refresh AuthContext.
+//
+// The original refresh session is NOT revoked here — only rotated.
+// This keeps the user logged in if the new JWT fails to round-trip
+// for any reason; the previous session expires normally on its TTL.
+func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, workspaceID uuid.UUID, ip, ua string) (*LoginResult, error) {
+	if u == nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	var ok int
+	err := s.Pool.QueryRow(ctx, sqlAssertWorkspaceMemberLive,
+		u.SubscriptionID, workspaceID, u.ID,
+	).Scan(&ok)
+	if err != nil {
+		// pgx.ErrNoRows is the expected miss; any other err is also
+		// collapsed to forbidden so SQL hiccups don't leak.
+		return nil, ErrWorkspaceForbidden
+	}
+
+	// Re-stamp the user's workspace before signing — the new JWT claim
+	// comes off this struct.
+	u.WorkspaceID = workspaceID
+
+	access, err := SignAccessToken(u)
+	if err != nil {
+		return nil, err
+	}
+	raw, hash, err := GenerateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
+	expAt := time.Now().Add(refreshTTL)
+
+	if _, err := s.Pool.Exec(ctx, sqlInsertSession,
+		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
+	); err != nil {
+		return nil, err
+	}
+
+	s.Audit.Log(ctx, audit.Entry{
+		UserID:         &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:         "auth.workspace_switched",
+		IPAddress:      &ip,
+		Metadata:       map[string]any{"workspace_id": workspaceID.String()},
+	})
+
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }
