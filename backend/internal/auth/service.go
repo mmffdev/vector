@@ -151,6 +151,16 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	// Success: reset lockout state, stamp last_login.
 	_, _ = s.Pool.Exec(ctx, sqlClearLockoutAndStampLogin, u.ID)
 
+	// PLA-0053 / story 00575: attach the user's first live workspace
+	// to the JWT claim. Failure (no workspaces yet, DB error) is
+	// non-fatal — the access token signs without a workspace_id claim
+	// and WorkspaceClampMiddleware falls back to FirstLiveWorkspace
+	// per the legacy-token rollout window. Login itself never blocks
+	// on workspace resolution.
+	if wsID, werr := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); werr == nil {
+		u.WorkspaceID = wsID
+	}
+
 	access, err := SignAccessToken(u)
 	if err != nil {
 		return nil, err
@@ -447,4 +457,23 @@ func envInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// resolveDefaultWorkspace returns the subscription's first live workspace
+// (earliest created_at) — same predicate as topology.PoolWorkspaceLookup's
+// FirstLiveWorkspace. The SQL lives in sql.go (sqlSelectFirstLiveWorkspaceID)
+// per the lint:sql-in-sqlfile-only rule. Kept inside auth package rather
+// than importing topology so the dependency edge stays one-way (topology
+// → auth, never auth → topology).
+//
+// Called at login time to seed the JWT's workspace_id claim (PLA-0053 /
+// story 00575). Non-fatal: failures return the zero UUID + error and the
+// caller signs without a workspace_id claim — WorkspaceClampMiddleware
+// falls back to FirstLiveWorkspace per the legacy-token rollout window.
+func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	if err := s.Pool.QueryRow(ctx, sqlSelectFirstLiveWorkspaceID, subscriptionID).Scan(&id); err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
 }

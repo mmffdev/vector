@@ -33,6 +33,11 @@ func (r Role) Rank() int {
 type User struct {
 	ID                  uuid.UUID  `json:"id"`
 	SubscriptionID            uuid.UUID  `json:"subscription_id"`
+	// WorkspaceID is the user's active workspace within their subscription.
+	// Populated from the JWT claim on RequireAuth (PLA-0053 / story 00575).
+	// Zero (uuid.Nil) when the JWT predates PLA-0053 — middleware falls
+	// back to FirstLiveWorkspace per the legacy-token rollout window.
+	WorkspaceID         uuid.UUID  `json:"workspace_id"`
 	Email               string     `json:"email"`
 	PasswordHash        string     `json:"-"`
 	// Role is the legacy user_role enum (gadmin/padmin/user) kept

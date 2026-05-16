@@ -19,6 +19,14 @@ type AccessClaims struct {
 	Email          string `json:"email"`
 	Role           string `json:"role"`
 	SubscriptionID string `json:"subscription_id"`
+	// WorkspaceID is the active workspace within the subscription.
+	// Added by PLA-0053 / story 00575. Read by WorkspaceClampMiddleware
+	// as the primary workspace source; absent claim → middleware falls
+	// back to FirstLiveWorkspace (legacy-token rollout window).
+	// omitempty so a zero-value claim is genuinely absent (not just "")
+	// — distinguishes "JWT has no workspace context yet" from "JWT
+	// explicitly carries an empty workspace_id".
+	WorkspaceID    string `json:"workspace_id,omitempty"`
 	ForcePwdChange bool   `json:"force_pwd_change"`
 	jwt.RegisteredClaims
 }
@@ -40,10 +48,19 @@ func SignAccessToken(u *roletypes.User) (string, error) {
 	ttl := parseDurationEnv("JWT_ACCESS_TTL", 15*time.Minute)
 	jti := uuid.NewString()
 
+	// Workspace claim is emitted only when the User carries a non-zero
+	// WorkspaceID — keeps the legacy-token rollout window clean (zero =
+	// omit, middleware falls back to FirstLiveWorkspace).
+	workspaceID := ""
+	if u.WorkspaceID != uuid.Nil {
+		workspaceID = u.WorkspaceID.String()
+	}
+
 	claims := AccessClaims{
 		Email:          u.Email,
 		Role:           string(u.Role),
 		SubscriptionID: u.SubscriptionID.String(),
+		WorkspaceID:    workspaceID,
 		ForcePwdChange: u.ForcePasswordChange,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID.String(),

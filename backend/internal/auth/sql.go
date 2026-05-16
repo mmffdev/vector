@@ -195,3 +195,17 @@ const sqlUpdatePasswordHashAndClearLockout = `
 // cannot be replayed. Run inside the confirmation tx alongside the
 // password update and session revoke.
 const sqlMarkPasswordResetUsed = `UPDATE users_password_resets SET users_password_resets_used_at = NOW() WHERE users_password_resets_id = $1`
+
+// sqlSelectFirstLiveWorkspaceID returns the subscription's earliest-created
+// live workspace. Used by Login to seed the JWT's workspace_id claim
+// (PLA-0053 / story 00575). Mirrors topology/sql.go's constant of the
+// same name — the row shape (master_record_workspaces with subscription_id,
+// archived_at, created_at) is the source of truth; if both copies drift,
+// favour topology since that's where the read-side substrate lives.
+const sqlSelectFirstLiveWorkspaceID = `
+		SELECT id FROM master_record_workspaces
+		 WHERE subscription_id = $1
+		   AND archived_at IS NULL
+		 ORDER BY created_at ASC
+		 LIMIT 1
+	`

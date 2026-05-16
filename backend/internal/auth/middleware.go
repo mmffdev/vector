@@ -67,6 +67,17 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 			return
 		}
+		// PLA-0053 / story 00575: populate u.WorkspaceID from the JWT
+		// claim. The users table itself has no workspace_id column —
+		// the workspace association is per-session, not per-user, and
+		// lives on the access token. Legacy tokens (claim absent / "")
+		// leave WorkspaceID as uuid.Nil, which WorkspaceClampMiddleware
+		// treats as "fall back to FirstLiveWorkspace".
+		if claims.WorkspaceID != "" {
+			if wsID, perr := uuid.Parse(claims.WorkspaceID); perr == nil {
+				u.WorkspaceID = wsID
+			}
+		}
 		ctx := context.WithValue(r.Context(), userCtxKey, u)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
