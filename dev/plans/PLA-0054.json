@@ -645,25 +645,25 @@
       "order": 36,
       "criterion": "rename invariance: same UUID + different name → filter still works",
       "proven_by": "vitest",
-      "story_id": "00593",
+      "story_id": "00606",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 37,
       "criterion": "workspace switch: catalogue invalidates; new workspace types appear",
       "proven_by": "vitest",
-      "story_id": "00593",
+      "story_id": "00606",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 38,
       "criterion": "chip onChange UUID matches workspace's actual artefact_type_id (not slug, not stale)",
       "proven_by": "negative test",
-      "story_id": "00593",
+      "story_id": "00606",
       "card_url": null,
-      "done": false
+      "done": true
     }
   ],
   "risks": [
