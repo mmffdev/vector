@@ -82,23 +82,41 @@ func TestF3_SlotCheckConstraint_Enforced(t *testing.T) {
 		) VALUES ($1::uuid, $2::uuid, 'work', 'system', $3, $4, 99, $5)
 	`
 
+	// Each check runs inside its own SAVEPOINT so a CHECK-rejected
+	// insert (which aborts the surrounding tx in pgx) does not break
+	// the next assertion. Pattern: SAVEPOINT s; <stmt>; ROLLBACK TO s.
+
 	// Bogus slot must be rejected by CHECK.
+	if _, err := tx.Exec(ctx, "SAVEPOINT s_bogus"); err != nil {
+		t.Fatalf("savepoint: %v", err)
+	}
 	if _, err := tx.Exec(ctx, insertWithSlot, subID, wsID, "F3-bogus", "F3B", "bogus_slot"); err == nil {
 		t.Errorf("CHECK constraint failed to reject slot='bogus_slot' — story 00582 vocabulary check missing")
 	}
+	_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT s_bogus")
 
 	// One canonical slot must be accepted (inside this rolled-back tx).
+	if _, err := tx.Exec(ctx, "SAVEPOINT s_risk"); err != nil {
+		t.Fatalf("savepoint: %v", err)
+	}
 	if _, err := tx.Exec(ctx, insertWithSlot, subID, wsID, "F3-risk", "F3R", "wrk_risk"); err != nil {
-		// If this fails it's likely the unique partial index — pick a
-		// fixture workspace that doesn't already have wrk_risk seeded.
-		// Skip rather than spuriously fail.
-		t.Skipf("could not INSERT wrk_risk in fixture workspace (likely already seeded — story 00583 backfill): %v", err)
+		// Likely the unique partial index — pick a fixture workspace
+		// that doesn't already have wrk_risk seeded. Roll back the
+		// savepoint and continue with the NULL case.
+		t.Logf("could not INSERT wrk_risk (likely already seeded by 00583 backfill): %v", err)
+		_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT s_risk")
+	} else {
+		_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT s_risk")
 	}
 
 	// NULL slot must be accepted (custom artefact types have no slot).
+	if _, err := tx.Exec(ctx, "SAVEPOINT s_null"); err != nil {
+		t.Fatalf("savepoint: %v", err)
+	}
 	if _, err := tx.Exec(ctx, insertWithSlot, subID, wsID, "F3-custom", "F3C", nil); err != nil {
 		t.Errorf("CHECK constraint must allow slot=NULL (custom artefact types): %v", err)
 	}
+	_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT s_null")
 }
 
 // TestF3_Backfill_FiveSlotsPerWorkspace asserts story 00583's backfill
