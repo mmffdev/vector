@@ -2151,7 +2151,9 @@ input[type="reset"] {
   border-bottom: 1px solid var(--border);
 }
 
-/* Sticky subheader wrapper — parallel of dev-ui's .dui-sticky-subheader.
+/* Sticky subheader wrapper — user-side parallel of the dev-ui catalog's
+   sticky subheader primitive (kept here because dev-ui classes are not
+   allowed in user-side stylesheets, and vice versa per HARD RULE).
    Pins the nav to the top of the nearest scroll ancestor; the opaque
    background covers content scrolling underneath. The 20px padding-bottom
    lives INSIDE the wrapper (not as a sibling margin) so it stays opaque
@@ -9193,15 +9195,20 @@ input[type="reset"] {
   padding-bottom: 0;
 }
 .panel:has(.tree_accordion-dense__table) > .panel__header,
-.panel:has(.tree_accordion-dense__table) .ui-table > .toolbar {
+.panel:has(.tree_accordion-dense__table) .ui-table > .toolbar,
+.panel:has(.tree_accordion-dense__table) .tree_accordion-dense__panel-head {
   padding-left: var(--space-4);
   padding-right: var(--space-4);
 }
 /* Drop the scroll container's redundant border — the panel already
-   owns the outer edge. Round the bottom corners to match the panel
-   so the sunken-header table flows into the panel border. */
+   owns the outer edge. Round the bottom corners ONLY when no
+   __pagination--bottom sibling follows; otherwise the pagination row
+   carries the bottom radius and the scroll must stay square or the
+   stacked radii create a notch in the bottom-left corner. */
 .panel:has(.tree_accordion-dense__table) .tree_accordion-dense__scroll {
   border: none;
+}
+.panel:has(.tree_accordion-dense__table) .tree_accordion-dense__scroll:not(:has(~ .tree_accordion-dense__pagination--bottom)) {
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
 }
@@ -11897,7 +11904,7 @@ input[type="reset"] {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 0 12px;
+  padding: 12px 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   border-radius: 0;

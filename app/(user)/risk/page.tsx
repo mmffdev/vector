@@ -31,7 +31,7 @@ import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/comp
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
-import { RisksPanelHeader, RisksFilterChips } from "@/app/components/risk-tree-config";
+import { RisksFilterChips } from "@/app/components/risk-tree-config";
 import risksWizardJson from "@/app/components/ObjectTree/configs/p_wizard_risks.json";
 
 interface RisksSummary {
@@ -84,7 +84,6 @@ export default function RiskPage() {
       getParentId: funcs.getParentId,
       getChildrenCount: funcs.getChildrenCount,
       searchAccessor: funcs.searchAccessor,
-      panelHeader: resolved.panelHeaderComponent === "RisksPanelHeader" ? <RisksPanelHeader /> : undefined,
       filterChips: resolved.filterChipsComponent === "RisksFilterChips" ? <RisksFilterChips /> : undefined,
     } as ObjectTreeDataConfig;
   }, [types]);
@@ -129,17 +128,20 @@ export default function RiskPage() {
         />
         <PageSummaryHeader cells={summaryCells} />
 
-        <Panel name="risk_grid_tree_ll" title="Risk register">
-          <ObjectTree
-            selectedId={selectedItem?.id ?? null}
-            onSelect={setSelectedItem}
-            onPatched={(body) => {
-              const needsRefetch = "status" in body || "title" in body;
-              if (needsRefetch) void refetch();
-            }}
-            wizardConfig={wizardConfig}
-          />
-        </Panel>
+        <ObjectTree
+          title="Risk register"
+          addressableName="risk_grid_tree_ll"
+          subtitleBadge="RSK"
+          subtitle="Risk register"
+          description="Identify, score, mitigate. Severity × likelihood drives the matrix above."
+          selectedId={selectedItem?.id ?? null}
+          onSelect={setSelectedItem}
+          onPatched={(body) => {
+            const needsRefetch = "status" in body || "title" in body;
+            if (needsRefetch) void refetch();
+          }}
+          wizardConfig={wizardConfig}
+        />
       </>
     </PageContent>
   );

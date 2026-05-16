@@ -13,7 +13,7 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import { WorkItemsPanelHeader, WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
+import { WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
 import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_workitems.json";
 
 export default function WorkItemsPage() {
@@ -39,7 +39,6 @@ export default function WorkItemsPage() {
       getParentId: funcs.getParentId,
       getChildrenCount: funcs.getChildrenCount,
       searchAccessor: funcs.searchAccessor,
-      panelHeader: resolved.panelHeaderComponent === "WorkItemsPanelHeader" ? <WorkItemsPanelHeader /> : undefined,
       filterChips: resolved.filterChipsComponent === "WorkItemsFilterChips" ? <WorkItemsFilterChips /> : undefined,
     } as ObjectTreeDataConfig;
   }, []);
@@ -99,17 +98,20 @@ export default function WorkItemsPage() {
       />
       <PageSummaryHeader cells={summaryCells} />
 
-      <Panel name="work_items_grid_tree_ll" title="Work items">
-        <ObjectTree
-          selectedId={selectedItem?.id ?? null}
-          onSelect={setSelectedItem}
-          onPatched={(body) => {
-            const needsRefetch = "story_points" in body || "title" in body;
-            if (needsRefetch) void refetch();
-          }}
-          wizardConfig={wizardConfig}
-        />
-      </Panel>
+      <ObjectTree
+        title="Work items"
+        addressableName="work_items_grid_tree_ll"
+        subtitleBadge="05"
+        subtitle="Dense grid"
+        description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
+        selectedId={selectedItem?.id ?? null}
+        onSelect={setSelectedItem}
+        onPatched={(body) => {
+          const needsRefetch = "story_points" in body || "title" in body;
+          if (needsRefetch) void refetch();
+        }}
+        wizardConfig={wizardConfig}
+      />
     </>
     </PageContent>
   );
