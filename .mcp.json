@@ -6,6 +6,30 @@
       "args": [
         "${CLAUDE_PROJECT_DIR}/.claude/bin/whisper-mcp.js"
       ]
+    },
+    "pg-vector": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "${CLAUDE_PROJECT_DIR}/.claude/bin/pg-mcp.sh",
+        "vector"
+      ]
+    },
+    "pg-artefacts": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "${CLAUDE_PROJECT_DIR}/.claude/bin/pg-mcp.sh",
+        "artefacts"
+      ]
+    },
+    "pg-library": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "${CLAUDE_PROJECT_DIR}/.claude/bin/pg-mcp.sh",
+        "library"
+      ]
     }
   }
 }
