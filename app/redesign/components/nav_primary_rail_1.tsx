@@ -83,7 +83,11 @@ export default function IconRail() {
         className="nav-primary-rail-1__brand"
         aria-label="Vector home (dev)"
       >
-        V
+        <img
+          src="/logo-vector.png"
+          alt="Vector"
+          className="nav-primary-rail-1__brand_logo"
+        />
       </Link>
 
       <div id="nav-primary-rail-1__ProfileStack" className="nav-primary-rail-1__ProfileStack">
