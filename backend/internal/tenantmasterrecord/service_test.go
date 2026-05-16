@@ -346,6 +346,37 @@ func TestPatch_MultipleViolations_Aggregate(t *testing.T) {
 	}
 }
 
+// ─── 10b. Read tolerates NULL inheritable columns (mig 070 made them
+//          nullable; reader must COALESCE-to-default rather than crash) ──
+func TestGet_NullTimezone_FallsToDefault(t *testing.T) {
+	pool := vaPoolForTest(t)
+	defer pool.Close()
+	subID, cleanup := makeSub(t, pool)
+	defer cleanup()
+
+	// Seed the row, then force timezone to NULL — the situation that
+	// crashed the live /_site/tenant-settings page (PLA-0050 AC10 smoke)
+	// after PLA-0051 mig 070 dropped NOT NULL on inheritable cols.
+	svc := New(pool)
+	if err := svc.SeedForSubscription(context.Background(), subID); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE master_record_tenants SET master_record_tenants_timezone = NULL WHERE master_record_tenants_id_subscription = $1`,
+		subID,
+	); err != nil {
+		t.Fatalf("null timezone: %v", err)
+	}
+
+	got, err := svc.Get(context.Background(), subID)
+	if err != nil {
+		t.Fatalf("Get crashed on NULL timezone — reader must COALESCE-to-default: %v", err)
+	}
+	if got.TenantTimezone == "" {
+		t.Fatalf("expected COALESCE-to-default for NULL timezone, got empty string")
+	}
+}
+
 // ─── 10. Patch with no fields is a no-op (auto-seeds, re-reads) ───────────
 func TestPatch_NoFields_NoOpReadsBack(t *testing.T) {
 	pool := vaPoolForTest(t)

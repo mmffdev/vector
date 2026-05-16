@@ -14,19 +14,31 @@ const sqlEnsureTenantRow = `
 	`
 
 // sqlSelectTenantSettings hydrates the wire shape for one subscription.
+//
+// PLA-0051 mig 070 dropped NOT NULL on the inheritable tenant columns
+// (so the workspacemasterrecord COALESCE merge can distinguish "tenant
+// has no opinion" from "tenant says X"). This reader serves the
+// **tenant-settings page itself**, where the wire shape promises
+// non-nullable values for those fields — so we COALESCE-to-schema-default
+// at read time. Net effect: a tenant row whose inheritable column is
+// accidentally NULL still renders the canonical default to the editor,
+// rather than crashing with "cannot scan NULL into *string". The schema
+// defaults match those in vector_artefacts/schema/068 (column DEFAULTs)
+// and tenantmasterrecord/service.go (validation sets); if either moves,
+// this list must move with it.
 const sqlSelectTenantSettings = `
 		SELECT master_record_tenants_id_subscription,
 		       master_record_tenants_name,
 		       master_record_tenants_description,
 		       master_record_tenants_primary_contact_email,
-		       master_record_tenants_data_region,
-		       master_record_tenants_timezone,
-		       master_record_tenants_date_format,
-		       master_record_tenants_datetime_format,
-		       master_record_tenants_workdays,
-		       master_record_tenants_week_start,
-		       master_record_tenants_rank_method,
-		       master_record_tenants_build_changeset_tracking,
+		       COALESCE(master_record_tenants_data_region, 'use1')                          AS master_record_tenants_data_region,
+		       COALESCE(master_record_tenants_timezone, 'Europe/London')                    AS master_record_tenants_timezone,
+		       COALESCE(master_record_tenants_date_format, 'DD/MM/YYYY')                    AS master_record_tenants_date_format,
+		       COALESCE(master_record_tenants_datetime_format, 'DD/MM/YYYY HH:mm')          AS master_record_tenants_datetime_format,
+		       COALESCE(master_record_tenants_workdays, ARRAY['mon','tue','wed','thu','fri']::text[]) AS master_record_tenants_workdays,
+		       COALESCE(master_record_tenants_week_start, 'mon')                            AS master_record_tenants_week_start,
+		       COALESCE(master_record_tenants_rank_method, 'dragdrop')                      AS master_record_tenants_rank_method,
+		       COALESCE(master_record_tenants_build_changeset_tracking, FALSE)              AS master_record_tenants_build_changeset_tracking,
 		       master_record_tenants_notes,
 		       master_record_tenants_created_at,
 		       master_record_tenants_updated_at,

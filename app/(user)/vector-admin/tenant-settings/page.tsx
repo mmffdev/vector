@@ -25,13 +25,14 @@
 //     mirrors the same rules so users get immediate feedback.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { usePageAccess } from "@/app/contexts/PageAccessContext";
+import PageAccessDenied from "@/app/components/PageAccessDenied";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
@@ -307,18 +308,21 @@ function FeatureToggle({
 
 export default function TenantSettingsPage() {
   const { user } = useAuth();
-  const canAccess = useHasPermission("workspace.archive");
+  // PLA-0050 AC11: gate via the page-access substrate (PLA-0049) so the
+  // user sees the canonical denial component (URL preserved) rather than
+  // a redirect to a removed path. Backend already enforces via
+  // RequirePageAccess(pageAccessResolver, "va-tenant-settings") in
+  // main.go + the grp_global grant seeded by mig 201.
+  const access = usePageAccess("va-tenant-settings");
   // NB: tenant settings are subscription-tier and DO NOT mutate the
   // TenantContext (which actually holds workspace-tier data — naming is
   // a known carry-over, tracked in cleanup register Story 3).
-  const router = useRouter();
   const { full } = usePageTitle();
 
-  useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-settings");
-  }, [user, canAccess, router]);
-
-  if (!user || !canAccess) return null;
+  if (user && access.allowed === false) {
+    return <PageAccessDenied pageLabel="Tenant Settings" />;
+  }
+  if (!user || access.loading || access.allowed !== true) return null;
 
   const [original, setOriginal] = useState<FormState | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
