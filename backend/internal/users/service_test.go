@@ -72,7 +72,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
@@ -86,22 +86,14 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 }
 
 // mkUser inserts a user with the given role into the tenant.
-// role_id is NOT NULL post-migration 088, so we seed it from the
-// system-role UUID matching the legacy enum.
+// role_id is NOT NULL post-migration 088, so we resolve the grp_* UUID
+// at fixture time via the users_roles code lookup. The rank-encoded ad05
+// /ad10/ad20/ad25/ad30 literals were retired by PLA-0049 Phase 0
+// (TD-TEST-002, refreshed 2026-05-16).
 func mkUser(t *testing.T, pool *pgxpool.Pool, subscriptionID uuid.UUID, role roletypes.Role) uuid.UUID {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
-	var roleID uuid.UUID
-	switch role {
-	case roletypes.RoleGAdmin:
-		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad30")
-	case roletypes.RolePAdmin:
-		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad25")
-	case roletypes.RoleUser:
-		roleID = uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
-	default:
-		t.Fatalf("mkUser: unsupported role %q", role)
-	}
+	roleID := resolveGrpRoleID(t, pool, role)
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)

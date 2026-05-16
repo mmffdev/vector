@@ -53,7 +53,6 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/topology"
-	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -412,6 +411,15 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, uuid.U
 		t.Fatalf("insert tenant: %v", err)
 	}
 
+	// Resolve grp_global role UUID by code; the rank-encoded SystemRoleGadmin
+	// constant was retired by PLA-0049 Phase 0 (TD-TEST-002, 2026-05-16).
+	var grpGlobalID uuid.UUID
+	if err := pool.QueryRow(ctx,
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_global' AND users_roles_id_subscription IS NULL`,
+	).Scan(&grpGlobalID); err != nil {
+		t.Fatalf("resolve grp_global users_roles_id: %v", err)
+	}
+
 	var userID uuid.UUID
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
@@ -419,7 +427,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, uuid.U
 		RETURNING id
 	`, subID, "u-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
-		roles.SystemRoleGadmin,
+		grpGlobalID,
 	).Scan(&userID); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}

@@ -34,10 +34,9 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
-	"github.com/mmffdev/vector-backend/internal/roles"
-	"github.com/mmffdev/vector-backend/internal/master_record_workspaces"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -114,23 +113,42 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	return subID, cleanup
 }
 
+// resolveGrpRoleID looks up the grp_* role UUID for a legacy enum role
+// directly from users_roles. Replaces the retired roles.SystemRoleGadmin /
+// SystemRolePadmin / SystemRoleUser package constants removed in
+// PLA-0049 Phase 0 (TD-TEST-002, refreshed 2026-05-16). Coarse-fallback
+// mapping mirrors mig 196:
+//   gadmin → grp_global, padmin → grp_portfolio, user → grp_team_member.
+func resolveGrpRoleID(t *testing.T, pool *pgxpool.Pool, role roletypes.Role) uuid.UUID {
+	t.Helper()
+	var code string
+	switch role {
+	case roletypes.RoleGAdmin:
+		code = "grp_global"
+	case roletypes.RolePAdmin:
+		code = "grp_portfolio"
+	case roletypes.RoleUser:
+		code = "grp_team_member"
+	default:
+		t.Fatalf("resolveGrpRoleID: unknown role %q", role)
+	}
+	var id uuid.UUID
+	if err := pool.QueryRow(context.Background(),
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = $1 AND users_roles_id_subscription IS NULL`,
+		code,
+	).Scan(&id); err != nil {
+		t.Fatalf("resolveGrpRoleID(%s → %s): %v", role, code, err)
+	}
+	return id
+}
+
 // mkUser seeds a user under the given subscription with the requested
 // role. role_id maps to the seeded system role UUID so the permission
 // resolver returns the right code set.
 func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Role) *roletypes.User {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
-	var roleID uuid.UUID
-	switch role {
-	case roletypes.RoleGAdmin:
-		roleID = roles.SystemRoleGadmin
-	case roletypes.RolePAdmin:
-		roleID = roles.SystemRolePadmin
-	case roletypes.RoleUser:
-		roleID = roles.SystemRoleUser
-	default:
-		t.Fatalf("mkUser: unknown role %q", role)
-	}
+	roleID := resolveGrpRoleID(t, pool, role)
 	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)

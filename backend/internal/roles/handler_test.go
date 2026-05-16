@@ -92,23 +92,43 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	return subID, cleanup
 }
 
+// resolveGrpRoleID looks up the grp_* role UUID for a legacy enum role
+// directly from users_roles. Replaces the retired SystemRoleGadmin /
+// SystemRolePadmin / SystemRoleUser package constants that were removed
+// in PLA-0049 Phase 0 (TD-TEST-002, refreshed 2026-05-16).
+//
+// Mapping mirrors mig 196's coarse-fallback contract:
+//   gadmin → grp_global, padmin → grp_portfolio, user → grp_team_member.
+func resolveGrpRoleID(t *testing.T, pool *pgxpool.Pool, role roletypes.Role) uuid.UUID {
+	t.Helper()
+	var code string
+	switch role {
+	case roletypes.RoleGAdmin:
+		code = "grp_global"
+	case roletypes.RolePAdmin:
+		code = "grp_portfolio"
+	case roletypes.RoleUser:
+		code = "grp_team_member"
+	default:
+		t.Fatalf("resolveGrpRoleID: unknown role %q", role)
+	}
+	var id uuid.UUID
+	err := pool.QueryRow(context.Background(),
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = $1 AND users_roles_id_subscription IS NULL`,
+		code,
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("resolveGrpRoleID(%s → %s): %v", role, code, err)
+	}
+	return id
+}
+
 func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Role) *roletypes.User {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
-	// Map legacy enum to the system role UUID. role_id is NOT NULL after
-	// migration 088, so we have to seed both columns until the enum is
-	// retired in PLA-0007 G4.
-	var roleID uuid.UUID
-	switch role {
-	case roletypes.RoleGAdmin:
-		roleID = SystemRoleGadmin
-	case roletypes.RolePAdmin:
-		roleID = SystemRolePadmin
-	case roletypes.RoleUser:
-		roleID = SystemRoleUser
-	default:
-		t.Fatalf("mkUser: unknown role %q", role)
-	}
+	// role_id is NOT NULL after migration 088 + PLA-0049 Phase 0 rename;
+	// resolve the grp_* UUID by code at fixture time (TD-TEST-002).
+	roleID := resolveGrpRoleID(t, pool, role)
 	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
@@ -372,8 +392,9 @@ func TestArchive_403onSystemRole(t *testing.T) {
 	srv := httptest.NewServer(newRouter(h, actor))
 	defer srv.Close()
 
+	grpGlobalID := resolveGrpRoleID(t, pool, roletypes.RoleGAdmin)
 	req, _ := http.NewRequest(http.MethodDelete,
-		srv.URL+"/api/users_roles/"+SystemRoleGadmin.String(), nil)
+		srv.URL+"/api/users_roles/"+grpGlobalID.String(), nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("DELETE: %v", err)
