@@ -160,6 +160,16 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		args = append(args, *filters.OwnerID)
 		n++
 	}
+	// PLA-0053 / story 00579: workspace clamp via the artefact_type's
+	// workspace_id (the column added by PLA-0026 mig 019). artefact_items
+	// inherits its workspace from the type it instances; cross-workspace
+	// reads are excluded by JOIN predicate. The `at` alias is already in
+	// scope from the base FROM clause.
+	if filters.WorkspaceID != nil {
+		extra = append(extra, fmt.Sprintf("at.artefacts_types_id_workspace = $%d::uuid", n))
+		args = append(args, *filters.WorkspaceID)
+		n++
+	}
 
 	extraWhere := ""
 	if len(extra) > 0 {
@@ -202,12 +212,31 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 // GetWorkItem returns a single work item by ID enforcing subscription isolation.
 // Returns ErrNotFound when the row does not exist or belongs to another tenant.
 func (s *Service) GetWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID) (*WorkItem, error) {
+	return s.getWorkItemImpl(ctx, subscriptionID, id, nil)
+}
+
+// GetWorkItemInWorkspace clamps the read to a single workspace
+// (PLA-0053 / story 00579). When the workspace clamp is in effect,
+// cross-workspace IDs return ErrNotFound — the handler translates to
+// 404, preserving the no-existence-leak contract from F1's test scope.
+func (s *Service) GetWorkItemInWorkspace(ctx context.Context, subscriptionID, workspaceID, id uuid.UUID) (*WorkItem, error) {
+	return s.getWorkItemImpl(ctx, subscriptionID, id, &workspaceID)
+}
+
+func (s *Service) getWorkItemImpl(ctx context.Context, subscriptionID, id uuid.UUID, workspaceID *uuid.UUID) (*WorkItem, error) {
 	if s.vectorArtefactsPool == nil {
 		return nil, ErrNotFound
 	}
-	row := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectWorkItemByID,
-		subscriptionID, id, s.scope,
-	)
+	var row pgx.Row
+	if workspaceID != nil {
+		row = s.vectorArtefactsPool.QueryRow(ctx, sqlSelectWorkItemByIDInWorkspace,
+			subscriptionID, id, s.scope, *workspaceID,
+		)
+	} else {
+		row = s.vectorArtefactsPool.QueryRow(ctx, sqlSelectWorkItemByID,
+			subscriptionID, id, s.scope,
+		)
+	}
 	wi, err := scanWorkItemRow(row)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound

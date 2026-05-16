@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
@@ -24,14 +25,27 @@ func (h *Handler) Mount(r chi.Router) {
 }
 
 // GET /_site/artefact-types
-// Returns all live artefact types for the caller's subscription.
+// Returns live artefact types for the caller. PLA-0053 / story 00579:
+// when a workspace clamp is seeded on context (by WorkspaceClampMiddleware
+// per story 00578), reads narrow to that workspace. Without a clamp
+// (admin tools or migrations that bypass the middleware) the legacy
+// subscription-scoped path runs — covers backward compatibility and
+// keeps the dev-tool surface working.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
-	types, err := h.Svc.List(r.Context(), u.SubscriptionID)
+	var (
+		types []ArtefactType
+		err   error
+	)
+	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+		types, err = h.Svc.ListByWorkspace(r.Context(), u.SubscriptionID, wsID)
+	} else {
+		types, err = h.Svc.List(r.Context(), u.SubscriptionID)
+	}
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return

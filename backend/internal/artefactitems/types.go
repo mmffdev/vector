@@ -133,6 +133,13 @@ type Filters struct {
 	ScopeNodeID  *string
 	ActorUserID  *string // required when ScopeNodeID is set
 	ActorRole    string  // required when ScopeNodeID is set (e.g. "user", "padmin", "gadmin")
+	// WorkspaceID, when set, clamps reads to artefacts whose
+	// artefact_type belongs to this workspace. PLA-0053 / story 00579.
+	// Populated by the handler from topology.WorkspaceIDFromCtx (seeded
+	// by WorkspaceClampMiddleware per story 00578). When nil (admin
+	// tools / migrations bypassing the middleware), reads fall back to
+	// subscription-only — same shape as artefacttypes.Service.List.
+	WorkspaceID *string
 	Limit       int
 	Offset      int
 	Sort        string

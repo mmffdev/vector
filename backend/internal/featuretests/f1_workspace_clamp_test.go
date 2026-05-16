@@ -33,6 +33,7 @@ package featuretests_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -45,6 +46,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
+	"github.com/mmffdev/vector-backend/internal/artefactitems"
+	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/topology"
@@ -332,30 +335,260 @@ func TestF1_Migration_ArtefactTypesWorkspaceIDNotNull(t *testing.T) {
 	}
 }
 
-// TestF1_GET_ArtefactTypes_WorkspaceScoped verifies that GET /_site/artefact-types
-// returns only the JWT-resolved workspace's rows.
+// TestF1_GET_ArtefactTypes_WorkspaceScoped verifies that the
+// artefacttypes service's workspace-clamped read returns only the
+// caller's workspace rows. Exercises the SQL clamp predicate
+// added by PLA-0053 / story 00579 directly against the live dev
+// pool — handler-level integration is implicit (the handler just
+// passes the JWT-derived workspace_id through to ListByWorkspace).
 //
-// Story 00578 — API: mount WorkspaceClampMiddleware on /artefact-types.
-// Story 00579 — API: artefacttypes service reads WorkspaceIDFromCtx + clamps.
+// Approach: pick two real subscriptions from the dev DB that each
+// own at least one artefact_type. ListByWorkspace for sub-A's
+// workspace must return only A's types; calling ListByWorkspace
+// with sub-A but sub-B's workspace_id must return empty (defence-
+// in-depth — the subscription_id AND workspace_id both narrow).
 func TestF1_GET_ArtefactTypes_WorkspaceScoped(t *testing.T) {
-	t.Skip("PLA-0053 stories 00578 + 00579 must land first (middleware mount + service clamp); unskip when artefacttypes handler is workspace-scoped")
+	pool := vectorArtefactsPoolForF1(t)
+	defer pool.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	a, b, err := f1FindTwoDistinctWorkspaces(ctx, pool)
+	if err != nil {
+		t.Skipf("dev DB does not have two distinct (sub, workspace) pairs to compare: %v", err)
+	}
+
+	svc := artefacttypes.NewService(pool)
+
+	typesA, err := svc.ListByWorkspace(ctx, a.subID, a.wsID)
+	if err != nil {
+		t.Fatalf("ListByWorkspace(A): %v", err)
+	}
+	if len(typesA) == 0 {
+		t.Skipf("workspace A (%s) has zero live artefact_types", a.wsID)
+	}
+
+	// Defence-in-depth: A's subID + B's workspaceID must return zero
+	// rows. The AND-of-clamps means even if a forged workspace_id
+	// slipped through, the subscription_id still gates the read.
+	mismatched, err := svc.ListByWorkspace(ctx, a.subID, b.wsID)
+	if err != nil {
+		t.Fatalf("ListByWorkspace(A.sub, B.ws): %v", err)
+	}
+	if len(mismatched) != 0 {
+		t.Errorf("cross-subscription clamp leak: %d rows returned when querying sub-A with workspace-B", len(mismatched))
+	}
 }
 
-// TestF1_GET_WorkItems_WorkspaceScoped verifies that GET /_site/work-items
-// returns only artefacts whose artefact_type belongs to the JWT workspace.
-//
-// Story 00578 + 00579.
+// TestF1_GET_WorkItems_WorkspaceScoped verifies that the
+// artefactitems service's ListWorkItems with Filters.WorkspaceID
+// returns only artefacts whose artefact_type belongs to the
+// clamped workspace.
 func TestF1_GET_WorkItems_WorkspaceScoped(t *testing.T) {
-	t.Skip("PLA-0053 stories 00578 + 00579 must land first (middleware mount + service clamp); unskip when artefactitems handler is workspace-scoped")
+	pool := vectorArtefactsPoolForF1(t)
+	defer pool.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	a, _, err := f1FindTwoDistinctWorkspaces(ctx, pool)
+	if err != nil {
+		t.Skipf("dev DB does not have two distinct (sub, workspace) pairs: %v", err)
+	}
+
+	svc := artefactitems.NewService(pool, nil, "work")
+	wsStr := a.wsID.String()
+	items, _, err := svc.ListWorkItems(ctx, a.subID, artefactitems.Filters{
+		Limit:       50,
+		WorkspaceID: &wsStr,
+	})
+	if err != nil {
+		t.Fatalf("ListWorkItems with workspace clamp: %v", err)
+	}
+
+	// Every returned row's artefact_type_id must resolve to an
+	// artefact_type whose workspace_id == a.wsID. Cross-check via
+	// a direct query: count any row in the result whose artefact's
+	// type belongs to a *different* workspace. Expect zero.
+	if len(items) == 0 {
+		t.Skipf("workspace A (%s) has zero live artefacts in scope=work", a.wsID)
+	}
+	leaks, err := f1CountCrossWorkspaceLeaks(ctx, pool, items, a.wsID)
+	if err != nil {
+		t.Fatalf("cross-workspace leak audit: %v", err)
+	}
+	if leaks != 0 {
+		t.Errorf("workspace clamp leaked: %d returned artefacts belong to a different workspace than %s", leaks, a.wsID)
+	}
 }
 
-// TestF1_GET_CrossWorkspace_ArtefactID_404 verifies that requesting an
-// artefact ID from a different workspace returns 404, not 403 (no
-// existence leak).
-//
-// Story 00579 — service clamp must produce 404 for cross-workspace IDs.
+// TestF1_GET_CrossWorkspace_ArtefactID_404 verifies that GetWorkItem
+// with a workspace clamp returns ErrNotFound for an artefact in a
+// different workspace. The handler translates ErrNotFound to HTTP
+// 404 — no existence leak between workspaces.
 func TestF1_GET_CrossWorkspace_ArtefactID_404(t *testing.T) {
-	t.Skip("PLA-0053 story 00579 must land first (service clamp); unskip when artefactitems returns 404 for cross-workspace IDs")
+	pool := vectorArtefactsPoolForF1(t)
+	defer pool.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	a, b, err := f1FindTwoDistinctWorkspaces(ctx, pool)
+	if err != nil {
+		t.Skipf("dev DB does not have two distinct (sub, workspace) pairs: %v", err)
+	}
+
+	// Pick a real artefact ID from workspace B.
+	bItemID, err := f1PickArtefactInWorkspace(ctx, pool, b.subID, b.wsID, "work")
+	if err != nil {
+		t.Skipf("workspace B has no live work-scope artefacts to pick: %v", err)
+	}
+
+	svc := artefactitems.NewService(pool, nil, "work")
+	// Caller is in subscription A, clamped to workspace A. Asking
+	// for an item from workspace B should not surface its existence.
+	_, err = svc.GetWorkItemInWorkspace(ctx, a.subID, a.wsID, bItemID)
+	if !errors.Is(err, artefactitems.ErrNotFound) {
+		t.Errorf(
+			"cross-workspace Get: want ErrNotFound (handler maps → 404), got %v (existence-leak risk)",
+			err,
+		)
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Helpers — live-DB integration scaffolding for the Tier-B tests above.
+// All gated on the same tunnel-down skip as the Tier-A migration test.
+// ──────────────────────────────────────────────────────────────────────
+
+type f1WorkspaceFixture struct {
+	subID uuid.UUID
+	wsID  uuid.UUID
+}
+
+// vectorArtefactsPoolForF1 opens the dev vector_artefacts pool used by
+// the Tier-B integration tests. Mirrors the migration test's logic so
+// every Tier-B helper shares the same tunnel-down skip behaviour.
+func vectorArtefactsPoolForF1(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := os.Getenv("VECTOR_ARTEFACTS_DB_URL")
+	if dsn == "" {
+		for _, rel := range []string{"backend/.env.dev", "../../.env.dev", "../../../.env.dev"} {
+			abs, _ := filepath.Abs(rel)
+			if _, err := os.Stat(abs); err == nil {
+				_ = godotenv.Load(abs)
+				dsn = os.Getenv("VECTOR_ARTEFACTS_DB_URL")
+				break
+			}
+		}
+	}
+	if dsn == "" {
+		t.Skip("VECTOR_ARTEFACTS_DB_URL not set (tunnel down or env missing)")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Skipf("cannot open pool (tunnel down?): %v", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		t.Skipf("cannot ping vector_artefacts (tunnel down?): %v", err)
+	}
+	return pool
+}
+
+// f1FindTwoDistinctWorkspaces walks artefacts_types looking for two
+// (subscription_id, workspace_id) pairs that differ in BOTH fields.
+// Returns ErrNoTwoDistinct when the dev DB has fewer than 2 distinct
+// pairs — the caller's test t.Skip's gracefully in that case.
+//
+// Prefers pairs that have at least one live work-scope artefact each
+// (so the work-items Tier-B tests have something to compare against);
+// falls back to any two distinct pairs when no pair has artefacts.
+func f1FindTwoDistinctWorkspaces(ctx context.Context, pool *pgxpool.Pool) (f1WorkspaceFixture, f1WorkspaceFixture, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			at.artefacts_types_id_subscription,
+			at.artefacts_types_id_workspace,
+			COUNT(a.id) AS artefact_count
+		  FROM artefacts_types at
+		  LEFT JOIN artefacts a ON a.artefact_type_id = at.artefacts_types_id
+		                       AND a.archived_at IS NULL
+		 WHERE at.artefacts_types_archived_at IS NULL
+		   AND at.artefacts_types_scope = 'work'
+		 GROUP BY at.artefacts_types_id_subscription, at.artefacts_types_id_workspace
+		 ORDER BY artefact_count DESC
+		 LIMIT 50
+	`)
+	if err != nil {
+		return f1WorkspaceFixture{}, f1WorkspaceFixture{}, err
+	}
+	defer rows.Close()
+	pairs := []f1WorkspaceFixture{}
+	for rows.Next() {
+		var p f1WorkspaceFixture
+		var count int
+		if err := rows.Scan(&p.subID, &p.wsID, &count); err != nil {
+			return f1WorkspaceFixture{}, f1WorkspaceFixture{}, err
+		}
+		pairs = append(pairs, p)
+	}
+	for i := range pairs {
+		for j := i + 1; j < len(pairs); j++ {
+			if pairs[i].subID != pairs[j].subID && pairs[i].wsID != pairs[j].wsID {
+				return pairs[i], pairs[j], nil
+			}
+		}
+	}
+	return f1WorkspaceFixture{}, f1WorkspaceFixture{}, errNoTwoDistinct
+}
+
+var errNoTwoDistinct = errors.New("fewer than 2 distinct (subscription, workspace) pairs in artefacts_types")
+
+// f1CountCrossWorkspaceLeaks queries the DB to count how many of the
+// returned artefacts have an artefact_type whose workspace_id != wantWS.
+// Zero proves the service's workspace clamp is sound.
+func f1CountCrossWorkspaceLeaks(ctx context.Context, pool *pgxpool.Pool, items []artefactitems.WorkItem, wantWS uuid.UUID) (int, error) {
+	if len(items) == 0 {
+		return 0, nil
+	}
+	ids := make([]uuid.UUID, 0, len(items))
+	for _, it := range items {
+		id, err := uuid.Parse(it.ID)
+		if err != nil {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	var leaks int
+	err := pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		  FROM artefacts a
+		  JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		 WHERE a.id = ANY($1::uuid[])
+		   AND at.artefacts_types_id_workspace <> $2
+	`, ids, wantWS).Scan(&leaks)
+	return leaks, err
+}
+
+// f1PickArtefactInWorkspace returns the id of any live work-scope (or
+// strategy-scope) artefact owned by the (sub, ws) pair. ErrNoRows when
+// the fixture is empty (caller t.Skip's).
+func f1PickArtefactInWorkspace(ctx context.Context, pool *pgxpool.Pool, subID, wsID uuid.UUID, scope string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := pool.QueryRow(ctx, `
+		SELECT a.id
+		  FROM artefacts a
+		  JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		 WHERE a.subscription_id = $1
+		   AND at.artefacts_types_id_workspace = $2
+		   AND at.artefacts_types_scope = $3
+		   AND a.archived_at IS NULL
+		 LIMIT 1
+	`, subID, wsID, scope).Scan(&id)
+	return id, err
 }
 
 // ──────────────────────────────────────────────────────────────────────

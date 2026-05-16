@@ -24,8 +24,11 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
 }
 
-// List returns all live artefact types for the given subscription,
-// ordered by (scope, sort_order, name).
+// List returns all live artefact types in the caller's subscription,
+// ordered by (scope, sort_order, name). Subscription-clamped only —
+// admin/migration callers that don't have a workspace context use
+// this entry point. User-facing requests should call ListByWorkspace
+// (PLA-0053 / story 00579).
 func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]ArtefactType, error) {
 	if s.pool == nil {
 		return nil, errors.New("vector_artefacts pool not available")
@@ -40,9 +43,40 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 		  AND artefacts_types_archived_at IS NULL
 		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
-	rows, err := s.pool.Query(ctx, q, subscriptionID)
+	return s.queryArtefactTypes(ctx, q, subscriptionID)
+}
+
+// ListByWorkspace returns all live artefact types in a single workspace,
+// ordered by (scope, sort_order, name). PLA-0053 / story 00579 — the
+// workspace clamp comes from the JWT-anchored claim seeded by
+// WorkspaceClampMiddleware. Handler resolves workspace via
+// topology.WorkspaceIDFromCtx and passes it here; subscription_id is
+// still passed for defence-in-depth (an artefact_type with a stale
+// or forged workspace_id from a different subscription is still
+// excluded by the AND clause).
+func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspaceID uuid.UUID) ([]ArtefactType, error) {
+	if s.pool == nil {
+		return nil, errors.New("vector_artefacts pool not available")
+	}
+	const q = `
+		SELECT
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+		FROM artefacts_types
+		WHERE artefacts_types_id_subscription = $1
+		  AND artefacts_types_id_workspace    = $2
+		  AND artefacts_types_archived_at IS NULL
+		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
+
+	return s.queryArtefactTypes(ctx, q, subscriptionID, workspaceID)
+}
+
+// queryArtefactTypes is the shared row-scan loop for List + ListByWorkspace.
+func (s *Service) queryArtefactTypes(ctx context.Context, q string, args ...any) ([]ArtefactType, error) {
+	rows, err := s.pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("artefacttypes.List: %w", err)
+		return nil, fmt.Errorf("artefacttypes.queryArtefactTypes: %w", err)
 	}
 	defer rows.Close()
 
@@ -55,7 +89,7 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 			&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 			&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("artefacttypes.List scan: %w", err)
+			return nil, fmt.Errorf("artefacttypes.queryArtefactTypes scan: %w", err)
 		}
 		out = append(out, t)
 	}

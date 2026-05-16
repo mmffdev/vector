@@ -106,6 +106,8 @@ const sqlListWorkItemsTemplate = `
 	`
 
 // sqlSelectWorkItemByID is the single-row hydration used by GetWorkItem.
+// Subscription-clamped only; admin/migration callers without a workspace
+// context use this entry point.
 const sqlSelectWorkItemByID = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
@@ -117,6 +119,25 @@ const sqlSelectWorkItemByID = `
 		  AND a.subscription_id = $1
 		  AND a.archived_at IS NULL
 		  AND at.artefacts_types_scope = $3
+	`
+
+// sqlSelectWorkItemByIDInWorkspace is the workspace-clamped sibling of
+// sqlSelectWorkItemByID. PLA-0053 / story 00579 — handler picks this
+// when topology.WorkspaceIDFromCtx returns a clamp; cross-workspace
+// IDs return pgx.ErrNoRows (translated to 404 by the handler), so no
+// existence leak between workspaces.
+const sqlSelectWorkItemByIDInWorkspace = `
+		WITH ` + rollupCTE + `
+		SELECT` + sqlWorkItemColumns + `
+		FROM artefacts a
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
+		LEFT JOIN rollup_points rp ON rp.id = a.id
+		WHERE a.id = $2
+		  AND a.subscription_id = $1
+		  AND a.archived_at IS NULL
+		  AND at.artefacts_types_scope = $3
+		  AND at.artefacts_types_id_workspace = $4
 	`
 
 // sqlListChildWorkItems lists direct children of a parent.

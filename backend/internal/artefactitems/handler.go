@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/topology"
 )
 
 // jsonErrBody safely marshals an error message into a {"error":"..."} JSON body.
@@ -96,6 +97,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		f.ActorRole = string(actor.Role)
 	}
 
+	// PLA-0053 / story 00579: workspace clamp from JWT-anchored
+	// context (seeded by WorkspaceClampMiddleware per story 00578).
+	// When absent, service falls back to subscription-only — admin
+	// tools / migrations that bypass the middleware keep working.
+	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+		wsStr := wsID.String()
+		f.WorkspaceID = &wsStr
+	}
+
 	items, total, err := h.svc.ListWorkItems(r.Context(), subID, f)
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {
@@ -124,6 +134,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get handles GET /api/v2/work-items/{id}.
+//
+// PLA-0053 / story 00579: when a workspace clamp is on context (set by
+// WorkspaceClampMiddleware), reads narrow to that workspace and a
+// cross-workspace ID returns 404 (existence not leaked). When absent
+// (admin tools), the legacy subscription-only path runs.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	subID := auth.UserFromCtx(r.Context()).SubscriptionID
@@ -134,7 +149,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
-	wi, err := h.svc.GetWorkItem(r.Context(), subID, id)
+	var wi *WorkItem
+	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+		wi, err = h.svc.GetWorkItemInWorkspace(r.Context(), subID, wsID, id)
+	} else {
+		wi, err = h.svc.GetWorkItem(r.Context(), subID, id)
+	}
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
