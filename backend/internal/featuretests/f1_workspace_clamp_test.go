@@ -35,11 +35,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
@@ -265,11 +269,67 @@ func TestF1_Middleware_NoRoleStill403(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────
 
 // TestF1_Migration_ArtefactTypesWorkspaceIDNotNull verifies that the
-// post-migration state has zero NULLs in artefact_types.workspace_id.
+// post-migration state has zero NULLs in
+// artefacts_types.artefacts_types_id_workspace (the post-RF1.4.4
+// column name; renamed from workspace_id by mig 066).
 //
 // Story 00577 — SQL: add workspace_id to artefact_types + backfill.
+// SUBSTRATE-ALREADY-IN-PLACE: PLA-0026 mig 019 added the column +
+// NOT NULL backfill; mig 066 renamed it to the column-prefix shape.
+// This test verifies the in-DB invariant against the live dev pool.
+//
+// Skips gracefully when the tunnel is down (consistent with other
+// integration tests in topology/middleware_workspace_test.go).
 func TestF1_Migration_ArtefactTypesWorkspaceIDNotNull(t *testing.T) {
-	t.Skip("PLA-0053 story 00577 must land first (migration + backfill); unskip when artefact_types.workspace_id column exists")
+	dsn := os.Getenv("VECTOR_ARTEFACTS_DB_URL")
+	if dsn == "" {
+		// Try loading the env file the dev launcher uses. Same
+		// pattern as topology/middleware_workspace_test.go's testPool.
+		for _, rel := range []string{"backend/.env.dev", "../../.env.dev", "../../../.env.dev"} {
+			abs, _ := filepath.Abs(rel)
+			if _, err := os.Stat(abs); err == nil {
+				_ = godotenv.Load(abs)
+				dsn = os.Getenv("VECTOR_ARTEFACTS_DB_URL")
+				break
+			}
+		}
+	}
+	if dsn == "" {
+		t.Skip("VECTOR_ARTEFACTS_DB_URL not set (tunnel down or env missing)")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Skipf("cannot open pool (tunnel down?): %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Skipf("cannot ping vector_artefacts (tunnel down?): %v", err)
+	}
+
+	var total, nullCount int
+	row := pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE artefacts_types_id_workspace IS NULL) AS null_workspace
+		  FROM artefacts_types
+	`)
+	if err := row.Scan(&total, &nullCount); err != nil {
+		t.Fatalf("query artefacts_types: %v", err)
+	}
+
+	if total == 0 {
+		t.Skip("artefacts_types is empty in dev — migration assertion skipped")
+	}
+	if nullCount != 0 {
+		t.Errorf(
+			"artefacts_types: %d rows have NULL workspace_id (total=%d); story 00577 (substrate via mig 019) must guarantee zero",
+			nullCount, total,
+		)
+	}
 }
 
 // TestF1_GET_ArtefactTypes_WorkspaceScoped verifies that GET /_site/artefact-types
@@ -415,5 +475,3 @@ func readErrCodeF1(t *testing.T, rec *httptest.ResponseRecorder) string {
 	return body["error"]
 }
 
-// (unused imports kept here so the diff stays tight when Tier B unskips)
-var _ = time.Time{}
