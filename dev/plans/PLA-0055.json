@@ -234,7 +234,7 @@
       "proven_by": "migration applied",
       "story_id": "00594",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 2,
@@ -242,7 +242,7 @@
       "proven_by": "GROUP BY slot query",
       "story_id": "00594",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -250,7 +250,7 @@
       "proven_by": "FK constraint test",
       "story_id": "00594",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 4,
@@ -282,7 +282,7 @@
       "proven_by": "handler test",
       "story_id": "00596",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -290,7 +290,7 @@
       "proven_by": "handler test",
       "story_id": "00596",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 9,
@@ -298,7 +298,7 @@
       "proven_by": "system row protection test",
       "story_id": "00596",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 10,
@@ -330,7 +330,7 @@
       "proven_by": "hook test",
       "story_id": "00598",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 14,
@@ -338,7 +338,7 @@
       "proven_by": "hook test",
       "story_id": "00598",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 15,
@@ -346,7 +346,7 @@
       "proven_by": "cache test",
       "story_id": "00598",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 16,
@@ -354,7 +354,7 @@
       "proven_by": "code inspection",
       "story_id": "00599",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 17,
@@ -362,7 +362,7 @@
       "proven_by": "vitest",
       "story_id": "00599",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 18,
@@ -370,7 +370,7 @@
       "proven_by": "vitest",
       "story_id": "00599",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 19,

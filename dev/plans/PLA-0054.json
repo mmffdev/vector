@@ -367,7 +367,7 @@
       "proven_by": "migration applied",
       "story_id": "00582",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 2,
@@ -375,7 +375,7 @@
       "proven_by": "CHECK constraint",
       "story_id": "00582",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 3,
@@ -383,7 +383,7 @@
       "proven_by": "unique partial index",
       "story_id": "00582",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 4,
@@ -391,7 +391,7 @@
       "proven_by": "post-migration query",
       "story_id": "00583",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 5,
@@ -399,7 +399,7 @@
       "proven_by": "idempotency check",
       "story_id": "00583",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 6,
@@ -407,7 +407,7 @@
       "proven_by": "audit log entry",
       "story_id": "00583",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 7,
@@ -415,7 +415,7 @@
       "proven_by": "Go struct",
       "story_id": "00584",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 8,
@@ -423,7 +423,7 @@
       "proven_by": "handler response",
       "story_id": "00584",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 9,
@@ -431,7 +431,7 @@
       "proven_by": "unit test",
       "story_id": "00584",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 10,
@@ -439,7 +439,7 @@
       "proven_by": "handler test",
       "story_id": "00585",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 11,
@@ -447,7 +447,7 @@
       "proven_by": "handler test",
       "story_id": "00585",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 12,
@@ -455,7 +455,7 @@
       "proven_by": "handler test",
       "story_id": "00585",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 13,
@@ -463,7 +463,7 @@
       "proven_by": "handler test",
       "story_id": "00585",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 14,
@@ -471,7 +471,7 @@
       "proven_by": "Filters struct",
       "story_id": "00586",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 15,
@@ -479,7 +479,7 @@
       "proven_by": "SQL inspection",
       "story_id": "00586",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 16,
@@ -487,7 +487,7 @@
       "proven_by": "integration test",
       "story_id": "00586",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 17,
@@ -495,7 +495,7 @@
       "proven_by": "TD register update",
       "story_id": "00586",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 18,
@@ -503,7 +503,7 @@
       "proven_by": "hook test",
       "story_id": "00587",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 19,
@@ -511,7 +511,7 @@
       "proven_by": "cache test",
       "story_id": "00587",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 20,
@@ -519,7 +519,7 @@
       "proven_by": "workspace-switch test",
       "story_id": "00587",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 21,
@@ -527,7 +527,7 @@
       "proven_by": "code inspection",
       "story_id": "00588",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 22,
@@ -535,7 +535,7 @@
       "proven_by": "vitest",
       "story_id": "00588",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 23,
@@ -543,7 +543,7 @@
       "proven_by": "vitest",
       "story_id": "00588",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 24,
@@ -551,7 +551,7 @@
       "proven_by": "behaviour test",
       "story_id": "00589",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 25,
@@ -559,7 +559,7 @@
       "proven_by": "persistence test",
       "story_id": "00589",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 26,
@@ -567,7 +567,7 @@
       "proven_by": "workspace-switch test",
       "story_id": "00589",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 27,
@@ -575,7 +575,7 @@
       "proven_by": "sidecar JSON",
       "story_id": "00590",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 28,
@@ -583,7 +583,7 @@
       "proven_by": "page mount test",
       "story_id": "00590",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 29,
@@ -591,7 +591,7 @@
       "proven_by": "rename test",
       "story_id": "00590",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 30,
@@ -599,7 +599,7 @@
       "proven_by": "vitest",
       "story_id": "00591",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 31,
@@ -607,7 +607,7 @@
       "proven_by": "vitest",
       "story_id": "00591",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 32,
@@ -615,7 +615,7 @@
       "proven_by": "vitest",
       "story_id": "00591",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 33,
@@ -623,7 +623,7 @@
       "proven_by": "vitest",
       "story_id": "00592",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 34,
@@ -631,7 +631,7 @@
       "proven_by": "copy inspection",
       "story_id": "00592",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 35,
@@ -639,7 +639,7 @@
       "proven_by": "no-crash test",
       "story_id": "00592",
       "card_url": null,
-      "done": false
+      "done": true
     },
     {
       "order": 36,

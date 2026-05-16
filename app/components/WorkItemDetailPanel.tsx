@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { apiSite } from "@/app/lib/api";
 import InlineEditField from "@/app/components/InlineEditField";
 import { useWorkItemFlowStates } from "./useWorkItemFlowStates";
+import { usePriorityList } from "@/app/hooks/usePriorityList";
 
 interface WorkItem {
   id: string;
@@ -15,7 +16,10 @@ interface WorkItem {
   flow_state_id: string;
   flow_state_name: string;
   flow_state_code: string;
-  priority: string | null;
+  // PLA-0055 / story 00595+00597 — priority is a UUID FK on the wire
+  // with a joined display ref.
+  priority_id: string;
+  priority: { id: string; name: string; slot: string | null; sort_order: number } | null;
   story_points: number | null;
   rollup_points: number | null;
   sprint_id: string | null;
@@ -52,7 +56,8 @@ interface Props {
   onPatch: (id: string, body: Record<string, unknown>) => void;
 }
 
-const PRIORITY_OPTIONS = ["critical", "high", "medium", "low"];
+// PLA-0055 / story 00599 — priority options sourced from
+// usePriorityList(); the hardcoded slug array was removed.
 
 // Click-to-edit date picker. Display shows the formatted date as plain text;
 // click swaps to a focused <input type="date"> that commits on change/blur,
@@ -252,6 +257,8 @@ function PanelInlineSelect({
 
 export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
   const flowStates = useWorkItemFlowStates();
+  // PLA-0055 / story 00595+00597 — priority options from catalogue.
+  const priorities = usePriorityList();
   const [fieldValues, setFieldValues] = useState<FieldValue[]>([]);
   const [fvLoading, setFvLoading] = useState(false);
 
@@ -335,12 +342,12 @@ export default function WorkItemDetailPanel({ item, onClose, onPatch }: Props) {
           <dt>Priority</dt>
           <dd>
             <PanelInlineSelect
-              value={item.priority ?? ""}
-              options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p }))}
-              onCommit={(next) => onPatch(item.id, { priority: next === "" ? null : next })}
+              value={item.priority_id}
+              options={priorities.map((p) => ({ value: p.id, label: p.name }))}
+              onCommit={(next) => onPatch(item.id, { priority_id: next })}
               ariaLabel="Work item priority"
-              placeholder="None"
-              trigger={<span>{item.priority ?? "—"}</span>}
+              placeholder="—"
+              trigger={<span>{item.priority?.name ?? "—"}</span>}
             />
           </dd>
         </div>

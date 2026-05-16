@@ -152,7 +152,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		n++
 	}
 	if len(filters.Priority) > 0 {
-		extra = append(extra, fmt.Sprintf("a.priority = ANY($%d::text[])", n))
+		extra = append(extra, fmt.Sprintf("a.priority_id = ANY($%d::uuid[])", n))
 		args = append(args, filters.Priority)
 		n++
 	}
@@ -491,10 +491,27 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		subscriptionID, artefactTypeID,
 	).Scan(&pos)
 
+	// PLA-0055 / story 00595+00597 — resolve priority_id. Use the
+	// caller's UUID when provided + valid; otherwise pick the
+	// workspace's default (pri_medium row, or lowest sort_order).
+	var priorityID uuid.UUID
+	if in.PriorityID != nil && *in.PriorityID != "" {
+		pid, perr := uuid.Parse(*in.PriorityID)
+		if perr != nil {
+			return nil, fmt.Errorf("%w: invalid priority_id", ErrInvalidInput)
+		}
+		priorityID = pid
+	} else {
+		err = tx.QueryRow(ctx, sqlSelectDefaultPriorityForWorkspace, workspaceID).Scan(&priorityID)
+		if err != nil {
+			return nil, fmt.Errorf("resolve default priority for workspace %s: %w", workspaceID, err)
+		}
+	}
+
 	err = tx.QueryRow(ctx, sqlInsertArtefact,
 		subscriptionID, workspaceID, artefactTypeID, num,
 		in.Title, in.Description,
-		defaultFlowStateID, in.Priority, in.StoryPoints, sprintID, parentID,
+		defaultFlowStateID, priorityID, in.StoryPoints, sprintID, parentID,
 		ownerID, createdBy, pos,
 	).Scan(&newID)
 	if err != nil {
@@ -520,8 +537,13 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if in.Status != nil && !validStatuses[*in.Status] {
 		return nil, fmt.Errorf("%w: invalid status", ErrInvalidInput)
 	}
-	if in.Priority != nil && *in.Priority != "" && !validPriorities[*in.Priority] {
-		return nil, fmt.Errorf("%w: invalid priority", ErrInvalidInput)
+	// PLA-0055 / story 00595+00597 — priority is a UUID FK. PriorityID
+	// must be a parseable UUID; the FK constraint guarantees it points
+	// at a real artefact_priorities row (no need for an enum allow-list).
+	if in.PriorityID != nil && *in.PriorityID != "" {
+		if _, perr := uuid.Parse(*in.PriorityID); perr != nil {
+			return nil, fmt.Errorf("%w: invalid priority_id", ErrInvalidInput)
+		}
 	}
 
 	sets := []string{"updated_at = now()"}
@@ -551,14 +573,14 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		args = append(args, *in.FlowStateID)
 		n++
 	}
-	if in.Priority != nil {
-		if *in.Priority == "" {
-			sets = append(sets, "priority = NULL")
-		} else {
-			sets = append(sets, fmt.Sprintf("priority = $%d", n))
-			args = append(args, *in.Priority)
-			n++
-		}
+	if in.PriorityID != nil && *in.PriorityID != "" {
+		// priority_id is NOT NULL FK post-migration; explicit "clear to
+		// NULL" path is no longer supported. Callers wanting to "reset"
+		// must send the workspace's default priority UUID (resolved via
+		// the catalogue's useDefaultPriority on the frontend).
+		sets = append(sets, fmt.Sprintf("priority_id = $%d::uuid", n))
+		args = append(args, *in.PriorityID)
+		n++
 	}
 	if in.StoryPoints != nil {
 		sets = append(sets, fmt.Sprintf("story_points = $%d", n))
@@ -699,13 +721,17 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 		var execErr error
 		switch op {
 		case "set_priority":
-			val, _ := payload["priority"].(string)
-			if !validPriorities[val] {
-				result.Failed = append(result.Failed, BulkFailure{ID: row.id, Reason: "invalid priority"})
+			// PLA-0055 / story 00595+00597 — bulk set takes a priority_id
+			// UUID. The legacy "priority" slug payload key is removed in
+			// the same commit window as the chip cutover.
+			val, _ := payload["priority_id"].(string)
+			pid, perr := uuid.Parse(val)
+			if perr != nil {
+				result.Failed = append(result.Failed, BulkFailure{ID: row.id, Reason: "invalid priority_id"})
 				continue
 			}
 			_, execErr = tx.Exec(ctx, sqlBulkSetPriority,
-				val, row.id, subscriptionID)
+				pid, row.id, subscriptionID)
 		case "set_owner":
 			ownerID, _ := payload["owner_id"].(string)
 			_, execErr = tx.Exec(ctx, sqlBulkSetOwner,
@@ -892,10 +918,12 @@ func buildOrderBy(sort, dir string) string {
 	case "status":
 		return fmt.Sprintf("fs.sort_order %s NULLS LAST, a.number ASC", d)
 	case "priority":
-		return fmt.Sprintf(`CASE a.priority
-			WHEN 'critical' THEN 1 WHEN 'high' THEN 2
-			WHEN 'medium' THEN 3 WHEN 'low' THEN 4
-			ELSE 99 END %s, a.number ASC`, d)
+		// PLA-0055 / story 00595+00597 — sort by the priority row's
+		// catalogue sort_order. Same TD-WORKITEMS-GENERIC pay-down as
+		// item_type: hardcoded CASE WHEN replaced with the joined
+		// sort_order so tenant-added custom priorities slot into the
+		// ordering without any Go change.
+		return fmt.Sprintf(`pri.sort_order %s NULLS LAST, a.number ASC`, d)
 	case "points":
 		return fmt.Sprintf("COALESCE(rp.rollup_points, a.story_points) %s NULLS LAST, a.number ASC", d)
 	case "sprint_id":
@@ -920,6 +948,13 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 	var sprintRefID, sprintRefAlias *string
 	// Owner ref columns — NULL in this story (decorated in 00468).
 	var ownerRefID, ownerDisplayName, ownerAvatarURL *string
+	// Priority ref columns — PLA-0055 / story 00595+00597. priority_id
+	// is NOT NULL post-migration so wi.PriorityID is always set; the
+	// joined name/slot/sort_order populate PriorityRef. Nil pri_*
+	// pointers only appear if a future code path orphans a row,
+	// which shouldn't happen (FK + slotted-row archive protection).
+	var priName, priSlot *string
+	var priSortOrder *int
 
 	err := row.Scan(
 		&wi.ID,
@@ -933,7 +968,10 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.FlowStateID,
 		&wi.FlowStateName,
 		&wi.FlowStateCode,
-		&wi.Priority,
+		&wi.PriorityID,
+		&priName,
+		&priSlot,
+		&priSortOrder,
 		&wi.StoryPoints,
 		&wi.SprintID,
 		&sprintRefID,
@@ -965,6 +1003,18 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 			dn = *ownerDisplayName
 		}
 		wi.Owner = &OwnerRef{ID: *ownerRefID, DisplayName: dn, AvatarURL: ownerAvatarURL}
+	}
+	if wi.PriorityID != "" && priName != nil {
+		order := 0
+		if priSortOrder != nil {
+			order = *priSortOrder
+		}
+		wi.Priority = &PriorityRef{
+			ID:    wi.PriorityID,
+			Name:  *priName,
+			Slot:  priSlot,
+			Order: order,
+		}
 	}
 
 	return &wi, nil

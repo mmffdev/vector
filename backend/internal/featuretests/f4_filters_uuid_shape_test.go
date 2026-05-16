@@ -22,24 +22,22 @@ import (
 )
 
 // TestF4_Filters_ShapeIsMultiValue asserts the Filters struct carries
-// list shapes for the multi-select fields. ItemType / Status / OwnerID
-// move to []uuid.UUID (UUIDs on the wire). Priority stays a text list
-// ([]string) — priority is a project-locked enum, not a per-tenant
-// UUID — so the multi-select reshape is the only contract there.
+// list shapes for the multi-select fields. ItemType / Status / Priority
+// / OwnerID are all []uuid.UUID — UUIDs on the wire so gadmin display-
+// name renames and tenant-added custom rows (PLA-0055 Showstopper)
+// flow through without code changes.
 //
-// The TYPE assertions at compile time IS the red signal — once story
-// 00586 reshapes the struct, this file participates in the runtime
-// test set.
+// History: Priority started this PR as []string (project-locked
+// vocabulary). PLA-0055 promoted Priority to a per-workspace
+// catalogue so it joins the UUID-list shape; this assertion reflects
+// that final state.
 func TestF4_Filters_ShapeIsMultiValue(t *testing.T) {
 	id := uuid.New()
 
-	// These assignments only compile once Filters carries list types
-	// for each field. On main today they are *string (single-value)
-	// and the assignment is a type error.
 	f := artefactitems.Filters{
 		ItemType: []uuid.UUID{id},
 		Status:   []uuid.UUID{id, uuid.New()},
-		Priority: []string{"critical", "high"},
+		Priority: []uuid.UUID{id, uuid.New()},
 		OwnerID:  []uuid.UUID{id},
 	}
 

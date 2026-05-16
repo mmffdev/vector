@@ -52,8 +52,16 @@ type WorkItem struct {
 	FlowStateID    string     `json:"flow_state_id"`
 	FlowStateName  string     `json:"flow_state_name"`
 	FlowStateCode  string     `json:"flow_state_code"`
-	Priority       *string    `json:"priority"`
-	StoryPoints    *int       `json:"story_points"`
+	// PLA-0055 / story 00595+00597 — priority is a UUID FK into
+	// artefact_priorities, not a slug. PriorityID is the wire form
+	// of artefacts.priority_id (always non-empty post-migration —
+	// NOT NULL FK). Priority carries the joined display name +
+	// slot for the row renderer; nil only if a future archive flow
+	// orphans an artefact (shouldn't happen — Archive returns 403
+	// for slotted rows and the FK is not ON DELETE SET NULL).
+	PriorityID     string        `json:"priority_id"`
+	Priority       *PriorityRef  `json:"priority"`
+	StoryPoints    *int          `json:"story_points"`
 	RollupPoints   *int       `json:"rollup_points"`
 	SprintID       *string    `json:"sprint_id"`
 	Sprint         *SprintRef `json:"sprint"`
@@ -94,6 +102,20 @@ type OwnerRef struct {
 	AvatarURL   *string `json:"avatar_url"`
 }
 
+// PriorityRef is the slim priority projection embedded on each WorkItem.
+// PLA-0055 / story 00595. Sourced from a LEFT JOIN on artefact_priorities
+// via artefacts.priority_id. Name is the gadmin-editable display label;
+// Slot is the project-locked handle (one of pri_critical/pri_high/
+// pri_medium/pri_low for system rows, null for tenant-added custom
+// priorities) — frontend renderers branch on slot for stable colour
+// mapping that survives display renames.
+type PriorityRef struct {
+	ID    string  `json:"id"`
+	Name  string  `json:"name"`
+	Slot  *string `json:"slot"`
+	Order int     `json:"sort_order"`
+}
+
 // SprintRef is the slim sprint projection embedded on each WorkItem when
 // the row's sprint_id resolves to a non-archived sprints row. Alias is
 // sourced from sprints.name (the sprint's display label). Stays nil when
@@ -119,11 +141,11 @@ func canHaveManualPoints(itemType string) bool {
 
 // Filters holds query parameters for the v2 list endpoint.
 //
-// PLA-0054 / story 00586: multi-value list types replace the per-field
-// *string singles. ItemType / Status / OwnerID become []uuid.UUID
-// (UUID-on-the-wire — gadmin display-name renames cannot break them).
-// Priority becomes []string (a project-locked enum, not a per-tenant
-// UUID — the list shape is the only contract change).
+// PLA-0054 / story 00586 + PLA-0055 / story 00597: multi-value list
+// types replace the per-field *string singles. ItemType / Status /
+// Priority / OwnerID are all []uuid.UUID — UUID-on-the-wire so gadmin
+// display-name renames cannot break filters, and tenant-added custom
+// priorities/types/states flow through without code changes.
 //
 // Empty list (len==0) means "no filter on this field"; nil and len==0
 // behave identically and are stored interchangeably.
@@ -131,7 +153,7 @@ type Filters struct {
 	ParentID *string
 	ItemType []uuid.UUID
 	Status   []uuid.UUID
-	Priority []string
+	Priority []uuid.UUID
 	SprintID *string
 	OwnerID  []uuid.UUID
 	// ScopeNodeID, when set, clamps the read to artefacts whose
@@ -157,12 +179,17 @@ type Filters struct {
 }
 
 // CreateWorkItemInput holds fields required to create a work item.
+//
+// PLA-0055 / story 00595+00597: PriorityID is the artefact_priorities
+// UUID, replacing the legacy Priority slug string. Nil falls back to
+// the workspace's default priority (pri_medium slot) resolved by the
+// service.
 type CreateWorkItemInput struct {
 	ItemType    string
 	Title       string
 	Description *string
 	Status      string
-	Priority    *string
+	PriorityID  *string
 	StoryPoints *int
 	SprintID    *string
 	ParentID    *string
@@ -180,7 +207,12 @@ type PatchWorkItemInput struct {
 	Description *string
 	Status      *string
 	FlowStateID *string // UUID — replaces Status; both accepted during transition
-	Priority    *string
+	// PLA-0055 / story 00595+00597 — PriorityID is the artefact_priorities
+	// UUID. Three-state: nil ⇒ field absent (no change); non-nil empty
+	// string ⇒ historically used to clear, but priority_id is NOT NULL
+	// post-migration so empty-string is now a validation error;
+	// non-nil non-empty ⇒ UUID-parsed and written.
+	PriorityID  *string
 	StoryPoints *int
 	SprintID    *string
 	DueDate     *string
@@ -436,10 +468,9 @@ var validStatuses = map[string]bool{
 	"open": true, "in_progress": true, "done": true, "cancelled": true,
 }
 
-// validPriorities is the set of allowed priority values.
-var validPriorities = map[string]bool{
-	"critical": true, "high": true, "medium": true, "low": true,
-}
+// Priority enum allow-list removed by PLA-0055 / story 00595+00597:
+// priority is now a UUID FK to artefact_priorities and the FK
+// constraint plus uuid.Parse() at the edge replace the slug allow-list.
 
 // validSprintStatuses is the set of allowed sprint statuses.
 var validSprintStatuses = map[string]bool{

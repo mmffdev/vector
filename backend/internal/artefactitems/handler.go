@@ -117,18 +117,22 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		f.Status = ids
 	}
-	if v := q.Get("priority"); v != "" {
-		// Multi-value text list (priority is a project-locked enum, not
-		// a per-tenant UUID — list shape only).
-		parts := strings.Split(v, ",")
-		out := make([]string, 0, len(parts))
-		for _, p := range parts {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				out = append(out, p)
-			}
+	// PLA-0055 / story 00597 — reject legacy ?priority=<slug>; require
+	// the new ?priority_id=<uuid>[,<uuid>] param. Frontend chip ships
+	// in lockstep so the slug path is dead on day one.
+	if q.Get("priority") != "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"?priority=<slug> is removed; use ?priority_id=<uuid>[,<uuid>] (PLA-0055)"}`))
+		return
+	}
+	if v := q.Get("priority_id"); v != "" {
+		ids, perr := parseUUIDList(v)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid priority_id"}`))
+			return
 		}
-		f.Priority = out
+		f.Priority = ids
 	}
 	if v := q.Get("sprint_id"); v != "" {
 		f.SprintID = &v
@@ -304,7 +308,9 @@ type createWorkItemReq struct {
 	Title       string  `json:"title"`
 	Description *string `json:"description,omitempty"`
 	Status      string  `json:"status,omitempty"`
-	Priority    *string `json:"priority,omitempty"`
+	// PLA-0055 / story 00595+00597 — priority is now a UUID FK; the
+	// legacy slug field is rejected at the handler edge.
+	PriorityID  *string `json:"priority_id,omitempty"`
 	StoryPoints *int    `json:"story_points,omitempty"`
 	SprintID    *string `json:"sprint_id,omitempty"`
 	ParentID    *string `json:"parent_id,omitempty"`
@@ -325,7 +331,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
-		Priority:    req.Priority,
+		PriorityID:  req.PriorityID,
 		StoryPoints: req.StoryPoints,
 		SprintID:    req.SprintID,
 		ParentID:    req.ParentID,
@@ -351,7 +357,8 @@ type patchWorkItemReq struct {
 	Description *string         `json:"description,omitempty"`
 	Status      *string         `json:"status,omitempty"`
 	FlowStateID *string         `json:"flow_state_id,omitempty"`
-	Priority    *string         `json:"priority,omitempty"`
+	// PLA-0055 / story 00595+00597 — priority is now a UUID FK.
+	PriorityID  *string         `json:"priority_id,omitempty"`
 	StoryPoints *int            `json:"story_points,omitempty"`
 	SprintID    *string         `json:"sprint_id,omitempty"`
 	DueDate     json.RawMessage `json:"due_date,omitempty"`
@@ -394,7 +401,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		Status:      req.Status,
 		FlowStateID: req.FlowStateID,
-		Priority:    req.Priority,
+		PriorityID:  req.PriorityID,
 		StoryPoints: req.StoryPoints,
 		SprintID:    req.SprintID,
 		DueDate:     dueDate,

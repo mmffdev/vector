@@ -20,6 +20,7 @@ import OwnerChip from "@/app/components/OwnerChip";
 import NavigationPie from "@/app/components/NavigationPie";
 import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import { usePriorityChipOptions } from "@/app/hooks/usePriorityChipOptions";
+import { usePriorityList } from "@/app/hooks/usePriorityList";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
   PrimaryCellTreeLines,
@@ -73,7 +74,13 @@ export interface WorkItem {
   flow_state_id: string;
   flow_state_name: string;
   flow_state_code: string;
-  priority: string | null;
+  // PLA-0055 / story 00595+00597 — priority is a UUID FK on the wire
+  // with a joined display ref. priority_id is always non-empty
+  // (NOT NULL post-migration); priority carries name/slot/sort_order
+  // for renderers. The legacy `priority: string | null` slug field
+  // is removed from the wire.
+  priority_id: string;
+  priority: { id: string; name: string; slot: string | null; sort_order: number } | null;
   story_points: number | null;
   rollup_points: number | null;
   sprint_id: string | null;
@@ -109,25 +116,31 @@ const TYPE_VARIANT: Record<string, string> = {
   defect: "tree_accordion-dense__type-badge--defect",
 };
 
-// Backend priority strings → P0/P1/P2 short codes.
-const PRIORITY_CODE: Record<string, { code: string; mod: string }> = {
-  critical: { code: "P0", mod: "p0" },
-  high: { code: "P1", mod: "p1" },
-  medium: { code: "P2", mod: "p2" },
-  low: { code: "P3", mod: "p3" },
+// PLA-0055 / story 00595+00597 — short-code + modifier keyed by slot
+// (project-locked), not display name. A gadmin rename of "Critical" to
+// anything keeps the same P0 pill colour because the slot doesn't move.
+// Custom tenant priorities (slot=null) fall through to the default p3
+// modifier with a 2-letter code derived from the name.
+const PRIORITY_CODE_BY_SLOT: Record<string, { code: string; mod: string }> = {
+  pri_critical: { code: "P0", mod: "p0" },
+  pri_high:     { code: "P1", mod: "p1" },
+  pri_medium:   { code: "P2", mod: "p2" },
+  pri_low:      { code: "P3", mod: "p3" },
 };
-
-const PRIORITY_OPTIONS = ["critical", "high", "medium", "low"];
 
 export function canHaveManualPoints(itemType: string): boolean {
   return itemType !== "task";
 }
 
-export function formatPriority(raw: string | null) {
-  if (!raw) return null;
-  return (
-    PRIORITY_CODE[raw] ?? { code: raw.toUpperCase().slice(0, 2), mod: "p3" }
-  );
+export function formatPriority(
+  pri: { name: string; slot: string | null } | null,
+): { code: string; mod: string } | null {
+  if (!pri) return null;
+  if (pri.slot && PRIORITY_CODE_BY_SLOT[pri.slot]) {
+    return PRIORITY_CODE_BY_SLOT[pri.slot];
+  }
+  // Custom priority: render a 2-letter code from the name, neutral mod.
+  return { code: pri.name.toUpperCase().slice(0, 2), mod: "p3" };
 }
 
 // PLA-0021 / 00460 (WS4-C) — Due column display helper. The backend now
@@ -154,9 +167,6 @@ export type SortDir = "asc" | "desc";
 const CANONICAL_ORDER: Record<string, number> = {
   backlog: 0, ready: 1, doing: 2, completed: 3, accepted: 4,
 };
-const PRIORITY_ORDER: Record<string, number> = {
-  critical: 0, high: 1, medium: 2, low: 3,
-};
 // PLA-0052 Story 11 — Risk added at tier 5; Defect/Task swapped to match
 // the backend CASE clause in service.go:850 (Epic→1, Story→2, Defect→3,
 // Task→4, Risk→5). FE and BE must agree on ordering otherwise the
@@ -176,7 +186,11 @@ export function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkIte
       }
       case "title":    cmp = a.title.localeCompare(b.title); break;
       case "status":   cmp = (CANONICAL_ORDER[a.flow_state_code] ?? 99) - (CANONICAL_ORDER[b.flow_state_code] ?? 99); break;
-      case "priority": cmp = (PRIORITY_ORDER[a.priority ?? ""] ?? 99) - (PRIORITY_ORDER[b.priority ?? ""] ?? 99); break;
+      // PLA-0055 / story 00595 — sort by the joined catalogue
+      // sort_order. Rows with no priority ref (shouldn't happen post-
+      // migration but defensive) sort last. New tenant priorities
+      // slot in naturally without any code change.
+      case "priority": cmp = (a.priority?.sort_order ?? 99) - (b.priority?.sort_order ?? 99); break;
       case "points":   cmp = ((a.rollup_points ?? a.story_points ?? -1)) - ((b.rollup_points ?? b.story_points ?? -1)); break;
       case "sprint":   cmp = (a.sprint_id ?? "").localeCompare(b.sprint_id ?? ""); break;
       // PLA-0021 / 00460 (WS4-C) — sort by the real due_date now. Empty
@@ -295,14 +309,19 @@ function PriorityCell({
   row: WorkItem;
   onPatch: (id: string, body: Record<string, unknown>) => void;
 }) {
+  // PLA-0055 / story 00595+00597 — InlineSelect options come from the
+  // workspace catalogue; commit writes the priority_id UUID. Trigger
+  // shows the joined display name + slot-based modifier so the pill's
+  // colour stays stable across gadmin renames (slot is project-locked).
+  const priorities = usePriorityList();
   const pri = formatPriority(row.priority);
   return (
     <InlineSelect
-      value={row.priority ?? ""}
-      options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p }))}
-      onCommit={(next) => onPatch(row.id, { priority: next === "" ? null : next })}
+      value={row.priority_id}
+      options={priorities.map((p) => ({ value: p.id, label: p.name }))}
+      onCommit={(next) => onPatch(row.id, { priority_id: next })}
       ariaLabel="Work item priority"
-      placeholder="None"
+      placeholder="—"
       trigger={
         pri ? (
           <span className={"tree_accordion-dense__pri tree_accordion-dense__pri--" + pri.mod}>
