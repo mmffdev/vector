@@ -1121,6 +1121,15 @@ func main() {
 		}
 		r.Route("/work-items", func(r chi.Router) { mountArtefactSite(r, workItemsV2H) })
 		r.Route("/portfolio-items", func(r chi.Router) { mountArtefactSite(r, portfolioItemsV2H) })
+		// PLA-0052 Story 10 — Risk summary endpoint. Severity × likelihood
+		// aggregator for the /risk page header. Reuses workItemsV2H (scope=work)
+		// since Risk is a work-scope artefact type. Public surface (/samantha/v2)
+		// deferred until n8n needs it.
+		r.Route("/risks", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.With(readLimit17).Get("/summary", workItemsV2H.RisksSummary)
+		})
 	}
 	if rankH != nil {
 		r.Route("/rank", func(r chi.Router) {

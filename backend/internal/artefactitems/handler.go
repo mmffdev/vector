@@ -184,6 +184,20 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(out)
 }
 
+// RisksSummary handles GET /_site/risks/summary (PLA-0052 Story 10).
+// Severity × likelihood aggregator for the /risk page header.
+func (h *Handler) RisksSummary(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	out, err := h.svc.SummariseRisks(r.Context(), subID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	_ = json.NewEncoder(w).Encode(out)
+}
+
 // ListFlowStates handles GET /api/v2/work-items/flow-states.
 func (h *Handler) ListFlowStates(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

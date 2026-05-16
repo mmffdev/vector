@@ -72,7 +72,7 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0049` | Page-permissions grid + role rename + page-access enforcement (Phase 0/0.5/1/1.5/2) | 2026-05-14 | drafted |
 | `PLA-0050` | Tenant-level defaults table (master_record_tenants in vector_artefacts) + seed-trigger repair + URL hygiene (route rename /vector-admin/tenant-details → /workspace-admin/workspace-details); bundles cleanup-register Stories 2 + 5 | 2026-05-15 | complete (2026-05-16; AC10/AC11 verified via Playwright smoke) |
 | `PLA-0051` | Tenant→workspace inheritance read-path — COALESCE merge in workspacemasterrecord.Service.Get + per-field source markers + UI inherit/override toggle; cleanup-register Story 3; marquee first use of `<rg>` TDD substrate | 2026-05-15 | active |
-| `PLA-0052` | Risk artefact type — mirror Defect 1:1: system row (RSK prefix, sort 25, red), Risk Flow + Risk State, per-subscription seed + workspace backfill, 5 backend BLOCKER patches, 9 frontend BLOCKER patches, /risk filtered surface, /risks/summary endpoint; marquee multi-agent grill sweep | 2026-05-16 | drafted |
+| `PLA-0052` | Risk artefact type — mirror Defect 1:1: system row (RSK prefix, sort 25, red), Risk Flow + Risk State, per-subscription seed + workspace backfill, 5 backend BLOCKER patches, 9 frontend BLOCKER patches, /risk filtered surface, /risks/summary endpoint; marquee multi-agent grill sweep | 2026-05-16 | complete (2026-05-16; opportunistically resolved TD-WORKITEMS-GENERIC + TD-WORKITEMS-DUPE) |
 
 ## Scope linkage rule
 

@@ -82,6 +82,7 @@ export default function WorkItemsPage() {
       { label: "EPICS", value: byType.epic ?? 0 },
       { label: "TASKS", value: byType.task ?? 0 },
       { label: "DEFECTS", value: byType.defect ?? 0, tone: "warning" as const },
+      { label: "RISKS", value: byType.risk ?? 0, tone: "warning" as const, glyph: "issue" as const }, // PLA-0052
       { label: "BLOCKED", value: s.blocked, tone: "warning" as const, glyph: "issue" as const },
     ];
   }, [summary]);

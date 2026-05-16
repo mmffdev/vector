@@ -94,7 +94,7 @@ export function getObjectTreeConfig<T>(
 // Example A: work_items tree
 //
 //   export interface WorkItem {
-//     id: string; key_num: number; item_type: "epic" | "story" | "task" | "defect";
+//     id: string; key_num: number; item_type: "epic" | "story" | "task" | "defect" | "risk";
 //     title: string; status: string; flow_state_id: string; flow_state_name: string;
 //     priority: string | null; story_points: number | null; sprint_id: string | null;
 //     sprint: { id: string; alias: string } | null; owner: { id: string; display_name: string } | null;

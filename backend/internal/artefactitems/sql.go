@@ -162,6 +162,63 @@ const sqlSummariseByTypeTemplate = `
 		GROUP BY lower(at.artefacts_types_name)
 	`
 
+// ── SummariseRisks (PLA-0052 Story 10) ────────────────────────────────────
+//
+// Severity × likelihood matrix aggregator. Reads risk_impact + risk_probability
+// from artefacts_fields_values; lowercases the value strings; counts per
+// (severity, likelihood) cell + per-axis totals + open count (non-done states).
+//
+// Subscription-scoped. Risk artefacts only (artefacts_types_name='Risk').
+const sqlSummariseRisks = `
+		WITH r AS (
+			SELECT
+				a.id,
+				fs.flows_states_kind AS flow_kind,
+				LOWER(MAX(fvi.artefacts_fields_values_string_value) FILTER (
+					WHERE fli.field_name = 'risk_impact'
+				)) AS severity,
+				LOWER(MAX(fvp.artefacts_fields_values_string_value) FILTER (
+					WHERE flp.field_name = 'risk_probability'
+				)) AS likelihood
+			FROM artefacts a
+			JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+			LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
+			LEFT JOIN artefacts_fields_values fvi
+				ON fvi.artefacts_fields_values_id_artefact = a.id
+			LEFT JOIN artefacts_fields_library fli
+				ON fli.id = fvi.artefacts_fields_values_id_field_library
+			LEFT JOIN artefacts_fields_values fvp
+				ON fvp.artefacts_fields_values_id_artefact = a.id
+			LEFT JOIN artefacts_fields_library flp
+				ON flp.id = fvp.artefacts_fields_values_id_field_library
+			WHERE a.subscription_id = $1
+			  AND a.archived_at IS NULL
+			  AND lower(at.artefacts_types_name) = 'risk'
+			GROUP BY a.id, fs.flows_states_kind
+		)
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE flow_kind IS DISTINCT FROM 'done' AND flow_kind IS DISTINCT FROM 'accepted' AND flow_kind IS DISTINCT FROM 'cancelled') AS open_count,
+			COUNT(*) FILTER (WHERE severity = 'critical') AS sev_critical,
+			COUNT(*) FILTER (WHERE severity = 'high')     AS sev_high,
+			COUNT(*) FILTER (WHERE severity = 'medium')   AS sev_medium,
+			COUNT(*) FILTER (WHERE severity = 'low')      AS sev_low,
+			COUNT(*) FILTER (WHERE likelihood = 'high')   AS lik_high,
+			COUNT(*) FILTER (WHERE likelihood = 'medium') AS lik_medium,
+			COUNT(*) FILTER (WHERE likelihood = 'low')    AS lik_low,
+			-- 3×3 matrix cells (severity × likelihood)
+			COUNT(*) FILTER (WHERE severity='high'   AND likelihood='high')   AS mhh,
+			COUNT(*) FILTER (WHERE severity='high'   AND likelihood='medium') AS mhm,
+			COUNT(*) FILTER (WHERE severity='high'   AND likelihood='low')    AS mhl,
+			COUNT(*) FILTER (WHERE severity='medium' AND likelihood='high')   AS mmh,
+			COUNT(*) FILTER (WHERE severity='medium' AND likelihood='medium') AS mmm,
+			COUNT(*) FILTER (WHERE severity='medium' AND likelihood='low')    AS mml,
+			COUNT(*) FILTER (WHERE severity='low'    AND likelihood='high')   AS mlh,
+			COUNT(*) FILTER (WHERE severity='low'    AND likelihood='medium') AS mlm,
+			COUNT(*) FILTER (WHERE severity='low'    AND likelihood='low')    AS mll
+		FROM r
+	`
+
 // ── ListFlowStates ─────────────────────────────────────────────────────────
 
 const sqlListWorkScopeFlowStates = `

@@ -1,0 +1,278 @@
+{
+  "id": "PLA-0052",
+  "title": "Risk artefact type — mirror Defect 1:1 (system row, default + secondary flow, fields, /work-items integration, /risk filtered surface)",
+  "date_created": "2026-05-16",
+  "date_started": "2026-05-16",
+  "date_last_updated": "2026-05-16",
+  "date_finished": "2026-05-16",
+  "status_note": "SHIPPED 2026-05-16 (same-day from grill to green). All 15 stories complete. Migrations 071-077 applied to live dev DB (idempotent, recorded in schema_migrations). 5 backend integration tests green in Tracker backend-work-items group: TestCreateWorkItem_RiskType_ReturnsRSKKey, TestSummariseWorkItems_PopulatesRisksField, TestListWorkItems_SortByType_RiskAfterDefect, TestValidItemTypes_AcceptsRisk, TestSummariseRisks_ReturnsAggregates. New endpoint /_site/risks/summary returns severity×likelihood matrix. /risk page rewritten from 112-line mock fixture to real ObjectTree + risks summary header; new wizard sidecar p_wizard_risks.json + risk-tree-config.tsx component. 4 vitest cases green for /risk page. Surprises caught + filed as TD: TD-SEED-FN-DRIFT (S2, dead 010 seed function), TD-SUMMARY-TONE (S3, PageSummaryHeader missing 'danger' tone), TD-RISK-PAGE-TAG (S3, /risk pages.tag_enum may need 'strategy'→'planning'). TWO OPPORTUNISTIC TD pay-downs happened during application (linter sessions, recorded as same-day strikethrough): TD-WORKITEMS-GENERIC (replaced fixed-shape summary fields with ByType-only + at.sort_order column sort) and TD-WORKITEMS-DUPE (extracted shared work-item-types.ts + CustomFieldsWorkItemsBody). Both refactors made the 'add an artefact type' playbook substantially cleaner for future types. Marquee multi-agent grill sweep documented in docs/c_c_risk_artefact_type.md.",
+  "scope": "<p>Add <strong>Risk</strong> as a first-class system work-scope artefact type, modelled 1:1 on Defect. Risk gets its own default flow (<code>Risk Flow</code>, kind-aligned: Identified→Analysing→Mitigating→Closed→Accepted), its own secondary flow (<code>Risk State</code>, 7 nodes including Accepted-Residual and Escalated), three risk-specific required fields (risk_score, risk_impact, risk_probability — the last renamed from <code>pi_risk_probability</code>), and the standard Defect-lifted field set (notes, blocked, expedite, etc.).</p><p><strong>Two user-facing surfaces:</strong></p><ol><li><strong>Primary: <code>/work-items</code></strong> — Risk appears as a row alongside Epic/Story/Task/Defect. Sort tier 5 (after Defect). Honours 'risks are the same as defects' literally — Defect has no standalone page either.</li><li><strong>Secondary: <code>/risk</code></strong> — the existing 112-line mock page is replaced with a real <code>&lt;ObjectTree&gt;</code>-backed filtered view of the same <code>artefacts</code> data. Adds a risk-specific summary header (severity × likelihood × open count). New <code>p_wizard_risks.json</code> sidecar; new <code>/risks/summary</code> endpoint.</li></ol><p><strong>Substrate touched:</strong></p><ul><li><code>vector_artefacts</code>: 7 new migrations (071–077) — seed-function extension, field rename + cascade, Risk Flow, Risk State, type-field bindings, number sequence, per-workspace adoption backfill.</li><li><code>backend/internal/artefactitems</code>: 5 BLOCKER patches (whitelist, summary field, populate, sort CASE, summary endpoint).</li><li><code>backend/internal/workspaces</code> (or <code>artefactitems</code>): new <code>/risks/summary</code> handler producing severity×likelihood aggregates.</li><li><code>app/components</code>: 9 BLOCKER patches across <code>work-items-tree-config</code>, <code>CustomFieldManager</code>, <code>Badge</code>, two custom-fields admin pages, <code>ObjectTreeRegistry</code> JSDoc, and the work-items summary cell array.</li><li><code>app/(user)/risk/page.tsx</code>: rewrite from hardcoded fixture to ObjectTree + filtered config + new summary header.</li><li><code>app/components/ObjectTree/configs/p_wizard_risks.json</code>: new sidecar.</li></ul><p><strong>Per-subscription gotcha (caught by Agent C):</strong> system artefact types are seeded PER subscription, not globally. Migration 077 backfills Risk across every existing subscription AND mirrors a per-workspace tenant copy into every existing live workspace, idempotently. New workspaces auto-adopt via existing path.</p>",
+  "value": "<p>Risk is the next critical work-item type the platform needs. Today: zero risk modelling in vector_artefacts (no flow, no state, no fields beyond 3 stray decorations on Defect/PortfolioItem), and a 112-line hardcoded mock at <code>/risk</code> that pretends. Rick's exact framing 2026-05-16: <em>'we need this as a matter of importance'</em>.</p><p>Three concrete payoffs:</p><ul><li><strong>Procurement audit readiness.</strong> A B2B SaaS without a risk register is missing table stakes for any RFP. Risks need an owner, severity, likelihood, mitigation plan, and a state machine. PLA-0052 delivers all five.</li><li><strong>Validates the 'add an artefact type' playbook.</strong> Risk is the first new system work-type since the original Epic/Story/Task/Defect seed (010). The work uncovers and documents what 'add an artefact type' actually requires end-to-end — captured in <code>docs/c_c_risk_artefact_type.md</code> as a reusable design doc.</li><li><strong>Caught two real coupling bugs that 'just copy Defect' would have missed.</strong> Per-subscription seeding (not global), and fixed-shape <code>WorkItemsSummary</code> fields. Both filed as TD entries.</li></ul><p>This plan is also a marquee example of <strong>multi-agent grilling</strong> — four parallel Explore agents found in ~3 minutes what would have taken 30+ minutes of serial investigation, and surfaced the per-subscription gotcha + the fixed-shape summary that single-threaded reading would have missed.</p>",
+  "implementation_plan": [
+    "Story 1 (DB migration 071, vector_artefacts): Extend seed_system_artefact_types(subscription_id) function to include Risk tuple ('Risk','RSK',25,'#dc2626'). Backfill across every existing subscription. ON CONFLICT (subscription, scope, prefix) DO NOTHING for idempotency. Paired DOWN restores the pre-Risk function definition.",
+    "Story 2 (DB migration 072, vector_artefacts): Rename artefacts_fields_library.field_name 'pi_risk_probability' → 'risk_probability'. UPDATE label '' → 'Risk Probability'. artefacts_fields_values references by id_field_library UUID so no value-table cascade needed. After this lands, grep frontend for any literal 'pi_risk_probability' lookups and fix in same PR.",
+    "Story 3 (DB migration 073, vector_artefacts): Insert Risk Flow + 5 states + transitions. States: Identified(backlog,initial)/Analysing(todo,pullable)/Mitigating(in_progress)/Closed(done)/Accepted(accepted). Transitions: mirror Defect Flow's 18-edge shape (forgiving — most states can return to any other). flows_is_default=TRUE. flow_defaults snapshot auto-fills via existing 044_seed_flow_defaults_snapshot trigger.",
+    "Story 4 (DB migration 074, vector_artefacts): Insert Risk State secondary flow + 7 states + transitions. States: Identified(backlog,initial)/Assessing(todo)/Mitigating(in_progress)/Monitoring(in_progress)/Closed(done)/Accepted-Residual(done)/Escalated(done). flows_is_default=FALSE. Free transition graph similar to Defect State's promiscuous shape.",
+    "Story 5 (DB migration 075, vector_artefacts): Bind 11 fields to Risk via artefacts_types_fields. Required: risk_score (pos 10), risk_impact (pos 20), risk_probability (pos 30). Optional: notes (40), acceptance_criteria/mitigation_plan (50), blocked (60), blocked_reason (70), expedite (80), ready (90), environment (100).",
+    "Story 6 (DB migration 076, vector_artefacts): Insert artefacts_number_sequences row keyed to Risk type → produces RSK-0001, RSK-0002, …. Per-subscription, per-type counter (matches Defect/Story pattern).",
+    "Story 7 (DB migration 077, vector_artefacts): One-shot backfill — for every existing live (archived_at IS NULL) master_record_workspaces row, INSERT a source='tenant' Risk artefacts_types row mirroring the system seed. ON CONFLICT (workspace_id, scope, prefix) DO NOTHING. New workspaces continue to adopt via existing portfoliomodels.adopt_work_types path — no change there.",
+    "Story 8 (Backend test-first, red): Write tests against the current implementation FIRST. backend/internal/artefactitems/service_risk_test.go covering: (a) CreateWorkItem with item_type='risk' succeeds and returns RSK-0001; (b) WorkItemsSummary populates .Risks from ByType['risk']; (c) ListWorkItems sort=item_type returns Risk after Defect; (d) /risks/summary endpoint returns severity×likelihood aggregates. 4 minimum integration tests; runs via <rg> Group 2 (Backend Workspaces & Tenancy).",
+    "Story 9 (Backend: 5 BLOCKER patches): artefactitems/types.go:373 add 'risk':true to validItemTypesByScope['work']; types.go:338 add Risks int to WorkItemsSummary struct; service.go:306 add out.Risks = out.ByType['risk']; service.go:850 add WHEN 'risk' THEN 5 to CASE; verify no other Defect coupling slipped in. Story 8 tests now green.",
+    "Story 10 (Backend: /risks/summary endpoint): New handler in artefactitems (or shared workitems_summary helper) returning {open: int, by_severity: {high,medium,low,critical: int}, by_likelihood: {high,medium,low: int}, matrix: [[int,int,int],[int,int,int],...]}. JWT-scoped to subscription. Read from artefacts + artefacts_fields_values (join field 'risk_impact' and 'risk_probability'). Wire as /_site/risks/summary (frontend-only consumer for now; public /samantha/v2/ surface deferred until n8n needs it).",
+    "Story 11 (Frontend: 9 BLOCKER patches): work-items-tree-config.tsx — TYPE_TIER add risk:5; TYPE_CHIP_OPTIONS add {value:'risk',label:'Risk'}. CustomFieldManager.tsx — ITEM_TYPE_TO_PREFIX add risk:'RSK' + JSDoc comment update. Two custom-fields admin pages — add {key:'risk',label:'Risk',prefix:'RSK'} row. Badge.tsx — DOMAIN_TONES['work-item-type'].risk='danger'. ObjectTreeRegistry.tsx — JSDoc union update. work-items/page.tsx — add RISKS cell to summaryCells (reads s.risks, tone:'danger', glyph:'warning').",
+    "Story 12 (Frontend: /risk page rewrite): Replace 112-line hardcoded mock at app/(user)/risk/page.tsx with: PageHeading, Panel(panel_risk_header), PageSummaryHeader (cells: TOTAL RISKS / OPEN / HIGH SEVERITY / HIGH LIKELIHOOD / MITIGATING — fed by /risks/summary), Panel(risks_grid_tree_ll) wrapping <ObjectTree wizardConfig={riskWizardConfig}/>. Pattern: copy /work-items/page.tsx, change resourceUrl + summary endpoint + summary cells.",
+    "Story 13 (Frontend: new wizard sidecar): Create app/components/ObjectTree/configs/p_wizard_risks.json with dataType:'risks', resourceUrl:'/risks' (filters scope=work&type=risk via the existing /work-items API OR a dedicated /risks listing — finalise in this story), label:'Risks', searchPlaceholder:'Search risks…', defaultSortKey:'severity' (or 'key_num' fallback), panelHeaderComponent:'RisksPanelHeader' (new), filterChipsComponent:'RisksFilterChips' (new — severity + likelihood + state). Register in p_ObjectTreeRegistry.tsx.",
+    "Story 14 (Frontend vitest): app/(user)/risk/__tests__/page.test.tsx — 4 cases: (a) renders with mock summary data; (b) PageSummaryHeader shows correct severity/likelihood cells; (c) clicking a Risk row opens detail (parity with work-items); (d) filter chips render severity + likelihood options. Lands in <rg> Group 9 (Frontend Component Primitives).",
+    "Story 15 (Docs + register sync): docs/c_c_risk_artefact_type.md already written (this PLA's design doc). Update: docs/c_schema.md adds Risk row to artefact-types catalog summary. docs/c_c_naming_conventions.md gains a §2.6 note: 3-letter prefixes allowed (precedent PRW + RSK); §2.x note: secondary-flow naming pattern is '<Type> State'. docs/c_tech_debt.md: TD-WORKITEMS-GENERIC (S2, replace fixed summary fields + CASE sort with DB-driven enum), TD-WORKITEMS-DUPE (S3, de-dupe the two custom-fields admin pages), TD-RISK-PAGE-TAG (S3, /risk tag_enum 'strategy'→'planning' if confirmed). docs/c_plan_index.md: PLA-0052 row + 'Last issued: PLA-0052'. .claude/CLAUDE.md: add pointer to c_c_risk_artefact_type.md. Vector_Scope.md: PLA-0052 enters in-flight."
+  ],
+  "areas_impacted": [
+    "SQL (vector_artefacts schema): migrations 071–077 — seed extension, field rename, Risk Flow, Risk State, type-field bindings, number sequence, per-workspace backfill",
+    "Go (backend/internal/artefactitems): types.go, service.go — 4 BLOCKER patches + new tests + /risks/summary endpoint",
+    "Go (backend/internal/portfoliomodels): NO CODE CHANGE — adoption writer is generic and picks up the new system row automatically; verified by Agent C",
+    "Wire shape: WorkItemsSummary gains .Risks int; new /risks/summary response struct",
+    "Frontend (app/components): work-items-tree-config.tsx, CustomFieldManager.tsx, Badge.tsx, ObjectTreeRegistry.tsx, ObjectTree/configs/p_wizard_risks.json (new)",
+    "Frontend (app/(user)): risk/page.tsx rewrite, work-items/page.tsx (summaryCells), workspace-admin/custom-fields/work-items/page.tsx, workspace-settings/workspace-settings/custom-fields/work-items/page.tsx (duplicated — TD candidate)",
+    "Tests: 4 new integration tests in <rg> Group 2 + 4 new vitest tests in Group 9",
+    "Docs: c_c_risk_artefact_type.md (NEW), c_schema.md, c_c_naming_conventions.md, c_tech_debt.md, c_plan_index.md, CLAUDE.md, Vector_Scope.md, CONTEXT.md (NEW)"
+  ],
+  "feature_list": [
+    "Risk artefact type as scope='work' source='system' row, prefix 'RSK', colour '#dc2626', sort 25",
+    "Risk Flow (default) — 5 kind-aligned states: Identified→Analysing→Mitigating→Closed→Accepted",
+    "Risk State (secondary) — 7 states with Accepted-Residual + Escalated for richer lifecycle",
+    "Three required risk fields: risk_score (decimal), risk_impact (select), risk_probability (select, renamed from pi_risk_probability)",
+    "Eight optional Defect-lifted fields (notes, blocked, blocked_reason, expedite, ready, acceptance_criteria-as-mitigation, environment)",
+    "RSK-NNNN per-subscription number sequence",
+    "Per-workspace adoption backfill across every existing live workspace",
+    "/work-items primary surface — Risk appears alongside Epic/Story/Task/Defect at sort tier 5",
+    "/risk secondary filtered surface — ObjectTree-backed real page replacing the hardcoded mock",
+    "/risks/summary endpoint — severity × likelihood × open-count aggregates feeding the risk page header",
+    "p_wizard_risks.json sidecar + RisksPanelHeader + RisksFilterChips components",
+    "TD register entries: TD-WORKITEMS-GENERIC (S2), TD-WORKITEMS-DUPE (S3), TD-RISK-PAGE-TAG (S3)"
+  ],
+  "features_extended": [
+    "<strong>WorkItemsSummary</strong> — gains .Risks int (BLOCKER patch + TD-WORKITEMS-GENERIC trigger for generic refactor)",
+    "<strong>artefactitems.service ListWorkItems sort</strong> — adds WHEN 'risk' THEN 5 to CASE clause",
+    "<strong>artefacts_fields_library.pi_risk_probability</strong> — renamed to risk_probability (loses the legacy Portfolio-Item-only prefix)",
+    "<strong>seed_system_artefact_types(subscription_id)</strong> function — now creates 5 work types instead of 4",
+    "<strong>/work-items page summary cells</strong> — gains RISKS cell with tone:'danger' and glyph:'warning'",
+    "<strong>Badge DOMAIN_TONES['work-item-type']</strong> — gains risk:'danger' mapping"
+  ],
+  "features_removed": [
+    "112-line hardcoded fixture array in /risk/page.tsx (replaced with live ObjectTree)",
+    "Implicit 'risks are decorations on Portfolio Item / Defect' model — risk_score / risk_impact / risk_probability are now first-class on a Risk artefact"
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Migration 071 — extend seed_system_artefact_types to include Risk + backfill across subscriptions",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F3, RISK MED. db/vector_artefacts/schema/071_seed_system_risk_artefact_type.sql. CREATE OR REPLACE FUNCTION seed_system_artefact_types — add the 5th tuple. Then DO block iterating every distinct subscription_id in artefacts_types and re-running the seed; ON CONFLICT DO NOTHING. Paired DOWN restores the pre-Risk function definition (does NOT delete the Risk rows — destructive ops require explicit operator action).",
+      "tests": []
+    },
+    {
+      "order": 2,
+      "title": "Migration 072 — rename pi_risk_probability → risk_probability + frontend grep",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F2, RISK LOW. db/vector_artefacts/schema/072_rename_risk_probability.sql. UPDATE artefacts_fields_library SET field_name='risk_probability', label='Risk Probability' WHERE field_name='pi_risk_probability'. artefacts_fields_values references by id_field_library UUID — no cascade needed at SQL level. Same PR: grep app/ for literal 'pi_risk_probability' lookups; expect zero hits but verify.",
+      "tests": [
+        {
+          "name": "TestMigration072_RenamePiRiskProbability",
+          "file": "backend/internal/dbinvariants/migration_072_test.go",
+          "kind": "integration",
+          "covers": "Post-migration, field_name='risk_probability' exists; pi_risk_probability does not; value cardinality preserved"
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Migration 073 — Risk Flow (default) — 5 kind-aligned states + 18-edge transitions",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F3, RISK MED. db/vector_artefacts/schema/073_seed_risk_default_flow.sql. INSERT flows(flows_name='Risk Flow', flows_id_artefact_type=<risk-uuid>, flows_is_default=TRUE) per subscription. INSERT 5 flows_states rows with kinds backlog/todo/in_progress/done/accepted (Identified=initial, Analysing=pullable). INSERT 18 flows_transitions mirroring Defect Flow's promiscuous shape. flow_defaults snapshot fires automatically via 044's trigger.",
+      "tests": []
+    },
+    {
+      "order": 4,
+      "title": "Migration 074 — Risk State (secondary) — 7 states + free-transition graph",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F3, RISK LOW. db/vector_artefacts/schema/074_seed_risk_state_secondary_flow.sql. INSERT flows(flows_name='Risk State', flows_is_default=FALSE) per subscription. 7 states: Identified(backlog,initial), Assessing(todo), Mitigating(in_progress), Monitoring(in_progress), Closed(done), Accepted-Residual(done), Escalated(done). Transition graph: similar density to Defect State (~13 edges).",
+      "tests": []
+    },
+    {
+      "order": 5,
+      "title": "Migration 075 — Bind 11 fields to Risk via artefacts_types_fields",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F2, RISK LOW. db/vector_artefacts/schema/075_seed_risk_type_field_bindings.sql. INSERT 11 rows binding Risk type to fields. Required (position 10/20/30): risk_score, risk_impact, risk_probability. Optional (40-110): notes, acceptance_criteria, blocked, blocked_reason, expedite, ready, environment + lidentifier_colour/lidentifier_type for label parity with Defect.",
+      "tests": []
+    },
+    {
+      "order": 6,
+      "title": "Migration 076 — RSK-NNNN number sequence",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F1, RISK LOW. db/vector_artefacts/schema/076_seed_risk_number_sequence.sql. INSERT artefacts_number_sequences (artefact_type_id=<risk>, sequence=0) per subscription. Verified pattern from Defect's sequence row in same table.",
+      "tests": []
+    },
+    {
+      "order": 7,
+      "title": "Migration 077 — Per-workspace adoption backfill (mirror system Risk → tenant Risk in every workspace)",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-SQL-NNNN, EST F3, RISK MED. db/vector_artefacts/schema/077_adopt_risk_into_existing_workspaces.sql. DO block: FOR ws IN (SELECT * FROM master_record_workspaces WHERE archived_at IS NULL) LOOP INSERT INTO artefacts_types (source='tenant', name='Risk', prefix='RSK', workspace_id=ws.id, ...) ON CONFLICT (workspace_id, scope, prefix) DO NOTHING. New workspaces auto-adopt via portfoliomodels.adopt_work_types — no change there.",
+      "tests": [
+        {
+          "name": "TestMigration077_AllLiveWorkspacesHaveRiskType",
+          "file": "backend/internal/dbinvariants/migration_077_test.go",
+          "kind": "integration",
+          "covers": "Post-migration, every live workspace has exactly one tenant-source Risk artefact_type row with prefix RSK"
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "title": "Backend test-first (red) — Risk creation, summary populate, sort, /risks/summary",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-API-NNNN, EST F3, RISK LOW. backend/internal/artefactitems/service_risk_test.go. 4 integration tests written BEFORE code changes (TDD discipline, per <rg> Group 2). Tests fail on the current code, pass after Story 9.",
+      "tests": [
+        {
+          "name": "TestCreateWorkItem_RiskType_ReturnsRSK0001",
+          "file": "backend/internal/artefactitems/service_risk_test.go",
+          "kind": "integration",
+          "covers": "CreateWorkItem with item_type='risk' validates, persists, returns key RSK-0001"
+        },
+        {
+          "name": "TestWorkItemsSummary_PopulatesRisksField",
+          "file": "backend/internal/artefactitems/service_risk_test.go",
+          "kind": "integration",
+          "covers": "WorkItemsSummary.Risks equals ByType['risk'] after creating N Risk artefacts"
+        },
+        {
+          "name": "TestListWorkItems_SortByType_RiskAfterDefect",
+          "file": "backend/internal/artefactitems/service_risk_test.go",
+          "kind": "integration",
+          "covers": "sort=item_type returns Risk at tier 5 (after Defect at tier 3, Task at tier 4)"
+        },
+        {
+          "name": "TestRisksSummary_SeverityLikelihoodMatrix",
+          "file": "backend/internal/artefactitems/service_risk_test.go",
+          "kind": "integration",
+          "covers": "/risks/summary returns counts grouped by risk_impact × risk_probability with correct cell totals"
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Backend BLOCKER patches — 4 hits in artefactitems",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-API-NNNN, EST F2, RISK LOW. backend/internal/artefactitems/types.go:373 add 'risk':true to validItemTypesByScope['work']. types.go:338 add Risks int to WorkItemsSummary. service.go:306 add out.Risks = out.ByType['risk']. service.go:850 add WHEN 'risk' THEN 5 to CASE. Story 8 tests now green. NO new lint findings expected — the patches mirror existing Defect-shape code.",
+      "tests": []
+    },
+    {
+      "order": 10,
+      "title": "Backend /risks/summary endpoint — severity × likelihood aggregator",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-API-NNNN, EST F5, RISK MED. New handler under /_site/risks/summary. Reads artefacts JOIN artefacts_fields_values (twice — for risk_impact and risk_probability fields). Returns {open, by_severity{critical/high/medium/low}, by_likelihood{high/medium/low}, matrix[3][3]}. JWT-scoped to subscription. SQL constants in artefactitems/sql.go. Public /samantha/v2/ surface deferred — frontend-only consumer for now.",
+      "tests": [
+        {
+          "name": "TestRisksSummary_FilteredBySubscription",
+          "file": "backend/internal/artefactitems/service_risk_test.go",
+          "kind": "integration",
+          "covers": "/risks/summary cannot read other subscriptions' risks (JWT-scoped)"
+        },
+        {
+          "name": "TestRisksSummary_OnlyOpenRisksCounted",
+          "file": "backend/internal/artefactitems/service_risk_test.go",
+          "kind": "integration",
+          "covers": "Closed/Accepted state risks excluded from .open count"
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "title": "Frontend BLOCKER patches — 9 hits across work-items config, custom-fields admin, Badge, etc.",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-UI-NNNN, EST F3, RISK LOW. work-items-tree-config.tsx (TYPE_TIER + TYPE_CHIP_OPTIONS), CustomFieldManager.tsx (ITEM_TYPE_TO_PREFIX + JSDoc), two custom-fields admin pages (hardcoded row), Badge.tsx (DOMAIN_TONES), ObjectTreeRegistry.tsx (JSDoc), work-items/page.tsx (summaryCells + summary fetch type). No logic changes — all additive enumeration entries. ITEM_TYPE_TO_PREFIX must use 'RSK' (3 chars), NOT 'RS' as agent B initially suggested.",
+      "tests": []
+    },
+    {
+      "order": 12,
+      "title": "/risk page rewrite — mock fixture → ObjectTree + filtered config + risk summary",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-UI-NNNN, EST F5, RISK MED. app/(user)/risk/page.tsx. Pattern: copy app/(user)/work-items/page.tsx structure; swap resourceUrl to /risks (or /work-items?type=risk — finalised in Story 13), summary fetch to /risks/summary, summary cells to severity/likelihood/mitigating, wizardConfig import to p_wizard_risks.json. Keep pageId='risk' and slot='active_risks' (addressables auto-register). Two panels: panel_risk_header + risks_grid_tree_ll.",
+      "tests": []
+    },
+    {
+      "order": 13,
+      "title": "New wizard sidecar + RisksPanelHeader + RisksFilterChips components",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-UI-NNNN, EST F3, RISK LOW. Create app/components/ObjectTree/configs/p_wizard_risks.json. dataType:'risks', resourceUrl:'/work-items?type=risk' (reuse existing /work-items list endpoint with filter — simplest), filterChipsComponent:'RisksFilterChips', panelHeaderComponent:'RisksPanelHeader'. New components in app/components/risk-tree-config.tsx (parallel structure to work-items-tree-config.tsx). Register dataType in p_ObjectTreeRegistry.tsx.",
+      "tests": []
+    },
+    {
+      "order": 14,
+      "title": "Frontend vitest tests — /risk page renders + filter chips + summary",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-UI-NNNN, EST F3, RISK LOW. app/(user)/risk/__tests__/page.test.tsx. 4 cases: (a) renders summary header with mock /risks/summary fixture; (b) ObjectTree renders with mock /work-items?type=risk payload; (c) severity filter chip filters the visible rows; (d) clicking a row opens detail panel. Lands in <rg> Group 9 (Frontend Component Primitives).",
+      "tests": [
+        {
+          "name": "renders_risk_summary_header_severity_likelihood",
+          "file": "app/(user)/risk/__tests__/page.test.tsx",
+          "kind": "vitest",
+          "covers": "Summary header renders TOTAL/OPEN/HIGH-SEV/HIGH-LIK cells from fetch fixture"
+        },
+        {
+          "name": "renders_object_tree_with_risk_filtered_payload",
+          "file": "app/(user)/risk/__tests__/page.test.tsx",
+          "kind": "vitest",
+          "covers": "ObjectTree mounts with dataType='risks' and renders mock risk rows"
+        },
+        {
+          "name": "severity_filter_chip_filters_rows",
+          "file": "app/(user)/risk/__tests__/page.test.tsx",
+          "kind": "vitest",
+          "covers": "Clicking severity:high chip narrows visible rows to risks with that field value"
+        },
+        {
+          "name": "row_click_opens_detail_panel",
+          "file": "app/(user)/risk/__tests__/page.test.tsx",
+          "kind": "vitest",
+          "covers": "Selecting a Risk row updates selectedItem state and shows the detail surface"
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "title": "Docs sync — schema catalog, naming conventions, tech-debt, plan index, CLAUDE pointer, scope, CONTEXT",
+      "story_id": null,
+      "card_url": null,
+      "status": "pending",
+      "note": "FE-DOC-NNNN, EST F2, RISK LOW. (a) docs/c_schema.md — add Risk to artefact-types catalog; (b) docs/c_c_naming_conventions.md — note 3-letter prefix precedent (PRW, RSK) under §2.6 + secondary-flow naming '<Type> State' pattern; (c) docs/c_tech_debt.md — TD-WORKITEMS-GENERIC (S2), TD-WORKITEMS-DUPE (S3), TD-RISK-PAGE-TAG (S3); (d) docs/c_plan_index.md — PLA-0052 row + 'Last issued: PLA-0052'; (e) .claude/CLAUDE.md — pointer to docs/c_c_risk_artefact_type.md; (f) Vector_Scope.md — PLA-0052 in-flight; (g) CONTEXT.md — already created.",
+      "tests": []
+    }
+  ]
+}

@@ -404,6 +404,18 @@ Every table that doesn't conform to §2.1–2.7 was scheduled for rename. Table 
 
 **Acknowledged downside:** column names get long. `users_roles_workspaces_id_user` is 27 characters. For very long table chains the column names will exceed 40-50 characters. This is a deliberate trade — readability beats brevity at every query site.
 
+### §2.10 — Artefact-type conventions (added by PLA-0052)
+
+These rules sit at the data-content layer, not the schema layer — they govern what goes into `artefacts_types` and `flows` rows, not how the tables themselves are named. Added 2026-05-16 with PLA-0052 (Risk artefact type).
+
+**Prefix length.** `artefacts_types_prefix` is 2 or 3 letters. Two-letter is the historical norm (`EP`, `US`, `TA`, `DE`, `PI`, `TH`, `BO`, `PR`). Three-letter is allowed when two letters would clash or feel cramped (`PRW` = Portfolio Runway, `RSK` = Risk). No type uses 1 or 4+ letters. The `uq_artefacts_types_prefix_live` UNIQUE index enforces uniqueness within `(subscription, scope)`, not length — so 2 vs 3 is a stylistic choice, not a constraint. Pick the shortest that doesn't collide with an existing prefix or read awkwardly in identifiers (`RSK-0042` is fine; `R-0042` would be unreadable, `RISK-0042` would be too long).
+
+**Flow naming.** Each artefact type has exactly one default flow (`flows_is_default = TRUE`) and zero or more secondary flows. The default flow is named `<Type> Flow` (e.g. `Story Flow`, `Defect Flow`, `Risk Flow`). Secondary flows are named `<Type> State` (e.g. `Defect State`, `Risk State`). A type with multiple secondary flows uses `<Type> <Aspect>` for additional ones (e.g. `Defect Triage`) — but the first secondary stays `<Type> State` for consistency. Never name a flow generically (`Default`, `Workflow`, `Lifecycle`) — the type name must be in the flow name so the `/flow-states` admin page can show flows grouped by artefact type at a glance.
+
+**State-name characters.** Flow state names (`flows_states_name`) are Title Case English; words are separated by spaces, not underscores or hyphens. Compound state names use a single hyphen ONLY when the two words form one concept (`Accepted-Residual`, `Not Reproducible`). Avoid hyphens for separation alone; use a space. Single-word states (`Identified`, `Mitigating`, `Closed`) are preferred when one word fits.
+
+**State kinds.** Every state carries one of the six kinds (`backlog`, `todo`, `in_progress`, `done`, `accepted`, `cancelled`). The kind drives all kind-aligned UI (pill colour, filter chips, kanban grouping). A flow MAY have multiple states sharing a kind (Defect State has two `done` states: `Not Reproducible` and `Deferred`) — but every flow MUST have at least one `backlog`-kind state, and that state MUST be `flows_states_is_initial = TRUE`.
+
 ---
 
 ## §3 — HTTP routes

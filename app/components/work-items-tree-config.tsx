@@ -154,7 +154,11 @@ const CANONICAL_ORDER: Record<string, number> = {
 const PRIORITY_ORDER: Record<string, number> = {
   critical: 0, high: 1, medium: 2, low: 3,
 };
-const TYPE_TIER: Record<string, number> = { epic: 1, story: 2, task: 3, defect: 4 };
+// PLA-0052 Story 11 — Risk added at tier 5; Defect/Task swapped to match
+// the backend CASE clause in service.go:850 (Epic→1, Story→2, Defect→3,
+// Task→4, Risk→5). FE and BE must agree on ordering otherwise the
+// secondary client-side sort drifts from the server-paginated list.
+const TYPE_TIER: Record<string, number> = { epic: 1, story: 2, defect: 3, task: 4, risk: 5 };
 
 export function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkItem[] {
   const asc = dir === "asc";
@@ -618,8 +622,9 @@ export function useWorkItemsSort(): {
 const TYPE_CHIP_OPTIONS = [
   { value: "epic", label: "Epic" },
   { value: "story", label: "Story" },
-  { value: "task", label: "Task" },
   { value: "defect", label: "Defect" },
+  { value: "task", label: "Task" },
+  { value: "risk", label: "Risk" }, // PLA-0052
 ];
 
 // Backend `?status=` filter is the legacy enum (open/in_progress/done/cancelled)

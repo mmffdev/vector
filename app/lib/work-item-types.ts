@@ -10,11 +10,18 @@
 // Prefixes mirror `artefact_types.prefix` on the wire (WorkItem.type_prefix);
 // the order here drives the per-type tab bar on the admin pages.
 
+// PLA-0052 Story 11 — Risk added at tier 5. Order here matches the
+// `artefacts_types_sort_order` seeded by the type-specific migrations
+// (Epic→1, Story→2, Defect→3, Task→4, Risk→5) so the admin-tab UX matches
+// the listing sort. TD-WORKITEMS-GENERIC (2026-05-16) replaced the
+// backend CASE clause with that column join — the two are no longer
+// independently maintained.
 export const ITEM_TYPES = [
   { key: "epic",   label: "Epic",   prefix: "EP" },
   { key: "story",  label: "Story",  prefix: "US" },
-  { key: "task",   label: "Task",   prefix: "TA" },
   { key: "defect", label: "Defect", prefix: "DE" },
+  { key: "task",   label: "Task",   prefix: "TA" },
+  { key: "risk",   label: "Risk",   prefix: "RSK" },
 ] as const;
 
 export type ItemTypeKey = typeof ITEM_TYPES[number]["key"];

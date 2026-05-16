@@ -56,6 +56,7 @@ const ITEM_TYPE_TO_PREFIX: Record<string, string> = {
   story:  "US",
   task:   "TA",
   defect: "DE",
+  risk:   "RSK", // PLA-0052
 };
 
 // ─── BFF helpers ─────────────────────────────────────────────────────────────
