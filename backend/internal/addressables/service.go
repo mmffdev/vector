@@ -213,12 +213,7 @@ func isValidKind(s string) bool {
 // ordered by address. Used by the runtime <DomRegistry> to verify that
 // what is mounted matches what is declared.
 func (s *Service) Snapshot(ctx context.Context, pageRoute string) ([]Addressable, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, parent_id, kind, name, address, page_route, source, custom_app_id, soft_archived, helpable
-		  FROM page_addressables
-		 WHERE page_route = $1 AND soft_archived = FALSE
-		 ORDER BY address
-	`, pageRoute)
+	rows, err := s.pool.Query(ctx, sqlSnapshotPageAddressables, pageRoute)
 	if err != nil {
 		return nil, err
 	}
@@ -431,12 +426,8 @@ func (s *Service) HelpFor(ctx context.Context, addressableID uuid.UUID, locale s
 		locale = "en"
 	}
 	doc := HelpDoc{AddressableID: addressableID, Locale: locale}
-	err := s.pool.QueryRow(ctx, `
-		SELECT title, body_html, video_embeds, image_urls
-		  FROM page_help
-		 WHERE addressable_id = $1 AND locale = $2 AND soft_archived = FALSE
-		 LIMIT 1
-	`, addressableID, locale).Scan(&doc.Title, &doc.BodyHTML, &doc.VideoEmbeds, &doc.ImageURLs)
+	err := s.pool.QueryRow(ctx, sqlSelectHelpForAddressableLocale, addressableID, locale).
+		Scan(&doc.Title, &doc.BodyHTML, &doc.VideoEmbeds, &doc.ImageURLs)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return HelpDoc{AddressableID: addressableID, Locale: locale, VideoEmbeds: emptyJSONArray, ImageURLs: emptyJSONArray}, false, nil
 	}
@@ -490,19 +481,7 @@ type HelpAdminRow struct {
 // addressable, ordered by page_route then address. Used by the
 // /dev/page-help editor.
 func (s *Service) AdminListHelp(ctx context.Context) ([]HelpAdminRow, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT
-			h.id, h.addressable_id, a.address, a.page_route, a.kind, a.name,
-			h.locale, h.title, h.body_html, h.video_embeds, h.image_urls, h.seeded_from,
-			(h.seeded_from = 'library' AND h.updated_by_user_id IS NULL) AS is_library_default,
-			h.updated_at, u.email, a.helpable
-		  FROM page_help h
-		  JOIN page_addressables a ON a.id = h.addressable_id
-		  LEFT JOIN users u ON u.id = h.updated_by_user_id
-		 WHERE h.soft_archived = FALSE
-		   AND a.soft_archived = FALSE
-		 ORDER BY a.page_route, a.address, h.locale
-	`)
+	rows, err := s.pool.Query(ctx, sqlAdminListHelp)
 	if err != nil {
 		return nil, err
 	}
@@ -569,20 +548,8 @@ func (s *Service) UpdateHelp(ctx context.Context, addressableID uuid.UUID, local
 	if len(images) == 0 {
 		images = emptyJSONArray
 	}
-	tag, err := s.pool.Exec(ctx, `
-		UPDATE page_help
-		   SET title = $1,
-		       body_html = $2,
-		       video_embeds = $3,
-		       image_urls = $4,
-		       updated_at = NOW(),
-		       updated_by_user_id = $5,
-		       seeded_from = 'manual',
-		       library_ref = NULL
-		 WHERE addressable_id = $6
-		   AND locale = $7
-		   AND soft_archived = FALSE
-	`, doc.Title, doc.BodyHTML, videos, images, editorID, addressableID, locale)
+	tag, err := s.pool.Exec(ctx, sqlUpdateHelp,
+		doc.Title, doc.BodyHTML, videos, images, editorID, addressableID, locale)
 	if err != nil {
 		return err
 	}
@@ -600,15 +567,7 @@ func (s *Service) ArchiveHelp(ctx context.Context, addressableID uuid.UUID, loca
 	if locale == "" {
 		locale = "en"
 	}
-	tag, err := s.pool.Exec(ctx, `
-		UPDATE page_help
-		   SET soft_archived = TRUE,
-		       updated_at = NOW(),
-		       updated_by_user_id = $1
-		 WHERE addressable_id = $2
-		   AND locale = $3
-		   AND soft_archived = FALSE
-	`, editorID, addressableID, locale)
+	tag, err := s.pool.Exec(ctx, sqlArchiveHelp, editorID, addressableID, locale)
 	if err != nil {
 		return err
 	}
@@ -622,13 +581,7 @@ func (s *Service) ArchiveHelp(ctx context.Context, addressableID uuid.UUID, loca
 // gadmin can hide the help icon on a specific element without touching
 // code. Returns ErrParentNotFound when no live addressable row exists.
 func (s *Service) UpdateHelpable(ctx context.Context, addressableID uuid.UUID, helpable bool) error {
-	tag, err := s.pool.Exec(ctx, `
-		UPDATE page_addressables
-		   SET helpable = $1,
-		       updated_at = NOW()
-		 WHERE id = $2
-		   AND soft_archived = FALSE
-	`, helpable, addressableID)
+	tag, err := s.pool.Exec(ctx, sqlUpdateHelpable, helpable, addressableID)
 	if err != nil {
 		return err
 	}
@@ -655,20 +608,16 @@ func (s *Service) upsertAddressable(ctx context.Context, tx pgx.Tx, parentID *uu
 	var query string
 	var args []any
 	if parentID == nil {
-		query = `SELECT id, source FROM page_addressables
-		          WHERE page_route = $1 AND parent_id IS NULL AND kind = $2 AND name = $3 AND soft_archived = FALSE
-		          FOR UPDATE`
+		query = sqlSelectAddressableSiblingRootForUpdate
 		args = []any{pageRoute, kind, name}
 	} else {
-		query = `SELECT id, source FROM page_addressables
-		          WHERE parent_id = $1 AND kind = $2 AND name = $3 AND soft_archived = FALSE
-		          FOR UPDATE`
+		query = sqlSelectAddressableSiblingChildForUpdate
 		args = []any{*parentID, kind, name}
 	}
 	err := tx.QueryRow(ctx, query, args...).Scan(&existingID, &existingSource)
 	if err == nil {
 		// Live row exists; refresh last_seen_at and return.
-		_, err = tx.Exec(ctx, `UPDATE page_addressables SET last_seen_at = NOW() WHERE id = $1`, existingID)
+		_, err = tx.Exec(ctx, sqlTouchAddressableLastSeen, existingID)
 		if err != nil {
 			return uuid.Nil, false, err
 		}
@@ -680,12 +629,8 @@ func (s *Service) upsertAddressable(ctx context.Context, tx pgx.Tx, parentID *uu
 
 	// No live row — insert.
 	var newID uuid.UUID
-	err = tx.QueryRow(ctx, `
-		INSERT INTO page_addressables
-		    (parent_id, kind, name, address, page_route, source, custom_app_id, last_seen_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-		RETURNING id
-	`, parentID, kind, name, addr, pageRoute, string(source), customAppID).Scan(&newID)
+	err = tx.QueryRow(ctx, sqlInsertAddressable,
+		parentID, kind, name, addr, pageRoute, string(source), customAppID).Scan(&newID)
 	if err != nil {
 		return uuid.Nil, false, err
 	}
@@ -703,10 +648,7 @@ func (s *Service) archiveDroppedBuildRows(ctx context.Context, tx pgx.Tx, pageRo
 // archiveDroppedBuildRowsCount is the same as archiveDroppedBuildRows
 // and additionally returns the number of rows soft-archived.
 func (s *Service) archiveDroppedBuildRowsCount(ctx context.Context, tx pgx.Tx, pageRoute string, keepIDs map[uuid.UUID]struct{}) (int, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT id FROM page_addressables
-		 WHERE page_route = $1 AND source = 'build' AND soft_archived = FALSE
-	`, pageRoute)
+	rows, err := tx.Query(ctx, sqlListLiveBuildAddressableIDs, pageRoute)
 	if err != nil {
 		return 0, err
 	}
@@ -727,7 +669,7 @@ func (s *Service) archiveDroppedBuildRowsCount(ctx context.Context, tx pgx.Tx, p
 	if len(toArchive) == 0 {
 		return 0, nil
 	}
-	if _, err := tx.Exec(ctx, `UPDATE page_addressables SET soft_archived = TRUE WHERE id = ANY($1)`, toArchive); err != nil {
+	if _, err := tx.Exec(ctx, sqlSoftArchiveAddressablesByID, toArchive); err != nil {
 		return 0, err
 	}
 	return len(toArchive), nil
@@ -746,11 +688,8 @@ func (s *Service) lookupIDByAddress(ctx context.Context, pageRoute, address stri
 func (s *Service) lookupRowByAddress(ctx context.Context, pageRoute, address string) (uuid.UUID, bool, error) {
 	var id uuid.UUID
 	var helpable bool
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, helpable FROM page_addressables
-		 WHERE page_route = $1 AND address = $2 AND soft_archived = FALSE
-		 LIMIT 1
-	`, pageRoute, address).Scan(&id, &helpable)
+	err := s.pool.QueryRow(ctx, sqlSelectAddressableByRouteAndAddressWithHelpable, pageRoute, address).
+		Scan(&id, &helpable)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, false, ErrParentNotFound
 	}
@@ -762,12 +701,7 @@ func (s *Service) lookupRowByAddress(ctx context.Context, pageRoute, address str
 // from "addressable known but no help authored" (200 with empty body).
 func (s *Service) addressableExists(ctx context.Context, id uuid.UUID) (bool, error) {
 	var exists bool
-	err := s.pool.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1 FROM page_addressables
-			 WHERE id = $1 AND soft_archived = FALSE
-		)
-	`, id).Scan(&exists)
+	err := s.pool.QueryRow(ctx, sqlExistsLiveAddressable, id).Scan(&exists)
 	return exists, err
 }
 
@@ -778,17 +712,11 @@ func (s *Service) peekSibling(ctx context.Context, tx pgx.Tx, parentID *uuid.UUI
 	var id uuid.UUID
 	var err error
 	if parentID == nil {
-		err = tx.QueryRow(ctx, `
-			SELECT source, id FROM page_addressables
-			 WHERE page_route = $1 AND parent_id IS NULL AND kind = $2 AND name = $3 AND soft_archived = FALSE
-			 LIMIT 1
-		`, pageRoute, kind, name).Scan(&src, &id)
+		err = tx.QueryRow(ctx, sqlSelectAddressableSiblingRootSourceID, pageRoute, kind, name).
+			Scan(&src, &id)
 	} else {
-		err = tx.QueryRow(ctx, `
-			SELECT source, id FROM page_addressables
-			 WHERE parent_id = $1 AND kind = $2 AND name = $3 AND soft_archived = FALSE
-			 LIMIT 1
-		`, *parentID, kind, name).Scan(&src, &id)
+		err = tx.QueryRow(ctx, sqlSelectAddressableSiblingChildSourceID, *parentID, kind, name).
+			Scan(&src, &id)
 	}
 	return Source(src), id, err
 }
@@ -796,16 +724,10 @@ func (s *Service) peekSibling(ctx context.Context, tx pgx.Tx, parentID *uuid.UUI
 // touchLastSeen refreshes last_seen_at on an existing live sibling.
 func (s *Service) touchLastSeen(ctx context.Context, tx pgx.Tx, parentID *uuid.UUID, pageRoute, kind, name string) error {
 	if parentID == nil {
-		_, err := tx.Exec(ctx, `
-			UPDATE page_addressables SET last_seen_at = NOW()
-			 WHERE page_route = $1 AND parent_id IS NULL AND kind = $2 AND name = $3 AND soft_archived = FALSE
-		`, pageRoute, kind, name)
+		_, err := tx.Exec(ctx, sqlTouchAddressableSiblingRootLastSeen, pageRoute, kind, name)
 		return err
 	}
-	_, err := tx.Exec(ctx, `
-		UPDATE page_addressables SET last_seen_at = NOW()
-		 WHERE parent_id = $1 AND kind = $2 AND name = $3 AND soft_archived = FALSE
-	`, *parentID, kind, name)
+	_, err := tx.Exec(ctx, sqlTouchAddressableSiblingChildLastSeen, *parentID, kind, name)
 	return err
 }
 
@@ -813,11 +735,7 @@ func (s *Service) touchLastSeen(ctx context.Context, tx pgx.Tx, parentID *uuid.U
 // Returns ErrParentNotFound when the address is unknown for the route.
 func (s *Service) lookupID(ctx context.Context, tx pgx.Tx, pageRoute, address string) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := tx.QueryRow(ctx, `
-		SELECT id FROM page_addressables
-		 WHERE page_route = $1 AND address = $2 AND soft_archived = FALSE
-		 LIMIT 1
-	`, pageRoute, address).Scan(&id)
+	err := tx.QueryRow(ctx, sqlSelectAddressableIDByRouteAndAddress, pageRoute, address).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, ErrParentNotFound
 	}
@@ -853,20 +771,11 @@ func (s *Service) seedLibraryDefault(ctx context.Context, tx pgx.Tx, addressable
 	var body string
 	var videos, images json.RawMessage
 	// Prefer exact name match, then wildcard.
-	err := tx.QueryRow(ctx, `
-		SELECT id, title, body_html, video_embeds, image_urls
-		  FROM library_help_defaults
-		 WHERE kind = $1 AND locale = 'en' AND name_pattern IN ($2, '*')
-		 ORDER BY (name_pattern = $2) DESC
-		 LIMIT 1
-	`, kind, name).Scan(&libID, &title, &body, &videos, &images)
+	err := tx.QueryRow(ctx, sqlSelectLibraryHelpDefault, kind, name).
+		Scan(&libID, &title, &body, &videos, &images)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// No library default — seed the placeholder row instead.
-		_, perr := tx.Exec(ctx, `
-			INSERT INTO page_help (addressable_id, locale, title, body_html, video_embeds, image_urls, seeded_from, library_ref, updated_by_user_id)
-			VALUES ($1, 'en', NULL, $2, '[]'::jsonb, '[]'::jsonb, 'placeholder', NULL, NULL)
-			ON CONFLICT (addressable_id, locale) WHERE soft_archived = FALSE DO NOTHING
-		`, addressableID, PlaceholderBodyHTML)
+		_, perr := tx.Exec(ctx, sqlInsertHelpPlaceholder, addressableID, PlaceholderBodyHTML)
 		return perr
 	}
 	if err != nil {
@@ -879,11 +788,8 @@ func (s *Service) seedLibraryDefault(ctx context.Context, tx pgx.Tx, addressable
 		images = emptyJSONArray
 	}
 
-	_, err = tx.Exec(ctx, `
-		INSERT INTO page_help (addressable_id, locale, title, body_html, video_embeds, image_urls, seeded_from, library_ref)
-		VALUES ($1, 'en', $2, $3, $4, $5, 'library', $6)
-		ON CONFLICT (addressable_id, locale) WHERE soft_archived = FALSE DO NOTHING
-	`, addressableID, title, body, videos, images, libID)
+	_, err = tx.Exec(ctx, sqlInsertHelpFromLibrary,
+		addressableID, title, body, videos, images, libID)
 	return err
 }
 

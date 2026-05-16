@@ -20,6 +20,8 @@ All lints share the same shape:
 | `lint:scope-literals` | `dev/scripts/lint_scope_literals.py` | `scope_literals_exempt.json` | inside `backend/internal/artefactitemsv2/`, `'work'` / `'strategy'` MUST NOT appear as SQL literals — bind via `$N` + `s.scope` (PLA-0037 / B21) |
 | `lint:page-description` | `dev/scripts/lint_page_description.py` | `page_description_exempt.json` | every `page.tsx` under `app/(user)/` must render `<PageDescription>` so the helper-icon Panel + 30px bottom gap land consistently |
 | `lint:h2-panel-only` | `dev/scripts/lint_h2_panel_only.py` | `h2_panel_only_exempt.json` | raw `<h2>` in `app/(user)/**/*.tsx` is forbidden — section titles must go through `<Panel title="…">` (which renders `<h2 class="panel__title">`) |
+| `lint:column-prefix-convention` | `dev/scripts/lint_column_prefix_convention.py` | `column_prefix_exempt.json` | **HARD GATE** — every column on a renamed (§2.6 root-family) table must carry the table-name prefix per §2.3. Ledger emptied 2026-05-14 with the final pay-down (mig 190 — users_nav family); lint flipped from warn-only to fail-on-violation. TD-NAME-001 resolved same day (9 column-rename migrations: 186, 063, 187, 064, 188, 189, 065, 066, 190 → 245→0 findings). |
+| `lint:cross-db-writer-test` | `dev/scripts/lint_cross_db_writer_test.py` | `cross_db_writer_test_exempt.json` | any Go package with >1 `*pgxpool.Pool` struct field must have a sibling `*crossdb*_test.go` documenting the partial-failure boundary (PLA-0048 / RF1.5.6) |
 | `api:check` | `dev/scripts/check_routes.sh` + `dev/scripts/check_callers.py` | `dev/registries/dead-api-exemptions.txt` | Go chi router routes must be documented in `openapi.yaml`; frontend `api(...)` callers must reference a spec path; `apiInfra` and `apiV2` tracked but not hard-failed (PLA-0029) |
 
 ---
@@ -78,7 +80,7 @@ Scans every `*.go` under `backend/` (excluding `*_test.go` and `vendor/`) for `I
 | `role_permissions` | `backend/internal/roles/` |
 | `page_addressables` | `backend/internal/addressables/` |
 
-Migration SQL files (`db/schema/*.sql`) are not scanned — migrations are the privileged bootstrap path.
+Migration SQL files (`db/<dbname>/schema/*.sql`) are not scanned — migrations are the privileged bootstrap path.
 
 **Adding a new sole-writer boundary:** edit `WRITER_BOUNDARY` in `dev/scripts/lint_writer_boundary.py` and add the new `<table> → <package>` row.
 

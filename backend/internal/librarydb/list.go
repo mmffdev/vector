@@ -28,13 +28,7 @@ type ModelSummary struct {
 // ListPublishedModels returns all rows from portfolio_templates, ordered
 // with Vector Standard first then alphabetically.
 func ListPublishedModels(ctx context.Context, pool *pgxpool.Pool) ([]ModelSummary, error) {
-	const q = `
-		SELECT id, name, description, layers
-		FROM portfolio_templates
-		ORDER BY CASE WHEN id = '00000000-0000-0000-0000-00000000aa01' THEN 0 ELSE 1 END,
-			name`
-
-	rows, err := pool.Query(ctx, q)
+	rows, err := pool.Query(ctx, sqlListPublishedModels)
 	if err != nil {
 		return nil, fmt.Errorf("librarydb: list published models: %w", err)
 	}

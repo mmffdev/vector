@@ -15,12 +15,12 @@ backend/.env.production
 .env.local
 .env*.local
 dev/remote_setup.html
-.claude/settings.json
 .claude/settings.json.bak
 .claude/worktrees/
 .claude/handoffs/*.tar.gz
 .planka/
 MMFFDev - Vector Assets/backups/
+MMFFDev - Vector Assets/db-backups/
 MMFFDev - Vector Assets/security-flags.jsonl
 MMFFDev - Vector Assets/Vector Design System.zip
 .build/

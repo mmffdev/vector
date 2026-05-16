@@ -1,0 +1,587 @@
+/* ============================================================
+   /redesign shell — Layout 04 Icon Rail + Flyout
+   Token-only styles. No shadows, no gradients, no decorative
+   colour. Active state = tone shift + 3px --ink indicator.
+   ============================================================ */
+
+.rd-shell {
+  --rd-rail-w: 70px;
+  --nav-primary-rail-2-w: 240px;
+  --rd-radius-md: 10px;
+  --rd-radius-sm: 6px;
+
+  display: grid;
+  grid-template-columns: var(--rd-rail-w) var(--nav-primary-rail-2-w) 1fr;
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+/* -------- Icon rail -------- */
+.nav-primary-rail-1 {
+  width: var(--rd-rail-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 0;
+  /* Sticky to the viewport so the bottom util cluster (pencil / env badge /
+     bell / user) always sits in the fold, regardless of page scroll length.
+     height: 100vh pins the rail to the viewport; the grid column still
+     reserves --rd-rail-w worth of space inline. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.nav-primary-rail-1__brand {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.nav-primary-rail-1__brand_logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.nav-primary-rail-1__brand:hover { opacity: 0.92; }
+.nav-primary-rail-1__brand:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ----- Profile picker (animated dropdown) ----------------------------
+   Collapsed: shows only the active pill. Click opens a dropdown that
+   lists all other profiles; selecting one swaps it to active and
+   closes. Dropdown is position:absolute so it overlays NavBuckets
+   without shifting the rail layout. */
+.nav-primary-rail-1__ProfileStack_Picker {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 0;
+}
+
+.nav-primary-rail-1__ProfileStack_Picker_Pill {
+  width: 40px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Pill:hover { opacity: 0.8; }
+.nav-primary-rail-1__ProfileStack_Picker_Pill:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Pill_Label { line-height: 1; }
+
+.nav-primary-rail-1__ProfileStack_Picker_Menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Menu.is-open {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill {
+  width: 40px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill_Label { line-height: 1; }
+
+.nav-primary-rail-1__ProfileStack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nav-primary-rail-1__divider {
+  width: 28px;
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0 4px;
+}
+
+.nav-primary-rail-1__NavBuckets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  align-items: center;
+  /* Anchor for .nav-travel-indicator (absolute) — without this the bar
+     resolves against .nav-primary-rail-1 and lands outside the visible area. */
+  position: relative;
+}
+
+.nav-primary-rail-1__NavBuckets_Items {
+  list-style: none;
+  width: 100%;
+}
+
+.nav-primary-rail-1__NavBuckets_Items_Button {
+  position: relative;
+  /* Fill the rail width so the label has the full 100px (minus
+     small side padding) to wrap into — avoids labels like "User
+     Management" hitting the button edge and breaking onto 3 lines. */
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 4px 6px;
+  border-radius: var(--rd-radius-md);
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  box-sizing: border-box;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-primary-rail-1__NavBuckets_Items_Button_Label {
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  letter-spacing: 0.01em;
+}
+.nav-primary-rail-1__NavBuckets_Items_Button:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.nav-primary-rail-1__NavBuckets_Items_Button.is-active {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.nav-primary-rail-1__NavBuckets_Items_Button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.nav-primary-rail-1__Util_UserAccount_Indicator {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: -14px;
+  width: 3px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+/* ----- Travelling section indicator (shared by both nav rails) --------
+   A single bar inside a positioned container that bridges old→new active
+   targets on click, then contracts onto the target with an elastic settle.
+   useTravelIndicator() measures offsetTop/offsetHeight of each registered
+   target and feeds the bar two phases:
+     • stretch — top/height transitions over 140ms linear (fast bridge).
+     • settle  — top/height transitions over 520ms cubic-bezier overshoot
+       so the contraction onto the target has a soft bounce.
+   The bar uses inline top/height; the modifier class swaps timing. */
+.nav-travel-indicator {
+  position: absolute;
+  left: 0;
+  width: 3px;
+  background: var(--ink);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 1;
+}
+.nav-travel-indicator-idle {
+  transition: none;
+}
+.nav-travel-indicator-stretch {
+  transition:
+    top    140ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-travel-indicator-settle {
+  transition:
+    top    520ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Per-section indicators are suppressed inside the nav buckets — the
+   travelling bar owns that visual. The static .nav-primary-rail-1__Util_UserAccount_Indicator span is
+   still used by the round user button (account-active state). */
+.nav-primary-rail-1__NavBuckets .nav-primary-rail-1__Util_UserAccount_Indicator { display: none; }
+
+.nav-primary-rail-1__Util {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.nav-primary-rail-1__Util_Button {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--rd-radius-md);
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-primary-rail-1__Util_Button:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.nav-primary-rail-1__Util_UserAccount {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.nav-primary-rail-1__Util_UserAccount:hover { background: var(--surface); }
+.nav-primary-rail-1__Util_UserAccount.is-active {
+  background: var(--surface);
+  border-color: var(--ink);
+}
+.nav-primary-rail-1__Util_UserAccount .nav-primary-rail-1__Util_UserAccount_Indicator {
+  /* The user button is round so the indicator hugs the rail's left edge
+     rather than the button itself. */
+  top: 4px;
+  bottom: 4px;
+}
+
+/* -------- Flyout -------- */
+.nav-primary-rail-2 {
+  width: var(--nav-primary-rail-2-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  /* Top padding anchors the title/clock block. The nav list is pushed
+     down by .nav-primary-rail-2__SectionHeader_Clock margin-bottom so the first row centre
+     aligns with the first rail section icon. See .nav-primary-rail-2__SectionHeader_Clock for
+     the pixel derivation (1-pill state → 129px). */
+  padding: 44px 0 16px;
+  /* Match the rail's sticky-to-viewport behaviour so the section list
+     stays anchored as the main content scrolls. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-height: 0;
+}
+
+.nav-primary-rail-2__SectionHeader_Title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  /* Centre the (title + clock) GROUP vertically against the rail's
+     V brand centre (~36px from shell top). Group ≈ 19 (title) + 12
+     (clock) = 31; half ≈ 15.5; group top sits at 20.5. Flyout
+     pad-top is 44 → title margin-top = -24 places group top at 20.
+     Bottom margin is 0 so the clock sits flush directly below — the
+     clock owns the bottom margin that pushes the list down. */
+  margin: -24px 0 0;
+  padding: 0 22px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.nav-primary-rail-2__SectionHeader_Clock {
+  /* Flush below the title, then gap to the first nav row so the row
+     centre aligns with the rail's first section icon ("Personal").
+     Rail stack to icon centre (1-pill state):
+       16 (rail pt) + 40 (brand) + 8 (gap + picker-mt) +
+       28 (1 pill) + 12 (gap + divider-mt) + 1 (divider) +
+       8 (divider-mb + gap) + 6 (section pt) + 10 (½ 20px icon) = 129px.
+     Flyout title top = 44 − 24 = 20px; title ≈ 19px; clock ≈ 12px;
+     first row half-height = 16px → gap needed = 129 − (20+19+12+16) = 62px − 1px (divider offset) = 61px. */
+  margin: 0 0 61px;
+  padding: 0 22px;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.nav-primary-rail-2__SectionDivider {
+  position: absolute;
+  top: 104px;
+  left: 21px;
+  right: 21px;
+  height: 1px;
+  background: var(--border);
+}
+
+.nav-primary-rail-2__PageList {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.nav-primary-rail-2__PageList_Group {
+  display: flex;
+  flex-direction: column;
+  /* Anchor for .nav-travel-indicator (absolute). */
+  position: relative;
+}
+.nav-primary-rail-2__PageList_Empty {
+  margin: 0;
+  padding: 8px 22px;
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+.nav-primary-rail-2__PageList_Group_Label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-subtle);
+  padding: 10px 22px 4px;
+  font-weight: 600;
+}
+
+.nav-primary-rail-2__PageList_Group_Row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 22px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 400;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-primary-rail-2__PageList_Group_Row:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.nav-primary-rail-2__PageList_Group_Row.is-active {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-weight: 500;
+}
+.nav-primary-rail-2__PageList_Group_Row.is-nested {
+  padding-left: 38px;
+  position: relative;
+}
+/* Vertical spine connecting nested rows under their parent. Drawn as a
+   pseudo-element so consecutive nested rows form one continuous line
+   from the top edge of the first nested row through the bottom edge of
+   the last — no per-row gap. The horizontal connector comes from the
+   row's icon glyph (e.g. ─). */
+.nav-primary-rail-2__PageList_Group_Row.is-nested::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+/* Last nested row in a group: spine stops at the row's vertical centre
+   so it terminates into the horizontal connector glyph (elbow shape).
+   The +sibling check identifies "no more nested rows after me." */
+.nav-primary-rail-2__PageList_Group_Row.is-nested:not(:has(+ .is-nested))::before {
+  bottom: 50%;
+}
+.nav-primary-rail-2__PageList_Group_Row_Icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.nav-primary-rail-2__PageList_Group_Row_Label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+.nav-primary-rail-2__PageList_Group_Row_Dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  flex-shrink: 0;
+}
+
+.nav-primary-rail-2__Seg {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-sunken);
+  border-radius: var(--rd-radius-sm);
+  padding: 3px;
+  gap: 2px;
+  margin: 16px 22px 0;
+  align-self: flex-start;
+}
+.nav-primary-rail-2__Seg_Button {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-primary-rail-2__Seg_Button:hover { color: var(--ink); }
+.nav-primary-rail-2__Seg_Button.is-active {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+/* -------- Account flyout extras -------- */
+.nav-primary-rail-2__AccountCard {
+  margin: 0 22px 12px;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--rd-radius-sm);
+}
+.nav-primary-rail-2__AccountCard_Email {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  word-break: break-all;
+}
+.nav-primary-rail-2__AccountCard_Role {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+.nav-primary-rail-2__PageList_Group_Row-button {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nav-primary-rail-2__PageList_Group_Row-danger { color: var(--ink-muted); }
+.nav-primary-rail-2__PageList_Group_Row-danger:hover {
+  color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+/* -------- Main viewport — topbar fixed, body scrolls -------- */
+.rd-shell__main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--surface-sunken);
+}
+
+.nav-top-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 30px 0;
+  background: var(--surface-sunken);
+}
+
+.rd-shell__main-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 30px;
+}
+.nav-top-bar__Breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.nav-top-bar__Breadcrumbs_Crumb { color: var(--ink-muted); }
+.nav-top-bar__Breadcrumbs_Crumb-current { color: var(--ink); font-weight: 500; }
+.nav-top-bar__Breadcrumbs_Sep { color: var(--ink-faint); }
+
+.nav-top-bar__Actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

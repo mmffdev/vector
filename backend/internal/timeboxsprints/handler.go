@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes the timeboxsprints domain over HTTP.
@@ -55,7 +55,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	sprints, err := h.svc.List(r.Context(), wsID, f)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -77,10 +77,10 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	sprint, err := h.svc.Get(r.Context(), wsID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -97,16 +97,16 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromCtx(r.Context())
 
 	var body struct {
-		SprintName        string  `json:"sprint_name"`
-		SprintSuffix      *string `json:"sprint_suffix"`
-		SprintOwner       *string `json:"sprint_owner"`
-		SprintCadenceDays int     `json:"sprint_cadence_days"`
-		SprintDateStart   string  `json:"sprint_date_start"`
-		SprintDateEnd     string  `json:"sprint_date_end"`
-		OrgNodeID         *string `json:"org_node_id"`
+		SprintName        string  `json:"timeboxes_sprints_name"`
+		SprintSuffix      *string `json:"timeboxes_sprints_suffix"`
+		SprintOwner       *string `json:"timeboxes_sprints_id_user_owner"`
+		SprintCadenceDays int     `json:"timeboxes_sprints_cadence_days"`
+		SprintDateStart   string  `json:"timeboxes_sprints_date_start"`
+		SprintDateEnd     string  `json:"timeboxes_sprints_date_end"`
+		OrgNodeID         *string `json:"timeboxes_sprints_id_topology_node"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
@@ -131,14 +131,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrAdjacency):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprint_date_start", Message: err.Error()},
+				{Field: "timeboxes_sprints_date_start", Message: err.Error()},
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprint_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_sprints_date_start", Message: usermessages.Conflict},
 			})
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -157,19 +157,19 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	var body struct {
-		SprintName        *string `json:"sprint_name"`
-		SprintSuffix      *string `json:"sprint_suffix"`
-		SprintOwner       *string `json:"sprint_owner"`
-		SprintCadenceDays *int    `json:"sprint_cadence_days"`
-		SprintDateStart   *string `json:"sprint_date_start"`
-		SprintDateEnd     *string `json:"sprint_date_end"`
-		SprintScope       *int    `json:"sprint_scope"`
-		SprintVelocity    *int    `json:"sprint_velocity"`
-		SprintEstimate    *int    `json:"sprint_estimate"`
-		Status            *string `json:"status"`
+		SprintName        *string `json:"timeboxes_sprints_name"`
+		SprintSuffix      *string `json:"timeboxes_sprints_suffix"`
+		SprintOwner       *string `json:"timeboxes_sprints_id_user_owner"`
+		SprintCadenceDays *int    `json:"timeboxes_sprints_cadence_days"`
+		SprintDateStart   *string `json:"timeboxes_sprints_date_start"`
+		SprintDateEnd     *string `json:"timeboxes_sprints_date_end"`
+		SprintScope       *int    `json:"timeboxes_sprints_scope"`
+		SprintVelocity    *int    `json:"timeboxes_sprints_velocity"`
+		SprintEstimate    *int    `json:"timeboxes_sprints_estimate"`
+		Status            *string `json:"timeboxes_sprints_status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
@@ -190,17 +190,17 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrInvalidInput):
 			httperr.WriteValidation(w, r, []httperr.Violation{
 				{Field: "body", Message: err.Error()},
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprint_date_start", Message: messages.Conflict},
+				{Field: "timeboxes_sprints_date_start", Message: usermessages.Conflict},
 			})
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -220,11 +220,11 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.Delete(r.Context(), wsID, id); err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrLifecycle):
 			httperr.Write(w, r, http.StatusConflict, "Active or completed sprints cannot be deleted.")
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -244,11 +244,11 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrStartLifecycle):
 			httperr.Write(w, r, http.StatusConflict, ErrStartLifecycle.Error())
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -269,11 +269,11 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrCloseLifecycle):
 			httperr.Write(w, r, http.StatusConflict, ErrCloseLifecycle.Error())
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -292,18 +292,18 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		Sprints []struct {
-			SprintName        string  `json:"sprint_name"`
-			SprintSuffix      *string `json:"sprint_suffix"`
-			SprintOwner       *string `json:"sprint_owner"`
-			SprintCadenceDays int     `json:"sprint_cadence_days"`
-			SprintDateStart   string  `json:"sprint_date_start"`
-			SprintDateEnd     string  `json:"sprint_date_end"`
-			SprintVelocity    *int    `json:"sprint_velocity"`
-			OrgNodeID         *string `json:"org_node_id"`
+			SprintName        string  `json:"timeboxes_sprints_name"`
+			SprintSuffix      *string `json:"timeboxes_sprints_suffix"`
+			SprintOwner       *string `json:"timeboxes_sprints_id_user_owner"`
+			SprintCadenceDays int     `json:"timeboxes_sprints_cadence_days"`
+			SprintDateStart   string  `json:"timeboxes_sprints_date_start"`
+			SprintDateEnd     string  `json:"timeboxes_sprints_date_end"`
+			SprintVelocity    *int    `json:"timeboxes_sprints_velocity"`
+			OrgNodeID         *string `json:"timeboxes_sprints_id_topology_node"`
 		} `json:"sprints"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if len(body.Sprints) == 0 {
@@ -338,10 +338,10 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 			})
 		case errors.Is(err, ErrConflict):
 			httperr.WriteValidation(w, r, []httperr.Violation{
-				{Field: "sprints", Message: messages.Conflict},
+				{Field: "sprints", Message: usermessages.Conflict},
 			})
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}

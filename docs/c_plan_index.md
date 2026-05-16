@@ -1,6 +1,6 @@
 # Plan Index
 
-**Last issued:** `PLA-0045`
+**Last issued:** `PLA-0055`
 
 ## Format
 
@@ -64,8 +64,18 @@ Read this file's **Last issued** AND scan `dev/plans/` for the highest existing 
 | `PLA-0041` | Flow-States v2 Orbit POC — radial state-machine layout for flow design | 2026-05-10 | active |
 | `PLA-0042` | Chrome scope picker (active topology scope) — top-left dropdown + ScopeContext + `?scope=<id>` URL persistence | 2026-05-11 | active (picker UI + ScopeContext only; read wiring deferred to PLA-0043) |
 | `PLA-0043` | Topology scope clamp on artefact reads — `topology_node_id` FK + descendants helper + grant-down inheritance + apiSite forwarding | 2026-05-12 | drafted |
-| `PLA-0044` | Unified topology-traversal engine — single `walkTopology()` walker shared by canvas dagre layout, topology tree state hook, topology flyout, scope rail; Go mirror for BFF + public API parity | 2026-05-12 | drafted |
-| `PLA-0045` | Shared Methods Catalogue + Soft-Reminder Hook — `app/lib/shared/` + `backend/internal/shared/` + `dev/fixtures/shared/` directory contract; `docs/c_shared_methods.md` index; PostToolUse hook nudges shared placement on new handler routes | 2026-05-12 | drafted |
+| `PLA-0044` | Unified topology-traversal engine — single `walkTopology()` walker shared by canvas dagre layout, topology tree state hook, topology flyout, scope rail; Go mirror for BFF + public API parity | 2026-05-12 | complete (2026-05-12) |
+| `PLA-0045` | Shared Methods Catalogue + Soft-Reminder Hook — `app/lib/shared/` + `backend/internal/shared/` + `dev/fixtures/shared/` directory contract; `docs/c_shared_methods.md` index; PostToolUse hook nudges shared placement on new handler routes | 2026-05-12 | complete (2026-05-12) |
+| `PLA-0046` | Topology Permissions page — gadmin user-pivot surface hosting UserNodeAssignment (B6.8) | 2026-05-12 | complete (2026-05-12) |
+| `PLA-0047` | Samantha SDK v2 — Fluent Declarative Mount API (`_viewport` → `_app` → `_panel` chain) | 2026-05-13 | drafted |
+| `PLA-0048` | Codebase Recovery — Lock conventions, install drift gates, consolidate SQL, normalise names | 2026-05-13 | drafted |
+| `PLA-0049` | Page-permissions grid + role rename + page-access enforcement (Phase 0/0.5/1/1.5/2) | 2026-05-14 | drafted |
+| `PLA-0050` | Tenant-level defaults table (master_record_tenants in vector_artefacts) + seed-trigger repair + URL hygiene (route rename /vector-admin/tenant-details → /workspace-admin/workspace-details); bundles cleanup-register Stories 2 + 5 | 2026-05-15 | complete (2026-05-16; AC10/AC11 verified via Playwright smoke) |
+| `PLA-0051` | Tenant→workspace inheritance read-path — COALESCE merge in workspacemasterrecord.Service.Get + per-field source markers + UI inherit/override toggle; cleanup-register Story 3; marquee first use of `<rg>` TDD substrate | 2026-05-15 | active |
+| `PLA-0052` | Risk artefact type — mirror Defect 1:1: system row (RSK prefix, sort 25, red), Risk Flow + Risk State, per-subscription seed + workspace backfill, 5 backend BLOCKER patches, 9 frontend BLOCKER patches, /risk filtered surface, /risks/summary endpoint; marquee multi-agent grill sweep | 2026-05-16 | complete (2026-05-16; opportunistically resolved TD-WORKITEMS-GENERIC + TD-WORKITEMS-DUPE) |
+| `PLA-0053` | Workspace foundation — JWT workspace_id claim + ActiveWorkspaceResolver + per-service workspace clamp migration (artefacttypes + artefactitems); blocks PLA-0054 + PLA-0055 | 2026-05-16 | active |
+| `PLA-0054` | Chip foundation — artefact_type slot enum + UUID wire + ArtefactTypeCatalogueProvider + Type/Status chip refactor + localStorage state; closes TD-FILTER-MULTI; depends on PLA-0053 | 2026-05-16 | active |
+| `PLA-0055` | Tenant-customisable Priority — artefact_priorities table + UUID FK on artefacts + catalogue context + chip refactor; depends on PLA-0053; pattern-parallel to PLA-0054 | 2026-05-16 | active |
 
 ## Scope linkage rule
 

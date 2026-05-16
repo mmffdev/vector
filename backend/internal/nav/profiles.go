@@ -3,6 +3,7 @@ package nav
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -59,13 +60,8 @@ func validateLabel(raw string) (string, error) {
 // 404 without leaking which other users own which IDs.
 func (s *Service) RequireOwnedProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {
 	var one int
-	err := s.Pool.QueryRow(ctx, `
-		SELECT 1
-		  FROM user_nav_profiles
-		 WHERE id              = $1
-		   AND user_id         = $2
-		   AND subscription_id = $3
-	`, profileID, userID, subscriptionID).Scan(&one)
+	err := s.Pool.QueryRow(ctx, sqlSelectProfileOwnedExists,
+		profileID, userID, subscriptionID).Scan(&one)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrProfileNotFound
@@ -79,13 +75,7 @@ func (s *Service) RequireOwnedProfile(ctx context.Context, userID, subscriptionI
 // display order. Empty slice (not nil) is returned when none exist —
 // the caller (lazy-seed helper, story B5) handles seeding.
 func (s *Service) ListProfiles(ctx context.Context, userID, subscriptionID uuid.UUID) ([]Profile, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, label, position, is_default, start_page_key
-		  FROM user_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
-		 ORDER BY position, created_at, id
-	`, userID, subscriptionID)
+	rows, err := s.Pool.Query(ctx, sqlListUserProfiles, userID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +109,7 @@ func (s *Service) CreateProfile(ctx context.Context, userID, subscriptionID uuid
 	defer tx.Rollback(ctx)
 
 	var count int
-	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*)
-		  FROM user_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
-	`, userID, subscriptionID).Scan(&count); err != nil {
+	if err := tx.QueryRow(ctx, sqlCountUserProfiles, userID, subscriptionID).Scan(&count); err != nil {
 		return Profile{}, err
 	}
 	if count >= MaxProfilesPerSubscription {
@@ -132,20 +117,37 @@ func (s *Service) CreateProfile(ctx context.Context, userID, subscriptionID uuid
 	}
 
 	var p Profile
-	err = tx.QueryRow(ctx, `
-		INSERT INTO user_nav_profiles
-		    (user_id, subscription_id, label, position, is_default, start_page_key)
-		VALUES ($1, $2, $3, $4, FALSE, NULL)
-		RETURNING id, label, position, is_default, start_page_key
-	`, userID, subscriptionID, clean, count).Scan(
-		&p.ID, &p.Label, &p.Position, &p.IsDefault, &p.StartPageKey,
-	)
+	err = tx.QueryRow(ctx, sqlInsertUserProfile,
+		userID, subscriptionID, clean, count,
+	).Scan(&p.ID, &p.Label, &p.Position, &p.IsDefault, &p.StartPageKey)
 	if err != nil {
 		if isUniqueViolation(err, "uq_user_nav_profiles_label_ci") {
 			return Profile{}, ErrDuplicateProfileLabel
 		}
 		return Profile{}, err
 	}
+
+	// Seed the new profile by cloning the user's Default profile state.
+	// Without this seed a brand-new profile reads as empty — the editor
+	// shows blank admin buckets and admin pages fall back to the
+	// 'admin_settings' tag bucket. Copy two things:
+	//   1) users_nav_prefs rows (pinned pages, with group_id + parent +
+	//      icon_override preserved so admin pages stay inside their
+	//      admin groups).
+	//   2) users_nav_profile_groups placements (the rail/flyout section
+	//      ordering: tag buckets + custom groups).
+	// users_nav_groups itself is per-user (shared across profiles) so
+	// nothing needs cloning there.
+	if _, err := tx.Exec(ctx, sqlSeedNewProfilePrefsFromDefault,
+		userID, subscriptionID, p.ID); err != nil {
+		return Profile{}, fmt.Errorf("seed new profile prefs from default: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, sqlSeedNewProfileGroupsFromDefault,
+		userID, subscriptionID, p.ID); err != nil {
+		return Profile{}, fmt.Errorf("seed new profile groups from default: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return Profile{}, err
 	}
@@ -161,13 +163,8 @@ func (s *Service) RenameProfile(ctx context.Context, userID, subscriptionID, pro
 	if err != nil {
 		return err
 	}
-	tag, err := s.Pool.Exec(ctx, `
-		UPDATE user_nav_profiles
-		   SET label = $1, updated_at = NOW()
-		 WHERE id              = $2
-		   AND user_id         = $3
-		   AND subscription_id = $4
-	`, clean, profileID, userID, subscriptionID)
+	tag, err := s.Pool.Exec(ctx, sqlRenameUserProfile,
+		clean, profileID, userID, subscriptionID)
 	if err != nil {
 		if isUniqueViolation(err, "uq_user_nav_profiles_label_ci") {
 			return ErrDuplicateProfileLabel
@@ -186,19 +183,14 @@ func (s *Service) RenameProfile(ctx context.Context, userID, subscriptionID, pro
 // custom pages survive (they're user-scoped, not profile-scoped).
 //
 // Side effects handled by FKs:
-//   - user_nav_prefs rows for this profile: ON DELETE CASCADE (035)
-//   - user_nav_profile_groups for this profile: ON DELETE CASCADE (034)
+//   - users_nav_prefs rows for this profile: ON DELETE CASCADE (035)
+//   - users_nav_profile_groups for this profile: ON DELETE CASCADE (034)
 //   - users.active_nav_profile_id pointing here: ON DELETE SET NULL (035)
 //     The next /api/nav/prefs read falls back to that user's Default.
 func (s *Service) DeleteProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {
 	var isDefault bool
-	err := s.Pool.QueryRow(ctx, `
-		SELECT is_default
-		  FROM user_nav_profiles
-		 WHERE id              = $1
-		   AND user_id         = $2
-		   AND subscription_id = $3
-	`, profileID, userID, subscriptionID).Scan(&isDefault)
+	err := s.Pool.QueryRow(ctx, sqlSelectProfileIsDefault,
+		profileID, userID, subscriptionID).Scan(&isDefault)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrProfileNotFound
@@ -209,13 +201,8 @@ func (s *Service) DeleteProfile(ctx context.Context, userID, subscriptionID, pro
 		return ErrCannotDeleteDefault
 	}
 
-	tag, err := s.Pool.Exec(ctx, `
-		DELETE FROM user_nav_profiles
-		 WHERE id              = $1
-		   AND user_id         = $2
-		   AND subscription_id = $3
-		   AND is_default      = FALSE
-	`, profileID, userID, subscriptionID)
+	tag, err := s.Pool.Exec(ctx, sqlDeleteNonDefaultProfile,
+		profileID, userID, subscriptionID)
 	if err != nil {
 		return err
 	}
@@ -251,12 +238,7 @@ func (s *Service) ReorderProfiles(ctx context.Context, userID, subscriptionID uu
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `
-		SELECT id
-		  FROM user_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
-	`, userID, subscriptionID)
+	rows, err := tx.Query(ctx, sqlListUserProfileIDs, userID, subscriptionID)
 	if err != nil {
 		return err
 	}
@@ -284,11 +266,7 @@ func (s *Service) ReorderProfiles(ctx context.Context, userID, subscriptionID uu
 	}
 
 	for pos, id := range order {
-		if _, err := tx.Exec(ctx, `
-			UPDATE user_nav_profiles
-			   SET position = $1, updated_at = NOW()
-			 WHERE id = $2
-		`, pos, id); err != nil {
+		if _, err := tx.Exec(ctx, sqlUpdateProfilePosition, pos, id); err != nil {
 			return err
 		}
 	}
@@ -303,11 +281,8 @@ func (s *Service) ReorderProfiles(ctx context.Context, userID, subscriptionID uu
 // know the id exists — they're hot-desking and need a clear signal.
 func (s *Service) SetActiveProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {
 	var ownerID, profileSub uuid.UUID
-	err := s.Pool.QueryRow(ctx, `
-		SELECT user_id, subscription_id
-		  FROM user_nav_profiles
-		 WHERE id = $1
-	`, profileID).Scan(&ownerID, &profileSub)
+	err := s.Pool.QueryRow(ctx, sqlSelectProfileOwnerAndSubscription, profileID).
+		Scan(&ownerID, &profileSub)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrProfileNotFound
@@ -321,11 +296,7 @@ func (s *Service) SetActiveProfile(ctx context.Context, userID, subscriptionID, 
 		return ErrProfileWrongSubscription
 	}
 
-	_, err = s.Pool.Exec(ctx, `
-		UPDATE users
-		   SET active_nav_profile_id = $1
-		 WHERE id = $2
-	`, profileID, userID)
+	_, err = s.Pool.Exec(ctx, sqlUpdateUserActiveProfile, profileID, userID)
 	return err
 }
 
@@ -334,14 +305,7 @@ func (s *Service) SetActiveProfile(ctx context.Context, userID, subscriptionID, 
 // returns nil — callers treat that as "fall back to Default".
 func (s *Service) GetActiveProfileID(ctx context.Context, userID, subscriptionID uuid.UUID) (*uuid.UUID, error) {
 	var id *uuid.UUID
-	err := s.Pool.QueryRow(ctx, `
-		SELECT p.id
-		  FROM users u
-		  JOIN user_nav_profiles p ON p.id = u.active_nav_profile_id
-		 WHERE u.id = $1
-		   AND p.user_id = $1
-		   AND p.subscription_id = $2
-	`, userID, subscriptionID).Scan(&id)
+	err := s.Pool.QueryRow(ctx, sqlSelectActiveProfileScoped, userID, subscriptionID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -362,13 +326,7 @@ func (s *Service) GetActiveProfileID(ctx context.Context, userID, subscriptionID
 //   - tests that create fresh users without running migration 036
 func (s *Service) EnsureDefaultProfile(ctx context.Context, userID, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id
-		  FROM user_nav_profiles
-		 WHERE user_id         = $1
-		   AND subscription_id = $2
-		   AND is_default      = TRUE
-	`, userID, subscriptionID).Scan(&id)
+	err := s.Pool.QueryRow(ctx, sqlSelectDefaultProfileID, userID, subscriptionID).Scan(&id)
 	if err == nil {
 		return id, nil
 	}
@@ -376,14 +334,7 @@ func (s *Service) EnsureDefaultProfile(ctx context.Context, userID, subscription
 		return uuid.Nil, err
 	}
 
-	err = s.Pool.QueryRow(ctx, `
-		INSERT INTO user_nav_profiles
-		    (user_id, subscription_id, label, position, is_default, start_page_key)
-		VALUES ($1, $2, 'Default', 0, TRUE, NULL)
-		ON CONFLICT (user_id, subscription_id) WHERE is_default = TRUE
-		DO UPDATE SET updated_at = user_nav_profiles.updated_at
-		RETURNING id
-	`, userID, subscriptionID).Scan(&id)
+	err = s.Pool.QueryRow(ctx, sqlEnsureDefaultProfile, userID, subscriptionID).Scan(&id)
 	return id, err
 }
 
@@ -406,14 +357,8 @@ func (s *Service) ResolveProfile(ctx context.Context, userID, subscriptionID uui
 	}
 
 	var activeID, defaultID *uuid.UUID
-	err := s.Pool.QueryRow(ctx, `
-		SELECT
-		    (SELECT id FROM user_nav_profiles
-		      WHERE user_id = $1 AND subscription_id = $2 AND id =
-		            (SELECT active_nav_profile_id FROM users WHERE id = $1)) AS active_id,
-		    (SELECT id FROM user_nav_profiles
-		      WHERE user_id = $1 AND subscription_id = $2 AND is_default = TRUE) AS default_id
-	`, userID, subscriptionID).Scan(&activeID, &defaultID)
+	err := s.Pool.QueryRow(ctx, sqlSelectActiveOrDefaultProfile, userID, subscriptionID).
+		Scan(&activeID, &defaultID)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -428,27 +373,26 @@ func (s *Service) ResolveProfile(ctx context.Context, userID, subscriptionID uui
 }
 
 // ProfileGroupPlacement is the wire shape for per-profile group
-// placement. Position is unique within the profile (DEFERRABLE) —
-// callers send a contiguous 0..N-1 sequence.
+// placement. Each row sets exactly one of GroupID (a custom group) or
+// TagEnum (a built-in tag bucket). Position is unique within the
+// profile (partial unique indexes + xor check enforce both invariants).
+// Callers send a contiguous 0..N-1 sequence.
 type ProfileGroupPlacement struct {
-	GroupID  uuid.UUID `json:"group_id"`
-	Position int       `json:"position"`
+	GroupID      *uuid.UUID `json:"group_id"`
+	TagEnum      *string    `json:"tag_enum"`
+	Position     int        `json:"position"`
+	IconOverride *string    `json:"icon_override,omitempty"`
 }
 
-// ListProfileGroups returns the placements of shared groups inside a
-// specific profile, in display order. The shared groups themselves
-// stay user-scoped — this surface is purely about "which of my groups
-// does this profile show, and where".
+// ListProfileGroups returns the placements inside a specific profile,
+// in display order. Each row is either a custom-group placement or a
+// tag-bucket placement (discriminated by which of GroupID/TagEnum is
+// set). The shared group pool itself stays user-scoped.
 func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) ([]ProfileGroupPlacement, error) {
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return nil, err
 	}
-	rows, err := s.Pool.Query(ctx, `
-		SELECT group_id, position
-		  FROM user_nav_profile_groups
-		 WHERE profile_id = $1
-		 ORDER BY position
-	`, profileID)
+	rows, err := s.Pool.Query(ctx, sqlListProfileGroupPlacements, profileID)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +400,7 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 	out := make([]ProfileGroupPlacement, 0, 4)
 	for rows.Next() {
 		var g ProfileGroupPlacement
-		if err := rows.Scan(&g.GroupID, &g.Position); err != nil {
+		if err := rows.Scan(&g.GroupID, &g.TagEnum, &g.Position, &g.IconOverride); err != nil {
 			return nil, err
 		}
 		out = append(out, g)
@@ -465,37 +409,52 @@ func (s *Service) ListProfileGroups(ctx context.Context, userID, subscriptionID,
 }
 
 // SetProfileGroups replaces the placements for one profile atomically.
-// All group_ids must be owned by the same user (we re-verify against
-// user_nav_groups, never trusting client-supplied IDs). Positions must
-// form a contiguous 0..N-1 sequence; duplicates rejected. Uses the
-// DEFERRABLE position-unique constraint so the wipe + re-insert can
-// run in any order inside the txn.
+// Each placement must set exactly one of GroupID (custom group) or
+// TagEnum (built-in tag bucket); ErrPlacementKind otherwise. Custom
+// group_ids must be owned by the user; tag_enums must exist in
+// page_tags. Positions must form a contiguous 0..N-1 sequence;
+// duplicates rejected. Uses the DEFERRABLE position-unique constraint
+// so the wipe + re-insert can run in any order inside the txn.
 //
 // SHARED-POOL INVARIANT: this endpoint never inserts/updates/deletes
-// rows in user_nav_groups itself. Groups are created/renamed/deleted
+// rows in users_nav_groups itself. Groups are created/renamed/deleted
 // only via the legacy PUT /api/nav/prefs path (Default profile) until
 // that surface is split off — so a user's group pool is the union of
 // what they author from Default, and per-profile placement just decides
-// which of those each profile shows.
+// which of those each profile shows. Likewise, page_tags is read-only
+// from this surface — tag enums must already exist.
 func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, profileID uuid.UUID, placements []ProfileGroupPlacement) error {
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return err
 	}
 
 	posSeen := make(map[int]struct{}, len(placements))
-	idSeen := make(map[uuid.UUID]struct{}, len(placements))
+	groupSeen := make(map[uuid.UUID]struct{}, len(placements))
+	tagSeen := make(map[string]struct{}, len(placements))
 	for _, p := range placements {
 		if p.Position < 0 {
 			return ErrBadPositions
 		}
+		hasGroup := p.GroupID != nil
+		hasTag := p.TagEnum != nil
+		if hasGroup == hasTag {
+			return ErrPlacementKind
+		}
 		if _, dup := posSeen[p.Position]; dup {
 			return ErrBadPositions
 		}
-		if _, dup := idSeen[p.GroupID]; dup {
-			return ErrBadPositions
-		}
 		posSeen[p.Position] = struct{}{}
-		idSeen[p.GroupID] = struct{}{}
+		if hasGroup {
+			if _, dup := groupSeen[*p.GroupID]; dup {
+				return ErrBadPositions
+			}
+			groupSeen[*p.GroupID] = struct{}{}
+		} else {
+			if _, dup := tagSeen[*p.TagEnum]; dup {
+				return ErrBadPositions
+			}
+			tagSeen[*p.TagEnum] = struct{}{}
+		}
 	}
 	for i := 0; i < len(placements); i++ {
 		if _, ok := posSeen[i]; !ok {
@@ -503,21 +462,33 @@ func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, 
 		}
 	}
 
-	if len(placements) > 0 {
-		ids := make([]uuid.UUID, 0, len(placements))
-		for _, p := range placements {
-			ids = append(ids, p.GroupID)
+	if len(groupSeen) > 0 {
+		ids := make([]uuid.UUID, 0, len(groupSeen))
+		for id := range groupSeen {
+			ids = append(ids, id)
 		}
 		var owned int
-		err := s.Pool.QueryRow(ctx, `
-			SELECT COUNT(*) FROM user_nav_groups
-			 WHERE user_id = $1 AND id = ANY($2)
-		`, userID, ids).Scan(&owned)
+		err := s.Pool.QueryRow(ctx, sqlCountOwnedNavGroupsByIDs, userID, ids).Scan(&owned)
 		if err != nil {
 			return err
 		}
 		if owned != len(ids) {
 			return ErrUnknownGroup
+		}
+	}
+
+	if len(tagSeen) > 0 {
+		tags := make([]string, 0, len(tagSeen))
+		for t := range tagSeen {
+			tags = append(tags, t)
+		}
+		var known int
+		err := s.Pool.QueryRow(ctx, sqlCountKnownTagEnums, tags).Scan(&known)
+		if err != nil {
+			return err
+		}
+		if known != len(tags) {
+			return ErrUnknownTag
 		}
 	}
 
@@ -527,19 +498,15 @@ func (s *Service) SetProfileGroups(ctx context.Context, userID, subscriptionID, 
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_profile_groups WHERE profile_id = $1
-	`, profileID); err != nil {
+	if _, err := tx.Exec(ctx, sqlDeleteProfileGroupPlacements, profileID); err != nil {
 		return err
 	}
 
 	if len(placements) > 0 {
 		batch := &pgx.Batch{}
 		for _, p := range placements {
-			batch.Queue(`
-				INSERT INTO user_nav_profile_groups (profile_id, group_id, position)
-				VALUES ($1, $2, $3)
-			`, profileID, p.GroupID, p.Position)
+			batch.Queue(sqlInsertProfileGroupPlacement,
+				profileID, p.GroupID, p.TagEnum, p.Position, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range placements {

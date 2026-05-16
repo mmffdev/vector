@@ -30,6 +30,8 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
 import Panel from "@/app/components/Panel";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
   flowStatesApi,
   type FlowExitRule,
@@ -1530,6 +1532,7 @@ function groupByType(groups: FlowGroup[]): Map<string, { name: string; flows: Fl
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function FlowStatesPage() {
+  const { full } = usePageTitle();
   const [data, setData]       = useState<FlowsResponse | null>(null);
   const [loadError, setError] = useState<string | null>(null);
   // Bumped on every successful (re)load so child sections remount and pick
@@ -1585,6 +1588,13 @@ export default function FlowStatesPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure flow states and workflow stages for work items." />
+      <Panel
+        name="panel_flow_states_header"
+        className="page-panel-heading"
+        title="Flow States"
+        description="Define and manage the flow states that govern work item progression through the workspace workflow."
+      />
     <div className="settings-panel settings-panel--wide">
       <p className="form__hint" style={{ marginBottom: "var(--space-6)" }}>
         Click a colour swatch to change it. Colours update the flow map and work-item trees immediately.

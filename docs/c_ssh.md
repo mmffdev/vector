@@ -37,7 +37,6 @@ Host mmffdev-pg
   LocalForward 8083 localhost:8083   # API Reference docs
   LocalForward 15672 localhost:15672 # RabbitMQ management
   LocalForward 9000 localhost:9000   # Portainer
-  LocalForward 3333 localhost:3333   # Planka kanban board
   ServerAliveInterval 30
   ServerAliveCountMax 3
   ExitOnForwardFailure yes

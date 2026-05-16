@@ -16,12 +16,12 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // PLA-0026 / Story 00501 (B12): smoke tests for GET
 // /api/portfolio-models/adoption-state after the rewrite to read from
-// the new substrate (master_record_portfolio + artefact_types).
+// the new substrate (master_record_portfolios + artefacts_types).
 //
 // Skip-on-unreachable discipline matches the rest of portfoliomodels:
 // when either the mmff_vector cluster or the vector_artefacts cluster
@@ -30,7 +30,7 @@ import (
 // (RequirePermission) and asserted in auth/middleware tests; these
 // tests exercise the handler body directly with a faked-in user.
 
-func newAdoptionStateRouter(h *AdoptionStateHandler, u *models.User) http.Handler {
+func newAdoptionStateRouter(h *AdoptionStateHandler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func TestGetAdoptionState_NoWorkspace(t *testing.T) {
 	// Synthetic user pointing at a fresh subscription_id with no rows
 	// in workspaces — guarantees the resolveWorkspace path returns
 	// notStarted without polluting real fixtures.
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(),
 		Email:          "synthetic-noworkspace@adoption-state.test",
@@ -149,7 +149,7 @@ func TestGetAdoptionState_VAPoolNil(t *testing.T) {
 }
 
 // TestGetAdoptionState_NotStarted — both pools live, no
-// master_record_portfolio row AND no scope='strategy' artefact_types
+// master_record_portfolios row AND no scope='strategy' artefacts_types
 // row for the workspace → status='notStarted'.
 func TestGetAdoptionState_NotStarted(t *testing.T) {
 	vec, user := testVectorPoolPadmin(t)
@@ -170,29 +170,29 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 		t.Skipf("no live workspace for padmin's subscription: %v", err)
 	}
 
-	// Hard-delete any master_record_portfolio row for this workspace —
+	// Hard-delete any master_record_portfolios row for this workspace —
 	// soft-archive would still be filtered out by the handler, but the
 	// test guarantees a clean slate. The table is by-design rebuildable
 	// from the saga, so a delete here is safe in the dev tunnel.
 	if _, err := va.Exec(ctx,
-		`DELETE FROM master_record_portfolio WHERE workspace_id = $1`,
+		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`,
 		ws,
 	); err != nil {
-		t.Skipf("cannot reset master_record_portfolio (table may not be deployed): %v", err)
+		t.Skipf("cannot reset master_record_portfolios (table may not be deployed): %v", err)
 	}
 
-	// Soft-archive any live scope='strategy' artefact_types rows for
+	// Soft-archive any live scope='strategy' artefacts_types rows for
 	// this workspace so we hit the notStarted branch deterministically.
 	// We never hard-delete (other rows may FK at it).
 	if _, err := va.Exec(ctx,
-		`UPDATE artefact_types
+		`UPDATE artefacts_types
 		    SET archived_at = COALESCE(archived_at, now())
 		  WHERE workspace_id = $1
 		    AND scope = 'strategy'
 		    AND archived_at IS NULL`,
 		ws,
 	); err != nil {
-		t.Skipf("cannot archive strategy artefact_types: %v", err)
+		t.Skipf("cannot archive strategy artefacts_types: %v", err)
 	}
 
 	h := NewAdoptionStateHandler(vec, va)
@@ -223,8 +223,8 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 	}
 }
 
-// TestGetAdoptionState_InProgress — strategy artefact_types rows
-// exist for the workspace but no master_record_portfolio row →
+// TestGetAdoptionState_InProgress — strategy artefacts_types rows
+// exist for the workspace but no master_record_portfolios row →
 // status='inProgress' (saga partway through; B6 finalize hasn't run).
 func TestGetAdoptionState_InProgress(t *testing.T) {
 	vec, user := testVectorPoolPadmin(t)
@@ -246,20 +246,20 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 
 	// Clean slate — no master record.
 	if _, err := va.Exec(ctx,
-		`DELETE FROM master_record_portfolio WHERE workspace_id = $1`,
+		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`,
 		ws,
 	); err != nil {
-		t.Skipf("cannot reset master_record_portfolio: %v", err)
+		t.Skipf("cannot reset master_record_portfolios: %v", err)
 	}
 
-	// Insert a single live scope='strategy' artefact_types row for this
+	// Insert a single live scope='strategy' artefacts_types row for this
 	// workspace. Use a unique prefix to avoid conflicting with the
 	// (workspace_id, scope, prefix) WHERE archived_at IS NULL unique.
 	suffix := uuid.NewString()[:6]
 	prefix := "TI" + suffix[:3]
 	typeID := uuid.New()
 	if _, err := va.Exec(ctx, `
-		INSERT INTO artefact_types
+		INSERT INTO artefacts_types
 		    (id, subscription_id, workspace_id,
 		     scope, source, name, prefix,
 		     allows_children, sort_order)
@@ -271,7 +271,7 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 	}
 	defer func() {
 		_, _ = va.Exec(ctx,
-			`UPDATE artefact_types SET archived_at = now() WHERE id = $1`,
+			`UPDATE artefacts_types SET archived_at = now() WHERE id = $1`,
 			typeID)
 	}()
 
@@ -300,7 +300,7 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 	}
 }
 
-// TestGetAdoptionState_Adopted — master_record_portfolio row exists
+// TestGetAdoptionState_Adopted — master_record_portfolios row exists
 // for the workspace → status='adopted' with model_id, adopted_at,
 // adopted_by_user_id populated.
 func TestGetAdoptionState_Adopted(t *testing.T) {
@@ -325,20 +325,20 @@ func TestGetAdoptionState_Adopted(t *testing.T) {
 	// here, run the test against an inserted row, then DELETE again
 	// in defer. The saga can re-insert if needed.
 	_, _ = va.Exec(ctx,
-		`DELETE FROM master_record_portfolio WHERE workspace_id = $1`, ws)
+		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`, ws)
 	defer func() {
 		_, _ = va.Exec(ctx,
-			`DELETE FROM master_record_portfolio WHERE workspace_id = $1`, ws)
+			`DELETE FROM master_record_portfolios WHERE workspace_id = $1`, ws)
 	}()
 
 	modelID := uuid.New()
 	if _, err := va.Exec(ctx, `
-		INSERT INTO master_record_portfolio
+		INSERT INTO master_record_portfolios
 		    (workspace_id, model_id, model_name, adopted_by_user_id)
 		VALUES ($1, $2, 'AdoptedTestModel', $3)`,
 		ws, modelID, user.ID,
 	); err != nil {
-		t.Skipf("cannot insert master_record_portfolio: %v", err)
+		t.Skipf("cannot insert master_record_portfolios: %v", err)
 	}
 
 	h := NewAdoptionStateHandler(vec, va)
@@ -377,7 +377,7 @@ func TestGetAdoptionState_Adopted(t *testing.T) {
 
 // testVectorPoolPadmin opens the vector pool and returns a padmin user
 // for the request. Skips when the cluster or a usable padmin is absent.
-func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *models.User) {
+func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *roletypes.User) {
 	t.Helper()
 	for _, rel := range []string{".env.local", "../../.env.local"} {
 		abs, _ := filepath.Abs(rel)
@@ -403,7 +403,7 @@ func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *models.User) {
 		t.Skipf("cannot ping mmff_vector: %v", err)
 	}
 
-	var u models.User
+	var u roletypes.User
 	err = pool.QueryRow(context.Background(), `
 		SELECT id, subscription_id, email, role, is_active
 		  FROM users

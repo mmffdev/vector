@@ -20,6 +20,7 @@ package workspaces
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -71,12 +72,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 	defer tx.Rollback(ctx)
 
 	var w Workspace
-	err = tx.QueryRow(ctx, `
-		INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, subscription_id, name, slug, description,
-		          created_by, created_at, updated_at, archived_at, archived_by
-	`, in.SubscriptionID, name, slug, in.Description, in.ActorID).Scan(
+	err = tx.QueryRow(ctx, sqlInsertWorkspace,
+		in.SubscriptionID, name, slug, in.Description, in.ActorID,
+	).Scan(
 		&w.ID, &w.SubscriptionID, &w.Name, &w.Slug, &w.Description,
 		&w.CreatedBy, &w.CreatedAt, &w.UpdatedAt, &w.ArchivedAt, &w.ArchivedBy,
 	)
@@ -94,10 +92,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 	// transaction as the workspace insert: a failed grant rolls the
 	// workspace back. Migration 101 closes the matching gap for
 	// pre-this-change rows.
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO roles_workspaces (subscription_id, workspace_id, user_id, role, granted_by)
-		VALUES ($1, $2, $3, 'admin', $3)
-	`, in.SubscriptionID, w.ID, in.ActorID); err != nil {
+	if _, err := tx.Exec(ctx, sqlInsertWorkspaceCreatorAdminGrant,
+		in.SubscriptionID, w.ID, in.ActorID); err != nil {
 		return Workspace{}, err
 	}
 
@@ -173,12 +169,9 @@ func (s *Service) CreateDefault(
 	desc := defaultDesc
 
 	var w Workspace
-	err := tx.QueryRow(ctx, `
-		INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, subscription_id, name, slug, description,
-		          created_by, created_at, updated_at, archived_at, archived_by
-	`, subscriptionID, defaultName, defaultSlug, desc, firstUserID).Scan(
+	err := tx.QueryRow(ctx, sqlInsertWorkspace,
+		subscriptionID, defaultName, defaultSlug, desc, firstUserID,
+	).Scan(
 		&w.ID, &w.SubscriptionID, &w.Name, &w.Slug, &w.Description,
 		&w.CreatedBy, &w.CreatedAt, &w.UpdatedAt, &w.ArchivedAt, &w.ArchivedBy,
 	)
@@ -194,10 +187,8 @@ func (s *Service) CreateDefault(
 	// this row the tenant is observable but unreadable — clamp 403s
 	// every topology call. Caller owns commit, so a roll-back of the
 	// signup also rolls back the role grant.
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO roles_workspaces (subscription_id, workspace_id, user_id, role, granted_by)
-		VALUES ($1, $2, $3, 'admin', $3)
-	`, subscriptionID, w.ID, firstUserID); err != nil {
+	if _, err := tx.Exec(ctx, sqlInsertWorkspaceCreatorAdminGrant,
+		subscriptionID, w.ID, firstUserID); err != nil {
 		return Workspace{}, err
 	}
 
@@ -240,10 +231,7 @@ func (s *Service) Rename(ctx context.Context, subscriptionID, workspaceID uuid.U
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx,
-		`UPDATE master_record_workspaces SET name = $1, updated_at = NOW() WHERE id = $2`,
-		name, workspaceID,
-	); err != nil {
+	if _, err := tx.Exec(ctx, sqlRenameWorkspace, name, workspaceID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -296,26 +284,15 @@ func (s *Service) Archive(ctx context.Context, subscriptionID, workspaceID, acto
 	// Last-live guard. Counts every other live workspace in this
 	// subscription; refuses the archive when the count is zero.
 	var liveSiblings int
-	if err := tx.QueryRow(ctx, `
-		SELECT COUNT(*)
-		  FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND id <> $2
-		   AND archived_at IS NULL
-	`, subscriptionID, workspaceID).Scan(&liveSiblings); err != nil {
+	if err := tx.QueryRow(ctx, sqlCountLiveSiblingsExcluding,
+		subscriptionID, workspaceID).Scan(&liveSiblings); err != nil {
 		return err
 	}
 	if liveSiblings == 0 {
 		return ErrCannotArchiveLastLive
 	}
 
-	if _, err := tx.Exec(ctx, `
-		UPDATE master_record_workspaces
-		   SET archived_at = NOW(),
-		       archived_by = $1,
-		       updated_at  = NOW()
-		 WHERE id = $2
-	`, actorID, workspaceID); err != nil {
+	if _, err := tx.Exec(ctx, sqlArchiveWorkspace, actorID, workspaceID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -366,27 +343,15 @@ func (s *Service) Restore(ctx context.Context, subscriptionID, workspaceID, acto
 	// Slug-collision guard before the UPDATE. The partial unique
 	// index would also fire here, but a typed sentinel is friendlier.
 	var collide bool
-	if err := tx.QueryRow(ctx, `
-		SELECT EXISTS(
-		    SELECT 1 FROM master_record_workspaces
-		     WHERE subscription_id = $1
-		       AND slug = $2
-		       AND archived_at IS NULL
-		)
-	`, subscriptionID, w.Slug).Scan(&collide); err != nil {
+	if err := tx.QueryRow(ctx, sqlExistsLiveSlugCollision,
+		subscriptionID, w.Slug).Scan(&collide); err != nil {
 		return err
 	}
 	if collide {
 		return ErrSlugTaken
 	}
 
-	if _, err := tx.Exec(ctx, `
-		UPDATE master_record_workspaces
-		   SET archived_at = NULL,
-		       archived_by = NULL,
-		       updated_at  = NOW()
-		 WHERE id = $1
-	`, workspaceID); err != nil {
+	if _, err := tx.Exec(ctx, sqlRestoreWorkspace, workspaceID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -416,12 +381,8 @@ func (s *Service) Restore(ctx context.Context, subscriptionID, workspaceID, acto
 // roles.Service.Get.
 func (s *Service) Get(ctx context.Context, subscriptionID, workspaceID uuid.UUID) (Workspace, error) {
 	var w Workspace
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, name, slug, description,
-		       created_by, created_at, updated_at, archived_at, archived_by
-		  FROM master_record_workspaces
-		 WHERE id = $1 AND subscription_id = $2
-	`, workspaceID, subscriptionID).Scan(
+	err := s.Pool.QueryRow(ctx, sqlSelectWorkspaceByIDInTenant,
+		workspaceID, subscriptionID).Scan(
 		&w.ID, &w.SubscriptionID, &w.Name, &w.Slug, &w.Description,
 		&w.CreatedBy, &w.CreatedAt, &w.UpdatedAt, &w.ArchivedAt, &w.ArchivedBy,
 	)
@@ -448,16 +409,11 @@ func (s *Service) ListBySubscription(ctx context.Context, subscriptionID uuid.UU
 		}
 	}
 
-	q := `
-		SELECT id, subscription_id, name, slug, description,
-		       created_by, created_at, updated_at, archived_at, archived_by
-		  FROM master_record_workspaces
-		 WHERE subscription_id = $1
-	`
+	archivedClause := ""
 	if !includeArchived {
-		q += ` AND archived_at IS NULL`
+		archivedClause = ` AND archived_at IS NULL`
 	}
-	q += ` ORDER BY created_at ASC`
+	q := fmt.Sprintf(sqlListWorkspacesTemplate, archivedClause)
 
 	rows, err := s.Pool.Query(ctx, q, subscriptionID)
 	if err != nil {
@@ -490,13 +446,7 @@ func (s *Service) ListBySubscription(ctx context.Context, subscriptionID uuid.UU
 // accepts them (idempotent archive, restore).
 func (s *Service) loadWorkspace(ctx context.Context, tx pgx.Tx, workspaceID, subscriptionID uuid.UUID, allowArchived bool) (Workspace, error) {
 	var w Workspace
-	err := tx.QueryRow(ctx, `
-		SELECT id, subscription_id, name, slug, description,
-		       created_by, created_at, updated_at, archived_at, archived_by
-		  FROM master_record_workspaces
-		 WHERE id = $1
-		 FOR UPDATE
-	`, workspaceID).Scan(
+	err := tx.QueryRow(ctx, sqlLoadWorkspaceForUpdate, workspaceID).Scan(
 		&w.ID, &w.SubscriptionID, &w.Name, &w.Slug, &w.Description,
 		&w.CreatedBy, &w.CreatedAt, &w.UpdatedAt, &w.ArchivedAt, &w.ArchivedBy,
 	)

@@ -10,8 +10,8 @@ contract — writes to `page_addressables` are restricted to
 The detector scans every Go file under `backend/` for INSERT / UPDATE /
 DELETE statements naming any of the writer-boundary tables, and flags
 hits that do NOT live inside the allowed package directories. Migration
-SQL (`db/schema/*.sql`) is exempt — migrations are the privileged
-bootstrap path.
+SQL (`db/<dbname>/schema/*.sql`) is exempt — migrations are the
+privileged bootstrap path.
 
 Allowed packages by table (extend as new sole-writer services land):
 

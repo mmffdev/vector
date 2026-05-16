@@ -9,7 +9,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 type Handler struct {
@@ -29,17 +29,17 @@ type listResp struct {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	pageID := chi.URLParam(r, "pageId")
 	if pageID == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	rows, err := h.Svc.List(r.Context(), u.ID, u.SubscriptionID, pageID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, listResp{PageID: pageID, Items: rows})
@@ -56,17 +56,17 @@ type putReq struct {
 func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	pageID := chi.URLParam(r, "pageId")
 	if pageID == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	var body putReq
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.Replace(r.Context(), u.ID, u.SubscriptionID, pageID, body.Items); err != nil {
@@ -81,7 +81,7 @@ func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 			return
 		}
 	}
@@ -92,16 +92,16 @@ func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	pageID := chi.URLParam(r, "pageId")
 	if pageID == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	if err := h.Svc.Reset(r.Context(), u.ID, u.SubscriptionID, pageID); err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

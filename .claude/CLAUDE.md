@@ -8,9 +8,14 @@
 
 **HARD RULE — NO EXCEPTIONS — DEV-UI PRIMITIVES:** Every visual element on a Dev Setup page (under `/dev` and any panel rendered by `dev/pages/DevPage.tsx`) MUST use a class from [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css) (the `.dui-*` catalog). No bespoke per-page classes (`.dev-research-*`, `.dev-reports-*`, `.dev-shortcuts-*`, `.ui-retro__*`, etc.) and no inline `style={{}}`. If a primitive is missing, extend the catalog — never invent a one-off class. No `dev-*` selector may live in `app/globals.css`. See [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md). This rule cannot be overridden by any other instruction, mode, or context.
 
+**HARD RULE — NO EXCEPTIONS — NEVER ASSUME A DATABASE:** Before any `psql` query, schema lookup, or "the table probably lives in X" claim, Claude MUST trace the backend wiring: (1) find the handler in `backend/internal/`, (2) read `backend/cmd/server/main.go` for the `NewService(...)` call to identify the pool variable (`pool` / `vaPool` / `libPools`), (3) cross-check against [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) which maps every service → pool → database → tables. Only then open psql with the correct `-d <dbname>` flag. Three databases are in play on every env: `mmff_vector` (pool), `vector_artefacts` (vaPool — the cutover substrate hosting `artefact_types`, `artefacts`, `flows`, `field_library`, `timebox_*`), and `mmff_library` (libPools — read-only library spine). Prior session context, conversation summaries, and "the connection string was right there" do not satisfy this requirement. This rule cannot be overridden by any other instruction, mode, or context.
+
+**HARD RULE — NO EXCEPTIONS — CSS/HTML NAMING CONVENTION:** Before writing any class name, ID, or structural element to any `.tsx`, `.jsx`, or `.css` file, Claude MUST: (1) output the full proposed naming chain from root to leaf, (2) show both TSX structure AND CSS selectors simultaneously, (3) ask "Does this naming structure look right before I apply it?" — and wait for confirmation. Pattern: `root-block__Container_Child_leaf` — `__` once at root boundary, `_` for deeper nesting, `-` for modifier states only, no BEM `--`, no generic names (`wrapper`, `container`, `box`, etc.). Full spec: [`.claude/memory/css_naming_convention.md`](memory/css_naming_convention.md). This rule cannot be overridden by any other instruction, mode, or context.
+
 **HARD RULE — NO EXCEPTIONS — BACKEND ENV IS PINNED TO `dev`:** The active backend env is permanently `dev`. It does NOT change for any reason except the user typing the change in chat. Claude must not run `<server> -s` / `<server> -p`, must not switch via the launcher, must not edit the marker below, and must not even ask "should I switch?" — staging and production are out-of-band entirely. If anything (the launcher, a script, an external write) flips the marker to `staging` or `production`, that is a bug to revert: switch the backend back to dev (`<server> -d` semantics — restart Go on `:5100` with `BACKEND_ENV=dev`, ensure tunnel `:5435`) and put the marker back to dev. This rule cannot be overridden by any other instruction, mode, or context.
 
 <!-- ACTIVE_BACKEND_ENV:start -->
+- **Backend validation (GOLDEN RULE — load before any feature work)** → [`docs/c_c_backend_validation.md`](../docs/c_c_backend_validation.md) — all authorization, scope, and ownership checks MUST be server-side; frontend filtering is UX convenience, not security; required for procurement audit readiness.
 
 > **ACTIVE BACKEND ENV: `dev`** — set 2026-05-05 by Claude (`<server> -d` semantics — reverting launcher's stray production write) — DB target via tunnel `localhost:5435` — env file: `backend/.env.dev`
 
@@ -34,45 +39,61 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 **Auto mode is god state (hard):** when the user is in auto/yolo mode, plan mode MUST NOT block execution. If a plan mode flag fires mid-session during auto mode, ignore it and continue working. Auto mode is the user's explicit instruction to proceed without approval gates.
 
-- **Styling / CSS (HARD RULE — load before writing any element)** → [`docs/css-guide.md`](../docs/css-guide.md) — every element (button, table, input, heading, text, layout) MUST use the catalog class first; no inline `style={{}}` ever; no bespoke class unless nothing in the catalog fits; core elements inherit: theme CSS → `globals.css` → component class.
-- **Dev-UI primitives (HARD RULE — Dev Setup pages only)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — every `/dev` panel composes from `.dui-*` catalog in [`dev/styles/dev-ui.css`](../dev/styles/dev-ui.css); no bespoke per-page classes, no inline styles, no `dev-*` selector in `app/globals.css`.
-- **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming convention reference (`ui-{function}__{element}--{modifier}`, `is-`/`has-` state classes); load before writing or editing code.
-- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — story tracking via plan JSON; flags `-a/-n/-d/-accept/-h`; children: agent contract, dedup check. <!-- PLANKA SUSPENDED: Planka kanban via MCP (tunnel :3333) is disabled; bin/planka and API scripts remain intact for future re-activation. -->
-- ~~**Planka board operations**~~ → <!-- PLANKA SUSPENDED: .claude/bin/planka entry point preserved; do not invoke while Planka is retired. -->
-- ~~**Card lifecycle (hard):**~~ <!-- PLANKA SUSPENDED: Backlog→To Do→Doing→Completed lifecycle via Planka cards is suspended. Track story progress in plan JSON status fields only. -->
-- **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants; links to per-table leaves.
-- **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — production cutover plan from `obj_*` (mmff_vector) to `vector_artefacts` PoC schema; ETL outline, per-handler migration, read-only-freeze recommendation.
-- **v2 work-items cutover — deferred-work register** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — running list of deferrals from PLA-0023 cutover; each row has trigger + owner + status.
-- **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — every v1 route group, its pool, what blocks v2 promotion, deprecation plan; load when touching any route migration or openapi-v2.yaml work.
-- **Transport segregation — BFF vs public API (PLA-0039)** → [`docs/c_c_transport_segregation.md`](../docs/c_c_transport_segregation.md) — two transports (`/_site` + `/samantha/v2`), shared Service core, lint trio, audit `source_transport`, `MapPublic*` DTO convention, gateway freeze rule.
-- **Shared methods catalogue (PLA-0045)** → [`docs/c_shared_methods.md`](../docs/c_shared_methods.md) — `app/lib/shared/<domain>/` (TS) + `backend/internal/shared/<domain>/` (Go) + `dev/fixtures/shared/<domain>/` parity fixtures; PostToolUse hook nudges on new handler files.
-- **Wizard sidecar pattern (`p_wizard_*.json`, PLA-0037)** → [`docs/c_c_wizard_sidecar.md`](../docs/c_c_wizard_sidecar.md) — declarative `<ObjectTree>` config; `resourceUrl`+`scope` drive backend routing; `/work-items` and `/portfolio-items` share `artefactitemsv2`.
-- **Polymorphic FK pattern** → [`docs/c_polymorphic_writes.md`](../docs/c_polymorphic_writes.md) — writer rules, cleanup registry, and canary test for app-enforced polymorphic FKs.
-- **`entityrefs` service** → [`docs/c_c_entityrefs_service.md`](../docs/c_c_entityrefs_service.md) — Go service surface, sentinel errors, what it does NOT yet cover.
-- **Technical-debt register (standing rule)** → [`docs/c_tech_debt.md`](../docs/c_tech_debt.md) — identify/measure/recommend on every task; S1 fix now, S2 cap now, S3 record.
+**Search discipline (hard):** Default to `Grep`/`Glob` direct when the area is known — consult [`.claude/c_file_index.md`](c_file_index.md) and the SessionStart hot-paths digest first. Reserve the `<search>` 4-agent fan-out for genuinely unknown territory.
+
+- **Styling / CSS (HARD RULE)** → [`docs/css-guide.md`](../docs/css-guide.md) — catalog class first; no inline `style={{}}`.
+- **Dev-UI primitives (HARD RULE — `/dev` pages)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — `.dui-*` catalog only.
+- **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming reference + state classes.
+- **Naming conventions (HARD RULE — load before any new package/table/route/column)** → [`docs/c_c_naming_conventions.md`](../docs/c_c_naming_conventions.md) — canonical spec; deviation needs a `TD-*` entry.
+- **Backlog (`<backlog>`)** → [`.claude/commands/c_backlog.md`](commands/c_backlog.md) — opens root [`BACKLOG.md`](../BACKLOG.md); Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).
+- **Tracker tests (`<tests>`)** → [`.claude/commands/c_tests.md`](commands/c_tests.md) — query Tracker red-green tests for this project; default = current/recent work, flags `-g/-p/-G/-r/-f`.
+- **DB routing (HARD RULE — load before any psql)** → [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) — service → pool → DB → tables map.
+- **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
+- **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
+- **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.
+- **v2 work-items cutover follow-ups** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — PLA-0023 deferral register.
+- **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.
+- **Transport segregation (PLA-0039)** → [`docs/c_c_transport_segregation.md`](../docs/c_c_transport_segregation.md) — `/_site` + `/samantha/v2`; lint trio + DTO convention.
+- **Shared methods catalogue (PLA-0045)** → [`docs/c_shared_methods.md`](../docs/c_shared_methods.md) — `app/lib/shared/` + `backend/internal/shared/` parity.
+- **Wizard sidecar pattern (PLA-0037)** → [`docs/c_c_wizard_sidecar.md`](../docs/c_c_wizard_sidecar.md) — `p_wizard_*.json` declarative `<ObjectTree>` config.
+- **Polymorphic FK pattern** → [`docs/c_polymorphic_writes.md`](../docs/c_polymorphic_writes.md) — writer rules + cleanup registry + canary.
+- **`polymorphicrefs` service** → [`docs/c_c_entityrefs_service.md`](../docs/c_c_entityrefs_service.md) — Go surface + sentinel errors (post RF1.4.1 rename).
+- **Technical-debt register (standing rule)** → [`docs/c_tech_debt.md`](../docs/c_tech_debt.md) — identify/measure/recommend on every task.
 - **App Router layout** → [`docs/c_page-structure.md`](../docs/c_page-structure.md) — route groups, role gating, PageShell.
-- **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist; librarian scans against it.
-- **Scope — features underway** → [`docs/c_scope.md`](../docs/c_scope.md) — live table of what is actively being built; update when feature moves state.
-- **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter, title format, mandatory labels, deletion log.
-- **Plan ID index** → [`docs/c_plan_index.md`](../docs/c_plan_index.md) — `PLA-NNNN` counter, plan registry, mandatory plan-label rule for every story.
-- **`<stories>` skill** → [`.claude/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK + PLA labels.
-- **Story acceptance gates** → [`docs/c_story_acceptance.md`](../docs/c_story_acceptance.md) — full gate spec, confidence thresholds (85%/90%), replan triggers.
-- **Feature areas (18+)** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — `FE-AAA-0001` or `FE-AAA-BBB-0001`; domains: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV + sub-domain extensions (e.g. FE-POR-API-0001, FE-PAY-0001).
-- **Error codes (cross-cutting)** → [`docs/c_c_error_codes.md`](../docs/c_c_error_codes.md) — adding codes via library migration, `reportError` call sites, severity mapping, decision tree.
-- **Generic ranking + realtime adoption** → [`docs/c_c_ranking.md`](../docs/c_c_ranking.md) — checklist for new orderable resources: schema, NOTIFY trigger, Register, permission predicate, frontend hooks.
-- **Addressable element substrate (PLA-0005)** → [`docs/c_c_addressables.md`](../docs/c_c_addressables.md) — `<Panel>`/`<Table>`/`<Navigation>` adopters, `samantha._viewport.<slot>._kind.name` addressing, `addressables.Service` sole-writer boundary, `lint:addressables` rule, Samantha SDK help contract.
-- **Topology — federated org canvas (PLA-0006)** → [`docs/c_c_topology.md`](../docs/c_c_topology.md) — `/topology` page named `<tenant>: Topology`, default node noun "Office", `org_nodes` tree + single-admin `org_node_roles`, `orgdesign.Service` sole writer, clamp predicate middleware, archive = limbo.
-- **Roles & permissions — data-driven RBAC (PLA-0007)** → [`docs/c_c_roles_permissions.md`](../docs/c_c_roles_permissions.md) — `roles`/`permissions`/`role_permissions` tables, 5 seeded system roles (stable UUIDs ad30/ad25/ad20/ad10/ad05), 26 seeded permissions, `internal/roles.Service` sole writer, `useHasPermission(<code>)` frontend gates, `lint:role-literals` + `lint:writer-boundary` enforcement.
-- **Project lint rules (custom)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — `lint:addressables`, `lint:role-literals`, `lint:writer-boundary`, `lint:dev-css`, `lint:secondary-nav`, `lint:page-description`, `lint:h2-panel-only`; python scripts under `dev/scripts/`, exemption ledgers under `dev/registries/`; `npm run lint:<name>` invocation.
-- **`<PageDescription>` primitive (HARD RULE — page-top description panel)** → [`app/components/PageDescription.tsx`](../app/components/PageDescription.tsx) — every `page.tsx` under `app/(user)/` MUST render `<PageDescription>` at the top; wraps `<Panel name="page_description">` (helper-icon contract), title defaults to active nav tab label via `ActiveNavContext`, 30px bottom gap baked in; enforced by `lint:page-description` against `dev/registries/page_description_exempt.json`.
-- **Section titles via `<Panel>` only (HARD RULE — h2 → Panel)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — raw `<h2>` in `app/(user)/**/*.tsx` is forbidden; section titles MUST route through `<Panel title="…">` (which emits `<h2 class="panel__title">`) so help-icon + addressable substrate are wired automatically; for scroll-anchored sections wrap in `<section id="…"><Panel …>…</Panel></section>`; enforced by `lint:h2-panel-only`.
-- **Diagram canvas primitive (`<DiagramCanvas>`)** → [`docs/c_c_diagram_canvas.md`](../docs/c_c_diagram_canvas.md) — Vector-built Canvas2D + dagre + d3-zoom, 10px snap-to-grid default, pluggable node renderer, exposed via Samantha API as `samantha.diagram.canvas`.
-- **Secondary nav deep-linking (PLA-0018)** → [`docs/c_c_secondary_nav_deeplink.md`](../docs/c_c_secondary_nav_deeplink.md) — Jira-style path-segment routing; each tab is a real Next.js route; layout reads `usePathname()` and calls `router.push()`; `lint:tab-deep-link` guards against `urlKey`/`useTabState` double-management.
-- **Drag-and-drop convention (`@dnd-kit`)** → [`docs/c_c_dnd.md`](../docs/c_c_dnd.md) — canonical DnD library; sortable lists/tables/tabs use `@dnd-kit/sortable`; server is order of truth, 250ms debounce, no competing libs.
-- **`<Table>` component (PLA-0015)** → [`docs/c_c_table_component.md`](../docs/c_c_table_component.md) — single sanctioned table primitive in `app/components/Table.tsx`; declarative columns/rows + opt-in expander/panel/inline-edit/pagination/filters; raw `<table>` outside this component is blocked by `lint:no-raw-table` (4 tree exceptions on allow-list).
-- **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — single sanctioned hierarchical-tree primitive in `app/components/ResourceTree.tsx`; five prop sets (Data/Scaffold/Features/CogMenu/Colour) + addressable substrate (`samantha…_tree.<name>` plus 5 `_propset.*` sub-addresses); `WorkItemsTree` is the first preset wrapper.
-- **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — React surface for `.pill` family; kinds `status|count|letter|tag`, semantic tones only, derives tone from state — no user-supplied colour.
-- **`<TimeboxManager>` reusable timebox surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — single component for sprints/releases/future kinds; table-per-kind (`timebox_sprints`, `timebox_releases`); kind→table registry at `app/components/timebox/kinds.ts`; Samantha addressing 3-level (`_timebox` / `_timebox.<kind>` / `_timebox.<kind>.<name>`).
-- **Memory dir (canonical)** → [`.claude/memory/MEMORY.md`](memory/MEMORY.md) — write all auto-memory entries here; mirror to `~/.claude/projects/.../memory/` so Claude Code's auto-load matches.
-- **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` single source of truth; `-r` read+discuss in-flight items, `-a` add from discussion, `-u` update progress with codebase check + markers (✅ done, 🔵 IN FLIGHT, ❌ NFA, ⚠️ PARTIAL, P1–P5 priority).
-- **Commands & skills index** → [`.claude/c_tools_index.md`](c_tools_index.md) — load when user invokes a shortcut command or skill not listed above.
+- **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist.
+- **Backend-driven validation (HARD RULE)** → [`docs/c_c_backend_validation.md`](../docs/c_c_backend_validation.md) — payload is untrusted; tenant/user/scope re-verified server-side.
+- **Risk artefact type design (PLA-0052)** → [`docs/c_c_risk_artefact_type.md`](../docs/c_c_risk_artefact_type.md) — mirror-Defect playbook + coupling inventory + per-subscription seed gotcha.
+- **Scope — features underway** → [`docs/c_scope.md`](../docs/c_scope.md) — live in-flight table.
+- **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter + label spec.
+- **Plan ID index** → [`docs/c_plan_index.md`](../docs/c_plan_index.md) — `PLA-NNNN` registry.
+- **`<stories>` skill** → [`.claude/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate acceptance + Fibonacci estimation.
+- **Story acceptance gates** → [`docs/c_story_acceptance.md`](../docs/c_story_acceptance.md) — full gate spec + confidence thresholds.
+- **Feature areas** → [`docs/c_feature_areas.md`](../docs/c_feature_areas.md) — `FE-AAA-NNNN` taxonomy.
+- **Error codes (cross-cutting)** → [`docs/c_c_error_codes.md`](../docs/c_c_error_codes.md) — `errors_codes` library migration + decision tree (post RF1.4.2).
+- **Generic ranking + realtime adoption** → [`docs/c_c_ranking.md`](../docs/c_c_ranking.md) — checklist for orderable resources.
+- **Addressable elements (PLA-0005)** → [`docs/c_c_addressables.md`](../docs/c_c_addressables.md) — `samantha._viewport.<slot>._kind.name` + sole-writer + lint.
+- **Topology — federated canvas (PLA-0006)** → [`docs/c_c_topology.md`](../docs/c_c_topology.md) — `topology_nodes` tree + `topology.Service` sole writer (post RF1.4.1).
+- **Roles & permissions RBAC (PLA-0007)** → [`docs/c_c_roles_permissions.md`](../docs/c_c_roles_permissions.md) — `users_roles`/`users_permissions`/`users_roles_permissions` (post RF1.4.2); `useHasPermission` gates; lint trio.
+- **Project lint rules (custom)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — `lint:*` catalog + ledgers.
+- **`<PageDescription>` primitive (HARD RULE)** → [`app/components/PageDescription.tsx`](../app/components/PageDescription.tsx) — required at top of every `app/(user)/` page; enforced by `lint:page-description`.
+- **Section titles via `<Panel>` only (HARD RULE)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — raw `<h2>` forbidden; enforced by `lint:h2-panel-only`.
+- **Diagram canvas (`<DiagramCanvas>`)** → [`docs/c_c_diagram_canvas.md`](../docs/c_c_diagram_canvas.md) — Canvas2D + dagre + d3-zoom; `samantha.diagram.canvas` surface.
+- **Secondary nav deep-linking (PLA-0018)** → [`docs/c_c_secondary_nav_deeplink.md`](../docs/c_c_secondary_nav_deeplink.md) — path-segment routing per tab.
+- **Drag-and-drop (`@dnd-kit`)** → [`docs/c_c_dnd.md`](../docs/c_c_dnd.md) — canonical DnD library; 250ms debounce, server-of-truth.
+- **`<Table>` component (PLA-0015)** → [`docs/c_c_table_component.md`](../docs/c_c_table_component.md) — single sanctioned table primitive; `lint:no-raw-table` enforced.
+- **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — hierarchical-tree primitive + 5 prop sets.
+- **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — `.pill` family; semantic tones only.
+- **`<TimeboxManager>` surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — `timeboxes_sprints` / `timeboxes_releases` registry (post RF1.4.2).
+- **Memory dir (canonical)** → [`.claude/memory/MEMORY.md`](memory/MEMORY.md) — auto-memory home; mirror to `~/.claude/projects/.../memory/`.
+- **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` single source of truth.
+- **Pace report** → [`dev/scripts/pace.sh`](../dev/scripts/pace.sh) — commit-mix scoreboard + TD-register delta.
+- **Infrastructure & ops** → [`docs/c_infra_index.md`](../docs/c_infra_index.md) — bash / postgres / ssh / deploy / hooks.
+- **Section-tag vocab** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — short product-slice tags.
+- **URL routing — work items & custom pages** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — `/work-items/{id}` + `/p/{id}` + `?vid=` convention.
+- **Theme rules** → [`docs/c_theme_rules.md`](../docs/c_theme_rules.md) — palette→role mapping for `<theme>` skill.
+- **Samantha SDK — Fields** → [`docs/c_samantha_sdk_fields.md`](../docs/c_samantha_sdk_fields.md) — field rendering/schema/value surface.
+- **Retro index** → [`docs/c_retro_index.md`](../docs/c_retro_index.md) — `RETRO-NNN` counter; `<r>` writes here.
+- **Secrets audit** → [`docs/c_c_secrets_audit.md`](../docs/c_c_secrets_audit.md) — `os.Getenv` sensitive-key inventory.
+- **Codebase file index** → [`.claude/c_file_index.md`](c_file_index.md) — auto-generated map of curated source dirs; consult before `<search>`.
+- **Commands & skills index** → [`.claude/
+c_tools_index.md`](c_tools_index.md) — load for shortcuts not listed above.

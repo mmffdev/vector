@@ -41,7 +41,7 @@ func SeedDevKey(ctx context.Context, db *pgxpool.Pool, appEnv string, devKeyRaw 
 
 	var existing string
 	err = db.QueryRow(ctx,
-		`SELECT id FROM api_keys WHERE hash = $1 LIMIT 1`,
+		`SELECT admin_api_keys_id FROM admin_api_keys WHERE admin_api_keys_hash = $1 LIMIT 1`,
 		hash,
 	).Scan(&existing)
 
@@ -58,9 +58,13 @@ func SeedDevKey(ctx context.Context, db *pgxpool.Pool, appEnv string, devKeyRaw 
 	// Insert the dev key
 	var keyID string
 	err = db.QueryRow(ctx,
-		`INSERT INTO api_keys (subscription_id, prefix, hash, scopes)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id`,
+		`INSERT INTO admin_api_keys (
+			admin_api_keys_id_subscription,
+			admin_api_keys_prefix,
+			admin_api_keys_hash,
+			admin_api_keys_scopes
+		) VALUES ($1, $2, $3, $4)
+		 RETURNING admin_api_keys_id`,
 		subID, prefix, hash, []string{"*"},
 	).Scan(&keyID)
 	if err != nil {

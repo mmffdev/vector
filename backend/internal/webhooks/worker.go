@@ -99,21 +99,9 @@ func (w *Worker) claimAndDeliver(ctx context.Context) (done bool, err error) {
 		url            string
 	)
 
-	err = tx.QueryRow(claimCtx, `
-		SELECT d.id, d.subscription_id, d.event_type, d.payload, d.attempts, d.max_attempts,
-		       s.secret, s.url
-		FROM webhook_deliveries d
-		JOIN webhook_subscriptions s ON s.id = d.subscription_id
-		WHERE d.claimed_at IS NULL
-		  AND d.attempts < d.max_attempts
-		  AND d.next_attempt_at <= now()
-		  AND s.is_active = TRUE
-		  AND s.archived_at IS NULL
-		ORDER BY d.next_attempt_at
-		LIMIT 1
-		FOR UPDATE OF d SKIP LOCKED`,
-	).Scan(&deliveryID, &subscriptionID, &eventType, &payload,
-		&attempts, &maxAttempts, &secret, &url)
+	err = tx.QueryRow(claimCtx, sqlClaimNextDelivery).
+		Scan(&deliveryID, &subscriptionID, &eventType, &payload,
+			&attempts, &maxAttempts, &secret, &url)
 	if err != nil {
 		tx.Rollback(ctx)
 		// pgx returns nil rows as a scan error with no rows
@@ -124,8 +112,7 @@ func (w *Worker) claimAndDeliver(ctx context.Context) (done bool, err error) {
 	}
 
 	// Mark claimed.
-	if _, err := tx.Exec(claimCtx, `
-		UPDATE webhook_deliveries SET claimed_at = now() WHERE id = $1`, deliveryID); err != nil {
+	if _, err := tx.Exec(claimCtx, sqlMarkDeliveryClaimed, deliveryID); err != nil {
 		return false, err
 	}
 	if err := tx.Commit(claimCtx); err != nil {
@@ -135,8 +122,7 @@ func (w *Worker) claimAndDeliver(ctx context.Context) (done bool, err error) {
 	// Deliver outside the transaction.
 	deliveryErr := w.deliver(ctx, url, secret, eventType, payload)
 	if deliveryErr == nil {
-		if _, err := w.pool.Exec(ctx,
-			`DELETE FROM webhook_deliveries WHERE id = $1`, deliveryID); err != nil {
+		if _, err := w.pool.Exec(ctx, sqlDeleteDelivery, deliveryID); err != nil {
 			log.Printf("webhooks/worker: failed to delete delivery %d: %v", deliveryID, err)
 		}
 		return false, nil
@@ -146,10 +132,7 @@ func (w *Worker) claimAndDeliver(ctx context.Context) (done bool, err error) {
 		deliveryID, attempts+1, maxAttempts, deliveryErr)
 
 	nextAttempt := time.Now().Add(backoff(attempts + 1))
-	if _, err := w.pool.Exec(ctx, `
-		UPDATE webhook_deliveries
-		SET attempts = $2, claimed_at = NULL, next_attempt_at = $3, last_error = $4
-		WHERE id = $1`,
+	if _, err := w.pool.Exec(ctx, sqlRecordDeliveryFailure,
 		deliveryID, attempts+1, nextAttempt, deliveryErr.Error(),
 	); err != nil {
 		log.Printf("webhooks/worker: failed to record failure for delivery %d: %v", deliveryID, err)

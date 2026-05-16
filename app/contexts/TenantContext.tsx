@@ -1,35 +1,35 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { tenantSettingsApi, type TenantSettings } from "@/app/lib/tenantSettingsApi";
+import { workspaceSettingsApi, type WorkspaceSettings } from "@/app/lib/workspaceSettingsApi";
 
 const LS_KEY = "mmff.tenant.v1";
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
-function lsRead(): TenantSettings | null {
+function lsRead(): WorkspaceSettings | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as TenantSettings) : null;
+    return raw ? (JSON.parse(raw) as WorkspaceSettings) : null;
   } catch {
     return null;
   }
 }
 
-function lsWrite(s: TenantSettings) {
+function lsWrite(s: WorkspaceSettings) {
   if (typeof window === "undefined") return;
   try { window.localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch { /* quota / private */ }
 }
 
 // ── Module-level in-flight dedup ──────────────────────────────────────────────
 
-let _flight: Promise<TenantSettings> | null = null;
-let _cache: TenantSettings | null = null;
+let _flight: Promise<WorkspaceSettings> | null = null;
+let _cache: WorkspaceSettings | null = null;
 
-function fetchFresh(): Promise<TenantSettings> {
+function fetchFresh(): Promise<WorkspaceSettings> {
   if (!_flight) {
-    _flight = tenantSettingsApi.get().then((s) => {
+    _flight = workspaceSettingsApi.get().then((s) => {
       _cache = s;
       _flight = null;
       lsWrite(s);
@@ -45,23 +45,23 @@ function fetchFresh(): Promise<TenantSettings> {
 // ── Context ───────────────────────────────────────────────────────────────────
 
 interface TenantState {
-  settings: TenantSettings | null;
+  settings: WorkspaceSettings | null;
   tenantName: string;
   loading: boolean;
-  setSettings: (s: TenantSettings) => void;
+  setSettings: (s: WorkspaceSettings) => void;
 }
 
 const Ctx = createContext<TenantState | null>(null);
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const warm = useRef(lsRead());
-  const [settings, setSettingsState] = useState<TenantSettings | null>(
+  const [settings, setSettingsState] = useState<WorkspaceSettings | null>(
     _cache ?? warm.current
   );
   const [loading, setLoading] = useState(!_cache && !warm.current);
   const mounted = useRef(true);
 
-  const applyFresh = useCallback((s: TenantSettings) => {
+  const applyFresh = useCallback((s: WorkspaceSettings) => {
     _cache = s;
     lsWrite(s);
     if (mounted.current) setSettingsState(s);
@@ -82,7 +82,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // in the background (another browser session, admin tools, direct SQL).
   useEffect(() => {
     function onFocus() {
-      tenantSettingsApi.get()
+      workspaceSettingsApi.get()
         .then((s) => {
           if (!mounted.current) return;
           const stale = !_cache
@@ -96,7 +96,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("focus", onFocus);
   }, [applyFresh]);
 
-  function setSettings(s: TenantSettings) {
+  function setSettings(s: WorkspaceSettings) {
     applyFresh(s);
   }
 

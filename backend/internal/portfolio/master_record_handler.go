@@ -1,13 +1,13 @@
 package portfolio
 
-// HTTP read surface for master_record_portfolio (PLA-0026 / story 00498, B9).
+// HTTP read surface for master_record_portfolios (PLA-0026 / story 00498, B9).
 //
 // Mounts a single route — GET /api/portfolio/master_record?workspace_id=<uuid>
 // — that reads the persistent portfolio model record for one workspace.
 //
 // This endpoint is BundleView's new source of truth for adopted-model
 // prose: the frontend MUST NOT read mmff_library at runtime, so this
-// handler reads ONLY vector_artefacts.master_record_portfolio (via the
+// handler reads ONLY vector_artefacts.master_record_portfolios (via the
 // sole-writer Service in this package). No live library look-ups happen
 // here — model_name + model_description were copied at adoption time.
 //
@@ -31,10 +31,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
-// Handler is the HTTP surface for master_record_portfolio reads.
+// Handler is the HTTP surface for master_record_portfolios reads.
 //
 // All DB I/O lives in Svc. Tenancy + workspace-membership probes are
 // also delegated to Svc via CanReadMasterRecord; the handler does only
@@ -45,7 +45,7 @@ type Handler struct {
 
 // NewHandler builds the read handler.
 //
-// svc — the master_record_portfolio service. Must be non-nil; pass a
+// svc — the master_record_portfolios service. Must be non-nil; pass a
 // Service whose pools are wired (vector_artefacts via NewService, +
 // .WithVectorPool(mmff_vector) for the read authz path).
 func NewHandler(svc *Service) *Handler {
@@ -59,7 +59,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Get("/master_record", h.GetMasterRecord)
 }
 
-// GetMasterRecord returns the master_record_portfolio row for the
+// GetMasterRecord returns the master_record_portfolios row for the
 // workspace identified by the workspace_id query parameter.
 //
 //	200 — JSON body (MasterRecord wire shape from this package).
@@ -72,18 +72,18 @@ func (h *Handler) Mount(r chi.Router) {
 func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	wsRaw := r.URL.Query().Get("workspace_id")
 	if wsRaw == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	workspaceID, err := uuid.Parse(wsRaw)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 
@@ -93,24 +93,24 @@ func (h *Handler) GetMasterRecord(w http.ResponseWriter, r *http.Request) {
 	// your tenant").
 	ok, err := h.Svc.CanReadMasterRecord(r.Context(), u, workspaceID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if !ok {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 
 	row, err := h.Svc.Get(r.Context(), workspaceID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		// ErrPoolMissing falls through to 500 — vector_artefacts is
 		// required for this endpoint to function and a misconfigured
 		// boot is an operator-visible 500, not a silent empty.
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

@@ -1,0 +1,11 @@
+{
+  "description": "Allow-list for shared cross-runtime methods (PLA-0045 / Story 00547). Files matching `allowed_globs` are considered cross-runtime safe: they may be imported from BOTH browser-runtime React components under `app/components/**` AND Node-runtime BFF route handlers under `app/api/**/route.ts`. The shared substrate (`app/lib/shared/<domain>/`) is the canonical home for logic that must run in three places (React browser, Next.js Node BFF, Go public API). Consumed by lint:writer-boundary (PLA-0007) and lint:transport-segregation (PLA-0039) so those linters do not flag legitimate cross-imports of shared helpers. Adding a new glob implies: (a) the path contains pure logic with no React hooks, no DOM, no Node-only API; (b) any sibling Go implementation lives at `backend/internal/shared/<domain>/` with golden-fixture parity tests under `dev/fixtures/shared/<domain>/`; (c) a row exists in `docs/c_shared_methods.md`.",
+  "allowed_globs": [
+    "app/lib/shared/**"
+  ],
+  "consumer_globs": [
+    "app/components/**",
+    "app/api/**/route.ts"
+  ],
+  "catalogue": "docs/c_shared_methods.md"
+}

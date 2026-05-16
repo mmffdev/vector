@@ -2,7 +2,7 @@ package workspaces_test
 
 // Integration tests for the /api/workspaces REST surface (PLA-0006 /
 // story 00377). Mirrors the testPool / mkTenant / mkUser style of
-// internal/roles/handler_test.go — every test runs against the live
+// internal/users_roles/handler_test.go — every test runs against the live
 // dev Postgres through the SSH tunnel and skips on unreachable.
 //
 // Coverage map (one test per AC + the companion routes):
@@ -13,7 +13,7 @@ package workspaces_test
 //   00380 → TestPatch_RenamesWorkspace
 //   00381 → TestRestore_403ForNonGadmin + TestRestore_200ForGadmin
 //
-// The cleanup leaf list mirrors roles/handler_test.go but adds the
+// The cleanup leaf list mirrors users_roles/handler_test.go but adds the
 // workspaces + workspace_roles tables (this is the first test in the
 // repo to write to either table through the real service path).
 
@@ -34,10 +34,9 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
 	"github.com/mmffdev/vector-backend/internal/permissions"
-	"github.com/mmffdev/vector-backend/internal/roles"
-	"github.com/mmffdev/vector-backend/internal/master_record_workspaces"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -88,21 +87,21 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	cleanup := func() {
 		// Order: leaves before roots. workspace_roles → workspaces;
 		// then the legacy `workspace` table (different beast); then
-		// users + roles + the subscription row.
+		// users + users_roles + the subscription row.
 		stmts := []string{
-			`DELETE FROM roles_workspaces             WHERE subscription_id = $1`,
+			`DELETE FROM users_roles_workspaces             WHERE subscription_id = $1`,
 			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
-			`DELETE FROM roles_permissions            WHERE role_id IN (SELECT id FROM roles WHERE subscription_id = $1)`,
+			`DELETE FROM users_roles_permissions            WHERE role_id IN (SELECT id FROM users_roles WHERE subscription_id = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
-			`DELETE FROM entity_stakeholders         WHERE subscription_id = $1`,
+			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,
 			`DELETE FROM portfolio                   WHERE subscription_id = $1`,
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
-			`DELETE FROM subscription_sequence       WHERE subscription_id = $1`,
-			`DELETE FROM password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
+			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
-			`DELETE FROM roles                       WHERE subscription_id = $1`,
+			`DELETE FROM users_roles                       WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
 		for _, sql := range stmts {
@@ -114,24 +113,43 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	return subID, cleanup
 }
 
+// resolveGrpRoleID looks up the grp_* role UUID for a legacy enum role
+// directly from users_roles. Replaces the retired roles.SystemRoleGadmin /
+// SystemRolePadmin / SystemRoleUser package constants removed in
+// PLA-0049 Phase 0 (TD-TEST-002, refreshed 2026-05-16). Coarse-fallback
+// mapping mirrors mig 196:
+//   gadmin → grp_global, padmin → grp_portfolio, user → grp_team_member.
+func resolveGrpRoleID(t *testing.T, pool *pgxpool.Pool, role roletypes.Role) uuid.UUID {
+	t.Helper()
+	var code string
+	switch role {
+	case roletypes.RoleGAdmin:
+		code = "grp_global"
+	case roletypes.RolePAdmin:
+		code = "grp_portfolio"
+	case roletypes.RoleUser:
+		code = "grp_team_member"
+	default:
+		t.Fatalf("resolveGrpRoleID: unknown role %q", role)
+	}
+	var id uuid.UUID
+	if err := pool.QueryRow(context.Background(),
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = $1 AND users_roles_id_subscription IS NULL`,
+		code,
+	).Scan(&id); err != nil {
+		t.Fatalf("resolveGrpRoleID(%s → %s): %v", role, code, err)
+	}
+	return id
+}
+
 // mkUser seeds a user under the given subscription with the requested
 // role. role_id maps to the seeded system role UUID so the permission
 // resolver returns the right code set.
-func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role models.Role) *models.User {
+func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Role) *roletypes.User {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
-	var roleID uuid.UUID
-	switch role {
-	case models.RoleGAdmin:
-		roleID = roles.SystemRoleGadmin
-	case models.RolePAdmin:
-		roleID = roles.SystemRolePadmin
-	case models.RoleUser:
-		roleID = roles.SystemRoleUser
-	default:
-		t.Fatalf("mkUser: unknown role %q", role)
-	}
-	u := &models.User{}
+	roleID := resolveGrpRoleID(t, pool, role)
+	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
 		VALUES ($1, $2, $3, $4, $5)
@@ -164,7 +182,7 @@ func seedWorkspace(t *testing.T, pool *pgxpool.Pool, subID, createdBy uuid.UUID,
 
 // withUser injects a fake auth.User into the request context, mirroring
 // what auth.RequireAuth does at runtime.
-func withUser(u *models.User) func(http.Handler) http.Handler {
+func withUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUserForTest(r.Context(), u)
@@ -176,7 +194,7 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 // newRouter wires the workspaces handler into a chi router that mirrors
 // the production wiring in main.go. The handler's Mount registers all
 // five routes; we add withUser as the only middleware.
-func newRouter(pool *pgxpool.Pool, u *models.User) (http.Handler, *workspaces.Service) {
+func newRouter(pool *pgxpool.Pool, u *roletypes.User) (http.Handler, *workspaces.Service) {
 	res := permissions.NewResolver(pool, 0) // ttl<=0 → always hit DB
 	svc := workspaces.New(pool, nil, res)
 	h := workspaces.NewHandler(svc)
@@ -223,8 +241,8 @@ func TestList_ReturnsLiveWorkspaces(t *testing.T) {
 	subB, cleanB := mkTenant(t, pool, "list-b")
 	defer cleanB()
 
-	actor := mkUser(t, pool, subA, models.RoleGAdmin)
-	bUser := mkUser(t, pool, subB, models.RoleGAdmin)
+	actor := mkUser(t, pool, subA, roletypes.RoleGAdmin)
+	bUser := mkUser(t, pool, subB, roletypes.RoleGAdmin)
 
 	// Seed one live + one archived workspace under subA, plus a live
 	// workspace in subB to verify cross-tenant isolation.
@@ -280,7 +298,7 @@ func TestCreate_201OnSuccess(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "create-ok")
 	defer cleanup()
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	r, _ := newRouter(pool, actor)
 	slug := "ws-" + uuid.NewString()[:8]
@@ -312,7 +330,7 @@ func TestCreate_409OnDuplicateSlug(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "create-dup")
 	defer cleanup()
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	slug := "dup-" + uuid.NewString()[:8]
 	seedWorkspace(t, pool, subID, actor.ID, "First", slug)
@@ -345,8 +363,8 @@ func TestArchive_403ForNonGadmin(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "arch-403")
 	defer cleanup()
 
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
-	user := mkUser(t, pool, subID, models.RoleUser)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
+	user := mkUser(t, pool, subID, roletypes.RoleUser)
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Doomed", "doomed-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, user)
@@ -374,7 +392,7 @@ func TestArchive_200ForGadmin(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "arch-200")
 	defer cleanup()
 
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 	// Need ≥2 live workspaces — Archive refuses to archive the last
 	// live workspace in a subscription (ErrCannotArchiveLastLive).
 	keep := seedWorkspace(t, pool, subID, gadmin.ID, "Keep", "keep-"+uuid.NewString()[:6])
@@ -416,7 +434,7 @@ func TestPatch_RenamesWorkspace(t *testing.T) {
 	defer cleanup()
 
 	// padmin holds workspace.rename per the migration 100 grant matrix.
-	actor := mkUser(t, pool, subID, models.RolePAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RolePAdmin)
 	wsID := seedWorkspace(t, pool, subID, actor.ID, "Old Name", "ws-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, actor)
@@ -449,8 +467,8 @@ func TestRestore_403ForNonGadmin(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "rest-403")
 	defer cleanup()
 
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
-	user := mkUser(t, pool, subID, models.RoleUser)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
+	user := mkUser(t, pool, subID, roletypes.RoleUser)
 
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Limbo", "limbo-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
@@ -485,7 +503,7 @@ func TestRestore_200ForGadmin(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "rest-200")
 	defer cleanup()
 
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Returnee", "ret-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
 		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
@@ -533,8 +551,8 @@ func TestDelete_403ForNonGadmin(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "del-403")
 	defer cleanup()
 
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
-	user := mkUser(t, pool, subID, models.RoleUser)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
+	user := mkUser(t, pool, subID, roletypes.RoleUser)
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Doomed", "doomed-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, user)
@@ -567,8 +585,8 @@ func TestDelete_404ForCrossTenant(t *testing.T) {
 	subB, cleanB := mkTenant(t, pool, "del-xt-b")
 	defer cleanB()
 
-	gadminA := mkUser(t, pool, subA, models.RoleGAdmin)
-	gadminB := mkUser(t, pool, subB, models.RoleGAdmin)
+	gadminA := mkUser(t, pool, subA, roletypes.RoleGAdmin)
+	gadminB := mkUser(t, pool, subB, roletypes.RoleGAdmin)
 	wsB := seedWorkspace(t, pool, subB, gadminB.ID, "B", "b-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, gadminA)
@@ -590,7 +608,7 @@ func TestDelete_501WhenNoOrphans(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "del-501")
 	defer cleanup()
 
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Target", "tgt-"+uuid.NewString()[:6])
 
 	r, _ := newRouter(pool, gadmin)
@@ -619,7 +637,7 @@ func TestDelete_400OnMalformedID(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "del-400")
 	defer cleanup()
-	gadmin := mkUser(t, pool, subID, models.RoleGAdmin)
+	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	r, _ := newRouter(pool, gadmin)
 	w := doJSON(t, r, http.MethodDelete, "/api/master_record_workspaces/not-a-uuid", nil)

@@ -16,10 +16,10 @@ Key files:
 
 ## Font decision
 
-Design system spec (future state): **Inter** for body + display, **JetBrains Mono** for code.
-Current app (prior art): Zen Maru Gothic (body), Archivo Black (display), JetBrains Mono (code).
+**Satoshi** for body + display (local font, loaded in `app/layout.tsx`), **JetBrains Mono** for code.
+Bound to `--font-sans` / `--font-mono` on `<html>` by Next.js. `--font-display` and `--font-numeric` chain off `--font-sans` in `app/styles/primitives.css` so any future swap propagates.
 
-Zen Maru Gothic is legacy — kept available for accent/Japanese display use only. NOT the system default per the design brief.
+Earlier specs mentioned Inter (design-system draft) and Zen Maru Gothic (prior art) — both superseded.
 
 ## Color decision
 
@@ -31,7 +31,7 @@ The design system is the intended future state. The codebase is prior art. When 
 ## Hard rules from SKILL.md
 - No drop shadows. No gradients on UI chrome. No glow.
 - No decorative colour. Status colour is reserved for status. Brand accent is one-per-region only.
-- Inter only. Tabular-nums on every numeric column.
+- Satoshi only (var `--font-sans`). Tabular-nums on every numeric column.
 - Eyebrows (`text-xs`, `0.08em` letter-spacing, uppercase, `ink-subtle`) over h2/h3 in card chrome.
 - Status pills are always icon + label, never colour alone.
 - Brand colour never appears in charts.

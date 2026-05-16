@@ -398,6 +398,15 @@ export const admin = {
    *  Does NOT touch users, roles, permissions, pages, or nav prefs. */
   devMasterReset: () =>
     apiSite<{ success: boolean; message: string }>("/admin/dev/master-reset", { method: "POST" }),
+
+  /** gadmin-only (dev): seed N Risk artefacts (default 200) into the caller's
+   *  subscription, assigned to assignee_id (default: caller). Defined in
+   *  backend/internal/portfoliomodels/dev_reset.go (SeedRisks). */
+  devSeedRisks: (params: { count?: number; assignee_id?: string } = {}) =>
+    apiSite<{ success: boolean; inserted: number; message: string }>(
+      "/admin/dev/seed-risks",
+      { method: "POST", body: JSON.stringify(params) },
+    ),
 };
 
 // Pages: app/(user)/portfolio-model/page.tsx (padmin — list + adopt),
@@ -463,6 +472,14 @@ export const portfolioModels = {
 // ─── Portfolio master record  (/portfolio/master_record) ─────────────────────
 // Per-workspace adopted portfolio model record — read after adoption completes.
 
+export interface WorkspaceLayerPatchInput {
+  id: ID;
+  name: string;
+  tag: string;
+  sort_order: number;
+  description_md: string | null;
+}
+
 export const portfolio = {
   /** GET /portfolio/master_record?workspace_id={id}
    *  Returns 404 if workspace is unadopted (existence not leaked). */
@@ -472,18 +489,14 @@ export const portfolio = {
   /** GET /workspace/{id}/portfolio/layers — admitted layer set for a workspace */
   getWorkspaceLayers: (workspaceId: ID) =>
     apiSite<{ layers: unknown[] }>(`/workspace/${workspaceId}/portfolio/layers`),
-};
 
-// Pages: app/(user)/portfolio-model/page.tsx (padmin — layer enable/disable toggles)
-// ─── Subscription layers  (/subscription/layers) ─────────────────────────────
-// padmin-only: read + batch-patch the subscription's layer configuration.
-
-export const subscriptionLayers = {
-  get: () =>
-    apiSite<{ layers: unknown[] }>("/subscription/layers"),
-
-  batchPatch: (data: unknown) =>
-    apiSite<void>("/subscription/layers/batch", { method: "PATCH", body: JSON.stringify(data) }),
+  /** PATCH /workspace/{id}/portfolio/layers/batch — batch update strategy
+   *  artefact_types rows owned by the workspace. Returns the full updated set. */
+  batchPatchWorkspaceLayers: <T = unknown>(workspaceId: ID, inputs: WorkspaceLayerPatchInput[]) =>
+    apiSite<T[]>(`/workspace/${workspaceId}/portfolio/layers/batch`, {
+      method: "PATCH",
+      body: JSON.stringify(inputs),
+    }),
 };
 
 // Pages: app/(user)/workspace-settings/workspace-settings/flow-states/page.tsx
@@ -726,7 +739,7 @@ export const workItems = {
 // ─── Portfolio items  (/portfolio-items) ─────────────────────────────────────
 
 export const portfolioItems = {
-  // Same handler as workItems (artefactitemsv2), different route prefix.
+  // Same handler as workItems (artefactitems), different route prefix.
   list: (params: string) =>
     apiSite<{ items: unknown[]; total: number }>(`/portfolio-items?${params}`),
 

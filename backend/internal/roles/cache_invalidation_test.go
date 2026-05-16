@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -42,13 +42,13 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 
 	// Actor: gadmin so the route-level gate would pass; we bypass it
 	// here and exercise Handler.AssignPermissions directly.
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 
 	// Make a tenant-custom target role.
 	ctx := context.Background()
 	var roleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO roles (subscription_id, code, label, description, rank, is_system, is_external)
+		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
 		VALUES ($1, $2, 'Cache target', '', 100, FALSE, FALSE) RETURNING id`,
 		subID, "cache-target-"+uuid.NewString()[:8],
 	).Scan(&roleID); err != nil {
@@ -72,7 +72,7 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 	// Pick a permission to grant.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup perm: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 		t.Fatalf("warm: %v", err)
 	}
 	if _, ok := pre[permissions.RolesList]; ok {
-		t.Fatalf("victim already has roles.list before grant — fixture invariant broken")
+		t.Fatalf("victim already has users_roles.list before grant — fixture invariant broken")
 	}
 
 	// Grant via the handler so the InvalidateRole hook fires.
@@ -91,7 +91,7 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 	defer srv.Close()
 	body, _ := json.Marshal(permIDsReq{PermissionIDs: []uuid.UUID{permID}})
 	resp, err := http.Post(
-		srv.URL+"/api/roles/"+roleID.String()+"/permissions",
+		srv.URL+"/api/users_roles/"+roleID.String()+"/users_permissions",
 		"application/json", bytes.NewBuffer(body),
 	)
 	if err != nil {
@@ -110,6 +110,6 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 		t.Fatalf("post-grant read: %v", err)
 	}
 	if _, ok := post[permissions.RolesList]; !ok {
-		t.Fatalf("cache not invalidated — victim still missing roles.list after grant")
+		t.Fatalf("cache not invalidated — victim still missing users_roles.list after grant")
 	}
 }

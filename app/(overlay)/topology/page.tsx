@@ -71,7 +71,7 @@ export default function TopologyOverlayPage() {
 function TopologyOverlayInner() {
   const router = useRouter();
   const search = useSearchParams();
-  const { user } = useAuth();
+  const { user, switchWorkspace } = useAuth();
   // Custom zoom controls render at the canvas's bottom-center; we
   // replace React Flow's built-in <Controls> because the tree flyout's
   // left rail covered them.
@@ -92,7 +92,7 @@ function TopologyOverlayInner() {
     window.history.replaceState(null, "", url.toString());
   }, [expanded]);
 
-  const { wsRef, setWsRef, workspaces, tree, loadError, setLoadError, reload } =
+  const { wsRef, workspaces, tree, loadError, setLoadError, reload } =
     useTopologyData();
 
   const {
@@ -153,24 +153,29 @@ function TopologyOverlayInner() {
   // switch so the new tree refits its own centre.
   const didFitRef = useRef(false);
 
-  // Workspace dropdown change — update URL via router.replace, drop
-  // selection + collapse state (they belong to the old workspace), and
-  // re-arm the fit-view latch.
+  // Workspace dropdown change — PLA-0053 / story 00576.5. Re-mint
+  // the JWT via AuthContext.switchWorkspace; AuthContext updates the
+  // user payload in-place, useActiveWorkspace re-renders, the
+  // topology tree refetches via useTopologyData's reload-on-workspaceId
+  // effect. URL state is gone — JWT is the truth.
+  //
+  // Clears workspace-scoped UI state (selection, expand/collapse,
+  // fit-view latch) so the new workspace's canvas starts clean.
   const onWorkspaceChange = useCallback(
-    (nextRef: string) => {
+    async (nextRef: string) => {
       if (nextRef === wsRef) return;
-      setWsRef(nextRef);
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        url.searchParams.set("ws", nextRef);
-        router.replace(url.pathname + url.search);
+      try {
+        await switchWorkspace(nextRef);
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "Failed to switch workspace");
+        return;
       }
       setSelectedId(null);
       setEditingId(null);
       setCollapsed(new Set());
       didFitRef.current = false;
     },
-    [wsRef, router, setWsRef, setCollapsed],
+    [wsRef, switchWorkspace, setCollapsed, setLoadError],
   );
 
   const editingNode = useMemo(

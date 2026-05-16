@@ -1,0 +1,238 @@
+{
+  "id": "PLA-0048",
+  "title": "Codebase Recovery — Lock conventions, install drift gates, consolidate SQL, normalise names",
+  "date_created": "2026-05-13",
+  "date_started": "",
+  "date_last_updated": "2026-05-13",
+  "date_finished": "",
+  "scope": "<p>Execute the locked plan in <code>docs/c_c_the_state_of_the_codebase.md</code> — drag the codebase from its current state (SQL scattered across 56 of 137 backend files, inconsistent table/route naming, CI gates that only fire on PR-to-main) into a shape a DBA or fresh engineer can read at first glance.</p><p>Built from four parallel Opus audits run 2026-05-13 — not from memory. Audit findings: 42 backend packages, 32,877 lines non-test Go, 461 raw SQL string literals embedded in service files, <strong>zero <code>sql.go</code> files</strong>, 10 packages touching &gt;1 database, 22 cross-DB function paths (5 high-risk).</p><p>Plan is structured as 7 phases (Phase 0–6) with hard stop gates between every phase. Every commit reversible. No phase begins without explicit user confirmation. Naming conventions locked in §2 of the master doc; any deviation requires a register entry. The master doc itself (<code>c_c_the_state_of_the_codebase.md</code>) is the authoritative reference — this plan card tracks execution against it.</p>",
+  "value": "<p>Recovers a codebase the owner does not currently trust enough to release under his own name. After completion: any engineer or DBA cloning the repo can predict every file's location, find every SQL string in one file per package, and trust that <code>docs/c_c_db_routing.md</code> matches the code. Future table moves take minutes, not weeks. The drift-prevention lints installed in Phase 1 keep the rest of the work — and every future feature — from re-introducing the same patterns.</p><p>Removes the structural shame from the project. Lets the owner ship.</p>",
+  "implementation_plan": [
+    "Phase 0 — Codify conventions: write docs/c_c_naming_conventions.md as a leaf doc capturing every rule from §2 of the master plan (Go packages, tables, routes, file layout, migrations). Update CLAUDE.md index with a one-line pointer. NO CODE CHANGES. Stop gate: user reviews the conventions doc before any code change.",
+    "Phase 1 — Install drift-prevention lints BEFORE the rewrite: five new lints added to dev/scripts/ — lint:sql-in-sqlfile-only (with wide allow-list seeded from current state), lint:no-empty-route-block, lint:exemption-ratchet, lint:deferral-needs-td-id, lint:package-naming-convention. New CI workflow tests.yml running them all on push (not just PR-to-main). Stop gate: all five lints pass against HEAD.",
+    "Phase 2 — sql.go consolidation, ONE PACKAGE AT A TIME, in this order: topology (post-tonight, includes orgdesign → topology rename), auth, users, roles, permissions, addressables, nav, flows, webhooks, timeboxsprints + timeboxreleases, workspaces, tenantsettings, fields, searchworker, errorsreport, libraryreleases, librarydb, portfolio, artefactitemsv2 (renamed deferred to Phase 4), portfoliomodels (saga, last). Per-package shape: create sql.go, move every SQL literal to a named const, update functions to reference constants, build clean, run tests, smoke one route, commit, shrink lint allow-list. Stop gate after EVERY package.",
+    "Phase 3 — Per-DB migration directories: git mv db/schema/ → db/mmff_vector/schema/, db/artefacts_schema/ → db/vector_artefacts/schema/, db/library_schema/ → db/mmff_library/schema/. Down migrations move with them. Update backend/cmd/migrate/main.go, c_db-backup.md, backup-on-push.sh, any tooling that walks db/. Stop gate: go run ./cmd/migrate -dry-run shows zero pending against each DB.",
+    "Phase 4 — Naming-convention sweep, ONE RENAME AT A TIME: 4.1 Go package renames (artefactitemsv2 → artefactitems, wsperms → workspacepermissions, entityrefs → polymorphicrefs, dbcheck → dbinvariants, models → roletypes, messages → usermessages, tenantsettings → tenantmasterrecord). 4.2 Table renames per-DB (topology_view_state → topology_view_states, audit_log → audit_logs, artefacts_search_outbox → artefact_search_outbox, master_record_portfolio → master_record_portfolios, portfolio_templates → portfolio_models, master_record_workspaces → workspaces, plus the legacy drops). 4.3 Route renames (/workspace/{id}/* → /workspaces/{id}/*, /portfolio → /portfolios, /errors/report → POST /error-reports, /admin/api-keys/issue → POST /admin/api-keys, etc.). Each rename is ONE commit. Stop gate per rename.",
+    "Phase 5 — Cross-DB writer hardening: each of the 5 high-risk cross-DB writers (portfoliomodels.Orchestrator.Adopt, portfoliomodels.DevResetHandler.MasterReset, artefactitemsv2.Service.CreateWorkItem, libraryreleases.Handler.Ack, errorsreport.Handler.Report) gets an explicit *_crossdb_test.go regression test plus a partial-failure scenario doc comment. File TD entries for any actual partial-failure bugs uncovered. Add lint:cross-db-writer-test. Stop gate per writer.",
+    "Phase 6 — Documentation pass: regenerate docs/c_c_db_routing.md from code reality, update docs/c_schema.md, finalise docs/c_c_naming_conventions.md, reduce CLAUDE.md index to one-line-only entries per the standing rule. Stop gate: user reads the regenerated docs."
+  ],
+  "areas_impacted": [
+    "DOCS: docs/c_c_the_state_of_the_codebase.md — master plan (already written, 2026-05-13)",
+    "DOCS: docs/c_c_naming_conventions.md — NEW leaf doc with locked rules",
+    "DOCS: docs/c_c_db_routing.md — regenerated post-Phase-4 to reflect new package + table + route names",
+    "DOCS: docs/c_schema.md — updated table names + DB locations",
+    "DOCS: CLAUDE.md — index entry for the conventions doc; index normalisation in Phase 6",
+    "DEV: dev/scripts/lint_sql_in_sqlfile_only.py — NEW (Phase 1)",
+    "DEV: dev/scripts/lint_no_empty_route_block.py — NEW (Phase 1)",
+    "DEV: dev/scripts/lint_exemption_ratchet.sh — NEW (Phase 1)",
+    "DEV: dev/scripts/lint_deferral_needs_td_id.sh — NEW (Phase 1, commit-msg hook)",
+    "DEV: dev/scripts/lint_package_naming_convention.py — NEW (Phase 1)",
+    "DEV: dev/scripts/lint_cross_db_writer_test.py — NEW (Phase 5)",
+    "DEV: package.json — npm scripts for new lints; tests.yml CI workflow",
+    "DEV: .github/workflows/tests.yml — NEW; runs npm test, npx tsc, go test, go vet on every push",
+    "BACKEND: every backend/internal/<pkg>/ — gains sql.go in Phase 2 (one per package)",
+    "BACKEND: backend/internal/orgdesign/ → backend/internal/topology/ (Phase 2.1, includes import-path fan-out)",
+    "BACKEND: backend/internal/artefactitemsv2/ → backend/internal/artefactitems/ (Phase 4.1)",
+    "BACKEND: 5 more package renames in Phase 4.1 (wsperms, entityrefs, dbcheck, models, messages, tenantsettings)",
+    "BACKEND: cmd/server/main.go — updated for every package rename, route rename, migration-dir rename",
+    "BACKEND: cmd/migrate/main.go — updated for per-DB migration dirs (Phase 3)",
+    "SQL: db/schema/ → db/mmff_vector/schema/ (Phase 3)",
+    "SQL: db/artefacts_schema/ → db/vector_artefacts/schema/ (Phase 3)",
+    "SQL: db/library_schema/ → db/mmff_library/schema/ (Phase 3)",
+    "SQL: ~15 table renames in Phase 4.2 with paired UP+DOWN migrations",
+    "API: ~10 route renames in Phase 4.3 — each with old-route 410 Gone or 301 redirect for one release cycle",
+    "FRONTEND: import path updates only where a renamed package is imported; route URL updates where a renamed route is called; otherwise unchanged",
+    "TESTS: 5 new *_crossdb_test.go files in Phase 5; existing tests updated for package/route renames"
+  ],
+  "feature_list": [
+    "docs/c_c_naming_conventions.md — canonical naming spec",
+    "5 drift-prevention lints (sql-in-sqlfile-only, no-empty-route-block, exemption-ratchet, deferral-needs-td-id, package-naming-convention)",
+    "tests.yml CI workflow — npm test + tsc + go test + go vet on every push (not just PR-to-main)",
+    "sql.go consolidation across all 20 backend packages that touch SQL",
+    "Per-DB migration directories (db/mmff_vector/, db/vector_artefacts/, db/mmff_library/)",
+    "Package renames (artefactitemsv2 → artefactitems, plus 5 more)",
+    "Table renames (~15 tables to canonical plural / prefix conventions)",
+    "Route renames (~10 routes to plural + REST-canonical)",
+    "Cross-DB writer hardening (5 high-risk saga paths get explicit regression tests)",
+    "lint:cross-db-writer-test — every cross-DB writer must have a sibling _crossdb_test.go",
+    "Regenerated docs/c_c_db_routing.md + c_schema.md matching code reality post-rewrite"
+  ],
+  "features_extended": [
+    "<strong>docs/c_tech_debt.md</strong> — register grows during execution as Phase 5 uncovers partial-failure bugs in cross-DB sagas; shrinks as TD-AUTH-001, TD-API-002, TD-API-003, TD-API-004, TD-ORG-001 are paid down or superseded.",
+    "<strong>CLAUDE.md</strong> — gains index entry for c_c_naming_conventions.md (Phase 0); index reduced to one-line-only entries (Phase 6).",
+    "<strong>dev/scripts/check_callers.py</strong> — regex tightened in Phase 1 to skip files with <code>import { apiSite as api }</code> (closes TD-API-003)."
+  ],
+  "features_removed": [
+    "Legacy mmff_vector.workspace (singular) table — last reader migrated, table dropped (Phase 4.2)",
+    "Legacy mmff_vector.sprints table — superseded by vector_artefacts.timebox_sprints, dropped (Phase 4.2)",
+    "Legacy obj_* table prefix family — renamed or dropped as last readers migrate (Phase 4.2)",
+    "Manual hand-cp sync between openapi.yaml and api-reference/static/openapi.yaml — replaced by lint:openapi-mirror-sync (Phase 1 stretch / Phase 6)"
+  ],
+  "work_item_backlog": [],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "docs/c_c_naming_conventions.md exists, is referenced from CLAUDE.md, and codifies every rule from §2 of c_c_the_state_of_the_codebase.md (packages, tables, routes, file layout, migrations).",
+      "proven_by": "Manual review: open the file, cross-check against §2 of the master doc; CLAUDE.md index line present.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "Five drift-prevention lints (sql-in-sqlfile-only, no-empty-route-block, exemption-ratchet, deferral-needs-td-id, package-naming-convention) all pass against HEAD with allow-lists seeded from current state. tests.yml CI workflow runs on every push and includes npm test + npx tsc --noEmit + go test ./... + go vet ./...",
+      "proven_by": "npm run lint:sql-in-sqlfile-only && npm run lint:no-empty-route-block && npm run lint:exemption-ratchet && npm run lint:package-naming-convention all exit 0; .github/workflows/tests.yml exists with the four jobs; first push to a feature branch triggers the workflow.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "Every backend/internal/<pkg>/ directory containing SQL has a sql.go file holding all SQL literals as named constants (sqlVerbResource form). No SELECT/INSERT/UPDATE/DELETE literal exists outside a sql.go file under backend/internal/. lint:sql-in-sqlfile-only passes with an empty allow-list.",
+      "proven_by": "find backend/internal -name 'sql.go' | wc -l matches the count of SQL-touching packages; grep -rE '(SELECT |INSERT INTO|UPDATE [a-z_]+ SET|DELETE FROM)' backend/internal --include='*.go' --exclude='*_test.go' --exclude='sql.go' returns zero hits; lint allow-list file is empty.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "Migrations live under db/<dbname>/schema/ and db/<dbname>/schema/down/ for each of mmff_vector, vector_artefacts, mmff_library. backend/cmd/migrate/main.go reads from the new paths. go run ./cmd/migrate -dry-run -db <each> reports zero pending migrations on dev.",
+      "proven_by": "ls db/mmff_vector/schema | wc -l matches the pre-move count for db/schema; equivalent for vector_artefacts and mmff_library; go run ./cmd/migrate -db mmff_vector -dry-run exits 0 with 'up to date'.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "Package directory naming follows §2.1: no version suffix without a coexisting peer; no insider abbreviations from the rename list. artefactitemsv2 → artefactitems landed; the five other Phase 4.1 renames landed; import-path fan-out updated everywhere.",
+      "proven_by": "ls backend/internal/ shows no 'artefactitemsv2', 'wsperms', 'entityrefs', 'dbcheck', 'models' (as a package name for role types), 'messages'; grep -r 'artefactitemsv2' backend/ returns zero hits; lint:package-naming-convention passes with no exemptions.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "Table names follow §2.2: plural collections, snake_case, no obj_*/o_* legacy prefixes among LIVE tables, no inconsistent singular/plural pairs within a family. The full Phase-4.2 rename list completed.",
+      "proven_by": "psql -d each DB -c '\\dt' shows the renamed tables; the SQL files in db/<dbname>/schema/ matching CREATE TABLE statements use only the canonical names; lint:table-prefix-allowlist (Phase 4 deliverable, optional) passes.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "HTTP routes follow §2.3: plural, REST-canonical verbs, no /workspace/{id} singular, no internal terms (master_record) in external routes. Phase-4.3 rename list completed. Old routes either removed or kept with 410 Gone / 301 redirect for one release cycle.",
+      "proven_by": "curl http://localhost:5100/_site/workspaces/<id>/fields returns 401 (route exists); curl http://localhost:5100/_site/workspace/<id>/fields returns 410 or 301. check_routes.sh --all passes 0 errors.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "The 5 high-risk cross-DB writers (Adopt, MasterReset, CreateWorkItem, Ack, Report) each have a *_crossdb_test.go regression test exercising the partial-failure scenario; the file header comment documents the partial-failure window. lint:cross-db-writer-test passes.",
+      "proven_by": "ls backend/internal/portfoliomodels/*_crossdb_test.go AND adopt.go, dev_reset.go header comments name the partial-failure window. Equivalent for the other 4 writers. lint:cross-db-writer-test exits 0.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "docs/c_c_db_routing.md matches code reality post-rewrite — every Go service is listed with its pool, DB, tables. docs/c_schema.md lists every live table under the correct DB. CLAUDE.md index entries are all single-line per the authoring rule.",
+      "proven_by": "Manual review: open c_c_db_routing.md, pick three services at random, confirm each line matches the running code by grepping main.go. CLAUDE.md has no multi-line index entries.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "The five completion tests in §6 of the master doc all hold: package directory layout predictable; conventions doc covers every name; migrate dry-run zero pending; npm run api:check + npm test + go test all pass; c_c_db_routing.md matches code.",
+      "proven_by": "Run the five checks in §6 verbatim; record output; all pass.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "Phase 2.20 (portfoliomodels sql.go consolidation) is the saga with 51 SQL strings across multiple sub-files. Higher chance of mistake during the move; could break adoption flow.",
+      "mitigation": "Defer to absolute last package in Phase 2. By that point, 19 prior consolidations have proven the pattern. Phase 5's cross-DB regression tests cover the adoption-saga partial-failure paths anyway. Phase 2.20 commits ONE function at a time, not the whole package in one shot."
+    },
+    {
+      "impact": 3,
+      "risk": "Phase 4.2 table renames against vector_artefacts touch live data in dev. A botched ALTER TABLE could lock the table or break referential integrity.",
+      "mitigation": "Every rename has a paired DOWN migration. Run UP, smoke-test, run DOWN on dev as a dry-run before pushing. Use ALTER TABLE ... RENAME TO ... (cheap, atomic, no data rewrite). For tables involved in foreign keys or polymorphic refs, audit cross_db_canary.sh expectations before AND after the rename."
+    },
+    {
+      "impact": 3,
+      "risk": "Phase 4.3 route renames break external API consumers if any exist. /samantha/v2 is the public surface; renames there are public-API breaking changes.",
+      "mitigation": "/_site routes are internal — safe to rename in-place with frontend updates in same commit. /samantha/v2 routes get the old route kept with 410 Gone OR 301 redirect for one release cycle; renames flagged in openapi-v2.yaml with deprecated: true; oasdiff breaking gate runs on every push (Phase 1 + TD-API-004 fix)."
+    },
+    {
+      "impact": 2,
+      "risk": "Phase 1 lint:sql-in-sqlfile-only with a wide allow-list might be tempting to treat as 'pass' when really it just lists everything as exempt — the lint passes vacuously.",
+      "mitigation": "The lint's exit-0 condition is 'every non-allow-listed file has zero SQL'. The allow-list is seeded by enumerating current SQL-containing files; lint passes immediately because every offender IS allow-listed. Phase 2 shrinks the allow-list one package per commit — the lint stays green and the allow-list ratchet (lint:exemption-ratchet) catches any attempt to add a new file to it."
+    },
+    {
+      "impact": 2,
+      "risk": "Phase 3 (per-DB migration dirs) might confuse backend/cmd/migrate's schema_migrations tracking if any migration filename is duplicated across the old and new paths during the cutover.",
+      "mitigation": "git mv preserves file content. backend/cmd/migrate reads filename only (not path) for schema_migrations matching. Verify post-move that go run ./cmd/migrate -dry-run reports zero pending; if it reports the moved files as 'new', backfill schema_migrations names match what's already recorded."
+    },
+    {
+      "impact": 2,
+      "risk": "Scope creep: 'while we're in there' temptation to fix unrelated bugs during a sql.go consolidation, expanding a 30-minute commit into a 3-hour debug session.",
+      "mitigation": "Rules of Engagement §7.4 in the master doc is absolute: stop gates are absolute. Any deviation files a TD entry first and asks for direction. Improvising without a register entry is what got us here. Conventions doc + feedback_deferrals_register.md memory rule enforce this."
+    },
+    {
+      "impact": 1,
+      "risk": "Phase 5 cross-DB regression tests need the SSH tunnel + live dev DBs to run; CI may not have access.",
+      "mitigation": "Use the same skip-on-unreachable pattern existing integration tests use (t.Skipf when pool ping fails). Tests are green locally + the skip path is documented; CI workflow tolerates skipped tests as long as compile passes."
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "Master plan (authoritative reference)",
+      "href": "../../docs/c_c_the_state_of_the_codebase.md"
+    },
+    {
+      "kind": "internal",
+      "label": "DB routing — service → pool → DB → tables (will be regenerated in Phase 6)",
+      "href": "../../docs/c_c_db_routing.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Tech-debt register",
+      "href": "../../docs/c_tech_debt.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Deferral-register memory rule (mandatory companion)",
+      "href": "../../.claude/memory/feedback_deferrals_register.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Empirical-blast-radius memory rule (mandatory companion)",
+      "href": "../../.claude/memory/feedback_empirical_blast_radius.md"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0023 — mmff_vector → vector_artefacts cutover (parent thread of substrate work)",
+      "href": "PLA-0023.json"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0026 — Adoption saga across three DBs (Phase 5 hardening target)",
+      "href": "PLA-0026.json"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0030 — v1 → v2 API cutover (overlaps Phase 4.3 route renames)",
+      "href": "PLA-0030.json"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0039 — Transport segregation (BFF vs public) — relevant to Phase 4.3 route placement",
+      "href": "PLA-0039.json"
+    }
+  ]
+}

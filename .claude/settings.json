@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Edit(**)",
+      "Bash(**)",
+      "Write(**)",
+      "Read(**)",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__list_allowed_directories",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__create_directory",
+      "mcp__filesystem__create_file",
+      "mcp__filesystem__edit_file",
+      "mcp__filesystem__move_file",
+      "mcp__filesystem__delete_file",
+      "Edit(/.claude/skills/stories/**)",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_network_requests",
+      "Skill(stories)",
+      "Skill(stories:*)",
+      "Skill(theme)",
+      "Skill(theme:*)",
+      "Edit(/.claude/skills/theme/**)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:developers.figma.com)",
+      "WebFetch(domain:buildwithfern.com)",
+      "WebFetch(domain:www.datomic.com)",
+      "WebFetch(domain:www.rallyuxr.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:qdrant.tech)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:ollama.com)",
+      "WebFetch(domain:simonwillison.net)",
+      "WebFetch(domain:aws.amazon.com)",
+      "WebFetch(domain:pgdog.dev)",
+      "WebFetch(domain:developer.atlassian.com)",
+      "WebFetch(domain:confluence.atlassian.com)",
+      "WebFetch(domain:docs.ca.com)",
+      "WebFetch(domain:support.atlassian.com)",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:developers.elementor.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:community.broadcom.com)",
+      "Bash(cp \"/Users/rick/.claude/c_code-standards.md\" \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/commands/c_code-standards.md\")",
+      "Bash(cp \"/Users/rick/.claude/bin/whisper-mcp.js\" \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/bin/whisper-mcp.js\")",
+      "Bash(rm -v c_addpaper-protocol.md c_addpaper-stories.md c_addpaper_research-protocol.md c_research-paper-format.md c_write-research-paper.md c_update-research-paper.md c_agents-protocol.md c_code-standards.md c_defect-protocol.md c_docs-sync.md c_feature-scaffold.md c_idea-shortcut.md c_mstories-protocol.md c_scope-protocol.md CLAUDE.md.backup)",
+      "Bash(rm -rfv protocols agents commands skills bin)",
+      "WebFetch(domain:tanstack.com)",
+      "WebFetch(domain:css-tricks.com)",
+      "WebFetch(domain:docs.sencha.com)",
+      "WebFetch(domain:datatracker.ietf.org)",
+      "Bash(cp \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/boot1.md\" \"/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/boot1.md\")",
+      "mcp__playwright__browser_select_option",
+      "Bash(cd \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory\" && rm -v test_account_claude.md test_accounts_claude_tier.md reference_dev_app_login.md feedback_claudemd_accounts.md project_pla0019_samantha.md)",
+      "mcp__playwright__browser_tabs",
+      "WebFetch(domain:code.visualstudio.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:www.january.sh)",
+      "WebFetch(domain:www.jameslmilner.com)",
+      "WebFetch(domain:ts-morph.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:learning-notes.mistermicheels.com)",
+      "Bash(cp \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/feedback_table_naming_prefixes.md\" \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/feedback_gradual_db_sanitisation.md\" \"/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory/MEMORY.md\" \"/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/\" && ls -la \"/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev-Projects-MMFFDev---Vector/memory/\" | grep -E \"naming|sanit\")",
+      "WebFetch(domain:community.atlassian.com)",
+      "Edit(/.claude/skills/scope/**)",
+      "WebFetch(domain:help.rallydev.com)",
+      "WebFetch(domain:www.ag-grid.com)",
+      "WebFetch(domain:www.material-react-table.com)",
+      "WebFetch(domain:atlassian.design)",
+      "WebFetch(domain:docs.dndkit.com)",
+      "WebFetch(domain:dndkit.com)",
+      "WebFetch(domain:docs.servicenow.com)",
+      "WebFetch(domain:docs.retool.com)",
+      "WebFetch(domain:developer.monday.com)",
+      "WebFetch(domain:react.fluentui.dev)",
+      "WebFetch(domain:hasura.io)",
+      "WebFetch(domain:swr.vercel.app)",
+      "WebFetch(domain:relay.dev)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:tkdodo.eu)",
+      "WebFetch(domain:spin.atomicobject.com)",
+      "WebFetch(domain:js.devexpress.com)",
+      "WebFetch(domain:www.builder.io)",
+      "WebFetch(domain:docs.budibase.com)",
+      "Bash(cat >> *)",
+      "mcp__playwright__browser_network_request",
+      "Bash(cp \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/memory/feedback_helper_icon.md\" \"/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev---Projects-MMFFDev---Vector/memory/feedback_helper_icon.md\")",
+      "Bash(cp \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/memory/MEMORY.md\" \"/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev---Projects-MMFFDev---Vector/memory/MEMORY.md\")",
+      "WebFetch(domain:docs.broadcom.com)",
+      "Bash(mkdir -p \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills/search\")",
+      "Edit(/.claude/skills/search/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/rick/.claude",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/.claude/memory",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - PM/CGL",
+      "/Users/rick",
+      "/Users/rick/Documents/MMFFDev-Projects/MMFFDev - Vector/.claude/memory",
+      "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude",
+      "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/scope-commit-note.sh\"",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/backend-restart-reminder.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/shared-methods-reminder.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/backend-restart-reminder.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/shared-methods-reminder.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/loop-detector.sh\"",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-edit-lint.sh\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/loop-injector.sh\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/push-backup-gate.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/boot-file-guard.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/boot-file-guard.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-non-dev-env.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-digest.sh\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/scope-session-start.sh\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/hot-paths-session-start.sh\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/refresh-file-index-on-start.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/api-docs-reminder.sh\""
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": false,
+    "linear@claude-plugins-official": false,
+    "remember@claude-plugins-official": false,
+    "sourcegraph@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": false,
+    "ralph-loop@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": false,
+    "context7@claude-plugins-official": false,
+    "claude-code-setup@claude-plugins-official": true
+  }
+}

@@ -56,6 +56,7 @@ const DOMAIN_TONES: Record<string, Record<string, BadgeTone>> = {
     story: "brand",
     task: "neutral",
     defect: "danger",
+    risk: "warning", // PLA-0052 — visually distinct from defect's danger red
   },
   env: {
     dev: "info",

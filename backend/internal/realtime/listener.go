@@ -11,7 +11,7 @@ import (
 )
 
 // rankPayload mirrors the JSON shape produced by the
-// notify_rank_changed() trigger function (db/schema/069). Field names
+// notify_rank_changed() trigger function (db/mmff_vector/schema/069). Field names
 // must stay aligned — the trigger is the source of truth.
 type rankPayload struct {
 	ResourceType   string     `json:"resource_type"`

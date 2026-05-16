@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
   closestCenter,
@@ -22,10 +23,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { NavIcon } from "@/app/components/NavIcon";
+import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { BsPinAngle } from "react-icons/bs";
 import ProfileBar, { MAX_PROFILES } from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
@@ -36,11 +37,14 @@ import {
   type PutPrefsBody,
   type PutPrefsPinnedRow,
   type PutPrefsGroupRow,
+  type ProfileGroupPlacement,
 } from "@/app/contexts/NavPrefsContext";
 import { createCustomPage, patchCustomPage, deleteCustomPage } from "@/app/lib/customPages";
-import { ApiError } from "@/app/lib/api";
+import { ApiError, apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
+import { ConfirmModal } from "@/app/components/topology/ConfirmModal";
 import { useDraft } from "@/app/hooks/useDraft";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const MAX_PINNED = 50;
 const MAX_CUSTOM_GROUPS = 10;
@@ -66,6 +70,7 @@ interface DraftGroup {
   id: string; // canonical UUID, or "new:<uuid>" for unsaved
   label: string;
   position: number;
+  icon: string | null;
 }
 
 interface DraftState {
@@ -80,13 +85,93 @@ interface DraftState {
   startPageKey: string | null;
   // Per-item icon override; missing key means "use catalogue default".
   iconOverrides: Record<string, string>;
+  // Per-tag-bucket icon override; key is tag_enum (e.g. "admin_settings").
+  tagIconOverrides: Record<string, string>;
 }
 
 // Icons the user can pick. Mirrors the cases in app/components/NavIcon.tsx
 // (excluding "default", which is the fallback the catalogue can't choose).
 const ICON_CHOICES: string[] = [
-  "home", "eye", "briefcase", "star", "clipboard", "list",
-  "warning", "cog", "wrench", "pin", "folder", "package", "pencil",
+  // Navigation & Home
+  "home", "compass", "map", "pin", "pin-push", "navigation",
+  "arrow-up-right", "arrow-right", "arrow-left", "arrow-down",
+  "arrow-up", "chevron-right", "chevron-down", "external-link",
+  "corner-up-right", "corner-down-right", "skip-back", "skip-forward",
+  "rewind", "fast-forward",
+  // People & Users
+  "user", "users", "user-plus", "user-check", "user-x", "user-minus",
+  "person-pin", "team", "contact", "face", "award", "badge",
+  "id-card", "briefcase-check",
+  // Work & Tasks
+  "briefcase", "clipboard", "checklist", "check", "check-circle", "task",
+  "list", "list-ordered", "list-checks", "kanban", "sprint", "milestone",
+  "roadmap", "backlog", "inbox", "archive", "drag",
+  "sticky-note", "note", "comment", "layers-check",
+  "priority-high", "priority-med", "priority-low", "blocked",
+  "recurring", "dependencies",
+  // Planning & Strategy
+  "star", "target", "flag", "flag-check", "calendar", "calendar-check",
+  "clock", "timer", "timeline", "gantt", "chart-bar", "chart-line",
+  "trend-up", "activity", "layers",
+  "chart-area", "chart-scatter", "report", "forecast", "kpi",
+  "velocity", "compass-rose", "telescope", "binoculars",
+  // Portfolio & Projects
+  "folder", "folder-open", "folder-plus", "package", "grid", "layout",
+  "apps", "sitemap", "hierarchy", "git-branch", "git-merge",
+  "diagram", "network", "flow", "collection", "template",
+  "workspace", "kanban-board", "tree", "mindmap",
+  // Settings & Config
+  "cog", "sliders", "wrench", "tool", "filter", "sort", "search",
+  "zoom-in", "adjust", "toggle", "lock", "unlock", "key", "shield",
+  "eye", "eye-off",
+  "cog-play", "terminal-square", "switch", "equalizer",
+  "palette-swatch", "magic",
+  // Communication
+  "bell", "bell-off", "message", "message-circle", "mail", "send",
+  "phone", "share", "link", "link-off", "campaign", "rss",
+  "at-sign", "inbox-arrow", "broadcast", "chat-dots",
+  "reply", "forward-msg",
+  // Data & Analytics
+  "database", "server", "hard-drive", "cpu", "pie-chart", "bar-chart",
+  "table", "scan", "binary", "hash", "percent", "lan",
+  "funnel", "sigma", "function", "variable", "regex",
+  "schema", "query", "api-key",
+  // Documents & Content
+  "file", "file-text", "file-plus", "file-check", "book", "book-open",
+  "bookmark", "tag", "label", "paste", "cut", "indent", "align-left",
+  "type", "code", "terminal",
+  "file-code", "file-lock", "file-search", "newspaper",
+  "draft", "archive-box", "changelog",
+  // Media & Design
+  "image", "camera", "video", "music", "mic", "palette", "pencil",
+  "pen", "crop", "layers-alt",
+  "brush", "eraser", "ruler", "vector-pen", "color-fill",
+  "contrast", "artboard",
+  // Finance & Business
+  "dollar", "credit-card", "shopping", "box", "truck", "building",
+  "office", "corporate",
+  "coin", "bank", "invoice", "receipt", "warehouse", "growth", "contract",
+  // Status & Alerts
+  "warning", "alert-circle", "alert-octagon", "crisis", "info", "help",
+  "block", "x-circle", "minus-circle", "plus-circle",
+  "pulse", "dot", "circle-check", "status-online", "status-off", "version",
+  // Actions
+  "play", "pause", "stop", "refresh", "auto-mode", "upload", "download",
+  "plus", "minus", "x", "trash", "edit", "copy", "move", "compress",
+  "expand", "merge", "split",
+  "undo", "redo", "cut-action", "import", "export", "save",
+  "print", "restore", "purge",
+  // Infrastructure & Tech
+  "computer", "laptop", "smartphone", "cloud", "cloud-upload", "wifi",
+  "cable", "login", "logout", "api", "webhook",
+  "docker", "kubernetes", "git-commit", "git-pull", "code-fork",
+  "monitor", "desktop-tower", "storage", "pipeline",
+  // Misc & Utility
+  "sparkle", "zap", "sun", "moon", "globe", "language", "scale",
+  "accessibility", "focus", "maximize", "minimize", "linear-scale",
+  "density-large", "density-small", "favorite", "location", "location-search",
+  "QR", "barcode", "fingerprint", "swap", "sort-asc", "sort-desc",
+  "tag-multiple", "fire", "snowflake", "diamond", "hourglass", "infinity",
 ];
 
 const itemDragId = (k: string) => `item:${k}`;
@@ -110,6 +195,39 @@ function GroupDropSlot({ index }: { index: number }) {
       className={`nav-prefs__slot${isOver ? " nav-prefs__slot--over" : ""}`}
       aria-hidden="true"
     />
+  );
+}
+
+// Available-pane mirror of a user-created custom group. Renders an empty
+// droppable slot so a user can drag a custom page directly into that group
+// (skips the "unpin then re-pin into group" two-step). Catalogue (non
+// user_custom) pages are silently rejected by onDragEnd to match the
+// tag-bucket lock rule.
+function AvailableGroupSlot({
+  groupId,
+  label,
+  iconKey,
+}: {
+  groupId: string;
+  label: string;
+  iconKey: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `available-group:${groupId}` });
+  return (
+    <div className="nav-prefs__group nav-prefs__group--available-custom">
+      <div className="nav-prefs__group-heading-row">
+        <NavIcon iconKey={iconKey} />
+        <h3 className="nav-prefs__group-heading">{label}</h3>
+      </div>
+      <ul
+        ref={setNodeRef}
+        className={`nav-prefs__list nav-prefs__list--empty-slot${isOver ? " nav-prefs__list--over" : ""}`}
+      >
+        <li className="nav-prefs__children-empty">
+          Drop a custom page here to pin it into this group.
+        </li>
+      </ul>
+    </div>
   );
 }
 
@@ -465,6 +583,11 @@ function BucketBlock({
   onRenameCustom,
   onDeleteCustom,
   isCustom,
+  groupIcon,
+  groupPickerOpen,
+  onPickGroupIcon,
+  onSetGroupIcon,
+  onClearGroupIcon,
 }: {
   bucketId: BucketKey;
   heading: string;
@@ -484,6 +607,11 @@ function BucketBlock({
   onRenameCustom?: (key: string, label: string) => void;
   onDeleteCustom?: (key: string) => void;
   isCustom: boolean;
+  groupIcon?: string | null;
+  groupPickerOpen?: boolean;
+  onPickGroupIcon?: () => void;
+  onSetGroupIcon?: (icon: string) => void;
+  onClearGroupIcon?: () => void;
 }) {
   const headerSortable = useSortable({
     id: groupHeaderDragId(bucketId),
@@ -545,7 +673,39 @@ function BucketBlock({
         ) : (
           <h3 className="nav-prefs__group-heading">{heading}</h3>
         )}
-        {isCustom && !editing && (
+        {!editing && onPickGroupIcon && (
+          <div className="nav-prefs__group-actions">
+            <button
+              type="button"
+              className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
+              onClick={onPickGroupIcon}
+              aria-label={`Choose icon for ${heading} section`}
+              aria-pressed={!!groupPickerOpen}
+              title="Choose section icon"
+            >
+              <NavIcon iconKey={groupIcon ?? "folder"} />
+            </button>
+            {isCustom && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn--icon btn--sm btn--ghost nav-prefs__btn"
+                  onClick={() => setEditing(true)}
+                  aria-label={`Rename ${heading} group`}
+                  title="Rename group"
+                >✎</button>
+                <button
+                  type="button"
+                  className="btn btn--icon btn--sm btn--ghost nav-prefs__btn nav-prefs__btn--danger"
+                  onClick={onRemoveGroup}
+                  aria-label={`Remove ${heading} group`}
+                  title="Remove group (items move to their tag groups)"
+                >×</button>
+              </>
+            )}
+          </div>
+        )}
+        {isCustom && !editing && !onPickGroupIcon && (
           <div className="nav-prefs__group-actions">
             <button
               type="button"
@@ -564,6 +724,15 @@ function BucketBlock({
           </div>
         )}
       </div>
+      {groupPickerOpen && onSetGroupIcon && (
+        <IconPicker
+          currentIcon={groupIcon ?? "folder"}
+          hasOverride={!!groupIcon}
+          onChoose={(icon) => onSetGroupIcon(icon)}
+          onClear={onClearGroupIcon}
+          onClose={() => onPickGroupIcon && onPickGroupIcon()}
+        />
+      )}
       <SortableContext items={items.map((it) => itemDragId(it.key))} strategy={verticalListSortingStrategy}>
         <ul
           ref={dropZone.setNodeRef}
@@ -629,9 +798,11 @@ function BucketBlock({
 }
 
 function AvailablePanel({
-  poolTags,
+  bucketOrder,
   poolByTag,
   libraryEntries,
+  customGroups,
+  tagByEnum,
   atCap,
   customPagesTotal,
   profileLabel,
@@ -640,9 +811,11 @@ function AvailablePanel({
   onDeleteCustom,
   onSetPoolIcon,
 }: {
-  poolTags: import("@/app/contexts/NavPrefsContext").NavTagGroup[];
+  bucketOrder: BucketKey[];
   poolByTag: Map<string, import("@/app/contexts/NavPrefsContext").NavCatalogEntry[]>;
   libraryEntries: import("@/app/contexts/NavPrefsContext").NavCatalogEntry[];
+  customGroups: DraftGroup[];
+  tagByEnum: (e: string) => import("@/app/contexts/NavPrefsContext").NavTagGroup | undefined;
   atCap: boolean;
   customPagesTotal: number;
   profileLabel: string;
@@ -676,7 +849,9 @@ function AvailablePanel({
       )}
     </Fragment>
   );
-  const empty = poolTags.length === 0 && libraryEntries.length === 0;
+
+  const allEmpty = libraryEntries.length === 0 && bucketOrder.length === 0;
+
   return (
     <div
       ref={setNodeRef}
@@ -690,7 +865,7 @@ function AvailablePanel({
         <p className="nav-prefs__pane-desc">
           Pages you can add to <strong>{profileLabel}</strong> — pin one to send it to your sidebar.
         </p>
-      {empty ? (
+      {allEmpty ? (
         <p className="nav-prefs__empty">Everything visible to your role is already pinned.</p>
       ) : (
         <>
@@ -706,16 +881,42 @@ function AvailablePanel({
               <ul className="nav-prefs__list">{libraryEntries.map(renderItem)}</ul>
             )}
           </div>
-          {poolTags.map((tag) => (
-            <div key={tag.enum} className="nav-prefs__group">
-              <div className="nav-prefs__group-heading-row">
-                <h3 className="nav-prefs__group-heading">{tag.label}</h3>
-              </div>
-              <ul className="nav-prefs__list">
-                {(poolByTag.get(tag.enum) ?? []).map(renderItem)}
-              </ul>
-            </div>
-          ))}
+          <AnimatePresence initial={false}>
+            {bucketOrder.map((b) => {
+              if (b.startsWith("group:")) {
+                const id = b.slice("group:".length);
+                const g = customGroups.find((g) => g.id === id);
+                if (!g) return null;
+                return (
+                  <motion.div key={b} layout transition={{ duration: 0.2, ease: "easeInOut" }}>
+                    <AvailableGroupSlot
+                      groupId={id}
+                      label={g.label}
+                      iconKey={g.icon ?? "folder"}
+                    />
+                  </motion.div>
+                );
+              }
+              const tagEnum = b.slice("tag:".length);
+              const tag = tagByEnum(tagEnum);
+              if (!tag) return null;
+              const items = poolByTag.get(tagEnum) ?? [];
+              return (
+                <motion.div key={b} layout transition={{ duration: 0.2, ease: "easeInOut" }}>
+                  <div className="nav-prefs__group">
+                    <div className="nav-prefs__group-heading-row">
+                      <h3 className="nav-prefs__group-heading">{tag.label}</h3>
+                    </div>
+                    {items.length === 0 ? (
+                      <p className="nav-prefs__empty nav-prefs__empty--pool">All pages in this section are pinned.</p>
+                    ) : (
+                      <ul className="nav-prefs__list">{items.map(renderItem)}</ul>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </>
       )}
       </Panel>
@@ -833,10 +1034,11 @@ function PoolItem({
 }
 
 export default function NavPreferencesPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const {
     prefs, customGroups, save, catalogue, refetch, patchCatalogueEntry,
-    defaultPinned, findEntry, tagByEnum, tags,
+    defaultPinned, findEntry, tagByEnum, tags, profileGroups,
     profiles, activeProfileId, setProfileGroups,
   } = useNavPrefs();
   const activeProfile = useMemo(
@@ -851,11 +1053,36 @@ export default function NavPreferencesPage() {
   const [baseline, setBaseline] = useState<DraftState | null>(null);
   const [saving, setSaving] = useState(false);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const [groupPickerId, setGroupPickerId] = useState<string | null>(null);
+  const [tagPickerEnum, setTagPickerEnum] = useState<string | null>(null);
   const [newPageLabel, setNewPageLabel] = useState("");
   const [creatingPage, setCreatingPage] = useState(false);
   const [newGroupLabel, setNewGroupLabel] = useState("");
   const [createGroupErr, setCreateGroupErr] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Reset-to-defaults flow. POST /_site/nav/reset wipes every nav row
+  // for the user under their subscription (profiles + prefs +
+  // profile_groups + custom groups), then refetch triggers the lazy-
+  // seed against the new schema. The modal exists to make this an
+  // explicit user action — it's destructive of any layout work the
+  // user has done.
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const handleConfirmReset = useCallback(async () => {
+    setResetting(true);
+    try {
+      await apiSite<void>("/nav/reset", { method: "POST" });
+      await refetch();
+      notify.success("Navigation reset to defaults.");
+      setConfirmReset(false);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.detail ?? err.message) : "Reset failed — try again.";
+      notify.error(msg);
+    } finally {
+      setResetting(false);
+    }
+  }, [refetch]);
 
   // Draft persistence for the "New custom page" form. The draft only
   // Silently restore whatever the user was typing last — no banner.
@@ -881,6 +1108,7 @@ export default function NavPreferencesPage() {
   const prefsHash = useMemo(() => JSON.stringify(prefs), [prefs]);
   const customGroupsHash = useMemo(() => JSON.stringify(customGroups), [customGroups]);
   const tagsHash = useMemo(() => JSON.stringify(tags), [tags]);
+  const profileGroupsHash = useMemo(() => JSON.stringify(profileGroups), [profileGroups]);
 
   // Hydrate draft from server state. Both tag buckets and custom buckets
   // are produced in first-appearance order (matching sidebar logic), with
@@ -960,23 +1188,52 @@ export default function NavPreferencesPage() {
       if (p.icon_override) iconOverrides[p.item_key] = p.icon_override;
     }
 
+    const tagIconOverrides: Record<string, string> = {};
+    // If the active profile has persisted placements, use them to drive
+    // bucketOrder. Buckets not covered by placements (e.g. a custom group
+    // that exists but has no placement row yet) keep their current relative
+    // position at the tail. Also hydrate tag icon overrides from placements.
+    if (profileGroups.length > 0) {
+      const placed: BucketKey[] = [];
+      const placedSet = new Set<BucketKey>();
+      const ordered = [...profileGroups].sort((a, b) => a.position - b.position);
+      for (const p of ordered) {
+        let key: BucketKey | null = null;
+        if (p.tag_enum) {
+          key = tagBucket(p.tag_enum);
+          if (p.icon_override) tagIconOverrides[p.tag_enum] = p.icon_override;
+        } else if (p.group_id) {
+          key = groupBucket(p.group_id);
+        }
+        if (!key) continue;
+        if (placedSet.has(key)) continue;
+        if (!orderSeen.includes(key)) continue;
+        placed.push(key);
+        placedSet.add(key);
+      }
+      const tail = orderSeen.filter((b) => !placedSet.has(b));
+      orderSeen.length = 0;
+      orderSeen.push(...placed, ...tail);
+    }
+
     const hydrated: DraftState = {
       bucketOrder: orderSeen,
       itemsByBucket,
       childrenByParent,
-      customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position })),
+      customGroups: customGroups.map((g) => ({ id: g.id, label: g.label, position: g.position, icon: g.icon })),
       startPageKey,
       iconOverrides,
+      tagIconOverrides,
     };
     setDraft(hydrated);
     setBaseline(hydrated);
     // Intentionally key on content hashes, not array refs. `prefs/customGroups/
-    // tags` get fresh array identities on every refetch — including refetches
-    // triggered by save/delete/create — even when content is identical. Hashing
-    // makes the rebuild fire only when server state truly changed, so unsaved
-    // local pin/order edits survive a sibling refetch.
+    // tags/profileGroups` get fresh array identities on every refetch — including
+    // refetches triggered by save/delete/create — even when content is identical.
+    // Hashing makes the rebuild fire only when server state truly changed, so
+    // unsaved local pin/order edits survive a sibling refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefsHash, customGroupsHash, tagsHash]);
+  }, [prefsHash, customGroupsHash, tagsHash, profileGroupsHash]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -1122,6 +1379,45 @@ export default function NavPreferencesPage() {
     setDraft({ ...draft, iconOverrides: next });
   };
 
+  const toggleGroupPicker = (id: string) => {
+    setGroupPickerId((cur) => (cur === id ? null : id));
+  };
+
+  const toggleTagPicker = (tagEnum: string) => {
+    setTagPickerEnum((cur) => (cur === tagEnum ? null : tagEnum));
+  };
+
+  const setGroupIcon = (id: string, icon: string) => {
+    setDraft({
+      ...draft,
+      customGroups: draft.customGroups.map((g) =>
+        g.id === id ? { ...g, icon } : g,
+      ),
+    });
+  };
+
+  const clearGroupIcon = (id: string) => {
+    setDraft({
+      ...draft,
+      customGroups: draft.customGroups.map((g) =>
+        g.id === id ? { ...g, icon: null } : g,
+      ),
+    });
+  };
+
+  const setTagIconOverride = (tagEnum: string, icon: string) => {
+    setDraft({
+      ...draft,
+      tagIconOverrides: { ...draft.tagIconOverrides, [tagEnum]: icon },
+    });
+  };
+
+  const clearTagIconOverride = (tagEnum: string) => {
+    const next = { ...draft.tagIconOverrides };
+    delete next[tagEnum];
+    setDraft({ ...draft, tagIconOverrides: next });
+  };
+
   const addCustomGroup = (rawLabel?: string): { ok: true } | { ok: false; reason: string } => {
     if (groupsAtCap) return { ok: false, reason: `Cap of ${MAX_CUSTOM_GROUPS} groups reached.` };
     const id = nextSyntheticId();
@@ -1142,7 +1438,7 @@ export default function NavPreferencesPage() {
     const position = draft.customGroups.length;
     const next: DraftState = {
       ...draft,
-      customGroups: [...draft.customGroups, { id, label, position }],
+      customGroups: [...draft.customGroups, { id, label, position, icon: null }],
       itemsByBucket: { ...draft.itemsByBucket, [groupBucket(id)]: [] },
       bucketOrder: [...draft.bucketOrder, groupBucket(id)],
     };
@@ -1365,6 +1661,21 @@ export default function NavPreferencesPage() {
     if (!aEntry) return;
     const aOwner = findOwner(aKey);
 
+    // 2a-0a) Drop onto an Available-side custom-group slot → pin straight
+    // into that group. Catalogue (non-user_custom) pages are silently
+    // rejected (locked to their tag bucket).
+    if (overId.startsWith("available-group:")) {
+      const groupId = overId.slice("available-group:".length);
+      const targetBucket = groupBucket(groupId);
+      if (aEntry.kind !== "user_custom") return;
+      if (atCap && !aOwner.bucket && !aOwner.parent) return;
+      const toIndex = (draft.itemsByBucket[targetBucket] ?? []).length;
+      if (aOwner.bucket) moveTopLevel(aKey, aOwner.bucket, targetBucket, toIndex);
+      else if (aOwner.parent) promoteChildToTopLevel(aKey, aOwner.parent, targetBucket, toIndex);
+      else pinFromPool(aKey, targetBucket, toIndex);
+      return;
+    }
+
     // 2a-0) Drop onto the available panel → unpin.
     if (overId === "pool:available") {
       const owner = findOwner(aKey);
@@ -1457,8 +1768,18 @@ export default function NavPreferencesPage() {
       // server validates top-level contiguity and per-parent uniqueness
       // separately, and a single shared counter would leave gaps at the top
       // level whenever any parent has children.
-      const pinned: PutPrefsPinnedRow[] = [];
-      let topPos = 0;
+      //
+      // Backend constraint: catalogue items (kind !== user_custom) may NOT
+      // carry a group_id and must be contiguous per tag_enum in position order.
+      // User-custom items may carry a group_id and also must be contiguous per
+      // group. We satisfy both by emitting catalogue items grouped by tag_enum
+      // (in the order their tag bucket first appears in bucketOrder), then
+      // user_custom items grouped by their group bucket.
+      type PendingRow = { item_key: string; group_id: string | null; icon_override: string | null; children: Array<{ key: string; icon: string | null }> };
+      const catalogueByTag = new Map<string, PendingRow[]>();
+      const tagOrder: string[] = [];
+      const customRows: PendingRow[] = [];
+
       for (const bucket of draft.bucketOrder) {
         const items = draft.itemsByBucket[bucket] ?? [];
         const isCustom = bucket.startsWith("group:");
@@ -1466,31 +1787,36 @@ export default function NavPreferencesPage() {
         for (const it of items) {
           const entry = findEntry(it.key);
           if (!entry) continue;
-          pinned.push({
-            item_key: it.key,
-            position: topPos++,
-            parent_item_key: null,
-            group_id: entry.kind === "user_custom" ? groupId : null,
-            icon_override: draft.iconOverrides[it.key] ?? null,
-          });
-          let childPos = 0;
-          for (const ck of draft.childrenByParent[it.key] ?? []) {
-            const childEntry = findEntry(ck);
-            if (!childEntry) continue;
-            pinned.push({
-              item_key: ck,
-              position: childPos++,
-              parent_item_key: it.key,
-              group_id: null,
-              icon_override: draft.iconOverrides[ck] ?? null,
-            });
+          const children: Array<{ key: string; icon: string | null }> = (draft.childrenByParent[it.key] ?? [])
+            .map((ck) => ({ key: ck, icon: draft.iconOverrides[ck] ?? null }))
+            .filter(({ key }) => !!findEntry(key));
+          const row: PendingRow = { item_key: it.key, group_id: entry.kind === "user_custom" ? groupId : null, icon_override: draft.iconOverrides[it.key] ?? null, children };
+          if (entry.kind === "user_custom") {
+            customRows.push(row);
+          } else {
+            const tag = entry.tagEnum || "personal";
+            if (!catalogueByTag.has(tag)) { catalogueByTag.set(tag, []); tagOrder.push(tag); }
+            catalogueByTag.get(tag)!.push(row);
           }
         }
       }
+
+      const pinned: PutPrefsPinnedRow[] = [];
+      let topPos = 0;
+      const addRow = (r: PendingRow) => {
+        pinned.push({ item_key: r.item_key, position: topPos++, parent_item_key: null, group_id: r.group_id, icon_override: r.icon_override });
+        let childPos = 0;
+        for (const c of r.children) {
+          pinned.push({ item_key: c.key, position: childPos++, parent_item_key: r.item_key, group_id: null, icon_override: c.icon });
+        }
+      };
+      for (const tag of tagOrder) { for (const r of catalogueByTag.get(tag)!) addRow(r); }
+      for (const r of customRows) addRow(r);
       const groups: PutPrefsGroupRow[] = draft.customGroups.map((g, i) => ({
         id: g.id,
         label: g.label,
         position: i,
+        icon: g.icon,
       }));
       const body: PutPrefsBody = { pinned, start_page_key: draft.startPageKey, groups };
       const canonical = await save(body);
@@ -1504,19 +1830,32 @@ export default function NavPreferencesPage() {
           const c = canonical[i];
           if (c) localToCanonical.set(g.id, c.id);
         });
-        const groupBuckets = draft.bucketOrder.filter((b) => b.startsWith("group:"));
-        const placements = groupBuckets
-          .map((b, position) => {
+        // bucketOrder mixes tag buckets ("tag:<enum>") and custom-group
+        // buckets ("group:<id>"). Persist BOTH kinds so the rail honours
+        // the user's drag order across the full list.
+        const placements: ProfileGroupPlacement[] = [];
+        for (const b of draft.bucketOrder) {
+          if (b.startsWith("tag:")) {
+            const tagEnum = b.slice("tag:".length);
+            placements.push({
+              tag_enum: tagEnum,
+              group_id: null,
+              position: placements.length,
+              icon_override: draft.tagIconOverrides[tagEnum] ?? null,
+            });
+          } else if (b.startsWith("group:")) {
             const localId = b.slice("group:".length);
-            if (localId.startsWith("new:")) {
-              const remapped = localToCanonical.get(localId);
-              return remapped ? { group_id: remapped, position } : null;
-            }
-            return { group_id: localId, position };
-          })
-          .filter((p): p is { group_id: string; position: number } => p !== null)
-          // Re-number positions to stay contiguous after any drops.
-          .map((p, i) => ({ ...p, position: i }));
+            const canonicalId = localId.startsWith("new:")
+              ? localToCanonical.get(localId)
+              : localId;
+            if (!canonicalId) continue;
+            placements.push({
+              group_id: canonicalId,
+              tag_enum: null,
+              position: placements.length,
+            });
+          }
+        }
         await setProfileGroups(activeProfileId, placements);
         await refetch();
       }
@@ -1563,11 +1902,6 @@ export default function NavPreferencesPage() {
     list.push(entry);
     poolByTag.set(entry.tagEnum, list);
   }
-  const poolTags = tags
-    .filter((t) => poolByTag.has(t.enum))
-    .slice()
-    .sort((a, b) => a.defaultOrder - b.defaultOrder);
-
   // Resolve heading + custom flag for each bucket.
   const bucketHeading = (b: BucketKey): { heading: string; isCustom: boolean; groupId: string | null } => {
     if (b.startsWith("tag:")) {
@@ -1584,19 +1918,42 @@ export default function NavPreferencesPage() {
 
   return (
     <PageContent>
-    <PageShell
-      title="Navigation preferences"
-      subtitle={
-        activeProfile
-          ? `Editing "${activeProfile.label}" — pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
-          : `Pin up to ${MAX_PINNED} pages, group them, and pick a start page.`
-      }
-    >
+      <PageHeading level={1} title={full} subtitle="Personalise your navigation layout and section order." />
+      <Panel
+        name="panel_navigation_preferences_header"
+        className="page-panel-heading"
+        title="Navigation"
+        description="Customise the navigation rail order, visibility, and default section preferences for your account."
+      />
+      <Panel
+        name="panel_navigation_preferences_reset"
+        title="Reset to defaults"
+        description="Clears your current navigation layout and restores the default buckets and pages permitted by your role. This undoes every customisation you have made to the rail order, custom groups, and pinned pages."
+      >
+        <button
+          type="button"
+          className="btn btn--danger btn--sm"
+          onClick={() => setConfirmReset(true)}
+          disabled={resetting}
+        >
+          {resetting ? "Resetting…" : "Reset navigation"}
+        </button>
+      </Panel>
+      {confirmReset && (
+        <ConfirmModal
+          title="Reset navigation to defaults?"
+          body="This will wipe all of your nav customisations and rebuild the rail from scratch using only the pages your role permits. You can't undo this."
+          danger
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={() => void handleConfirmReset()}
+        />
+      )}
       <StrictRoute>
       <div className="nav-prefs__quick-bar">
         <Panel
           name="nav_prefs_custom_nav"
           title={<>Custom Navigation <span className="nav-prefs__count">{profiles.length}/{MAX_PROFILES}</span></>}
+          margin={["var(--gap-block-top)", "var(--gap-block-right)", "var(--gap-block-bottom)", "var(--gap-block-left)"]}
         >
           <ProfileBar />
         </Panel>
@@ -1645,6 +2002,10 @@ export default function NavPreferencesPage() {
                 {draft.bucketOrder.map((b, i) => {
                   const { heading, isCustom, groupId } = bucketHeading(b);
                   const items = draft.itemsByBucket[b] ?? [];
+                  const groupRow = isCustom && groupId
+                    ? draft.customGroups.find((g) => g.id === groupId) ?? null
+                    : null;
+                  const tagEnum = !isCustom && b.startsWith("tag:") ? b.slice("tag:".length) : null;
                   // Render every bucket — including empty tag buckets — so they
                   // remain valid drop targets when dragging from Available.
                   return (
@@ -1668,6 +2029,11 @@ export default function NavPreferencesPage() {
                         onRenameCustom={handleRenameCustomPage}
                         onDeleteCustom={handleDeleteCustomPage}
                         isCustom={isCustom}
+                        groupIcon={isCustom ? (groupRow?.icon ?? null) : (tagEnum ? (draft.tagIconOverrides[tagEnum] ?? null) : null)}
+                        groupPickerOpen={isCustom ? (!!groupId && groupPickerId === groupId) : (!!tagEnum && tagPickerEnum === tagEnum)}
+                        onPickGroupIcon={isCustom ? (groupId ? () => toggleGroupPicker(groupId) : undefined) : (tagEnum ? () => toggleTagPicker(tagEnum) : undefined)}
+                        onSetGroupIcon={isCustom ? (groupId ? (icon) => setGroupIcon(groupId, icon) : undefined) : (tagEnum ? (icon) => setTagIconOverride(tagEnum, icon) : undefined)}
+                        onClearGroupIcon={isCustom ? (groupId ? () => clearGroupIcon(groupId) : undefined) : (tagEnum ? () => clearTagIconOverride(tagEnum) : undefined)}
                       />
                       {activeDragId?.startsWith("gheader:") && <GroupDropSlot index={i + 1} />}
                     </Fragment>
@@ -1679,9 +2045,11 @@ export default function NavPreferencesPage() {
           </section>
 
           <AvailablePanel
-            poolTags={poolTags}
+            bucketOrder={draft.bucketOrder}
             poolByTag={poolByTag}
             libraryEntries={libraryEntries}
+            customGroups={draft.customGroups}
+            tagByEnum={tagByEnum}
             atCap={atCap}
             customPagesTotal={customPagesTotal}
             profileLabel={activeProfile?.label ?? "this profile"}
@@ -1798,7 +2166,6 @@ export default function NavPreferencesPage() {
 
       {atCap && <p className="nav-prefs__notice">Pinned limit reached — unpin an item to add another.</p>}
       </StrictRoute>
-    </PageShell>
     </PageContent>
   );
 }

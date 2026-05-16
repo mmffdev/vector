@@ -15,7 +15,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -26,15 +26,22 @@ import (
 // directly via httptest.
 
 func TestTargetRoleCreateCode(t *testing.T) {
+	// PLA-0049 Phase 0 narrowed targetRoleCreateCode from the legacy
+	// 5-role enum to the 3 supported wire-shape roles (gadmin/padmin/user
+	// → grp_global/grp_portfolio/grp_team_member). The remaining four
+	// grp_* roles require a follow-up wire-shape change to accept role_id
+	// directly (deferred to Phase 1.x — admin-grid-only until then).
+	// Any unknown role (incl. the four deferred grp_*) returns "".
 	cases := []struct {
-		role models.Role
+		role roletypes.Role
 		want permissions.Code
 	}{
-		{models.RoleGAdmin, permissions.UsersCreateGadmin},
-		{models.RolePAdmin, permissions.UsersCreatePadmin},
-		{models.RoleUser, permissions.UsersCreateUser},
-		{"team_lead", permissions.UsersCreateTeamLead},
-		{"external", permissions.UsersCreateExternal},
+		{roletypes.RoleGAdmin, permissions.UsersCreateGrpGlobal},
+		{roletypes.RolePAdmin, permissions.UsersCreateGrpPortfolio},
+		{roletypes.RoleUser, permissions.UsersCreateGrpTeamMember},
+		// Deferred until wire-shape carries role_id directly:
+		{"team_lead", ""},
+		{"external", ""},
 		{"bogus", ""},
 		{"", ""},
 	}
@@ -46,31 +53,42 @@ func TestTargetRoleCreateCode(t *testing.T) {
 	}
 }
 
-// systemRoleIDFor mirrors the roles package's system-role UUID seeds.
-// We don't import internal/roles to avoid an import cycle; this is the
-// minimum needed to seed users.role_id (NOT NULL post-migration 088).
-func systemRoleIDFor(t *testing.T, role models.Role) uuid.UUID {
+// resolveGrpRoleID resolves the grp_* role UUID for a legacy enum role
+// by looking up users_roles.code at fixture time. Replaces the retired
+// rank-encoded literals (ad05/ad10/ad20/ad25/ad30) that were removed
+// in PLA-0049 Phase 0 (TD-TEST-002, refreshed 2026-05-16). Coarse-
+// fallback mapping mirrors mig 196:
+//   gadmin → grp_global, padmin → grp_portfolio, user → grp_team_member.
+func resolveGrpRoleID(t *testing.T, pool *pgxpool.Pool, role roletypes.Role) uuid.UUID {
 	t.Helper()
+	var code string
 	switch role {
-	case models.RoleGAdmin:
-		return uuid.MustParse("00000000-0000-0000-0000-00000000ad30")
-	case models.RolePAdmin:
-		return uuid.MustParse("00000000-0000-0000-0000-00000000ad25")
-	case models.RoleUser:
-		return uuid.MustParse("00000000-0000-0000-0000-00000000ad10")
+	case roletypes.RoleGAdmin:
+		code = "grp_global"
+	case roletypes.RolePAdmin:
+		code = "grp_portfolio"
+	case roletypes.RoleUser:
+		code = "grp_team_member"
+	default:
+		t.Fatalf("resolveGrpRoleID: unsupported role %q", role)
 	}
-	t.Fatalf("systemRoleIDFor: unsupported role %q", role)
-	return uuid.Nil
+	var id uuid.UUID
+	if err := pool.QueryRow(context.Background(),
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = $1 AND users_roles_id_subscription IS NULL`,
+		code,
+	).Scan(&id); err != nil {
+		t.Fatalf("resolveGrpRoleID(%s → %s): %v", role, code, err)
+	}
+	return id
 }
 
 // mkUserWithRoleID inserts a user with both the legacy enum and the
-// system-role UUID. Once migration 088 has shipped to all envs, the
-// service_test.go mkUser helper can adopt this shape too.
-func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role models.Role) *models.User {
+// grp_* system-role UUID resolved via DB lookup (TD-TEST-002, 2026-05-16).
+func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Role) *roletypes.User {
 	t.Helper()
 	suffix := uuid.NewString()[:8]
-	roleID := systemRoleIDFor(t, role)
-	u := &models.User{}
+	roleID := resolveGrpRoleID(t, pool, role)
+	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
 		VALUES ($1, $2, $3, $4, $5)
@@ -85,7 +103,7 @@ func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role mo
 	return u
 }
 
-func newCreatorMatrixRouter(h *Handler, actor *models.User) http.Handler {
+func newCreatorMatrixRouter(h *Handler, actor *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,13 +143,13 @@ func TestCreate_creatorMatrix_403_whenSpecificCodeMissing(t *testing.T) {
 	// which they don't either; so to isolate the *handler* discriminator
 	// we bypass the middleware and call the handler directly via a
 	// router that doesn't include RequireAnyPermission.
-	actor := mkUserWithRoleID(t, pool, subID, models.RoleUser)
+	actor := mkUserWithRoleID(t, pool, subID, roletypes.RoleUser)
 
 	h := newHandlerWithResolver(pool)
 	srv := httptest.NewServer(newCreatorMatrixRouter(h, actor))
 	defer srv.Close()
 
-	body, _ := json.Marshal(createReq{Email: "newgadmin@example.com", Role: models.RoleGAdmin})
+	body, _ := json.Marshal(createReq{Email: "newgadmin@example.com", Role: roletypes.RoleGAdmin})
 	resp, err := http.Post(srv.URL+"/api/users", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("POST: %v", err)
@@ -151,7 +169,7 @@ func TestCreate_creatorMatrix_400_unknownTargetRole(t *testing.T) {
 
 	subID, cleanup := mkTenant(t, pool, "creator-400")
 	defer cleanup()
-	actor := mkUserWithRoleID(t, pool, subID, models.RoleGAdmin)
+	actor := mkUserWithRoleID(t, pool, subID, roletypes.RoleGAdmin)
 
 	h := newHandlerWithResolver(pool)
 	srv := httptest.NewServer(newCreatorMatrixRouter(h, actor))

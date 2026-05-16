@@ -14,7 +14,7 @@ import (
 
 var hexColourRE = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
-// Service owns DB operations for the artefact_types settings surface.
+// Service owns DB operations for the artefacts_types settings surface.
 // It operates against vector_artefacts only.
 type Service struct {
 	pool *pgxpool.Pool
@@ -24,25 +24,59 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
 }
 
-// List returns all live artefact types for the given subscription,
-// ordered by (scope, sort_order, name).
+// List returns all live artefact types in the caller's subscription,
+// ordered by (scope, sort_order, name). Subscription-clamped only —
+// admin/migration callers that don't have a workspace context use
+// this entry point. User-facing requests should call ListByWorkspace
+// (PLA-0053 / story 00579).
 func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]ArtefactType, error) {
 	if s.pool == nil {
 		return nil, errors.New("vector_artefacts pool not available")
 	}
 	const q = `
 		SELECT
-			id, scope, source, name, prefix, description, colour,
-			parent_type_id, allows_children, layer_depth,
-			sort_order, archived_at, created_at, updated_at
-		FROM artefact_types
-		WHERE subscription_id = $1
-		  AND archived_at IS NULL
-		ORDER BY scope, sort_order, name`
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+		FROM artefacts_types
+		WHERE artefacts_types_id_subscription = $1
+		  AND artefacts_types_archived_at IS NULL
+		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
-	rows, err := s.pool.Query(ctx, q, subscriptionID)
+	return s.queryArtefactTypes(ctx, q, subscriptionID)
+}
+
+// ListByWorkspace returns all live artefact types in a single workspace,
+// ordered by (scope, sort_order, name). PLA-0053 / story 00579 — the
+// workspace clamp comes from the JWT-anchored claim seeded by
+// WorkspaceClampMiddleware. Handler resolves workspace via
+// topology.WorkspaceIDFromCtx and passes it here; subscription_id is
+// still passed for defence-in-depth (an artefact_type with a stale
+// or forged workspace_id from a different subscription is still
+// excluded by the AND clause).
+func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspaceID uuid.UUID) ([]ArtefactType, error) {
+	if s.pool == nil {
+		return nil, errors.New("vector_artefacts pool not available")
+	}
+	const q = `
+		SELECT
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+		FROM artefacts_types
+		WHERE artefacts_types_id_subscription = $1
+		  AND artefacts_types_id_workspace    = $2
+		  AND artefacts_types_archived_at IS NULL
+		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
+
+	return s.queryArtefactTypes(ctx, q, subscriptionID, workspaceID)
+}
+
+// queryArtefactTypes is the shared row-scan loop for List + ListByWorkspace.
+func (s *Service) queryArtefactTypes(ctx context.Context, q string, args ...any) ([]ArtefactType, error) {
+	rows, err := s.pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("artefacttypes.List: %w", err)
+		return nil, fmt.Errorf("artefacttypes.queryArtefactTypes: %w", err)
 	}
 	defer rows.Close()
 
@@ -51,11 +85,11 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 		var t ArtefactType
 		if err := rows.Scan(
 			&t.ID, &t.Scope, &t.Source, &t.Name, &t.Prefix,
-			&t.Description, &t.Colour,
+			&t.Description, &t.Colour, &t.Slot,
 			&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 			&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("artefacttypes.List scan: %w", err)
+			return nil, fmt.Errorf("artefacttypes.queryArtefactTypes scan: %w", err)
 		}
 		out = append(out, t)
 	}
@@ -107,54 +141,54 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 	}
 
 	// Build SET clause dynamically from non-nil fields.
-	setClauses := []string{"updated_at = now()"}
+	setClauses := []string{"artefacts_types_updated_at = now()"}
 	args := []any{id, subscriptionID}
 	argN := 3
 
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
-		setClauses = append(setClauses, fmt.Sprintf("name = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_name = $%d", argN))
 		args = append(args, n)
 		argN++
 	}
 	if in.Prefix != nil {
 		p := strings.ToUpper(strings.TrimSpace(*in.Prefix))
-		setClauses = append(setClauses, fmt.Sprintf("prefix = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_prefix = $%d", argN))
 		args = append(args, p)
 		argN++
 	}
 	if in.Description != nil {
-		setClauses = append(setClauses, fmt.Sprintf("description = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_description = $%d", argN))
 		args = append(args, *in.Description)
 		argN++
 	}
 	if in.Colour != nil {
 		c := *in.Colour
 		if c == "" {
-			setClauses = append(setClauses, fmt.Sprintf("colour = $%d", argN))
+			setClauses = append(setClauses, fmt.Sprintf("artefacts_types_colour = $%d", argN))
 			args = append(args, nil)
 		} else {
-			setClauses = append(setClauses, fmt.Sprintf("colour = $%d", argN))
+			setClauses = append(setClauses, fmt.Sprintf("artefacts_types_colour = $%d", argN))
 			args = append(args, c)
 		}
 		argN++
 	}
 
 	q := fmt.Sprintf(`
-		UPDATE artefact_types
+		UPDATE artefacts_types
 		SET %s
-		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+		WHERE artefacts_types_id = $1 AND artefacts_types_id_subscription = $2 AND artefacts_types_archived_at IS NULL
 		RETURNING
-			id, scope, source, name, prefix, description, colour,
-			parent_type_id, allows_children, layer_depth,
-			sort_order, archived_at, created_at, updated_at`,
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at`,
 		strings.Join(setClauses, ", "),
 	)
 
 	var t ArtefactType
 	err := s.pool.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Scope, &t.Source, &t.Name, &t.Prefix,
-		&t.Description, &t.Colour,
+		&t.Description, &t.Colour, &t.Slot,
 		&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 		&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
 	)

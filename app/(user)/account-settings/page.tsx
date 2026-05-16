@@ -18,10 +18,13 @@
 
 import { useState } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function AccountSettingsPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [emailNotif, setEmailNotif] = useState(true);
@@ -32,10 +35,13 @@ export default function AccountSettingsPage() {
 
   return (
     <PageContent>
-    <PageShell
-      title="Account Settings"
-      subtitle="Your profile, password, and personal preferences"
-    >
+      <PageHeading level={1} title={full} subtitle="Manage your personal account, profile, and notification preferences." />
+      <Panel
+        name="panel_account_settings_header"
+        className="page-panel-heading"
+        title="Account Settings"
+        description="Update your display name, manage notification preferences, and configure personal account settings."
+      />
       <h3 className="eyebrow">Profile</h3>
       <form
         className="form u-mb-8"
@@ -132,7 +138,6 @@ export default function AccountSettingsPage() {
           onChange={setDigestNotif}
         />
       </div>
-    </PageShell>
     </PageContent>
   );
 }

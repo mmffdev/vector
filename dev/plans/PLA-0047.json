@@ -1,0 +1,143 @@
+{
+  "id": "PLA-0047",
+  "title": "Samantha SDK v2 — Fluent Declarative Mount API (_viewport → _app → _panel chain)",
+  "date_created": "2026-05-13",
+  "date_started": "",
+  "date_last_updated": "2026-05-13",
+  "date_finished": "",
+  "scope": "<p>Design and implement a fluent, hierarchical mount API for Samantha SDK v2 that lets custom app authors declare their UI structure via a chained call pattern rather than raw JSX + SamanthaSdkProvider boilerplate.</p><p>The chain mirrors the existing addressable substrate address format (<code>samantha._viewport.&lt;page&gt;._app.&lt;app&gt;._panel.&lt;name&gt;</code>) and makes each level a scope that returns the next. Props flow through each call as a plain config object, identical to the Panel/component props already defined.</p><p>Example target syntax:</p><pre>samantha\n  ._viewport('myPage', {})\n  ._app('myApp', {})\n    ._panel('header', {\n      title: 'Header',\n      margin: ['var(--gap-block-top)', undefined, 'var(--gap-block-bottom)'],\n      background: '#f0f4ff',\n    })\n    ._panel('body', { title: 'Content' })</pre><p>The <code>_app</code> layer is the equivalent of <code>SamanthaSdkProvider</code> — it owns the React root, mount lifecycle, and help-defaults threading. Panels declared inside it register in the addressable substrate automatically, identical to JSX-declared panels.</p>",
+  "value": "<p>Removes the JSX + provider boilerplate from custom app authors. A script-style declaration is easier to read, easier to version, and closer to the mental model most authors have (\"I want a panel called Header inside my app on this page\"). The address chain IS the config — no separate provider setup, no import of SamanthaSdkProvider, no manual name threading.</p><p>Also unifies the internal and external authoring models: internal pages use JSX <code>&lt;Panel&gt;</code> directly; external/custom app authors use the fluent API. Both paths write to the same addressable substrate with the same address format.</p>",
+  "implementation_plan": [
+    "Step 1 — Design: define the full TypeScript interface for the fluent chain — ViewportScope, AppScope, PanelScope — with prop types mirroring existing Panel/component props. No implementation yet.",
+    "Step 2 — _viewport(name, opts): returns an AppScope bound to that viewport slot. Validates name against existing slot enum.",
+    "Step 3 — _app(name, opts): mounts a React root via createRoot into the viewport slot's DOM node. Wraps with SamanthaSdkProvider equivalent. Returns a PanelScope.",
+    "Step 4 — _panel(name, props): declares a Panel inside the app scope. Props mirror the full Panel prop set (margin, padding, border, background, radius, title, helpable). Returns the PanelScope for chaining.",
+    "Step 5 — Children: decide and implement the children model — either a render callback (_panel('x', props, () => <Content />)) or a .render(jsx) terminal method.",
+    "Step 6 — Address wiring: each _panel call registers in the addressable substrate under samantha._viewport.<page>._app.<app>._panel.<name>, identical to JSX Panel registration.",
+    "Step 7 — Lifecycle: _app owns mount/unmount. On page navigation away, unmount the React root cleanly. Define the unmount API (_app.unmount() or auto via viewport slot change).",
+    "Step 8 — Help defaults: _app(name, { helpDefaults: { 'panel:header': '...' } }) threads into the SamanthaSdkProvider equivalent so panel help resolution works without extra config.",
+    "Step 9 — Asset Register page: document the fluent API on the Asset Register page (PLA-0047 section) alongside the existing Panel prop table.",
+    "Step 10 — Tests + docs: unit tests for chain validation (bad slot name throws, duplicate panel name throws); update docs/c_c_addressables.md and c_samantha_sdk_fields.md with the new authoring pattern."
+  ],
+  "areas_impacted": [
+    "API: app/lib/samantha.ts — new _viewport/_app/_panel surface added to the samantha namespace",
+    "UI: SamanthaSdkContext.tsx — _app layer reuses or wraps SamanthaSdkProvider",
+    "UI: app/components/Panel.tsx — no changes; fluent API produces the same Panel renders",
+    "DEV: Asset Register page — new PLA-0047 section documenting the fluent API",
+    "DOCS: c_c_addressables.md + c_samantha_sdk_fields.md updated with authoring pattern"
+  ],
+  "feature_list": [
+    "samantha._viewport(name, opts) — scoped entry point bound to a viewport slot",
+    "._app(name, opts) — mounts React root + SamanthaSdkProvider equivalent, returns PanelScope",
+    "._panel(name, props) — declares a Panel with full prop set, registers in addressable substrate",
+    "Children model — render callback or .render(jsx) terminal method (TBD in Step 5)",
+    "Lifecycle — clean unmount on navigation; _app.unmount() API",
+    "Help defaults — threaded via _app opts, resolves identically to JSX SamanthaSdkProvider path",
+    "Asset Register documentation — fluent API documented alongside Panel prop table"
+  ],
+  "features_extended": [
+    "<strong>samantha namespace</strong> (app/lib/samantha.ts) — gains _viewport mount chain alongside existing portfolio.fields surface.",
+    "<strong>Asset Register page</strong> — gains PLA-0047 section with fluent API reference."
+  ],
+  "features_removed": [],
+  "work_item_backlog": [],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "samantha._viewport('myPage', {})._app('myApp', {})._panel('header', { title: 'Header' }) mounts a Panel with title 'Header' into the myPage viewport slot, registered at address samantha._viewport.myPage._app.myApp._panel.header.",
+      "proven_by": "Manual smoke: call chain from browser console; panel appears in DOM; address visible in data-address attribute.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "All existing Panel props (margin, padding, border, background, radius, title, helpable, className) are accepted by _panel() and produce identical output to JSX <Panel> with the same props.",
+      "proven_by": "Unit test: render via fluent API vs JSX Panel with identical props; compare DOM output.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "Passing an invalid viewport slot name throws synchronously with a descriptive error before any DOM mutation.",
+      "proven_by": "Unit test: samantha._viewport('bad slot!', {}) throws SamanthaError.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "Help defaults passed via _app opts resolve identically to SamanthaSdkProvider helpDefaults — panel:* wildcard and exact panel:name both resolve.",
+      "proven_by": "Unit test: mock helpDefaults with wildcard + exact; verify resolveSdkHelp returns expected fragment for each.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "_app.unmount() cleanly removes the React root and de-registers all child panels from the addressable substrate.",
+      "proven_by": "Unit test: mount then unmount; verify no data-address elements remain in DOM and registry is empty for that app scope.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "Asset Register page has a PLA-0047 section documenting the fluent API with a prop table and usage example.",
+      "proven_by": "Navigate to /workspace-settings/vector-admin/api-manager/asset-register — PLA-0047 section visible.",
+      "story_id": "",
+      "card_url": "",
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "Children model (callback vs .render()) is undecided — wrong choice makes nested panels awkward or forces a second design pass.",
+      "mitigation": "Step 5 is a dedicated design step before any implementation. Prototype both approaches in a throwaway file before committing."
+    },
+    {
+      "impact": 2,
+      "risk": "_app createRoot mount may conflict with Next.js App Router's own React root if called from inside a server component or during SSR.",
+      "mitigation": "Fluent API is client-only (add 'use client' guard + typeof window check). Document restriction in API surface."
+    },
+    {
+      "impact": 1,
+      "risk": "Address collision if two _app calls use the same name on the same viewport slot.",
+      "mitigation": "Registry throws SamanthaError synchronously on duplicate address registration — already enforced by addressable substrate."
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "PLA-0019 — Samantha External API Surface (parent plan)",
+      "href": "PLA-0019.json"
+    },
+    {
+      "kind": "internal",
+      "label": "Addressables substrate doc",
+      "href": "../../docs/c_c_addressables.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Samantha SDK fields doc",
+      "href": "../../docs/c_samantha_sdk_fields.md"
+    },
+    {
+      "kind": "internal",
+      "label": "Panel component",
+      "href": "../../app/components/Panel.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "SamanthaSdkContext",
+      "href": "../../app/contexts/SamanthaSdkContext.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Asset Register page",
+      "href": "../../app/(user)/workspace-settings/vector-admin/api-manager/asset-register/page.tsx"
+    }
+  ]
+}

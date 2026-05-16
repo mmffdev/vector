@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Integration tests hit the real Postgres via the SSH tunnel on :5434.
@@ -21,7 +21,7 @@ import (
 //
 // Each test creates its own tenant + user, exercises the service, and
 // leaves rows behind for incidental inspection; ON DELETE CASCADE on
-// user_nav_prefs + users means dropping the test user wipes all prefs.
+// users_nav_prefs + users means dropping the test user wipes all prefs.
 // We explicitly delete the test tenant at the end to keep the remote
 // DB tidy.
 
@@ -67,35 +67,44 @@ func newSvc(t *testing.T, pool *pgxpool.Pool) *Service {
 	return New(pool, reg)
 }
 
-// mkFixtures creates a throwaway tenant + user, returns their IDs and a
-// cleanup func. Placeholder password hash is a valid bcrypt string for
-// "test" — meaningless, we never log this user in.
-func mkFixtures(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func()) {
+// mkFixtures creates a throwaway tenant + user, returns their IDs +
+// the user's grp_* role UUID + a cleanup func. Placeholder password
+// hash is a valid bcrypt string for "test" — meaningless, we never log
+// this user in.
+//
+// Refreshed 2026-05-16 (TD-TEST-002): users.role_id is NOT NULL post-
+// mig-088 so the row needs a real grp_* UUID. The legacy enum 'user'
+// maps to grp_team_member per the mig 196 coarse-fallback.
+func mkFixtures(t *testing.T, pool *pgxpool.Pool) (subscriptionID, userID, roleID uuid.UUID, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
+	if err := pool.QueryRow(ctx,
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' AND users_roles_id_subscription IS NULL`,
+	).Scan(&roleID); err != nil {
+		t.Fatalf("resolve grp_team_member users_roles_id: %v", err)
+	}
+
 	suffix := uuid.NewString()[:8]
-	var subscriptionID uuid.UUID
-	err := pool.QueryRow(ctx, `
+	if err := pool.QueryRow(ctx, `
 		INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
-		"nav-test-"+suffix, "nav-test-"+suffix).Scan(&subscriptionID)
-	if err != nil {
+		"nav-test-"+suffix, "nav-test-"+suffix).Scan(&subscriptionID); err != nil {
 		t.Fatalf("insert tenant: %v", err)
 	}
 
-	var userID uuid.UUID
-	err = pool.QueryRow(ctx, `
-		INSERT INTO users (subscription_id, email, password_hash, role)
-		VALUES ($1, $2, $3, 'user') RETURNING id`,
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
+		VALUES ($1, $2, $3, 'user', $4) RETURNING id`,
 		subscriptionID, "nav-test-"+suffix+"@example.com",
-		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd").Scan(&userID)
-	if err != nil {
+		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
+		roleID,
+	).Scan(&userID); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
 
-	cleanup := func() {
+	cleanup = func() {
 		// ON DELETE CASCADE on users.subscription_id is RESTRICT, so we delete
-		// user first, then tenant. user_nav_prefs cascades from users.
+		// user first, then tenant. users_nav_prefs cascades from users.
 		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
 			t.Logf("cleanup user: %v", err)
 		}
@@ -103,13 +112,13 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func())
 			t.Logf("cleanup tenant: %v", err)
 		}
 	}
-	return subscriptionID, userID, cleanup
+	return subscriptionID, userID, roleID, cleanup
 }
 
 func TestReplacePrefs_HappyPath(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
@@ -118,7 +127,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 	// dashboard + my-vista share tag 'personal'; portfolio is 'planning'.
 	// Order the pinned list so same-tag items stay contiguous.
 	startKey := "my-vista"
-	err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -127,7 +136,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Fatalf("ReplacePrefs: %v", err)
 	}
 
-	rows, err := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	rows, err := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID)
 	if err != nil {
 		t.Fatalf("GetPrefs: %v", err)
 	}
@@ -144,7 +153,7 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 		t.Errorf("row 1 should be start page: %+v", rows[1])
 	}
 
-	href, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, models.RoleUser)
+	href, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, roletypes.RoleUser, roleID)
 	if err != nil || !ok {
 		t.Fatalf("start page lookup: ok=%v err=%v", ok, err)
 	}
@@ -156,11 +165,11 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dev", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrNotPinnable) {
@@ -171,11 +180,11 @@ func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
 func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "does-not-exist", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrUnknownItemKey) {
@@ -186,12 +195,12 @@ func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	startKey := "planning"
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, &startKey, nil, nil)
 	if !errors.Is(err, ErrStartPageNotPinned) {
@@ -202,11 +211,11 @@ func TestReplacePrefs_RejectsStartPageNotInPinned(t *testing.T) {
 func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 2},
 	}, nil, nil, nil)
@@ -218,11 +227,11 @@ func TestReplacePrefs_RejectsNonContiguousPositions(t *testing.T) {
 func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "dashboard", Position: 1},
 	}, nil, nil, nil)
@@ -234,13 +243,13 @@ func TestReplacePrefs_RejectsDuplicateKey(t *testing.T) {
 func TestReplacePrefs_RejectsNonContiguousGroups(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	// dashboard(personal), backlog(planning), my-vista(personal) —
 	// the 'personal' tag is split by a 'planning' item in the middle.
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "backlog", Position: 1},
 		{ItemKey: "my-vista", Position: 2},
@@ -253,14 +262,14 @@ func TestReplacePrefs_RejectsNonContiguousGroups(t *testing.T) {
 func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
 	// First write: 3 items — dashboard+my-vista (personal), portfolio (planning).
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 		{ItemKey: "my-vista", Position: 1},
 		{ItemKey: "portfolio", Position: 2},
@@ -269,14 +278,14 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 	}
 
 	// Second write: 2 items, both 'planning' tag.
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "backlog", Position: 0},
 		{ItemKey: "planning", Position: 1},
 	}, nil, nil, nil); err != nil {
 		t.Fatalf("second write: %v", err)
 	}
 
-	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID)
 	// Backfill may add additional default-pinned rows; assert the two
 	// explicitly-set rows lead the list in the order ReplacePrefs placed them.
 	if len(rows) < 2 {
@@ -290,13 +299,13 @@ func TestReplacePrefs_ReplaceOverwritesPrevious(t *testing.T) {
 func TestDeletePrefs_WipesRows(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
-	_ = svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleUser, []PinnedInput{
+	_ = svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, nil, nil, nil)
 
@@ -307,7 +316,7 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 	// repopulate every default_pinned=TRUE page allowed for the role.
 	// That's the documented behavior — assert the originally-pinned key
 	// is back rather than asserting zero rows.
-	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, models.RoleUser)
+	rows, _ := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID)
 	found := false
 	for _, r := range rows {
 		if r.ItemKey == "dashboard" {
@@ -323,11 +332,11 @@ func TestDeletePrefs_WipesRows(t *testing.T) {
 func TestGetStartPageHref_NoneSet(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	_, ok, err := svc.GetStartPageHref(context.Background(), userID, subscriptionID, models.RoleUser)
+	_, ok, err := svc.GetStartPageHref(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}
@@ -339,12 +348,12 @@ func TestGetStartPageHref_NoneSet(t *testing.T) {
 func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	// workspace-settings is gadmin-only; a 'user' role must not pin it.
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, []PinnedInput{
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrRoleForbidden) {
@@ -355,7 +364,7 @@ func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
@@ -363,7 +372,7 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 	for i := range pinned {
 		pinned[i] = PinnedInput{ItemKey: "dashboard", Position: i}
 	}
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, models.RoleUser, pinned, nil, nil, nil)
+	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, pinned, nil, nil, nil)
 	if !errors.Is(err, ErrTooManyPinned) {
 		t.Fatalf("want ErrTooManyPinned, got %v", err)
 	}
@@ -372,7 +381,7 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
@@ -380,14 +389,14 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 
 	// Seed as gadmin with workspace-settings as start page.
 	startKey := "workspace-settings"
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, models.RoleGAdmin, []PinnedInput{
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleGAdmin, roleID, []PinnedInput{
 		{ItemKey: "workspace-settings", Position: 0},
 	}, &startKey, nil, nil); err != nil {
 		t.Fatalf("seed as gadmin: %v", err)
 	}
 
 	// Now query as a 'user' (role demoted) — must silently fall back.
-	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, models.RoleUser)
+	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, roletypes.RoleUser, roleID)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}
@@ -396,23 +405,41 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	}
 }
 
+// Refreshed 2026-05-16 (TD-TEST-002): Registry.CatalogFor's signature
+// changed from `(role string, subscriptionID uuid.UUID)` to
+// `(roleID uuid.UUID, subscriptionID uuid.UUID)` during PLA-0049 Phase 0.
+// Resolve grp_global and grp_team_member by code so the test no longer
+// depends on rank-encoded literals.
 func TestCatalogFor_RoleFiltering(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
 	svc := newSvc(t, pool)
 
-	reg, err := svc.Registry.Get(context.Background())
+	ctx := context.Background()
+	reg, err := svc.Registry.Get(ctx)
 	if err != nil {
 		t.Fatalf("registry get: %v", err)
 	}
 
-	userEntries := reg.CatalogFor("user", uuid.Nil)
+	var teamMemberID, grpGlobalID uuid.UUID
+	if err := pool.QueryRow(ctx,
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' AND users_roles_id_subscription IS NULL`,
+	).Scan(&teamMemberID); err != nil {
+		t.Fatalf("resolve grp_team_member: %v", err)
+	}
+	if err := pool.QueryRow(ctx,
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_global' AND users_roles_id_subscription IS NULL`,
+	).Scan(&grpGlobalID); err != nil {
+		t.Fatalf("resolve grp_global: %v", err)
+	}
+
+	userEntries := reg.CatalogFor(teamMemberID, uuid.Nil)
 	for _, e := range userEntries {
 		if e.Key == "workspace-settings" {
-			t.Fatal("user role should not see workspace-settings entry")
+			t.Fatal("grp_team_member should not see workspace-settings entry")
 		}
 	}
-	gadminEntries := reg.CatalogFor("gadmin", uuid.Nil)
+	gadminEntries := reg.CatalogFor(grpGlobalID, uuid.Nil)
 	foundWS := false
 	for _, e := range gadminEntries {
 		if e.Key == "workspace-settings" {
@@ -420,6 +447,6 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 		}
 	}
 	if !foundWS {
-		t.Fatal("gadmin should see workspace-settings entry")
+		t.Fatal("grp_global should see workspace-settings entry")
 	}
 }

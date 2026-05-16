@@ -2,7 +2,7 @@ package flows
 
 // ResetPreviewInput is the body accepted by POST /_site/flows/reset/preview
 // and /apply. The artefact type is the unit of reset — its single default
-// flow is rewritten back to the snapshot in flow_defaults.
+// flow is rewritten back to the snapshot in flows_defaults.
 type ResetPreviewInput struct {
 	ArtefactTypeID string `json:"artefact_type_id"`
 }

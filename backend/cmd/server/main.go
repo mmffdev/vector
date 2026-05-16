@@ -35,9 +35,10 @@ import (
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
-	"github.com/mmffdev/vector-backend/internal/orgdesign"
+	"github.com/mmffdev/vector-backend/internal/pageaccess"
+	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/search"
@@ -47,13 +48,15 @@ import (
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 	"github.com/mmffdev/vector-backend/internal/security"
-	"github.com/mmffdev/vector-backend/internal/tenantsettings"
+	"github.com/mmffdev/vector-backend/internal/tenantmasterrecord"
+	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
-	"github.com/mmffdev/vector-backend/internal/artefactitemsv2"
+	"github.com/mmffdev/vector-backend/internal/artefactitems"
+	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -139,6 +142,10 @@ func main() {
 	bootstatus.Set("library_db", true, "")
 	defer libPools.Close()
 
+	// audit_log moved to vector_artefacts 2026-05-13 (mmff_vector → VA consolidation P1).
+	// Constructed early with `pool` so service constructors can capture the reference;
+	// repointed to vaPool below via SetPool once vaPool is initialised. If
+	// VECTOR_ARTEFACTS_DB_URL is unset (legacy path), writes continue against pool.
 	auditLog := audit.New(pool)
 	mailer := email.NewFromEnv()
 
@@ -162,6 +169,13 @@ func main() {
 	// roles + role_permissions; the handler is a thin translation layer.
 	rolesSvc := roles.New(pool, auditLog)
 	rolesSvc.Resolver = permResolver
+	// PLA-0049: resolve the seven grp_* system role UUIDs at boot. Random
+	// gen_random_uuid() values mean we can't use compile-time constants;
+	// LoadSystemRoles populates Service.SystemRoles once. Failure here is
+	// fatal — every downstream gate keys off these UUIDs.
+	if err := rolesSvc.LoadSystemRoles(ctx); err != nil {
+		log.Fatalf("roles: load system role ids: %v", err)
+	}
 	rolesH := roles.NewHandler(rolesSvc, permResolver)
 
 	// Page registry: cached DB-backed catalogue. 60s TTL trades a tiny
@@ -195,9 +209,24 @@ func main() {
 	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
+	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc, auditLog)
+
+	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
+	// caches the global pages_access_version (1s in-process) and a
+	// per-user key_enum access set (re-fetched on version mismatch).
+	// auth.RequirePageAccess(keyEnum) middleware reads from this same
+	// instance so the cache is shared across all gated routes.
+	pageAccessResolver := pageaccess.New(pool, 1*time.Second)
+	pageAccessH := pageaccess.NewHandler(pageAccessResolver, func(ctx context.Context) (uuid.UUID, bool) {
+		u := auth.UserFromCtx(ctx)
+		if u == nil {
+			return uuid.Nil, false
+		}
+		return u.ID, true
+	})
 
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
-	// Sole writer for user_tab_order; mounted at /api/user/tab-order below.
+	// Sole writer for users_tab_order; mounted at /api/user/tab-order below.
 	userTabOrderSvc := usertaborder.New(pool)
 	userTabOrderH := usertaborder.NewHandler(userTabOrderSvc)
 
@@ -211,7 +240,7 @@ func main() {
 	// Constructed AFTER the vaPool block so the handler picks up the
 	// pool when VECTOR_ARTEFACTS_DB_URL is set.
 	// PLA-0026 / Story 00501 (B12): adoption-state handler ALSO waits
-	// for vaPool — it now reads master_record_portfolio + artefact_types
+	// for vaPool — it now reads master_record_portfolios + artefacts_types
 	// from vector_artefacts and degrades to notStarted when vaPool is nil.
 	var portfolioAdoptionStateH *portfoliomodels.AdoptionStateHandler
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
@@ -219,39 +248,42 @@ func main() {
 	// devResetH is constructed after the vaPool block so MasterReset can
 	// target vector_artefacts. See below.
 	var devResetH *portfoliomodels.DevResetHandler
-	layersBatchH := portfoliomodels.NewLayersBatchHandler(portfolioModelsSvc)
-
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
 	// floor is 15m by default (LIBRARY_RECONCILER_INTERVAL to override).
 	// On-login hook warms the cache so the first badge poll after sign-in
 	// returns instantly. Cache is invalidated on every successful ack.
+	//
+	// library_acknowledgements moved to vector_artefacts 2026-05-13
+	// (PLA-0023 P1). Early-bound on `pool`; SetAcksPool below swaps to
+	// vaPool once it is initialised. Same pattern as audit.Logger.
 	libReleasesRec := libraryreleases.NewReconciler(libPools.RO, pool)
 	libReleasesRec.Start(ctx)
 	defer libReleasesRec.Stop()
-	libReleasesH := libraryreleases.NewHandler(libraryreleases.NewService(libPools.RO, pool), auditLog, libReleasesRec)
+	libReleasesSvc := libraryreleases.NewService(libPools.RO, pool, pool)
+	libReleasesH := libraryreleases.NewHandler(libReleasesSvc, auditLog, libReleasesRec)
 
 	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
 	// bridge runs LISTEN rank_changed on a dedicated connection and
 	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
-	// in db/schema/069) to subscribed clients.
+	// in db/mmff_vector/schema/069) to subscribed clients.
 	//
 	// Constructed early so other services can inject it as a notifier
-	// (e.g. orgdesign GrantNotifier for story 00283 handoff inbox).
+	// (e.g. topology GrantNotifier for story 00283 handoff inbox).
 	rtHub := realtime.NewHub()
 	realtime.StartRankListener(context.Background(), pool, rtHub)
 
-	// Topology / federated org canvas (PLA-0006). orgdesign is the SOLE
+	// Topology / federated org canvas (PLA-0006). topology is the SOLE
 	// writer for topology_nodes, topology_role_grants, and
-	// topology_view_state — see backend/internal/orgdesign/boundary_test.go
+	// topology_view_state — see backend/internal/topology/boundary_test.go
 	// for the CI gate.
 	//
 	// M6.2.7 cutover: those three tables now live in vector_artefacts,
-	// so orgdesign needs vaPool. Construction is deferred until after
+	// so topology needs vaPool. Construction is deferred until after
 	// the vaPool block runs (further down this file). orgDesignSvc /
 	// orgDesignH are declared here so handler wiring can reference them.
-	var orgDesignSvc *orgdesign.Service
-	var orgDesignH *orgdesign.Handler
+	var orgDesignSvc *topology.Service
+	var orgDesignH *topology.Handler
 
 	// Workspaces (PLA-0006 / story 00377). workspaces is the SOLE
 	// writer for the workspaces and workspace_roles tables — see
@@ -269,24 +301,24 @@ func main() {
 	// route returns empty pages AND adoption falls back to legacy-only
 	// (no PLA-0026 dual-writes).
 	var vaPool *pgxpool.Pool
-	// B21 (PLA-0037): two handler instances on the same artefactitemsv2
+	// B21 (PLA-0037): two handler instances on the same artefactitems
 	// codebase — workItemsV2H mounted at /samantha/v2/work-items with
 	// scope="work" (legacy compat), portfolioItemsV2H mounted at
 	// /samantha/v2/portfolio-items with scope="strategy" (new in B21).
 	// Both share vaPool/pool; the only difference is the scope literal
 	// each Service binds for `at.scope = $N` filtering.
-	var workItemsV2H *artefactitemsv2.Handler
-	var portfolioItemsV2H *artefactitemsv2.Handler
+	var workItemsV2H *artefactitems.Handler
+	var portfolioItemsV2H *artefactitems.Handler
 	var webhookSvc *webhooks.Service
 	// v2ScopeAttach is captured inside the vaPool branch below so the
 	// PLA-0043 scope clamp can be wired onto both v2 services once
 	// orgDesignSvc is constructed further down. Nil when v2 is stubbed
 	// (no vaPool) — scope reads then fall through to ErrInvalidInput
 	// inside the service.
-	var v2ScopeAttach func(artefactitemsv2.TopologyScopeResolver)
+	var v2ScopeAttach func(artefactitems.TopologyScopeResolver)
 	makeStubHandlers := func() {
-		workItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "work"))
-		portfolioItemsV2H = artefactitemsv2.NewHandler(artefactitemsv2.NewService(nil, nil, "strategy"))
+		workItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "work"))
+		portfolioItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "strategy"))
 	}
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
@@ -307,6 +339,17 @@ func main() {
 			} else {
 				vaPool = p
 				defer vaPool.Close()
+				// PLA-0023 / mmff_vector → vector_artefacts consolidation (P1):
+				// audit_log lives on vaPool from 2026-05-13. Repoint the
+				// early-bound Logger so every service that captured it now
+				// writes against vector_artefacts.
+				auditLog.SetPool(vaPool)
+				// library_acknowledgements moved to vaPool 2026-05-13
+				// (PLA-0023 P1). Swap the early-bound pool on both the
+				// reconciler (writes refresh-time recounts) and the
+				// service (writes acks). libRO + subscriptions stays put.
+				libReleasesRec.SetAcksPool(vaPool)
+				libReleasesSvc.SetAcksPool(vaPool)
 				// Mask password in log: strip :password@ from the URL.
 				maskedURL := vaURL
 				if i := strings.Index(vaURL, "@"); i > 0 {
@@ -317,16 +360,16 @@ func main() {
 				logger.Info("vector_artefacts pool connected", "url", maskedURL)
 				webhookSvc = webhooks.New(vaPool)
 				notifier := webhooks.NewNotifier(webhookSvc)
-				wiSvc := artefactitemsv2.NewService(vaPool, pool, "work")
+				wiSvc := artefactitems.NewService(vaPool, pool, "work")
 				wiSvc.WithNotifier(notifier)
-				workItemsV2H = artefactitemsv2.NewHandler(wiSvc)
-				piSvc := artefactitemsv2.NewService(vaPool, pool, "strategy")
+				workItemsV2H = artefactitems.NewHandler(wiSvc)
+				piSvc := artefactitems.NewService(vaPool, pool, "strategy")
 				piSvc.WithNotifier(notifier)
-				portfolioItemsV2H = artefactitemsv2.NewHandler(piSvc)
+				portfolioItemsV2H = artefactitems.NewHandler(piSvc)
 				// PLA-0043 — defer wiring orgDesignSvc until after it is
 				// constructed below; assign back through closures so the
 				// scope clamp is available on both v2 services.
-				v2ScopeAttach = func(t artefactitemsv2.TopologyScopeResolver) {
+				v2ScopeAttach = func(t artefactitems.TopologyScopeResolver) {
 					wiSvc.WithTopologyResolver(t)
 					piSvc.WithTopologyResolver(t)
 				}
@@ -357,8 +400,8 @@ func main() {
 	// call until vaPool is provisioned. WithNotifier wires the
 	// realtime hub so a fresh role grant publishes a per-user
 	// "topology-handoff" event (story 00283).
-	orgDesignSvc = orgdesign.New(pool, vaPool).WithNotifier(orgdesign.HubNotifier{Hub: rtHub})
-	orgDesignH = orgdesign.NewHandler(orgDesignSvc).WithAudit(auditLog)
+	orgDesignSvc = topology.New(pool, vaPool).WithNotifier(topology.HubNotifier{Hub: rtHub})
+	orgDesignH = topology.NewHandler(orgDesignSvc).WithAudit(auditLog)
 
 	// PLA-0043 — attach the topology resolver to the v2 work/portfolio
 	// services so ?scope=<id> on /work-items can resolve to "this node
@@ -386,7 +429,7 @@ func main() {
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
 
 	// PLA-0026 / Story 00501 (B12): adoption-state reads from the new
-	// substrate (master_record_portfolio + artefact_types) via vaPool.
+	// substrate (master_record_portfolios + artefacts_types) via vaPool.
 	// vectorPool is still required to resolve subscription_id →
 	// workspace_id; vaPool may be nil (handler returns notStarted).
 	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
@@ -396,14 +439,55 @@ func main() {
 	// vaPool may be nil; MasterReset skips the VA leg gracefully when nil.
 	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool)
 
-	// Tenant settings (master_record_tenant). M2: reads/writes vector_artefacts
-	// (mig 036). Falls back to mmff_vector pool until 036 is applied on dev.
+	// Tenant settings (master_record_workspaces — renamed from
+	// master_record_tenants by migration 067 on 2026-05-15). M2: reads/writes
+	// vector_artefacts (mig 036). Falls back to mmff_vector pool until 036 is
+	// applied on dev.
+	workspaceSettingsPool := pool
+	if vaPool != nil {
+		workspaceSettingsPool = vaPool
+	}
+	workspaceSettingsSvc := workspacemasterrecord.New(workspaceSettingsPool)
+	workspaceSettingsH := workspacemasterrecord.NewHandler(workspaceSettingsSvc)
+
+	// Tenant settings (master_record_tenants in vector_artefacts —
+	// subscription-keyed, PLA-0050). Reuses the same pool fallback
+	// pattern as workspace-settings above.
 	tenantSettingsPool := pool
 	if vaPool != nil {
 		tenantSettingsPool = vaPool
 	}
-	tenantSettingsSvc := tenantsettings.New(tenantSettingsPool)
-	tenantSettingsH := tenantsettings.NewHandler(tenantSettingsSvc)
+	tenantSettingsSvc := tenantmasterrecord.New(tenantSettingsPool)
+	tenantSettingsH := tenantmasterrecord.NewHandler(tenantSettingsSvc)
+
+	// PLA-0051 Story 3.5 — wire tenant→workspace inheritance read-path.
+	// SubscriptionResolver reads fdw_workspaces in vector_artefacts to
+	// resolve workspace_id → subscription_id; TenantDefaultsReader
+	// reads master_record_tenants with pointer types so NULLs survive
+	// the scan (the merge in workspacemasterrecord.Service uses NULL
+	// to mean "fall through to schema default"). Both share the
+	// workspace-settings pool which is vaPool when available.
+	//
+	// Both pools land in the same DB (vector_artefacts) but the wiring
+	// is intentionally conservative: if vaPool is nil (test env / pool
+	// fallback to mmff_vector), the resolver would fail on fdw_workspaces
+	// — Service.mergeInheritance treats that as "no tenant tier" and
+	// falls to schema defaults, so the surface degrades gracefully
+	// rather than crashes.
+	if vaPool != nil {
+		workspaceSettingsSvc.WithInheritance(
+			workspacemasterrecord.NewFDWSubscriptionResolver(workspaceSettingsPool),
+			workspacemasterrecord.NewPGTenantDefaultsReader(workspaceSettingsPool),
+		)
+		// TD-WS-001 pay-down — handler resolves the active workspace_id
+		// from the caller's subscription via FDWActiveWorkspaceResolver.
+		// No URL params, no client involvement. The user never sees a
+		// workspace UUID.
+		// See: .claude/memory/project_workspace_scope_invisible.md
+		workspaceSettingsH.WithResolver(
+			workspacemasterrecord.NewFDWActiveWorkspaceResolver(workspaceSettingsPool),
+		)
+	}
 
 	// Webhooks (B9). Requires vector_artefacts (mig 037).
 	// webhookSvc is created in the vaPool block above when vaPool != nil.
@@ -428,7 +512,7 @@ func main() {
 	fieldsH := fields.NewHandler(fieldsSvc)
 
 	// PLA-0026 / Story 00499 (B10): workspace-scoped successor to the
-	// legacy GET /api/subscription/layers. Reads strategy artefact_types
+	// legacy GET /api/subscription/layers. Reads strategy artefacts_types
 	// from vector_artefacts; legacy handler stays live until F3 (per
 	// R047 §9). vaPool may be nil — handler returns 503 in that case.
 	// PLA-0039 / Story 00530: pmSvc was constructed up-top with vaPool=nil
@@ -464,7 +548,7 @@ func main() {
 	if vaPool != nil {
 		ranking.Register("work_item", ranking.ResourceConfig{
 			Table:       "artefacts",
-			ScopeColumn: "timebox_sprint_id",
+			ScopeColumn: "artefacts_id_timebox_sprint",
 			Permissions: ranking.PermissionCheckerFunc(func(ctx context.Context, subscriptionID, rowID uuid.UUID) (bool, error) {
 				return true, nil
 			}),
@@ -475,6 +559,18 @@ func main() {
 	// Artefact-types settings handler (Customisation page).
 	// Serves GET + PATCH for name/prefix/description/colour on all live types.
 	artefactTypesH := artefacttypes.NewHandler(artefacttypes.NewService(vaPool))
+	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
+
+	// PLA-0053 / story 00578: hoist the workspace-clamp lookup once so
+	// every route group that needs the JWT-anchored workspace clamp
+	// reuses the same adapter (topology, artefact-types, work-items,
+	// portfolio-items). Backed by the mmff_vector pool because the
+	// `master_record_workspaces` + `users_roles_workspaces` tables live
+	// there (per docs/c_c_db_routing.md). The middleware itself reads
+	// auth.User.WorkspaceID (the JWT claim) for the workspace; the
+	// lookup runs the HasActiveRole check and the legacy-token
+	// FirstLiveWorkspace fallback.
+	workspaceLookup := topology.PoolWorkspaceLookup{Pool: pool}
 
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
 	// Only available when vaPool is up (vector_artefacts has the search columns).
@@ -486,10 +582,16 @@ func main() {
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
 	// mmff_library.error_codes catalogue and append-only insert into
-	// mmff_vector.error_events.
-	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, pool))
+	// vector_artefacts.error_events (moved from mmff_vector 2026-05-13,
+	// PLA-0023 P1). Falls back to `pool` when vaPool is unavailable so
+	// pre-cutover environments keep working.
+	errorsReportPool := pool
+	if vaPool != nil {
+		errorsReportPool = vaPool
+	}
+	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, errorsReportPool))
 
-	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *models.User) {
+	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *roletypes.User) {
 		var tier string
 		if err := pool.QueryRow(ctx,
 			`SELECT tier FROM subscriptions WHERE id = $1`, u.SubscriptionID,
@@ -698,6 +800,10 @@ func main() {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Get("/me", authH.Me)
+			// PLA-0053 / story 00576.5 — re-mint JWT with a new
+			// workspace_id claim. Mounted alongside /me so the
+			// auth+fresh-password gates already on this group apply.
+			r.Post("/switch-workspace", authH.SwitchWorkspace)
 		})
 	})
 
@@ -710,6 +816,11 @@ func main() {
 
 		r.Get("/theme-pack", usersH.GetThemePack)
 		r.Put("/theme-pack", usersH.SetThemePack)
+
+		// PLA-0049 Phase 0.5.3: per-user page-access set + global version.
+		// Drives usePageAccess() in the frontend; client polls/re-fetches
+		// when the version bumps.
+		r.Get("/page-access", pageAccessH.MeAccess)
 	})
 
 	// /nav
@@ -723,6 +834,7 @@ func main() {
 		r.Get("/prefs", navH.GetPrefs)
 		r.Put("/prefs", navH.PutPrefs)
 		r.Delete("/prefs", navH.DeletePrefs)
+		r.Post("/reset", navH.ResetAll)
 		r.Get("/start-page", navH.StartPage)
 		r.Post("/bookmark", navH.PinBookmark)
 		r.Delete("/bookmark", navH.UnpinBookmark)
@@ -737,6 +849,31 @@ func main() {
 		r.Delete("/profiles/{id}", navH.DeleteProfile)
 		r.Get("/profiles/{id}/groups", navH.ListProfileGroups)
 		r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
+	})
+
+	// /admin/page-grants — gadmin-only matrix at /user-management/permissions.
+	// Grants and revokes (page × role) rows in users_roles_pages. The
+	// {role_id} URL param is rejected for grp_global inside the handler so
+	// this surface can never strip gadmin's universal page access.
+	//
+	// PLA-0049 Phase 0.5.6: also gated by RequirePageAccess("um-permissions")
+	// so a hand-typed URL or stale bookmark from a user whose grant on
+	// the page-permissions page has been revoked is denied at the API
+	// layer — not just rendered as a blank UI.
+	r.Route("/admin/page-grants", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions))
+		r.Use(auth.RequirePageAccess(pageAccessResolver, "um-permissions"))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+
+		r.Get("/", navGrantsAdminH.List)
+		r.Put("/{page_id}/{role_id}", navGrantsAdminH.Grant)
+		r.Delete("/{page_id}/{role_id}", navGrantsAdminH.Revoke)
+		// PLA-0049 Phase 1.2: bucket-row toggle. Body: {"checked": bool}.
+		// Atomic grant/revoke for every system page in the named bucket.
+		r.Put("/bucket/{tag_enum}/{role_id}", navGrantsAdminH.BucketToggle)
 	})
 
 	// /user/tab-order
@@ -836,11 +973,13 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 
 			r.With(auth.RequireAnyPermission(permResolver,
-				permissions.UsersCreateGadmin,
-				permissions.UsersCreatePadmin,
-				permissions.UsersCreateTeamLead,
-				permissions.UsersCreateUser,
-				permissions.UsersCreateExternal,
+				permissions.UsersCreateGrpGlobal,
+				permissions.UsersCreateGrpPortfolio,
+				permissions.UsersCreateGrpProduct,
+				permissions.UsersCreateGrpTeamLead,
+				permissions.UsersCreateGrpTeamMember,
+				permissions.UsersCreateGrpStakeholder,
+				permissions.UsersCreateGrpExternal,
 			)).Post("/users", usersH.Create)
 			r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
 				Patch("/users/{id}", usersH.Patch)
@@ -856,6 +995,7 @@ func main() {
 				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
 				r.Post("/dev/master-reset", devResetH.MasterReset)
+				r.Post("/dev/seed-risks", devResetH.SeedRisks)
 			})
 		})
 
@@ -916,12 +1056,13 @@ func main() {
 		r.Use(userWriteLimiter)
 		portfolioMasterRecordH.Mount(r)
 	})
-	r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
+	r.Route("/workspaces/{id}/portfolio", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
+		r.Patch("/layers/batch", workspaceLayersH.PatchWorkspaceLayers)
 	})
 
 	// /flows (B22.20) — site-only; padmin-managed workflow definitions.
@@ -966,7 +1107,7 @@ func main() {
 	}
 
 	// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
-	r.Route("/workspace/{id}/fields", func(r chi.Router) {
+	r.Route("/workspaces/{id}/fields", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
@@ -976,13 +1117,16 @@ func main() {
 	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
 	// These are BFF-only: the ObjectTree, WorkItemDetailPanel, and
 	// artefact-items tree are all staff/site surfaces. The same
-	// artefactitemsv2 handlers (and rate limits) are reused.
+	// artefactitems handlers (and rate limits) are reused.
 	if workItemsV2H != nil {
 		readLimit17 := httprate.LimitByIP(600, time.Minute)
 		writeLimit17 := httprate.LimitByIP(120, time.Minute)
-		mountArtefactSite := func(r chi.Router, h *artefactitemsv2.Handler) {
+		mountArtefactSite := func(r chi.Router, h *artefactitems.Handler) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
+			// PLA-0053 / story 00578: workspace clamp via JWT claim.
+			// Runs after auth so middleware has u.WorkspaceID populated.
+			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 			r.With(readLimit17).Get("/", h.List)
 			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
@@ -998,6 +1142,15 @@ func main() {
 		}
 		r.Route("/work-items", func(r chi.Router) { mountArtefactSite(r, workItemsV2H) })
 		r.Route("/portfolio-items", func(r chi.Router) { mountArtefactSite(r, portfolioItemsV2H) })
+		// PLA-0052 Story 10 — Risk summary endpoint. Severity × likelihood
+		// aggregator for the /risk page header. Reuses workItemsV2H (scope=work)
+		// since Risk is a work-scope artefact type. Public surface (/samantha/v2)
+		// deferred until n8n needs it.
+		r.Route("/risks", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.With(readLimit17).Get("/summary", workItemsV2H.RisksSummary)
+		})
 	}
 	if rankH != nil {
 		r.Route("/rank", func(r chi.Router) {
@@ -1018,9 +1171,10 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 
-		wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
 		r.Group(func(r chi.Router) {
-			r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+			// PLA-0053 / story 00578: reuses the hoisted workspaceLookup
+			// (was inline PoolWorkspaceLookup pre-00578).
+			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 
 			r.Get("/tree", orgDesignH.Tree)
 			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
@@ -1034,6 +1188,12 @@ func main() {
 		// PLA-0042 — scope picker. Not workspace-clamped: a user's
 		// grants may span workspaces inside their subscription.
 		r.Get("/grants/me", orgDesignH.MyGrants)
+
+		// PLA-0046 / B6.8 — admin-pivot grant listing for the
+		// Topology Permissions page. Not workspace-clamped: target
+		// user's grants may span workspaces inside the subscription.
+		r.With(auth.RequirePermission(permResolver, permissions.TopologyGrantsManageOthers)).
+			Get("/users/{userId}/grants", orgDesignH.ListGrantsByUser)
 
 		r.Post("/nodes", orgDesignH.Create)
 		r.Patch("/nodes/{id}", orgDesignH.Patch)
@@ -1078,10 +1238,68 @@ func main() {
 	// Artefact-types settings: GET (list all) + PATCH /{id} (name/prefix/description/colour).
 	// No permission gate beyond auth — every authenticated user can read types;
 	// writes require workspace.archive (padmin+), enforced client-side and tightened later.
+	//
+	// PLA-0053 / story 00578: mounted under WorkspaceClampMiddleware so
+	// every read clamps to the JWT-resolved workspace. The middleware
+	// runs after RequireAuth + RequireFreshPassword per its contract.
 	r.Route("/artefact-types", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 		artefactTypesH.Mount(r)
+	})
+
+	// PLA-0055 / story 00596 — per-workspace priorities CRUD. Same
+	// auth/clamp shape as /artefact-types: every read narrows to the
+	// JWT-resolved workspace via WorkspaceClampMiddleware.
+	r.Route("/artefact-priorities", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+		artefactPrioritiesH.Mount(r)
+	})
+
+	// ---- /portfolio-models ----
+	r.Route("/portfolio-models", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Get("/", portfolioModelsH.List)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
+		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
+		r.Get("/{id}", portfolioModelsH.GetByModelID)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Post("/{id}/adopt", portfolioAdoptH.Adopt)
+		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
+	})
+
+	// ---- /workspace-settings ----
+	r.Route("/workspace-settings", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		workspaceSettingsH.Mount(r)
+	})
+
+	// ---- /tenant-settings (PLA-0050) ----
+	// Subscription-tier defaults editor. va-tenant-settings page-access row
+	// is seeded by story 00572 in the `pages` table; RequirePageAccess gates
+	// the API on the same grant the UI uses, so a hand-typed URL or stale
+	// bookmark from a user whose grant has been revoked is denied at the API
+	// layer — not just rendered as a blank UI. PLA-0050 AC7 verification:
+	// non-gadmin users 403 here.
+	r.Route("/tenant-settings", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(auth.RequirePageAccess(pageAccessResolver, "va-tenant-settings"))
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Use(userWriteLimiter)
+		tenantSettingsH.Mount(r)
 	})
 
 	} // end mountSiteRoutes
@@ -1118,139 +1336,6 @@ func main() {
 		mountSiteRoutes(r)
 	})
 
-	// ---- /samantha/v1 — data routes (infra moved to root above) ----
-	r.Route("/samantha/v1", func(r chi.Router) {
-		// API key validation middleware (story 00443).
-		// Validates Bearer token API keys; falls through to JWT auth if not present.
-		r.Use(apikeys.Middleware(apiKeysSvc))
-
-		// PLA-0030 Task 9: Deprecation + Sunset headers on every v1 response.
-		// Sunset date = 2026-08-07 (90 days from 2026-05-09 cutover start).
-		// RFC 8594 Sunset header uses IMF-fixdate format.
-		r.Use(func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				w.Header().Set("Deprecation", "true")
-				w.Header().Set("Sunset", "Fri, 07 Aug 2026 00:00:00 GMT")
-				w.Header().Set("Link", `</samantha/v2>; rel="successor-version"`)
-				next.ServeHTTP(w, req)
-			})
-		})
-
-	// ---- /api/portfolio-models ----
-	// Read-only library bundle surface (Phase 3 of mmff_library plan).
-	// Bundle GETs by family/id are open to any authenticated user —
-	// MMFF-authored content is implicitly visible across tenants;
-	// per-tenant share enforcement lands in Phase 5. List + adoption-state
-	// are padmin-only because adoption is a padmin-owned product decision.
-	r.Route("/portfolio-models", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		// Padmin-only: list of MMFF-published bundles for the adoption
-		// picker. Registered BEFORE /{id} so chi resolves the static
-		// path first (defensive — chi's trie prefers static segments
-		// anyway).
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/", portfolioModelsH.List)
-
-		// Padmin-only: live adoption state for the caller's subscription.
-		// Registered BEFORE /{id} so chi resolves the static path first
-		// (defensive — chi's trie prefers static segments anyway).
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
-
-		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
-		r.Get("/{id}", portfolioModelsH.GetByModelID)
-
-		// Padmin-only: run the adoption saga for a library model id.
-		// Per-step atomic, idempotent on retry — see
-		// backend/internal/portfoliomodels/adopt.go for the orchestrator.
-		// Registered AFTER /{id} in source order is fine — chi's trie
-		// distinguishes by HTTP method anyway.
-		// PLA-0007: gated via portfolio.list (closest existing code).
-		// Tech-debt: own code portfolio.adopt — see PLA-0007 G3.
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Post("/{id}/adopt", portfolioAdoptH.Adopt)
-
-		// Padmin-only: SSE variant — emits one `event: step` per saga
-		// step plus a final `event: done` or `event: fail`. See
-		// backend/internal/portfoliomodels/adopt_stream.go.
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
-	})
-
-	// ---- /api/portfolio (master_record_portfolio) ----
-	// PLA-0026 / Story 00498 (B9): per-workspace read surface for the
-	// persistent portfolio model record. Reads ONLY vector_artefacts —
-	// no live mmff_library look-ups happen here. Auth is enforced at
-	// the group; per-workspace membership is checked inside the handler.
-	r.Route("/portfolio", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		portfolioMasterRecordH.Mount(r)
-	})
-
-	// ---- /api/workspace/{id}/portfolio (PLA-0026 / Story 00499 / B10) ----
-	// Workspace-scoped successor to GET /api/subscription/layers. Reads
-	// strategy artefact_types from vector_artefacts. The legacy endpoint
-	// stays live until F3 frontend cutover (R047 §9). Auth + tenant +
-	// workspace-membership enforcement happens INSIDE the handler so we
-	// can return 404 for cross-tenant probes (leak-resistant) while
-	// returning 403 for in-tenant non-members.
-	r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
-	})
-
-	// ---- /api/subscription ----
-	// Subscription-scoped write surface. Padmin-only.
-	r.Route("/subscription", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		// PLA-0007: padmin-equivalent gate via portfolio.list (closest existing
-		// code). Tech-debt: own code subscription.layers.update — see PLA-0007 G3.
-		r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		// Subscription layer reads + writes (stories 00062–00065).
-		r.Get("/layers", layersBatchH.GetLayers)
-		r.Patch("/layers/batch", layersBatchH.PatchLayersBatch)
-	})
-
-	// ---- /api/workspace/{id}/fields (PLA-0026 / Story 00500, B11) ----
-	// Returns the admitted field set for one workspace. Auth + fresh-
-	// password gates at the router edge; per-row tenancy + membership
-	// gating happens inside the handler (404 / 403 / 200).
-	r.Route("/workspace/{id}/fields", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Get("/", fieldsH.List)
-	})
-
-	// ---- /api/tenant-settings (master_record_tenant) ----
-	// One row per subscription; reads + writes scoped to the caller's
-	// tenant via auth context. Auth + fresh-password gate is the only
-	// guard — there's no per-row permission catalogue.
-	r.Route("/tenant-settings", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		tenantSettingsH.Mount(r)
-	})
-
-	}) // end /samantha/v1
-
 	// ---- /samantha/v2 — feature-gated v2 routes ----
 	r.Route("/samantha/v2", func(r chi.Router) {
 		r.Use(func(next http.Handler) http.Handler {
@@ -1261,7 +1346,7 @@ func main() {
 		r.Use(apikeys.Middleware(apiKeysSvc))
 
 		// ---- /work-items + /portfolio-items (B21 / PLA-0037) ----
-		// Both groups share the artefactitemsv2 handler; the only
+		// Both groups share the artefactitems handler; the only
 		// difference is each Service's bound `at.scope` value (see
 		// the construction block above). The route shape is identical;
 		// any new endpoint added to /work-items must be added to
@@ -1271,9 +1356,12 @@ func main() {
 			// exhaust the limit; writes keep the conservative 120/min + per-user gate.
 			readLimit := httprate.LimitByIP(600, time.Minute)
 			writeLimit := httprate.LimitByIP(120, time.Minute)
-			mountArtefactRoutes := func(r chi.Router, h *artefactitemsv2.Handler) {
+			mountArtefactRoutes := func(r chi.Router, h *artefactitems.Handler) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
+				// PLA-0053 / story 00578: workspace clamp via JWT claim
+				// on the /samantha/v2 surface too (parity with /_site).
+				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 				r.With(readLimit).Get("/", h.List)
 				r.With(writeLimit, userWriteLimiter).Post("/", h.Create)
 				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
@@ -1381,7 +1469,7 @@ func main() {
 		}
 
 		// ---- /portfolio/master_record (PLA-0026 B9 / PLA-0030 T4a) ----
-		// Per-workspace read of master_record_portfolio (vector_artefacts).
+		// Per-workspace read of master_record_portfolios (vector_artefacts).
 		// mmff_vector used only for tenancy/membership gate inside handler.
 		r.Route("/portfolio", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
@@ -1394,7 +1482,7 @@ func main() {
 		// ---- /workspace/{id}/fields (PLA-0026 B11 / PLA-0030 T3) ----
 		// Admitted field set for one workspace. Auth + tenancy + membership
 		// gating happens inside the handler (404 for cross-tenant probes).
-		r.Route("/workspace/{id}/fields", func(r chi.Router) {
+		r.Route("/workspaces/{id}/fields", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1402,9 +1490,9 @@ func main() {
 		})
 
 		// ---- /workspace/{id}/portfolio/layers (PLA-0026 B10 / PLA-0030 T3) ----
-		// Strategy artefact_types (scope='strategy') for one workspace.
+		// Strategy artefacts_types (scope='strategy') for one workspace.
 		// Auth + tenancy + membership gating inside the handler.
-		r.Route("/workspace/{id}/portfolio", func(r chi.Router) {
+		r.Route("/workspaces/{id}/portfolio", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
@@ -1417,7 +1505,7 @@ func main() {
 		// the tree (clamp predicate trims what each user sees at consuming
 		// endpoints). Mutations require padmin OR an admin grant on the
 		// affected node; node-grant authorisation is checked inside
-		// orgdesign.Service. Registered on v2 because all topology I/O now
+		// topology.Service. Registered on v2 because all topology I/O now
 		// targets vector_artefacts via vaPool (M6.2.7).
 		r.Route("/topology", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
@@ -1426,11 +1514,13 @@ func main() {
 			r.Use(userWriteLimiter)
 
 			// Workspace clamp: every list-style read narrows to one
-			// workspace resolved from ?ws=<slug|uuid>. Middleware stashes
-			// workspace_id on context; service reads splice it into WHERE.
-			wsLookup := orgdesign.PoolWorkspaceLookup{Pool: pool}
+			// workspace resolved from the JWT workspace_id claim
+			// (PLA-0053 / story 00576 dropped the ?ws= URL surface;
+			// story 00578 hoisted workspaceLookup to top-level).
+			// Middleware stashes workspace_id on context; service reads
+			// splice it into WHERE.
 			r.Group(func(r chi.Router) {
-				r.Use(orgdesign.WorkspaceClampMiddleware(wsLookup))
+				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 
 				r.Get("/tree", orgDesignH.Tree)
 				r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
@@ -1447,6 +1537,12 @@ func main() {
 			// PLA-0042 — scope picker. Not workspace-clamped: a user's
 			// grants may span workspaces inside their subscription.
 			r.Get("/grants/me", orgDesignH.MyGrants)
+
+			// PLA-0046 / B6.8 — admin-pivot grant listing for the
+			// Topology Permissions page. Not workspace-clamped: target
+			// user's grants may span workspaces inside the subscription.
+			r.With(auth.RequirePermission(permResolver, permissions.TopologyGrantsManageOthers)).
+				Get("/users/{userId}/grants", orgDesignH.ListGrantsByUser)
 
 			// Writes
 			r.Post("/nodes", orgDesignH.Create)

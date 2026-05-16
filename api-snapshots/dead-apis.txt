@@ -17,11 +17,16 @@
 /artefacts/{type}/{id}/fields
 /artefacts/{type}/{id}/fields/bulk
 /artefacts/{type}/{id}/fields/{field_name}
+/auth/login
+/auth/logout
 /auth/me
+/auth/refresh
+/custom-field-library
 /custom-field-library/{id}
 /custom-pages/{id}
 /defects
 /defects/{id}
+/flows
 /library/releases/{id}/ack
 /nav/bookmark/check
 /nav/profiles/{id}
@@ -39,8 +44,10 @@
 /portfolio-models/{id}/adopt/stream
 /roles/{id}
 /roles/{id}/permissions
+/sprints
 /sprints/{id}
 /subscription/layers
+/subscription/layers/batch
 /topology/commit
 /topology/disconnected
 /topology/levels
@@ -62,6 +69,7 @@
 /user-stories
 /user-stories/{id}
 /user/tab-order/{pageId}
+/work-item-templates
 /work-item-templates/{id}
 /work-item-templates/{id}/fields
 /work-item-templates/{id}/fields/{field_library_id}

@@ -1,5 +1,7 @@
-// Package timeboxreleases is the sole writer for the timebox_releases table in
-// vector_artefacts. All reads and writes must go through this package.
+// Package timeboxreleases is the sole writer for the timeboxes_releases
+// table in vector_artefacts. All reads and writes must go through this
+// package. Table + column names follow §2.3 / §2.4 after
+// RF1.4.2.timeboxes / migration 054.
 package timeboxreleases
 
 import (
@@ -14,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Service owns all DB operations for timebox_releases.
+// Service owns all DB operations for timeboxes_releases.
 type Service struct {
 	pool *pgxpool.Pool
 }
@@ -31,23 +33,7 @@ func (s *Service) Create(ctx context.Context, in CreateReleaseInput) (*Release, 
 		return nil, err
 	}
 
-	const q = `
-		INSERT INTO timebox_releases (
-			subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days, release_date_start, release_date_end,
-			release_velocity
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days,
-			release_date_start::text, release_date_end::text,
-			release_scope, release_velocity, release_estimate,
-			release_creep_by_count, release_creep_by_estimate,
-			status, release_date_added, release_date_updated, archived_at`
-
-	row := s.pool.QueryRow(ctx, q,
+	row := s.pool.QueryRow(ctx, sqlInsertRelease,
 		in.SubscriptionID, in.WorkspaceID, in.OrgNodeID,
 		in.ReleaseName, in.ReleaseSuffix, in.ReleaseOwner,
 		in.ReleaseCadenceDays, in.ReleaseDateStart, in.ReleaseDateEnd,
@@ -80,25 +66,9 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateReleaseInput) (
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	const q = `
-		INSERT INTO timebox_releases (
-			subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days, release_date_start, release_date_end,
-			release_velocity
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days,
-			release_date_start::text, release_date_end::text,
-			release_scope, release_velocity, release_estimate,
-			release_creep_by_count, release_creep_by_estimate,
-			status, release_date_added, release_date_updated, archived_at`
-
 	results := make([]*Release, 0, len(inputs))
 	for _, in := range inputs {
-		row := tx.QueryRow(ctx, q,
+		row := tx.QueryRow(ctx, sqlInsertRelease,
 			in.SubscriptionID, in.WorkspaceID, in.OrgNodeID,
 			in.ReleaseName, in.ReleaseSuffix, in.ReleaseOwner,
 			in.ReleaseCadenceDays, in.ReleaseDateStart, in.ReleaseDateEnd,
@@ -122,19 +92,7 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateReleaseInput) (
 
 // Get returns a single release by ID scoped to the workspace.
 func (s *Service) Get(ctx context.Context, workspaceID, releaseID string) (*Release, error) {
-	const q = `
-		SELECT
-			id, subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days,
-			release_date_start::text, release_date_end::text,
-			release_scope, release_velocity, release_estimate,
-			release_creep_by_count, release_creep_by_estimate,
-			status, release_date_added, release_date_updated, archived_at
-		FROM timebox_releases
-		WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`
-
-	row := s.pool.QueryRow(ctx, q, releaseID, workspaceID)
+	row := s.pool.QueryRow(ctx, sqlSelectReleaseByID, releaseID, workspaceID)
 	release, err := scanRelease(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -148,32 +106,24 @@ func (s *Service) Get(ctx context.Context, workspaceID, releaseID string) (*Rele
 // List returns non-archived releases for a workspace, ordered by start date ASC.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Release, error) {
 	args := []any{workspaceID}
-	conds := []string{"workspace_id = $1", "archived_at IS NULL"}
+	conds := []string{
+		"timeboxes_releases_id_workspace = $1",
+		"timeboxes_releases_archived_at IS NULL",
+	}
 	n := 2
 
 	if f.OrgNodeID != nil {
-		conds = append(conds, fmt.Sprintf("org_node_id = $%d", n))
+		conds = append(conds, fmt.Sprintf("timeboxes_releases_id_topology_node = $%d", n))
 		args = append(args, *f.OrgNodeID)
 		n++
 	}
 	if f.Status != nil {
-		conds = append(conds, fmt.Sprintf("status = $%d", n))
+		conds = append(conds, fmt.Sprintf("timeboxes_releases_status = $%d", n))
 		args = append(args, *f.Status)
 		n++
 	}
 
-	q := fmt.Sprintf(`
-		SELECT
-			id, subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days,
-			release_date_start::text, release_date_end::text,
-			release_scope, release_velocity, release_estimate,
-			release_creep_by_count, release_creep_by_estimate,
-			status, release_date_added, release_date_updated, archived_at
-		FROM timebox_releases
-		WHERE %s
-		ORDER BY release_date_start ASC`, strings.Join(conds, " AND "))
+	q := fmt.Sprintf(sqlListReleasesTemplate, strings.Join(conds, " AND "))
 
 	_ = n
 	rows, err := s.pool.Query(ctx, q, args...)
@@ -212,40 +162,40 @@ func (s *Service) Update(ctx context.Context, workspaceID, releaseID string, in 
 		if strings.TrimSpace(*in.ReleaseName) == "" {
 			return nil, ErrInvalidInput
 		}
-		addField("release_name", *in.ReleaseName)
+		addField("timeboxes_releases_name", *in.ReleaseName)
 	}
 	if in.ReleaseSuffix != nil {
-		addField("release_suffix", *in.ReleaseSuffix)
+		addField("timeboxes_releases_suffix", *in.ReleaseSuffix)
 	}
 	if in.ReleaseOwner != nil {
-		addField("release_owner", *in.ReleaseOwner)
+		addField("timeboxes_releases_id_user_owner", *in.ReleaseOwner)
 	}
 	if in.ReleaseCadenceDays != nil {
 		if *in.ReleaseCadenceDays < 0 {
 			return nil, ErrInvalidInput
 		}
-		addField("release_cadence_days", *in.ReleaseCadenceDays)
+		addField("timeboxes_releases_cadence_days", *in.ReleaseCadenceDays)
 	}
 	if in.ReleaseDateStart != nil {
-		addField("release_date_start", *in.ReleaseDateStart)
+		addField("timeboxes_releases_date_start", *in.ReleaseDateStart)
 	}
 	if in.ReleaseDateEnd != nil {
-		addField("release_date_end", *in.ReleaseDateEnd)
+		addField("timeboxes_releases_date_end", *in.ReleaseDateEnd)
 	}
 	if in.ReleaseScope != nil {
-		addField("release_scope", *in.ReleaseScope)
+		addField("timeboxes_releases_scope", *in.ReleaseScope)
 	}
 	if in.ReleaseVelocity != nil {
-		addField("release_velocity", *in.ReleaseVelocity)
+		addField("timeboxes_releases_velocity", *in.ReleaseVelocity)
 	}
 	if in.ReleaseEstimate != nil {
-		addField("release_estimate", *in.ReleaseEstimate)
+		addField("timeboxes_releases_estimate", *in.ReleaseEstimate)
 	}
 	if in.Status != nil {
 		if !validStatuses[*in.Status] {
 			return nil, ErrInvalidInput
 		}
-		addField("status", *in.Status)
+		addField("timeboxes_releases_status", *in.Status)
 	}
 
 	if len(sets) == 0 {
@@ -253,19 +203,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, releaseID string, in 
 	}
 
 	args = append(args, releaseID, workspaceID)
-	q := fmt.Sprintf(`
-		UPDATE timebox_releases
-		SET %s
-		WHERE id = $%d AND workspace_id = $%d AND archived_at IS NULL
-		RETURNING
-			id, subscription_id, workspace_id, org_node_id,
-			release_name, release_suffix, release_owner,
-			release_cadence_days,
-			release_date_start::text, release_date_end::text,
-			release_scope, release_velocity, release_estimate,
-			release_creep_by_count, release_creep_by_estimate,
-			status, release_date_added, release_date_updated, archived_at`,
-		strings.Join(sets, ", "), n, n+1)
+	q := fmt.Sprintf(sqlUpdateReleaseTemplate, strings.Join(sets, ", "), n, n+1)
 
 	row := s.pool.QueryRow(ctx, q, args...)
 	release, err := scanRelease(row)
@@ -292,12 +230,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, releaseID string) err
 		return ErrLifecycle
 	}
 
-	const q = `
-		UPDATE timebox_releases
-		SET archived_at = now()
-		WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`
-
-	tag, err := s.pool.Exec(ctx, q, releaseID, workspaceID)
+	tag, err := s.pool.Exec(ctx, sqlArchiveRelease, releaseID, workspaceID)
 	if err != nil {
 		return fmt.Errorf("delete release: %w", err)
 	}
@@ -342,7 +275,7 @@ func isOverlapErr(err error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), "23P01") ||
-		strings.Contains(err.Error(), "timebox_releases_no_overlap")
+		strings.Contains(err.Error(), "timeboxes_releases_no_overlap")
 }
 
 type scannable interface {

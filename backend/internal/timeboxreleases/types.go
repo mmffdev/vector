@@ -12,27 +12,28 @@ var (
 	ErrLifecycle    = errors.New("active or completed releases cannot be deleted")
 )
 
-// Release is the wire representation of a timebox_releases row.
+// Release is the wire representation of a timeboxes_releases row. JSON
+// tags follow §2.3 — wire keys match the column names.
 type Release struct {
-	ID                    string     `json:"id"`
-	SubscriptionID        string     `json:"subscription_id"`
-	WorkspaceID           string     `json:"workspace_id"`
-	OrgNodeID             *string    `json:"org_node_id"`
-	ReleaseName           string     `json:"release_name"`
-	ReleaseSuffix         *string    `json:"release_suffix"`
-	ReleaseOwner          *string    `json:"release_owner"`
-	ReleaseCadenceDays    int        `json:"release_cadence_days"`
-	ReleaseDateStart      string     `json:"release_date_start"`
-	ReleaseDateEnd        string     `json:"release_date_end"`
-	ReleaseScope          int        `json:"release_scope"`
-	ReleaseVelocity       int        `json:"release_velocity"`
-	ReleaseEstimate       int        `json:"release_estimate"`
-	ReleaseCreepByCount   int        `json:"release_creep_by_count"`
-	ReleaseCreepByEstimate int       `json:"release_creep_by_estimate"`
-	Status                string     `json:"status"`
-	ReleaseDateAdded      time.Time  `json:"release_date_added"`
-	ReleaseDateUpdated    time.Time  `json:"release_date_updated"`
-	ArchivedAt            *time.Time `json:"archived_at"`
+	ID                     string     `json:"timeboxes_releases_id"`
+	SubscriptionID         string     `json:"timeboxes_releases_id_subscription"`
+	WorkspaceID            string     `json:"timeboxes_releases_id_workspace"`
+	OrgNodeID              *string    `json:"timeboxes_releases_id_topology_node"`
+	ReleaseName            string     `json:"timeboxes_releases_name"`
+	ReleaseSuffix          *string    `json:"timeboxes_releases_suffix"`
+	ReleaseOwner           *string    `json:"timeboxes_releases_id_user_owner"`
+	ReleaseCadenceDays     int        `json:"timeboxes_releases_cadence_days"`
+	ReleaseDateStart       string     `json:"timeboxes_releases_date_start"`
+	ReleaseDateEnd         string     `json:"timeboxes_releases_date_end"`
+	ReleaseScope           int        `json:"timeboxes_releases_scope"`
+	ReleaseVelocity        int        `json:"timeboxes_releases_velocity"`
+	ReleaseEstimate        int        `json:"timeboxes_releases_estimate"`
+	ReleaseCreepByCount    int        `json:"timeboxes_releases_creep_by_count"`
+	ReleaseCreepByEstimate int        `json:"timeboxes_releases_creep_by_estimate"`
+	Status                 string     `json:"timeboxes_releases_status"`
+	ReleaseDateAdded       time.Time  `json:"timeboxes_releases_created_at"`
+	ReleaseDateUpdated     time.Time  `json:"timeboxes_releases_updated_at"`
+	ArchivedAt             *time.Time `json:"timeboxes_releases_archived_at"`
 }
 
 // CreateReleaseInput holds required fields to create a release.

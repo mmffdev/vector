@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import ToggleBtn from "@/app/components/ToggleBtn";
+import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "../_shared";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
 
@@ -31,6 +36,10 @@ function UserEditPanel({
   const [resetBusy,   setResetBusy]   = useState(false);
   const [err,         setErr]         = useState<string | null>(null);
   const [info,        setInfo]        = useState<string | null>(null);
+  // PLA-0046 / story 00556 — gates the "Manage topology permissions"
+  // entry button. Gadmin only; the per-user page also re-checks so
+  // direct deep-links still surface the in-page Forbidden panel.
+  const hasManageGrants = useHasPermission("topology.grants.manage_others");
 
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +148,14 @@ function UserEditPanel({
             >
               {resetBusy ? "Sending…" : "Send password reset"}
             </button>
+            {hasManageGrants && (
+              <Link
+                href={`/workspace-settings/users/${u.id}/topology-permissions`}
+                className="btn btn--secondary"
+              >
+                Manage topology permissions
+              </Link>
+            )}
           </div>
           <div className="users-edit-panel__actions-right">
             {isActive !== u.is_active && (
@@ -295,6 +312,7 @@ function ResetLinkModal({ email, url, onClose }: { email: string; url: string; o
 }
 
 export default function UsersPage() {
+  const { full } = usePageTitle();
   const [users,        setUsers]        = useState<AdminUser[] | null>(null);
   const [visibleRoles, setVisibleRoles] = useState<RoleSummary[] | null>(null);
   const [err,          setErr]          = useState<string | null>(null);
@@ -394,6 +412,13 @@ export default function UsersPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Manage workspace users, roles, and access settings." />
+      <Panel
+        name="panel_user_management_header"
+        className="page-panel-heading"
+        title="User Management"
+        description="Create and manage user accounts, assign roles, and control workspace access."
+      />
     <div>
       {err && <div className="form__error">{err}</div>}
 

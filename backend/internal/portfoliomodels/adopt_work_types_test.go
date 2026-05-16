@@ -9,7 +9,7 @@ import (
 )
 
 // PLA-0026 / Story 00494 (B5): integration test for the work
-// artefact_types writer. Hits the live vector_artefacts DB via the SSH
+// artefacts_types writer. Hits the live vector_artefacts DB via the SSH
 // tunnel on :5435. Mirrors the shape of adopt_strategy_types_test.go
 // (see vaTestPool / runInVATx defined in that file).
 //
@@ -89,7 +89,7 @@ func seedSystemWorkTypes(
 	for _, s := range seeds {
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO artefact_types (
+			INSERT INTO artefacts_types (
 				subscription_id, workspace_id,
 				scope, source,
 				name, prefix, sort_order, allows_children
@@ -109,14 +109,14 @@ func seedSystemWorkTypes(
 		// (We intentionally use a per-test transaction for seeding so
 		// this DDL is contained.)
 		if _, err := tx.Exec(ctx, `
-			ALTER TABLE artefact_types
+			ALTER TABLE artefacts_types
 				DROP CONSTRAINT IF EXISTS artefact_types_work_no_parent`); err != nil {
 			t.Fatalf("drop work-no-parent check: %v", err)
 		}
 		// Make Story (US) a child of Epic (EP) — synthetic hierarchy
 		// that exercises Phase 2 parent resolution by prefix.
 		if _, err := tx.Exec(ctx, `
-			UPDATE artefact_types SET parent_type_id = $1 WHERE id = $2`,
+			UPDATE artefacts_types SET parent_type_id = $1 WHERE id = $2`,
 			ids["EP"], ids["US"],
 		); err != nil {
 			t.Fatalf("set synthetic parent: %v", err)
@@ -169,7 +169,7 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		// 4 tenant rows landed in this workspace.
 		var n int
 		if err := tx.QueryRow(ctx, `
-			SELECT COUNT(*) FROM artefact_types
+			SELECT COUNT(*) FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID).Scan(&n); err != nil {
@@ -187,7 +187,7 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		)
 		if err := tx.QueryRow(ctx, `
 			SELECT scope, source, name, library_layer_id, library_layer_tag
-			  FROM artefact_types
+			  FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID,
@@ -214,7 +214,7 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		// tenant row's id (via prefix EP).
 		var epicTenantID uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT id FROM artefact_types
+			SELECT id FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'EP'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID).Scan(&epicTenantID); err != nil {
@@ -222,7 +222,7 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		}
 		var storyParent *uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT parent_type_id FROM artefact_types
+			SELECT parent_type_id FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID).Scan(&storyParent); err != nil {
@@ -263,7 +263,7 @@ func TestWriteWorkArtefactTypes_Idempotent(t *testing.T) {
 
 		var n int
 		if err := tx.QueryRow(ctx, `
-			SELECT COUNT(*) FROM artefact_types
+			SELECT COUNT(*) FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID).Scan(&n); err != nil {
@@ -293,7 +293,7 @@ func TestWriteWorkArtefactTypes_PreservesUserEdits(t *testing.T) {
 
 		// Tenant customises the Story name.
 		if _, err := tx.Exec(ctx, `
-			UPDATE artefact_types SET name = 'User Story (custom)'
+			UPDATE artefacts_types SET name = 'User Story (custom)'
 			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID,
@@ -308,7 +308,7 @@ func TestWriteWorkArtefactTypes_PreservesUserEdits(t *testing.T) {
 
 		var name string
 		if err := tx.QueryRow(ctx, `
-			SELECT name FROM artefact_types
+			SELECT name FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
 			   AND source = 'tenant' AND archived_at IS NULL`,
 			workspaceID).Scan(&name); err != nil {
@@ -336,7 +336,7 @@ func TestWriteWorkArtefactTypes_HandlesEmptySeed(t *testing.T) {
 
 		var n int
 		if err := tx.QueryRow(ctx, `
-			SELECT COUNT(*) FROM artefact_types
+			SELECT COUNT(*) FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = 'work'`,
 			workspaceID).Scan(&n); err != nil {
 			t.Fatalf("count: %v", err)

@@ -204,6 +204,11 @@ PW=$(grep '^DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
 LIB_PW=$(grep '^LIBRARY_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
 LIB_PORT=$(grep '^LIBRARY_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'' | tr -d '[:space:]')
 LIB_PORT="${LIB_PORT:-$DB_PORT}"
+VA_PW=$(grep '^VA_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
+VA_PORT=$(grep '^VA_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'' | tr -d '[:space:]')
+VA_PORT="${VA_PORT:-$DB_PORT}"
+ICLOUD_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/SQL Backups Vector"
+mkdir -p "$ICLOUD_DIR" 2>/dev/null || true
 if [[ -z "$PW" ]]; then
   reason="env_missing: DB_PASSWORD not set in $(basename "$ENV_FILE")"
   log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
@@ -221,8 +226,10 @@ if [[ ! -x "$PG_DUMP" ]]; then
 fi
 
 # -- Dump mmff_vector -------------------------------------------------------
+# Filename shape: <ts>_<sha>_dev_<dbname>.sql — matches the <backupsql> shortcut.
+# `dev_` is the env tag (this script only runs against the pinned-dev tunnel).
 TS=$(ts_fname)
-OUT="$BACKUP_DIR/${LABEL}_${TS}.sql"
+OUT="$BACKUP_DIR/${TS}_${LABEL}_dev_mmff_vector.sql"
 START_MS=$(($(date +%s) * 1000))
 
 if ! PGPASSWORD="$PW" "$PG_DUMP" \
@@ -246,9 +253,15 @@ log_entry "ok" "$SHA" "$LABEL" "$(basename "$OUT")" "$BYTES" "$DUR" ""
 printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
   "$LABEL" "$(basename "$OUT")" "$BYTES" "$DUR" "$CHANNEL"
 
+# Track per-DB success so we only mirror to iCloud if everything dumped cleanly.
+LIB_OK=0
+VA_OK=0
+OUT_LIB=""
+OUT_VA=""
+
 # -- Dump mmff_library ------------------------------------------------------
 if [[ -n "$LIB_PW" ]]; then
-  OUT_LIB="$BACKUP_DIR/${LABEL}_${TS}_library.sql"
+  OUT_LIB="$BACKUP_DIR/${TS}_${LABEL}_dev_mmff_library.sql"
   START_MS=$(($(date +%s) * 1000))
 
   if ! PGPASSWORD="$LIB_PW" "$PG_DUMP" \
@@ -257,6 +270,7 @@ if [[ -n "$LIB_PW" ]]; then
       > "$OUT_LIB" 2> "$OUT_LIB.err"; then
     ERR_TAIL=$(tail -c 300 "$OUT_LIB.err" 2>/dev/null | tr '\n' ' ')
     rm -f "$OUT_LIB" "$OUT_LIB.err"
+    OUT_LIB=""
     reason="pg_dump_failed (library): $ERR_TAIL"
     log_entry "skipped" "$SHA" "${LABEL}_library" "" 0 0 "$reason"
     write_diag_log "$reason" "$SHA"
@@ -266,10 +280,48 @@ if [[ -n "$LIB_PW" ]]; then
     END_MS=$(($(date +%s) * 1000))
     DUR=$(( END_MS - START_MS ))
     BYTES_LIB=$(wc -c < "$OUT_LIB" | tr -d ' ')
+    LIB_OK=1
     log_entry "ok" "$SHA" "${LABEL}_library" "$(basename "$OUT_LIB")" "$BYTES_LIB" "$DUR" ""
     printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
       "${LABEL}_library" "$(basename "$OUT_LIB")" "$BYTES_LIB" "$DUR" "$CHANNEL"
   fi
+fi
+
+# -- Dump vector_artefacts --------------------------------------------------
+if [[ -n "$VA_PW" ]]; then
+  OUT_VA="$BACKUP_DIR/${TS}_${LABEL}_dev_vector_artefacts.sql"
+  START_MS=$(($(date +%s) * 1000))
+
+  if ! PGPASSWORD="$VA_PW" "$PG_DUMP" \
+      -h localhost -p "$VA_PORT" -U mmff_dev -d vector_artefacts \
+      --no-owner --no-privileges \
+      > "$OUT_VA" 2> "$OUT_VA.err"; then
+    ERR_TAIL=$(tail -c 300 "$OUT_VA.err" 2>/dev/null | tr '\n' ' ')
+    rm -f "$OUT_VA" "$OUT_VA.err"
+    OUT_VA=""
+    reason="pg_dump_failed (vector_artefacts): $ERR_TAIL"
+    log_entry "skipped" "$SHA" "${LABEL}_vector_artefacts" "" 0 0 "$reason"
+    write_diag_log "$reason" "$SHA"
+    emit_skip_banner "pg_dump vector_artefacts failed: $ERR_TAIL"
+  else
+    rm -f "$OUT_VA.err"
+    END_MS=$(($(date +%s) * 1000))
+    DUR=$(( END_MS - START_MS ))
+    BYTES_VA=$(wc -c < "$OUT_VA" | tr -d ' ')
+    VA_OK=1
+    log_entry "ok" "$SHA" "${LABEL}_vector_artefacts" "$(basename "$OUT_VA")" "$BYTES_VA" "$DUR" ""
+    printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
+      "${LABEL}_vector_artefacts" "$(basename "$OUT_VA")" "$BYTES_VA" "$DUR" "$CHANNEL"
+  fi
+fi
+
+# -- iCloud mirror ----------------------------------------------------------
+# Mirror only if all three DBs dumped successfully — otherwise the iCloud copy
+# would be partial and confusing. Failures here are non-fatal (push never blocks).
+if [[ $LIB_OK -eq 1 && $VA_OK -eq 1 && -d "$ICLOUD_DIR" ]]; then
+  cp "$OUT"     "$ICLOUD_DIR/" 2>/dev/null || true
+  cp "$OUT_LIB" "$ICLOUD_DIR/" 2>/dev/null || true
+  cp "$OUT_VA"  "$ICLOUD_DIR/" 2>/dev/null || true
 fi
 
 # -- Retention --------------------------------------------------------------
@@ -279,7 +331,12 @@ import os, re, sys, time
 backup_dir, keep_n, keep_days = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 now = time.time()
 cutoff = now - keep_days * 86400
-SHA_RE = re.compile(r'^[0-9a-f]{4,40}_\d{8}_\d{6}(_library)?\.sql$')
+SHA_RE = re.compile(
+    r'^('
+    r'[0-9a-f]{4,40}_\d{8}_\d{6}(_library)?\.sql'                     # legacy: <sha>_<ts>(_library).sql
+    r'|\d{8}_\d{6}_[0-9a-f]{4,40}_dev_(mmff_vector|mmff_library|vector_artefacts)\.sql'  # new: <ts>_<sha>_dev_<dbname>.sql
+    r')$'
+)
 candidates = []
 for name in os.listdir(backup_dir):
     path = os.path.join(backup_dir, name)

@@ -3,7 +3,7 @@
   "title": "Auth bootstrap dedup — share AuthProvider.refresh() in-flight promise to prevent tab-duplicate logout",
   "date_created": "2026-05-06",
   "date_started": "2026-05-06",
-  "date_last_updated": "2026-05-11",
+  "date_last_updated": "2026-05-13",
   "date_finished": null,
   "scope": "<p>One-line fix in <code>app/contexts/AuthContext.tsx</code>: collapse concurrent <code>refresh()</code> callers onto a single in-flight <code>Promise&lt;void&gt;</code> via <code>useRef</code>, so React StrictMode dev double-mount and duplicated browser tabs don't both POST <code>/api/auth/refresh</code> with the same one-time-use <code>rt</code> cookie.</p>",
   "value": "<p>Duplicating a Vector browser tab redirected the user to <code>/login</code>. Root cause: the <code>rt</code> HttpOnly refresh-token cookie is origin-scoped, so it gets copied into the duplicate tab. Both tabs mount fresh, both fire AuthProvider's bootstrap effect, and both POST <code>/api/auth/refresh</code> with the same token. Backend <code>service.go</code> Refresh-token-reuse detection (<code>UPDATE sessions SET revoked = TRUE WHERE user_id = $1</code>) treats the second request as a stolen-token attack and revokes every session for the user. Same race fires under React 18 StrictMode dev double-mount. Sharing one in-flight promise removes the race entirely without weakening the backend's reuse detection.</p>",

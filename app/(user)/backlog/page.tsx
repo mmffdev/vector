@@ -12,9 +12,10 @@
 import { useState } from "react";
 import { useTabState } from "@/app/hooks/useTabState";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const FILTERS: Array<{ key: "all" | "mine" | "open" | "blocked" | "due"; label: string }> = [
   { key: "all", label: "All" },
@@ -25,6 +26,7 @@ const FILTERS: Array<{ key: "all" | "mine" | "open" | "blocked" | "due"; label: 
 ];
 
 export default function Backlog() {
+  const { full } = usePageTitle();
   const [search, setSearch] = useState("");
   const [active, setActive] = useTabState(
     ["all", "mine", "open", "blocked", "due"] as const,
@@ -34,68 +36,65 @@ export default function Backlog() {
 
   return (
     <PageContent>
-    <StrictRoute>
-    <PageShell
-      title="Backlog"
-      subtitle="User stories, epics, and portfolio items"
-      actions={
-        <>
-          <button type="button" className="btn btn--ghost">Export</button>
-          <button type="button" className="btn btn--primary">New item</button>
-        </>
-      }
-    >
-      <Panel name="backlog_filters" title="Filters">
-        <div className="backlog-filter" role="search">
-          <input
-            type="search"
-            className="backlog-filter__search"
-            placeholder="Search by title, tag, or owner…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search backlog"
-          />
-          <ul className="backlog-filter__pills" aria-label="Quick filters">
-            {FILTERS.map((f) => (
-              <li key={f.key}>
-                <button
-                  type="button"
-                  className={
-                    "pill " +
-                    (active === f.key ? "pill--info" : "pill--neutral")
-                  }
-                  aria-pressed={active === f.key}
-                  onClick={() => setActive(f.key)}
-                >
-                  {f.label}
-                </button>
+      <StrictRoute>
+        <PageHeading level={1} title={full} subtitle="User stories, epics, and portfolio items awaiting prioritisation." />
+        <Panel
+          name="panel_backlog_header"
+          className="page-panel-heading"
+          title="Backlog"
+          description="Manage and prioritise user stories, epics, and portfolio items across the workspace."
+        />
+
+        <Panel name="backlog_filters" title="Filters">
+          <div className="backlog-filter" role="search">
+            <input
+              type="search"
+              className="backlog-filter__search"
+              placeholder="Search by title, tag, or owner…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search backlog"
+            />
+            <ul className="backlog-filter__pills" aria-label="Quick filters">
+              {FILTERS.map((f) => (
+                <li key={f.key}>
+                  <button
+                    type="button"
+                    className={
+                      "pill " +
+                      (active === f.key ? "pill--info" : "pill--neutral")
+                    }
+                    aria-pressed={active === f.key}
+                    onClick={() => setActive(f.key)}
+                  >
+                    {f.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="backlog-filter__controls">
+              <button type="button" className="btn btn--ghost">Columns</button>
+              <button type="button" className="btn btn--ghost">Sort</button>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel name="backlog_list" title="Items">
+          <ul className="backlog-list" aria-label="Backlog items">
+            {SAMPLE_ROWS.map((row) => (
+              <li key={row.id} className="backlog-row">
+                <span className="backlog-row__type" aria-hidden="true">
+                  {ICONS[row.type]}
+                </span>
+                <span className="backlog-row__id">{row.id}</span>
+                <span className="backlog-row__title">{row.title}</span>
+                <span className={`backlog-row__status pill ${row.statusClass}`}>{row.status}</span>
+                <span className={`backlog-row__priority pill ${row.priorityClass}`}>{row.priority}</span>
               </li>
             ))}
           </ul>
-          <div className="backlog-filter__controls">
-            <button type="button" className="btn btn--ghost">Columns</button>
-            <button type="button" className="btn btn--ghost">Sort</button>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel name="backlog_list" title="Items">
-        <ul className="backlog-list" aria-label="Backlog items">
-          {SAMPLE_ROWS.map((row) => (
-            <li key={row.id} className="backlog-row">
-              <span className="backlog-row__type" aria-hidden="true">
-                {ICONS[row.type]}
-              </span>
-              <span className="backlog-row__id">{row.id}</span>
-              <span className="backlog-row__title">{row.title}</span>
-              <span className={`backlog-row__status pill ${row.statusClass}`}>{row.status}</span>
-              <span className={`backlog-row__priority pill ${row.priorityClass}`}>{row.priority}</span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-    </PageShell>
-    </StrictRoute>
+        </Panel>
+      </StrictRoute>
     </PageContent>
   );
 }

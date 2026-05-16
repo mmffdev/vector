@@ -1,0 +1,11 @@
+{
+  "note": "Cross-DB writer packages awaiting a *crossdb_test.go that documents the partial-failure boundary. RF1.5.1-.5 wrote doc-only stub files for the 5 high-risk writers (portfoliomodels Adopt + MasterReset, artefactitems CreateWorkItem, libraryreleases Ack, errorsreport Report); live tests against the DB are scheduled follow-ups. Remaining entries below are false positives where the pool fields are multiple connections to the SAME DB (e.g. librarydb's RO/publish/ack/admin all point at mmff_library), or pools that legitimately span DBs but are NOT cross-DB writers (read-only joins, lookup decorators). Resolve by tightening the lint heuristic to look for write methods rather than pool count.",
+  "exempt_paths": [
+    "backend/internal/fields",
+    "backend/internal/flows",
+    "backend/internal/librarydb",
+    "backend/internal/nav",
+    "backend/internal/portfolio",
+    "backend/internal/topology"
+  ]
+}

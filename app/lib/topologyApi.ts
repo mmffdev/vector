@@ -62,6 +62,11 @@ export interface MyGrant {
   icon: string | null;
   role: Role;
   granted_at: string;
+  // PLA-0044: sibling order from topology_nodes.sort_order. Required by
+  // walkTopology's byPosition comparator so the ScopeRail / picker
+  // render in canvas order (which is the user's mental model from the
+  // topology page) rather than alphabetical.
+  position: number;
 }
 
 export interface CommitStatus {
@@ -104,17 +109,15 @@ export interface PreviewMoveResult {
 
 export const topologyApi = {
   // GET /api/topology/tree — when rootId is undefined the backend
-  // resolves the tenant root. When wsRef is supplied it is forwarded
-  // as `?ws=<ref>` so the workspace clamp middleware narrows the
-  // tree to that workspace (story 00378). The backend accepts either
-  // a UUID (canonical) or a slug; UUID is preferred so renames don't
-  // invalidate deep-links. Absent → backend falls back to the actor's
-  // first live workspace, which is what the Default workspace seed
-  // guarantees exists.
-  tree(rootId?: string, wsRef?: string) {
+  // resolves the tenant root, narrowed by the JWT's workspace_id
+  // claim via WorkspaceClampMiddleware. PLA-0053 / story 00576.5:
+  // the legacy `?ws=<ref>` URL param was silently ignored by the
+  // Tree handler — workspace is now switched via AuthContext.
+  // switchWorkspace() which re-mints the JWT, and the next tree()
+  // call naturally narrows to the new workspace.
+  tree(rootId?: string) {
     const params = new URLSearchParams();
     if (rootId) params.set("root", rootId);
-    if (wsRef) params.set("ws", wsRef);
     const q = params.toString();
     return apiSite<OrgNode[]>(`/topology/tree${q ? `?${q}` : ""}`);
   },
@@ -128,6 +131,16 @@ export const topologyApi = {
   // workspaces inside the subscription.
   listMyGrants() {
     return apiSite<MyGrant[]>(`/topology/grants/me`);
+  },
+
+  // PLA-0046 / story 00554 — list every active grant on a live node held
+  // by another user. Gadmin-only on the backend (permission
+  // `topology.grants.manage_others`). Drives the Topology Permissions
+  // page so an admin can pre-select the checkbox tree against
+  // <UserNodeAssignment>. Returns the same `MyGrant` row shape used by
+  // the scope picker so downstream walkers / mappers compose.
+  listGrantsByUser(userId: string) {
+    return apiSite<MyGrant[]>(`/topology/users/${userId}/grants`);
   },
 
   create(input: CreateNodeInput) {
@@ -270,3 +283,12 @@ export const topologyApi = {
     return apiSite<{ archived: number }>(`/topology/reset`, { method: "POST" });
   },
 };
+
+// PLA-0046 / story 00554 — also exposed as a named function export to
+// match the brief signature and the calling convention used by the new
+// Topology Permissions page. Mirrors topologyApi.listGrantsByUser; kept
+// in sync intentionally so the two-call-sites (page + future hooks)
+// don't drift.
+export async function listGrantsByUser(userId: string): Promise<MyGrant[]> {
+  return apiSite<MyGrant[]>(`/topology/users/${userId}/grants`);
+}

@@ -104,8 +104,7 @@ struct PortCheckView: View {
                 }
                 credDivider()
                 // Production tunnel — mmffdev-pg forwards 5434+3333+others in one session
-                credRow("DB tunnel (prod)",  "5434", "SSH→PG",    "~/.ssh/config: mmffdev-pg",         "mmffdev-pg (also fwds :3333 Planka, :8081 Adminer, :9000 Portainer, :15672 RabbitMQ)")
-                credRow("Planka board",      "3333", "HTTP",       "via mmffdev-pg (same SSH session)", "mmffdev-pg — no separate tunnel needed")
+                credRow("DB tunnel (prod)",  "5434", "SSH→PG",    "~/.ssh/config: mmffdev-pg",         "mmffdev-pg (also fwds :8081 Adminer, :9000 Portainer, :15672 RabbitMQ)")
                 // Dev / staging tunnels — aliases not yet in ~/.ssh/config, must be added manually
                 credRow("DB tunnel (dev)",   "5435", "SSH→PG",    "~/.ssh/config: vector-dev-pg",      "⚠ alias not in ~/.ssh/config yet — add before use")
                 credRow("DB tunnel (stg)",   "5436", "SSH→PG",    "~/.ssh/config: vector-staging-pg",  "⚠ alias not in ~/.ssh/config yet — add before use")

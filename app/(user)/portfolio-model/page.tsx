@@ -31,12 +31,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { api, apiSite, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
+import { portfolio as portfolioApi } from "@/app/lib/apiSite/index";
+import { notify } from "@/app/lib/toast";
 import { useHintOnce } from "@/app/lib/hints";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import WizardModelCardList from "./WizardModelCardList";
@@ -52,6 +55,7 @@ export interface LayerDTO {
   tag: string;
   sort_order: number;
   description_md: string | null;
+  is_placeholder?: boolean;
 }
 
 // Post-R010: portfolio_templates are flat — no family, no version. The
@@ -142,6 +146,7 @@ type StateView =
   | { kind: "preview"; bundle: BundleDTO; workspaceId: string };
 
 export default function PortfolioModelPage() {
+  const { full } = usePageTitle();
   const { user, loading: authLoading } = useAuth();
   const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
@@ -163,7 +168,7 @@ export default function PortfolioModelPage() {
   const fetchAdoptionState = useCallback(async () => {
     setView({ kind: "loading" });
     try {
-      const res = await api<AdoptionStateDTO>(
+      const res = await apiSite<AdoptionStateDTO>(
         "/portfolio-models/adoption-state"
       );
       if (res.adopted && res.model_id) {
@@ -289,19 +294,21 @@ export default function PortfolioModelPage() {
 
   return (
     <PageContent>
-    <StrictRoute>
-      <PageShell
+      <PageHeading level={1} title={full} subtitle="Review and configure the portfolio layer model." />
+      <Panel
+        name="panel_portfolio_model_header"
+        className="page-panel-heading"
         title="Portfolio Model"
-        subtitle="Adopt a model or preview your subscription's adopted bundle"
-      >
-        <PortfolioRouterBody
-          view={view}
-          subscriptionId={user.subscription_id}
-          onAdoptStarted={handleAdoptStarted}
-          onOverlayDone={handleOverlayDone}
-          onOverlayFail={handleOverlayFail}
-        />
-      </PageShell>
+        description="View and manage the portfolio layer model that structures items in this workspace."
+      />
+    <StrictRoute>
+      <PortfolioRouterBody
+        view={view}
+        subscriptionId={user.subscription_id}
+        onAdoptStarted={handleAdoptStarted}
+        onOverlayDone={handleOverlayDone}
+        onOverlayFail={handleOverlayFail}
+      />
     </StrictRoute>
     </PageContent>
   );
@@ -379,7 +386,7 @@ function BundleView({ bundle, workspaceId }: { bundle: BundleDTO; workspaceId: s
 
   useEffect(() => {
     let cancelled = false;
-    apiSite<LayerDTO[]>(`/workspace/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
+    apiSite<LayerDTO[]>(`/workspaces/${encodeURIComponent(workspaceId)}/portfolio/layers`).then((rows) => {
       if (!cancelled) setLocalLayers(rows.sort((a, b) => a.sort_order - b.sort_order));
     }).catch(() => {
       // On error fall back to bundle layers so the page isn't blank.
@@ -421,15 +428,27 @@ function BundleView({ bundle, workspaceId }: { bundle: BundleDTO; workspaceId: s
                 const trimmed = next.trim();
                 if (field === "tag" && (trimmed.length < 2 || trimmed.length > 4)) return false;
                 if (field === "name" && trimmed.length === 0) return false;
-                setLocalLayers((prev) =>
-                  prev === null
-                    ? prev
-                    : prev.map((l) =>
-                        l.id === id
-                          ? { ...l, [field]: field === "description_md" ? (trimmed || null) : trimmed }
-                          : l
-                      )
-                );
+                const prev = localLayers;
+                if (prev === null) return false;
+                const target = prev.find((l) => l.id === id);
+                if (!target) return false;
+                const updated: LayerDTO = {
+                  ...target,
+                  [field]: field === "description_md" ? (trimmed || null) : trimmed,
+                };
+                setLocalLayers(prev.map((l) => (l.id === id ? updated : l)));
+                portfolioApi
+                  .batchPatchWorkspaceLayers(workspaceId, [{
+                    id: updated.id,
+                    name: updated.name,
+                    tag: updated.tag,
+                    sort_order: updated.sort_order,
+                    description_md: updated.description_md,
+                  }])
+                  .catch((err) => {
+                    setLocalLayers(prev);
+                    notify.error(err instanceof ApiError ? `Save failed (${err.status})` : "Save failed");
+                  });
                 return true;
               }}
             />

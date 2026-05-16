@@ -29,9 +29,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Styling / CSS (HARD RULE — load before writing any element)** → [`docs/css-guide.md`](../docs/css-guide.md) — every element (button, table, input, heading, text, layout) MUST use the catalog class first; no inline `style={{}}` ever; no bespoke class unless nothing in the catalog fits; core elements inherit: theme CSS → `globals.css` → component class.
 - **Code standards** → [`.Codex/commands/c_code-standards.md`](commands/c_code-standards.md) — naming convention reference (`ui-{function}__{element}--{modifier}`, `is-`/`has-` state classes); load before writing or editing code.
 - **Database backup (`<backupsql>`)** → [`.Codex/commands/c_db-backup.md`](commands/c_db-backup.md) — dump remote Postgres to timestamped SQL file.
-- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — Planka kanban via MCP; tunnel `:3333`; flags `-a/-n/-d/-accept/-h`; children: agent contract, dedup check, REST templates.
-- **Planka board operations** → [`./.Codex/bin/planka`](./.Codex/bin/planka) — ONLY entry point for all board reads/writes; never use curl directly.
-- **Card lifecycle (hard):** on "go"/"start"/approval → move card Backlog→To Do; on first code edit → move To Do→Doing; on code-complete → Doing→Completed. See [`docs/c_c_backlog_agent.md`](../docs/c_c_backlog_agent.md).
+- **Backlog (`<backlog>`)** → [`docs/c_backlog.md`](../docs/c_backlog.md) — opens root `BACKLOG.md` — Rick-owned module roadmap.
 - **Dev server (`<npm>`)** → [`.Codex/commands/c_npm.md`](commands/c_npm.md) — start Next.js on `:5101`.
 - **Vector Launcher (`<launcher>`, `MMFF Vector Launcher.app`)** → [`.Codex/commands/c_launcher.md`](commands/c_launcher.md) — SwiftUI dashboard with per-component start/stop/restart, env switch, JSONL log.
 - **Boot file manager (`<b> -<N> -R|-C`, `<b> -A -C`)** → [`.Codex/commands/c_boot.md`](commands/c_boot.md) — read (`-R`) or create/update (`-C`) numbered session snapshot; `-A -C` writes comprehensive master record `bootA.md`; lazy-loads on read.
@@ -39,7 +37,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Shortcuts reference (`<?>`, `<?> -u`)** → [`.Codex/commands/c_shortcuts.md`](commands/c_shortcuts.md) — open `dev/shortcuts.html` in browser; `-u` rescans all command + skill docs and regenerates the page.
 - **Service status (`<services>`)** → [`.Codex/commands/c_services.md`](commands/c_services.md) — read-only status check for backend (`:5100`), next (`:5101`), and the active env's DB tunnel (port per top-of-file `ACTIVE_BACKEND_ENV` marker).
 - **Switch DB env (`<server> -d|-s|-p`)** → [`.Codex/commands/c_server.md`](commands/c_server.md) — restarts backend on dev/staging/production env, ensures tunnel + frontend are up, rewrites top-of-file `ACTIVE_BACKEND_ENV` marker; `-p` requires typed confirmation.
-- **Accounts & credentials (`<accounts>`)** → [`.Codex/commands/c_accounts.md`](commands/c_accounts.md) — source of truth for all dev user accounts, passwords, and Planka creds.
+- **Accounts & credentials (`<accounts>`)** → [`.Codex/commands/c_accounts.md`](commands/c_accounts.md) — source of truth for all dev user accounts and passwords.
 - **Section tags (`<user>`, `<gadmin>`, `<padmin>`, `<dev>`)** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — what each slice of the product means.
 - **Work item URLs (`/item/<uuid>` canonical, `/item/TAG-NNNN` alias)** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — UUID route is permanent; tag alias 301s to it.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants; links to per-table leaves.
@@ -60,19 +58,18 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Selenium Grid UI (`<seleniumup>`)** → [`.Codex/commands/c_selenium.md`](commands/c_selenium.md) — pings the hub then opens `http://localhost:4444/ui/` in the browser.
 - **Playwright MCP (`<playwright>`)** → [`.Codex/commands/c_playwright.md`](commands/c_playwright.md) — disabled by default (21 tools); use Crawlio for browser automation; enable by renaming `.mcp.json.disabled` → `.mcp.json`.
 - **Research agent (`/research`)** → [`.Codex/commands/c_research.md`](commands/c_research.md) — crawl + web-search + compile structured reports; `--page` saves JSON to `dev/research/` viewable in Dev → Research tab.
-- **Research paper shorthand (`<addpaper>`)** → [`.Codex/commands/c_addpaper.md`](commands/c_addpaper.md) — web-search-only shortcut that writes `dev/research/RNNN.json` and optionally hands off to `/stories` for Planka cards.
+- **Research paper shorthand (`<addpaper>`)** → [`.Codex/commands/c_addpaper.md`](commands/c_addpaper.md) — web-search-only shortcut that writes `dev/research/RNNN.json` and optionally hands off to `/stories`.
 - **Research paper format** → [`.Codex/commands/c_research-paper-format.md`](commands/c_research-paper-format.md) — canonical JSON shape for PM research papers, content HTML rules, frontmatter.
-- **Research paper stories** → [`.Codex/commands/c_addpaper-stories.md`](commands/c_addpaper-stories.md) — synthesise story candidates from research; hands off to `/stories` for Planka card creation.
+- **Research paper stories** → [`.Codex/commands/c_addpaper-stories.md`](commands/c_addpaper-stories.md) — synthesise story candidates from research; hands off to `/stories` for story creation.
 - **Write research paper** → [`.Codex/commands/c_write-research-paper.md`](commands/c_write-research-paper.md) — shared CREATE step; allocates R### ID, stamps date, writes JSON to `dev/research/`.
 - **User custom pages** → [`docs/c_c_custom_pages.md`](../docs/c_c_custom_pages.md) — `user_custom_pages` table, `/p/<uuid>` route, backend API, nav integration.
 - **Form drafts (IDB autosave)** → [`docs/c_c_form_drafts.md`](../docs/c_c_form_drafts.md) — `useDraft` hook, field classifier, logout purge, security posture.
 - **Library release channel (Phase 3)** → [`docs/c_c_library_release_channel.md`](../docs/c_c_library_release_channel.md) — release tables, severity rendering, reconciler, ack flow, gadmin badge.
-- **Planka REST templates** → [`docs/c_c_planka_rest.md`](../docs/c_c_planka_rest.md) — child of `c_backlog`; auth, create (MCP), move, comment, board fetch, parallel scan, gotchas.
 - **Scope — features underway** → [`docs/c_scope.md`](../docs/c_scope.md) — live table of what is actively being built; update when feature moves state.
 - **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter, title format, mandatory labels, deletion log.
 - **Plan ID index** → [`docs/c_plan_index.md`](../docs/c_plan_index.md) — `PLA-NNNN` counter, plan registry, mandatory plan-label rule for every story.
 - **Dev Plans tab** → [`dev/pages/DevPlansPanel.tsx`](../dev/pages/DevPlansPanel.tsx) — first tab in `/dev`; renders `dev/plans/PLA-NNNN.json` via `/api/dev/plans` (lazy-loaded body).
-- **`<stories>` skill** → [`.Codex/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK + PLA labels.
+- **`<stories>` skill** → [`.Codex/skills/stories/SKILL.md`](skills/stories/SKILL.md) — 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK labels.
 - **`/writeweb` skill** → [`.Codex/skills/writeweb/SKILL.md`](skills/writeweb/SKILL.md) — Human-AI collaborative website copy; flags `-t hero|feature|faq|about|explainer`, `-len`, `-context`, `-h`.
 - **`<theme>` skill** → [`.Codex/skills/theme/SKILL.md`](skills/theme/SKILL.md) — image → Vector theme pack; deterministic L/C/H bucket → role mapping; spec at [`docs/c_theme_rules.md`](../docs/c_theme_rules.md).
 - **`<chart>` skill (`-m` make from image, `-p` place from plan)** → [`.Codex/skills/chart/SKILL.md`](skills/chart/SKILL.md) — themed chart component in `app/components/`, stub data, sanitised preview random generator, dashboard catalog entry.

@@ -1,12 +1,12 @@
 {
   "id": "PLA-0019",
-  "title": "Samantha External API Surface — OpenAPI Spec, Versioning, Error Standards, API Keys, SDK",
+  "title": "Samantha External API Surface \u2014 OpenAPI Spec, Versioning, Error Standards, API Keys, SDK",
   "date_created": "2026-05-06",
   "date_started": "2026-05-06",
   "date_last_updated": "2026-05-07",
   "date_finished": null,
   "scope": "<p>Five foundational stories that establish the external developer API surface for the Samantha platform: an OpenAPI 3.1 spec covering all current REST endpoints, URL versioning via <code>/v1/</code> path prefix, RFC 9457 Problem Details error format across all Go handlers, API key management (Postgres table + Go middleware + issuance/revoke endpoints), and runtime binding of the <code>samantha.portfolio.fields.*</code> SDK surface in <code>app/lib/samantha.ts</code>.</p>",
-  "value": "<p>Samantha has no external developer API surface today — no machine-readable spec, no versioning contract, no third-party auth pathway, and an empty SDK stub. These five stories collectively unlock: Scalar documentation portal (fed from OpenAPI spec), SDK generation via Speakeasy or OpenAPI Generator, controlled breaking-change management via URL versioning, programmatic access for CI pipelines and integrations without a user JWT session, and the Phase 1 custom fields SDK for custom app developers. All five are zero-migration-cost changes — no external consumers exist yet, so this is the lowest-friction moment to act.</p>",
+  "value": "<p>Samantha has no external developer API surface today \u2014 no machine-readable spec, no versioning contract, no third-party auth pathway, and an empty SDK stub. These five stories collectively unlock: Scalar documentation portal (fed from OpenAPI spec), SDK generation via Speakeasy or OpenAPI Generator, controlled breaking-change management via URL versioning, programmatic access for CI pipelines and integrations without a user JWT session, and the Phase 1 custom fields SDK for custom app developers. All five are zero-migration-cost changes \u2014 no external consumers exist yet, so this is the lowest-friction moment to act.</p>",
   "implementation_plan": [
     "Author OpenAPI 3.1 spec (openapi.yaml) covering all ~20 route groups; validate with redocly lint; update api-reference/ to render from spec",
     "Add /v1/ chi group to backend/cmd/server/main.go for all external routes; update app/lib/api.ts base URL prefix; verify no 404s in dev",
@@ -29,9 +29,9 @@
     "samantha.portfolio.fields.* SDK runtime binding + contract test"
   ],
   "features_extended": [
-    "<strong>api-reference/ docs site</strong> — migrated from hand-written MDX to spec-driven Scalar or Redocly render",
-    "<strong>app/lib/samantha.ts</strong> — promoted from empty stub to live portfolio fields SDK",
-    "<strong>Go auth middleware</strong> — extended to support API key Bearer tokens alongside existing JWT"
+    "<strong>api-reference/ docs site</strong> \u2014 migrated from hand-written MDX to spec-driven Scalar or Redocly render",
+    "<strong>app/lib/samantha.ts</strong> \u2014 promoted from empty stub to live portfolio fields SDK",
+    "<strong>Go auth middleware</strong> \u2014 extended to support API key Bearer tokens alongside existing JWT"
   ],
   "features_removed": [],
   "work_item_backlog": [
@@ -39,35 +39,35 @@
       "order": 1,
       "title": "Write OpenAPI 3.1 spec for all Samantha REST endpoints",
       "story_id": "00440",
-      "card_url": "http://localhost:3333/cards/1768715464445265079",
+      "card_url": null,
       "status": "todo"
     },
     {
       "order": 2,
       "title": "Add /v1/ URL prefix to all external Samantha routes",
       "story_id": "00441",
-      "card_url": "http://localhost:3333/cards/1768715464998913209",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 3,
       "title": "Standardise all handler errors to RFC 9457 Problem Details",
       "story_id": "00442",
-      "card_url": "http://localhost:3333/cards/1768715465510618299",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 4,
-      "title": "API key management — schema, middleware, and key issuance",
+      "title": "API key management \u2014 schema, middleware, and key issuance",
       "story_id": "00443",
-      "card_url": "http://localhost:3333/cards/1768715466039100605",
+      "card_url": null,
       "status": "completed"
     },
     {
       "order": 5,
       "title": "Wire samantha.portfolio.fields.* SDK runtime bindings",
       "story_id": "00444",
-      "card_url": "http://localhost:3333/cards/1768715466592748735",
+      "card_url": null,
       "status": "completed"
     }
   ],
@@ -77,7 +77,7 @@
       "criterion": "OpenAPI spec validity",
       "proven_by": "openapi.yaml passes redocly lint with zero errors covering all route groups",
       "story_id": "00440",
-      "card_url": "http://localhost:3333/cards/1768715464445265079",
+      "card_url": null,
       "done": false
     },
     {
@@ -85,15 +85,15 @@
       "criterion": "Route coverage",
       "proven_by": "every handler in backend/cmd/server/main.go has a corresponding path entry with request/response schemas and documented auth requirements",
       "story_id": "00440",
-      "card_url": "http://localhost:3333/cards/1768715464445265079",
+      "card_url": null,
       "done": false
     },
     {
       "order": 3,
       "criterion": "Docs update",
-      "proven_by": "api-reference/ site renders from the spec (Scalar or Redocly) — developers see accurate docs from a single authoritative source",
+      "proven_by": "api-reference/ site renders from the spec (Scalar or Redocly) \u2014 developers see accurate docs from a single authoritative source",
       "story_id": "00440",
-      "card_url": "http://localhost:3333/cards/1768715464445265079",
+      "card_url": null,
       "done": false
     },
     {
@@ -101,7 +101,7 @@
       "criterion": "Router mount",
       "proven_by": "all public REST routes in backend/cmd/server/main.go are mounted under /v1/ chi group; internal routes (healthz, ws, build-reconcile) remain at current paths",
       "story_id": "00441",
-      "card_url": "http://localhost:3333/cards/1768715464998913209",
+      "card_url": null,
       "done": true
     },
     {
@@ -109,7 +109,7 @@
       "criterion": "Frontend update",
       "proven_by": "app/lib/api.ts prepends /v1/ to all external API calls and the app remains fully functional with no 404s in dev",
       "story_id": "00441",
-      "card_url": "http://localhost:3333/cards/1768715464998913209",
+      "card_url": null,
       "done": true
     },
     {
@@ -117,7 +117,7 @@
       "criterion": "CI pass",
       "proven_by": "all existing integration tests and dev server start cleanly with the new prefix; no handler returns 404 for a previously working route",
       "story_id": "00441",
-      "card_url": "http://localhost:3333/cards/1768715464998913209",
+      "card_url": null,
       "done": true
     },
     {
@@ -125,7 +125,7 @@
       "criterion": "RFC 9457 content-type",
       "proven_by": "every 4xx and 5xx response from any Go handler returns Content-Type: application/problem+json with type, title, status, detail, and instance fields",
       "story_id": "00442",
-      "card_url": "http://localhost:3333/cards/1768715465510618299",
+      "card_url": null,
       "done": true
     },
     {
@@ -133,7 +133,7 @@
       "criterion": "Validation violations",
       "proven_by": "handlers returning 422 include a violations array with per-field { field, message } entries",
       "story_id": "00442",
-      "card_url": "http://localhost:3333/cards/1768715465510618299",
+      "card_url": null,
       "done": true
     },
     {
@@ -141,7 +141,7 @@
       "criterion": "Frontend error parser",
       "proven_by": "app/lib/api.ts extracts RFC 9457 fields (title, detail, violations) for user-facing error display, replacing ad-hoc field lookups",
       "story_id": "00442",
-      "card_url": "http://localhost:3333/cards/1768715465510618299",
+      "card_url": null,
       "done": true
     },
     {
@@ -149,7 +149,7 @@
       "criterion": "API keys migration",
       "proven_by": "migration adds api_keys table with prefix, hash, scopes, rate_limit_config, expires_at, last_used_at, revoked_at, subscription_id, created_at; applies cleanly to dev database",
       "story_id": "00443",
-      "card_url": "http://localhost:3333/cards/1768715466039100605",
+      "card_url": null,
       "done": true
     },
     {
@@ -157,7 +157,7 @@
       "criterion": "Key validation middleware",
       "proven_by": "Go middleware validates Authorization: Bearer sam_live_<key> by hashing and prefix-lookup; rejects revoked/expired/unknown keys with RFC 9457 errors (401/403); integrates with chi router without conflicting with JWT middleware",
       "story_id": "00443",
-      "card_url": "http://localhost:3333/cards/1768715466039100605",
+      "card_url": null,
       "done": true
     },
     {
@@ -165,7 +165,7 @@
       "criterion": "Key issuance endpoints",
       "proven_by": "padmin endpoints exist to issue (returns raw key once), list (prefix, scopes, expiry, last_used_at, revoked_at), and revoke by ID; key format is sam_live_<32-char-base62> for production, sam_test_<32-char-base62> for test",
       "story_id": "00443",
-      "card_url": "http://localhost:3333/cards/1768715466039100605",
+      "card_url": null,
       "done": true
     },
     {
@@ -173,7 +173,7 @@
       "criterion": "SDK implementation",
       "proven_by": "samantha.portfolio.fields.getSchema, getValue, getValues, setValue, setValues, and unwrap are implemented in app/lib/samantha.ts proxying to existing /api/artefacts/:type/* endpoints",
       "story_id": "00444",
-      "card_url": "http://localhost:3333/cards/1768715466592748735",
+      "card_url": null,
       "done": true
     },
     {
@@ -181,7 +181,7 @@
       "criterion": "Workspace scoping",
       "proven_by": "all SDK calls are implicitly scoped to caller's subscription_id via existing backend JWT middleware; cross-tenant calls return 403",
       "story_id": "00444",
-      "card_url": "http://localhost:3333/cards/1768715466592748735",
+      "card_url": null,
       "done": true
     },
     {
@@ -189,66 +189,66 @@
       "criterion": "Contract test",
       "proven_by": "app/lib/samantha.contract.ts contains a compile-time contract test that TypeScript fails to compile if any samantha.portfolio.fields method signature diverges from docs/c_samantha_sdk_fields.md",
       "story_id": "00444",
-      "card_url": "http://localhost:3333/cards/1768715466592748735",
+      "card_url": null,
       "done": true
     }
   ],
   "risks": [
     {
       "impact": 2,
-      "risk": "/v1/ prefix rename requires updating every frontend fetch call — risk of missed call sites causing silent 404s",
-      "mitigation": "Grep all app/ files for /api/ before and after; run full dev smoke test; add temporary redirect middleware for /api/* → /v1/api/* during transition"
+      "risk": "/v1/ prefix rename requires updating every frontend fetch call \u2014 risk of missed call sites causing silent 404s",
+      "mitigation": "Grep all app/ files for /api/ before and after; run full dev smoke test; add temporary redirect middleware for /api/* \u2192 /v1/api/* during transition"
     },
     {
       "impact": 2,
-      "risk": "API key middleware must not intercept JWT-authenticated routes — wrong middleware ordering causes auth regressions",
+      "risk": "API key middleware must not intercept JWT-authenticated routes \u2014 wrong middleware ordering causes auth regressions",
       "mitigation": "Mount API key middleware only on routes explicitly opting in (separate chi group or per-route); JWT middleware remains primary; integration test both pathways"
     },
     {
       "impact": 1,
-      "risk": "RFC 9457 error format rollout across all handlers is broad surface area — some handlers may be missed",
+      "risk": "RFC 9457 error format rollout across all handlers is broad surface area \u2014 some handlers may be missed",
       "mitigation": "Create shared Go error helper function; grep for w.WriteHeader and json.Encode error patterns before and after; add linting check for raw error writes"
     }
   ],
   "references": [
     {
       "kind": "internal",
-      "label": "R043 — Samantha API Architecture, Tooling & Standards",
+      "label": "R043 \u2014 Samantha API Architecture, Tooling & Standards",
       "href": "dev/research/R043.json"
     },
     {
       "kind": "internal",
-      "label": "docs/c_samantha_sdk_fields.md — portfolio.fields.* contract",
+      "label": "docs/c_samantha_sdk_fields.md \u2014 portfolio.fields.* contract",
       "href": "docs/c_samantha_sdk_fields.md"
     },
     {
       "kind": "internal",
-      "label": "docs/c_c_addressables.md — addressables substrate (frozen)",
+      "label": "docs/c_c_addressables.md \u2014 addressables substrate (frozen)",
       "href": "docs/c_c_addressables.md"
     },
     {
       "kind": "internal",
-      "label": "backend/cmd/server/main.go — route registration",
+      "label": "backend/cmd/server/main.go \u2014 route registration",
       "href": "backend/cmd/server/main.go"
     },
     {
       "kind": "internal",
-      "label": "app/lib/samantha.ts — SDK root stub",
+      "label": "app/lib/samantha.ts \u2014 SDK root stub",
       "href": "app/lib/samantha.ts"
     },
     {
       "kind": "external",
-      "label": "RFC 9457 — Problem Details for HTTP APIs",
+      "label": "RFC 9457 \u2014 Problem Details for HTTP APIs",
       "href": "https://www.rfc-editor.org/rfc/rfc9457"
     },
     {
       "kind": "external",
-      "label": "Scalar — OpenAPI documentation portal (MIT)",
+      "label": "Scalar \u2014 OpenAPI documentation portal (MIT)",
       "href": "https://scalar.com"
     },
     {
       "kind": "external",
-      "label": "Speakeasy — idiomatic SDK generation",
+      "label": "Speakeasy \u2014 idiomatic SDK generation",
       "href": "https://www.speakeasy.com"
     }
   ]

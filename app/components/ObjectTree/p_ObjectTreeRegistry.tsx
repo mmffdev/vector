@@ -67,8 +67,9 @@ export interface ObjectTreeConfig<T> {
     defaultPageSize: number;
   };
 
-  // Optional panel header and filter chips (renderable React nodes)
-  panelHeader?: React.ReactNode;
+  // Optional filter chips (renderable React node). Panel chrome (title /
+  // badge / subtitle / description) is supplied directly as props on
+  // <ObjectTree> by the page — not by the registry config.
   filterChips?: React.ReactNode;
 }
 
@@ -94,7 +95,7 @@ export function getObjectTreeConfig<T>(
 // Example A: work_items tree
 //
 //   export interface WorkItem {
-//     id: string; key_num: number; item_type: "epic" | "story" | "task" | "defect";
+//     id: string; key_num: number; item_type: "epic" | "story" | "task" | "defect" | "risk";
 //     title: string; status: string; flow_state_id: string; flow_state_name: string;
 //     priority: string | null; story_points: number | null; sprint_id: string | null;
 //     sprint: { id: string; alias: string } | null; owner: { id: string; display_name: string } | null;
@@ -127,7 +128,6 @@ export function getObjectTreeConfig<T>(
 //     },
 //     search: { accessor: (row) => `${row.title} ${row.key_num}` },
 //     pagination: { options: [10, 25, 50, 100], defaultPageSize: 25 },
-//     panelHeader: <WorkItemsPanelHeader />,
 //     filterChips: <WorkItemsFilterChips />,
 //   };
 //
@@ -165,7 +165,6 @@ export function getObjectTreeConfig<T>(
 //     },
 //     search: { accessor: (row) => `${row.title} ${row.number}` },
 //     pagination: { options: [10, 25, 50], defaultPageSize: 25 },
-//     panelHeader: <StrategyPanelHeader />,
 //     filterChips: <StrategyFilterChips />,
 //   };
 //

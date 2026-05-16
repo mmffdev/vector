@@ -12,7 +12,7 @@ Crawl a website, search the web, and compile a structured report on a given topi
 ## Behaviour
 
 1. Parse arguments for URL(s), topic text, and flags
-2. Read `.claude/commands/c_research.md` for the full agent protocol
+2. Read `.Codex/commands/c_research.md` for the full agent protocol
 3. Spawn the research agent via the Agent tool with:
    - The protocol from `c_research.md` as context
    - The URL and topic as the task

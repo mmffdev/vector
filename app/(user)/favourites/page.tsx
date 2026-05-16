@@ -1,15 +1,14 @@
 "use client";
 
 // /favourites — pinned portfolios, products, and custom pages.
-// Story 00098 restyle: header (28px / --ink-muted) from PageShell.
-// Each pinned item is a .backlog-row (surface card on --canvas with
-// 1px --border, --radius-md, 14px 20px padding) for consistency
-// with /backlog and /my-vista. Type labels render as
-// .pill--neutral. Empty state uses .placeholder; no .empty-state,
-// no .tag classes, no lime-green.
+// Each pinned item is a .backlog-row for consistency with /backlog and
+// /my-vista. Type labels render as .pill--neutral; empty state uses
+// .placeholder.
 
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: string }> = [
   { kind: "Portfolio", name: "MMFF Standard", href: "/portfolio-model" },
@@ -18,10 +17,17 @@ const PINS: Array<{ kind: "Portfolio" | "Product" | "Page"; name: string; href: 
 ];
 
 export default function Favourites() {
+  const { full } = usePageTitle();
   const empty = PINS.length === 0;
   return (
     <PageContent>
-    <PageShell title="Favourites" subtitle="Your starred items">
+      <PageHeading level={1} title={full} subtitle="Quick access to your pinned items and saved views." />
+      <Panel
+        name="panel_favourites_header"
+        className="page-panel-heading"
+        title="Favourites"
+        description="Access your pinned items, saved views, and frequently visited pages."
+      />
       {empty ? (
         <div className="placeholder">
           <h3 className="placeholder__title">Nothing pinned yet</h3>
@@ -46,7 +52,6 @@ export default function Favourites() {
           ))}
         </ul>
       )}
-    </PageShell>
     </PageContent>
   );
 }

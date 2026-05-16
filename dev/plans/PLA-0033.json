@@ -3,8 +3,10 @@
   "title": "Polymorphic Artefact Consolidation — defects + user-stories + portfolio-items → artefacts",
   "date_created": "2026-05-08",
   "date_started": null,
-  "date_last_updated": "2026-05-08",
+  "date_last_updated": "2026-05-14",
   "date_finished": null,
+  "status": "obsolete",
+  "status_note": "Superseded by PLA-0037 (B21, 2026-05-09) which delivered the unified `artefactitems` handler. The premise of this plan — that backend/internal/defects/, userstories/, portfolioitems/ packages existed and needed dismantling — is incorrect on the current branch: no such packages exist in backend/internal/. All artefact types (work item, defect, user story, portfolio item) already flow through the single `artefactitems` handler at /samantha/v2/work-items (with scope='execution') and /samantha/v2/portfolio-items (with scope='strategy'), discriminated by artefact_type_id. The only residual work this plan implies — verifying no orphan `defects` / `user_stories` / `obj_portfolio_items` tables remain in mmff_vector — should be folded into a follow-up DB-cleanup task under c_c_vector_artefacts_backfill.md.",
   "scope": "<p>Consolidate three legacy work-item tables (<code>defects</code>, <code>user_stories</code>, <code>obj_portfolio_items</code> in mmff_vector) into the unified <code>artefacts</code> + <code>artefact_field_values</code> model in vector_artefacts. Each legacy type maps to a seeded <code>artefact_type_id</code> row. Column data becomes field values in <code>artefact_field_values</code> where no native artefact column exists. Once migrated, the <code>/defects</code>, <code>/user-stories</code>, and <code>/portfolio-items</code> handlers are removed (superseded by <code>/work-items</code> filtered by type). The v1 registrations are removed from main.go.</p>",
   "value": "<p>Eliminates three legacy endpoint groups and three legacy tables. All work-item-like entities collapse into the unified <code>/work-items</code> v2 surface. Removes the last polymorphic FK complexity in mmff_vector's work-item domain. Enables cross-type queries, shared field library, and consistent ranking/flow behaviour across all artefact types.</p>",
   "implementation_plan": [

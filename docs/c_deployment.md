@@ -29,7 +29,7 @@ The same container images and schema run in both modes. The schema is portable b
 - Customer controls hosts, network boundary, upgrade cadence.
 - Introduces an **update-distribution** concern that hosted doesn't have: how does a release reach the customer and apply its migrations safely?
 
-Planned (not yet built) for on-prem: signed release artefacts, opt-in customer-side updater, explicit version pinning, deterministic migration ordering driven from `db/schema/*.sql`. Called out in SoW §1.1 so it doesn't get forgotten during capacity planning. Does NOT change the schema.
+Planned (not yet built) for on-prem: signed release artefacts, opt-in customer-side updater, explicit version pinning, deterministic migration ordering driven from `db/<dbname>/schema/*.sql`. Called out in SoW §1.1 so it doesn't get forgotten during capacity planning. Does NOT change the schema.
 
 ## Containers
 

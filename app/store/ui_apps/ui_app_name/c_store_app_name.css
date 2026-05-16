@@ -5,6 +5,6 @@
 }
 
 .ui-app-name__placeholder {
-  color: var(--ink-3);
+  color: var(--ink-subtle);
   font-size: 14px;
 }

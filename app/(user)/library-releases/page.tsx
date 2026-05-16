@@ -14,8 +14,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
@@ -56,6 +57,7 @@ type LoadState =
   | { kind: "ready"; releases: ReleaseDTO[] };
 
 export default function LibraryReleasesPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const canViewReleases = useHasPermission("library.releases.view");
   const router = useRouter();
@@ -109,11 +111,14 @@ export default function LibraryReleasesPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Library releases pending review and approval." />
+      <Panel
+        name="panel_library_releases_header"
+        className="page-panel-heading"
+        title="Library Releases"
+        description="Review and manage library releases that are pending workspace approval."
+      />
     <StrictRoute>
-    <PageShell
-      title="Library Releases"
-      subtitle="Acknowledge updates published to the MMFF library on behalf of your subscription"
-    >
       <Panel name="library_releases_outstanding" title="Outstanding releases">
         {state.kind === "loading" && (
           <div className="placeholder">
@@ -203,7 +208,6 @@ export default function LibraryReleasesPage() {
           />
         )}
       </Panel>
-    </PageShell>
     </StrictRoute>
     </PageContent>
   );

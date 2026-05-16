@@ -1,0 +1,350 @@
+{
+  "id": "PLA-0044",
+  "title": "Unified topology-traversal engine",
+  "date_created": "2026-05-12",
+  "date_started": "2026-05-12",
+  "date_last_updated": "2026-05-12",
+  "date_finished": "2026-05-12",
+  "scope": "<p>Extract a single <code>walkTopology()</code> engine that drives every existing topology consumer (canvas dagre map, table state, flyout, scope rail) plus a new fifth surface (gadmin user-to-node assignment picker) with one walk, one orphan policy, one sort knob.</p><p>Engine ships in TypeScript at <code>app/lib/shared/topology/walker.ts</code> and is mirrored in Go at <code>backend/internal/shared/topology/walker.go</code>. Parity locked via golden-fixture JSON tests under <code>dev/fixtures/shared/topology/</code> read byte-identically by both Vitest and Go test suites.</p><p>Iteration 1 powers BFF reads via <code>orgdesign.Service.Tree()</code> calling the shared walker; <code>/samantha/v2/topology/tree</code> public exposure deferred to a follow-up plan. <code>MyGrant.position</code> is added to the Go struct + <code>ListMyGrants</code> query so ScopeRail can switch from byLabel to byPosition and match canvas order.</p>",
+  "value": "<p>Topology data is currently walked <strong>four times independently</strong> (canvas dagre, useTopologyTreeState, TopologyTreeFlyout, ScopeRail) with subtle drift between each walk producing user-visible bugs — notably the phantom orphan \"D\" row in ScopeRail. A fifth surface (user-to-node assignment) is about to land and would have been a fifth re-write.</p><p>R052 + R053 research confirmed the data model is universal (single-FK ownership, recursive-CTE walks); the duplication is purely an artefact of incremental delivery. Extracting now removes a structural bottleneck before any further topology UI work (move semantics, ancestor breadcrumbs, materialised paths).</p><p>Locks UI↔BFF↔public-API parity at the algorithm level, not at the HTTP boundary. Future changes touch one function, not five.</p>",
+  "implementation_plan": [
+    "Commit 1: walkTopology() engine + golden fixtures + Vitest suite + Go mirror with parity tests. Depends on PLA-0045 substrate having shipped.",
+    "Commit 2: MyGrant.position field + ListMyGrants ORDER BY position, name (no frontend change yet).",
+    "Commit 3: refactor layoutWithDagre to use walkTopology — manual smoke canvas card map unchanged.",
+    "Commit 4: refactor useTopologyTreeState to destructure childrenOf from walker result.",
+    "Commit 5: refactor TopologyTreeFlyout to use walkTopology with rootHasSpine=true, byInputOrder; removes depth-0 quirk.",
+    "Commit 6: refactor ScopeRail to use walkTopology with rootHasSpine=false, byPosition, orphanPolicy=drop; fixes phantom D orphan; sorts match canvas.",
+    "Commit 7: BFF /_site/topology/tree handler refactored to call orgdesign.Service.Tree() which calls shared/topology.WalkTopology for scope-clamped responses.",
+    "Commit 8: docs — catalogue row append, tech-debt close-out S3, CLAUDE.md one-liner pointing at shared topology README.",
+    "New surface: UserNodeAssignment.tsx (gadmin-only tree picker with checkbox cell renderer) — ships once walker exists; FE-POR-0003.9.10.",
+    "Visual smoke pass (manual) on canvas, table, flyout, rail after each refactor commit; final pass before PR merge."
+  ],
+  "areas_impacted": [
+    "POR: topology canvas, table view, flyout — all four existing consumer refactors plus the new UserNodeAssignment picker surface.",
+    "API: BFF /_site/topology/tree handler routed through shared walker; /samantha/v2/topology/tree exposure deferred (R9).",
+    "SQL: MyGrant struct gains position field + ListMyGrants SELECT/ORDER change — no schema migration (position already on topology_nodes).",
+    "DEV: docs/c_shared_methods.md catalogue row, docs/c_tech_debt.md S3 close-out, CLAUDE.md pointer addition.",
+    "GOV: parity-fixture contract locks TS↔Go algorithm equivalence in CI."
+  ],
+  "feature_list": [
+    "walkTopology() TypeScript engine in app/lib/shared/topology/walker.ts — generic over TopologyNode shape.",
+    "WalkResult exposes rows + visibleIds + visibleEdges + childrenOf in one pass.",
+    "Configurable: sort comparator, filter, collapsed set, maxDepth (default 12 — matches DescendantNodeIDs).",
+    "Renderer-side spine policy — walker emits ancestorMoreChildren for every row; depth-0 spine column is renderer business.",
+    "Go mirror at backend/internal/shared/topology/walker.go using generic struct with accessor funcs.",
+    "Golden-fixture JSON tests under dev/fixtures/shared/topology/ shared byte-identical between Vitest + Go.",
+    "Vitest suite covering flat-list, single-root-deep, multi-root-forest, orphan-drop, cycle-guard, collapse-hides-subtree.",
+    "MyGrant.position field + ListMyGrants ORDER BY position, name (replaces ORDER BY name).",
+    "ScopeRail sort comparator switches from byLabel to byPosition after MyGrant.position lands — same PR family.",
+    "ScopeRail orphan re-rooting bug removed — drops orphans matching canvas behaviour.",
+    "BFF /_site/topology/tree calls shared WalkTopology for scope-clamped responses.",
+    "UserNodeAssignment.tsx — gadmin-only tree picker with checkbox row renderer, wired into user-management page.",
+    "Tech-debt register row closed: four independent topology walks (open since PLA-0006)."
+  ],
+  "features_extended": [
+    "<strong>TopologyTreeFlyout</strong> — replaces local flatten() with walker call; depth-0 quirk removed.",
+    "<strong>layoutWithDagre</strong> — replaces inline walk(roots) + visibleEdges loop with single walker call; dagre coords attached after (no coord coupling).",
+    "<strong>useTopologyTreeState</strong> — destructures childrenOf from walker result instead of separate useMemo.",
+    "<strong>orgdesign.Service.Tree()</strong> — refactored to call shared/topology.WalkTopology when scope clamp present; un-clamped responses unchanged.",
+    "<strong>docs/c_shared_methods.md</strong> — gains row for walkTopology (catalogue file owned by PLA-0045)."
+  ],
+  "features_removed": [
+    "Local walk() recursion in app/components/topology/layoutWithDagre.ts (lines 30-38).",
+    "Inline visibleEdges loop in app/components/topology/layoutWithDagre.ts (lines 51-58).",
+    "Local childrenOf useMemo in app/components/topology/useTopologyTreeState.ts (lines 20-30).",
+    "Local flatten() recursion in app/components/TopologyTreeFlyout.tsx (lines 97-148) including depth-0 pathMoreChildren=[] special-case.",
+    "Local buildTree() recursion in app/components/ScopeRail.tsx (lines 56-108) including orphan re-rooting (line 62)."
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "walkTopology TS engine + Vitest suite + 6 golden fixtures",
+      "story_id": "00536",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F8 RISK-MED FE-POR-API-0006. Adds app/lib/shared/topology/walker.ts + walker.test.ts + README.md + 6 fixtures under dev/fixtures/shared/topology/. No consumer changes. Depends on PLA-0045 substrate."
+    },
+    {
+      "order": 2,
+      "title": "walkTopology Go mirror + parity tests",
+      "story_id": "00537",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F8 RISK-MED FE-POR-API-0007. backend/internal/shared/topology/walker.go + walker_test.go + README.md reading same fixture JSON. Parallel-safe with 00536."
+    },
+    {
+      "order": 3,
+      "title": "MyGrant.position field + ListMyGrants ORDER BY position, name",
+      "story_id": "00538",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F3 RISK-LOW FE-API-0025. Transport: site. backend/internal/orgdesign/service.go MyGrant struct + SELECT/ORDER change. Frontend rail sort change comes later (00542)."
+    },
+    {
+      "order": 4,
+      "title": "Refactor layoutWithDagre to use walkTopology",
+      "story_id": "00539",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F3 RISK-LOW FE-POR-0003.9.2. Replaces walk(roots) + visibleEdges loop with single walker call. Visual smoke: canvas card map unchanged."
+    },
+    {
+      "order": 5,
+      "title": "Refactor useTopologyTreeState to destructure childrenOf from walker",
+      "story_id": "00540",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F2 RISK-LOW FE-POR-0003.9.3. Replaces inline childrenOf useMemo. Visual smoke: table view + canvas unchanged."
+    },
+    {
+      "order": 6,
+      "title": "Refactor TopologyTreeFlyout to use walkTopology",
+      "story_id": "00541",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F3 RISK-LOW FE-POR-0003.9.4. Replaces local flatten(); depth-0 quirk removed. Visual smoke: flyout SVG geometry identical."
+    },
+    {
+      "order": 7,
+      "title": "Refactor ScopeRail to use walkTopology + sort by position (fixes phantom D orphan)",
+      "story_id": "00542",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F3 RISK-MED FE-POR-0003.9.5. Replaces buildTree(); orphan-drop active; sort byPosition. Visual smoke: no phantom D, rail order matches canvas. Depends on 00538 (MyGrant.position)."
+    },
+    {
+      "order": 8,
+      "title": "BFF /_site/topology/tree calls shared WalkTopology for scope-clamped responses",
+      "story_id": "00543",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F5 RISK-MED FE-POR-API-0008. Transport: site. orgdesign.Service.Tree() refactored to call shared/topology.WalkTopology when scope present. Un-clamped responses unchanged. /samantha/v2/topology/tree deferred (R9)."
+    },
+    {
+      "order": 9,
+      "title": "UserNodeAssignment picker (gadmin tree-shaped multi-select with checkbox rows)",
+      "story_id": "00544",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F8 RISK-MED FE-POR-0003.9.10. New gadmin-only surface at app/components/topology/UserNodeAssignment.tsx. Reuses walker output with checkbox row renderer. Wired into user-management page."
+    },
+    {
+      "order": 10,
+      "title": "PLA-0044 docs catalogue row + tech-debt close-out + CLAUDE.md pointer",
+      "story_id": "00545",
+      "card_url": null,
+      "status": "done",
+      "notes": "EST-F2 RISK-LOW FE-DEV-0025. Append walkTopology row to docs/c_shared_methods.md; close S3 row in docs/c_tech_debt.md; add CLAUDE.md one-liner under Topology pointing to shared topology README."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "walkTopology() exists at app/lib/shared/topology/walker.ts with exported types TopologyNode, FlattenedRow, WalkOpts, WalkResult",
+      "proven_by": "TS file present + npm run typecheck clean + named exports resolvable from app/components/topology/* via @/app/lib/shared/topology/walker",
+      "story_id": "00536",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "Vitest suite covers 9 cases: flat-list, single-root-deep, multi-root-forest, orphan-drop, cycle-guard, collapse-hides-subtree, sort-by-label, sort-by-position, edges-only-visible",
+      "proven_by": "npm test app/lib/shared/topology/walker.test.ts → 9 specs pass",
+      "story_id": "00536",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "Six golden fixtures land under dev/fixtures/shared/topology/ as {input,expected} JSON",
+      "proven_by": "ls dev/fixtures/shared/topology/*.json returns 6 files; each parses; expected.rows non-empty",
+      "story_id": "00536",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "Go WalkTopology exists at backend/internal/shared/topology/walker.go with WalkOpts/WalkResult generic structs",
+      "proven_by": "go build ./backend/... clean; gopls finds symbol",
+      "story_id": "00537",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "Go test suite reads same JSON fixtures and emits byte-identical expected output",
+      "proven_by": "go test ./backend/internal/shared/topology/... → all pass; diff of TS JSON output vs Go JSON output = 0 bytes for every fixture",
+      "story_id": "00537",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "MyGrant struct gains Position int field + ListMyGrants ORDER BY position, name replaces ORDER BY name",
+      "proven_by": "grep 'Position int' backend/internal/orgdesign/service.go returns the field; grep 'ORDER BY position' returns the query; ListMyGrants response includes position key",
+      "story_id": "00538",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "/_site/scope/mygrants response carries position in each row",
+      "proven_by": "curl /_site/scope/mygrants → each row has numeric position field",
+      "story_id": "00538",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "layoutWithDagre imports walkTopology and removes inline walk()/visibleEdges loop",
+      "proven_by": "grep 'walkTopology' app/components/topology/layoutWithDagre.ts present; grep 'function walk(' absent; canvas card map renders identically pre/post on Acme+4 children fixture",
+      "story_id": "00539",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 9,
+      "criterion": "useTopologyTreeState destructures childrenOf from walkTopology result",
+      "proven_by": "grep 'walkTopology' app/components/topology/useTopologyTreeState.ts present; topology page table view renders unchanged",
+      "story_id": "00540",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 10,
+      "criterion": "TopologyTreeFlyout uses walkTopology with rootHasSpine=true; depth-0 special-case removed",
+      "proven_by": "grep 'walkTopology' app/components/TopologyTreeFlyout.tsx present; grep 'pathMoreChildren = \\[\\]' absent; flyout SVG identical pre/post screenshot",
+      "story_id": "00541",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 11,
+      "criterion": "ScopeRail uses walkTopology with orphanPolicy=drop and sort=byPosition; phantom D row removed",
+      "proven_by": "grep 'walkTopology' app/components/ScopeRail.tsx present; grep 'buildTree' absent in same file; rail renders rows in position order matching canvas; orphan rows absent on seed data",
+      "story_id": "00542",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 12,
+      "criterion": "/_site/topology/tree returns the same shape pre/post for un-clamped requests",
+      "proven_by": "curl /_site/topology/tree without scope param → response shape unchanged from baseline (diff = 0)",
+      "story_id": "00543",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 13,
+      "criterion": "/_site/topology/tree with scope clamp returns only nodes inside the clamp + their visible edges",
+      "proven_by": "curl /_site/topology/tree?scope=<node-id> → response.rows all have ancestor path through <node-id>; visibleEdges restricted to that subtree",
+      "story_id": "00543",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 14,
+      "criterion": "UserNodeAssignment picker renders the topology tree with checkbox cells and persists selection via assignments API",
+      "proven_by": "gadmin opens user-management → user row → assignment picker; tree renders matching scope rail; checking a node + save persists to backend; reload shows same selection",
+      "story_id": "00544",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 15,
+      "criterion": "UserNodeAssignment uses walkTopology — no fifth independent walk introduced",
+      "proven_by": "grep 'walkTopology' app/components/topology/UserNodeAssignment.tsx present; no local flatten/buildTree/childrenOf logic in the file",
+      "story_id": "00544",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 16,
+      "criterion": "docs/c_shared_methods.md has a row for walkTopology pointing at TS path + Go path + fixture path + consumer list",
+      "proven_by": "grep 'walkTopology' docs/c_shared_methods.md returns the row; columns include both paths and 4+ consumers (canvas, table, flyout, rail, BFF tree)",
+      "story_id": "00545",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 17,
+      "criterion": "docs/c_tech_debt.md S3 row for four independent topology walks is closed with commit reference to PLA-0044",
+      "proven_by": "grep -A 2 'four independent topology walks' docs/c_tech_debt.md shows status=closed with PR/commit reference",
+      "story_id": "00545",
+      "card_url": null,
+      "done": true
+    },
+    {
+      "order": 18,
+      "criterion": "CLAUDE.md Topology line gains a child pointer to app/lib/shared/topology/README.md",
+      "proven_by": "grep 'shared/topology/README' .claude/CLAUDE.md returns the line under Topology",
+      "story_id": "00545",
+      "card_url": null,
+      "done": true
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "R1 — Edge generation in canvas coupled to dagre coords",
+      "mitigation": "Walker emits abstract {source,target} pairs only; dagre attaches coords after. Verified against current code (lines 51-58 of layoutWithDagre)."
+    },
+    {
+      "impact": 1,
+      "risk": "R2 — MyGrant lacks position field",
+      "mitigation": "Walker is generic with injected comparator; rail uses byLabel until 00538 lands position in same PR family."
+    },
+    {
+      "impact": 2,
+      "risk": "R3 — TS↔Go parity drift over time",
+      "mitigation": "Golden-fixture JSON tests in dev/fixtures/shared/topology/; both suites read same bytes; CI runs both."
+    },
+    {
+      "impact": 1,
+      "risk": "R4 — ScopeRail orphan-drop hides legit grants",
+      "mitigation": "Drop is intentional — canvas already drops; rail re-root was the bug. Followup: is_ancestor_only breadcrumb grants (separate plan)."
+    },
+    {
+      "impact": 1,
+      "risk": "R5 — Collapse state lifetime drift",
+      "mitigation": "Walker doesn't own collapsed state — accepts as input. Consumers manage their own state. No coupling."
+    },
+    {
+      "impact": 1,
+      "risk": "R6 — rootHasSpine is two-modes-in-one",
+      "mitigation": "Renamed for clarity; single fork point in walker (depth-0 ancestor init); other geometry unchanged."
+    },
+    {
+      "impact": 1,
+      "risk": "R7 — Generic TS + React Flow type friction",
+      "mitigation": "Walker emits domain types only; consumers wrap to React Flow themselves — unchanged from today."
+    },
+    {
+      "impact": 2,
+      "risk": "R8 — Refactor-without-tests gap",
+      "mitigation": "Walker unit tests + golden fixtures land FIRST. Snapshot test per consumer locked BEFORE consumer refactor. Visual smoke is final gate, not first."
+    },
+    {
+      "impact": 1,
+      "risk": "R9 — Public API freeze on tree-walk surface",
+      "mitigation": "Iteration 1 powers BFF (/_site/topology/tree) only; /samantha/v2/topology/tree exposure deferred to followup plan."
+    },
+    {
+      "impact": 2,
+      "risk": "R10 — Cyclic topology data crashes walker",
+      "mitigation": "Depth cap (12, matches DescendantNodeIDs); synthetic cycle-truncated row emitted."
+    }
+  ],
+  "references": [
+    { "kind": "internal", "label": "PLA-0044 markdown plan", "href": "dev/plans/PLA-0044.md" },
+    { "kind": "internal", "label": "PLA-0045 — Shared Methods Catalogue (sibling)", "href": "dev/plans/PLA-0045.md" },
+    { "kind": "internal", "label": "R052 — Rally Dev scope model", "href": "dev/research/R052.json" },
+    { "kind": "internal", "label": "R053 — Rally / Jira / ADO comparison", "href": "dev/research/R053.json" },
+    { "kind": "internal", "label": "PLA-0006 — original topology canvas plan", "href": "dev/plans/PLA-0006.json" },
+    { "kind": "internal", "label": "PLA-0042 — chrome scope picker", "href": "dev/plans/PLA-0042.json" },
+    { "kind": "internal", "label": "PLA-0043 — artefact-read scope clamp", "href": "dev/plans/PLA-0043.json" },
+    { "kind": "internal", "label": "Topology canvas doc", "href": "docs/c_c_topology.md" },
+    { "kind": "internal", "label": "Transport segregation doc (PLA-0039)", "href": "docs/c_c_transport_segregation.md" },
+    { "kind": "internal", "label": "Shared methods catalogue", "href": "docs/c_shared_methods.md" }
+  ]
+}

@@ -99,7 +99,7 @@ Print:
 
 **If no:** Done. The paper is complete.
 
-**If yes:** Read [`c_addpaper-stories.md`](c_addpaper-stories.md) and follow it. That protocol synthesises story candidates from the compiled content and hands off to the project's `/stories` skill (which writes stories to plan JSON through the 7-gate system). <!-- PLANKA SUSPENDED: previously created Planka cards; now writes to dev/plans/ JSON only. -->
+**If yes:** Read [`c_addpaper-stories.md`](c_addpaper-stories.md) and follow it. That protocol synthesises story candidates from the compiled content and hands off to the project's `/stories` skill (which writes stories to plan JSON through the 7-gate system).
 
 ---
 

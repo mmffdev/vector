@@ -9,7 +9,7 @@ package fields
 //     the workspace existence + membership lookups, and they short-circuit
 //     to an empty fields slice when the artefacts pool is nil.
 //
-//  2. Integration test that seeds three artefact_field_library rows
+//  2. Integration test that seeds three artefacts_fields_library rows
 //     (one per scope) plus one whitelist row, hits the live handler,
 //     and asserts the admit/deny matrix from R047 §5 maps end-to-end
 //     to the JSON response. Skips on tunnel-down.
@@ -33,12 +33,12 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // withUser injects a fake user into the request context — same pattern
 // as libraryreleases/handler_test.go.
-func withUser(u *models.User) func(http.Handler) http.Handler {
+func withUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if u == nil {
@@ -51,7 +51,7 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 	}
 }
 
-func newRouter(h *Handler, u *models.User) http.Handler {
+func newRouter(h *Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(withUser(u))
 	r.Get("/api/workspace/{id}/fields", h.List)
@@ -102,15 +102,15 @@ func vectorPoolForTest(t *testing.T) *pgxpool.Pool {
 }
 
 // pickWorkspaceUser pulls one (workspace, user) pair from the live DB
-// where the user has an active roles_workspaces grant on the workspace.
+// where the user has an active users_roles_workspaces grant on the workspace.
 // The user is NOT a tenant admin (so the membership branch — not the
 // role-bypass branch — is exercised). Skips when no such pair exists.
-func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID, u *models.User) {
+func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID, u *roletypes.User) {
 	t.Helper()
-	u = &models.User{}
+	u = &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.workspace_id
-		  FROM roles_workspaces rw
+		  FROM users_roles_workspaces rw
 		  JOIN users u ON u.id = rw.user_id
 		  JOIN master_record_workspaces w ON w.id = rw.workspace_id
 		 WHERE rw.revoked_at IS NULL
@@ -127,9 +127,9 @@ func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID,
 }
 
 // pickGadmin returns one gadmin user.
-func pickGadmin(t *testing.T, pool *pgxpool.Pool) *models.User {
+func pickGadmin(t *testing.T, pool *pgxpool.Pool) *roletypes.User {
 	t.Helper()
-	u := &models.User{}
+	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
 		SELECT id, subscription_id, email, role, is_active
 		  FROM users
@@ -282,11 +282,11 @@ func TestList_NonMember_Returns403(t *testing.T) {
 	g := pickGadmin(t, pool)
 	wsID := pickWorkspaceInTenant(t, pool, g.SubscriptionID)
 
-	stranger := models.User{
+	stranger := roletypes.User{
 		ID:             uuid.New(), // never granted on this workspace
 		SubscriptionID: g.SubscriptionID,
 		Email:          "stranger@test",
-		Role:           models.RoleUser,
+		Role:           roletypes.RoleUser,
 		IsActive:       true,
 	}
 
@@ -352,7 +352,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	// Seed: global row (subscription_id NULL).
 	var globalID, tenantID, workspaceID, otherTenantID uuid.UUID
 	err := artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES (NULL, $1, 'H Global', 'textbox', 'global')
 		RETURNING id`,
@@ -363,7 +363,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	}
 	// Tenant row matching caller's tenant.
 	err = artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'H Tenant', 'textbox', 'tenant')
 		RETURNING id`,
@@ -374,7 +374,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	}
 	// Tenant row in some OTHER tenant — must NOT appear.
 	err = artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'H Other Tenant', 'textbox', 'tenant')
 		RETURNING id`,
@@ -386,7 +386,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 	// Workspace row in caller's tenant + whitelist row admitting it
 	// into the caller's workspace.
 	err = artPool.QueryRow(ctx, `
-		INSERT INTO artefact_field_library
+		INSERT INTO artefacts_fields_library
 			(subscription_id, field_name, label, field_type, scope)
 		VALUES ($1, $2, 'H Workspace', 'textbox', 'workspace')
 		RETURNING id`,
@@ -396,14 +396,14 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 		t.Fatalf("seed workspace: %v", err)
 	}
 	if _, err := artPool.Exec(ctx,
-		`INSERT INTO artefact_workspace_fields (workspace_id, field_library_id) VALUES ($1, $2)`,
+		`INSERT INTO workspaces_fields (workspace_id, field_library_id) VALUES ($1, $2)`,
 		wsID, workspaceID,
 	); err != nil {
 		t.Fatalf("seed whitelist: %v", err)
 	}
 	t.Cleanup(func() {
 		_, _ = artPool.Exec(ctx,
-			`DELETE FROM artefact_field_library WHERE id = ANY($1)`,
+			`DELETE FROM artefacts_fields_library WHERE id = ANY($1)`,
 			[]uuid.UUID{globalID, tenantID, workspaceID, otherTenantID},
 		)
 	})

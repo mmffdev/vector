@@ -26,7 +26,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 	"github.com/mmffdev/vector-backend/internal/security"
 )
 
@@ -93,7 +93,7 @@ type countResponse struct {
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	if h.Reconciler != nil {
@@ -104,7 +104,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	}
 	tier, err := h.Svc.SubscriptionTier(r.Context(), u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if h.Reconciler != nil {
@@ -115,7 +115,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	}
 	n, blocking, err := h.Svc.CountOutstanding(r.Context(), u.SubscriptionID, tier)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, countResponse{Count: n, HasBlocking: blocking, Fresh: false})
@@ -125,17 +125,17 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	tier, err := h.Svc.SubscriptionTier(r.Context(), u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	releases, err := h.Svc.ListSinceAck(r.Context(), u.SubscriptionID, tier)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	resp := listResponse{
@@ -152,35 +152,35 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	releaseID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	var body ackRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if !librarydb.IsValidAction(body.ActionTaken) {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
 	if err := h.Svc.FindRelease(r.Context(), releaseID); err != nil {
 		if errors.Is(err, ErrReleaseNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
 	created, err := h.Svc.AckRelease(r.Context(), u.SubscriptionID, releaseID, u.ID, body.ActionTaken)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if created && h.Reconciler != nil {

@@ -6,14 +6,14 @@ package portfoliomodels
 //
 // Unlike writeStrategyArtefactTypes, this writer does NOT consume the
 // library bundle. Work-types come from the system seed at
-//   db/artefacts_schema/010_seed_system_artefact_types.sql
+//   db/vector_artefacts/schema/010_seed_system_artefact_types.sql
 // (which seeds rows with workspace_id=NULL, source='system',
 // scope='work' for the host subscription). At runtime we read those
 // LIVE seeded rows and copy them per workspace as source='tenant' so
 // the tenant can edit / archive their own copy without mutating the
 // system template.
 //
-// Schema target: vector_artefacts.artefact_types (M1–M4)
+// Schema target: vector_artefacts.artefacts_types (M1–M4)
 //   subscription_id   — soft FK mmff_vector.subscriptions
 //   workspace_id      — soft FK mmff_vector.workspaces  (NOT NULL)
 //   scope             — 'work'
@@ -66,7 +66,7 @@ type systemWorkType struct {
 // rows. Two-phase topological insert handles the parent_type_id
 // self-FK. Idempotent via uq_artefact_types_ws_scope_prefix.
 //
-// Source of truth: db/artefacts_schema/010_seed_system_artefact_types.sql
+// Source of truth: db/vector_artefacts/schema/010_seed_system_artefact_types.sql
 // — but at runtime we read the LIVE seeded rows (source='system' AND
 // scope='work') and copy them per workspace. This keeps the saga
 // writer in lock-step with whatever the seed file contains today,
@@ -100,23 +100,7 @@ func writeWorkArtefactTypes(
 	// parent_type_id=NULL. ON CONFLICT DO NOTHING preserves any prior
 	// tenant edits on re-run.
 	for _, s := range systemRows {
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO artefact_types (
-				subscription_id, workspace_id,
-				scope, source,
-				name, prefix, description,
-				parent_type_id, allows_children, sort_order,
-				library_layer_id, library_layer_tag
-			) VALUES (
-				$1, $2,
-				'work', 'tenant',
-				$3, $4, $5,
-				NULL, $6, $7,
-				NULL, NULL
-			)
-			ON CONFLICT (workspace_id, scope, prefix)
-				WHERE archived_at IS NULL
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertWorkArtefactTypeFromSystem,
 			subscriptionID, workspaceID,
 			s.name, s.prefix, s.description,
 			s.allowsChildren, s.sortOrder,
@@ -160,13 +144,7 @@ func writeWorkArtefactTypes(
 			// to do here.
 			continue
 		}
-		if _, err := vaTx.Exec(ctx, `
-			UPDATE artefact_types
-			   SET parent_type_id = $1
-			 WHERE id = $2
-			   AND workspace_id = $3
-			   AND scope = 'work'
-			   AND archived_at IS NULL`,
+		if _, err := vaTx.Exec(ctx, sqlUpdateWorkArtefactTypeParent,
 			newParentID, selfID, workspaceID,
 		); err != nil {
 			return fmt.Errorf("set parent for work artefact_type %q: %w", s.name, err)
@@ -182,17 +160,7 @@ func loadSystemWorkTypes(
 	vaTx pgx.Tx,
 	subscriptionID uuid.UUID,
 ) ([]systemWorkType, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT id, parent_type_id, name, prefix, description,
-		       allows_children, sort_order
-		  FROM artefact_types
-		 WHERE subscription_id = $1
-		   AND scope  = 'work'
-		   AND source = 'system'
-		   AND archived_at IS NULL
-		 ORDER BY sort_order, name`,
-		subscriptionID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectSystemWorkTypes, subscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("load system work-types: %w", err)
 	}
@@ -219,15 +187,7 @@ func loadWorkTenantPrefixMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[string]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT prefix, id
-		  FROM artefact_types
-		 WHERE workspace_id = $1
-		   AND scope  = 'work'
-		   AND source = 'tenant'
-		   AND archived_at IS NULL`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectWorkTenantPrefixMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load work tenant prefix map: %w", err)
 	}

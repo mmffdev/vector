@@ -17,10 +17,10 @@ package fields
 //
 // On success the body is the union of:
 //
-//   - scope=global rows from artefact_field_library
+//   - scope=global rows from artefacts_fields_library
 //   - scope=tenant rows whose subscription_id == caller tenant
 //   - scope=workspace rows whose subscription_id == caller tenant AND
-//     have a matching artefact_workspace_fields row for this workspace
+//     have a matching workspaces_fields row for this workspace
 //
 // Archived rows (archived_at IS NOT NULL) are excluded — same rule the
 // resolver uses (ResolveField in resolver.go).
@@ -40,7 +40,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler is the chi-mountable HTTP surface for the field resolver.
@@ -57,7 +57,7 @@ func NewHandler(svc *Service) *Handler {
 }
 
 // fieldRowOut is the wire shape for one entry in the response. Columns
-// mirror artefact_field_library exactly — we do not invent fields. The
+// mirror artefacts_fields_library exactly — we do not invent fields. The
 // frontend may ignore columns it doesn't render.
 type fieldRowOut struct {
 	ID             uuid.UUID       `json:"id"`
@@ -83,22 +83,22 @@ type listResponse struct {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	wsID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.AssertCallerMayRead(r.Context(), wsID, u); err != nil {
 		switch {
 		case errors.Is(err, ErrWorkspaceNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		case errors.Is(err, ErrForbidden):
-			httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
+			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
 		default:
-			httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
 		return
 	}
@@ -108,7 +108,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := h.Svc.LoadAdmittedFields(r.Context(), wsID, u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	out := make([]fieldRowOut, 0, len(rows))

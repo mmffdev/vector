@@ -5,6 +5,7 @@
 import dagre from "dagre";
 import type { Node, Edge } from "@xyflow/react";
 import type { OrgNode } from "@/app/lib/topologyApi";
+import { walkTopology } from "@/app/lib/shared/topology/walker";
 import {
   NODE_W,
   NODE_H,
@@ -27,15 +28,15 @@ export function layoutWithDagre(
 ): { nodes: Node<OrgNodeData>[]; edges: Edge[] } {
   if (tree.length === 0) return { nodes: [], edges: [] };
 
-  // Walk visible-only graph: skip subtrees rooted at a collapsed node.
-  const visibleIds = new Set<string>();
-  const roots = childrenOf.get(null) ?? [];
-  const walk = (n: OrgNode) => {
-    visibleIds.add(n.id);
-    if (collapsed.has(n.id)) return;
-    for (const k of childrenOf.get(n.id) ?? []) walk(k);
-  };
-  for (const r of roots) walk(r);
+  // PLA-0044: visibility walk delegates to the shared engine so canvas,
+  // flyout, rail and BFF share one definition of "what's visible".
+  // childrenOf is still passed in by the caller (the topology page memoises
+  // it from the tree response) — we just hand the same tree to walkTopology
+  // and read back its visibleIds / visibleEdges.
+  const { visibleIds, visibleEdges } = walkTopology(tree, {
+    collapsed,
+    sort: (a, b) => a.position - b.position || a.id.localeCompare(b.id),
+  });
 
   const g = new dagre.graphlib.Graph<{}>();
   g.setGraph({ rankdir, ranksep: RANK_SEP, nodesep: NODE_SEP });
@@ -48,14 +49,8 @@ export function layoutWithDagre(
     });
   }
 
-  const visibleEdges: Array<{ source: string; target: string }> = [];
-  for (const id of visibleIds) {
-    const kids = collapsed.has(id) ? [] : childrenOf.get(id) ?? [];
-    for (const k of kids) {
-      if (!visibleIds.has(k.id)) continue;
-      g.setEdge(id, k.id);
-      visibleEdges.push({ source: id, target: k.id });
-    }
+  for (const e of visibleEdges) {
+    g.setEdge(e.source, e.target);
   }
 
   dagre.layout(g);

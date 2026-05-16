@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler exposes the addressables Service over chi.
@@ -61,7 +61,7 @@ type buildReconcileReq struct {
 
 type buildReconcileResp struct {
 	Inserted  int      `json:"inserted"`
-	Archived  int      `json:messages.ResourceArchived`
+	Archived  int      `json:"archived"`
 	Unchanged int      `json:"unchanged"`
 	Addresses []string `json:"addresses"`
 }
@@ -75,22 +75,22 @@ func (h *Handler) BuildReconcile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Header.Get("X-CI-Token") != h.ciToken {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	var req buildReconcileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if strings.TrimSpace(req.PageRoute) == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	slot, err := ParseSlot(req.Slot)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 
@@ -133,7 +133,7 @@ type registerResp struct {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	source, err := ParseSource(req.Source)
@@ -162,23 +162,23 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	slot, err := ParseSlot(req.Slot)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	if strings.TrimSpace(req.PageRoute) == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 
 	var customAppID *uuid.UUID
 	if source == SourceCustomApp {
 		if req.CustomAppID == nil || *req.CustomAppID == "" {
-			httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 			return
 		}
 		id, err := uuid.Parse(*req.CustomAppID)
 		if err != nil {
-			httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 			return
 		}
 		customAppID = &id
@@ -195,7 +195,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	// honour the per-row helpable bit without a follow-up snapshot.
 	id, helpable, err := h.Svc.lookupRowByAddress(r.Context(), req.PageRoute, addr)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -212,12 +212,12 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Snapshot(w http.ResponseWriter, r *http.Request) {
 	route := r.URL.Query().Get("route")
 	if strings.TrimSpace(route) == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	out, err := h.Svc.Snapshot(r.Context(), route)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -245,7 +245,7 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "addressable_id")
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	locale := r.URL.Query().Get("locale")
@@ -255,17 +255,17 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 
 	exists, err := h.Svc.addressableExists(r.Context(), id)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if !exists {
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 		return
 	}
 
 	doc, _, err := h.Svc.HelpFor(r.Context(), id, locale)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, helpResp{
@@ -288,7 +288,7 @@ func (h *Handler) PageHelp(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) PageHelpAdminList(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Svc.AdminListHelp(r.Context())
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, rows)
@@ -309,17 +309,17 @@ type pageHelpPutReq struct {
 func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "addressable_id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	var req pageHelpPutReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := validateHelpRichContent(req.VideoEmbeds, req.ImageURLs); err != nil {
@@ -334,10 +334,10 @@ func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.Svc.UpdateHelp(r.Context(), id, req.Locale, update, u.ID); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"addressable_id": id.String()})
@@ -349,21 +349,21 @@ func (h *Handler) PageHelpAdminPut(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) PageHelpAdminDelete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "addressable_id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	locale := r.URL.Query().Get("locale")
 	if err := h.Svc.ArchiveHelp(r.Context(), id, locale, u.ID); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -383,25 +383,25 @@ type helpableReq struct {
 func (h *Handler) AdminUpdateHelpable(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	var req helpableReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.UpdateHelpable(r.Context(), id, req.Helpable); err != nil {
 		if errors.Is(err, ErrParentNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": id.String(), "helpable": req.Helpable})
@@ -473,6 +473,6 @@ func writeServiceErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrRuntimeRegisterInProduction):
 		httperr.Write(w, r, http.StatusForbidden, err.Error())
 	default:
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 	}
 }

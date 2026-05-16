@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // MaxPinned caps the server-side pinned list length. Mirrors MAX_PINNED in
@@ -26,6 +26,7 @@ const (
 	MaxCustomGroups     = 10
 	MaxChildrenPerParent = 8
 	MaxGroupLabelLen     = 64
+	MaxGroupIconLen      = 64
 )
 
 var (
@@ -40,11 +41,14 @@ var (
 	ErrBadNesting           = errors.New("invalid parent/child nesting")
 	ErrCatalogueItemLocked  = errors.New("catalogue items cannot be nested or moved into custom groups")
 	ErrUnknownGroup         = errors.New("unknown group_id")
+	ErrUnknownTag           = errors.New("unknown tag_enum")
+	ErrPlacementKind        = errors.New("placement must set exactly one of group_id, tag_enum")
 	ErrEmptyGroupLabel      = errors.New("group label must not be empty")
 	ErrDuplicateGroupLabel  = errors.New("duplicate group label")
 	ErrTooManyGroups        = errors.New("too many custom groups")
 	ErrTooManyChildren      = errors.New("too many children for parent")
 	ErrGroupLabelTooLong    = errors.New("group label too long")
+	ErrGroupIconTooLong     = errors.New("group icon too long")
 )
 
 type Service struct {
@@ -74,10 +78,13 @@ type PinnedInput struct {
 }
 
 // CustomGroup is the wire shape for a user-created primary group.
+// Icon is nil = "no override picked"; consumers fall back to a generic
+// group icon. The string vocabulary matches users_nav_prefs.icon_override.
 type CustomGroup struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Position int    `json:"position"`
+	ID       string  `json:"id"`
+	Label    string  `json:"label"`
+	Position int     `json:"position"`
+	Icon     *string `json:"icon"`
 }
 
 // CustomGroupInput is the inbound shape on PUT /api/nav/prefs.
@@ -85,20 +92,21 @@ type CustomGroup struct {
 // created rows. The service mints fresh UUIDs for "new:" rows and
 // returns the id mapping via refetch (no separate response shape).
 type CustomGroupInput struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Position int    `json:"position"`
+	ID       string  `json:"id"`
+	Label    string  `json:"label"`
+	Position int     `json:"position"`
+	Icon     *string `json:"icon,omitempty"`
 }
 
 // GetPrefs returns the user's prefs for the resolved profile (active
 // → Default → lazy-seed). Backwards-compatible signature kept for
 // tests + handlers that don't yet pass an explicit profile.
-func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) ([]PrefRow, error) {
+func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID) ([]PrefRow, error) {
 	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
 	if err != nil {
 		return nil, err
 	}
-	return s.GetPrefsForProfile(ctx, userID, subscriptionID, role, pid)
+	return s.GetPrefsForProfile(ctx, userID, subscriptionID, role, roleID, pid)
 }
 
 // GetPrefsForProfile returns prefs scoped to a specific profile.
@@ -106,57 +114,54 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 //
 // Side effect: opportunistically backfills any system page (created_by IS NULL,
 // subscription_id IS NULL) where pages.default_pinned=TRUE and the user's role
-// is allowed by page_roles, but the user has no row in user_nav_prefs for it.
+// is allowed by page_roles, but the user has no row in users_nav_prefs for it.
 // This eliminates the per-release backfill-migration tax — adding a new system
 // page with default_pinned=TRUE auto-pins it for every existing eligible user
 // on their next nav fetch. One-time per (user, page, profile); subsequent
 // unpins stick. Auto-pin is per-profile so a custom profile starts clean
 // rather than inheriting the union of "every default-pinned page ever shipped"
 // from Default.
-func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) ([]PrefRow, error) {
+func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID, profileID uuid.UUID) ([]PrefRow, error) {
+	// Non-default profiles with zero prefs are seeded from Default on first
+	// read. This covers profiles created before the CreateProfile clone was
+	// added, and any profile whose prefs were wiped externally. One-time per
+	// profile: once the clone lands, subsequent reads see existing rows.
+	if _, err := s.Pool.Exec(ctx, sqlSeedNonDefaultPrefsFromDefaultOnFirstRead,
+		userID, subscriptionID, profileID); err != nil {
+		return nil, fmt.Errorf("nav prefs clone-from-default: %w", err)
+	}
+
+	// Also seed per-profile group placements from Default when this profile
+	// has none yet (mirrors the prefs clone above). Uses WHERE NOT EXISTS
+	// rather than ON CONFLICT because the position unique constraint is
+	// deferrable and ON CONFLICT cannot use deferrable arbiters.
+	if _, err := s.Pool.Exec(ctx, sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead,
+		profileID, userID, subscriptionID); err != nil {
+		return nil, fmt.Errorf("nav profile-groups clone-from-default: %w", err)
+	}
+
 	// Default-page auto-pin only fires for the user's Default profile.
 	// Custom profiles start with whatever the user explicitly puts on
 	// them — auto-pinning every new system page across every profile
 	// would silently grow customer profiles forever.
-	if _, err := s.Pool.Exec(ctx, `
-		INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page)
-		SELECT
-			$1::uuid,
-			$2::uuid,
-			$4::uuid,
-			p.key_enum,
-			COALESCE(
-				(SELECT MAX(unp.position) + 1
-				 FROM user_nav_prefs unp
-				 WHERE unp.user_id = $1::uuid
-				   AND unp.subscription_id = $2::uuid
-				   AND unp.profile_id = $4::uuid),
-				0
-			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
-			FALSE
-		FROM pages p
-		JOIN roles_pages pr ON pr.page_id = p.id
-		JOIN user_nav_profiles d ON d.id = $4::uuid AND d.is_default = TRUE
-		WHERE p.created_by IS NULL
-		  AND p.subscription_id IS NULL
-		  AND p.default_pinned = TRUE
-		  AND p.pinnable = TRUE
-		  AND pr.role = $3::user_role
-		  AND NOT EXISTS (
-			  SELECT 1 FROM user_nav_prefs unp
-			  WHERE unp.user_id = $1::uuid
-				AND unp.subscription_id = $2::uuid
-				AND unp.profile_id = $4::uuid
-				AND unp.item_key = p.key_enum
-		  )`, userID, subscriptionID, string(role), profileID); err != nil {
+	if _, err := s.Pool.Exec(ctx, sqlBackfillDefaultPinnedPages,
+		userID, subscriptionID, roleID, profileID); err != nil {
 		return nil, fmt.Errorf("nav prefs backfill: %w", err)
 	}
 
-	rows, err := s.Pool.Query(ctx, `
-		SELECT item_key, position, is_start_page, parent_item_key, group_id, icon_override
-		FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3
-		ORDER BY position`, userID, subscriptionID, profileID)
+	// Seed per-profile group placements if the Default profile has none yet.
+	// Mig 191 collapsed the three lazy-seeded "admin nav groups"
+	// (Workspace Admin / User Admin / Vector Admin) into three regular
+	// tag enums on pages_tags, so they flow through the same placement
+	// table as Personal / Planning / Dev Tools. The hard-coded
+	// sqlLazySeedAdminNavGroups query is gone.
+	if _, err := s.Pool.Exec(ctx, sqlLazySeedDefaultProfileGroupPlacements,
+		profileID, userID); err != nil {
+		return nil, fmt.Errorf("nav profile groups lazy-seed: %w", err)
+	}
+
+	rows, err := s.Pool.Query(ctx, sqlListUserNavPrefsForProfile,
+		userID, subscriptionID, profileID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,11 +189,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 
 // GetCustomGroups returns the user's custom primary groups, in user-defined order.
 func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]CustomGroup, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, label, position
-		FROM user_nav_groups
-		WHERE user_id = $1
-		ORDER BY position`, userID)
+	rows, err := s.Pool.Query(ctx, sqlListUserNavGroups, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +198,7 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 	for rows.Next() {
 		var g CustomGroup
 		var id uuid.UUID
-		if err := rows.Scan(&id, &g.Label, &g.Position); err != nil {
+		if err := rows.Scan(&id, &g.Label, &g.Position, &g.Icon); err != nil {
 			return nil, err
 		}
 		g.ID = id.String()
@@ -211,21 +212,19 @@ func (s *Service) GetCustomGroups(ctx context.Context, userID uuid.UUID) ([]Cust
 // wrapper kept so handlers + tests don't need updating.
 // Returns ("", false) if no start page set OR the caller's current role no
 // longer permits the stored item (e.g. demotion since prefs were written).
-func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role) (string, bool, error) {
+func (s *Service) GetStartPageHref(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID) (string, bool, error) {
 	pid, err := s.ResolveProfile(ctx, userID, subscriptionID, nil)
 	if err != nil {
 		return "", false, err
 	}
-	return s.GetStartPageHrefForProfile(ctx, userID, subscriptionID, role, pid)
+	return s.GetStartPageHrefForProfile(ctx, userID, subscriptionID, role, roleID, pid)
 }
 
 // GetStartPageHrefForProfile is the profile-scoped variant.
-func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role models.Role, profileID uuid.UUID) (string, bool, error) {
+func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscriptionID uuid.UUID, role roletypes.Role, roleID uuid.UUID, profileID uuid.UUID) (string, bool, error) {
 	var key string
-	err := s.Pool.QueryRow(ctx, `
-		SELECT item_key FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3 AND is_start_page = TRUE
-		LIMIT 1`, userID, subscriptionID, profileID).Scan(&key)
+	err := s.Pool.QueryRow(ctx, sqlSelectStartPageKeyForProfile,
+		userID, subscriptionID, profileID).Scan(&key)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
@@ -240,7 +239,7 @@ func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscr
 	if !ok {
 		return "", false, nil
 	}
-	if !roleAllowed(role, entry.Roles) {
+	if !roleAllowed(roleID, entry.RoleIDs) {
 		return "", false, nil
 	}
 	return entry.Href, true, nil
@@ -264,7 +263,8 @@ func (s *Service) GetStartPageHrefForProfile(ctx context.Context, userID, subscr
 func (s *Service) ReplacePrefs(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
-	role models.Role,
+	role roletypes.Role,
+	roleID uuid.UUID,
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
@@ -274,17 +274,17 @@ func (s *Service) ReplacePrefs(
 	if err != nil {
 		return err
 	}
-	return s.ReplacePrefsForProfile(ctx, userID, subscriptionID, role, pinned, startPageKey, groups, extraEntries, pid)
+	return s.ReplacePrefsForProfile(ctx, userID, subscriptionID, role, roleID, pinned, startPageKey, groups, extraEntries, pid)
 }
 
 // ReplacePrefsForProfile is the profile-scoped variant. Wipes + re-inserts
-// only this profile's rows; other profiles are untouched. user_nav_groups
+// only this profile's rows; other profiles are untouched. users_nav_groups
 // (the shared pool) is NOT wiped here — that would clobber other profiles
 // referencing the same groups. Group writes happen via /api/nav/groups
 // instead (a separate surface — see story B6).
 //
 // Until the dedicated groups surface lands, this method preserves the
-// legacy "groups payload replaces user_nav_groups" behaviour ONLY when
+// legacy "groups payload replaces users_nav_groups" behaviour ONLY when
 // it's writing the user's Default profile (the only profile the legacy
 // PUT could ever touch). Non-default profiles MUST send an empty
 // groups list; the shared group pool is not the responsibility of a
@@ -292,7 +292,8 @@ func (s *Service) ReplacePrefs(
 func (s *Service) ReplacePrefsForProfile(
 	ctx context.Context,
 	userID, subscriptionID uuid.UUID,
-	role models.Role,
+	role roletypes.Role,
+	roleID uuid.UUID,
 	pinned []PinnedInput,
 	startPageKey *string,
 	groups []CustomGroupInput,
@@ -327,6 +328,17 @@ func (s *Service) ReplacePrefsForProfile(
 		}
 		labelSeen[lower] = struct{}{}
 
+		var icon *string
+		if g.Icon != nil {
+			trimmed := strings.TrimSpace(*g.Icon)
+			if trimmed != "" {
+				if len(trimmed) > MaxGroupIconLen {
+					return fmt.Errorf("%w: %d > %d", ErrGroupIconTooLong, len(trimmed), MaxGroupIconLen)
+				}
+				icon = &trimmed
+			}
+		}
+
 		var canonical string
 		if strings.HasPrefix(g.ID, "new:") {
 			canonical = uuid.NewString()
@@ -343,6 +355,7 @@ func (s *Service) ReplacePrefsForProfile(
 			ID:       canonical,
 			Label:    label,
 			Position: g.Position,
+			Icon:     icon,
 		})
 	}
 	for i := 0; i < len(normalisedGroups); i++ {
@@ -388,7 +401,7 @@ func (s *Service) ReplacePrefsForProfile(
 		return CatalogEntry{}, false
 	}
 
-	if err := validatePinned(lookup, translated, role, knownGroupIDs); err != nil {
+	if err := validatePinned(lookup, translated, roleID, knownGroupIDs); err != nil {
 		return err
 	}
 	if startPageKey != nil {
@@ -396,7 +409,7 @@ func (s *Service) ReplacePrefsForProfile(
 		if !ok || !entry.Pinnable {
 			return fmt.Errorf("%w: start_page_key=%s", ErrNotPinnable, *startPageKey)
 		}
-		if !roleAllowed(role, entry.Roles) {
+		if !roleAllowed(roleID, entry.RoleIDs) {
 			return fmt.Errorf("%w: start_page_key=%s", ErrRoleForbidden, *startPageKey)
 		}
 		found := false
@@ -418,27 +431,24 @@ func (s *Service) ReplacePrefsForProfile(
 	defer tx.Rollback(ctx)
 
 	// Look up whether the targeted profile is Default. The shared
-	// user_nav_groups pool is only wiped when writing Default — that
+	// users_nav_groups pool is only wiped when writing Default — that
 	// preserves the legacy single-profile behaviour without letting a
 	// non-default-profile PUT clobber groups other profiles still
 	// reference. The group surface gets its own dedicated endpoint in
 	// B6; until then, non-default profiles MUST send an empty groups
 	// list (validated above by len cap; semantically should be 0).
 	var targetIsDefault bool
-	if err := tx.QueryRow(ctx, `
-		SELECT is_default FROM user_nav_profiles WHERE id = $1
-	`, profileID).Scan(&targetIsDefault); err != nil {
+	if err := tx.QueryRow(ctx, sqlSelectProfileIsDefaultByID, profileID).Scan(&targetIsDefault); err != nil {
 		return err
 	}
 
 	// Wipe prefs for THIS profile only (other profiles' rows survive).
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`, userID, subscriptionID, profileID); err != nil {
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+		userID, subscriptionID, profileID); err != nil {
 		return err
 	}
 	if targetIsDefault {
-		if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+		if _, err := tx.Exec(ctx, sqlDeleteUserNavGroupsForUser, userID); err != nil {
 			return err
 		}
 	}
@@ -452,12 +462,8 @@ func (s *Service) ReplacePrefsForProfile(
 	if len(normalisedGroups) > 0 {
 		batch := &pgx.Batch{}
 		for _, g := range normalisedGroups {
-			batch.Queue(`
-				INSERT INTO user_nav_groups (id, user_id, label, position)
-				VALUES ($1, $2, $3, $4)
-				ON CONFLICT (id) DO UPDATE
-				SET label = EXCLUDED.label, position = EXCLUDED.position`,
-				g.ID, userID, g.Label, g.Position)
+			batch.Queue(sqlUpsertUserNavGroup,
+				g.ID, userID, g.Label, g.Position, g.Icon)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range normalisedGroups {
@@ -480,9 +486,7 @@ func (s *Service) ReplacePrefsForProfile(
 				u, _ := uuid.Parse(*p.GroupID)
 				gid = &u
 			}
-			batch.Queue(`
-				INSERT INTO user_nav_prefs (user_id, subscription_id, profile_id, item_key, position, is_start_page, parent_item_key, group_id, icon_override)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			batch.Queue(sqlInsertUserNavPref,
 				userID, subscriptionID, profileID, p.ItemKey, p.Position, isStart, p.ParentItemKey, gid, p.IconOverride)
 		}
 		br := tx.SendBatch(ctx, batch)
@@ -517,21 +521,18 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.U
 	defer tx.Rollback(ctx)
 
 	var isDefault bool
-	if err := tx.QueryRow(ctx, `
-		SELECT is_default FROM user_nav_profiles WHERE id = $1
-	`, pid).Scan(&isDefault); err != nil {
+	if err := tx.QueryRow(ctx, sqlSelectProfileIsDefaultByID, pid).Scan(&isDefault); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`, userID, subscriptionID, pid); err != nil {
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+		userID, subscriptionID, pid); err != nil {
 		return err
 	}
 	// Reset only wipes the shared group pool when the user's resolved
 	// profile is Default. Non-default profiles share the pool; resetting
 	// one of them must not erase groups that other profiles still place.
 	if isDefault {
-		if _, err := tx.Exec(ctx, `DELETE FROM user_nav_groups WHERE user_id = $1`, userID); err != nil {
+		if _, err := tx.Exec(ctx, sqlDeleteUserNavGroupsForUser, userID); err != nil {
 			return err
 		}
 	}
@@ -539,18 +540,58 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.U
 }
 
 // DeletePrefsForProfile wipes prefs for the named profile only. Never
-// touches user_nav_groups (the shared pool). Use the legacy DeletePrefs
+// touches users_nav_groups (the shared pool). Use the legacy DeletePrefs
 // when the caller really means "reset to defaults" on the user's home
 // profile.
 func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptionID, profileID uuid.UUID) error {
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return err
 	}
-	_, err := s.Pool.Exec(ctx, `
-		DELETE FROM user_nav_prefs
-		WHERE user_id = $1 AND subscription_id = $2 AND profile_id = $3`,
+	_, err := s.Pool.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
 		userID, subscriptionID, profileID)
 	return err
+}
+
+// ResetAllForUser is the "blow it all away" reset used by the Navigation
+// page's manual reset button. Deletes every nav-related row owned by the
+// user for the given subscription:
+//
+//   - users_nav_profiles      (CASCADE drops users_nav_prefs +
+//                              users_nav_profile_groups; SET NULL on
+//                              users.active_nav_profile_id)
+//   - users_nav_groups        (shared custom-group pool — explicit delete
+//                              since CASCADE above doesn't reach it)
+//
+// On the next /_site/nav/prefs read, ResolveProfile sees no Default,
+// EnsureDefaultProfile lazy-seeds a fresh one, sqlBackfillDefaultPinnedPages
+// re-pins everything pages.default_pinned=TRUE that the user's role is
+// allowed to see via users_roles_pages, and sqlLazySeedDefaultProfileGroupPlacements
+// rebuilds the tag-bucket order from pages_tags.default_order. The end
+// state is exactly what a freshly-onboarded user would see.
+//
+// Unlike DeletePrefs (legacy), this also tears down the profile rows so
+// any drift in users_nav_profile_groups (e.g. stale placements pointing
+// at deleted tag enums) is cleared in the same shot.
+func (s *Service) ResetAllForUser(ctx context.Context, userID, subscriptionID uuid.UUID) error {
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete profiles first — CASCADE handles prefs + profile_groups,
+	// and users.active_nav_profile_id is nulled via ON DELETE SET NULL.
+	if _, err := tx.Exec(ctx, sqlResetUserNavProfilesForSubscription, userID, subscriptionID); err != nil {
+		return err
+	}
+
+	// users_nav_groups is the shared pool (per-user, not per-profile).
+	// CASCADE above doesn't reach it, so explicit delete.
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavGroupsForUser, userID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 // validatePinned enforces the rule set described on ReplacePrefs.
@@ -560,7 +601,7 @@ func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptio
 func validatePinned(
 	lookup func(string) (CatalogEntry, bool),
 	pinned []PinnedInput,
-	role models.Role,
+	roleID uuid.UUID,
 	knownGroupIDs map[string]struct{},
 ) error {
 	seen := make(map[string]struct{}, len(pinned))
@@ -580,7 +621,7 @@ func validatePinned(
 		if !entry.Pinnable {
 			return fmt.Errorf("%w: %s", ErrNotPinnable, p.ItemKey)
 		}
-		if !roleAllowed(role, entry.Roles) {
+		if !roleAllowed(roleID, entry.RoleIDs) {
 			return fmt.Errorf("%w: %s", ErrRoleForbidden, p.ItemKey)
 		}
 		if _, dup := seen[p.ItemKey]; dup {

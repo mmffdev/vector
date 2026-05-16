@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError } from "@/app/lib/api";
+import { apiSite as api, ApiError } from "@/app/lib/api";
 import Panel from "@/app/components/Panel";
 import {
   PORTFOLIO_MODELS_LIST_PATH,

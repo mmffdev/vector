@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 var (
@@ -22,6 +22,11 @@ var (
 	ErrAccountInactive    = errors.New("account inactive")
 	ErrNotFound           = errors.New("not found")
 	ErrTokenExpired       = errors.New("token expired or used")
+	// ErrWorkspaceForbidden — caller asked SwitchWorkspace for a
+	// workspace that either doesn't exist, lives in another subscription,
+	// or carries no live role grant for this user. Single sentinel for
+	// all three so we don't leak existence (PLA-0053 / story 00576.5).
+	ErrWorkspaceForbidden = errors.New("workspace forbidden")
 )
 
 // PermissionResolver is the small surface auth.Service needs from the
@@ -49,7 +54,7 @@ type Service struct {
 	// auth → libraryreleases import cycle. Slice (not single fn) so
 	// future cross-cutting concerns (presence, last-seen, analytics)
 	// register without rewiring this hook.
-	OnLogin []func(ctx context.Context, user *models.User)
+	OnLogin []func(ctx context.Context, user *roletypes.User)
 }
 
 func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
@@ -74,14 +79,12 @@ type RolePayload struct {
 // not break because the catalogue is briefly unavailable.
 func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) (RolePayload, []string) {
 	var roleID uuid.UUID
-	if err := s.Pool.QueryRow(ctx, `SELECT role_id FROM users WHERE id = $1`, userID).Scan(&roleID); err != nil {
+	if err := s.Pool.QueryRow(ctx, sqlSelectUserRoleID, userID).Scan(&roleID); err != nil {
 		return RolePayload{}, []string{}
 	}
 	var rp RolePayload
-	if err := s.Pool.QueryRow(ctx, `
-		SELECT id, code, label, rank, is_system, is_external
-		  FROM roles WHERE id = $1`, roleID,
-	).Scan(&rp.ID, &rp.Code, &rp.Label, &rp.Rank, &rp.IsSystem, &rp.IsExternal); err != nil {
+	if err := s.Pool.QueryRow(ctx, sqlSelectRoleByID, roleID).
+		Scan(&rp.ID, &rp.Code, &rp.Label, &rp.Rank, &rp.IsSystem, &rp.IsExternal); err != nil {
 		return RolePayload{}, []string{}
 	}
 	perms := []string{}
@@ -94,14 +97,10 @@ func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) 
 	return rp, perms
 }
 
-func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	u := &models.User{}
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
-		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until, created_at, updated_at
-		FROM users WHERE email = $1`, email).Scan(
-		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
+func (s *Service) FindUserByEmail(ctx context.Context, email string) (*roletypes.User, error) {
+	u := &roletypes.User{}
+	err := s.Pool.QueryRow(ctx, sqlSelectUserByEmail, email).Scan(
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
 	)
@@ -114,14 +113,10 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*models.Us
 	return u, nil
 }
 
-func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	u := &models.User{}
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, subscription_id, email, password_hash, role, is_active, last_login,
-		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until, created_at, updated_at
-		FROM users WHERE id = $1`, id).Scan(
-		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.IsActive, &u.LastLogin,
+func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.User, error) {
+	u := &roletypes.User{}
+	err := s.Pool.QueryRow(ctx, sqlSelectUserByID, id).Scan(
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
 	)
@@ -132,7 +127,7 @@ func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*models.User,
 }
 
 type LoginResult struct {
-	User         *models.User
+	User         *roletypes.User
 	AccessToken  string
 	RefreshRaw   string
 	RefreshExpAt time.Time
@@ -159,9 +154,17 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	}
 
 	// Success: reset lockout state, stamp last_login.
-	_, _ = s.Pool.Exec(ctx, `
-		UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login = NOW()
-		WHERE id = $1`, u.ID)
+	_, _ = s.Pool.Exec(ctx, sqlClearLockoutAndStampLogin, u.ID)
+
+	// PLA-0053 / story 00575: attach the user's first live workspace
+	// to the JWT claim. Failure (no workspaces yet, DB error) is
+	// non-fatal — the access token signs without a workspace_id claim
+	// and WorkspaceClampMiddleware falls back to FirstLiveWorkspace
+	// per the legacy-token rollout window. Login itself never blocks
+	// on workspace resolution.
+	if wsID, werr := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); werr == nil {
+		u.WorkspaceID = wsID
+	}
 
 	access, err := SignAccessToken(u)
 	if err != nil {
@@ -174,9 +177,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
 
-	_, err = s.Pool.Exec(ctx, `
-		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)`,
+	_, err = s.Pool.Exec(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
 	)
 	if err != nil {
@@ -195,7 +196,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }
 
-func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip string) {
+func (s *Service) recordFailedLogin(ctx context.Context, u *roletypes.User, ip string) {
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login_failed", IPAddress: &ip})
 	threshold := envInt("LOCKOUT_THRESHOLD", 5)
 	if threshold == 0 {
@@ -205,12 +206,10 @@ func (s *Service) recordFailedLogin(ctx context.Context, u *models.User, ip stri
 	newCount := u.FailedLoginCount + 1
 	if newCount >= threshold {
 		lockUntil := time.Now().Add(dur)
-		_, _ = s.Pool.Exec(ctx, `
-			UPDATE users SET failed_login_count = $1, locked_until = $2 WHERE id = $3`,
-			newCount, lockUntil, u.ID)
+		_, _ = s.Pool.Exec(ctx, sqlBumpFailedLoginAndLock, newCount, lockUntil, u.ID)
 		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.account_locked", IPAddress: &ip})
 	} else {
-		_, _ = s.Pool.Exec(ctx, `UPDATE users SET failed_login_count = $1 WHERE id = $2`, newCount, u.ID)
+		_, _ = s.Pool.Exec(ctx, sqlBumpFailedLogin, newCount, u.ID)
 	}
 }
 
@@ -222,10 +221,8 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	var revoked bool
 	var rotatedAt *time.Time
 	var successorHash *string
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, revoked, rotated_at, successor_hash
-		FROM sessions WHERE token_hash = $1`, hash,
-	).Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash)
+	err := s.Pool.QueryRow(ctx, sqlSelectSessionByHash, hash).
+		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash)
 	if err == pgx.ErrNoRows {
 		return nil, ErrTokenExpired
 	}
@@ -242,7 +239,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		if rotatedAt != nil && successorHash != nil && time.Since(*rotatedAt) <= graceSecs {
 			return s.refreshFromSuccessor(ctx, *successorHash, ip, ua)
 		}
-		_, _ = s.Pool.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID)
+		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
 		s.Audit.Log(ctx, audit.Entry{UserID: &userID, Action: "auth.refresh_token_reuse", IPAddress: &ip, Metadata: map[string]any{"session_id": sessID.String()}})
 		return nil, ErrTokenExpired
 	}
@@ -269,15 +266,11 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := tx.Exec(ctx, `
-		UPDATE sessions SET revoked = TRUE, rotated_at = NOW(), successor_hash = $1
-		WHERE id = $2`, newHash, sessID,
-	); err != nil {
+	if _, err := tx.Exec(ctx, sqlRotateSession, newHash, sessID); err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)`, u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
+	if _, err := tx.Exec(ctx, sqlInsertSession,
+		u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
 	); err != nil {
 		return nil, err
 	}
@@ -300,9 +293,8 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	var sessID, userID uuid.UUID
 	var expiresAt time.Time
 	var revoked bool
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, revoked FROM sessions WHERE token_hash = $1`, successorHash,
-	).Scan(&sessID, &userID, &expiresAt, &revoked)
+	err := s.Pool.QueryRow(ctx, sqlSelectSuccessorSession, successorHash).
+		Scan(&sessID, &userID, &expiresAt, &revoked)
 	if err == pgx.ErrNoRows || revoked || expiresAt.Before(time.Now()) {
 		return nil, ErrTokenExpired
 	}
@@ -331,9 +323,8 @@ func (s *Service) Logout(ctx context.Context, rawRefresh, ip string) error {
 	}
 	hash := Sha256Hex(rawRefresh)
 	var userID uuid.UUID
-	err := s.Pool.QueryRow(ctx, `
-		UPDATE sessions SET revoked = TRUE WHERE token_hash = $1 RETURNING user_id`, hash,
-	).Scan(&userID)
+	err := s.Pool.QueryRow(ctx, sqlRevokeSessionByHashReturningUser, hash).
+		Scan(&userID)
 	if err == pgx.ErrNoRows {
 		return nil
 	}
@@ -364,12 +355,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `
-		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW()
-		WHERE id = $2`, hash, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlUpdatePasswordHashAndClearForceFlag, hash, userID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlRevokeAllUserSessions, userID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -395,9 +384,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, emailIn, ip string) 
 	}
 	ttl := parseDurationEnv("RESET_TOKEN_TTL", time.Hour)
 	expAt := time.Now().Add(ttl)
-	_, err = s.Pool.Exec(ctx, `
-		INSERT INTO password_resets (user_id, token_hash, expires_at, requested_ip)
-		VALUES ($1, $2, $3, $4)`, u.ID, hash, expAt, nilIfEmpty(ip))
+	_, err = s.Pool.Exec(ctx, sqlInsertPasswordReset, u.ID, hash, expAt, nilIfEmpty(ip))
 	if err != nil {
 		return err
 	}
@@ -413,9 +400,8 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 	var id, userID uuid.UUID
 	var expiresAt time.Time
 	var usedAt *time.Time
-	err := s.Pool.QueryRow(ctx, `
-		SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = $1`, hash,
-	).Scan(&id, &userID, &expiresAt, &usedAt)
+	err := s.Pool.QueryRow(ctx, sqlSelectPasswordResetByHash, hash).
+		Scan(&id, &userID, &expiresAt, &usedAt)
 	if err == pgx.ErrNoRows {
 		return ErrTokenExpired
 	}
@@ -442,16 +428,13 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `
-		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW(),
-		                 failed_login_count = 0, locked_until = NULL
-		WHERE id = $2`, pwHash, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlUpdatePasswordHashAndClearLockout, pwHash, userID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE password_resets SET used_at = NOW() WHERE id = $1`, id); err != nil {
+	if _, err := tx.Exec(ctx, sqlMarkPasswordResetUsed, id); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE sessions SET revoked = TRUE WHERE user_id = $1`, userID); err != nil {
+	if _, err := tx.Exec(ctx, sqlRevokeAllUserSessions, userID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -479,4 +462,90 @@ func envInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// resolveDefaultWorkspace returns the subscription's first live workspace
+// (earliest created_at) — same predicate as topology.PoolWorkspaceLookup's
+// FirstLiveWorkspace. The SQL lives in sql.go (sqlSelectFirstLiveWorkspaceID)
+// per the lint:sql-in-sqlfile-only rule. Kept inside auth package rather
+// than importing topology so the dependency edge stays one-way (topology
+// → auth, never auth → topology).
+//
+// Called at login time to seed the JWT's workspace_id claim (PLA-0053 /
+// story 00575). Non-fatal: failures return the zero UUID + error and the
+// caller signs without a workspace_id claim — WorkspaceClampMiddleware
+// falls back to FirstLiveWorkspace per the legacy-token rollout window.
+func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	if err := s.Pool.QueryRow(ctx, sqlSelectFirstLiveWorkspaceID, subscriptionID).Scan(&id); err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+// SwitchWorkspace re-mints the access token + rotates the refresh
+// session with the target workspace stamped into the JWT claim.
+// PLA-0053 / story 00576.5.
+//
+// Authoritative membership check (sqlAssertWorkspaceMemberLive) runs
+// in one round trip and excludes:
+//   - workspaces in another subscription (cross-tenant leak guard),
+//   - archived workspaces,
+//   - users with no non-revoked users_roles_workspaces grant.
+//
+// All three failure modes collapse to ErrWorkspaceForbidden so the
+// handler returns the same 403 regardless of root cause (no existence
+// leak — same shape as fields.AssertCallerMayRead). On success, the
+// returned LoginResult carries a new access token + rotated refresh
+// raw; the handler updates the rt cookie + returns the userPayload
+// the frontend uses to refresh AuthContext.
+//
+// The original refresh session is NOT revoked here — only rotated.
+// This keeps the user logged in if the new JWT fails to round-trip
+// for any reason; the previous session expires normally on its TTL.
+func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, workspaceID uuid.UUID, ip, ua string) (*LoginResult, error) {
+	if u == nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	var ok int
+	err := s.Pool.QueryRow(ctx, sqlAssertWorkspaceMemberLive,
+		u.SubscriptionID, workspaceID, u.ID,
+	).Scan(&ok)
+	if err != nil {
+		// pgx.ErrNoRows is the expected miss; any other err is also
+		// collapsed to forbidden so SQL hiccups don't leak.
+		return nil, ErrWorkspaceForbidden
+	}
+
+	// Re-stamp the user's workspace before signing — the new JWT claim
+	// comes off this struct.
+	u.WorkspaceID = workspaceID
+
+	access, err := SignAccessToken(u)
+	if err != nil {
+		return nil, err
+	}
+	raw, hash, err := GenerateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
+	expAt := time.Now().Add(refreshTTL)
+
+	if _, err := s.Pool.Exec(ctx, sqlInsertSession,
+		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
+	); err != nil {
+		return nil, err
+	}
+
+	s.Audit.Log(ctx, audit.Entry{
+		UserID:         &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:         "auth.workspace_switched",
+		IPAddress:      &ip,
+		Metadata:       map[string]any{"workspace_id": workspaceID.String()},
+	})
+
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }

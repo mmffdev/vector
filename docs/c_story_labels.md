@@ -6,7 +6,7 @@ All story cards MUST carry labels from these registries before exiting plan mode
 
 ## Creation Source
 
-| Label | Planka ID | Color | Purpose |
+| Label | Legacy ID | Color | Purpose |
 |---|---|---|---|
 | `AIGEN` | `1761454228267599083` | lagoon-blue | AI-generated stories |
 
@@ -16,11 +16,11 @@ All story cards MUST carry labels from these registries before exiting plan mode
 
 ## Estimation (Fibonacci Sequence)
 
-Every card carries exactly ONE of these. Sequence: 0, 1, 2, 3, 5, 8, 13, 21, ...
+Every work item carries exactly ONE of these. Sequence: 0, 1, 2, 3, 5, 8, 13, 21, ...
 
 Hard rule: **No cards >= EST-F21.** If a story estimates F21 or higher, it is split before creation.
 
-| Label | Planka ID | Color | Meaning | Time Reference |
+| Label | Legacy ID | Color | Meaning | Time Reference |
 |---|---|---|---|---|
 | `EST-F0` | `1761454230876456173` | fresh-salad | Spike / investigation (no impl) | 0 hours |
 | `EST-F1` | `1761454233325929711` | fresh-salad | Minimal scope | 1–2 hours |
@@ -34,9 +34,9 @@ Hard rule: **No cards >= EST-F21.** If a story estimates F21 or higher, it is sp
 
 ## Risk Level
 
-Every card carries exactly ONE of these.
+Every work item carries exactly ONE of these.
 
-| Label | Planka ID | Color | Meaning |
+| Label | Legacy ID | Color | Meaning |
 |---|---|---|---|
 | `RISK-LOW` | `1761454246445712635` | tank-green | Isolated, proven patterns, minimal dependencies |
 | `RISK-MED` | `1761454248593196285` | egg-yellow | Some unknowns, moderate dependencies, integration |
@@ -46,9 +46,9 @@ Every card carries exactly ONE of these.
 
 ## Feature Areas (18 areas)
 
-Every card carries exactly ONE of these. See `c_feature_areas.md` for full scope and allocation rules.
+Every work item carries exactly ONE of these. See `c_feature_areas.md` for full scope and allocation rules.
 
-| Area | Label Format | Planka ID | Status |
+| Area | Label Format | Legacy ID | Status |
 |---|---|---|---|
 | Portfolio | `FE-POR####` | TBD | Ready |
 | Library | `FE-LIB####` | TBD | Ready |
@@ -72,9 +72,9 @@ Every card carries exactly ONE of these. See `c_feature_areas.md` for full scope
 
 ## Phase Labels
 
-Every card carries exactly ONE of these. See `c_story_index.md` for active phase.
+Every work item carries exactly ONE of these. See `c_story_index.md` for active phase.
 
-| Phase | Label | Planka ID | Status |
+| Phase | Label | Legacy ID | Status |
 |---|---|---|---|
 | Phase 5 | `PH-0005` | `1761354660716741817` | Active (CSS responsive design) |
 
@@ -82,15 +82,15 @@ Every card carries exactly ONE of these. See `c_story_index.md` for active phase
 
 ## Special Labels (Optional)
 
-| Label | Planka ID | Color | When Applied | Meaning |
+| Label | Legacy ID | Color | When Applied | Meaning |
 |---|---|---|---|---|
-| `MULTI AGENT` | `1760728388919624826` | berry-red | During planning (Step 2b) | Story is parallel-safe and can be claimed by another agent |
+| `MULTI AGENT` | `1760728388919624826` | berry-red | During planning | Story is parallel-safe |
 
 ---
 
 ## Summary
 
-**Every card MUST carry (hard gate):**
+**Every work item MUST carry (hard gate):**
 1. `AIGEN` (creation source)
 2. `PH-####` (phase)
 3. `FE-<AREA>####` (feature area)

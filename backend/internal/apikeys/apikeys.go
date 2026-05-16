@@ -24,26 +24,27 @@ func New(db *pgxpool.Pool) *Service {
 	return &Service{db: db}
 }
 
-// Key is a full API key (returned only on creation).
+// Key is a full API key (returned only on creation). JSON tags follow
+// §2.3 (post RF1.4.2.admin).
 type Key struct {
-	ID            string `json:"id"`
-	SubscriptionID string `json:"subscription_id"`
-	Prefix        string `json:"prefix"`       // First 8 chars for identification
-	RawKey        string `json:"raw_key"`      // Full key (only returned once)
-	CreatedAt     time.Time `json:"created_at"`
-	ExpiresAt     *time.Time `json:"expires_at"`
+	ID             string     `json:"admin_api_keys_id"`
+	SubscriptionID string     `json:"admin_api_keys_id_subscription"`
+	Prefix         string     `json:"admin_api_keys_prefix"` // First 16 chars for identification.
+	RawKey         string     `json:"raw_key"`               // Wire-only; never stored.
+	CreatedAt      time.Time  `json:"admin_api_keys_created_at"`
+	ExpiresAt      *time.Time `json:"admin_api_keys_expires_at"`
 }
 
 // KeyInfo is a stored key (no raw key, only hash).
 type KeyInfo struct {
-	ID            string    `json:"id"`
-	SubscriptionID string    `json:"subscription_id"`
-	Prefix        string    `json:"prefix"`
-	Scopes        []string  `json:"scopes"`
-	CreatedAt     time.Time `json:"created_at"`
-	ExpiresAt     *time.Time `json:"expires_at"`
-	RevokedAt     *time.Time `json:"revoked_at"`
-	LastUsedAt    *time.Time `json:"last_used_at"`
+	ID             string     `json:"admin_api_keys_id"`
+	SubscriptionID string     `json:"admin_api_keys_id_subscription"`
+	Prefix         string     `json:"admin_api_keys_prefix"`
+	Scopes         []string   `json:"admin_api_keys_scopes"`
+	CreatedAt      time.Time  `json:"admin_api_keys_created_at"`
+	ExpiresAt      *time.Time `json:"admin_api_keys_expires_at"`
+	RevokedAt      *time.Time `json:"admin_api_keys_revoked_at"`
+	LastUsedAt     *time.Time `json:"admin_api_keys_last_used_at"`
 }
 
 // Issue creates a new API key. Returns the full key (raw_key) once; never returned again.
@@ -60,9 +61,14 @@ func (s *Service) Issue(ctx context.Context, subscriptionID string, expiresAt *t
 
 	var id string
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO api_keys (subscription_id, prefix, hash, scopes, expires_at)
-		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING id`,
+		`INSERT INTO admin_api_keys (
+			admin_api_keys_id_subscription,
+			admin_api_keys_prefix,
+			admin_api_keys_hash,
+			admin_api_keys_scopes,
+			admin_api_keys_expires_at
+		) VALUES ($1, $2, $3, $4, $5)
+		 RETURNING admin_api_keys_id`,
 		subscriptionID, prefix, hash, scopes, expiresAt,
 	).Scan(&id)
 	if err != nil {
@@ -86,9 +92,16 @@ func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, err
 
 	var info KeyInfo
 	err := s.db.QueryRow(ctx,
-		`SELECT id, subscription_id, prefix, scopes, created_at, expires_at, revoked_at, last_used_at
-		 FROM api_keys
-		 WHERE hash = $1 AND prefix = $2`,
+		`SELECT admin_api_keys_id,
+		        admin_api_keys_id_subscription,
+		        admin_api_keys_prefix,
+		        admin_api_keys_scopes,
+		        admin_api_keys_created_at,
+		        admin_api_keys_expires_at,
+		        admin_api_keys_revoked_at,
+		        admin_api_keys_last_used_at
+		 FROM admin_api_keys
+		 WHERE admin_api_keys_hash = $1 AND admin_api_keys_prefix = $2`,
 		hash, prefix,
 	).Scan(
 		&info.ID, &info.SubscriptionID, &info.Prefix, &info.Scopes,
@@ -111,7 +124,7 @@ func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, err
 
 	// Update last_used_at
 	_, err = s.db.Exec(ctx,
-		`UPDATE api_keys SET last_used_at = now() WHERE id = $1`,
+		`UPDATE admin_api_keys SET admin_api_keys_last_used_at = now() WHERE admin_api_keys_id = $1`,
 		info.ID,
 	)
 	if err != nil {
@@ -125,10 +138,17 @@ func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, err
 // ListKeys returns all non-revoked keys for a subscription.
 func (s *Service) ListKeys(ctx context.Context, subscriptionID string) ([]KeyInfo, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, subscription_id, prefix, scopes, created_at, expires_at, revoked_at, last_used_at
-		 FROM api_keys
-		 WHERE subscription_id = $1 AND revoked_at IS NULL
-		 ORDER BY created_at DESC`,
+		`SELECT admin_api_keys_id,
+		        admin_api_keys_id_subscription,
+		        admin_api_keys_prefix,
+		        admin_api_keys_scopes,
+		        admin_api_keys_created_at,
+		        admin_api_keys_expires_at,
+		        admin_api_keys_revoked_at,
+		        admin_api_keys_last_used_at
+		 FROM admin_api_keys
+		 WHERE admin_api_keys_id_subscription = $1 AND admin_api_keys_revoked_at IS NULL
+		 ORDER BY admin_api_keys_created_at DESC`,
 		subscriptionID,
 	)
 	if err != nil {
@@ -156,7 +176,7 @@ func (s *Service) ListKeys(ctx context.Context, subscriptionID string) ([]KeyInf
 // Revoke marks a key as revoked (soft-delete).
 func (s *Service) Revoke(ctx context.Context, keyID string) error {
 	result, err := s.db.Exec(ctx,
-		`UPDATE api_keys SET revoked_at = now() WHERE id = $1`,
+		`UPDATE admin_api_keys SET admin_api_keys_revoked_at = now() WHERE admin_api_keys_id = $1`,
 		keyID,
 	)
 	if err != nil {

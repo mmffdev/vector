@@ -69,11 +69,13 @@ func (h *Handler) Creatable(w http.ResponseWriter, r *http.Request) {
 		code permissions.Code
 		id   uuid.UUID
 	}{
-		{permissions.UsersCreateGadmin, SystemRoleGadmin},
-		{permissions.UsersCreatePadmin, SystemRolePadmin},
-		{permissions.UsersCreateTeamLead, SystemRoleTeamLead},
-		{permissions.UsersCreateUser, SystemRoleUser},
-		{permissions.UsersCreateExternal, SystemRoleExternal},
+		{permissions.UsersCreateGrpGlobal,      h.Svc.SystemRoles.GrpGlobal},
+		{permissions.UsersCreateGrpPortfolio,   h.Svc.SystemRoles.GrpPortfolio},
+		{permissions.UsersCreateGrpProduct,     h.Svc.SystemRoles.GrpProduct},
+		{permissions.UsersCreateGrpTeamLead,    h.Svc.SystemRoles.GrpTeamLead},
+		{permissions.UsersCreateGrpTeamMember,  h.Svc.SystemRoles.GrpTeamMember},
+		{permissions.UsersCreateGrpStakeholder, h.Svc.SystemRoles.GrpStakeholder},
+		{permissions.UsersCreateGrpExternal,    h.Svc.SystemRoles.GrpExternal},
 	}
 
 	out := []any{}

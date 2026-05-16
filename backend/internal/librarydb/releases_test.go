@@ -15,7 +15,7 @@ import (
 
 // Releases tests cover the cross-DB list/ack workflow against the live
 // dev cluster. Skip on unreachable — same discipline as fetch_test.go
-// and grants_test.go. The seed at db/library_schema/seed/002_test_release.sql
+// and grants_test.go. The seed at db/mmff_library/schema/seed/002_test_release.sql
 // supplies a single info-severity release; tests use that fixed UUID.
 const (
 	seededReleaseID = "00000000-0000-0000-0000-00000000ad01"
@@ -92,7 +92,7 @@ func TestListReleasesSinceAck(t *testing.T) {
 
 	// Reset any prior ack so the test starts in a known state.
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 
 	// Pre-ack: seeded release must be in the outstanding list.
@@ -133,7 +133,7 @@ func TestListReleasesSinceAck(t *testing.T) {
 
 	// Cleanup so re-runs start fresh.
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 }
 
@@ -146,7 +146,7 @@ func TestCountOutstanding(t *testing.T) {
 	releaseID := uuid.MustParse(seededReleaseID)
 	ctx := context.Background()
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 
 	pre, _, err := CountOutstandingForSubscription(ctx, libPool, vecPool, subID, tier)
@@ -170,7 +170,7 @@ func TestCountOutstanding(t *testing.T) {
 	}
 
 	_, _ = vecPool.Exec(ctx,
-		`DELETE FROM library_acknowledgements WHERE subscription_id = $1 AND release_id = $2`,
+		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		subID, releaseID)
 }
 

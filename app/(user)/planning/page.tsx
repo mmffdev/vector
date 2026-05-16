@@ -11,7 +11,9 @@
 
 import { useEffect, useRef } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 function TimelineBar({ start, end }: { start: number; end: number }) {
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -63,18 +65,17 @@ interface PlanCard {
 }
 
 export default function Planning() {
+  const { full } = usePageTitle();
   return (
     <PageContent>
-    <PageShell
-      title="Planning"
-      subtitle="Timeline, capacity, and release planning"
-      actions={
-        <>
-          <button type="button" className="btn btn--ghost">Export</button>
-          <button type="button" className="btn btn--primary">New initiative</button>
-        </>
-      }
-    >
+      <PageHeading level={1} title={full} subtitle="Timeline, capacity, and release planning." />
+      <Panel
+        name="panel_planning_header"
+        className="page-panel-heading"
+        title="Planning"
+        description="Plan releases, manage capacity, and track timelines across your delivery pipeline."
+      />
+
       <h3 className="eyebrow">Roadmap board</h3>
       <div className="planning-board" role="list">
         {COLUMNS.map((col) => (
@@ -111,7 +112,6 @@ export default function Planning() {
           ))}
         </ul>
       </div>
-    </PageShell>
     </PageContent>
   );
 }

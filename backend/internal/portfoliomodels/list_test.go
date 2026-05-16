@@ -39,7 +39,7 @@ func TestList_OK(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	// Seed (db/library_schema/seed/001_mmff_model.sql) inserts one MMFF
+	// Seed (db/mmff_library/schema/seed/001_mmff_model.sql) inserts one MMFF
 	// Standard model with scope='system', visibility='public', 5 layers.
 	// The list MUST surface it.
 	wantID := uuid.MustParse("00000000-0000-0000-0000-00000000aa01")

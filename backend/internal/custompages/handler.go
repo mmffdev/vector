@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 type Handler struct {
@@ -27,7 +27,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	pages, err := h.Svc.ListPagesOnly(r.Context(), u.ID, u.SubscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, listResp{Pages: pages})
@@ -38,16 +38,16 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	page, err := h.Svc.Get(r.Context(), u.ID, u.SubscriptionID, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -63,7 +63,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
 	page, err := h.Svc.Create(r.Context(), u.ID, u.SubscriptionID, req.Label, req.Icon)
@@ -73,10 +73,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrLabelTooLong),
 			errors.Is(err, ErrDuplicateLabel),
 			errors.Is(err, ErrPageCap):
-			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, page)
@@ -92,27 +92,27 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 		return
 	}
 	page, err := h.Svc.Patch(r.Context(), u.ID, u.SubscriptionID, id, PatchInput{Label: req.Label, Icon: req.Icon})
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		case errors.Is(err, ErrEmptyLabel),
 			errors.Is(err, ErrLabelTooLong),
 			errors.Is(err, ErrDuplicateLabel):
-			httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -123,15 +123,15 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Delete(r.Context(), u.ID, u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

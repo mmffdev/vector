@@ -36,7 +36,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -91,7 +91,7 @@ type patchReq struct {
 // Non-holders of workspace.view_archived → 403 (ErrPermissionDenied).
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	includeArchived := r.URL.Query().Get(messages.ResourceArchived) == "true"
+	includeArchived := r.URL.Query().Get(usermessages.ResourceArchived) == "true"
 	rows, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID, includeArchived, u.ID)
 	if err != nil {
 		writeErr(w, r, err)
@@ -118,7 +118,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	row, err := h.Svc.Create(r.Context(), CreateInput{
@@ -142,16 +142,16 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	var req patchReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if req.Name == nil && req.Slug == nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	if req.Slug != nil && req.Name == nil {
@@ -173,7 +173,7 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Archive(r.Context(), u.SubscriptionID, id, u.ID); err != nil {
@@ -189,7 +189,7 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 	if err := h.Svc.Restore(r.Context(), u.SubscriptionID, id, u.ID); err != nil {
@@ -238,7 +238,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidID)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
 
@@ -318,7 +318,7 @@ func writeOrphans409(w http.ResponseWriter, r *http.Request, orphans []OrphanRep
 func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrGrantNotFound):
-		httperr.Write(w, r, http.StatusNotFound, messages.NotFound)
+		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 	case errors.Is(err, ErrSlugTaken):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "slug_taken"})
 	case errors.Is(err, ErrAlreadyArchived):
@@ -337,14 +337,14 @@ func writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrSingleAdminViolation):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "single_admin_violation"})
 	case errors.Is(err, ErrInvalidName):
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 	case errors.Is(err, ErrInvalidSlug):
 		httperr.Write(w, r, http.StatusBadRequest, "slug must match ^[a-z0-9][a-z0-9-]*$")
 	case errors.Is(err, ErrInvalidRole):
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
 	case errors.Is(err, ErrPermissionDenied):
-		httperr.Write(w, r, http.StatusForbidden, messages.AuthForbidden)
+		httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
 	default:
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 	}
 }

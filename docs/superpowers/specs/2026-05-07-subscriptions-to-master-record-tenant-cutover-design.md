@@ -188,4 +188,4 @@ Each phase commits independently. Per-phase rollback:
 
 ---
 
-**Next step after this spec is approved:** invoke `superpowers:writing-plans` to produce the bite-sized implementation plan at `docs/superpowers/plans/2026-05-07-pla-0024-subscriptions-cutover.md`, then run `<stories>` to register PLA-0024 + 17 cards in Planka.
+**Next step after this spec is approved:** invoke `superpowers:writing-plans` to produce the bite-sized implementation plan at `docs/superpowers/plans/2026-05-07-pla-0024-subscriptions-cutover.md`, then run `<stories>` to register PLA-0024 + 17 work items in the plan JSON.

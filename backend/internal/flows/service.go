@@ -51,32 +51,7 @@ func (s *Service) ListBySubscription(ctx context.Context, subscriptionID string)
 }
 
 func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string) ([]FlowGroup, error) {
-	const q = `
-		SELECT
-		    f.id,
-		    f.name         AS flow_name,
-		    f.is_default,
-		    f.artefact_type_id,
-		    at.name        AS type_name,
-		    at.scope       AS type_scope,
-		    fs.id          AS state_id,
-		    fs.name        AS state_name,
-		    fs.kind        AS state_kind,
-		    fs.sort_order  AS state_sort_order,
-		    fs.is_initial  AS state_is_initial,
-		    fs.is_pullable AS state_is_pullable,
-		    fs.colour      AS state_colour,
-		    fs.description AS state_description
-		FROM flows f
-		JOIN artefact_types at ON at.id = f.artefact_type_id
-		JOIN flow_states    fs ON fs.flow_id = f.id AND fs.archived_at IS NULL
-		WHERE at.subscription_id = $1
-		  AND at.scope = $2
-		  AND at.archived_at IS NULL
-		  AND f.archived_at IS NULL
-		ORDER BY at.name, f.is_default DESC, fs.sort_order;`
-
-	rows, err := s.vaPool.Query(ctx, q, subscriptionID, scope)
+	rows, err := s.vaPool.Query(ctx, sqlListFlowsByScope, subscriptionID, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -145,14 +120,7 @@ func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string)
 // single query. Each state's ExitRules slice is sorted by sort_order ASC, and
 // ExitRuleCount mirrors len(ExitRules).
 func (s *Service) hydrateExitRules(ctx context.Context, groups []FlowGroup, stateIDs []string) error {
-	const q = `
-		SELECT id, flow_state_id, sort_order, name, colour
-		FROM   flow_state_exit_rules
-		WHERE  flow_state_id = ANY($1)
-		  AND  archived_at IS NULL
-		ORDER  BY flow_state_id, sort_order, created_at;`
-
-	rows, err := s.vaPool.Query(ctx, q, stateIDs)
+	rows, err := s.vaPool.Query(ctx, sqlListExitRulesForStates, stateIDs)
 	if err != nil {
 		return fmt.Errorf("flows: hydrate exit rules: %w", err)
 	}
@@ -191,13 +159,7 @@ func (s *Service) loadTransitions(
 	groupIdx map[string]int,
 	flowIDs []string,
 ) error {
-	const q = `
-		SELECT flow_id, from_state_id, to_state_id
-		FROM   flow_transitions
-		WHERE  flow_id = ANY($1)
-		ORDER  BY flow_id, from_state_id, to_state_id;`
-
-	rows, err := s.vaPool.Query(ctx, q, flowIDs)
+	rows, err := s.vaPool.Query(ctx, sqlListTransitionsForFlows, flowIDs)
 	if err != nil {
 		return err
 	}
@@ -242,30 +204,11 @@ func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID st
 		}
 	}
 
-	const q = `
-		UPDATE flow_states fs
-		SET    colour      = COALESCE($1, fs.colour),
-		       name        = COALESCE($4, fs.name),
-		       sort_order  = COALESCE($5, fs.sort_order),
-		       is_initial  = COALESCE($6, fs.is_initial),
-		       kind        = COALESCE($7, fs.kind),
-		       is_pullable = COALESCE($8, fs.is_pullable),
-		       description = CASE WHEN $9::boolean THEN $10 ELSE fs.description END
-		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  fs.id      = $2
-		  AND  fs.flow_id = f.id
-		  AND  at.subscription_id = $3
-		  AND  at.archived_at IS NULL
-		  AND  f.archived_at  IS NULL
-		  AND  fs.archived_at IS NULL
-		RETURNING fs.id, fs.name, fs.kind, fs.sort_order, fs.is_initial, fs.is_pullable, fs.colour, fs.description`
-
 	// Colour is the only nullable-to-clear field via legacy convention; the
 	// others use COALESCE. Pass nil colour as a signal to keep current colour;
 	// for other fields nil = no change.
 	var st FlowState
-	err := s.vaPool.QueryRow(ctx, q,
+	err := s.vaPool.QueryRow(ctx, sqlPatchFlowState,
 		in.Colour, stateID, subscriptionID, in.Name, in.SortOrder, in.IsInitial, in.Kind, in.IsPullable,
 		descSet, descVal,
 	).Scan(
@@ -286,18 +229,7 @@ func (s *Service) PatchFlowState(ctx context.Context, subscriptionID, stateID st
 func (s *Service) ListExitRules(ctx context.Context, subscriptionID, stateID string) ([]FlowExitRule, error) {
 	// Tenancy gate: confirm the state belongs to this subscription.
 	var exists bool
-	err := s.vaPool.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1
-			FROM   flow_states fs
-			JOIN   flows f         ON f.id = fs.flow_id
-			JOIN   artefact_types at ON at.id = f.artefact_type_id
-			WHERE  fs.id = $1
-			  AND  at.subscription_id = $2
-			  AND  fs.archived_at IS NULL
-			  AND  f.archived_at  IS NULL
-			  AND  at.archived_at IS NULL
-		)`, stateID, subscriptionID).Scan(&exists)
+	err := s.vaPool.QueryRow(ctx, sqlExistsFlowStateInTenant, stateID, subscriptionID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("flows: list exit rules: tenancy check: %w", err)
 	}
@@ -305,14 +237,7 @@ func (s *Service) ListExitRules(ctx context.Context, subscriptionID, stateID str
 		return nil, ErrStateNotFound
 	}
 
-	const q = `
-		SELECT id, sort_order, name, colour
-		FROM   flow_state_exit_rules
-		WHERE  flow_state_id = $1
-		  AND  archived_at IS NULL
-		ORDER  BY sort_order, created_at`
-
-	rows, err := s.vaPool.Query(ctx, q, stateID)
+	rows, err := s.vaPool.Query(ctx, sqlListExitRulesForState, stateID)
 	if err != nil {
 		return nil, fmt.Errorf("flows: list exit rules: %w", err)
 	}
@@ -339,31 +264,8 @@ func (s *Service) CreateExitRule(ctx context.Context, subscriptionID, stateID st
 	}
 
 	// Tenancy gate + compute next sort_order in one round-trip-safe block.
-	const q = `
-		WITH ok AS (
-			SELECT fs.id
-			FROM   flow_states fs
-			JOIN   flows f         ON f.id = fs.flow_id
-			JOIN   artefact_types at ON at.id = f.artefact_type_id
-			WHERE  fs.id = $1
-			  AND  at.subscription_id = $2
-			  AND  fs.archived_at IS NULL
-			  AND  f.archived_at  IS NULL
-			  AND  at.archived_at IS NULL
-		),
-		next_order AS (
-			SELECT COALESCE(MAX(sort_order), 0) + 10 AS so
-			FROM   flow_state_exit_rules
-			WHERE  flow_state_id = $1
-			  AND  archived_at IS NULL
-		)
-		INSERT INTO flow_state_exit_rules (flow_state_id, sort_order, name, colour)
-		SELECT ok.id, next_order.so, $3, $4
-		FROM   ok, next_order
-		RETURNING id, sort_order, name, colour`
-
 	var r FlowExitRule
-	err := s.vaPool.QueryRow(ctx, q, stateID, subscriptionID, in.Name, in.Colour).Scan(
+	err := s.vaPool.QueryRow(ctx, sqlInsertExitRuleAppend, stateID, subscriptionID, in.Name, in.Colour).Scan(
 		&r.ID, &r.SortOrder, &r.Name, &r.Colour,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -397,25 +299,8 @@ func (s *Service) PatchExitRule(ctx context.Context, subscriptionID, ruleID stri
 		}
 	}
 
-	const q = `
-		UPDATE flow_state_exit_rules r
-		SET    name       = COALESCE($1, r.name),
-		       sort_order = COALESCE($2, r.sort_order),
-		       colour     = CASE WHEN $3::boolean THEN $4 ELSE r.colour END
-		FROM   flow_states fs
-		JOIN   flows f         ON f.id = fs.flow_id
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  r.id            = $5
-		  AND  r.flow_state_id = fs.id
-		  AND  at.subscription_id = $6
-		  AND  r.archived_at IS NULL
-		  AND  fs.archived_at IS NULL
-		  AND  f.archived_at  IS NULL
-		  AND  at.archived_at IS NULL
-		RETURNING r.id, r.sort_order, r.name, r.colour`
-
 	var out FlowExitRule
-	err := s.vaPool.QueryRow(ctx, q, in.Name, in.SortOrder, colourSet, colourVal, ruleID, subscriptionID).Scan(
+	err := s.vaPool.QueryRow(ctx, sqlPatchExitRule, in.Name, in.SortOrder, colourSet, colourVal, ruleID, subscriptionID).Scan(
 		&out.ID, &out.SortOrder, &out.Name, &out.Colour,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -429,18 +314,7 @@ func (s *Service) PatchExitRule(ctx context.Context, subscriptionID, ruleID stri
 
 // DeleteExitRule soft-archives one exit rule, scoped to subscription.
 func (s *Service) DeleteExitRule(ctx context.Context, subscriptionID, ruleID string) error {
-	const q = `
-		UPDATE flow_state_exit_rules r
-		SET    archived_at = NOW()
-		FROM   flow_states fs
-		JOIN   flows f         ON f.id = fs.flow_id
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  r.id            = $1
-		  AND  r.flow_state_id = fs.id
-		  AND  at.subscription_id = $2
-		  AND  r.archived_at IS NULL`
-
-	tag, err := s.vaPool.Exec(ctx, q, ruleID, subscriptionID)
+	tag, err := s.vaPool.Exec(ctx, sqlArchiveExitRule, ruleID, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("flows: delete exit rule: %w", err)
 	}
@@ -462,25 +336,12 @@ func (s *Service) CreateState(ctx context.Context, subscriptionID, flowID string
 	// If sort_order not supplied, append after the current max.
 	if in.SortOrder == 0 {
 		var max int
-		_ = s.vaPool.QueryRow(ctx,
-			`SELECT COALESCE(MAX(sort_order), 0) FROM flow_states WHERE flow_id = $1 AND archived_at IS NULL`,
-			flowID).Scan(&max)
+		_ = s.vaPool.QueryRow(ctx, sqlSelectMaxFlowStateSortOrder, flowID).Scan(&max)
 		in.SortOrder = max + 10
 	}
 
-	const q = `
-		INSERT INTO flow_states (flow_id, name, kind, sort_order, is_initial, is_pullable)
-		SELECT f.id, $3, $4, $5, $6, $7
-		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  f.id = $1
-		  AND  at.subscription_id = $2
-		  AND  f.archived_at IS NULL
-		  AND  at.archived_at IS NULL
-		RETURNING id, name, kind, sort_order, is_initial, is_pullable, colour, description`
-
 	var st FlowState
-	err := s.vaPool.QueryRow(ctx, q, flowID, subscriptionID, in.Name, in.Kind, in.SortOrder, in.IsInitial, in.IsPullable).Scan(
+	err := s.vaPool.QueryRow(ctx, sqlInsertFlowState, flowID, subscriptionID, in.Name, in.Kind, in.SortOrder, in.IsInitial, in.IsPullable).Scan(
 		&st.ID, &st.Name, &st.Kind, &st.SortOrder, &st.IsInitial, &st.IsPullable, &st.Colour, &st.Description,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -494,17 +355,7 @@ func (s *Service) CreateState(ctx context.Context, subscriptionID, flowID string
 
 // DeleteState soft-archives a flow state, scoped to subscription.
 func (s *Service) DeleteState(ctx context.Context, subscriptionID, stateID string) error {
-	const q = `
-		UPDATE flow_states fs
-		SET    archived_at = NOW()
-		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  fs.id = $1
-		  AND  fs.flow_id = f.id
-		  AND  at.subscription_id = $2
-		  AND  fs.archived_at IS NULL`
-
-	tag, err := s.vaPool.Exec(ctx, q, stateID, subscriptionID)
+	tag, err := s.vaPool.Exec(ctx, sqlArchiveFlowState, stateID, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("flows: delete state: %w", err)
 	}
@@ -516,25 +367,12 @@ func (s *Service) DeleteState(ctx context.Context, subscriptionID, stateID strin
 
 // CreateTransition adds an allowed edge to a flow, scoped to subscription.
 func (s *Service) CreateTransition(ctx context.Context, subscriptionID, flowID string, in CreateTransitionInput) (*FlowTransition, error) {
-	const q = `
-		INSERT INTO flow_transitions (flow_id, from_state_id, to_state_id)
-		SELECT f.id, $3, $4
-		FROM   flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  f.id = $1
-		  AND  at.subscription_id = $2
-		  AND  f.archived_at IS NULL
-		  AND  at.archived_at IS NULL
-		ON CONFLICT (flow_id, from_state_id, to_state_id) DO NOTHING
-		RETURNING from_state_id, to_state_id`
-
 	var tr FlowTransition
-	err := s.vaPool.QueryRow(ctx, q, flowID, subscriptionID, in.FromStateID, in.ToStateID).Scan(&tr.From, &tr.To)
+	err := s.vaPool.QueryRow(ctx, sqlInsertTransition, flowID, subscriptionID, in.FromStateID, in.ToStateID).Scan(&tr.From, &tr.To)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Either conflict (already exists) or flow not found — check which.
 		var exists bool
-		_ = s.vaPool.QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM flow_transitions WHERE flow_id=$1 AND from_state_id=$2 AND to_state_id=$3)`,
+		_ = s.vaPool.QueryRow(ctx, sqlExistsTransition,
 			flowID, in.FromStateID, in.ToStateID).Scan(&exists)
 		if exists {
 			return nil, ErrTransitionExists
@@ -549,17 +387,7 @@ func (s *Service) CreateTransition(ctx context.Context, subscriptionID, flowID s
 
 // DeleteTransition removes an allowed edge from a flow, scoped to subscription.
 func (s *Service) DeleteTransition(ctx context.Context, subscriptionID, flowID string, in DeleteTransitionInput) error {
-	const q = `
-		DELETE FROM flow_transitions ft
-		USING  flows f
-		JOIN   artefact_types at ON at.id = f.artefact_type_id
-		WHERE  ft.flow_id      = f.id
-		  AND  f.id            = $1
-		  AND  at.subscription_id = $2
-		  AND  ft.from_state_id   = $3
-		  AND  ft.to_state_id     = $4`
-
-	tag, err := s.vaPool.Exec(ctx, q, flowID, subscriptionID, in.FromStateID, in.ToStateID)
+	tag, err := s.vaPool.Exec(ctx, sqlDeleteTransition, flowID, subscriptionID, in.FromStateID, in.ToStateID)
 	if err != nil {
 		return fmt.Errorf("flows: delete transition: %w", err)
 	}

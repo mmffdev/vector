@@ -13,4 +13,4 @@ Push migrations and commits **as they land**, not in batches. Do not let multipl
 - Same for backend code changes that depend on a migration — push the pair together.
 - If a migration is applied via raw psql instead of the migrator, immediately also `INSERT INTO schema_migrations` so the marker stays truthful.
 - If a migration is drafted but skipped (e.g. number 116 today), don't leave a gap — either renumber subsequent files or write a no-op stub before pushing.
-- At the end of any task that touched `db/schema/` or `backend/`, the default action is "stage + commit + push", not "leave for next session".
+- At the end of any task that touched `db/<dbname>/schema/` or `backend/`, the default action is "stage + commit + push", not "leave for next session".

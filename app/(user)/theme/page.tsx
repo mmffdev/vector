@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTabState } from "@/app/hooks/useTabState";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import Table from "@/app/components/Table";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
 import { useTheme } from "@/app/hooks/useTheme";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 // PLA-0011/00393 — replaces inline style attributes on theme swatches.
 // Sets the dynamic colour via ref.style.setProperty rather than inline style.
@@ -1297,6 +1299,7 @@ export default function ThemePage() {
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
   const [topTab, setTopTab] = useTabState(["themes", "maker"] as const, "themes");
+  const { full } = usePageTitle();
 
   const shades = useMemo(() => shadesFromSeed(seed), [seed]);
   const seedName = useMemo(() => {
@@ -1314,7 +1317,13 @@ export default function ThemePage() {
 
   return (
     <PageContent>
-    <PageShell title="Theme" subtitle="Choose how Vector looks for you">
+      <PageHeading level={1} title={full} subtitle="Configure and manage workspace theme packs and colour tokens." />
+      <Panel
+        name="panel_theme_header"
+        className="page-panel-heading"
+        title="Theme"
+        description="Create and manage theme packs that control the visual appearance and colour tokens of the workspace."
+      />
       <SecondaryNavigation<"themes" | "maker">
         ariaLabel="Theme sections"
         pageId="theme"
@@ -1362,7 +1371,7 @@ export default function ThemePage() {
           <h3 className="theme-section__title">{section}</h3>
           <Table<Artefact>
             pageId="theme"
-            slot={`artefacts__${section.toLowerCase().replace(/\s+/g, "_")}`}
+            slot={`artefacts__${section.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`}
             ariaLabel={`Theme artefacts — ${section}`}
             rows={ARTEFACTS.filter((a) => a.section === section)}
             rowKey={(a) => `${a.section}-${a.control}`}
@@ -1399,7 +1408,6 @@ export default function ThemePage() {
       ))}
         </>
       )}
-    </PageShell>
     </PageContent>
   );
 }

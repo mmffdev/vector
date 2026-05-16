@@ -7,7 +7,7 @@ package fields
 //
 //   - AssertCallerMayRead: tenancy + membership gate against mmff_vector
 //     (master_record_workspaces + roles_workspaces).
-//   - LoadAdmittedFields:  bulk lookup of admitted artefact_field_library
+//   - LoadAdmittedFields:  bulk lookup of admitted artefacts_fields_library
 //     rows for a (workspace, tenant) pair against vector_artefacts.
 //
 // vectorPool MUST be non-nil. artefactsPool MAY be nil — when the
@@ -26,7 +26,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Sentinel errors. Handler maps these to HTTP statuses.
@@ -75,11 +75,9 @@ type FieldRow struct {
 // for wsID. Returns ErrWorkspaceNotFound, ErrForbidden, or a plumbing
 // error. See handler.go for the full rule semantics — this method is a
 // straight extraction.
-func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *models.User) error {
+func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *roletypes.User) error {
 	var wsTenant uuid.UUID
-	err := s.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`, wsID,
-	).Scan(&wsTenant)
+	err := s.vectorPool.QueryRow(ctx, sqlSelectWorkspaceTenant, wsID).Scan(&wsTenant)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrWorkspaceNotFound
 	}
@@ -89,16 +87,11 @@ func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *mo
 	if wsTenant != u.SubscriptionID {
 		return ErrWorkspaceNotFound
 	}
-	if u.Role == models.RoleGAdmin || u.Role == models.RolePAdmin {
+	if u.Role == roletypes.RoleGAdmin || u.Role == roletypes.RolePAdmin {
 		return nil
 	}
 	var member bool
-	err = s.vectorPool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM roles_workspaces
-			 WHERE user_id = $1 AND workspace_id = $2 AND revoked_at IS NULL
-		)`, u.ID, wsID,
-	).Scan(&member)
+	err = s.vectorPool.QueryRow(ctx, sqlExistsActiveWorkspaceMembership, u.ID, wsID).Scan(&member)
 	if err != nil {
 		return err
 	}
@@ -115,33 +108,7 @@ func (s *Service) LoadAdmittedFields(ctx context.Context, wsID, tenantID uuid.UU
 	if s.artefactsPool == nil {
 		return nil, ErrArtefactsPoolMissing
 	}
-	rows, err := s.artefactsPool.Query(ctx, `
-		SELECT
-		    fl.id,
-		    fl.subscription_id,
-		    fl.field_name,
-		    fl.label,
-		    fl.field_type,
-		    fl.options_json,
-		    fl.config_json,
-		    fl.description,
-		    fl.scope,
-		    fl.created_at,
-		    fl.updated_at
-		  FROM artefact_field_library fl
-		 WHERE fl.archived_at IS NULL
-		   AND (
-		         fl.scope = 'global'
-		      OR (fl.scope = 'tenant'    AND fl.subscription_id = $2)
-		      OR (fl.scope = 'workspace' AND fl.subscription_id = $2 AND EXISTS (
-		             SELECT 1 FROM artefact_workspace_fields awf
-		              WHERE awf.workspace_id = $1
-		                AND awf.field_library_id = fl.id
-		         ))
-		       )
-		 ORDER BY fl.label ASC, fl.field_name ASC`,
-		wsID, tenantID,
-	)
+	rows, err := s.artefactsPool.Query(ctx, sqlLoadAdmittedFields, wsID, tenantID)
 	if err != nil {
 		return nil, err
 	}

@@ -4,21 +4,24 @@
 
 export const TIMEBOX_KINDS = {
   sprint: {
-    table: "timebox_sprints",
+    table: "timeboxes_sprints",
     apiBase: "/timeboxes/sprints",
     namePrefix: "Sprint",
     listKey: "sprints",
-    rowPrefix: "sprint",
+    // rowPrefix is the wire-field stem the frontend uses to build payload
+    // keys (e.g. `${rowPrefix}_name`). After RF1.4.2.timeboxes the column
+    // names carry the full table prefix, so the frontend prefix matches.
+    rowPrefix: "timeboxes_sprints",
     bindsToTeam: true,
     enforcesNonOverlap: true,
     tracksCreep: true,
   },
   release: {
-    table: "timebox_releases",
+    table: "timeboxes_releases",
     apiBase: "/timeboxes/releases",
     namePrefix: "Release",
     listKey: "releases",
-    rowPrefix: "release",
+    rowPrefix: "timeboxes_releases",
     bindsToTeam: false,
     enforcesNonOverlap: true,
     tracksCreep: true,

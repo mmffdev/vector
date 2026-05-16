@@ -2,7 +2,7 @@
 //
 // Workspace-scoped successor to the legacy GET /api/subscription/layers
 // (handler_layers.go). Reads the strategy-layer hierarchy from
-// vector_artefacts.artefact_types (scope='strategy'), instead of the
+// vector_artefacts.artefacts_types (scope='strategy'), instead of the
 // legacy mmff_vector.obj_strategy_types_layers.
 //
 // Per R047 §9 the legacy endpoint stays live until F3 (frontend cutover);
@@ -24,6 +24,7 @@
 package portfoliomodels
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -31,12 +32,12 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // WorkspaceLayersHandler serves the workspace-scoped strategy-layer GET.
 // All DB I/O — workspace tenancy probe, workspace_roles membership
-// probe, artefact_types read — is delegated to Svc.
+// probe, artefacts_types read — is delegated to Svc.
 type WorkspaceLayersHandler struct {
 	Svc *Service
 }
@@ -78,7 +79,7 @@ func (h *WorkspaceLayersHandler) GetWorkspaceLayers(w http.ResponseWriter, r *ht
 	//    OR a tenant admin (Role == "gadmin"). gadmin override mirrors
 	//    the pattern used elsewhere in the codebase (orgdesign,
 	//    workspaces) so support staff can read every workspace.
-	if u.Role != models.RoleGAdmin {
+	if u.Role != roletypes.RoleGAdmin {
 		ok, err := h.Svc.IsWorkspaceMember(r.Context(), wsID, u.ID)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -91,6 +92,60 @@ func (h *WorkspaceLayersHandler) GetWorkspaceLayers(w http.ResponseWriter, r *ht
 	}
 
 	out, err := h.Svc.ListWorkspaceArtefactLayers(r.Context(), wsID)
+	if err != nil {
+		if errors.Is(err, ErrVAUnavailable) {
+			http.Error(w, "vector_artefacts unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// PatchWorkspaceLayers — PATCH /_site/workspace/{id}/portfolio/layers/batch
+func (h *WorkspaceLayersHandler) PatchWorkspaceLayers(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	wsIDRaw := chi.URLParam(r, "id")
+	wsID, err := uuid.Parse(wsIDRaw)
+	if err != nil {
+		http.Error(w, "invalid workspace id", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.Svc.AssertWorkspaceInTenant(r.Context(), wsID, u.SubscriptionID); err != nil {
+		if errors.Is(err, ErrWorkspaceNotFound) {
+			http.Error(w, "workspace not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if u.Role != roletypes.RoleGAdmin {
+		ok, err := h.Svc.IsWorkspaceMember(r.Context(), wsID, u.ID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if !ok {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
+	var inputs []PatchWorkspaceArtefactLayerInput
+	if err := json.NewDecoder(r.Body).Decode(&inputs); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	out, err := h.Svc.PatchWorkspaceArtefactLayers(r.Context(), wsID, inputs)
 	if err != nil {
 		if errors.Is(err, ErrVAUnavailable) {
 			http.Error(w, "vector_artefacts unavailable", http.StatusServiceUnavailable)

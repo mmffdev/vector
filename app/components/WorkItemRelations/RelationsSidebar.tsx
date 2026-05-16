@@ -52,7 +52,7 @@ export function RelationsSidebar({ node, onClose }: Props) {
       </dl>
 
       <a
-        href={`/work-items/list?focus=${node.id}`}
+        href={`/work-items?focus=${node.id}`}
         className="btn btn--secondary"
       >
         Open in list

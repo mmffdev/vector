@@ -15,12 +15,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function PortfolioSettingsPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const canViewSettings = useHasPermission("portfolio_settings.view");
   const router = useRouter();
@@ -34,20 +36,17 @@ export default function PortfolioSettingsPage() {
   return (
     <PageContent>
     <StrictRoute>
-    <PageShell
-      title="Portfolio Settings"
-      subtitle="Manage portfolios, products, and stakeholders"
-      actions={
-        <>
-          <button type="button" className="btn btn--secondary" disabled>
-            Cancel
-          </button>
-          <button type="button" className="btn btn--primary" disabled>
-            Save changes
-          </button>
-        </>
-      }
-    >
+      <PageHeading
+        level={1}
+        title={full}
+        subtitle="Manage portfolio settings, stakeholders, and model configuration."
+      />
+      <Panel
+        name="panel_portfolio_settings_header"
+        className="page-panel-heading"
+        title="Portfolio Settings"
+        description="Configure portfolio identity, stakeholder access, and administrative settings."
+      />
       <form className="form" onSubmit={(e) => e.preventDefault()}>
         <Panel name="portfolio_settings_identity" title="Identity">
           <div className="form__row">
@@ -103,7 +102,6 @@ export default function PortfolioSettingsPage() {
           </button>
         </Panel>
       </form>
-    </PageShell>
     </StrictRoute>
     </PageContent>
   );

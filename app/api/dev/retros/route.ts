@@ -18,7 +18,6 @@ export type RetroFinding = {
   confidence: number;
   fingerprint: string;
   ledger_entry_id: string | null;
-  planka_card_id: string | null;
   tech_debt_ref: string | null;
 };
 

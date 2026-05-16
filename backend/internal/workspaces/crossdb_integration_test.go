@@ -69,12 +69,12 @@ func TestCheckCrossDBOrphans_RandomWorkspaceHasNoOrphans(t *testing.T) {
 }
 
 // TestCheckCrossDBOrphans_DetectsInsertedRow inserts a synthetic
-// master_record_portfolio row carrying a fresh workspace_id, runs the
+// master_record_portfolios row carrying a fresh workspace_id, runs the
 // scan against THAT id, asserts the report includes
-// "master_record_portfolio" with count=1, then cleans up. We pick
-// master_record_portfolio because it has the smallest required-cols
+// "master_record_portfolios" with count=1, then cleans up. We pick
+// master_record_portfolios because it has the smallest required-cols
 // surface (workspace_id PK + model_name) — see
-// db/artefacts_schema/020_master_record_portfolio.sql.
+// db/vector_artefacts/schema/020_master_record_portfolios.sql.
 func TestCheckCrossDBOrphans_DetectsInsertedRow(t *testing.T) {
 	va := vaPoolForTest(t)
 	defer va.Close()
@@ -82,13 +82,13 @@ func TestCheckCrossDBOrphans_DetectsInsertedRow(t *testing.T) {
 
 	wsID := uuid.New()
 	defer func() {
-		if _, err := va.Exec(ctx, `DELETE FROM master_record_portfolio WHERE workspace_id = $1`, wsID); err != nil {
+		if _, err := va.Exec(ctx, `DELETE FROM master_record_portfolios WHERE workspace_id = $1`, wsID); err != nil {
 			t.Errorf("cleanup synthetic row: %v", err)
 		}
 	}()
 
 	if _, err := va.Exec(ctx, `
-		INSERT INTO master_record_portfolio (workspace_id, model_name)
+		INSERT INTO master_record_portfolios (workspace_id, model_name)
 		VALUES ($1, $2)
 	`, wsID, "B13 cross-db orphan guard test"); err != nil {
 		t.Fatalf("insert synthetic mrp row: %v", err)
@@ -102,14 +102,14 @@ func TestCheckCrossDBOrphans_DetectsInsertedRow(t *testing.T) {
 
 	var sawMRP bool
 	for _, r := range out {
-		if r.Table == "master_record_portfolio" {
+		if r.Table == "master_record_portfolios" {
 			sawMRP = true
 			if r.Count != 1 {
-				t.Errorf("master_record_portfolio count: got %d, want 1", r.Count)
+				t.Errorf("master_record_portfolios count: got %d, want 1", r.Count)
 			}
 		}
 	}
 	if !sawMRP {
-		t.Errorf("scan did not flag master_record_portfolio orphan; got %+v", out)
+		t.Errorf("scan did not flag master_record_portfolios orphan; got %+v", out)
 	}
 }

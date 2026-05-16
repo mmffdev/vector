@@ -1,7 +1,7 @@
 package portfoliomodels
 
 // PLA-0026 / Story 00493 (B4): adoption-saga step 3+4 rewrite — write
-// flows + flow_states + flow_transitions into vector_artefacts.
+// flows + flows_states + flows_transitions into vector_artefacts.
 //
 // This file is the second VA writer in the adoption saga, paired with
 // adopt_strategy_types.go (B3). The legacy writeWorkflows /
@@ -16,8 +16,8 @@ package portfoliomodels
 //   stepWorkflows    → writeFlowsAndStates        (B4, this file)
 //   stepTransitions  → writeFlowTransitions       (B4, this file)
 //
-// flow_states.flow_id depends on flows; flow_transitions.from_state_id /
-// to_state_id depend on flow_states. We bundle flows + flow_states into
+// flows_states.flow_id depends on flows; flows_transitions.from_state_id /
+// to_state_id depend on flows_states. We bundle flows + flows_states into
 // the same tx (stepWorkflows) because the library has only one
 // "workflow" concept and that maps to "states". Transitions get their
 // own tx in stepTransitions so it can be retried independently when
@@ -25,18 +25,18 @@ package portfoliomodels
 //
 // Schema targets:
 //   vector_artefacts.flows         — 004_flows.sql + 023 (library_layer_id)
-//   vector_artefacts.flow_states   — 004_flows.sql + 022 (library_workflow_id)
-//   vector_artefacts.flow_transitions — 004_flows.sql
+//   vector_artefacts.flows_states   — 004_flows.sql + 022 (library_workflow_id)
+//   vector_artefacts.flows_transitions — 004_flows.sql
 //
 // Idempotency keys:
 //   flows:            partial unique flows_one_default_per_type
 //                     (artefact_type_id) WHERE is_default=true
 //                     AND archived_at IS NULL.
-//   flow_states:      partial unique uq_flow_states_flow_lib_workflow
+//   flows_states:      partial unique uq_flow_states_flow_lib_workflow
 //                     (flow_id, library_workflow_id) WHERE archived_at
 //                     IS NULL AND library_workflow_id IS NOT NULL
 //                     (added by 022).
-//   flow_transitions: full unique flow_transitions_unique_edge
+//   flows_transitions: full unique flow_transitions_unique_edge
 //                     (flow_id, from_state_id, to_state_id).
 
 import (
@@ -52,7 +52,7 @@ import (
 
 // writeFlowsAndStates mirrors every live library Layer into a default
 // flow row (one per strategy artefact_type) and every live library
-// Workflow into a flow_states row (one per workflow row). Two-phase:
+// Workflow into a flows_states row (one per workflow row). Two-phase:
 //
 //	Phase 1 — INSERT flows ON CONFLICT DO NOTHING for every live layer
 //	          that has a strategy artefact_type mirror in this workspace.
@@ -60,7 +60,7 @@ import (
 //	          (DO NOTHING + RETURNING is unreliable when conflict skips).
 //	Phase 2 — for each live library Workflow row, look up its flow_id via
 //	          (workflow.LayerID → strategy artefact_type → flow), classify
-//	          its kind, and INSERT into flow_states ON CONFLICT DO NOTHING
+//	          its kind, and INSERT into flows_states ON CONFLICT DO NOTHING
 //	          on (flow_id, library_workflow_id).
 //
 // Caller MUST have already run writeStrategyArtefactTypes for this
@@ -98,17 +98,7 @@ func writeFlowsAndStates(
 		// scanning flows can tell at a glance which artefact_type each
 		// flow belongs to. (Documented in the package doc.)
 		flowName := l.Name + " default flow"
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO flows (
-				artefact_type_id, name, description,
-				is_default, library_layer_id
-			) VALUES (
-				$1, $2, NULL,
-				TRUE, $3
-			)
-			ON CONFLICT (artefact_type_id)
-				WHERE is_default = TRUE AND archived_at IS NULL
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertDefaultFlowForLayer,
 			artefactTypeID, flowName, l.ID,
 		); err != nil {
 			return fmt.Errorf("insert default flow for layer %q: %w", l.Name, err)
@@ -123,7 +113,7 @@ func writeFlowsAndStates(
 		return err
 	}
 
-	// Phase 2: insert one flow_states row per live library Workflow.
+	// Phase 2: insert one flows_states row per live library Workflow.
 	for _, wf := range bundle.Workflows {
 		if wf.ArchivedAt != nil {
 			continue
@@ -141,16 +131,7 @@ func writeFlowsAndStates(
 			continue
 		}
 		kind := classifyWorkflowKind(wf)
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO flow_states (
-				flow_id, name, kind, colour, sort_order, is_initial,
-				library_workflow_id
-			) VALUES (
-				$1, $2, $3, $4, $5, $6, $7
-			)
-			ON CONFLICT (flow_id, library_workflow_id)
-				WHERE archived_at IS NULL AND library_workflow_id IS NOT NULL
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertFlowStateForWorkflow,
 			flowID, wf.StateLabel, kind, wf.Colour, wf.SortOrder, wf.IsInitial,
 			wf.ID,
 		); err != nil {
@@ -161,12 +142,12 @@ func writeFlowsAndStates(
 }
 
 // writeFlowTransitions mirrors every live library WorkflowTransition
-// into a flow_transitions row. Resolves from_state_id / to_state_id
+// into a flows_transitions row. Resolves from_state_id / to_state_id
 // via library_workflow_id → flow_state_id map. Idempotent on
 // (flow_id, from_state_id, to_state_id).
 //
 // Caller MUST have already run writeFlowsAndStates for this workspace —
-// flow_transitions.flow_id and *_state_id all chase rows from there.
+// flows_transitions.flow_id and *_state_id all chase rows from there.
 func writeFlowTransitions(
 	ctx context.Context,
 	vaTx pgx.Tx,
@@ -208,14 +189,7 @@ func writeFlowTransitions(
 			return fmt.Errorf("cross-flow transition %s→%s (flows %s vs %s)",
 				fromStateID, toStateID, fromFlow, toFlow)
 		}
-		if _, err := vaTx.Exec(ctx, `
-			INSERT INTO flow_transitions (
-				flow_id, from_state_id, to_state_id, required_permission
-			) VALUES (
-				$1, $2, $3, NULL
-			)
-			ON CONFLICT (flow_id, from_state_id, to_state_id)
-				DO NOTHING`,
+		if _, err := vaTx.Exec(ctx, sqlInsertFlowTransitionForLibrary,
 			fromFlow, fromStateID, toStateID,
 		); err != nil {
 			return fmt.Errorf("insert flow_transition %s→%s: %w", fromStateID, toStateID, err)
@@ -228,27 +202,15 @@ func writeFlowTransitions(
 // live flow_state in this workspace's strategy flows. Used by
 // writeFlowTransitions to translate library uuids into VA uuids.
 //
-// Joins flow_states → flows → artefact_types so the workspace_id filter
-// can be applied. flow_states itself is workspace-agnostic (its parent
+// Joins flows_states → flows → artefacts_types so the workspace_id filter
+// can be applied. flows_states itself is workspace-agnostic (its parent
 // flow scopes it).
 func loadFlowStateMap(
 	ctx context.Context,
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT fs.library_workflow_id, fs.id
-		  FROM flow_states fs
-		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND fs.archived_at IS NULL
-		   AND fs.library_workflow_id IS NOT NULL`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectFlowStateLibMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load flow_state map: %w", err)
 	}
@@ -265,7 +227,7 @@ func loadFlowStateMap(
 }
 
 // loadDefaultFlowMap returns artefact_type_id → flow_id for every live
-// default flow in this workspace's strategy artefact_types. Used by
+// default flow in this workspace's strategy artefacts_types. Used by
 // writeFlowsAndStates Phase 2 to resolve flow_id from
 // (workflow.LayerID → artefact_type_id).
 func loadDefaultFlowMap(
@@ -273,17 +235,7 @@ func loadDefaultFlowMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT f.artefact_type_id, f.id
-		  FROM flows f
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND f.is_default = TRUE`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectDefaultFlowMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load default flow map: %w", err)
 	}
@@ -308,18 +260,7 @@ func loadFlowStateFlowMap(
 	vaTx pgx.Tx,
 	workspaceID uuid.UUID,
 ) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := vaTx.Query(ctx, `
-		SELECT fs.id, fs.flow_id
-		  FROM flow_states fs
-		  JOIN flows f          ON f.id = fs.flow_id
-		  JOIN artefact_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND t.archived_at IS NULL
-		   AND f.archived_at IS NULL
-		   AND fs.archived_at IS NULL`,
-		workspaceID,
-	)
+	rows, err := vaTx.Query(ctx, sqlSelectFlowStateFlowMap, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load flow_state→flow map: %w", err)
 	}
@@ -335,7 +276,7 @@ func loadFlowStateFlowMap(
 	return m, rows.Err()
 }
 
-// classifyWorkflowKind picks the flow_states.kind bucket for one
+// classifyWorkflowKind picks the flows_states.kind bucket for one
 // library Workflow row. Rules per the card spec:
 //
 //	IsInitial  → 'todo'

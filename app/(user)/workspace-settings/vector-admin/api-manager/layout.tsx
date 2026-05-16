@@ -3,11 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 
-const TABS = ["webhooks"] as const;
+const TABS = ["webhooks", "asset-register"] as const;
 type TabKey = typeof TABS[number];
 
 const SEG_TO_KEY: Record<string, TabKey> = {
   webhooks: "webhooks",
+  "asset-register": "asset-register",
 };
 
 export default function ApiManagerLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export default function ApiManagerLayout({ children }: { children: React.ReactNo
         onChange={handleTabChange}
         items={[
           { key: "webhooks" as const, label: "Webhooks", sortKey: "Webhooks" },
+          { key: "asset-register" as const, label: "Asset Register", sortKey: "Asset Register" },
         ]}
       />
       {children}

@@ -13,7 +13,7 @@
 //      `failed`, append an `error_events` row with the matching
 //      `ADOPT_*` code, return 500. Library tx is rolled back (read-only,
 //      so no effect).
-//   4. Final step flips `subscription_portfolio_model_state.status` to
+//   4. Final step flips `artefacts_adoption_states.status` to
 //      `completed` and stamps adopted_at / adopted_by_user_id.
 //
 // Idempotency / retry-resume
@@ -28,7 +28,7 @@
 //   end-state is identical: a retry that re-runs every step lands no
 //   duplicate rows.
 //
-//   Migration 026's `subscription_portfolio_model_state` row has no
+//   The `artefacts_adoption_states` row has no
 //   `failed_step` / `current_step` / `last_error_code` columns, so we
 //   cannot record "resume from step N" telemetry in the DB. Per the
 //   card's hard constraint we do NOT add a follow-up migration here;
@@ -66,7 +66,7 @@ import (
 )
 
 // Adoption error codes — must match the seed in
-// `db/library_schema/008_error_codes.sql`. Validation that each code is
+// `db/mmff_library/schema/008_error_codes.sql`. Validation that each code is
 // present in `mmff_library.error_codes` is the job of
 // `errorsreport.codeExists`; here we only enforce spelling against the
 // seed by hand-typing the constants.
@@ -92,14 +92,15 @@ const (
 // stepOrder is the canonical step list. 00010's sim harness will iterate
 // this slice and may inject a "fail at step name" hook; 00009's SSE
 // stream will emit one event per step boundary. Keep it in sync with
-// the switch in runSteps.
+// the vaSteps slice in Adopt().
+// SA1 (PLA-0026 2026-05-13): stepTerminology removed — no VA writer
+// exists and the legacy mirror table is being dropped (story 00486).
 var stepOrder = []string{
 	stepValidate,
 	stepLayers,
 	stepWorkflows,
 	stepTransitions,
 	stepArtifacts,
-	stepTerminology,
 	stepFinalize,
 }
 
@@ -146,7 +147,12 @@ type Orchestrator struct {
 	// exactly like the pre-PLA-0026 path. Lets dev/staging configs
 	// run without the artefacts DB while production cuts over.
 	VAPool *pgxpool.Pool
-	// MasterRecordSvc is the sole-writer for master_record_portfolio
+	// ErrorsPool is the destination for appendErrorEvent INSERTs into
+	// error_events. PLA-0023 P1 (2026-05-13) moved error_events from
+	// mmff_vector to vector_artefacts; NewOrchestrator sets this to
+	// VAPool when available, falling back to VectorPool.
+	ErrorsPool *pgxpool.Pool
+	// MasterRecordSvc is the sole-writer for master_record_portfolios
 	// (PLA-0026 B6). Optional — when nil the saga skips the finalize-
 	// step master_record upsert. Pair with VAPool: a non-nil VAPool
 	// without a MasterRecordSvc will still run B3–B5 but skip B6.
@@ -157,10 +163,15 @@ type Orchestrator struct {
 // (and/or masterRecordSvc) to disable the PLA-0026 dual-writes
 // (legacy-only behaviour).
 func NewOrchestrator(libRO, vectorPool, vaPool *pgxpool.Pool, masterRecordSvc *portfolio.Service) *Orchestrator {
+	errorsPool := vectorPool
+	if vaPool != nil {
+		errorsPool = vaPool
+	}
 	return &Orchestrator{
 		LibRO:           libRO,
 		VectorPool:      vectorPool,
 		VAPool:          vaPool,
+		ErrorsPool:      errorsPool,
 		MasterRecordSvc: masterRecordSvc,
 	}
 }
@@ -201,6 +212,14 @@ func (o *Orchestrator) Adopt(
 		hook = func(context.Context, StepEvent) {}
 	}
 
+	// Resolve workspace early — needed for state table routing (SA3).
+	// Orphan-sub fixtures have no workspace row; they get uuid.Nil and
+	// fall back to the legacy mmff_vector state path below.
+	workspaceID, err := o.resolveWorkspaceID(ctx, subscriptionID)
+	if err != nil {
+		return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
+	}
+
 	// PLA-0026 / 00497 (B8): set when the existing-state check below
 	// detects a completed adoption to a *different* model. Drives the
 	// re-adoption pre-step that inserts the placeholder strategy
@@ -209,11 +228,11 @@ func (o *Orchestrator) Adopt(
 	isReadoption := false
 
 	// ── Idempotency check (BEFORE opening any tx) ────────────────
-	// Migration 026's partial unique index keeps at most one
-	// non-terminal (pending|in_progress|completed) row per
-	// subscription. Failed/rolled_back rows are audit-only and do
-	// not block a fresh attempt.
-	existingState, err := o.loadActiveState(ctx, subscriptionID)
+	// SA3 (PLA-0026 2026-05-13): state reads/writes now target
+	// vector_artefacts.artefacts_adoption_states (keyed by workspace_id)
+	// when VAPool != nil and workspaceID != uuid.Nil. Orphan-sub
+	// fixtures still fall back to the mmff_vector predecessor path.
+	existingState, err := o.loadActiveState(ctx, subscriptionID, workspaceID)
 	if err != nil {
 		return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 	}
@@ -238,7 +257,7 @@ func (o *Orchestrator) Adopt(
 			// partial unique index admits a fresh in_progress row for
 			// the new model, and flag the saga so the VA pre-step
 			// dispatches runReadoption before the strategy writer.
-			if err := o.archiveCompletedStateForReadoption(ctx, existingState.ID); err != nil {
+			if err := o.archiveCompletedStateForReadoption(ctx, existingState.ID, workspaceID); err != nil {
 				return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 			}
 			isReadoption = true
@@ -253,7 +272,7 @@ func (o *Orchestrator) Adopt(
 				// Stale failed row is for a different model. Archive it
 				// so the partial unique index admits a fresh row for the
 				// newly-selected model.
-				if err := o.archiveStaleFailedRow(ctx, existingState.ID); err != nil {
+				if err := o.archiveStaleFailedRow(ctx, existingState.ID, workspaceID); err != nil {
 					return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 				}
 				existingState = nil // treat as a clean slate
@@ -264,7 +283,7 @@ func (o *Orchestrator) Adopt(
 			// (No `failed_step` column exists on migration 026, so we
 			// cannot resume from step N; idempotent inserts make a
 			// full re-run safe. See package doc.)
-			if err := o.resetFailedToInProgress(ctx, existingState.ID); err != nil {
+			if err := o.resetFailedToInProgress(ctx, existingState.ID, workspaceID); err != nil {
 				return nil, o.reportInternal(ctx, subscriptionID, userID, requestID, modelID, "", err)
 			}
 		}
@@ -292,7 +311,7 @@ func (o *Orchestrator) Adopt(
 	if opts.FailAtStep == stepValidate {
 		err := errSimInjected{step: stepValidate}
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepValidate, err, codeAdoptInternal)
 	}
 
 	bundle, err := librarydb.FetchTemplateByID(ctx, o.LibRO, modelID)
@@ -300,11 +319,11 @@ func (o *Orchestrator) Adopt(
 	// If the template was removed between the list call and now, it returns ErrBundleNotFound.
 	if errors.Is(err, librarydb.ErrBundleNotFound) {
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptBundleNotFound)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepValidate, err, codeAdoptBundleNotFound)
 	}
 	if err != nil {
 		hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepValidate, err, codeAdoptInternal)
 	}
 
 	// Pin the state row: either reuse the resumed row, or insert a
@@ -314,7 +333,7 @@ func (o *Orchestrator) Adopt(
 	if existingState != nil {
 		stateID = existingState.ID
 	} else {
-		newID, err := o.insertPendingState(ctx, subscriptionID, userID, modelID)
+		newID, err := o.insertPendingState(ctx, subscriptionID, userID, modelID, workspaceID)
 		if err != nil {
 			hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end", Err: err})
 			return nil, o.failSagaNoState(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
@@ -324,76 +343,41 @@ func (o *Orchestrator) Adopt(
 
 	hook(ctx, StepEvent{Index: 0, Name: stepValidate, Phase: "end"})
 
-	// Resolve workspaceID for the PLA-0026 dual-writes. Orphan-sub
-	// fixtures (Bulk Cross-Tenant Test, etc.) have no workspace row;
-	// they fall through with uuid.Nil and the va-step dispatcher
-	// silently skips, matching M4's "ws_id = sub_id" backfill in
-	// migration 019 only after the workspace exists. We do NOT
-	// surface "no workspace" as an error — adoption against an
-	// orphan-sub still succeeds via the legacy mirror path.
-	workspaceID, err := o.resolveWorkspaceID(ctx, subscriptionID)
-	if err != nil {
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepValidate, err, codeAdoptInternal)
-	}
-
-	// ── Steps 2..6: mirror writes, each in its own tenant tx ────
-	libVersion := bundle.Model.Version
-	mirrorSteps := []struct {
+	// ── Steps 2..6: VA writers, each in its own vector_artefacts tx ─
+	// SA1 (PLA-0026 2026-05-13): legacy mmff_vector mirror writes
+	// (obj_strategy_types_layers, subscription_workflows,
+	// subscription_workflow_transitions, subscription_artifacts,
+	// subscription_terminology) removed. VA is now the sole write path.
+	vaSteps := []struct {
 		name string
-		fn   func(ctx context.Context, tx pgx.Tx) error
+		fn   func(ctx context.Context, vaTx pgx.Tx) error
 	}{
-		{stepLayers, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeLayers(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepWorkflows, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeWorkflows(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepTransitions, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeTransitions(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepArtifacts, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeArtifacts(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-		{stepTerminology, func(ctx context.Context, tx pgx.Tx) error {
-			return o.writeTerminology(ctx, tx, subscriptionID, bundle, libVersion)
-		}},
-	}
-
-	// Per-step VA writers (PLA-0026). Each writer runs in its OWN
-	// vector_artefacts tenant tx, AFTER the legacy mirror tx commits.
-	// A nil entry (or no entry) means "no VA write for this step yet"
-	// — subagents fill these in for B4 (flows/transitions),
-	// B5 (work-scope artefact_types), B6 (master_record_portfolio
-	// upsert in stepFinalize). The dispatcher is no-op when VAPool is
-	// nil or workspaceID is uuid.Nil (orphan-sub fixtures).
-	vaSteps := map[string]func(ctx context.Context, vaTx pgx.Tx) error{
-		stepLayers: func(ctx context.Context, vaTx pgx.Tx) error {
-			// PLA-0026 / 00497 (B8): re-adoption pre-step. Before
-			// minting the new strategy chain, insert the placeholder
-			// type + artefact, repoint orphan work artefacts, delete
-			// old strategy artefacts, and archive old strategy types.
-			// Runs in the same vaTx as the strategy writer so the
-			// transition is atomic — a partial failure rolls the
-			// whole pre-step + writer back together.
+		{stepLayers, func(ctx context.Context, vaTx pgx.Tx) error {
+			// B8: re-adoption pre-step inserts placeholder type + artefact,
+			// repoints orphan work artefacts, deletes old strategy artefacts,
+			// and archives old strategy types — atomically in the same vaTx.
 			if isReadoption {
 				if _, _, err := runReadoption(ctx, vaTx, subscriptionID, workspaceID, userID); err != nil {
 					return err
 				}
 			}
 			return writeStrategyArtefactTypes(ctx, vaTx, subscriptionID, workspaceID, bundle)
-		},
-		stepWorkflows: func(ctx context.Context, vaTx pgx.Tx) error {
+		}},
+		{stepWorkflows, func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeFlowsAndStates(ctx, vaTx, subscriptionID, workspaceID, bundle)
-		},
-		stepTransitions: func(ctx context.Context, vaTx pgx.Tx) error {
+		}},
+		{stepTransitions, func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeFlowTransitions(ctx, vaTx, subscriptionID, workspaceID, bundle)
-		},
-		stepArtifacts: func(ctx context.Context, vaTx pgx.Tx) error {
+		}},
+		{stepArtifacts, func(ctx context.Context, vaTx pgx.Tx) error {
 			return writeWorkArtefactTypes(ctx, vaTx, subscriptionID, workspaceID)
-		},
+		}},
+		// stepTerminology has no VA writer yet; the legacy table is being
+		// dropped (PLA-0026 S1 story 00486). Skip silently for now — no
+		// terminology data is stored on the VA substrate.
 	}
 
-	for i, step := range mirrorSteps {
+	for i, step := range vaSteps {
 		idx := i + 1 // stepValidate is index 0
 
 		hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "start"})
@@ -401,22 +385,13 @@ func (o *Orchestrator) Adopt(
 		if opts.FailAtStep == step.name {
 			err := errSimInjected{step: step.name}
 			hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
-			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
+			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, step.name, err, mirrorErrCode(step.name))
 		}
 
-		if err := o.runMirrorStep(ctx, step.fn); err != nil {
-			hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
-			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
-		}
-
-		// PLA-0026 dual-write: after the legacy mirror commits, run
-		// the corresponding VA writer in its own tx. On VA failure,
-		// fail the saga — retry semantics are safe (both sides are
-		// idempotent on natural keys).
-		if vaFn, ok := vaSteps[step.name]; ok && o.VAPool != nil && workspaceID != uuid.Nil {
-			if err := o.runVAStep(ctx, vaFn); err != nil {
+		if o.VAPool != nil && workspaceID != uuid.Nil {
+			if err := o.runVAStep(ctx, step.fn); err != nil {
 				hook(ctx, StepEvent{Index: idx, Name: step.name, Phase: "end", Err: err})
-				return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, step.name, err, mirrorErrCode(step.name))
+				return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, step.name, err, mirrorErrCode(step.name))
 			}
 		}
 
@@ -430,10 +405,10 @@ func (o *Orchestrator) Adopt(
 	if opts.FailAtStep == stepFinalize {
 		err := errSimInjected{step: stepFinalize}
 		hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 	}
 
-	// PLA-0026 / Story 00495 (B6): upsert master_record_portfolio for
+	// PLA-0026 / Story 00495 (B6): upsert master_record_portfolios for
 	// this workspace BEFORE markCompleted. The master-record service
 	// writes against the VA pool directly (idempotent on workspace_id
 	// PK), so a saga retry converges to the same row. No-op when
@@ -443,14 +418,14 @@ func (o *Orchestrator) Adopt(
 		if err := writeMasterRecordPortfolio(ctx, nil, o.MasterRecordSvc,
 			workspaceID, modelID, userID, bundle); err != nil {
 			hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
-			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+			return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 		}
 	}
 
-	adoptedAt, err := o.markCompleted(ctx, stateID, userID)
+	adoptedAt, err := o.markCompleted(ctx, stateID, userID, workspaceID)
 	if err != nil {
 		hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end", Err: err})
-		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, requestID, stepFinalize, err, codeAdoptInternal)
+		return nil, o.failSaga(ctx, subscriptionID, userID, modelID, workspaceID, requestID, stepFinalize, err, codeAdoptInternal)
 	}
 	hook(ctx, StepEvent{Index: finalizeIdx, Name: stepFinalize, Phase: "end"})
 
@@ -464,7 +439,7 @@ func (o *Orchestrator) Adopt(
 
 // resolveWorkspaceID returns the workspace_id for a subscription, or
 // uuid.Nil when none exists (orphan-sub fixtures). The PLA-0026 VA
-// writes use this to address artefact_types per workspace; the legacy
+// writes use this to address artefacts_types per workspace; the legacy
 // mirror path is unaffected.
 //
 // We pick the lowest-id live workspace deterministically. Multi-
@@ -474,13 +449,7 @@ func (o *Orchestrator) Adopt(
 // fdw_workspaces backfill convention.
 func (o *Orchestrator) resolveWorkspaceID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var ws uuid.UUID
-	err := o.VectorPool.QueryRow(ctx, `
-		SELECT id
-		  FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY id
-		 LIMIT 1`,
+	err := o.VectorPool.QueryRow(ctx, sqlSelectFirstLiveWorkspaceForSubscription,
 		subscriptionID,
 	).Scan(&ws)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -510,26 +479,13 @@ func (o *Orchestrator) runVAStep(ctx context.Context, fn func(ctx context.Contex
 	return nil
 }
 
-// runMirrorStep wraps one mirror-table write in a fresh SERIALIZABLE
-// tenant tx. Per AC: each step commits atomically.
-func (o *Orchestrator) runMirrorStep(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
-	tx, err := o.VectorPool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
-	if err != nil {
-		return fmt.Errorf("begin tenant tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-	if err := fn(ctx, tx); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tenant tx: %w", err)
-	}
-	return nil
-}
-
 // ──────────────────────────────────────────────────────────────────
-// State-row helpers (mmff_vector.subscription_portfolio_model_state)
+// State-row helpers (vector_artefacts.artefacts_adoption_states)
 // ──────────────────────────────────────────────────────────────────
+//
+// PLA-0023 cutover (2026-05-13): legacy mmff_vector.subscription_portfolio_model_state
+// dropped. VA is the sole adoption-state substrate. workspaceID is required
+// — orchestrator callers resolve it before invoking any state helper.
 
 type stateRow struct {
 	ID        uuid.UUID
@@ -539,18 +495,14 @@ type stateRow struct {
 }
 
 // loadActiveState returns the live (archived_at IS NULL) state row for
-// this subscription if any, otherwise nil. The partial unique index
-// (migration 026) guarantees at most one such row per subscription.
-func (o *Orchestrator) loadActiveState(ctx context.Context, subscriptionID uuid.UUID) (*stateRow, error) {
+// this workspace if any, otherwise nil.
+func (o *Orchestrator) loadActiveState(ctx context.Context, _ /*subscriptionID*/, workspaceID uuid.UUID) (*stateRow, error) {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return nil, ErrVAUnavailable
+	}
 	var s stateRow
-	err := o.VectorPool.QueryRow(ctx, `
-		SELECT id, adopted_model_id, status, adopted_at
-		  FROM subscription_portfolio_model_state
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY created_at DESC
-		 LIMIT 1`,
-		subscriptionID,
+	err := o.VAPool.QueryRow(ctx, sqlSelectActiveAdoptionState,
+		workspaceID,
 	).Scan(&s.ID, &s.ModelID, &s.Status, &s.AdoptedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -567,15 +519,14 @@ func (o *Orchestrator) loadActiveState(ctx context.Context, subscriptionID uuid.
 // state we don't need to surface yet.
 func (o *Orchestrator) insertPendingState(
 	ctx context.Context,
-	subscriptionID, userID, modelID uuid.UUID,
+	subscriptionID, userID, modelID, workspaceID uuid.UUID,
 ) (uuid.UUID, error) {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return uuid.UUID{}, ErrVAUnavailable
+	}
 	var id uuid.UUID
-	err := o.VectorPool.QueryRow(ctx, `
-		INSERT INTO subscription_portfolio_model_state
-		    (subscription_id, adopted_model_id, adopted_by_user_id, status)
-		VALUES ($1, $2, $3, 'in_progress')
-		RETURNING id`,
-		subscriptionID, modelID, userID,
+	err := o.VAPool.QueryRow(ctx, sqlInsertAdoptionState,
+		workspaceID, subscriptionID, modelID, userID,
 	).Scan(&id)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("insert state row: %w", err)
@@ -585,18 +536,16 @@ func (o *Orchestrator) insertPendingState(
 
 // archiveCompletedStateForReadoption soft-archives a previously-
 // completed state row when the operator picks a different model
-// (PLA-0026 / 00497). Same shape as archiveStaleFailedRow: the partial
-// unique index keys on (subscription_id, archived_at IS NULL), so
-// flipping archived_at to NOW() admits a fresh in_progress row for the
-// new model. The historical row stays for audit.
-func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, stateID uuid.UUID) error {
-	_, err := o.VectorPool.Exec(ctx, `
-		UPDATE subscription_portfolio_model_state
-		   SET archived_at = NOW()
-		 WHERE id = $1
-		   AND status = 'completed'
-		   AND archived_at IS NULL`,
-		stateID,
+// (PLA-0026 / 00497). The partial unique index keys on
+// (workspace_id, archived_at IS NULL), so flipping archived_at to NOW()
+// admits a fresh in_progress row for the new model. The historical row
+// stays for audit.
+func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, stateID, workspaceID uuid.UUID) error {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return ErrVAUnavailable
+	}
+	_, err := o.VAPool.Exec(ctx, sqlArchiveCompletedStateForReadoption,
+		stateID, workspaceID,
 	)
 	if err != nil {
 		return fmt.Errorf("archive completed state for re-adoption: %w", err)
@@ -607,14 +556,12 @@ func (o *Orchestrator) archiveCompletedStateForReadoption(ctx context.Context, s
 // archiveStaleFailedRow soft-archives a failed row for a *different*
 // model so the partial unique index (archived_at IS NULL) admits a
 // fresh row for the newly-selected model.
-func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID uuid.UUID) error {
-	_, err := o.VectorPool.Exec(ctx, `
-		UPDATE subscription_portfolio_model_state
-		   SET archived_at = NOW()
-		 WHERE id = $1
-		   AND status = 'failed'
-		   AND archived_at IS NULL`,
-		stateID,
+func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID, workspaceID uuid.UUID) error {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return ErrVAUnavailable
+	}
+	_, err := o.VAPool.Exec(ctx, sqlArchiveStaleFailedAdoptionState,
+		stateID, workspaceID,
 	)
 	if err != nil {
 		return fmt.Errorf("archive stale failed row: %w", err)
@@ -625,14 +572,12 @@ func (o *Orchestrator) archiveStaleFailedRow(ctx context.Context, stateID uuid.U
 // resetFailedToInProgress flips a previously-failed row back to
 // in_progress so the partial unique index admits the resumed saga.
 // Called only when a prior attempt for the *same* model_id failed.
-func (o *Orchestrator) resetFailedToInProgress(ctx context.Context, stateID uuid.UUID) error {
-	_, err := o.VectorPool.Exec(ctx, `
-		UPDATE subscription_portfolio_model_state
-		   SET status = 'in_progress'
-		 WHERE id = $1
-		   AND status = 'failed'
-		   AND archived_at IS NULL`,
-		stateID,
+func (o *Orchestrator) resetFailedToInProgress(ctx context.Context, stateID, workspaceID uuid.UUID) error {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return ErrVAUnavailable
+	}
+	_, err := o.VAPool.Exec(ctx, sqlResetFailedAdoptionStateToInProgress,
+		stateID, workspaceID,
 	)
 	if err != nil {
 		return fmt.Errorf("reset failed state: %w", err)
@@ -642,16 +587,13 @@ func (o *Orchestrator) resetFailedToInProgress(ctx context.Context, stateID uuid
 
 // markCompleted flips the state row to `completed`, stamps adopted_at +
 // adopted_by_user_id, returns the timestamp.
-func (o *Orchestrator) markCompleted(ctx context.Context, stateID, userID uuid.UUID) (time.Time, error) {
+func (o *Orchestrator) markCompleted(ctx context.Context, stateID, userID, workspaceID uuid.UUID) (time.Time, error) {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return time.Time{}, ErrVAUnavailable
+	}
 	var ts time.Time
-	err := o.VectorPool.QueryRow(ctx, `
-		UPDATE subscription_portfolio_model_state
-		   SET status = 'completed',
-		       adopted_by_user_id = $2,
-		       adopted_at = NOW()
-		 WHERE id = $1
-		 RETURNING adopted_at`,
-		stateID, userID,
+	err := o.VAPool.QueryRow(ctx, sqlMarkAdoptionStateCompleted,
+		stateID, userID, workspaceID,
 	).Scan(&ts)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("mark completed: %w", err)
@@ -662,281 +604,13 @@ func (o *Orchestrator) markCompleted(ctx context.Context, stateID, userID uuid.U
 // markFailed flips the state row to `failed`. Best-effort: if this
 // fails too, we log via the error caller — there's no further state to
 // roll back.
-func (o *Orchestrator) markFailed(ctx context.Context, stateID uuid.UUID) {
-	_, _ = o.VectorPool.Exec(ctx, `
-		UPDATE subscription_portfolio_model_state
-		   SET status = 'failed'
-		 WHERE id = $1
-		   AND archived_at IS NULL`,
-		stateID,
+func (o *Orchestrator) markFailed(ctx context.Context, stateID, workspaceID uuid.UUID) {
+	if o.VAPool == nil || workspaceID == uuid.Nil {
+		return
+	}
+	_, _ = o.VAPool.Exec(ctx, sqlMarkAdoptionStateFailed,
+		stateID, workspaceID,
 	)
-}
-
-// ──────────────────────────────────────────────────────────────────
-// Mirror-table writers
-//
-// Each writer:
-//   - inserts every live (archived_at IS NULL) library row's mirror
-//   - uses ON CONFLICT … DO NOTHING on the natural-key unique index so
-//     a retry after partial failure is a no-op for already-landed rows
-//   - returns a map of library_id → mirror_id for the next step's FK
-//     resolution (only needed for layers and workflows whose ids feed
-//     transitions and workflows respectively)
-// ──────────────────────────────────────────────────────────────────
-
-// loadLayerMap returns library_id → mirror_id for every live mirror
-// layer in this subscription. Used by the workflows step to resolve
-// `layer_id` from the bundle's library uuid into the mirror uuid.
-func loadLayerMap(ctx context.Context, tx pgx.Tx, subscriptionID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT source_library_id, id
-		  FROM obj_strategy_types_layers
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL`,
-		subscriptionID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("load layer map: %w", err)
-	}
-	defer rows.Close()
-	m := make(map[uuid.UUID]uuid.UUID)
-	for rows.Next() {
-		var libID, mirID uuid.UUID
-		if err := rows.Scan(&libID, &mirID); err != nil {
-			return nil, fmt.Errorf("scan layer map: %w", err)
-		}
-		m[libID] = mirID
-	}
-	return m, rows.Err()
-}
-
-// loadWorkflowMap returns library_id → mirror_id for every live mirror
-// workflow in this subscription. Used by the transitions step to
-// resolve from_state_id / to_state_id.
-func loadWorkflowMap(ctx context.Context, tx pgx.Tx, subscriptionID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT source_library_id, id
-		  FROM subscription_workflows
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL`,
-		subscriptionID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("load workflow map: %w", err)
-	}
-	defer rows.Close()
-	m := make(map[uuid.UUID]uuid.UUID)
-	for rows.Next() {
-		var libID, mirID uuid.UUID
-		if err := rows.Scan(&libID, &mirID); err != nil {
-			return nil, fmt.Errorf("scan workflow map: %w", err)
-		}
-		m[libID] = mirID
-	}
-	return m, rows.Err()
-}
-
-func (o *Orchestrator) writeLayers(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	// Topological insert: sort layers parents-before-children in memory,
-	// then insert in that order. After all inserts, load the lib→mirror
-	// map once and update parent_layer_id via a follow-up UPDATE for each
-	// child row. This avoids the chicken-and-egg problem of needing a
-	// mirror id (from RETURNING) before the parent row exists.
-	//
-	// Two-phase approach:
-	//   Phase 1 — insert every live layer with parent_layer_id = NULL.
-	//   Phase 2 — for each layer that had a library parent, UPDATE its
-	//             mirror row to set the correct mirror parent_layer_id.
-	//
-	// ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL
-	// matches `idx_obj_strategy_types_layers_name_unique` (migration 029) —
-	// idempotent on retry.
-
-	// Phase 1: insert all live layers without the FK column set.
-	for _, l := range bundle.Layers {
-		if l.ArchivedAt != nil {
-			continue
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO obj_strategy_types_layers
-			    (subscription_id, source_library_id, source_library_version,
-			     name, tag, sort_order, parent_layer_id,
-			     icon, colour, description_md, help_md,
-			     allows_children, is_leaf)
-			VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12)
-			ON CONFLICT (subscription_id, name) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, l.ID, libVersion,
-			l.Name, l.Tag, l.SortOrder,
-			l.Icon, l.Colour, l.DescriptionMD, l.HelpMD,
-			l.AllowsChildren, l.IsLeaf,
-		); err != nil {
-			return fmt.Errorf("insert layer %q: %w", l.Name, err)
-		}
-	}
-
-	// Phase 2: load the lib→mirror map (all rows now exist in the tx),
-	// then UPDATE parent_layer_id for each child layer.
-	layerMap, err := loadLayerMap(ctx, tx, subscriptionID)
-	if err != nil {
-		return err
-	}
-
-	for _, l := range bundle.Layers {
-		if l.ArchivedAt != nil || l.ParentLayerID == nil {
-			continue
-		}
-		mirParent, ok := layerMap[*l.ParentLayerID]
-		if !ok {
-			return fmt.Errorf("layer %q references unknown parent_layer_id %s", l.Name, l.ParentLayerID)
-		}
-		mirSelf, ok := layerMap[l.ID]
-		if !ok {
-			// ON CONFLICT DO NOTHING silently skipped this layer (already
-			// existed with the correct parent from a prior run).
-			continue
-		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE obj_strategy_types_layers
-			   SET parent_layer_id = $1
-			 WHERE id = $2
-			   AND archived_at IS NULL`,
-			mirParent, mirSelf,
-		); err != nil {
-			return fmt.Errorf("set parent for layer %q: %w", l.Name, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeWorkflows(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	layerMap, err := loadLayerMap(ctx, tx, subscriptionID)
-	if err != nil {
-		return err
-	}
-	for _, wf := range bundle.Workflows {
-		if wf.ArchivedAt != nil {
-			continue
-		}
-		mirLayer, ok := layerMap[wf.LayerID]
-		if !ok {
-			return fmt.Errorf("workflow state %q references unknown layer_id %s", wf.StateKey, wf.LayerID)
-		}
-		// ON CONFLICT (subscription_id, layer_id, state_key) matches
-		// `idx_subscription_workflows_state_unique` (migration 029).
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_workflows
-			    (subscription_id, source_library_id, source_library_version,
-			     layer_id, state_key, state_label, sort_order,
-			     is_initial, is_terminal, colour)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			ON CONFLICT (subscription_id, layer_id, state_key) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, wf.ID, libVersion,
-			mirLayer, wf.StateKey, wf.StateLabel, wf.SortOrder,
-			wf.IsInitial, wf.IsTerminal, wf.Colour,
-		); err != nil {
-			return fmt.Errorf("insert workflow %q: %w", wf.StateKey, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeTransitions(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	wfMap, err := loadWorkflowMap(ctx, tx, subscriptionID)
-	if err != nil {
-		return err
-	}
-	for _, tr := range bundle.Transitions {
-		if tr.ArchivedAt != nil {
-			continue
-		}
-		mirFrom, ok := wfMap[tr.FromStateID]
-		if !ok {
-			return fmt.Errorf("transition references unknown from_state_id %s", tr.FromStateID)
-		}
-		mirTo, ok := wfMap[tr.ToStateID]
-		if !ok {
-			return fmt.Errorf("transition references unknown to_state_id %s", tr.ToStateID)
-		}
-		// ON CONFLICT (subscription_id, from_state_id, to_state_id)
-		// matches `idx_subscription_workflow_transitions_pair_unique`.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_workflow_transitions
-			    (subscription_id, source_library_id, source_library_version,
-			     from_state_id, to_state_id)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (subscription_id, from_state_id, to_state_id) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, tr.ID, libVersion,
-			mirFrom, mirTo,
-		); err != nil {
-			return fmt.Errorf("insert transition %s→%s: %w", mirFrom, mirTo, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeArtifacts(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	for _, a := range bundle.Artifacts {
-		if a.ArchivedAt != nil {
-			continue
-		}
-		var configJSON any
-		if len(a.Config) == 0 {
-			configJSON = []byte("{}")
-		} else {
-			configJSON = a.Config
-		}
-		// ON CONFLICT (subscription_id, artifact_key) matches
-		// `idx_subscription_artifacts_key_unique`.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_artifacts
-			    (subscription_id, source_library_id, source_library_version,
-			     artifact_key, enabled, config)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (subscription_id, artifact_key) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, a.ID, libVersion,
-			a.ArtifactKey, a.Enabled, configJSON,
-		); err != nil {
-			return fmt.Errorf("insert artifact %q: %w", a.ArtifactKey, err)
-		}
-	}
-	return nil
-}
-
-func (o *Orchestrator) writeTerminology(
-	ctx context.Context, tx pgx.Tx,
-	subscriptionID uuid.UUID, bundle *librarydb.Bundle, libVersion int32,
-) error {
-	for _, t := range bundle.Terminology {
-		if t.ArchivedAt != nil {
-			continue
-		}
-		// ON CONFLICT (subscription_id, key) matches
-		// `idx_subscription_terminology_key_unique`.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO subscription_terminology
-			    (subscription_id, source_library_id, source_library_version,
-			     key, value)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (subscription_id, key) WHERE archived_at IS NULL DO NOTHING`,
-			subscriptionID, t.ID, libVersion,
-			t.Key, t.Value,
-		); err != nil {
-			return fmt.Errorf("insert terminology %q: %w", t.Key, err)
-		}
-	}
-	return nil
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -947,19 +621,18 @@ func (o *Orchestrator) writeTerminology(
 // state row has been pinned. Marks the row failed, appends an
 // error_event with the matching ADOPT_* code, returns the wrapped
 // error to the caller.
+// SA3: workspaceID threads through to loadActiveState and markFailed for
+// VA routing.
 func (o *Orchestrator) failSaga(
 	ctx context.Context,
-	subscriptionID, userID, modelID uuid.UUID,
+	subscriptionID, userID, modelID, workspaceID uuid.UUID,
 	requestID string,
 	stepName string,
 	cause error,
 	code string,
 ) error {
-	// Mark the most-recent live state row failed. We re-load by
-	// (subscription, model) instead of carrying the id through every
-	// helper signature.
-	if s, err := o.loadActiveState(ctx, subscriptionID); err == nil && s != nil {
-		o.markFailed(ctx, s.ID)
+	if s, err := o.loadActiveState(ctx, subscriptionID, workspaceID); err == nil && s != nil {
+		o.markFailed(ctx, s.ID, workspaceID)
 	}
 	o.appendErrorEvent(ctx, subscriptionID, userID, requestID, code, stepName, modelID, cause)
 	return adoptionError{Code: code, Step: stepName, Cause: cause}
@@ -993,8 +666,9 @@ func (o *Orchestrator) reportInternal(
 	return adoptionError{Code: codeAdoptInternal, Step: stepName, Cause: cause}
 }
 
-// appendErrorEvent inserts one row into mmff_vector.error_events with
-// the ADOPT_* code + step / model_id context. Best-effort: if this
+// appendErrorEvent inserts one row into error_events with the ADOPT_*
+// code + step / model_id context. Writes go to o.ErrorsPool, which is
+// vector_artefacts post-PLA-0023-P1 (2026-05-13). Best-effort: if this
 // insert fails too, the saga still returns the original error to the
 // caller — we don't want a logging failure to mask the real bug.
 func (o *Orchestrator) appendErrorEvent(
@@ -1024,15 +698,17 @@ func (o *Orchestrator) appendErrorEvent(
 	if requestID != "" {
 		rid = requestID
 	}
-	_, _ = o.VectorPool.Exec(ctx, `
-		INSERT INTO error_events (subscription_id, user_id, code, context, request_id)
-		VALUES ($1, $2, $3, $4, $5)`,
+	pool := o.ErrorsPool
+	if pool == nil {
+		pool = o.VectorPool // back-compat for callers that bypass NewOrchestrator
+	}
+	_, _ = pool.Exec(ctx, sqlInsertErrorEvent,
 		subscriptionID, userID, code, ctxJSON, rid,
 	)
 }
 
 // mirrorErrCode picks the right ADOPT_* code for a given step. The seed
-// in `db/library_schema/008_error_codes.sql` only ships
+// in `db/mmff_library/schema/008_error_codes.sql` only ships
 // ADOPT_STEP_FAIL_LAYERS today; other mirror failures collapse onto
 // ADOPT_INTERNAL until per-step codes are added to the seed.
 func mirrorErrCode(stepName string) string {

@@ -19,6 +19,11 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { OrgNode } from "@/app/lib/topologyApi";
+import {
+  byPosition,
+  walkTopology,
+  type FlattenedRow as SharedFlattenedRow,
+} from "@/app/lib/shared/topology/walker";
 import Panel from "@/app/components/Panel";
 import InlineEditField from "@/app/components/InlineEditField";
 import { TbAlertTriangle, TbDots } from "react-icons/tb";
@@ -75,77 +80,12 @@ export type TopologyTreeFlyoutProps = {
   onWidthChange?: (px: number) => void;
 };
 
-type FlattenedRow = {
-  node: OrgNode;
-  depth: number;
-  hasChildren: boolean;
-  collapsed: boolean;
-  isFirst: boolean;
-  isLast: boolean;
-  hasVisibleChildren: boolean;
-  // ancestorMoreChildren[d] = true means the ancestor at depth d (along
-  // this row's path to the root) has more visible children below the
-  // subtree containing this row. We paint a vertical at column
-  // d*STEP + STEP/2 (= ancestor d's child-spine column) through this row
-  // so the connection between sibling subtrees of that ancestor remains
-  // visually continuous, no matter how many descendant rows lie between
-  // them. Length = depth; entry for the immediate parent (index depth-1)
-  // is omitted because the row's own elbow connector handles that column.
-  ancestorMoreChildren: boolean[];
-};
-
-function flatten(
-  childrenOf: Map<string | null, OrgNode[]>,
-  collapsed: Set<string>,
-): FlattenedRow[] {
-  const out: FlattenedRow[] = [];
-  // `pathMoreChildren` at depth D has length D and encodes, for each
-  // ancestor depth d < D, whether the ancestor's child along this path
-  // (at depth d+1) is NOT the last visible child of that ancestor —
-  // i.e. there is a later sibling subtree to connect to.
-  const walk = (
-    parentId: string | null,
-    depth: number,
-    pathMoreChildren: boolean[],
-  ) => {
-    const kids = childrenOf.get(parentId) ?? [];
-    kids.forEach((node, idx) => {
-      const childKids = childrenOf.get(node.id) ?? [];
-      const hasChildren = childKids.length > 0;
-      const isCollapsed = collapsed.has(node.id);
-      const isFirst = idx === 0;
-      const isLast = idx === kids.length - 1;
-      const hasVisibleChildren = hasChildren && !isCollapsed;
-      out.push({
-        node,
-        depth,
-        hasChildren,
-        collapsed: isCollapsed,
-        isFirst,
-        isLast,
-        hasVisibleChildren,
-        ancestorMoreChildren: pathMoreChildren,
-      });
-      if (hasVisibleChildren) {
-        // Build the children's pathMoreChildren array. Each child sits at
-        // depth `depth+1`; their ancestor at depth `depth` is THIS row.
-        // The ancestor at depth `depth` has more children below an
-        // individual child's subtree iff this row is not the last sibling
-        // — encoded as `!isLast` at index `depth-1` of the child's array
-        // (column (depth-1)*STEP + STEP/2 = this row's elbow column).
-        //
-        // Roots (depth 0) have no parent column, so for root children
-        // (depth 1) the array is empty: depth-1 rows attach to the root
-        // spine which is drawn separately and don't need a through-line.
-        // For deeper children we append `!isLast` to extend the chain.
-        const childPath = depth === 0 ? [] : [...pathMoreChildren, !isLast];
-        walk(node.id, depth + 1, childPath);
-      }
-    });
-  };
-  walk(null, 0, []);
-  return out;
-}
+// PLA-0044: the local flatten() recursion is gone. Rows now come from
+// the shared walker (app/lib/shared/topology/walker.ts) which guarantees
+// byte-identical output to the Go mirror used by the BFF. The row shape
+// is re-exported here as a type alias so the TreeRow renderer can keep
+// its existing local prop name.
+type FlattenedRow = SharedFlattenedRow<OrgNode>;
 
 export default function TopologyTreeFlyout({
   tree,
@@ -243,10 +183,17 @@ export default function TopologyTreeFlyout({
     return () => ro.disconnect();
   }, [onWidthChange]);
 
-  const rows = useMemo(
-    () => (tree ? flatten(childrenOf, collapsed) : []),
-    [tree, childrenOf, collapsed],
-  );
+  const rows = useMemo<FlattenedRow[]>(() => {
+    if (!tree) return [];
+    // Filter mirrors the hook upstream — archived twigs never appear in
+    // the live tree. childrenOf is passed in but the walker builds its
+    // own bucket, so we just hand it the tree.
+    return walkTopology(tree, {
+      collapsed,
+      sort: byPosition,
+      filter: (n) => n.archived_at === null,
+    }).rows;
+  }, [tree, collapsed]);
 
   // Auto-fit panel width to the widest visible row whenever the row set
   // changes (expand/collapse). The panel ALWAYS tracks the widest visible
@@ -738,7 +685,14 @@ function TreeRow({
             // own connector at MID; the through-line carries the parent's
             // spine the rest of the way down so the next ancestor sibling
             // visually connects).
+            //
+            // PLA-0044: the shared walker emits ancestorMoreChildren
+            // uniformly across all depths (length = depth). Index 0 is the
+            // depth-0 root ancestor; its spine is already painted by the
+            // depth-0 row's own root-spine SVG, so we skip it here to avoid
+            // doubling up.
             ancestorMoreChildren.forEach((cont, i) => {
+              if (i === 0) return;
               if (cont) {
                 const x = i * STEP + STEP / 2;
                 throughPaths.push(`M${x} 0 L${x} ${H}`);

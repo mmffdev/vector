@@ -35,13 +35,7 @@ func NewEntitiesService(pool *pgxpool.Pool) *EntitiesService {
 // for the tenant, sorted by kind then name. No paging — the demo data
 // volume is tiny; revisit when we cross a few hundred rows.
 func (s *EntitiesService) ListInTenant(ctx context.Context, subscriptionID uuid.UUID) ([]EntityRow, error) {
-	rows, err := s.Pool.Query(ctx, `
-		SELECT 'portfolio' AS kind, id, name FROM portfolio
-		 WHERE subscription_id = $1 AND archived_at IS NULL
-		UNION ALL
-		SELECT 'product' AS kind, id, name FROM product
-		 WHERE subscription_id = $1 AND archived_at IS NULL
-		ORDER BY kind, name`, subscriptionID)
+	rows, err := s.Pool.Query(ctx, sqlListPortfoliosAndProductsInTenant, subscriptionID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return []EntityRow{}, nil

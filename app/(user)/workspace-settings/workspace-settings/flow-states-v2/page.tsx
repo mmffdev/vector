@@ -1,17 +1,19 @@
 "use client";
 
 // Flow States v2 — Orbit PoC.
-// Thin wrapper around <ArtefactFlowTransitionDesigner>. The rail + canvas
+// Thin wrapper around <CircularAdditor>. The rail + canvas
 // sub-panel, its geometry, anchor logic and SVG decoration all live in the
 // reusable component under
-// app/components/catalogue/c_artefact_flow_transition_designer/.
+// app/components/catalogue/c_circular_additor/.
 
 import { useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import ArtefactFlowTransitionDesigner, {
+import CircularAdditor, {
   type OrbitItem,
-} from "@/app/components/catalogue/c_artefact_flow_transition_designer/c_artefact_flow_transition_designer";
+} from "@/app/components/catalogue/c_circular_additor/circularAdditor";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 const SEED: OrbitItem[] = [
   { id: "n-backlog",   label: "Backlog",   colour: "#ef4444" },
@@ -22,6 +24,7 @@ const SEED: OrbitItem[] = [
 ];
 
 export default function FlowStatesV2OrbitPocPage() {
+  const { full } = usePageTitle();
   // Remount key forces the component to reseed from `defaultItems`.
   const [resetKey, setResetKey] = useState(0);
   // Mirror of the component's item count, so the toolbar pill stays in sync.
@@ -30,6 +33,13 @@ export default function FlowStatesV2OrbitPocPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Configure flow states for the v2 workflow engine." />
+      <Panel
+        name="panel_flow_states_v2_header"
+        className="page-panel-heading"
+        title="Flow States (v2)"
+        description="Define and manage flow states used by the v2 workflow engine for work item progression."
+      />
       <div className="settings-panel settings-panel--wide">
         <Panel name="orbit_poc" title="Orbit PoC — Add / Remove States" helpable={false}>
           <p className="form__hint" style={{ marginBottom: "var(--space-4)" }}>
@@ -56,7 +66,7 @@ export default function FlowStatesV2OrbitPocPage() {
             </span>
           </div>
 
-          <ArtefactFlowTransitionDesigner
+          <CircularAdditor
             key={resetKey}
             defaultItems={SEED}
             onInsert={() => setCount((c) => c + 1)}

@@ -96,14 +96,14 @@ export default function PageAnchorNav({
         {items.map((item) => (
           <li key={item.id}>
             {item.depth === 0 ? (
-              <p className="sidebar-section">{item.label}</p>
+              <h2 className="panel__title anav__group-title">{item.label}</h2>
             ) : (
               <button
                 type="button"
-                className={`sidebar-item${active === item.id ? " active" : ""}`}
+                className={`rd-flyout__row rd-flyout__row--button${active === item.id ? " is-active" : ""}`}
                 onClick={() => scrollTo(item.id)}
               >
-                {item.label}
+                <span className="rd-flyout__row-label">{item.label}</span>
               </button>
             )}
           </li>

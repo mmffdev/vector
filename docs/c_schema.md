@@ -1,28 +1,43 @@
 # Database schema — golden source
 
+_Last refactor: PLA-0048 / RF1.4.2 — table renames applied 2026-05-13/14. See [c_c_naming_conventions.md](c_c_naming_conventions.md) §2.6 root families._
+
 > Last verified live: 2026-04-25 against `mmff_vector`. Doc patched 2026-05-07 to reflect Phase 1+2 schema cleanup (migrations 122–123) — see "Phase 1+2 cleanup" callout below. Detailed column tables for unrenamed objects retain their 2026-04-25 verification; renamed/dropped tables are flagged inline. Re-snapshot pending — when you do, regenerate via the SQL at the bottom of this file.
 >
 > **Phase 4 / vector_artefacts cutover** — the `obj_*` family in this doc is the *current production* substrate. A separate PoC schema (`vector_artefacts` DB) is being prepared as the cutover target; production migration plan lives in [`c_c_vector_artefacts_backfill.md`](c_c_vector_artefacts_backfill.md). When that lands, this doc must be re-snapshotted in full.
 
 This is the canonical map of every table in `mmff_vector`. Read here first instead of running blind `\d` queries — every column, FK, and delete rule below was dumped from the live DB.
 
+## Schema sub-pages (lazy-loaded leaves)
+
+- **Auth & permissions** → [`c_c_schema_auth.md`](c_c_schema_auth.md) — users, users_sessions, users_roles, users_permissions; grant matrix.
+- **History & audit** → [`c_c_schema_history.md`](c_c_schema_history.md) — `*_history` shadow tables, audit log columns.
+- **Item-type catalogues** → [`c_c_schema_item_types.md`](c_c_schema_item_types.md) — `obj_*_types`, transition catalogues.
+- **Portfolio stack** → [`c_c_schema_portfolio_stack.md`](c_c_schema_portfolio_stack.md) — strategy layers, portfolio-item types, depth invariants.
+- **Workflow states** → [`c_c_schema_states.md`](c_c_schema_states.md) — `flows_states`, `flows_transitions`, kind invariants.
+- **Adoption mirror tables** → [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md) — per-subscription mirror schema (TD-LIB-009).
+- **`librarydb` bundle fetcher** → [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md) — read-only spine + 5-child fetch from `mmff_library`.
+- **Library release channel** → [`c_c_library_release_channel.md`](c_c_library_release_channel.md) — outstanding-release notifications + acknowledgement flow.
+- **`vector_artefacts` backfill plan** → [`c_c_vector_artefacts_backfill.md`](c_c_vector_artefacts_backfill.md) — cutover from `obj_*` to PoC schema.
+- **User custom pages** → [`c_c_custom_pages.md`](c_c_custom_pages.md) — `kind="user_custom"` pages + views.
+
 ---
 
 ## `vector_artefacts` database (PoC cutover target)
 
-Migration files at `db/artefacts_schema/NNN_*.sql`; runner: `go run ./backend/cmd/migrate -db vector_artefacts`.
+Migration files at `db/vector_artefacts/schema/NNN_*.sql`; runner: `go run ./backend/cmd/migrate -db vector_artefacts`.
 
 | Table | Purpose |
 |---|---|
-| `artefact_types` | Per-subscription catalogue of artefact types (scope + prefix + flow). |
-| `flows` / `flow_states` / `flow_transitions` | Workflow definitions for artefact types. |
+| `artefacts_types` | Per-subscription catalogue of artefact types (scope + prefix + flow). |
+| `flows` / `flows_states` / `flows_transitions` | Workflow definitions for artefact types. |
 | `artefacts` | Single storage table for all tracked records — work items and strategy items; `artefact_type_id` discriminates. |
 | `artefacts.priority` | `TEXT NULL` — CHECK `IN ('critical','high','medium','low')`; matches `mmff_vector.obj_work_items` constraint. Added migration 012. |
 | `artefacts.story_points` | `INTEGER NULL` — CHECK `>= 0`; sprint-estimation field. Added migration 012. |
 | `artefacts.due_date` | `DATE NULL` — target completion date. Added migration 012. |
-| `artefacts.timebox_sprint_id` | `UUID NULL` — FK → `timebox_sprints.id ON DELETE SET NULL`; renamed from `sprint_id` in migration 025. |
-| `timebox_sprints` | Sequential time-boxed iteration container at the team level (`subscription_id`, `workspace_id`, `org_node_id`, `sprint_name`, `sprint_suffix`, `sprint_owner`, `sprint_cadence_days`, `sprint_date_start`/`sprint_date_end`, `sprint_scope`/`sprint_velocity`/`sprint_estimate`, `sprint_creep_by_count`/`sprint_creep_by_estimate`, `status`, `sprint_date_added`/`sprint_date_updated`, `archived_at`). EXCLUDE constraint on `(workspace_id, org_node_id, daterange(start,end,'[]'))` rejects overlaps. Added migration 025; supersedes the minimal `sprints` table from migration 013. **Sole writer:** `internal/timeboxsprints` (PLA-0027); enforces adjacency rule (B.start = A.end + 1 day) and lifecycle guard (active/completed blocks delete). REST surface: `/api/v2/timeboxes/sprints` (GET, POST, PUT, DELETE, bulk-create). |
-| `field_library` / `artefact_type_fields` / `artefact_field_values` | Jira-style flexible-field surface for type-specific attributes. |
+| `artefacts.timebox_sprint_id` | `UUID NULL` — FK → `timeboxes_sprints.id ON DELETE SET NULL`; renamed from `sprint_id` in migration 025. |
+| `timeboxes_sprints` | Sequential time-boxed iteration container at the team level (`subscription_id`, `workspace_id`, `org_node_id`, `sprint_name`, `sprint_suffix`, `sprint_owner`, `sprint_cadence_days`, `sprint_date_start`/`sprint_date_end`, `sprint_scope`/`sprint_velocity`/`sprint_estimate`, `sprint_creep_by_count`/`sprint_creep_by_estimate`, `status`, `sprint_date_added`/`sprint_date_updated`, `archived_at`). EXCLUDE constraint on `(workspace_id, org_node_id, daterange(start,end,'[]'))` rejects overlaps. Added migration 025; supersedes the minimal `sprints` table from migration 013. **Sole writer:** `internal/timeboxsprints` (PLA-0027); enforces adjacency rule (B.start = A.end + 1 day) and lifecycle guard (active/completed blocks delete). REST surface: `/api/v2/timeboxes/sprints` (GET, POST, PUT, DELETE, bulk-create). |
+| `artefacts_fields_library` / `artefacts_types_fields` / `artefacts_fields_values` | Jira-style flexible-field surface for type-specific attributes. |
 | `strategy_layers_adopted` | Records which library strategy layers a subscription has adopted. |
 
 ---
@@ -59,7 +74,7 @@ Migration files at `db/artefacts_schema/NNN_*.sql`; runner: `go run ./backend/cm
 
 Still live (intentionally): `o_search_index_outbox` (active worker queue), `o_artefact_visibility_levels` (FK target), `canonical_states` (FK target of `obj_flow_*`).
 
-> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/library_schema/NNN_*.sql`; the MMFF seed bundle is at `db/library_schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `error_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/library_schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
+> **`mmff_library` (second database)** — Phase 1 created the read-only library DB on the same Postgres cluster: `portfolio_models` spine + 6 bundle children + `portfolio_model_shares` + four roles (`mmff_library_admin`/`_ro`/`_publish`/`_ack`) + grant matrix. Schema files live at `db/mmff_library/schema/NNN_*.sql`; the MMFF seed bundle is at `db/mmff_library/schema/seed/001_mmff_model.sql`. CI canary: `backend/internal/librarydb/grants_test.go` enforces the role/table grant matrix. Connection pools: `backend/internal/librarydb/db.go` (3 pools — RO, Publish, Ack). **Phase 2** added the bundle fetcher (`bundle.go`/`fetch.go`) — see [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md). **Phase 3** added the release-notification channel: 3 tables in `mmff_library` (`library_releases`, `library_release_actions`, `library_release_log`) + 1 table in `mmff_vector` (`library_releases_acknowledgements`) + grants extension (`006_grants_release_channel.sql`) + page-registry row (vector migration `022_library_releases_page.sql`) — see [`c_c_library_release_channel.md`](c_c_library_release_channel.md). **Phase-4 prep** added `errors_codes` (read-only catalogue: `code` PK, `severity` IN (`info`,`warning`,`error`,`critical`), `category` IN (`adoption`,`library`,`auth`,`validation`), `user_message`, `dev_message`) seeded with six adoption codes; admin=ALL, ro/publish/ack=SELECT — file `db/mmff_library/schema/008_error_codes.sql`. Plan: `dev/planning/feature_library_db_and_portfolio_presets_v3.md`.
 
 If you find drift, re-run the snapshot at the bottom of this file and update.
 
@@ -69,7 +84,7 @@ If you find drift, re-run the snapshot at the bottom of this file and update.
 - **Database:** `mmff_vector`.
 - **App role:** `mmff_dev`. Password in `backend/.env.dev` (`DB_PASSWORD`).
 - **Local access:** SSH tunnel `localhost:5435` → server `:5432` (dev env; see active marker in [`/.claude/CLAUDE.md`](../.claude/CLAUDE.md)). See [c_postgresql.md](c_postgresql.md).
-- **Schema migrations:** `db/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; … COMMIT;`.
+- **Schema migrations:** `db/mmff_vector/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; … COMMIT;`.
 
 ## Invariants that span tables
 
@@ -78,9 +93,9 @@ These rules are the contract; every query/handler/migration honours them.
 1. **Subscription isolation by row.** Every business table carries `subscription_id UUID NOT NULL REFERENCES subscriptions(id)`. Every read path MUST filter by the session's subscription. A query that forgets `WHERE subscription_id = $1` is a data leak. (Renamed from `tenant_id`/`tenants` in migration 017; the JWT layer dual-accepts the old `tenant_id` claim for one release.)
 2. **Soft-archive only.** Business rows expose `archived_at TIMESTAMPTZ` and are never hard-deleted (SoW §7 audit-trail requirement). `WHERE archived_at IS NULL` is the live-row predicate; partial indexes (`… WHERE archived_at IS NULL`) accelerate it.
 3. **UUIDs are the identity.** Primary keys are `UUID DEFAULT gen_random_uuid()` (`pgcrypto`). Human-readable references (`US-00000347`) are rendered at display time from `key_num` + the current tag on `*_item_types`; they are NOT stored on work items.
-4. **Per-subscription key counters.** `subscription_sequence(subscription_id, scope)` hands out monotonic `key_num` values. Gaps are permitted (archived numbers never reused). Lock pattern: `SELECT next_num … FOR UPDATE; UPDATE … SET next_num = next_num + 1`.
+4. **Per-subscription key counters.** `subscriptions_sequence(subscription_id, scope)` hands out monotonic `key_num` values. Gaps are permitted (archived numbers never reused). Lock pattern: `SELECT next_num … FOR UPDATE; UPDATE … SET next_num = next_num + 1`.
 5. **`updated_at` is trigger-maintained.** Tables with an `updated_at` column have a `BEFORE UPDATE` trigger calling `set_updated_at()`. Handlers never set it explicitly.
-6. **Append-only history.** `item_state_history` rejects UPDATE and DELETE via trigger. `audit_log` is append-only by convention.
+6. **Append-only history.** `item_state_history` rejects UPDATE and DELETE via trigger. `audit_logs` is append-only by convention.
 7. **Polymorphic FKs — layered enforcement.** `entity_stakeholders.entity_id`, `item_type_states.item_type_id`, `item_state_history.item_id`, and `page_entity_refs.entity_id` point at different tables depending on a `*_kind` discriminator. The DB enforces the vocabulary (CHECK); migration 013 dispatch triggers enforce parent existence + subscription match + non-archived parent on INSERT/UPDATE for three of the four tables (`item_state_history` deferred — parent tables not yet built). The Go `entityrefs` service is the required writer path for the other three. See [`c_polymorphic_writes.md`](c_polymorphic_writes.md).
 
 ---
@@ -89,13 +104,13 @@ These rules are the contract; every query/handler/migration honours them.
 
 | Domain | Tables |
 |---|---|
-| Subscription & auth | `subscriptions`, `users`, `sessions`, `password_resets`, `api_keys` |
+| Subscription & auth | `subscriptions`, `users`, `users_sessions`, `users_password_resets`, `admin_api_keys` |
 | Tenant settings | `master_record_tenant` |
-| Topology — workspaces tier (PLA-0006) | `workspaces`, `workspace_roles`, `org_nodes`, `org_node_roles`, `org_node_view_state`, `org_levels` |
-| Roles & permissions (PLA-0007) | `roles`, `permissions`, `role_permissions` |
+| Topology — workspaces tier (PLA-0006) | `workspaces`, `users_roles_workspaces`, `org_nodes`, `users_roles_topology_nodes`, `topology_view_states`, `org_levels` |
+| Roles & permissions (PLA-0007) | `users_roles`, `users_permissions`, `users_roles_permissions` |
 | ACL (legacy) | `user_workspace_permissions` |
-| Audit & history | `audit_log`, `item_state_history` |
-| Numbering | `subscription_sequence` |
+| Audit & history | `audit_logs`, `item_state_history` |
+| Numbering | `subscriptions_sequence` |
 | Portfolio stack (legacy singular) | `company_roadmap`, `workspace`, `portfolio`, `product`, `entity_stakeholders` |
 | **Strategy artefacts (`obj_*`)** | `obj_portfolio_items`, `obj_strategy_types`, `obj_strategy_types_layers` |
 | **Execution artefacts (`obj_*`)** | `obj_execution_types`, `obj_execution_types_tenant`, `obj_execution_types_overrides` — (`obj_work_items` + `obj_work_items_field_values` dropped migration 137; data lives in `vector_artefacts.artefacts`) |
@@ -103,14 +118,14 @@ These rules are the contract; every query/handler/migration honours them.
 | **Flows (`obj_*`)** | `obj_flow_system`, `obj_flow_tenant` |
 | Item type catalogues (legacy execution) | `execution_item_types` |
 | Workflow states | `canonical_states`, `item_type_states`, `item_type_transition_edges` |
-| Page registry | `pages`, `page_tags`, `page_roles`, `page_entity_refs`, `page_help` |
-| User navigation | `user_nav_prefs`, `user_nav_groups`, `user_nav_profiles`, `user_nav_profiles_links`, `user_tab_order`, `user_theme_pack` |
-| User custom pages | `user_custom_pages`, `user_custom_page_views` |
-| Library release acks | `library_acknowledgements` |
+| Page registry | `pages`, `pages_tags`, `users_roles_pages`, `page_entity_refs`, `pages_help` |
+| User navigation | `users_nav_prefs`, `users_nav_groups`, `users_nav_profiles`, `users_nav_profiles_links`, `users_tab_order`, `user_theme_pack` |
+| User custom pages | `users_custom_pages`, `user_custom_page_views` |
+| Library release acks | `library_releases_acknowledgements` |
 | Library adoption state | `subscription_portfolio_model_state` |
 | Portfolio model mirror | `subscription_workflows`, `subscription_workflow_transitions`, `subscription_artifacts`, `subscription_terminology` |
 | Search infra | `o_search_index_outbox` |
-| Error tracking | `error_events` |
+| Error tracking | `errors_events` |
 | Icons | `vector_icons` |
 
 Notes:
@@ -190,7 +205,7 @@ Identity. One row per human; tied to one subscription.
 | `mfa_enrolled_at` | timestamptz | yes | — | |
 | `mfa_recovery_codes` | text[] | yes | — | |
 
-### `sessions`
+### `users_sessions`
 
 Refresh-token sessions. One row per logged-in browser/device.
 
@@ -206,7 +221,7 @@ Refresh-token sessions. One row per logged-in browser/device.
 | `user_agent` | text | yes | — | |
 | `revoked`* | bool | no | `false` | logout / rotation marks `true` |
 
-### `password_resets`
+### `users_password_resets`
 
 Password-reset tokens. One row per request.
 
@@ -222,7 +237,7 @@ Password-reset tokens. One row per request.
 
 ### `workspaces`
 
-> **Naming note** — the older, unrelated portfolio-stack table is singular `workspace` (migration 004); this PLA-0006 table is plural `workspaces`. They share neither rows nor FKs. The legacy `user_workspace_permissions.workspace_id` still points at the singular `workspace` table; PLA-0006 role grants live in `workspace_roles` below.
+> **Naming note** — the older, unrelated portfolio-stack table is singular `workspace` (migration 004); this PLA-0006 table is plural `workspaces`. They share neither rows nor FKs. The legacy `user_workspace_permissions.workspace_id` still points at the singular `workspace` table; PLA-0006 role grants live in `users_roles_workspaces` below.
 
 Workspace tier above `org_nodes` (migration 098, PLA-0006). A subscription holds 1..N workspaces; each workspace owns its own `org_nodes` tree. The workspace is the top-level tenant container — clamp predicate, role grants, and addressable scoping all narrow through here. Sole writer: [`backend/internal/workspaces.Service`](../backend/internal/workspaces/service.go); see [`c_c_topology.md`](c_c_topology.md). Enforced by `dev/scripts/lint_writer_boundary.py`.
 
@@ -249,9 +264,9 @@ Invariants enforced by the sole writer:
 - **Last-live guard** — `Service.Archive` refuses if the workspace is the only live one for its subscription (returns `ErrCannotArchiveLastLive`); a tenant must always own ≥1 live workspace so `org_nodes.workspace_id` stays satisfiable.
 - **Default workspace on tenant signup** — every tenant boots with exactly one live workspace named "Default" (slug `default`). Existing tenants were backfilled by migration 099's bootstrap seed; future signups must call `Service.CreateDefault` in the same transaction as the `subscriptions` INSERT (see [`c_c_topology.md`](c_c_topology.md) § "Future: tenant-signup hook").
 
-### `workspace_roles`
+### `users_roles_workspaces`
 
-Workspace-scoped role grants — admin / editor / viewer (migration 098, PLA-0006). Mirrors `org_node_roles` at the workspace tier. Sole writer: [`backend/internal/workspaces.Service`](../backend/internal/workspaces/service.go).
+Workspace-scoped role grants — admin / editor / viewer (migration 098, PLA-0006). Mirrors `users_roles_topology_nodes` at the workspace tier. Sole writer: [`backend/internal/workspaces.Service`](../backend/internal/workspaces/service.go).
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -269,11 +284,11 @@ Workspace-scoped role grants — admin / editor / viewer (migration 098, PLA-000
 | `updated_at`* | timestamptz | no | `now()` | trigger-maintained |
 
 Constraints + indexes:
-- `workspace_roles_revoked_pair` CHECK — `revoked_at` and `revoked_by` are both NULL or both set.
-- **Active-grant uniqueness** `workspace_roles_active_user UNIQUE ON (workspace_id, user_id) WHERE revoked_at IS NULL` — at most one active grant per (workspace, user); revoked rows are kept for audit, allowing re-grant after revoke.
-- **MVP single-admin invariant** `workspace_roles_single_admin UNIQUE ON (workspace_id) WHERE role = 'admin' AND revoked_at IS NULL` — at most one active admin per workspace; drop this index to enable multi-admin in Phase X.
-- `workspace_roles_user_idx ON (user_id) WHERE revoked_at IS NULL` — hot-path "which workspaces does user X touch" for the clamp predicate.
-- `trg_workspace_roles_updated_at BEFORE UPDATE` → `set_updated_at()`.
+- `users_roles_workspaces_revoked_pair` CHECK — `revoked_at` and `revoked_by` are both NULL or both set.
+- **Active-grant uniqueness** `users_roles_workspaces_active_user UNIQUE ON (workspace_id, user_id) WHERE revoked_at IS NULL` — at most one active grant per (workspace, user); revoked rows are kept for audit, allowing re-grant after revoke.
+- **MVP single-admin invariant** `users_roles_workspaces_single_admin UNIQUE ON (workspace_id) WHERE role = 'admin' AND revoked_at IS NULL` — at most one active admin per workspace; drop this index to enable multi-admin in Phase X.
+- `users_roles_workspaces_user_idx ON (user_id) WHERE revoked_at IS NULL` — hot-path "which workspaces does user X touch" for the clamp predicate.
+- `trg_users_roles_workspaces_updated_at BEFORE UPDATE` → `set_updated_at()`.
 
 The Service surfaces `ErrSingleAdminViolation` (translated from SQLSTATE 23505 on the partial unique index) so callers see a typed error rather than a raw constraint violation.
 
@@ -293,7 +308,7 @@ Per-(user, workspace) ACL. Row-level overrides on top of role grants.
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | |
 
-### `audit_log`
+### `audit_logs`
 
 Append-only action log. NULL `user_id` = anonymous/system.
 
@@ -309,9 +324,9 @@ Append-only action log. NULL `user_id` = anonymous/system.
 | `ip_address` | inet | yes | — | |
 | `created_at`* | timestamptz | no | `now()` | |
 
-### `subscription_sequence`
+### `subscriptions_sequence`
 
-Per-subscription monotonic counters keyed by `scope` (e.g. `'workspace'`, `'portfolio'`). (Renamed from `tenant_sequence` in migration 017.)
+Per-subscription monotonic counters keyed by `scope` (e.g. `'workspace'`, `'portfolio'`). (Renamed from `tenant_sequence` in migration 017; further renamed from `subscription_sequence` in migration 183 / RF1.4.2.)
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -500,17 +515,17 @@ Page-registry catalogue. System pages have `subscription_id`/`created_by` NULL; 
 | `label`* | text | no | — | |
 | `href`* | text | no | — | route |
 | `icon`* | text | no | — | icon key (see `NavIcon`) |
-| `tag_enum`* | text | no | — | → `page_tags.tag_enum` |
+| `tag_enum`* | text | no | — | → `pages_tags.tag_enum` |
 | `kind`* | text | no | — | `system`, `entity`, `user_custom`, etc. |
 | `pinnable`* | bool | no | `true` | |
-| `default_pinned`* | bool | no | `false` | auto-pinned on the next `GET /api/nav/prefs` for any user whose role passes `page_roles`; one-time per (user, page) — subsequent unpins stick. See `nav.Service.GetPrefs` opportunistic backfill. |
+| `default_pinned`* | bool | no | `false` | auto-pinned on the next `GET /api/nav/prefs` for any user whose role passes `users_roles_pages`; one-time per (user, page) — subsequent unpins stick. See `nav.Service.GetPrefs` opportunistic backfill. |
 | `default_order`* | int | no | `0` | |
 | `created_by` | uuid | yes | — | → `users.id` (CASCADE). NULL = system/shared |
 | `subscription_id` | uuid | yes | — | → `subscriptions.id` (CASCADE). NULL = global system page |
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | |
 
-### `page_tags`
+### `pages_tags`
 
 Vocabulary of nav buckets/tag groups. Static reference data.
 
@@ -522,7 +537,7 @@ Vocabulary of nav buckets/tag groups. Static reference data.
 | `is_admin_menu`* | bool | no | `false` | shows under admin section |
 | `created_at`* | timestamptz | no | `now()` | |
 
-### `page_roles`
+### `users_roles_pages`
 
 Which roles may see a given page (allow-list).
 
@@ -541,7 +556,7 @@ Polymorphic link from a `pages` row to the entity it represents (for `kind='enti
 | `entity_kind`* | text | no | — | pk part. CHECK against vocabulary |
 | `entity_id`* | uuid | no | — | app-enforced FK |
 
-### `user_nav_prefs`
+### `users_nav_prefs`
 
 A user's personalised sidebar — pinned items, ordering, optional grouping & nesting.
 
@@ -555,7 +570,7 @@ A user's personalised sidebar — pinned items, ordering, optional grouping & ne
 | `position`* | int | no | — | order within parent/group/tag |
 | `is_start_page`* | bool | no | `false` | at most one TRUE per user (partial unique index) |
 | `parent_item_key` | text | yes | — | non-null = nested under another pinned item |
-| `group_id` | uuid | yes | — | → `user_nav_groups.id` (SET NULL) |
+| `group_id` | uuid | yes | — | → `users_nav_groups.id` (SET NULL) |
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | |
 
@@ -564,9 +579,9 @@ Constraints:
 - `UNIQUE (user_id, subscription_id, profile_id, position)` DEFERRABLE INITIALLY DEFERRED
 - Partial unique index `(user_id, subscription_id, profile_id) WHERE is_start_page = TRUE`
 
-### `user_nav_groups`
+### `users_nav_groups`
 
-User-defined nav buckets (custom groups). Items live in `user_nav_prefs.group_id`.
+User-defined nav buckets (custom groups). Items live in `users_nav_prefs.group_id`.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
@@ -577,7 +592,7 @@ User-defined nav buckets (custom groups). Items live in `user_nav_prefs.group_id
 | `created_at`* | timestamptz | no | `now()` | |
 | `updated_at`* | timestamptz | no | `now()` | |
 
-### `user_custom_pages`
+### `users_custom_pages`
 
 User-authored container pages (migration 016). Each page owns one or more views (timeline / board / list). The page surfaces in the nav catalogue as `kind="user_custom"` with `item_key="custom:<id>"` and `href="/p/<id>"`. Max 50 pages per user/subscription. No soft-archive; hard delete cascades to views. See [`docs/c_c_custom_pages.md`](c_c_custom_pages.md).
 
@@ -593,7 +608,7 @@ User-authored container pages (migration 016). Each page owns one or more views 
 
 Constraints:
 - `UNIQUE (user_id, subscription_id, label)` — label unique per owner within subscription.
-- Index `idx_user_custom_pages_owner ON (user_id, subscription_id)`.
+- Index `idx_users_custom_pages_owner ON (user_id, subscription_id)`.
 
 ### `pending_library_cleanup_jobs` — DROPPED (migration 122)
 
@@ -601,12 +616,12 @@ Created by migration 019 as a Postgres-backed work queue for cross-DB cleanup of
 
 ### `user_custom_page_views`
 
-Render modes within a `user_custom_pages` row. Enum `custom_view_kind` ∈ {`timeline`, `board`, `list`}. The view at `position = 0` is the default; `?vid=<view_id>` selects others. Max 8 views per page.
+Render modes within a `users_custom_pages` row. Enum `custom_view_kind` ∈ {`timeline`, `board`, `list`}. The view at `position = 0` is the default; `?vid=<view_id>` selects others. Max 8 views per page.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
-| `page_id`* | uuid | no | — | → `user_custom_pages.id` (CASCADE) |
+| `page_id`* | uuid | no | — | → `users_custom_pages.id` (CASCADE) |
 | `label`* | text | no | — | CHECK `length > 0` |
 | `kind`* | custom_view_kind | no | — | `timeline`, `board`, or `list` |
 | `position`* | int | no | — | unique per page (DEFERRABLE) |
@@ -646,28 +661,28 @@ Five per-subscription mirror tables (migration 029) populated by the adoption or
 
 Full column lists, index lists, FK rules (RESTRICT on self/parent layer, CASCADE between workflows ↔ transitions), drop order, and the cross-DB writer-rules pattern: see [`c_c_schema_adoption_mirrors.md`](c_c_schema_adoption_mirrors.md).
 
-### `error_events`
+### `errors_events`
 
-Per-subscription append-only log of reported errors (migration 028). One row per call to `reportError(code, context)`. UPDATE and DELETE are rejected by trigger (matches `item_state_history` pattern from migration 006; stricter than `audit_log` which is convention-only). No `archived_at`, no `updated_at` — append-only audit data.
+Per-subscription append-only log of reported errors (migration 028). One row per call to `reportError(code, context)`. UPDATE and DELETE are rejected by trigger (matches `item_state_history` pattern from migration 006; stricter than `audit_logs` which is convention-only). No `archived_at`, no `updated_at` — append-only audit data.
 
 | Column | Type | Nullable | Default | Notes |
 |---|---|---|---|---|
 | `id`* | uuid | no | `gen_random_uuid()` | pk |
 | `subscription_id`* | uuid | no | — | → `subscriptions.id` (RESTRICT) |
 | `user_id` | uuid | yes | — | → `users.id` (SET NULL). Survives user deletion for audit. |
-| `code`* | text | no | — | App-enforced FK by value to `mmff_library.error_codes.code` (cross-DB; no real FK). Readers LEFT JOIN across DBs and tolerate missing matches. See TD-LIB-007. |
+| `code`* | text | no | — | App-enforced FK by value to `mmff_library.errors_codes.code` (cross-DB; no real FK). Readers LEFT JOIN across DBs and tolerate missing matches. See TD-LIB-007. |
 | `context` | jsonb | yes | — | Optional structured payload from `reportError`. Small (< ~4 KB) JSON of short snake_case keys; link to logs/traces for blobs. |
 | `occurred_at`* | timestamptz | no | `now()` | when the error was reported |
 | `request_id` | text | yes | — | Correlation handle to logs/traces; matches go-chi `middleware.RequestID` output (TEXT, not UUID). |
 | `created_at`* | timestamptz | no | `now()` | |
 
 Indexes:
-- `idx_error_events_subscription_code ON (subscription_id, code, occurred_at DESC)` — primary read path: "last N errors of code X for this subscription".
-- `idx_error_events_subscription_occurred ON (subscription_id, occurred_at DESC)` — recent errors regardless of code (dashboards / alerts).
+- `idx_errors_events_subscription_code ON (subscription_id, code, occurred_at DESC)` — primary read path: "last N errors of code X for this subscription".
+- `idx_errors_events_subscription_occurred ON (subscription_id, occurred_at DESC)` — recent errors regardless of code (dashboards / alerts).
 
 Append-only triggers:
-- `trg_error_events_no_update BEFORE UPDATE` → `error_events_append_only()` raises `check_violation`.
-- `trg_error_events_no_delete BEFORE DELETE` → same function.
+- `trg_errors_events_no_update BEFORE UPDATE` → `errors_events_append_only()` raises `check_violation`.
+- `trg_errors_events_no_delete BEFORE DELETE` → same function.
 
 ---
 
@@ -676,8 +691,8 @@ Append-only triggers:
 Reading: `child.col → parent.col (RULE)` means "when parent row is deleted, do RULE to child".
 
 ```
-audit_log.user_id              → users.id              (SET NULL)
-audit_log.subscription_id      → subscriptions.id      (SET NULL)
+audit_logs.user_id             → users.id              (SET NULL)
+audit_logs.subscription_id     → subscriptions.id      (SET NULL)
 
 company_roadmap.subscription_id  → subscriptions.id    (RESTRICT)
 company_roadmap.owner_user_id    → users.id            (RESTRICT)
@@ -685,8 +700,8 @@ company_roadmap.owner_user_id    → users.id            (RESTRICT)
 entity_stakeholders.subscription_id → subscriptions.id (RESTRICT)
 entity_stakeholders.user_id      → users.id            (RESTRICT)
 
-error_events.subscription_id    → subscriptions.id     (RESTRICT)
-error_events.user_id            → users.id             (SET NULL)
+errors_events.subscription_id   → subscriptions.id     (RESTRICT)
+errors_events.user_id           → users.id             (SET NULL)
 
 execution_item_types.subscription_id → subscriptions.id (RESTRICT)
 
@@ -703,12 +718,12 @@ item_type_transition_edges.from_state_id   → item_type_states.id (RESTRICT)
 item_type_transition_edges.to_state_id     → item_type_states.id (RESTRICT)
 
 page_entity_refs.page_id       → pages.id              (CASCADE)
-page_roles.page_id             → pages.id              (CASCADE)
-pages.tag_enum                 → page_tags.tag_enum    (NO ACTION)
+users_roles_pages.page_id      → pages.id              (CASCADE)
+pages.tag_enum                 → pages_tags.tag_enum   (NO ACTION)
 pages.created_by               → users.id              (CASCADE)
 pages.subscription_id          → subscriptions.id      (CASCADE)
 
-password_resets.user_id        → users.id              (CASCADE)
+users_password_resets.user_id  → users.id              (CASCADE)
 
 -- pending_library_cleanup_jobs DROPPED in migration 122
 
@@ -748,20 +763,20 @@ product.workspace_id           → workspace.id          (RESTRICT)
 product.parent_portfolio_id    → portfolio.id          (RESTRICT)
 product.owner_user_id          → users.id              (RESTRICT)
 
-sessions.user_id               → users.id              (CASCADE)
+users_sessions.user_id         → users.id              (CASCADE)
 
-subscription_sequence.subscription_id → subscriptions.id (RESTRICT)
+subscriptions_sequence.subscription_id → subscriptions.id (RESTRICT)
 
-user_custom_pages.user_id          → users.id          (CASCADE)
-user_custom_pages.subscription_id  → subscriptions.id  (CASCADE)
+users_custom_pages.user_id         → users.id          (CASCADE)
+users_custom_pages.subscription_id → subscriptions.id  (CASCADE)
 
-user_custom_page_views.page_id → user_custom_pages.id  (CASCADE)
+user_custom_page_views.page_id → users_custom_pages.id (CASCADE)
 
-user_nav_groups.user_id        → users.id              (CASCADE)
+users_nav_groups.user_id       → users.id              (CASCADE)
 
-user_nav_prefs.user_id           → users.id              (CASCADE)
-user_nav_prefs.subscription_id   → subscriptions.id      (CASCADE)
-user_nav_prefs.group_id          → user_nav_groups.id    (SET NULL)
+users_nav_prefs.user_id          → users.id              (CASCADE)
+users_nav_prefs.subscription_id  → subscriptions.id      (CASCADE)
+users_nav_prefs.group_id         → users_nav_groups.id   (SET NULL)
 
 user_workspace_permissions.user_id      → users.id     (CASCADE)
 user_workspace_permissions.workspace_id → workspace.id (CASCADE)
@@ -777,24 +792,24 @@ workspaces.subscription_id     → subscriptions.id      (RESTRICT)
 workspaces.created_by          → users.id              (RESTRICT)
 workspaces.archived_by         → users.id              (RESTRICT)
 
-workspace_roles.subscription_id → subscriptions.id     (RESTRICT)
-workspace_roles.workspace_id    → workspaces.id        (RESTRICT)
-workspace_roles.user_id         → users.id             (RESTRICT)
-workspace_roles.granted_by      → users.id             (RESTRICT)
-workspace_roles.revoked_by      → users.id             (RESTRICT)
+users_roles_workspaces.subscription_id → subscriptions.id (RESTRICT)
+users_roles_workspaces.workspace_id    → workspaces.id    (RESTRICT)
+users_roles_workspaces.user_id         → users.id         (RESTRICT)
+users_roles_workspaces.granted_by      → users.id         (RESTRICT)
+users_roles_workspaces.revoked_by      → users.id         (RESTRICT)
 ```
 
 Pattern summary:
 - **Auth/session/log/nav/page-children: CASCADE** — when a user, subscription, or page goes, take their dependent rows with them.
 - **Portfolio stack: RESTRICT** — never silently drop owners or hierarchy. You must explicitly reassign / archive first.
-- **`granted_by`, `audit_log`: SET NULL** — preserve the audit row even after the actor is deleted.
+- **`granted_by`, `audit_logs`: SET NULL** — preserve the audit row even after the actor is deleted.
 
 ---
 
 ## Migration order
 
 ```
-001_init.sql                       -- pgcrypto, user_role enum, tenants (pre-rename), users, sessions, audit_log
+001_init.sql                       -- pgcrypto, user_role enum, tenants (pre-rename), users, sessions, audit_logs (originally created under the pre-RF1.4.2 singular name)
 002_auth_permissions.sql           -- user extensions, password_resets, user_project_permissions (pre-rename)
 003_mfa_scaffold.sql               -- MFA columns on users (dormant)
 004_portfolio_stack.sql            -- tenant_sequence (pre-rename), company_roadmap, workspace, portfolio, product, entity_stakeholders
@@ -936,7 +951,7 @@ Deferred until item-level work begins:
 - Work-item tables (`user_story`, `task`, `feature`, …) — deferred; not in current scope. `item_state_history.item_id` has no FK yet for this reason.
 - `item_key_alias` table for rename grace-period redirects (see [c_url-routing.md](c_url-routing.md)). Deferred until the first tag rename ships.
 - Multi-division config root (SoW §12 paid tier) — planned as a nullable `config_root_id` addition on item-type and state tables; non-breaking.
-- `nav_icons` catalogue + per-user icon override on `user_nav_prefs` (planned, not yet built).
+- `nav_icons` catalogue + per-user icon override on `users_nav_prefs` (planned, not yet built).
 
 ## Go model mirrors
 

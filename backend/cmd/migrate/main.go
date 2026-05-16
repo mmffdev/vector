@@ -14,16 +14,17 @@
 //
 // SQL files are read from:
 //
-//	<dir>/db/schema/            → mmff_vector
-//	<dir>/db/library_schema/    → mmff_library
-//	<dir>/db/artefacts_schema/  → vector_artefacts
+//	<dir>/db/mmff_vector/schema/      → mmff_vector
+//	<dir>/db/mmff_library/schema/     → mmff_library
+//	<dir>/db/vector_artefacts/schema/ → vector_artefacts
 //
 // Each database gets a schema_migrations table on first run that records which
 // files have been applied. Files already in that table are skipped.
 //
-// Subdirectories (e.g. `db/schema/down/`) are NOT scanned — the runner reads
-// the top level of each schema dir only. Rollback / DOWN scripts MUST live in
-// `db/schema/down/` so they cannot be auto-applied as forward migrations.
+// Subdirectories (e.g. `db/mmff_vector/schema/down/`) are NOT scanned — the
+// runner reads the top level of each schema dir only. Rollback / DOWN scripts
+// MUST live in the per-DB `schema/down/` so they cannot be auto-applied as
+// forward migrations.
 package main
 
 import (
@@ -98,7 +99,7 @@ func migrateVector(ctx context.Context, root string, dryRun bool) error {
 	}
 	defer pool.Close()
 
-	dir := filepath.Join(root, "db", "schema")
+	dir := filepath.Join(root, "db", "mmff_vector", "schema")
 	return runMigrations(ctx, pool, "vector", dir, dryRun)
 }
 
@@ -128,7 +129,7 @@ func migrateLibrary(ctx context.Context, root string, dryRun bool) error {
 	}
 	defer pool.Close()
 
-	dir := filepath.Join(root, "db", "library_schema")
+	dir := filepath.Join(root, "db", "mmff_library", "schema")
 	return runMigrations(ctx, pool, "library", dir, dryRun)
 }
 
@@ -168,7 +169,7 @@ func migrateVectorArtefacts(ctx context.Context, root string, dryRun bool) error
 	}
 	defer pool.Close()
 
-	dir := filepath.Join(root, "db", "artefacts_schema")
+	dir := filepath.Join(root, "db", "vector_artefacts", "schema")
 	return runMigrations(ctx, pool, "vector_artefacts", dir, dryRun)
 }
 
@@ -247,7 +248,7 @@ func appliedMigrations(ctx context.Context, pool *pgxpool.Pool) (map[string]bool
 }
 
 // sqlFiles returns the top-level *.sql files in dir, sorted lexicographically.
-// Subdirectories are intentionally skipped so `db/schema/down/` (rollback
+// Subdirectories are intentionally skipped so each `schema/down/` (rollback
 // scripts) and any future side-folder cannot be picked up as forward
 // migrations. Dropping a `_DOWN.sql` next to forward files used to silently
 // schedule the rollback for execution; that lesson is encoded here.

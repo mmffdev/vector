@@ -71,6 +71,5 @@ export const strategyItemsConfig: ObjectTreeConfig<StrategyItem> = {
     options: [10, 25, 50],
     defaultPageSize: 25,
   },
-  panelHeader: undefined, // TODO: implement StrategyPanelHeader
   filterChips: undefined, // TODO: implement StrategyFilterChips
 };

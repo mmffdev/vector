@@ -13,7 +13,7 @@
 //     this is treated as the caller's bug, not an internal failure.
 //   - context is optional and free-form JSON object. We pass it through
 //     to the JSONB column as-is. Hard size cap (4 KiB encoded) matches
-//     the column comment in db/schema/028_error_events.sql so a single
+//     the column comment in db/mmff_vector/schema/028_error_events.sql so a single
 //     misbehaving caller cannot bloat the table.
 //
 // All DB I/O lives in errorsreport.Service (service.go); this handler
@@ -30,12 +30,12 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // MaxContextBytes caps the encoded JSON size of the context payload.
 // Matches the "< ~4 KB" guidance documented on error_events.context in
-// db/schema/028_error_events.sql.
+// db/mmff_vector/schema/028_error_events.sql.
 const MaxContextBytes = 4096
 
 // Handler is the chi-mountable HTTP surface; all DB access is delegated
@@ -62,13 +62,13 @@ type reportRequest struct {
 func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if u == nil {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	var req reportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if req.Code == "" {
@@ -83,10 +83,10 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 	ok, err := h.Svc.CodeExists(r.Context(), req.Code)
 	if err != nil {
 		if errors.Is(err, ErrLibPoolMissing) {
-			httperr.Write(w, r, http.StatusServiceUnavailable, messages.InternalError)
+			httperr.Write(w, r, http.StatusServiceUnavailable, usermessages.InternalError)
 			return
 		}
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	if !ok {
@@ -101,7 +101,7 @@ func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
 		Context:        req.Context,
 		RequestID:      middleware.GetReqID(r.Context()),
 	}); err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

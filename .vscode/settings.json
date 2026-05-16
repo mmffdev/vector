@@ -1,3 +1,7 @@
 {
-    "DockerRun.DisableAutoGenerateConfig": true
+    "DockerRun.DisableAutoGenerateConfig": true,
+    "github.copilot.enable": {
+        "app/(user)/workspace-admin/layout.tsx": false,
+        "app/(user)/vector-admin/layout.tsx": false
+    }
 }

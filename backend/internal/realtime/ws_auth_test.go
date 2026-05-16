@@ -33,7 +33,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/realtime"
 )
 
@@ -86,7 +86,7 @@ func TestWS_InvalidToken_Rejects401(t *testing.T) {
 // middleware enforces.
 func TestWS_ValidUserContext_UpgradeSucceeds(t *testing.T) {
 	hub := realtime.NewHub()
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(),
 		Email:          "test@mmffdev.com",

@@ -23,14 +23,12 @@ type resetData struct {
 
 // loadResetData gathers the live default flow + its snapshot for one artefact
 // type, scoped to the caller's subscription. Returns ErrNoSnapshot when the
-// type has no row in flow_defaults (seed bug or post-seed type).
+// type has no row in flows_defaults (seed bug or post-seed type).
 func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTypeID string) (*resetData, error) {
 	out := &resetData{typeID: artefactTypeID}
 
 	// 1. Artefact type — name + scope check (subscription gate).
-	err := s.vaPool.QueryRow(ctx,
-		`SELECT name FROM artefact_types
-		 WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL`,
+	err := s.vaPool.QueryRow(ctx, sqlSelectArtefactTypeNameInTenant,
 		artefactTypeID, subscriptionID,
 	).Scan(&out.typeName)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -41,11 +39,8 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 	}
 
 	// 2. Default flow for that type.
-	err = s.vaPool.QueryRow(ctx,
-		`SELECT id, name FROM flows
-		 WHERE artefact_type_id = $1 AND is_default = TRUE AND archived_at IS NULL`,
-		artefactTypeID,
-	).Scan(&out.flowID, &out.flowName)
+	err = s.vaPool.QueryRow(ctx, sqlSelectDefaultFlowForArtefactType, artefactTypeID).
+		Scan(&out.flowID, &out.flowName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrFlowNotFound
 	}
@@ -54,13 +49,7 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 	}
 
 	// 3. Live pills.
-	rows, err := s.vaPool.Query(ctx,
-		`SELECT id, name, kind, sort_order, is_initial, is_pullable, colour
-		 FROM   flow_states
-		 WHERE  flow_id = $1 AND archived_at IS NULL
-		 ORDER  BY sort_order`,
-		out.flowID,
-	)
+	rows, err := s.vaPool.Query(ctx, sqlListLiveFlowStateRows, out.flowID)
 	if err != nil {
 		return nil, fmt.Errorf("flows: load live states: %w", err)
 	}
@@ -77,12 +66,9 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 		return nil, err
 	}
 
-	// 4. Snapshot pills via flow_defaults → flow_state_defaults.
+	// 4. Snapshot pills via flows_defaults → flows_states_defaults.
 	var snapFlowID string
-	err = s.vaPool.QueryRow(ctx,
-		`SELECT id FROM flow_defaults WHERE artefact_type_id = $1`,
-		artefactTypeID,
-	).Scan(&snapFlowID)
+	err = s.vaPool.QueryRow(ctx, sqlSelectFlowDefaultID, artefactTypeID).Scan(&snapFlowID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoSnapshot
 	}
@@ -90,13 +76,7 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 		return nil, fmt.Errorf("flows: load snapshot flow: %w", err)
 	}
 
-	rows, err = s.vaPool.Query(ctx,
-		`SELECT id, name, kind, sort_order, is_initial, is_pullable, colour
-		 FROM   flow_state_defaults
-		 WHERE  flow_default_id = $1
-		 ORDER  BY sort_order`,
-		snapFlowID,
-	)
+	rows, err = s.vaPool.Query(ctx, sqlListSnapshotFlowStateRows, snapFlowID)
 	if err != nil {
 		return nil, fmt.Errorf("flows: load snapshot states: %w", err)
 	}
@@ -114,14 +94,7 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 	}
 
 	// 5. Live transitions, joined to state names on both ends.
-	rows, err = s.vaPool.Query(ctx,
-		`SELECT ft.from_state_id, ft.to_state_id, fs_from.name, fs_to.name
-		 FROM   flow_transitions ft
-		 JOIN   flow_states fs_from ON fs_from.id = ft.from_state_id
-		 JOIN   flow_states fs_to   ON fs_to.id   = ft.to_state_id
-		 WHERE  ft.flow_id = $1`,
-		out.flowID,
-	)
+	rows, err = s.vaPool.Query(ctx, sqlListLiveTransitionsWithNames, out.flowID)
 	if err != nil {
 		return nil, fmt.Errorf("flows: load live transitions: %w", err)
 	}
@@ -139,14 +112,7 @@ func (s *Service) loadResetData(ctx context.Context, subscriptionID, artefactTyp
 	}
 
 	// 6. Snapshot transitions, joined to snapshot state names.
-	rows, err = s.vaPool.Query(ctx,
-		`SELECT ftd.from_state_id, ftd.to_state_id, fsd_from.name, fsd_to.name
-		 FROM   flow_transition_defaults ftd
-		 JOIN   flow_state_defaults fsd_from ON fsd_from.id = ftd.from_state_id
-		 JOIN   flow_state_defaults fsd_to   ON fsd_to.id   = ftd.to_state_id
-		 WHERE  ftd.flow_default_id = $1`,
-		snapFlowID,
-	)
+	rows, err = s.vaPool.Query(ctx, sqlListSnapshotTransitionsWithNames, snapFlowID)
 	if err != nil {
 		return nil, fmt.Errorf("flows: load snapshot transitions: %w", err)
 	}

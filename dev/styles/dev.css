@@ -44,27 +44,25 @@
   border-color: var(--border-strong);
 }
 
-.devf__dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1.5px solid var(--surface);
+/* Env letter inside the float trigger — coloured by environment */
+.devf__env-letter {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  line-height: 1;
   pointer-events: none;
+  color: var(--ink-muted);
 }
+.devf__env-letter--dev        { color: var(--success); }
+.devf__env-letter--staging    { color: var(--warning); }
+.devf__env-letter--production { color: var(--danger); }
 
-.devf__dot--up       { background: var(--success); }
-.devf__dot--down     { background: var(--danger); }
-.devf__dot--degraded { background: var(--warning); }
-.devf__dot--checking { background: var(--ink-faint); }
-
-/* Flash the border red when something is down */
+/* Border reflects service health: red when any service is down */
 .devf__trigger--down {
   border-color: var(--danger);
-  color: var(--danger);
 }
+.devf__trigger--up      { border-color: var(--border-strong); }
+.devf__trigger--checking { border-color: var(--border-strong); }
 
 .devf__panel {
   background: var(--surface);
@@ -300,6 +298,26 @@
   color: var(--success);
   border-color: var(--success);
   background: var(--success-bg);
+}
+
+/* Neutral numeric input — same shape as .dev-confirm-input but without the
+   danger framing. Use when the field is a parameter, not a destructive
+   confirmation. */
+.dev-num-input {
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono, monospace);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+  width: 6rem;
+  transition: border-color 0.15s ease;
+}
+.dev-num-input:focus {
+  border-color: var(--accent);
 }
 
 .dev-confirm-hint {

@@ -41,17 +41,17 @@ import (
 const (
 	fixtureSubscriptionID = "00000000-0000-0000-0000-000000000001"
 	protectedPlaintext    = "password"
-
-	// Stable seeded role UUIDs from migration 088_roles_permissions.sql.
-	roleIDGAdmin = "00000000-0000-0000-0000-00000000ad30"
-	roleIDPAdmin = "00000000-0000-0000-0000-00000000ad25"
-	roleIDUser   = "00000000-0000-0000-0000-00000000ad10"
 )
+
+// Refreshed 2026-05-16 (TD-TEST-002): the rank-encoded role UUIDs
+// (ad05/ad10/ad20/ad25/ad30) and the `roles` table were retired in
+// PLA-0049 Phase 0. The `roles` table became `users_roles` and the
+// legacy enum codes ('gadmin'/'padmin'/'user') were renamed to the
+// grp_* family. Mapping mirrors mig 196 coarse-fallback.
 
 type protectedAccount struct {
 	email       string
-	roleCode    string // expected roles.code on the linked roles row
-	expectedRID uuid.UUID
+	roleCode    string // expected users_roles.users_roles_code on the linked system row
 }
 
 // protectedAccountsPool prefers `.env.dev` over `.env.local` because the
@@ -96,9 +96,9 @@ func TestProtectedAccountsPreserved(t *testing.T) {
 	subID := uuid.MustParse(fixtureSubscriptionID)
 
 	expected := []protectedAccount{
-		{email: "gadmin@mmffdev.com", roleCode: "gadmin", expectedRID: uuid.MustParse(roleIDGAdmin)},
-		{email: "padmin@mmffdev.com", roleCode: "padmin", expectedRID: uuid.MustParse(roleIDPAdmin)},
-		{email: "user@mmffdev.com", roleCode: "user", expectedRID: uuid.MustParse(roleIDUser)},
+		{email: "gadmin@mmffdev.com", roleCode: "grp_global"},
+		{email: "padmin@mmffdev.com", roleCode: "grp_portfolio"},
+		{email: "user@mmffdev.com", roleCode: "grp_team_member"},
 	}
 
 	for _, want := range expected {
@@ -111,9 +111,9 @@ func TestProtectedAccountsPreserved(t *testing.T) {
 				gotRoleCode     string
 			)
 			err := pool.QueryRow(ctx, `
-				SELECT u.email, u.password_hash, u.is_active, u.role_id, r.code
+				SELECT u.email, u.password_hash, u.is_active, u.role_id, r.users_roles_code
 				FROM users u
-				JOIN roles r ON r.id = u.role_id
+				JOIN users_roles r ON r.users_roles_id = u.role_id
 				WHERE u.email = $1
 				  AND u.subscription_id = $2
 			`, want.email, subID).Scan(
@@ -144,16 +144,10 @@ func TestProtectedAccountsPreserved(t *testing.T) {
 				)
 			}
 
-			// 4. role_id resolves to the seeded system role of the matching name.
-			if gotRoleID != want.expectedRID {
-				t.Fatalf(
-					"%s role_id drift: got %s want %s (seeded %s)",
-					want.email, gotRoleID, want.expectedRID, want.roleCode,
-				)
-			}
+			// 4. role_id resolves to the expected grp_* system row.
 			if gotRoleCode != want.roleCode {
 				t.Fatalf(
-					"%s role.code drift: got %q want %q",
+					"%s users_roles_code drift: got %q want %q (TD-TEST-002 post-PLA-0049 rename)",
 					want.email, gotRoleCode, want.roleCode,
 				)
 			}

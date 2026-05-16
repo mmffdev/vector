@@ -56,7 +56,7 @@ const DATA: Category[] = [
         tag: "<services>",
         desc: "Read-only status check for SSH tunnel (:5434), Go backend (:5100), Next.js frontend (:5101). Compares running backend commit against HEAD and flags stale builds.",
         flags: [
-          { label: "-s", note: "Append live app user list from DB + Planka board credentials" },
+          { label: "-s", note: "Append live app user list from DB" },
         ],
         loadPath: ["CLAUDE.md", "commands/c_services.md"],
       },
@@ -102,7 +102,7 @@ const DATA: Category[] = [
     shortcuts: [
       {
         tag: "<accounts>",
-        desc: "Source of truth for all dev user accounts, passwords, and Planka credentials. Queries live DB for current users; credential locations for DB, MASTER_KEY, JWT; password reset procedure.",
+        desc: "Source of truth for all dev user accounts and passwords. Queries live DB for current users; credential locations for DB, MASTER_KEY, JWT; password reset procedure.",
         flags: [],
         loadPath: ["CLAUDE.md", "commands/c_accounts.md"],
       },
@@ -113,20 +113,16 @@ const DATA: Category[] = [
     shortcuts: [
       {
         tag: "<backlog>",
-        desc: "Planka kanban management via MCP. Tunnel required (:3333). Reads, creates, moves, and accepts cards. Entry point: .claude/bin/planka — never use curl directly.",
+        desc: "Opens the root BACKLOG.md — Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).",
         flags: [
-          { label: "-a",      note: "List all cards" },
-          { label: "-n",      note: "New card" },
-          { label: "-d",      note: "Done / move card" },
-          { label: "-accept", note: "Approve a card" },
-          { label: "-view",   note: "Open dev/planning/c_backlog.md in VS Code (long-range roadmap)" },
-          { label: "-h",      note: "Help" },
+          { label: "-view", note: "Open BACKLOG.md in VS Code" },
+          { label: "-h",    note: "Help" },
         ],
-        loadPath: ["CLAUDE.md", "docs/c_backlog.md"],
+        loadPath: ["CLAUDE.md", "commands/c_backlog.md"],
       },
       {
         tag: "/stories",
-        desc: "7-gate story acceptance system. Decomposes a feature description into shippable user stories, creates Planka Backlog cards with AIGEN + Phase + Feature + EST + RISK labels. Fibonacci F0–F13; F21+ auto-splits. 85%+ confidence required on all 7 gates.",
+        desc: "7-gate story acceptance system. Decomposes a feature description into shippable user stories with AIGEN + Phase + Feature + EST + RISK labels. Fibonacci F0–F13; F21+ auto-splits. 85%+ confidence required on all 7 gates.",
         flags: [
           { label: "description", note: "Pass a free-form feature plan as input" },
         ],

@@ -163,3 +163,21 @@ FE-POR-0003.9.7	walker Go backend shared topology WalkTopology mirror generic pa
 FE-POR-0003.9.8	MyGrant position field ListMyGrants sort canvas ScopeRail
 FE-POR-0003.9.9	visual smoke canvas topology flyout ScopeRail orphan screenshot
 FE-POR-0003.9.10	UserNodeAssignment gadmin user assign topology node picker checkbox tree multi-select
+B18.7.1	shared methods catalogue gitkeep scaffold app lib backend internal dev fixtures directory
+B18.7.2	shared methods catalogue docs c_shared_methods topology walker first row CLAUDE pointer
+B18.7.3	shared methods catalogue lint allow-list registry writer-boundary transport-segregation cross-import
+B18.7.4	shared methods catalogue PostToolUse hook reminder route handler nudge
+B18.7.5	shared methods catalogue feedback memory MEMORY index session start
+B6.8	user node permission grid gadmin topology assignment per-user pivot UserNodeAssignment two-pane checkbox role dropdown filters
+B6.9	workspace default node access new users seed master_record_tenant grant user-create viewer editor
+B6.10	copy grants child node creation opt-in one-shot CopyGrantsToNode topology canvas create dialog
+B6.11	bulk grant CSV import export GrantRoleBatch user_email node_id role gadmin batch
+B6.12	node re-parent permission policy preserve replace merge move grants parent_id design decision
+RF1	codebase recovery refactor PLA-0048 conventions sql consolidation naming
+RF1.0	conventions naming-conventions leaf doc CLAUDE.md index Phase 0
+RF1.1	lint drift-prevention sql-in-sqlfile no-empty-route-block exemption-ratchet deferral package-naming tests.yml Phase 1
+RF1.2	sql.go consolidation package literals constants Phase 2 sqlVerbResource
+RF1.3	per-DB migration directories mmff_vector vector_artefacts mmff_library git mv Phase 3
+RF1.4	naming sweep package rename table rename route rename plural REST Phase 4
+RF1.5	cross-DB writer hardening crossdb_test partial-failure Adopt MasterReset CreateWorkItem Ack Report Phase 5
+RF1.6	documentation pass c_c_db_routing c_schema c_c_naming_conventions CLAUDE.md index Phase 6

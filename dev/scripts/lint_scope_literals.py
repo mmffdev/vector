@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Lint hard-coded artefact scope literals in artefactitemsv2 (PLA-0037 / B21).
+"""Lint hard-coded artefact scope literals in artefactitems (PLA-0037 / B21).
 
-Rule: inside `backend/internal/artefactitemsv2/`, the strings `'work'` and
+Rule: inside `backend/internal/artefactitems/`, the strings `'work'` and
 `'strategy'` MUST NOT appear as SQL literals. The Service struct carries a
 `scope` field that is bound through query parameters — handlers that bake
 the literal into SQL silently leak scope across endpoints.
@@ -9,7 +9,7 @@ the literal into SQL silently leak scope across endpoints.
     DEPRECATED  →  WHERE at.scope = 'work'
     REPLACEMENT →  WHERE at.scope = $N   (with s.scope as the bound arg)
 
-The detector scans every .go file under backend/internal/artefactitemsv2
+The detector scans every .go file under backend/internal/artefactitems
 and flags lines that contain `'work'` or `'strategy'` (or `"work"` /
 `"strategy"`) outside an explicitly-allowed context:
 
@@ -34,7 +34,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 EXEMPT_REGISTRY = ROOT / "dev" / "registries" / "scope_literals_exempt.json"
-SCAN_DIR = ROOT / "backend" / "internal" / "artefactitemsv2"
+SCAN_DIR = ROOT / "backend" / "internal" / "artefactitems"
 
 # Match the literal strings 'work' or 'strategy' (single or double quoted) as
 # whole words. Trailing comma/paren/space allowed.

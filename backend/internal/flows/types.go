@@ -1,6 +1,6 @@
 package flows
 
-// FlowState is one state within a flow, read from vector_artefacts.flow_states.
+// FlowState is one state within a flow, read from vector_artefacts.flows_states.
 type FlowState struct {
 	ID            string         `json:"id"`
 	Name          string         `json:"name"`

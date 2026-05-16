@@ -8,7 +8,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/messages"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Handler provides HTTP handlers for API key operations.
@@ -38,7 +38,7 @@ type IssueResponse struct {
 func (h *Handler) Issue(w http.ResponseWriter, r *http.Request) {
 	var req IssueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
@@ -51,14 +51,14 @@ func (h *Handler) Issue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if subscriptionID == "" {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	key, err := h.svc.Issue(r.Context(), subscriptionID, req.ExpiresAt, req.Scopes)
 	if err != nil {
 		log.Printf("apikeys.Issue error: %v", err)
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -83,13 +83,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if subscriptionID == "" {
-		httperr.Write(w, r, http.StatusUnauthorized, messages.AuthUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
 	keys, err := h.svc.ListKeys(r.Context(), subscriptionID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
@@ -108,18 +108,18 @@ type RevokeRequest struct {
 func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 	var req RevokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 
 	if req.ID == "" {
-		httperr.Write(w, r, http.StatusBadRequest, messages.RequestMissingFields)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 
 	err := h.svc.Revoke(r.Context(), req.ID)
 	if err != nil {
-		httperr.Write(w, r, http.StatusInternalServerError, messages.InternalError)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

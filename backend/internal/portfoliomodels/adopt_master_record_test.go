@@ -11,7 +11,7 @@ import (
 )
 
 // PLA-0026 / Story 00495 (B6): integration test for the
-// master_record_portfolio finalize-step writer. Hits the live
+// master_record_portfolios finalize-step writer. Hits the live
 // vector_artefacts DB via the SSH tunnel on :5435. Per repo convention
 // we do not mock the DB — mirrors adopt_strategy_types_test.go (B3).
 //
@@ -26,7 +26,7 @@ import (
 //     longer points back to mmff_library
 
 // makeMasterRecordBundle builds a minimal Bundle whose Model carries
-// the prose the writer copies into master_record_portfolio. Caller
+// the prose the writer copies into master_record_portfolios. Caller
 // supplies the modelID + suffix to keep names unique across runs.
 func makeMasterRecordBundle(modelID uuid.UUID, suffix string) *librarydb.Bundle {
 	desc := "description for portfolio model " + suffix
@@ -47,7 +47,7 @@ func cleanupMasterRecord(t *testing.T, ctx context.Context, workspaceID uuid.UUI
 	pool := vaTestPool(t)
 	defer pool.Close()
 	_, _ = pool.Exec(ctx,
-		`DELETE FROM master_record_portfolio WHERE workspace_id = $1`,
+		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`,
 		workspaceID,
 	)
 }
@@ -131,7 +131,7 @@ func TestWriteMasterRecordPortfolio_Idempotent(t *testing.T) {
 
 	var n int
 	if err := pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM master_record_portfolio WHERE workspace_id = $1`,
+		`SELECT COUNT(*) FROM master_record_portfolios WHERE workspace_id = $1`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestWriteMasterRecordPortfolio_ReadoptDifferentModel(t *testing.T) {
 	// Single row, identity now reflects B.
 	var n int
 	if err := pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM master_record_portfolio WHERE workspace_id = $1`,
+		`SELECT COUNT(*) FROM master_record_portfolios WHERE workspace_id = $1`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}

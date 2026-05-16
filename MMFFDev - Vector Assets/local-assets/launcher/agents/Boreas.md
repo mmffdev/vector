@@ -4,7 +4,7 @@
 - Spawn / supervise three named SSH tunnels:
   - `vector-dev-pg`        → `localhost:5435` (BACKEND_ENV=dev)
   - `vector-staging-pg`    → `localhost:5436` (BACKEND_ENV=staging)
-  - `mmffdev-pg`           → `localhost:5434` (BACKEND_ENV=production) — also carries Planka on `:3333`
+  - `mmffdev-pg`           → `localhost:5434` (BACKEND_ENV=production)
 - Tunnel health probing
 - Stale-tunnel detection (without false positives against unrelated `ssh` shells)
 - Auto-reconnect with bounded retries + structured log entries

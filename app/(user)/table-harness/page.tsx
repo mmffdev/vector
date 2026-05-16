@@ -7,10 +7,11 @@
 
 import { useMemo, useState } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 interface DemoRow {
   id: string;
@@ -39,6 +40,7 @@ function statusVariant(r: DemoRow): "success" | "warning" | "danger" {
 }
 
 export default function TableHarnessPage() {
+  const { full } = usePageTitle();
   const [rows, setRows] = useState<DemoRow[]>(SEED);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -57,7 +59,13 @@ export default function TableHarnessPage() {
 
   return (
     <PageContent>
-    <PageShell title="Table harness" subtitle="Visual proof for every <Table> prop combination — PLA-0015">
+      <PageHeading level={1} title={full} subtitle="Visual harness for testing all Table component prop combinations." />
+      <Panel
+        name="panel_table_harness_header"
+        className="page-panel-heading"
+        title="Table Harness"
+        description="Exercise every prop combination of the Table component to verify visual rendering and regressions."
+      />
       <StrictRoute>
         <Panel name="harness_minimal" title="1. Minimal — text only, no toolbar">
           <Table<DemoRow>
@@ -232,7 +240,6 @@ export default function TableHarnessPage() {
           />
         </Panel>
       </StrictRoute>
-    </PageShell>
     </PageContent>
   );
 }

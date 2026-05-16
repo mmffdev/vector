@@ -16,7 +16,7 @@
 // Children are wrapped in the Provider returned by useRegisterAddressable
 // so descendants nest correctly inside this panel's address.
 
-import { useEffect, useId, useRef, useState, ReactNode } from "react";
+import React, { useEffect, useId, useRef, useState, ReactNode } from "react";
 import { TbHelpHexagon } from "react-icons/tb";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import {
@@ -27,6 +27,26 @@ import {
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
 import { apiSite as api, ApiError } from "@/app/lib/api";
 
+export type BorderProp = {
+  type?:  "solid" | "dashed" | "dotted" | "none";
+  width?: string;
+  color?: string;
+  sides?: "all" | "top" | "right" | "bottom" | "left" | ("top" | "right" | "bottom" | "left")[];
+};
+
+export function buildBorderStyle(border: BorderProp): React.CSSProperties {
+  const val = `${border.width ?? "1px"} ${border.type ?? "solid"} ${border.color ?? "var(--border-panel)"}`;
+  const sides = border.sides ?? "all";
+  if (sides === "all") return { border: val };
+  const list = Array.isArray(sides) ? sides : [sides];
+  const style: React.CSSProperties = { border: "none" };
+  if (list.includes("top"))    style.borderTop    = val;
+  if (list.includes("right"))  style.borderRight  = val;
+  if (list.includes("bottom")) style.borderBottom = val;
+  if (list.includes("left"))   style.borderLeft   = val;
+  return style;
+}
+
 interface PanelProps {
   // Snake-case identifier under this parent. Validated by the substrate
   // against /^[a-z0-9_]{1,64}$/ — invalid names throw synchronously.
@@ -34,14 +54,34 @@ interface PanelProps {
   title?: ReactNode;
   className?: string;
   children?: ReactNode;
+  // Optional description rendered as a <p> below the title in the header.
+  description?: ReactNode;
   // Call-site override: pass `helpable={false}` to suppress the help icon
   // even if the substrate row says helpable=true. Use when a Panel is
   // wrapping for heading/addressable semantics but parent context already
   // owns the help (e.g. a repeater under a <PageDescription>).
   helpable?: boolean;
+  // Shorthand margin [top, right, bottom, left] — each value is a CSS string
+  // (e.g. "20px", "var(--gap-block-bottom)"). Defaults to 0 for any omitted slot.
+  margin?: [string?, string?, string?, string?];
+  // Shorthand padding [top, right, bottom, left]. Null/omitted slot = var(--space-4) (16px), the panel CSS default.
+  padding?: [string?, string?, string?, string?];
+  // Border override. Null prop = panel CSS default (1px solid var(--border-panel)).
+  // sides: "all" | single side | array of sides.
+  border?: {
+    type?:  "solid" | "dashed" | "dotted" | "none";
+    width?: string;
+    color?: string;
+    sides?: "all" | "top" | "right" | "bottom" | "left" | ("top" | "right" | "bottom" | "left")[];
+  };
+  // Background colour. Any CSS color string (hex, token, etc.). Null/omitted = transparent.
+  background?: string;
+  // Corner radius {top, right, bottom, left} — maps to border-radius corners TL/TR/BR/BL.
+  // Each key is a CSS string. Null/omitted = "0".
+  radius?: { top?: string; right?: string; bottom?: string; left?: string };
 }
 
-export default function Panel({ name, title, className, children, helpable: helpableProp }: PanelProps) {
+export default function Panel({ name, title, description, className, children, helpable: helpableProp, margin, padding, border, background, radius }: PanelProps) {
   const { address, addressable_id, helpable: helpableFromRegistry, Provider } = useRegisterAddressable({
     kind: "panel",
     name,
@@ -156,6 +196,37 @@ export default function Panel({ name, title, className, children, helpable: help
 
   const hasTitle = title !== undefined && title !== "" && title !== null;
 
+  const marginStyle = margin
+    ? {
+        marginTop:    margin[0] ?? "0",
+        marginRight:  margin[1] ?? "0",
+        marginBottom: margin[2] ?? "0",
+        marginLeft:   margin[3] ?? "0",
+      }
+    : undefined;
+
+  const paddingStyle = padding
+    ? {
+        paddingTop:    padding[0] ?? "var(--space-4)",
+        paddingRight:  padding[1] ?? "var(--space-4)",
+        paddingBottom: padding[2] ?? "var(--space-4)",
+        paddingLeft:   padding[3] ?? "var(--space-4)",
+      }
+    : undefined;
+
+  const borderStyle = border ? buildBorderStyle(border) : undefined;
+
+  const backgroundStyle = background ? { background } : undefined;
+
+  const radiusStyle = radius
+    ? {
+        borderTopLeftRadius:     radius.top    ?? "0",
+        borderTopRightRadius:    radius.right  ?? "0",
+        borderBottomRightRadius: radius.bottom ?? "0",
+        borderBottomLeftRadius:  radius.left   ?? "0",
+      }
+    : undefined;
+
   const helpBtn = helpable ? (
     <button
       ref={triggerRef}
@@ -176,10 +247,12 @@ export default function Panel({ name, title, className, children, helpable: help
         className={className ? `panel ${className}` : "panel"}
         data-addressable-id={addressable_id ?? undefined}
         data-address={address}
+        style={{ ...marginStyle, ...paddingStyle, ...borderStyle, ...backgroundStyle, ...radiusStyle }}
       >
         {hasTitle ? (
           <header className="panel__header">
             <h2 id={labelId} className="panel__title">{title}</h2>
+            {description && <p className="panel__description">{description}</p>}
             {helpBtn}
           </header>
         ) : (

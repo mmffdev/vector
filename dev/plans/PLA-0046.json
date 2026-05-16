@@ -1,0 +1,233 @@
+{
+  "id": "PLA-0046",
+  "title": "Topology Permissions page \u2014 gadmin user-pivot surface hosting UserNodeAssignment (B6.8)",
+  "date_created": "2026-05-12",
+  "date_started": "2026-05-12",
+  "date_last_updated": "2026-05-12",
+  "date_finished": "2026-05-12",
+  "scope": "<p>Build the gadmin-only <strong>Topology Permissions</strong> page that hosts the <code>UserNodeAssignment</code> picker shipped by PLA-0044 (story 00544). The page is the user-pivot surface validated by R054 (Rally Dev): one user on the left, every topology node on the right, with checkbox-driven assign/unassign. Single-role MVP \u2014 per-row role dropdown is deferred. Entered from the existing Users row-expand panel (<code>/workspace-settings/users</code>) via a 'Manage topology permissions' button.</p><p>Reuses the already-shipped <code>GrantRole</code> / <code>RevokeRole</code> handlers + the <code>UserNodeAssignment</code> primitive. Adds a single new read handler (<code>ListGrantsByUser</code>), one new permission code (<code>topology.grants.manage_others</code>), and one new permission seed migration.</p>",
+  "value": "<p>Closes the gap between PLA-0044's picker primitive and a real admin workflow: today the picker exists but has no host. With this surface, a gadmin can grant or revoke node-level access for any user from a single screen, replacing the implicit 'self-pivot only' restriction in <code>ListMyGrants</code>. Validates the R054 user-pivot pattern against Vector's read-clamp-only model.</p>",
+  "implementation_plan": [
+    "Step 1 \u2014 Backend service: add Service.ListGrantsByUser(ctx, subscriptionID, targetUserID, actorRole) gated by topology.grants.manage_others.",
+    "Step 2 \u2014 Backend handler: GET /api/topology/users/{userId}/grants, registered on /_site and /samantha/v2 per PLA-0039.",
+    "Step 3 \u2014 Permission code: add TopologyGrantsManageOthers constant + register in permission catalogue.",
+    "Step 4 \u2014 Migration 147: seed topology.grants.manage_others permission + grant to gadmin role (UUID ad30).",
+    "Step 5 \u2014 Frontend API: topologyApi.listGrantsByUser(userId) helper using apiSite.",
+    "Step 6 \u2014 Frontend page: app/(user)/workspace-settings/users/[userId]/topology-permissions/page.tsx \u2014 gadmin-gated, fetches user + tree + grants, renders UserNodeAssignment, wires onToggle to GrantRole/RevokeRole.",
+    "Step 7 \u2014 Entry button: add 'Manage topology permissions' to the existing UserEditPanel on /workspace-settings/users.",
+    "Step 8 \u2014 CSS: extend .dui-* or app/globals.css with .topology-permissions__layout primitives (no bespoke per-page class).",
+    "Step 9 \u2014 Tests + docs: backend unit + handler tests for ListGrantsByUser; manual smoke flow documented in plan AC."
+  ],
+  "areas_impacted": [
+    "POR-API: orgdesign.Service + topology REST surface (2 new entry points)",
+    "SEC: 1 new permission code seeded on gadmin role",
+    "SQL: migration 147 (permission + role grant)",
+    "POR: new gadmin page route + entry button",
+    "DEV: unit + handler tests, plan close-out docs"
+  ],
+  "feature_list": [
+    "Per-user node-permission grid page at /workspace-settings/users/[userId]/topology-permissions",
+    "Backend ListGrantsByUser service method + REST handler (dual-transport)",
+    "topology.grants.manage_others permission code seeded on gadmin role",
+    "Entry button on existing Users row-expand panel",
+    "Reuses UserNodeAssignment primitive from PLA-0044 \u2014 no new tree-walking code"
+  ],
+  "features_extended": [
+    "<strong>orgdesign.Service</strong> \u2014 adds ListGrantsByUser alongside existing ListMyGrants/GrantRole/RevokeRole.",
+    "<strong>UserEditPanel</strong> at /workspace-settings/users \u2014 gains 'Manage topology permissions' entry button (gadmin-only)."
+  ],
+  "features_removed": [],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "Backend: Service.ListGrantsByUser \u2014 list every active grant for a target user, gated by manage_others permission",
+      "story_id": "00550",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 2,
+      "title": "Backend: GET /api/topology/users/{userId}/grants handler \u2014 dual-mount on /_site and /samantha/v2",
+      "story_id": "00551",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 3,
+      "title": "Permission code: TopologyGrantsManageOthers constant + catalogue registration",
+      "story_id": "00552",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 4,
+      "title": "Migration 147: seed topology.grants.manage_others permission + grant on gadmin role",
+      "story_id": "00553",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 5,
+      "title": "Frontend API: topologyApi.listGrantsByUser(userId) helper",
+      "story_id": "00554",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 6,
+      "title": "Frontend page: /workspace-settings/users/[userId]/topology-permissions \u2014 hosts UserNodeAssignment, wires GrantRole/RevokeRole",
+      "story_id": "00555",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 7,
+      "title": "Frontend entry: 'Manage topology permissions' button on UserEditPanel row-expand",
+      "story_id": "00556",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 8,
+      "title": "Backend tests: TestListGrantsByUser unit + handler tests (gadmin pass, non-gadmin 403, target-user empty)",
+      "story_id": "00557",
+      "card_url": "",
+      "status": "complete"
+    },
+    {
+      "order": 9,
+      "title": "Docs + close-out: c_c_topology.md update, B6.8 scope tick, PLA-0046 close-out",
+      "story_id": "00558",
+      "card_url": "",
+      "status": "complete"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "Service.ListGrantsByUser(actorRole=gadmin) returns every active grant for the target user; non-gadmin actor receives sentinel ErrForbidden.",
+      "proven_by": "Go unit test in backend/internal/orgdesign/service_test.go covering gadmin success + non-gadmin 403 paths.",
+      "story_id": "00550",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 2,
+      "criterion": "GET /api/topology/users/{userId}/grants returns 200 JSON array for gadmin, 403 for non-gadmin, and is registered on both /_site and /samantha/v2.",
+      "proven_by": "Handler test asserting status codes + JSON body; route registration verified by grep of main.go.",
+      "story_id": "00551",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 3,
+      "criterion": "TopologyGrantsManageOthers permission code 'topology.grants.manage_others' exists in backend/internal/permissions and appears in the catalogue list endpoint.",
+      "proven_by": "grep of permission constants + GET /api/permissions includes the code.",
+      "story_id": "00552",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 4,
+      "criterion": "Migration 147 applied successfully against dev DB; row exists in permissions table + role_permissions junction row for gadmin role (UUID ad30\u2026).",
+      "proven_by": "SELECT FROM permissions WHERE code='topology.grants.manage_others' returns one row; JOIN with roles_permissions+roles confirms gadmin grant.",
+      "story_id": "00553",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 5,
+      "criterion": "topologyApi.listGrantsByUser(userId) function exists in app/lib/topologyApi.ts and returns typed MyGrant[] using apiSite helper.",
+      "proven_by": "TypeScript compile passes; manual call from React DevTools returns array.",
+      "story_id": "00554",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 6,
+      "criterion": "Page at /workspace-settings/users/[userId]/topology-permissions renders the user's name, the full topology tree, and a checkbox per node reflecting current grant state; toggling a checkbox calls GrantRole/RevokeRole and updates the UI optimistically.",
+      "proven_by": "Manual smoke: log in as gadmin, navigate to the page, toggle a node, refresh \u2014 selection persists.",
+      "story_id": "00555",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 7,
+      "criterion": "'Manage topology permissions' button visible on the row-expand panel at /workspace-settings/users for gadmin users only (gated by useHasPermission('topology.grants.manage_others')).",
+      "proven_by": "Manual smoke: button visible as gadmin, hidden as padmin/user; click routes to the new page.",
+      "story_id": "00556",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 8,
+      "criterion": "Backend test suite passes \u2014 TestListGrantsByUser covers 3 cases (gadmin returns grants, non-gadmin gets 403, target user with no grants returns empty array).",
+      "proven_by": "go test ./backend/internal/orgdesign/... -run TestListGrantsByUser shows PASS.",
+      "story_id": "00557",
+      "card_url": "",
+      "done": true
+    },
+    {
+      "order": 9,
+      "criterion": "docs/c_c_topology.md updated with the new admin surface; Vector_Scope.md B6.8 marked complete; PLA-0046 marked complete in c_plan_index.md.",
+      "proven_by": "git diff shows updates to all three files; c_plan_index.md row reads 'complete (YYYY-MM-DD)'.",
+      "story_id": "00558",
+      "card_url": "",
+      "done": true
+    }
+  ],
+  "risks": [
+    {
+      "impact": 2,
+      "risk": "ListGrantsByUser bypasses the read-clamp by design (gadmin viewing another user's grants). If the permission check is misordered, a padmin could enumerate gadmin grants.",
+      "mitigation": "Permission check is the FIRST statement in the service method, before any DB query. Handler test asserts 403 for non-gadmin actor."
+    },
+    {
+      "impact": 1,
+      "risk": "Page CSS drifts from .dui-* catalogue (HARD RULE for /dev pages \u2014 workspace-settings is not /dev but follows the same hygiene).",
+      "mitigation": "Reuse existing layout primitives from /workspace-settings/users page; new .topology-permissions* additions are layout-only, no inline styles."
+    },
+    {
+      "impact": 2,
+      "risk": "Optimistic UI mismatches backend state if GrantRole/RevokeRole fails mid-toggle.",
+      "mitigation": "onToggle wraps server call in try/catch; on failure, revert local state + show in-page error (no browser alert per memory rule)."
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "B6.8 \u2014 Per-user node-permission grid page",
+      "href": "../../Vector_Scope.md"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0044 \u2014 Unified topology walker (parent plan)",
+      "href": "PLA-0044.json"
+    },
+    {
+      "kind": "internal",
+      "label": "UserNodeAssignment primitive",
+      "href": "../../app/components/topology/UserNodeAssignment.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "Users page pattern reference",
+      "href": "../../app/(user)/workspace-settings/users/page.tsx"
+    },
+    {
+      "kind": "internal",
+      "label": "GrantRole/RevokeRole/ListMyGrants handlers",
+      "href": "../../backend/internal/orgdesign/handler.go"
+    },
+    {
+      "kind": "internal",
+      "label": "R054 Rally Dev research \u2014 user-pivot pattern validation",
+      "href": "../research/R054.json"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0039 transport segregation (dual-mount rule)",
+      "href": "../../docs/c_c_transport_segregation.md"
+    }
+  ]
+}

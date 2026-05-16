@@ -17,6 +17,11 @@ func New(pool *pgxpool.Pool) *Logger {
 	return &Logger{pool: pool}
 }
 
+// SetPool atomically swaps the underlying pool. Used during startup to repoint
+// the early-bound Logger at vaPool once it is initialised, without re-threading
+// the reference through every service constructor.
+func (l *Logger) SetPool(p *pgxpool.Pool) { l.pool = p }
+
 type Entry struct {
 	UserID         *uuid.UUID
 	SubscriptionID *uuid.UUID
@@ -40,8 +45,11 @@ func (l *Logger) Log(ctx context.Context, e Entry) {
 		src = &s
 	}
 	_, _ = l.pool.Exec(ctx, `
-		INSERT INTO audit_log (user_id, subscription_id, action, resource, resource_id, metadata, ip_address, source_transport)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		INSERT INTO audit_logs (
+			audit_logs_id_user, audit_logs_id_subscription,
+			audit_logs_action, audit_logs_resource, audit_logs_resource_id,
+			audit_logs_metadata, audit_logs_ip_address, audit_logs_source_transport
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		e.UserID, e.SubscriptionID, e.Action, e.Resource, e.ResourceID, meta, e.IPAddress, src,
 	)
 }

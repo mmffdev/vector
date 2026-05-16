@@ -4,8 +4,6 @@
 
 This protocol is **research-specific**. It synthesises 1–5 candidate stories from the compiled research, presents them for review, then **hands off to the project's `/stories` skill** for story creation and plan JSON writing.
 
-<!-- PLANKA SUSPENDED: Planka card creation is disabled. Stories are recorded in dev/plans/ JSON only via /stories skill. -->
-
 See [`.claude/skills/stories/SKILL.md`](../skills/stories/SKILL.md) for the 7-gate story acceptance system, Fibonacci estimation (F0–F13), and EST+RISK metadata rules.
 
 ---
@@ -110,7 +108,7 @@ Invoke the `/stories` skill (see [`.claude/skills/stories/SKILL.md`](../skills/s
 
 - **Step 0:** Allocates story IDs from `docs/c_story_index.md`, resolves phase + feature metadata.
 - **Steps 1–7:** Decomposes / parses, runs each candidate through the 7 gates (estimation, risk, description format, decomposition check).
-- **Outcome:** Stories land in `dev/plans/PLA-NNNN.json` with all mandatory attributes (Story ID + Title, phase, feature area, EST-F#, RISK-LOW/MED/HIGH, description with 3+ "As proven by"). <!-- PLANKA SUSPENDED: previously landed in Planka Backlog. -->
+- **Outcome:** Stories land in `dev/plans/PLA-NNNN.json` with all mandatory attributes (Story ID + Title, phase, feature area, EST-F#, RISK-LOW/MED/HIGH, description with 3+ "As proven by").
 
 **Hard rules `/stories` enforces (do not try to bypass):**
 - Confidence < 85% on any gate → STOP, ask user to revise
@@ -142,5 +140,5 @@ The user can always say `<addpaper>` again and ask for stories later. Better to 
 c_addpaper-stories.md
   ├─ Input: accepted story drafts from user review
   ├─ Output: invocation of /stories skill with the drafts
-  └─ /stories owns: ID allocation, label rules, 7 gates, Planka card creation
+  └─ /stories owns: ID allocation, label rules, 7 gates, plan JSON writing
 ```

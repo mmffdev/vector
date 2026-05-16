@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // PLA-0026 / Story 00499 (B10): handler tests for
@@ -20,7 +20,7 @@ import (
 // Same skip-on-unreachable discipline as the rest of the package
 // (cluster down → t.Skip, never fail). Hits the live mmff_vector pool
 // (testVectorPoolPadmin) for the workspace + workspace_roles auth check
-// and the live vector_artefacts pool (vaTestPool) for artefact_types.
+// and the live vector_artefacts pool (vaTestPool) for artefacts_types.
 //
 // Cases:
 //   - 401 when no user in context.
@@ -30,7 +30,7 @@ import (
 //   - 403 when the caller is in the right tenant but not a member.
 //   - 200 happy path: gadmin override returns the seeded strategy row.
 
-func newWorkspaceLayersRouter(h *WorkspaceLayersHandler, u *models.User) http.Handler {
+func newWorkspaceLayersRouter(h *WorkspaceLayersHandler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func TestWorkspaceLayers_Unauthorized(t *testing.T) {
 func TestWorkspaceLayers_BadUUID(t *testing.T) {
 	// UUID parse fails before any pool use.
 	h := NewWorkspaceLayersHandler(NewService(nil, nil, nil))
-	u := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser}
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, u))
 	defer srv.Close()
 
@@ -142,12 +142,12 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 
 	defer func() {
 		_, _ = va.Exec(ctx,
-			`DELETE FROM artefact_types WHERE workspace_id = $1 AND prefix = $2`,
+			`DELETE FROM artefacts_types WHERE workspace_id = $1 AND prefix = $2`,
 			wsID, prefix)
 	}()
 
 	if _, err := va.Exec(ctx, `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -162,16 +162,16 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 		)`,
 		subID, wsID, name, prefix, "test description", libLayerID,
 	); err != nil {
-		t.Skipf("cannot seed artefact_types row (schema not deployed?): %v", err)
+		t.Skipf("cannot seed artefacts_types row (schema not deployed?): %v", err)
 	}
 
 	// Faux gadmin in the workspace's tenant. The handler's gadmin
 	// override skips the workspace_roles membership check.
-	gadmin := &models.User{
+	gadmin := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: subID,
 		Email:          "claude-gadmin-test@example.invalid",
-		Role:           models.RoleGAdmin,
+		Role:           roletypes.RoleGAdmin,
 		IsActive:       true,
 	}
 
@@ -249,11 +249,11 @@ func TestWorkspaceLayers_Forbidden_NonMember(t *testing.T) {
 
 	// Non-gadmin user in the same tenant with a random user id (not a
 	// member of the workspace).
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: subID,
 		Email:          "claude-nonmember-test@example.invalid",
-		Role:           models.RoleUser,
+		Role:           roletypes.RoleUser,
 		IsActive:       true,
 	}
 
@@ -294,11 +294,11 @@ func TestWorkspaceLayers_NotFound_CrossTenant(t *testing.T) {
 	}
 
 	// User in a different (random) tenant.
-	user := &models.User{
+	user := &roletypes.User{
 		ID:             uuid.New(),
 		SubscriptionID: uuid.New(), // != subID
 		Email:          "claude-crosstenant-test@example.invalid",
-		Role:           models.RoleGAdmin, // even gadmin can't peek across tenants
+		Role:           roletypes.RoleGAdmin, // even gadmin can't peek across tenants
 		IsActive:       true,
 	}
 	if user.SubscriptionID == subID {

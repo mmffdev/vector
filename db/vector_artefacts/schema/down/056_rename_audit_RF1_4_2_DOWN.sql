@@ -1,0 +1,20 @@
+-- RF1.4.2.audit DOWN.
+BEGIN;
+ALTER INDEX idx_audit_logs_id_user            RENAME TO idx_audit_log_user_id;
+ALTER INDEX idx_audit_logs_id_subscription    RENAME TO idx_audit_log_subscription_id;
+ALTER INDEX idx_audit_logs_source_transport   RENAME TO idx_audit_log_source_transport;
+ALTER INDEX idx_audit_logs_created            RENAME TO idx_audit_log_created;
+ALTER INDEX idx_audit_logs_action             RENAME TO idx_audit_log_action;
+ALTER TABLE audit_logs RENAME CONSTRAINT audit_logs_source_transport_check TO audit_log_source_transport_check;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_source_transport TO source_transport;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_created_at       TO created_at;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_ip_address       TO ip_address;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_metadata         TO metadata;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_resource_id      TO resource_id;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_resource         TO resource;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_action           TO action;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_id_subscription  TO subscription_id;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_id_user          TO user_id;
+ALTER TABLE audit_logs RENAME COLUMN audit_logs_id               TO id;
+ALTER TABLE audit_logs RENAME TO audit_log;
+COMMIT;

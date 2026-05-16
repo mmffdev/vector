@@ -3,12 +3,15 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { MapRelationship3D } from "@/app/components/MapRelationship3D";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { useTopologyRelationsPayload } from "@/app/hooks/useTopologyRelationsPayload";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function WorkspaceSettingsTopologyMapPage() {
+  const { full } = usePageTitle();
   const { user } = useAuth();
   const canAccess = useHasPermission("workspace.archive");
   const router = useRouter();
@@ -23,6 +26,13 @@ export default function WorkspaceSettingsTopologyMapPage() {
 
   return (
     <PageContent>
+      <PageHeading level={1} title={full} subtitle="Visual map of the organisation topology structure." />
+      <Panel
+        name="panel_topology_map_header"
+        className="page-panel-heading"
+        title="Topology Map"
+        description="Explore the visual representation of the organisation topology and node relationships."
+      />
     <Panel name="workspace_settings_topology_map" title="Topology map">
       {loading && !data ? (
         <div className="placeholder">

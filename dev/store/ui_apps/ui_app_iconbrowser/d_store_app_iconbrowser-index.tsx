@@ -95,17 +95,23 @@ function IconItem({ entry, packId, onCopy }: {
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function UiAppIconbrowser() {
-  const [activeTab, setActiveTab] = useState("fa6");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
-  const pack = PACKS.find((p) => p.id === activeTab) ?? PACKS[0];
-
-  const filtered = useMemo(() => {
+  const filteredByPack = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return pack.entries;
-    return pack.entries.filter((e) => e.name.toLowerCase().includes(q));
-  }, [pack, search]);
+    return PACKS.map((p) => ({
+      pack: p,
+      entries: q ? p.entries.filter((e) => e.name.toLowerCase().includes(q)) : p.entries,
+    }));
+  }, [search]);
+
+  const totalCount = useMemo(
+    () => filteredByPack.reduce((sum, g) => sum + g.entries.length, 0),
+    [filteredByPack],
+  );
+
+  const visibleGroups = filteredByPack.filter((g) => g.entries.length > 0);
 
   const handleCopy = useCallback((name: string) => {
     setToast(`Copied: ${name}`);
@@ -124,43 +130,36 @@ export default function UiAppIconbrowser() {
         <input
           type="search"
           className="form__input icon-browser__search"
-          placeholder="Search icons…"
+          placeholder="Search all icon packs…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <span className="icon-browser__count">{filtered.length} icons</span>
+        <span className="icon-browser__count">{totalCount} icons</span>
       </div>
 
-      {/* Tabs */}
-      <div className="icon-browser__tabs">
-        {PACKS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={"icon-browser__tab" + (activeTab === p.id ? " icon-browser__tab--active" : "")}
-            onClick={() => { setActiveTab(p.id); setSearch(""); }}
-          >
-            {p.label} ({p.entries.length})
-          </button>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div className="icon-browser__grid-wrap">
-        <div className="icon-browser__grid">
-          {filtered.length === 0 ? (
-            <p className="icon-browser__empty">No icons match &ldquo;{search}&rdquo;</p>
-          ) : (
-            filtered.map((entry) => (
-              <IconItem
-                key={entry.name}
-                entry={entry}
-                packId={activeTab}
-                onCopy={handleCopy}
-              />
-            ))
-          )}
-        </div>
+      {/* Groups */}
+      <div className="icon-browser__groups">
+        {visibleGroups.length === 0 ? (
+          <p className="icon-browser__empty">No icons match &ldquo;{search}&rdquo;</p>
+        ) : (
+          visibleGroups.map(({ pack, entries }) => (
+            <section key={pack.id} className="icon-browser__group">
+              <h3 className="icon-browser__group-title">
+                {pack.label} <span className="icon-browser__group-count">({entries.length})</span>
+              </h3>
+              <div className="icon-browser__grid">
+                {entries.map((entry) => (
+                  <IconItem
+                    key={entry.name}
+                    entry={entry}
+                    packId={pack.id}
+                    onCopy={handleCopy}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        )}
       </div>
 
       {/* Copy toast */}

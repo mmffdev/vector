@@ -28,30 +28,31 @@ var (
 	ErrInvalidInput = errors.New("invalid input")
 )
 
-// Subscription is the wire shape for a webhook_subscriptions row.
+// Subscription is the wire shape for a webhooks_subscriptions row.
+// JSON tags follow §2.3 (post RF1.4.2.webhooks).
 type Subscription struct {
-	ID          uuid.UUID  `json:"id"`
-	WorkspaceID uuid.UUID  `json:"workspace_id"`
-	URL         string     `json:"url"`
-	Events      *string    `json:"events"`
-	IsActive    bool       `json:"is_active"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
+	ID          uuid.UUID  `json:"webhooks_subscriptions_id"`
+	WorkspaceID uuid.UUID  `json:"webhooks_subscriptions_id_workspace"`
+	URL         string     `json:"webhooks_subscriptions_url"`
+	Events      *string    `json:"webhooks_subscriptions_events"`
+	IsActive    bool       `json:"webhooks_subscriptions_is_active"`
+	CreatedAt   time.Time  `json:"webhooks_subscriptions_created_at"`
+	UpdatedAt   time.Time  `json:"webhooks_subscriptions_updated_at"`
+	ArchivedAt  *time.Time `json:"webhooks_subscriptions_archived_at,omitempty"`
 }
 
 // CreateInput is the payload for creating a new subscription.
 type CreateInput struct {
-	URL    string  `json:"url"`
-	Events *string `json:"events"`
-	Secret *string `json:"secret"`
+	URL    string  `json:"webhooks_subscriptions_url"`
+	Events *string `json:"webhooks_subscriptions_events"`
+	Secret *string `json:"webhooks_subscriptions_secret"`
 }
 
 // UpdateInput is the partial-update payload.
 type UpdateInput struct {
-	URL      *string `json:"url,omitempty"`
-	Events   *string `json:"events,omitempty"`
-	IsActive *bool   `json:"is_active,omitempty"`
+	URL      *string `json:"webhooks_subscriptions_url,omitempty"`
+	Events   *string `json:"webhooks_subscriptions_events,omitempty"`
+	IsActive *bool   `json:"webhooks_subscriptions_is_active,omitempty"`
 }
 
 // Service is the sole-writer surface.
@@ -63,13 +64,7 @@ func New(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
 // List returns all active subscriptions for a workspace.
 func (s *Service) List(ctx context.Context, workspaceID uuid.UUID) ([]Subscription, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, workspace_id, url, events, is_active, created_at, updated_at, archived_at
-		FROM webhook_subscriptions
-		WHERE workspace_id = $1 AND archived_at IS NULL
-		ORDER BY created_at`,
-		workspaceID,
-	)
+	rows, err := s.pool.Query(ctx, sqlListSubscriptionsByWorkspace, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,13 +85,9 @@ func (s *Service) List(ctx context.Context, workspaceID uuid.UUID) ([]Subscripti
 // Get returns one subscription by ID, scoped to workspace.
 func (s *Service) Get(ctx context.Context, workspaceID, id uuid.UUID) (*Subscription, error) {
 	var sub Subscription
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, workspace_id, url, events, is_active, created_at, updated_at, archived_at
-		FROM webhook_subscriptions
-		WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`,
-		id, workspaceID,
-	).Scan(&sub.ID, &sub.WorkspaceID, &sub.URL, &sub.Events,
-		&sub.IsActive, &sub.CreatedAt, &sub.UpdatedAt, &sub.ArchivedAt)
+	err := s.pool.QueryRow(ctx, sqlSelectSubscriptionByIDInWorkspace, id, workspaceID).
+		Scan(&sub.ID, &sub.WorkspaceID, &sub.URL, &sub.Events,
+			&sub.IsActive, &sub.CreatedAt, &sub.UpdatedAt, &sub.ArchivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -120,10 +111,7 @@ func (s *Service) Create(ctx context.Context, workspaceID uuid.UUID, in CreateIn
 	}
 
 	var sub Subscription
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO webhook_subscriptions (workspace_id, url, events, secret)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, workspace_id, url, events, is_active, created_at, updated_at, archived_at`,
+	err := s.pool.QueryRow(ctx, sqlInsertSubscription,
 		workspaceID, in.URL, in.Events, secret,
 	).Scan(&sub.ID, &sub.WorkspaceID, &sub.URL, &sub.Events,
 		&sub.IsActive, &sub.CreatedAt, &sub.UpdatedAt, &sub.ArchivedAt)
@@ -147,13 +135,13 @@ func (s *Service) Update(ctx context.Context, workspaceID, id uuid.UUID, in Upda
 		if !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "http://") {
 			return nil, fmt.Errorf("%w: url must begin with http:// or https://", ErrInvalidInput)
 		}
-		add("url", u)
+		add("webhooks_subscriptions_url", u)
 	}
 	if in.Events != nil {
-		add("events", in.Events)
+		add("webhooks_subscriptions_events", in.Events)
 	}
 	if in.IsActive != nil {
-		add("is_active", *in.IsActive)
+		add("webhooks_subscriptions_is_active", *in.IsActive)
 	}
 
 	if len(sets) == 0 {
@@ -162,8 +150,9 @@ func (s *Service) Update(ctx context.Context, workspaceID, id uuid.UUID, in Upda
 
 	args = append(args, id, workspaceID)
 	q := fmt.Sprintf(
-		`UPDATE webhook_subscriptions SET %s WHERE id = $%d AND workspace_id = $%d AND archived_at IS NULL`,
-		strings.Join(sets, ", "), len(args)-1, len(args),
+		sqlUpdateSubscriptionTemplate,
+		strings.Join(sets, ", "),
+		fmt.Sprintf("webhooks_subscriptions_id = $%d AND webhooks_subscriptions_id_workspace = $%d", len(args)-1, len(args)),
 	)
 	n, err := s.pool.Exec(ctx, q, args...)
 	if err != nil {
@@ -177,11 +166,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, id uuid.UUID, in Upda
 
 // Delete soft-deletes a subscription (sets archived_at).
 func (s *Service) Delete(ctx context.Context, workspaceID, id uuid.UUID) error {
-	n, err := s.pool.Exec(ctx, `
-		UPDATE webhook_subscriptions SET archived_at = now()
-		WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`,
-		id, workspaceID,
-	)
+	n, err := s.pool.Exec(ctx, sqlSoftDeleteSubscription, id, workspaceID)
 	if err != nil {
 		return err
 	}
@@ -195,11 +180,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id uuid.UUID) error {
 // for the workspace, inserting one webhook_deliveries row per
 // subscription. Safe to call from any goroutine.
 func (s *Service) Enqueue(ctx context.Context, workspaceID uuid.UUID, eventType string, payload []byte) error {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, events FROM webhook_subscriptions
-		WHERE workspace_id = $1 AND is_active = TRUE AND archived_at IS NULL`,
-		workspaceID,
-	)
+	rows, err := s.pool.Query(ctx, sqlListActiveSubscriptionFiltersForWorkspace, workspaceID)
 	if err != nil {
 		return err
 	}
@@ -214,9 +195,7 @@ func (s *Service) Enqueue(ctx context.Context, workspaceID uuid.UUID, eventType 
 		if !matchesFilter(events, eventType) {
 			continue
 		}
-		if _, err := s.pool.Exec(ctx, `
-			INSERT INTO webhook_deliveries (subscription_id, event_type, payload)
-			VALUES ($1, $2, $3)`,
+		if _, err := s.pool.Exec(ctx, sqlInsertDelivery,
 			subID, eventType, payload,
 		); err != nil {
 			return err

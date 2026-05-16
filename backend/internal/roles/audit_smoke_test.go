@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
@@ -23,7 +23,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	subID, cleanup := mkTenant(t, pool, "audit-smoke")
 	defer cleanup()
 
-	actor := mkUser(t, pool, subID, models.RoleGAdmin)
+	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 	svc := New(pool, audit.New(pool))
 	ctx := context.Background()
 
@@ -46,7 +46,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	// Look up a permission id and grant/revoke it.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup perm: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	// Pull all audit rows for this resource and assert the five action
 	// codes are present.
 	rows, err := pool.Query(ctx,
-		`SELECT action FROM audit_log WHERE resource_id = $1 ORDER BY created_at`,
+		`SELECT audit_logs_action FROM audit_logs WHERE audit_logs_resource_id = $1 ORDER BY audit_logs_created_at`,
 		r.ID.String(),
 	)
 	if err != nil {

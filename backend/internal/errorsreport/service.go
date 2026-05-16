@@ -8,8 +8,11 @@ package errorsreport
 // Two databases are involved:
 //   - LibRO  — read-only pool against mmff_library; used to validate
 //     that the supplied code exists in error_codes.
-//   - VectorPool — primary pool against mmff_vector; used to insert the
-//     error_events row.
+//   - VectorPool — primary write pool. Wired to vector_artefacts.error_events
+//     post-PLA-0023-P1 (2026-05-13); falls back to mmff_vector pool when
+//     vaPool is unavailable. Field name kept as `vectorPool` for back-compat;
+//     "vector" here means "the primary Vector write pool", not the literal
+//     mmff_vector database.
 //
 // LibRO MAY be nil — when the library pool fails to initialise at boot
 // (e.g. pre-cutover environments) the service treats CodeExists as
@@ -53,9 +56,7 @@ func (s *Service) CodeExists(ctx context.Context, code string) (bool, error) {
 		return false, ErrLibPoolMissing
 	}
 	var found int
-	err := s.libRO.QueryRow(ctx,
-		`SELECT 1 FROM error_codes WHERE code = $1`, code,
-	).Scan(&found)
+	err := s.libRO.QueryRow(ctx, sqlSelectErrorCodeExists, code).Scan(&found)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -77,8 +78,10 @@ type Event struct {
 	RequestID string
 }
 
-// Record inserts one row into mmff_vector.error_events. Empty
-// RequestID becomes SQL NULL; empty/"null" Context becomes SQL NULL.
+// Record inserts one row into error_events on s.vectorPool. Post-
+// PLA-0023-P1 (2026-05-13) the canonical write target is vector_artefacts;
+// main.go wires that via the errorsReportPool selection. Empty RequestID
+// becomes SQL NULL; empty/"null" Context becomes SQL NULL.
 func (s *Service) Record(ctx context.Context, ev Event) error {
 	var ctxPayload any
 	if len(ev.Context) > 0 && string(ev.Context) != "null" {
@@ -88,9 +91,7 @@ func (s *Service) Record(ctx context.Context, ev Event) error {
 	if ev.RequestID != "" {
 		reqID = ev.RequestID
 	}
-	_, err := s.vectorPool.Exec(ctx, `
-		INSERT INTO error_events (subscription_id, user_id, code, context, request_id)
-		VALUES ($1, $2, $3, $4, $5)`,
+	_, err := s.vectorPool.Exec(ctx, sqlInsertErrorEvent,
 		ev.SubscriptionID, ev.UserID, ev.Code, ctxPayload, reqID,
 	)
 	return err

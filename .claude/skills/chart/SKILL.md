@@ -344,5 +344,5 @@ Builds:
   app/(user)/dashboard/page.tsx    catalog card + legend entry
 
 Random data is preview-only and is sanitised per the chart-type matrix in
-.claude/skills/chart/SKILL.md. Real consumers omit the `randomize` prop.
+.Codex/skills/chart/SKILL.md. Real consumers omit the `randomize` prop.
 ```

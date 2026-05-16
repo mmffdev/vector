@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +11,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
@@ -20,31 +19,28 @@ type AccessClaims struct {
 	Email          string `json:"email"`
 	Role           string `json:"role"`
 	SubscriptionID string `json:"subscription_id"`
+	// WorkspaceID is the active workspace within the subscription.
+	// Added by PLA-0053 / story 00575. Read by WorkspaceClampMiddleware
+	// as the primary workspace source; absent claim → middleware falls
+	// back to FirstLiveWorkspace (legacy-token rollout window).
+	// omitempty so a zero-value claim is genuinely absent (not just "")
+	// — distinguishes "JWT has no workspace context yet" from "JWT
+	// explicitly carries an empty workspace_id".
+	WorkspaceID    string `json:"workspace_id,omitempty"`
 	ForcePwdChange bool   `json:"force_pwd_change"`
 	jwt.RegisteredClaims
 }
 
-// UnmarshalJSON accepts both `subscription_id` (new) and `tenant_id`
-// (legacy) for one release grace period so tokens issued by the
-// pre-rename build still verify. Prefer subscription_id when both
-// are present. After the grace period this whole method can go and
-// the struct's natural unmarshal will resume.
-func (c *AccessClaims) UnmarshalJSON(data []byte) error {
-	type alias AccessClaims
-	aux := struct {
-		LegacyTenantID string `json:"tenant_id"`
-		*alias
-	}{alias: (*alias)(c)}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-	if c.SubscriptionID == "" && aux.LegacyTenantID != "" {
-		c.SubscriptionID = aux.LegacyTenantID
-	}
-	return nil
-}
+// (Removed 2026-05-16 — TD-LIB-001.) A bespoke UnmarshalJSON used to
+// accept the legacy `tenant_id` claim alongside `subscription_id` so
+// pre-mig-017 tokens kept verifying. Refresh-token rotation has long
+// since drained every live token; the natural unmarshal of AccessClaims
+// is authoritative again.
+//
+// Contract is now pinned by tokens_test.go (TestAccessClaims_*) — any
+// future reintroduction of dual-accept will fail there before merge.
 
-func SignAccessToken(u *models.User) (string, error) {
+func SignAccessToken(u *roletypes.User) (string, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_ACCESS_SECRET not set")
@@ -52,10 +48,19 @@ func SignAccessToken(u *models.User) (string, error) {
 	ttl := parseDurationEnv("JWT_ACCESS_TTL", 15*time.Minute)
 	jti := uuid.NewString()
 
+	// Workspace claim is emitted only when the User carries a non-zero
+	// WorkspaceID — keeps the legacy-token rollout window clean (zero =
+	// omit, middleware falls back to FirstLiveWorkspace).
+	workspaceID := ""
+	if u.WorkspaceID != uuid.Nil {
+		workspaceID = u.WorkspaceID.String()
+	}
+
 	claims := AccessClaims{
 		Email:          u.Email,
 		Role:           string(u.Role),
 		SubscriptionID: u.SubscriptionID.String(),
+		WorkspaceID:    workspaceID,
 		ForcePwdChange: u.ForcePasswordChange,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID.String(),

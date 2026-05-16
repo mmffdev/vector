@@ -34,7 +34,7 @@ package portfoliomodels
 //     SSH tunnel on :5435
 //   - SKIPs cleanly if the workspace lookup fails (orphan-sub fixture)
 //   - cleans up its own state via resetAdoptionFixture + targeted
-//     deletes on artefacts/artefact_types so no cross-test bleed.
+//     deletes on artefacts/artefacts_types so no cross-test bleed.
 //
 // The two-model requirement is satisfied by the seeded mmff_library:
 //   aa01 = Vector Standard   ← seededMMFFModelID
@@ -95,7 +95,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	// VA-side cleanup so a leftover row from a prior crashed run does
 	// not poison subsequent runs. Artefacts are deleted before types
 	// because of the FK on artefact_type_id. Note: we only delete
-	// artefacts whose workspace_id matches, but leave artefact_types
+	// artefacts whose workspace_id matches, but leave artefacts_types
 	// alone — cross-workspace artefact→type references exist in dev
 	// data drift and we don't want to break unrelated rows. The
 	// tracer's identity is checked by id, not by count, so leftover
@@ -118,10 +118,10 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 		t.Fatalf("cycle 1 status: want completed, got %q", res1.Status)
 	}
 
-	// Sanity: cycle 1 produced strategy artefact_types for the workspace.
+	// Sanity: cycle 1 produced strategy artefacts_types for the workspace.
 	var c1Types int
 	if err := va.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefact_types
+		SELECT COUNT(*) FROM artefacts_types
 		 WHERE workspace_id = $1
 		   AND scope         = 'strategy'
 		   AND archived_at  IS NULL`,
@@ -130,7 +130,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 		t.Fatalf("count cycle-1 strategy types: %v", err)
 	}
 	if c1Types == 0 {
-		t.Fatalf("cycle 1: want >0 strategy artefact_types, got 0")
+		t.Fatalf("cycle 1: want >0 strategy artefacts_types, got 0")
 	}
 
 	// ── Seed the tracer between cycles. ─────────────────────────
@@ -142,7 +142,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	// repointed to the placeholder artefact (NOT NULL preserved).
 	var leafStrategyTypeID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT id FROM artefact_types
+		SELECT id FROM artefacts_types
 		 WHERE workspace_id   = $1
 		   AND scope          = 'strategy'
 		   AND is_placeholder = FALSE
@@ -154,7 +154,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	).Scan(&leafStrategyTypeID); err != nil {
 		// Fall back to any strategy type if no leaf marker is set.
 		if err := va.QueryRow(ctx, `
-			SELECT id FROM artefact_types
+			SELECT id FROM artefacts_types
 			 WHERE workspace_id   = $1
 			   AND scope          = 'strategy'
 			   AND is_placeholder = FALSE
@@ -187,7 +187,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	tracerPrefix := "T" + uuid.New().String()[0:2]
 	var workTypeID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source, name, prefix,
 			allows_children, sort_order, is_placeholder
@@ -244,7 +244,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	if err := va.QueryRow(ctx, `
 		SELECT a.id
 		  FROM artefacts a
-		  JOIN artefact_types t ON t.id = a.artefact_type_id
+		  JOIN artefacts_types t ON t.id = a.artefact_type_id
 		 WHERE a.workspace_id     = $1
 		   AND t.is_placeholder   = TRUE
 		   AND t.archived_at     IS NULL

@@ -45,6 +45,6 @@ interface FieldsListResponse {
 // but caller lacks workspace membership / tenant-admin role), 500
 // (plumbing).
 export async function getWorkspaceFields(workspaceId: string): Promise<WorkspaceField[]> {
-  const res = await api<FieldsListResponse>(`/workspace/${encodeURIComponent(workspaceId)}/fields`);
+  const res = await api<FieldsListResponse>(`/workspaces/${encodeURIComponent(workspaceId)}/fields`);
   return res.fields;
 }

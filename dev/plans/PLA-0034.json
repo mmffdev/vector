@@ -2,9 +2,10 @@
   "id": "PLA-0034",
   "title": "Topology Migration — org_nodes / org_node_roles / org_node_view_state → vector_artefacts",
   "date_created": "2026-05-08",
-  "date_started": null,
-  "date_last_updated": "2026-05-08",
+  "date_started": "2026-05-08",
+  "date_last_updated": "2026-05-14",
   "date_finished": null,
+  "status_note": "Substantially complete on handler/route side as of 2026-05-14. topology.Service constructed at main.go L378 as `topology.New(pool, vaPool).WithNotifier(...)`. Per the service doc-comment (internal/topology/service.go:154-174): EVERY topology read/write goes to vaPool; the legacy mmff_vector pool is retained ONLY for membership/auth lookups (PoolWorkspaceLookup adapter). Route registered on both /_site/topology (main.go L1040) and /samantha/v2/topology. ETL state of org_nodes / roles_org_nodes / org_node_view_state mmff_vector → vector_artefacts is unverified and frontend caller migration to apiV2/apiSite is unverified.",
   "scope": "<p>Migrate the three topology tables (<code>org_nodes</code>, <code>roles_org_nodes</code>, <code>org_node_view_state</code>) from mmff_vector to vector_artefacts. <code>org_nodes</code> is a self-referential tree (<code>parent_id</code> self-FK) with subscription-scoped tenancy and spatial canvas coordinates. <code>roles_org_nodes</code> is the cross-table that links RBAC roles to org nodes. <code>org_node_view_state</code> stores per-user canvas viewport state. No equivalent tables exist in vector_artefacts today — all three must be created via new artefacts_schema migrations. Once migrated, <code>/topology</code> is registered under <code>/samantha/v2</code> and removed from v1.</p>",
   "value": "<p>Unblocks <code>/topology</code> from v1. The topology canvas (PLA-0006) is the organisational modelling surface — having it served from vector_artefacts aligns it with the rest of the workspace-scoped data model and removes the last structural/organisational table from mmff_vector.</p>",
   "implementation_plan": [
@@ -40,15 +41,15 @@
     "/samantha/v1/topology registration"
   ],
   "work_item_backlog": [
-    { "order": 1, "title": "Schema design: org_nodes / roles_org_nodes / org_node_view_state in vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 2, "title": "artefacts_schema migrations 027/028/029", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 3, "title": "ETL: migrate org_nodes → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 4, "title": "ETL: migrate roles_org_nodes → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 5, "title": "ETL: migrate org_node_view_state → vector_artefacts (or reset)", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 6, "title": "Rewrite orgdesign.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 7, "title": "Register /topology under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 8, "title": "Switch frontend callers to apiV2('/topology')", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 9, "title": "Update openapi specs + cutover register + PLA-0030", "story_id": null, "card_url": null, "status": "todo" }
+    { "order": 1, "title": "Schema design: org_nodes / roles_org_nodes / org_node_view_state in vector_artefacts", "story_id": null, "card_url": null, "status": "done" },
+    { "order": 2, "title": "artefacts_schema migrations 027/028/029", "story_id": null, "card_url": null, "status": "done", "note": "Topology tables exist in vector_artefacts (renamed to topology_nodes / topology_role_grants / topology_view_state per service doc-comment)" },
+    { "order": 3, "title": "ETL: migrate org_nodes → vector_artefacts", "story_id": null, "card_url": null, "status": "unverified" },
+    { "order": 4, "title": "ETL: migrate roles_org_nodes → vector_artefacts", "story_id": null, "card_url": null, "status": "unverified" },
+    { "order": 5, "title": "ETL: migrate org_node_view_state → vector_artefacts (or reset)", "story_id": null, "card_url": null, "status": "unverified" },
+    { "order": 6, "title": "Rewrite orgdesign.Service to query vaPool", "story_id": null, "card_url": null, "status": "done", "note": "Package now `topology` (not `orgdesign`); all reads/writes use vaPool per backend/internal/topology/service.go" },
+    { "order": 7, "title": "Register /topology under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "done", "note": "Registered on /_site/topology (main.go L1040) and /samantha/v2/topology; /samantha/v1 block entirely removed under PLA-0039" },
+    { "order": 8, "title": "Switch frontend callers to apiV2('/topology')", "story_id": null, "card_url": null, "status": "unverified" },
+    { "order": 9, "title": "Update openapi specs + cutover register + PLA-0030", "story_id": null, "card_url": null, "status": "done", "note": "c_c_v1_v2_cutover.md reconciled 2026-05-14; openapi paperwork tracked under PLA-0030 T9" }
   ],
   "acceptance_criteria": [
     {

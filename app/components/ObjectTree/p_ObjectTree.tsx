@@ -7,6 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import BulkActionBar from "@/app/components/BulkActionBar";
+import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
@@ -16,7 +17,6 @@ import {
   useWorkItemsFilters,
   useWorkItemsSort,
   WorkItemsFilterChips,
-  WorkItemsPanelHeader,
   type SortKey,
   type WorkItem,
 } from "@/app/components/work-items-tree-config";
@@ -53,7 +53,6 @@ export interface ObjectTreeDataConfig<T = any> {
   searchAccessor: (row: T) => string;
 
   // Optional UI elements
-  panelHeader?: React.ReactNode;
   filterChips?: React.ReactNode;
 
   // Pagination configuration
@@ -75,12 +74,26 @@ export default function ObjectTree({
   onPatched,
   mode = "work_items",
   wizardConfig,
+  title,
+  addressableName,
+  subtitleBadge,
+  subtitle,
+  description,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
   onPatched?: (body: Record<string, unknown>) => void;
   mode?: "work_items" | "portfolio_items";
   wizardConfig?: ObjectTreeDataConfig<WorkItem>;
+  // Chrome props. ObjectTree renders its own outer <Panel> + sunken header;
+  // pages no longer wrap with <Panel>. `title` + `addressableName` are
+  // required for the new chrome; `subtitleBadge` / `subtitle` / `description`
+  // fill the sunken header band below the title.
+  title?: string;
+  addressableName?: string;
+  subtitleBadge?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  description?: React.ReactNode;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -99,14 +112,21 @@ export default function ObjectTree({
 
   // Filter or sort changes invalidate the page offset — page 5 of an
   // unfiltered/default-sorted set is meaningless on a filtered/resorted set.
+  // Multi-value filters are arrays; join to a stable string so identity
+  // churn from `useMemo` doesn't fire this effect every render.
+  const filterFingerprint =
+    filters.type.join(",") + "|" +
+    filters.status.join(",") + "|" +
+    filters.priority.join(",") + "|" +
+    filters.owner_id.join(",");
   useEffect(() => {
     setPageIndex(0);
-  }, [filters.type, filters.status, filters.priority, filters.owner_id, sortKey, sortDir]);
+  }, [filterFingerprint, sortKey, sortDir]);
 
   // resourceUrl resolution order:
   //   1. wizardConfig.resourceUrl (sidecar JSON — preferred path, PLA-0037)
   //   2. mode-derived fallback (back-compat for callers not on sidecars yet)
-  // Both endpoints land on artefactitemsv2 with different scope (work | strategy).
+  // Both endpoints land on artefactitems with different scope (work | strategy).
   const resourceUrl =
     wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
 
@@ -142,6 +162,19 @@ export default function ObjectTree({
     [setSort],
   );
 
+  // Per-row cog-menu items. Wiring deferred — handlers log for now; the
+  // visual surface and dropdown behaviour are the contract for this card.
+  const buildCogMenu = useCallback(
+    (row: WorkItem) => [
+      { key: "edit",      label: "Edit",      onSelect: () => console.log("edit", row.id) },
+      { key: "duplicate", label: "Duplicate", onSelect: () => console.log("duplicate", row.id) },
+      { key: "move",      label: "Move",      onSelect: () => console.log("move", row.id) },
+      { key: "split",     label: "Split",     onSelect: () => console.log("split", row.id) },
+      { key: "delete",    label: "Delete",    onSelect: () => console.log("delete", row.id) },
+    ],
+    [],
+  );
+
   // Build config based on mode or accept from wizardConfig (p_wizard.json).
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
     if (wizardConfig) {
@@ -164,7 +197,6 @@ export default function ObjectTree({
       getParentId: (r) => r.parent_id,
       getChildrenCount: (r) => r.children_count,
       searchAccessor: (r) => `${r.title} vec-${r.key_num}`,
-      panelHeader: <WorkItemsPanelHeader />,
       filterChips: <WorkItemsFilterChips />,
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
@@ -173,9 +205,26 @@ export default function ObjectTree({
     };
   }, [mode, columns, wizardConfig]);
 
-  return (
-    <div>
-      {config.panelHeader}
+  // Sunken header band — badge + title + subtitle below the panel title.
+  const headerNode = (subtitleBadge || subtitle || description) ? (
+    <header className="tree_accordion-dense__panel-head">
+      {subtitleBadge && (
+        <span className="tree_accordion-dense__panel-head-num">{subtitleBadge}</span>
+      )}
+      <div className="tree_accordion-dense__panel-head-body">
+        {subtitle && (
+          <h3 className="tree_accordion-dense__panel-head-title">{subtitle}</h3>
+        )}
+        {description && (
+          <p className="tree_accordion-dense__panel-head-subtitle">{description}</p>
+        )}
+      </div>
+    </header>
+  ) : null;
+
+  const inner = (
+    <>
+      {headerNode}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
       <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
       <ResourceTree<WorkItem>
@@ -188,10 +237,12 @@ export default function ObjectTree({
         patch={patchRemote}
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
+        paginationPosition="bottom"
         search={{ placeholder: config.searchPlaceholder, accessor: config.searchAccessor }}
         sort={{ key: sortKey, dir: sortDir, onChange: handleSortChange }}
         {...(config.dndEnabled && { dnd: { resourceType: config.dndResourceType } })}
         selection={{ mode: "multi", selectedIds, onSelectionChange: setSelectedIds }}
+        cogMenu={buildCogMenu}
         selectedId={selectedId}
         onSelect={onSelect}
         pageIndex={pageIndex}
@@ -202,6 +253,18 @@ export default function ObjectTree({
         ariaLabel={config.ariaLabel}
         name={config.treeName}
       />
-    </div>
+    </>
   );
+
+  // When the page passes title + addressableName, ObjectTree owns its own
+  // <Panel>. Otherwise (legacy callers still wrapping with their own Panel)
+  // we render bare.
+  if (title && addressableName) {
+    return (
+      <Panel name={addressableName} title={title}>
+        {inner}
+      </Panel>
+    );
+  }
+  return <div>{inner}</div>;
 }

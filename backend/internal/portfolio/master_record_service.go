@@ -1,10 +1,10 @@
-// Package portfolio is the SOLE writer for the master_record_portfolio
+// Package portfolio is the SOLE writer for the master_record_portfolios
 // table (PLA-0026 / Story 00490, B1). One row exists per workspace and
 // holds the persistent portfolio model record (model identity + adoption
 // metadata). The row is inserted by the adoption saga (B6) at adoption
 // time; absence means "no model adopted" — there is no auto-seed trigger.
 //
-// master_record_portfolio lives in vector_artefacts (separate Postgres
+// master_record_portfolios lives in vector_artefacts (separate Postgres
 // database from mmff_vector). The Service holds the vector_artefacts
 // pool; cross-DB validation against mmff_vector (e.g. workspace exists,
 // adopted_by_user_id belongs to the workspace's tenant) is handled at
@@ -12,7 +12,7 @@
 // sole-writer scope tight.
 //
 // Writer-boundary contract: every INSERT / UPDATE / DELETE against
-// master_record_portfolio MUST go through this package. Enforced by
+// master_record_portfolios MUST go through this package. Enforced by
 // dev/scripts/lint_writer_boundary.py.
 package portfolio
 
@@ -27,7 +27,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 var (
@@ -37,7 +37,7 @@ var (
 )
 
 // MasterRecord is the wire shape returned to callers. Field names mirror
-// the columns on master_record_portfolio. Pointer types are nullable on
+// the columns on master_record_portfolios. Pointer types are nullable on
 // the wire.
 type MasterRecord struct {
 	WorkspaceID       uuid.UUID  `json:"workspace_id"`
@@ -93,7 +93,7 @@ func (v *ValidationError) Error() string {
 	return "validation failed — " + strings.Join(parts, "; ")
 }
 
-// Service is the sole-writer surface for master_record_portfolio.
+// Service is the sole-writer surface for master_record_portfolios.
 type Service struct {
 	// vectorArtefactsPool reads + writes vector_artefacts. May be nil
 	// when VECTOR_ARTEFACTS_DB_URL is unset; in that case all methods
@@ -112,7 +112,7 @@ type Service struct {
 // NewService builds a Service backed by the given vector_artefacts pool.
 // Pass nil to construct a no-op Service that surfaces ErrPoolMissing on
 // every call — useful for boot configurations where the artefacts DB is
-// optional (see artefactitemsv2 for the same pattern).
+// optional (see artefactitems for the same pattern).
 //
 // To enable the read authz path (CanReadMasterRecord), chain
 // .WithVectorPool(pool) — the master-record HTTP handler requires it.
@@ -141,7 +141,7 @@ func (s *Service) WithVectorPool(p *pgxpool.Pool) *Service {
 // still require the workspace to belong to their tenant. When vectorPool
 // is nil (unit tests bypassing the DB), only padmin/gadmin pass.
 func (s *Service) CanReadMasterRecord(
-	ctx context.Context, u *models.User, workspaceID uuid.UUID,
+	ctx context.Context, u *roletypes.User, workspaceID uuid.UUID,
 ) (bool, error) {
 	if u == nil {
 		return false, nil
@@ -149,15 +149,13 @@ func (s *Service) CanReadMasterRecord(
 	// Without a vector pool we cannot prove tenancy; only padmin/gadmin
 	// pass. This path exists for unit tests that bypass the DB.
 	if s.vectorPool == nil {
-		return u.Role == models.RolePAdmin || u.Role == models.RoleGAdmin, nil
+		return u.Role == roletypes.RolePAdmin || u.Role == roletypes.RoleGAdmin, nil
 	}
 
 	// Tenancy: workspace must belong to caller's subscription.
 	var ownerSub uuid.UUID
-	err := s.vectorPool.QueryRow(ctx,
-		`SELECT subscription_id FROM master_record_workspaces WHERE id = $1`,
-		workspaceID,
-	).Scan(&ownerSub)
+	err := s.vectorPool.QueryRow(ctx, sqlSelectWorkspaceSubscriptionID, workspaceID).
+		Scan(&ownerSub)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil
@@ -169,20 +167,14 @@ func (s *Service) CanReadMasterRecord(
 	}
 
 	// Tenant admins always pass.
-	if u.Role == models.RolePAdmin || u.Role == models.RoleGAdmin {
+	if u.Role == roletypes.RolePAdmin || u.Role == roletypes.RoleGAdmin {
 		return true, nil
 	}
 
 	// Per-workspace membership: any active roles_workspaces grant
 	// (viewer / editor / admin) suffices.
 	var member bool
-	err = s.vectorPool.QueryRow(ctx, `
-		SELECT EXISTS (
-		    SELECT 1 FROM roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id = $2
-		       AND revoked_at IS NULL
-		)`,
+	err = s.vectorPool.QueryRow(ctx, sqlExistsActiveWorkspaceMembership,
 		workspaceID, u.ID,
 	).Scan(&member)
 	if err != nil {
@@ -191,7 +183,7 @@ func (s *Service) CanReadMasterRecord(
 	return member, nil
 }
 
-// Get returns the master_record_portfolio row for workspaceID, or
+// Get returns the master_record_portfolios row for workspaceID, or
 // ErrNotFound if none exists. No auto-seed: callers (the saga, the
 // handler) must distinguish "no model adopted" from a hard error.
 func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*MasterRecord, error) {
@@ -207,14 +199,7 @@ func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID) (*MasterRecord
 
 func (s *Service) read(ctx context.Context, workspaceID uuid.UUID) (*MasterRecord, error) {
 	var x MasterRecord
-	err := s.vectorArtefactsPool.QueryRow(ctx, `
-		SELECT workspace_id, model_id, model_name, model_description,
-		       adopted_at, adopted_by_user_id,
-		       created_at, updated_at, archived_at
-		  FROM master_record_portfolio
-		 WHERE workspace_id = $1`,
-		workspaceID,
-	).Scan(
+	err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectMasterRecord, workspaceID).Scan(
 		&x.WorkspaceID, &x.ModelID, &x.ModelName, &x.ModelDescription,
 		&x.AdoptedAt, &x.AdoptedByUserID,
 		&x.CreatedAt, &x.UpdatedAt, &x.ArchivedAt,
@@ -246,17 +231,7 @@ func (s *Service) Upsert(ctx context.Context, in UpsertInput) (*MasterRecord, er
 		return nil, &ValidationError{Violations: []Violation{{Field: "model_description", Message: "must be 4000 characters or fewer"}}}
 	}
 
-	if _, err := s.vectorArtefactsPool.Exec(ctx, `
-		INSERT INTO master_record_portfolio (
-			workspace_id, model_id, model_name, model_description, adopted_by_user_id
-		) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (workspace_id) DO UPDATE SET
-			model_id           = EXCLUDED.model_id,
-			model_name         = EXCLUDED.model_name,
-			model_description  = EXCLUDED.model_description,
-			adopted_at         = now(),
-			adopted_by_user_id = EXCLUDED.adopted_by_user_id,
-			archived_at        = NULL`,
+	if _, err := s.vectorArtefactsPool.Exec(ctx, sqlUpsertMasterRecord,
 		in.WorkspaceID, in.ModelID, name, in.ModelDescription, in.AdoptedByUserID,
 	); err != nil {
 		return nil, err
@@ -285,13 +260,13 @@ func (s *Service) Patch(ctx context.Context, workspaceID uuid.UUID, in PatchInpu
 	if in.ModelID != nil {
 		v := strings.TrimSpace(*in.ModelID)
 		if v == "" {
-			addSet("model_id", nil)
+			addSet("master_record_portfolios_id_library_portfolio_model", nil)
 		} else {
 			id, err := uuid.Parse(v)
 			if err != nil {
 				violations = append(violations, Violation{Field: "model_id", Message: "must be a valid UUID"})
 			} else {
-				addSet("model_id", id)
+				addSet("master_record_portfolios_id_library_portfolio_model", id)
 			}
 		}
 	}
@@ -302,28 +277,28 @@ func (s *Service) Patch(ctx context.Context, workspaceID uuid.UUID, in PatchInpu
 		} else if len(v) > 256 {
 			violations = append(violations, Violation{Field: "model_name", Message: "must be 256 characters or fewer"})
 		} else {
-			addSet("model_name", v)
+			addSet("master_record_portfolios_model_name", v)
 		}
 	}
 	if in.ModelDescription != nil {
 		if len(*in.ModelDescription) > 4000 {
 			violations = append(violations, Violation{Field: "model_description", Message: "must be 4000 characters or fewer"})
 		} else if *in.ModelDescription == "" {
-			addSet("model_description", nil)
+			addSet("master_record_portfolios_model_description", nil)
 		} else {
-			addSet("model_description", *in.ModelDescription)
+			addSet("master_record_portfolios_model_description", *in.ModelDescription)
 		}
 	}
 	if in.AdoptedByUserID != nil {
 		v := strings.TrimSpace(*in.AdoptedByUserID)
 		if v == "" {
-			addSet("adopted_by_user_id", nil)
+			addSet("master_record_portfolios_id_user_adopter", nil)
 		} else {
 			id, err := uuid.Parse(v)
 			if err != nil {
 				violations = append(violations, Violation{Field: "adopted_by_user_id", Message: "must be a valid UUID"})
 			} else {
-				addSet("adopted_by_user_id", id)
+				addSet("master_record_portfolios_id_user_adopter", id)
 			}
 		}
 	}
@@ -336,10 +311,7 @@ func (s *Service) Patch(ctx context.Context, workspaceID uuid.UUID, in PatchInpu
 	}
 
 	args = append(args, workspaceID)
-	q := fmt.Sprintf(
-		`UPDATE master_record_portfolio SET %s WHERE workspace_id = $%d`,
-		strings.Join(sets, ", "), len(args),
-	)
+	q := fmt.Sprintf(sqlUpdateMasterRecordTemplate, strings.Join(sets, ", "), len(args))
 	if _, err := s.vectorArtefactsPool.Exec(ctx, q, args...); err != nil {
 		return nil, err
 	}
@@ -353,10 +325,7 @@ func (s *Service) Archive(ctx context.Context, workspaceID uuid.UUID) error {
 	if s.vectorArtefactsPool == nil {
 		return ErrPoolMissing
 	}
-	tag, err := s.vectorArtefactsPool.Exec(ctx,
-		`UPDATE master_record_portfolio SET archived_at = COALESCE(archived_at, now()) WHERE workspace_id = $1`,
-		workspaceID,
-	)
+	tag, err := s.vectorArtefactsPool.Exec(ctx, sqlArchiveMasterRecord, workspaceID)
 	if err != nil {
 		return err
 	}

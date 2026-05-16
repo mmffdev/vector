@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
-import PageShell from "@/app/components/PageShell";
+import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
+import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
   type CustomPage,
   type CustomView,
@@ -29,6 +31,7 @@ function ViewBody({ view }: { view: CustomView }) {
 
 export default function CustomContainerPage() {
   const { user } = useAuth();
+  const { full } = usePageTitle();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -75,16 +78,14 @@ export default function CustomContainerPage() {
   if (!user) return null;
 
   if (loading) {
-    return <PageContent><PageShell title="Loading…" subtitle=""><div /></PageShell></PageContent>;
+    return <PageContent><div /></PageContent>;
   }
   if (err || !page) {
     return (
       <PageContent>
-      <PageShell title="Not found" subtitle="">
         <div className="placeholder">
           <p className="placeholder__body">{err ?? "This page no longer exists."}</p>
         </div>
-      </PageShell>
       </PageContent>
     );
   }
@@ -119,7 +120,13 @@ export default function CustomContainerPage() {
 
   return (
     <PageContent>
-    <PageShell title={page.label} subtitle="">
+      <PageHeading level={1} title={full} subtitle="Custom page view." />
+      <Panel
+        name="panel_custom_page_header"
+        className="page-panel-heading"
+        title="Custom Page"
+        description="Renders a custom page or view configured for this workspace."
+      />
       <div className="custom-page">
         <div className="custom-page__heading-row">
           {editing ? (
@@ -176,7 +183,6 @@ export default function CustomContainerPage() {
           </button>
         </div>
       </div>
-    </PageShell>
     </PageContent>
   );
 }

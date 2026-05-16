@@ -303,25 +303,34 @@ func TestCheckCrossDBOrphans_NoVAPoolIsNoOp(t *testing.T) {
 // list directly (the test files live in different packages and the
 // canary is _test.go-only) but pins the table names + archived_at
 // flags so a divergence is caught at unit-test time.
+// Refreshed 2026-05-16 (TD-TEST-002): RF1.4.2 column-prefix sweep
+// changed the entry shape from `{name, hasArchivedAt bool}` to
+// `{name, workspaceIDCol, archivedAtCol string}` — empty
+// archivedAtCol means the table has no archived_at column. The canary
+// now pins the column names too so a renamed FK fails here.
+// "sprints" → "timeboxes_sprints" per RF1.4.2.
 func TestVAWorkspaceTables_MatchesCanary(t *testing.T) {
 	type entry struct {
-		name          string
-		hasArchivedAt bool
+		name           string
+		workspaceIDCol string
+		archivedAtCol  string
 	}
 	want := []entry{
-		{"artefact_types", true},
-		{"artefact_workspace_fields", false},
-		{"artefacts", true},
-		{"master_record_portfolio", false},
-		{"sprints", true},
+		{"artefacts_types", "artefacts_types_id_workspace", "artefacts_types_archived_at"},
+		{"workspaces_fields", "workspace_id", ""},
+		{"artefacts", "workspace_id", "archived_at"},
+		{"master_record_portfolios", "master_record_portfolios_id_workspace", ""},
+		{"timeboxes_sprints", "timeboxes_sprints_id_workspace", "timeboxes_sprints_archived_at"},
 	}
 	if len(vaWorkspaceTables) != len(want) {
 		t.Fatalf("table count drift: got %d, canary lists %d", len(vaWorkspaceTables), len(want))
 	}
 	for i, w := range want {
 		got := vaWorkspaceTables[i]
-		if got.name != w.name || got.hasArchivedAt != w.hasArchivedAt {
-			t.Errorf("entry %d: got {%s,%v}, want {%s,%v}", i, got.name, got.hasArchivedAt, w.name, w.hasArchivedAt)
+		if got.name != w.name || got.workspaceIDCol != w.workspaceIDCol || got.archivedAtCol != w.archivedAtCol {
+			t.Errorf("entry %d: got {%s,%s,%s}, want {%s,%s,%s}",
+				i, got.name, got.workspaceIDCol, got.archivedAtCol,
+				w.name, w.workspaceIDCol, w.archivedAtCol)
 		}
 	}
 }

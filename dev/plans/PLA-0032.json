@@ -1,12 +1,13 @@
 {
   "id": "PLA-0032",
-  "title": "Tenant-Settings Migration — master_record_tenant → vector_artefacts",
+  "title": "Tenant-Settings Migration — master_record_tenant → vector_artefacts (+ workspace-vocabulary rename)",
   "date_created": "2026-05-08",
-  "date_started": null,
-  "date_last_updated": "2026-05-08",
+  "date_started": "2026-05-08",
+  "date_last_updated": "2026-05-15",
   "date_finished": null,
-  "scope": "<p>Migrate the <code>/tenant-settings</code> API endpoint from <code>master_record_tenant</code> in mmff_vector to a new <code>master_record_tenant</code> table in vector_artefacts. The existing table stores subscription-scoped org configuration (name, brand colours, timezone, etc.). The new table uses workspace_id as the tenancy key (consistent with the rest of vector_artefacts). A one-time ETL step copies live data. The handler service is rewritten to query vaPool. The route is registered under <code>/samantha/v2</code>; the v1 registration is removed. This unblocks PLA-0030 T4b, completing Task 4.</p>",
-  "value": "<p>Eliminates the last subscription-scoped config table blocking v2 promotion. After this plan, every non-topology non-legacy route will be backed by vector_artefacts, making PLA-0030 Task 10 (v1 block removal) dependent only on topology, defects, user-stories, flows, and portfolio-items migrations.</p>",
+  "status_note": "Substantially complete on handler/route side as of 2026-05-14. Service moved to backend/internal/tenantmasterrecord (no longer a `tenantsettings` package); route renamed /tenant-settings → /workspace-settings and mounted under /_site (main.go ~L1136). Reads from vaPool. ETL state of master_record_tenant rows mmff_vector → vector_artefacts is unverified — needs row-count check. Frontend caller migration + openapi paperwork pending project-wide. 2026-05-15: appended 4 new stories (00564–00567) to align vocabulary with the workspace tier per MY_HANDOVER.md cleanup register Story 1. Table renamed master_record_tenants → master_record_workspaces in vector_artefacts; Go package renamed tenantmasterrecord → workspacemasterrecord; frontend API helper renamed; dev ETL script renamed.",
+  "scope": "<p>Migrate the <code>/tenant-settings</code> API endpoint from <code>master_record_tenant</code> in mmff_vector to a new <code>master_record_tenant</code> table in vector_artefacts. The existing table stores subscription-scoped org configuration (name, brand colours, timezone, etc.). The new table uses workspace_id as the tenancy key (consistent with the rest of vector_artefacts). A one-time ETL step copies live data. The handler service is rewritten to query vaPool. The route is registered under <code>/samantha/v2</code>; the v1 registration is removed. This unblocks PLA-0030 T4b, completing Task 4.</p><p><strong>2026-05-15 extension:</strong> after the table landed in vector_artefacts keyed by <code>workspace_id</code>, the table name itself (<code>master_record_tenants</code>) and its <code>tenant_*</code> column prefixes no longer match the workspace-tier mental model locked in by R028 §8 Decision A.2. Stories 00564–00567 rename the table → <code>master_record_workspaces</code>, rename the Go package <code>tenantmasterrecord</code> → <code>workspacemasterrecord</code>, rename the frontend API helper, and rename the dev ETL script. Same row, same FK relationship, new vocabulary.</p>",
+  "value": "<p>Eliminates the last subscription-scoped config table blocking v2 promotion. After this plan, every non-topology non-legacy route will be backed by vector_artefacts, making PLA-0030 Task 10 (v1 block removal) dependent only on topology, defects, user-stories, flows, and portfolio-items migrations.</p><p><strong>2026-05-15:</strong> vocabulary that matches the architecture cuts ongoing reasoning cost. Today every reader has to translate &quot;tenant&quot; ↔ &quot;workspace&quot; before reasoning about this table; renaming makes the table self-documenting. It also unblocks MY_HANDOVER.md cleanup register Story 2, which introduces a <em>real</em> tenant-defaults table (London HQ-style global defaults) that can't safely take the name <code>master_record_tenant</code> until this one releases it.</p>",
   "implementation_plan": [
     "Task 1: Inspect master_record_tenant schema in mmff_vector — list all columns; map subscription_id → workspace_id tenancy translation; identify any columns not present in PLA-0024 schema changes.",
     "Task 2: Create artefacts_schema migration — new master_record_tenant table in vector_artefacts scoped by workspace_id (mirroring the existing column set but dropping subscription_id).",
@@ -14,7 +15,11 @@
     "Task 4: Rewrite tenantsettings.Service to query vaPool; tenancy gate uses mmff_vector pool for membership check only.",
     "Task 5: Register /tenant-settings under /samantha/v2 in main.go; remove /samantha/v1 registration.",
     "Task 6: Switch frontend callers to apiInfra or apiV2 as appropriate (tenant-settings may qualify as infra — decide during implementation).",
-    "Task 7: Update openapi-v2.yaml + openapi.yaml; update c_c_v1_v2_cutover.md and PLA-0030 T4 → done."
+    "Task 7: Update openapi-v2.yaml + openapi.yaml; update c_c_v1_v2_cutover.md and PLA-0030 T4 → done.",
+    "Task 8 (2026-05-15): vector_artefacts migration 067 — rename table master_record_tenants → master_record_workspaces. Rename all 17 columns from master_record_tenants_* → master_record_workspaces_*. Rename 3 indexes, 7 check constraints, and the trigger function. Mirror migration 063's transactional shape.",
+    "Task 9 (2026-05-15): rename Go package backend/internal/tenantmasterrecord → workspacemasterrecord (3 files: handler.go, service.go, sql.go). Update sole-writer SQL strings to reference master_record_workspaces. Update callers: backend/cmd/server/main.go (service construction + route registration), backend/internal/portfoliomodels/dev_reset.go, backend/internal/portfoliomodels/sql.go. Update test: backend/internal/portfoliomodels/master_reset_crossdb_test.go.",
+    "Task 10 (2026-05-15): rename app/lib/tenantSettingsApi.ts → app/lib/workspaceSettingsApi.ts. Rename exported types TenantSettings* → WorkspaceSettings*. Update import paths in: app/(user)/vector-admin/tenant-details/page.tsx, app/(user)/workspace-settings/workspace-settings/organisation/page.tsx, app/components/UnsavedChangesBar.tsx, app/lib/apiSite/index.ts.",
+    "Task 11 (2026-05-15): rename dev/scripts/etl_tenant_settings.sql → dev/scripts/etl_workspace_settings.sql. Update SELECT/INSERT statements to reference master_record_workspaces and master_record_workspaces_* columns. Smoke-test against dev DB."
   ],
   "areas_impacted": [
     "Backend: backend/internal/tenantsettings/service.go — rewrite against vaPool",
@@ -22,7 +27,12 @@
     "Database: new artefacts_schema migration for master_record_tenant in vector_artefacts",
     "Frontend: api('/tenant-settings') callers → apiV2 or apiInfra",
     "Spec: openapi-v2.yaml (add /tenant-settings), openapi.yaml (mark deprecated)",
-    "Docs: c_c_v1_v2_cutover.md, PLA-0030.json"
+    "Docs: c_c_v1_v2_cutover.md, PLA-0030.json",
+    "SQL (2026-05-15): db/vector_artefacts/schema/067_*.sql — table + column + index + constraint + trigger renames",
+    "API (2026-05-15): backend/internal/tenantmasterrecord/ directory rename to workspacemasterrecord/ + 3 caller updates + 1 test update",
+    "UI (2026-05-15): app/lib/tenantSettingsApi.ts rename + 4 consumer file updates",
+    "DEV (2026-05-15): dev/scripts/etl_tenant_settings.sql rename + content adjust",
+    "Docs (2026-05-15): MY_HANDOVER.md cleanup register Story 1 marked done"
   ],
   "feature_list": [
     "master_record_tenant table in vector_artefacts (new migration)",
@@ -31,18 +41,29 @@
     "ETL: master_record_tenant mmff_vector → vector_artefacts",
     "/samantha/v1/tenant-settings removed (PLA-0030 T4b complete)"
   ],
-  "features_extended": [],
+  "features_extended": [
+    "<strong>Vocabulary alignment (2026-05-15):</strong> table renamed master_record_tenants → master_record_workspaces in vector_artefacts; all 17 columns re-prefixed.",
+    "<strong>Go package rename (2026-05-15):</strong> backend/internal/tenantmasterrecord → workspacemasterrecord, sole-writer of the renamed table.",
+    "<strong>Frontend API helper rename (2026-05-15):</strong> app/lib/tenantSettingsApi.ts → app/lib/workspaceSettingsApi.ts with type renames.",
+    "<strong>Dev ETL script rename (2026-05-15):</strong> dev/scripts/etl_tenant_settings.sql → dev/scripts/etl_workspace_settings.sql."
+  ],
   "features_removed": [
     "/samantha/v1/tenant-settings registration"
   ],
   "work_item_backlog": [
-    { "order": 1, "title": "Schema audit: master_record_tenant column mapping", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 2, "title": "artefacts_schema migration: master_record_tenant in vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 3, "title": "ETL script: master_record_tenant mmff_vector → vector_artefacts", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 4, "title": "Rewrite tenantsettings.Service to query vaPool", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 5, "title": "Register /tenant-settings under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 6, "title": "Switch frontend callers to apiV2/apiInfra", "story_id": null, "card_url": null, "status": "todo" },
-    { "order": 7, "title": "Update openapi specs + cutover register + PLA-0030 T4 done", "story_id": null, "card_url": null, "status": "todo" }
+    { "order": 1, "title": "Schema audit: master_record_tenant column mapping", "story_id": null, "card_url": null, "status": "done" },
+    { "order": 2, "title": "artefacts_schema migration: master_record_tenant in vector_artefacts", "story_id": null, "card_url": null, "status": "done", "note": "Table exists in vector_artefacts; later renamed/refactored via the column-prefix sweep migration 063_master_record_tenants_column_prefix_RF1_4_4.sql (2026-05-14)" },
+    { "order": 3, "title": "ETL script: master_record_tenant mmff_vector → vector_artefacts", "story_id": null, "card_url": null, "status": "unverified", "note": "Row-count parity vs mmff_vector source not verified on 2026-05-14" },
+    { "order": 4, "title": "Rewrite tenantsettings.Service to query vaPool", "story_id": null, "card_url": null, "status": "done", "note": "Package renamed to tenantmasterrecord; constructed at main.go ~L424 as tenantmasterrecord.NewHandler(tenantSettingsSvc)" },
+    { "order": 5, "title": "Register /tenant-settings under /samantha/v2; remove v1 registration", "story_id": null, "card_url": null, "status": "done", "note": "Route renamed to /workspace-settings under /_site mount (PLA-0039 transport restructure); /samantha/v1 block entirely removed" },
+    { "order": 6, "title": "Switch frontend callers to apiV2/apiInfra", "story_id": null, "card_url": null, "status": "unverified", "note": "check_callers.py run needed; note that the route name itself changed too (tenant-settings → workspace-settings)" },
+    { "order": 7, "title": "Update openapi specs + cutover register + PLA-0030 T4 done", "story_id": null, "card_url": null, "status": "done", "note": "c_c_v1_v2_cutover.md reconciled 2026-05-14; openapi paperwork tracked under PLA-0030 T9" },
+    { "order": 8, "title": "SQL: rename master_record_tenants → master_record_workspaces in vector_artefacts (migration 067)", "story_id": "00564", "card_url": null, "status": "done", "note": "FE-SQL-0020, EST F2, RISK MED. Shipped 2026-05-15. Migration applied to dev DB; schema_migrations backfilled; DOWN migration also written for rollback. Table now has 17 columns + 3 indexes + 7 check constraints + 1 trigger, all prefixed master_record_workspaces_." },
+    { "order": 9, "title": "Go: rename internal/tenantmasterrecord → workspacemasterrecord + update callers", "story_id": "00565", "card_url": null, "status": "split", "note": "FE-API-0027, EST F3, RISK MED. Split 2026-05-15 into 00565a (SQL string updates, shipped atomically with 00564 to avoid leaving the backend broken across the table rename) and 00565b (directory + package rename + caller updates + test, deferred for review). See orders 9a and 9b." },
+    { "order": "9a", "title": "Go (sub-story of 00565): update SQL strings in tenantmasterrecord to reference master_record_workspaces", "story_id": "00565a", "card_url": null, "status": "done", "note": "FE-API-0027, EST F1, RISK LOW. Shipped 2026-05-15 atomically with 00564. Updated 6 files: backend/internal/tenantmasterrecord/{sql.go,service.go,handler.go}, backend/internal/portfoliomodels/{sql.go,dev_reset.go,master_reset_crossdb_test.go}, backend/cmd/server/main.go. Two refs in dev_reset.go (lines 64, 218) intentionally retain master_record_tenants — those describe the mmff_vector vestigial table which is a different table. go build ./... clean." },
+    { "order": "9b", "title": "Go (sub-story of 00565): rename directory tenantmasterrecord → workspacemasterrecord + update 3 callers + 1 test", "story_id": "00565b", "card_url": null, "status": "done", "note": "FE-API-0027, EST F2, RISK MED. Shipped 2026-05-15 (supervised). git mv preserved history; package declarations updated in handler/service/sql; main.go import + service constructor calls + 5 local variable names (tenantSettingsPool/Svc/H → workspaceSettings*) updated. Surface ended up smaller than scoped: portfoliomodels/dev_reset.go + sql.go + master_reset_crossdb_test.go do NOT import the package directly — they only reference table names in SQL strings, which were covered by 00565a. go build clean. Backend restarted; all 5 smoke checks (boot/env/GET/PATCH/trigger) pass on the renamed package." },
+    { "order": 10, "title": "Frontend: rename tenantSettingsApi.ts → workspaceSettingsApi.ts + update consumers", "story_id": "00566", "card_url": null, "status": "done", "note": "FE-UI-0016, EST F2, RISK LOW. Shipped 2026-05-15. File renamed + 3 consumer files updated (TenantContext.tsx, vector-admin/tenant-details/page.tsx, workspace-settings/.../organisation/page.tsx). Type names Tenant* → Workspace*. JSON property keys retain tenant_* prefix because the Go wire shape still emits those — kept honest to the wire; full key rename is a follow-up after Go JSON tags change. tsc clean on the 4 affected files. TenantContext.tsx filename intentionally NOT renamed in this scope (would cascade into every importer)." },
+    { "order": 11, "title": "Dev: rename etl_tenant_settings.sql → etl_workspace_settings.sql + adjust content", "story_id": "00567", "card_url": null, "status": "done-partial", "note": "FE-DEV-0026, EST F1, RISK LOW. Shipped 2026-05-15: file renamed via git mv (preserves history), header updated to reflect new target table. Body NOT updated because it was already stale before today's work — it uses migration-036 column names (workspace_id, tenant_name, etc.) which were renamed to master_record_tenants_* by migration 063 last week. Fixing the body is covered by PLA-0032 work-item order 3 (unverified ETL), out of scope for vocabulary rename." }
   ],
   "acceptance_criteria": [
     {
@@ -68,6 +89,109 @@
       "story_id": null,
       "card_url": null,
       "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "Database shows master_record_workspaces table in vector_artefacts",
+      "proven_by": "psql -d vector_artefacts -c '\\d master_record_workspaces' returns the relation with 17 columns prefixed master_record_workspaces_",
+      "story_id": "00564",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 5,
+      "criterion": "Database confirms master_record_tenants no longer exists in vector_artefacts",
+      "proven_by": "psql -d vector_artefacts -c '\\d master_record_tenants' returns 'Did not find any relation named ...'",
+      "story_id": "00564",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 6,
+      "criterion": "All 3 indexes renamed and trigger function rewritten under the new table name",
+      "proven_by": "psql -d vector_artefacts -c 'SELECT indexname FROM pg_indexes WHERE tablename=master_record_workspaces' lists master_record_workspaces_pkey, idx_master_record_workspaces_archived_at, idx_master_record_workspaces_id_user_owner; fn_master_record_workspaces_touch_updated_at exists; fn_master_record_tenant_touch_updated_at does not",
+      "story_id": "00564",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 7,
+      "criterion": "Backend builds against the renamed table; serves /_site/workspace-settings without 500",
+      "proven_by": "2026-05-15: go build ./... exits 0 with package path backend/internal/workspacemasterrecord (renamed in 00565b). Backend restarted at 15:35:09; authenticated GET returns 200 with row data; authenticated PATCH round-trips and trigger bumps updated_at.",
+      "story_id": "00565a",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 8,
+      "criterion": "Zero runtime references to master_record_tenants in vector_artefacts code paths (history comments + mmff_vector vestigial mentions exempt)",
+      "proven_by": "Manual review: every master_record_tenants reference in backend/ is either a historical 'renamed from' comment or refers explicitly to the mmff_vector vestigial table. SQL string constants all reference master_record_workspaces. (Note: the package directory is still backend/internal/tenantmasterrecord/ — directory rename is sub-story 00565b, deferred.)",
+      "story_id": "00565a",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 9,
+      "criterion": "Cross-DB master-reset test passes against renamed table",
+      "proven_by": "go test ./internal/portfoliomodels/... -run MasterResetCrossDb passes",
+      "story_id": "00565",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "Page /vector-admin/tenant-details loads and PUT-saves successfully against renamed API helper",
+      "proven_by": "browser smoke test: navigate to /vector-admin/tenant-details, edit a field, save, verify the row updated in master_record_workspaces",
+      "story_id": "00566",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "No references to old API helper name or types in frontend code (JSON wire-shape keys exempt — they retain tenant_* until Go JSON tags change)",
+      "proven_by": "grep -rn 'tenantSettingsApi\\|TenantSettings\\b' app/ returns 0 matches",
+      "story_id": "00566",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 12,
+      "criterion": "UnsavedChangesBar imports the renamed helper",
+      "proven_by": "grep -n 'workspaceSettingsApi' app/components/UnsavedChangesBar.tsx returns a match; grep 'tenantSettingsApi' on the same file returns 0",
+      "story_id": "00566",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 13,
+      "criterion": "Dev ETL script renamed with old file deleted",
+      "proven_by": "Verified 2026-05-15: git mv preserved history; etl_workspace_settings.sql exists; etl_tenant_settings.sql gone.",
+      "story_id": "00567",
+      "card_url": null,
+      "done": true,
+      "verified_at": "2026-05-15"
+    },
+    {
+      "order": 14,
+      "criterion": "Renamed ETL script runs cleanly against dev DB",
+      "proven_by": "psql -d vector_artefacts -f dev/scripts/etl_workspace_settings.sql exits 0 with expected row counts",
+      "story_id": "00567",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 15,
+      "criterion": "Script body references only renamed objects",
+      "proven_by": "grep -E 'master_record_tenant|tenant_(name|timezone|workdays|description|owner_user_id|primary_contact_email|data_region|date_format|datetime_format|week_start|rank_method|build_changeset_tracking|notes|created_at|updated_at|archived_at)' dev/scripts/etl_workspace_settings.sql returns 0 matches",
+      "story_id": "00567",
+      "card_url": null,
+      "done": false
     }
   ],
   "risks": [
@@ -80,12 +204,27 @@
       "impact": 2,
       "risk": "subscription_id → workspace_id mapping may be ambiguous for multi-workspace subscriptions",
       "mitigation": "ETL audit during Task 1 confirms cardinality; one-workspace-per-subscription assumption documented or multi-workspace case handled explicitly"
+    },
+    {
+      "impact": 2,
+      "risk": "Renamed table master_record_workspaces in vector_artefacts collides by name with master_record_workspaces in mmff_vector (different DBs, different purposes — anchor identity vs settings sidecar)",
+      "mitigation": "Document the dual-table pattern in docs/c_c_db_routing.md; lint:no-db-in-handlers + pool routing prevents cross-DB writes; sole-writer service (workspacemasterrecord) keeps the vector_artefacts table isolated"
+    },
+    {
+      "impact": 2,
+      "risk": "Story 00565 (Go rename) touches main.go service wiring — typo or wrong pool risks broken handler at boot",
+      "mitigation": "Smoke-test /_site/workspace-settings against dev DB before merge; CI go build ./... gate"
     }
   ],
   "references": [
     { "kind": "internal", "label": "PLA-0030 — v1→v2 cutover", "href": "dev/plans/PLA-0030.json" },
     { "kind": "internal", "label": "PLA-0024 — master_record_tenant rename", "href": "dev/plans/PLA-0024.json" },
     { "kind": "internal", "label": "v1→v2 cutover register", "href": "docs/c_c_v1_v2_cutover.md" },
-    { "kind": "internal", "label": "tenantsettings service (legacy)", "href": "backend/internal/tenantsettings/service.go" }
+    { "kind": "internal", "label": "tenantsettings service (legacy)", "href": "backend/internal/tenantsettings/service.go" },
+    { "kind": "internal", "label": "R028 — portfolio hierarchy & scoping synthesis (decision A.2 locks workspace as top scope tier)", "href": "dev/research/R028.json" },
+    { "kind": "internal", "label": "MY_HANDOVER.md — cleanup register Story 1 source", "href": "MY_HANDOVER.md" },
+    { "kind": "internal", "label": "Migration 063 — RF1.4.4 column-prefix pattern (structural template)", "href": "db/vector_artefacts/schema/063_master_record_tenants_column_prefix_RF1_4_4.sql" },
+    { "kind": "internal", "label": "Migration 060 — master_record table-rename precedent", "href": "db/vector_artefacts/schema/060_rename_master_record_RF1_4_2.sql" },
+    { "kind": "internal", "label": "DB routing map", "href": "docs/c_c_db_routing.md" }
   ]
 }

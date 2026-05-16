@@ -64,11 +64,8 @@ func (s *Service) GrantRole(
 
 	// Idempotent: same (workspace, user) with an active grant returns it.
 	var existingID uuid.UUID
-	err = tx.QueryRow(ctx, `
-		SELECT id FROM roles_workspaces
-		 WHERE workspace_id = $1 AND user_id = $2 AND revoked_at IS NULL
-		 LIMIT 1
-	`, workspaceID, userID).Scan(&existingID)
+	err = tx.QueryRow(ctx, sqlSelectActiveGrantForUserOnWorkspace,
+		workspaceID, userID).Scan(&existingID)
 	if err == nil {
 		if err := tx.Commit(ctx); err != nil {
 			return uuid.Nil, err
@@ -81,12 +78,8 @@ func (s *Service) GrantRole(
 
 	if role == RoleAdmin {
 		var hasAdmin bool
-		if err := tx.QueryRow(ctx, `
-			SELECT EXISTS(
-			    SELECT 1 FROM roles_workspaces
-			     WHERE workspace_id = $1 AND role = 'admin' AND revoked_at IS NULL
-			)
-		`, workspaceID).Scan(&hasAdmin); err != nil {
+		if err := tx.QueryRow(ctx, sqlExistsActiveAdminGrantOnWorkspace,
+			workspaceID).Scan(&hasAdmin); err != nil {
 			return uuid.Nil, err
 		}
 		if hasAdmin {
@@ -95,12 +88,8 @@ func (s *Service) GrantRole(
 	}
 
 	var newID uuid.UUID
-	err = tx.QueryRow(ctx, `
-		INSERT INTO roles_workspaces
-		    (subscription_id, workspace_id, user_id, role, can_redelegate, granted_by)
-		VALUES ($1, $2, $3, $4, FALSE, $5)
-		RETURNING id
-	`, subscriptionID, workspaceID, userID, string(role), actorID).Scan(&newID)
+	err = tx.QueryRow(ctx, sqlInsertWorkspaceRoleGrant,
+		subscriptionID, workspaceID, userID, string(role), actorID).Scan(&newID)
 	if err != nil {
 		// Defence in depth: the partial unique index can still fire
 		// under concurrent grants — translate to the typed error.
@@ -155,16 +144,8 @@ func (s *Service) RevokeRole(
 		return err
 	}
 
-	tag, err := tx.Exec(ctx, `
-		UPDATE roles_workspaces
-		   SET revoked_at = NOW(),
-		       revoked_by = $1,
-		       updated_at = NOW()
-		 WHERE workspace_id = $2
-		   AND user_id      = $3
-		   AND subscription_id = $4
-		   AND revoked_at IS NULL
-	`, actorID, workspaceID, userID, subscriptionID)
+	tag, err := tx.Exec(ctx, sqlRevokeWorkspaceRoleGrant,
+		actorID, workspaceID, userID, subscriptionID)
 	if err != nil {
 		return err
 	}
@@ -203,16 +184,8 @@ func (s *Service) ListRoles(ctx context.Context, subscriptionID, workspaceID uui
 		return nil, err
 	}
 
-	rows, err := s.Pool.Query(ctx, `
-		SELECT id, subscription_id, workspace_id, user_id, role,
-		       can_redelegate, granted_by, granted_at,
-		       revoked_at, revoked_by, created_at, updated_at
-		  FROM roles_workspaces
-		 WHERE workspace_id = $1
-		   AND subscription_id = $2
-		   AND revoked_at IS NULL
-		 ORDER BY granted_at ASC
-	`, workspaceID, subscriptionID)
+	rows, err := s.Pool.Query(ctx, sqlListActiveWorkspaceRoles,
+		workspaceID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}

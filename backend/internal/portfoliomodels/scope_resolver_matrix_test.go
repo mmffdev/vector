@@ -1,7 +1,7 @@
 package portfoliomodels
 
 // PLA-0026 / Story 00505 (T5): contract matrix test for the per-workspace
-// artefact_types scope-admission surface.
+// artefacts_types scope-admission surface.
 //
 // Goal: lock the admit/deny semantics across every scope x operation cell
 // so future refactors of the "scope resolver" (whether it stays in the DB
@@ -18,10 +18,10 @@ package portfoliomodels
 //   surface exists in this package. The only ResolveField is in
 //   internal/fields/resolver.go and operates on the field_library scope
 //   discriminator ('global'/'tenant'/'workspace') — a different
-//   dimension from artefact_types.scope ('work'|'strategy').
+//   dimension from artefacts_types.scope ('work'|'strategy').
 //
 //   Therefore this contract test exercises the *actual* admission
-//   substrate that portfoliomodels owns: the artefact_types.scope CHECK
+//   substrate that portfoliomodels owns: the artefacts_types.scope CHECK
 //   constraint plus the writer-driven scope/source assignment. Each cell
 //   asserts admit/deny at the substrate level. The missing Go-level
 //   predicate surface is flagged via t.Logf at test start and via
@@ -139,7 +139,7 @@ func TestScopeResolver_AdmitDenyMatrix(t *testing.T) {
 	t.Logf("surface-shape: portfoliomodels exposes NO Go-level scope " +
 		"resolver. There is no ResolveField / CanRead / CanWrite / " +
 		"ScopeResolver in this package today. Admission lives in the " +
-		"artefact_types.scope CHECK (db/artefacts_schema/003) and is " +
+		"artefacts_types.scope CHECK (db/vector_artefacts/schema/003) and is " +
 		"locked-in by writeWorkArtefactTypes / writeStrategyArtefactTypes.")
 	t.Logf("surface-shape: no resolver in this package takes an identity " +
 		"argument today. workspace owner / member / anonymous distinctions " +
@@ -155,7 +155,7 @@ func TestScopeResolver_AdmitDenyMatrix(t *testing.T) {
 	// running the test twice on the same DB leaves no residue.
 	defer func() {
 		_, _ = pool.Exec(ctx,
-			`DELETE FROM artefact_types WHERE workspace_id = $1`,
+			`DELETE FROM artefacts_types WHERE workspace_id = $1`,
 			workspaceID)
 	}()
 
@@ -195,7 +195,7 @@ func probeWrite(
 	prefix := scopeOpPrefix(cell.scope, cell.op)
 
 	_, err := pool.Exec(ctx, `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -255,7 +255,7 @@ func probeRead(
 		// Seed a row at this scope so we have something to read.
 		// Use a separate prefix from the write-cell so they can coexist.
 		_, err := pool.Exec(ctx, `
-			INSERT INTO artefact_types (
+			INSERT INTO artefacts_types (
 				subscription_id, workspace_id,
 				scope, source,
 				name, prefix, description,
@@ -281,7 +281,7 @@ func probeRead(
 
 		var n int
 		if err := pool.QueryRow(ctx, `
-			SELECT COUNT(*) FROM artefact_types
+			SELECT COUNT(*) FROM artefacts_types
 			 WHERE workspace_id = $1 AND scope = $2 AND prefix = $3
 			   AND archived_at IS NULL`,
 			workspaceID, cell.scope, prefix,
@@ -300,7 +300,7 @@ func probeRead(
 	// error; if the seed mysteriously succeeded the CHECK is gone and
 	// admission semantics have changed.
 	_, err := pool.Exec(ctx, `
-		INSERT INTO artefact_types (
+		INSERT INTO artefacts_types (
 			subscription_id, workspace_id,
 			scope, source,
 			name, prefix, description,
@@ -324,13 +324,13 @@ func probeRead(
 		t.Errorf("scope=%q op=read: seed UNEXPECTEDLY succeeded — CHECK constraint may have been relaxed.\n  reason: %s",
 			cell.scope, cell.reason)
 		_, _ = pool.Exec(ctx,
-			`DELETE FROM artefact_types WHERE workspace_id = $1 AND scope = $2 AND prefix = $3`,
+			`DELETE FROM artefacts_types WHERE workspace_id = $1 AND scope = $2 AND prefix = $3`,
 			workspaceID, cell.scope, prefix)
 	}
 }
 
 // scopeOpPrefix maps (scope, op) to a stable 2-char prefix that fits the
-// artefact_types.prefix convention. Deterministic so re-runs are stable.
+// artefacts_types.prefix convention. Deterministic so re-runs are stable.
 func scopeOpPrefix(scope string, op scopeMatrixOp) string {
 	first := byte('Z')
 	if len(scope) > 0 {
@@ -357,7 +357,7 @@ func looksLikeCheckViolation(err error) bool {
 	if err == nil {
 		return false
 	}
-	// pgx error string shape: "ERROR: new row for relation \"artefact_types\" violates check constraint ..."
+	// pgx error string shape: "ERROR: new row for relation \"artefacts_types\" violates check constraint ..."
 	msg := err.Error()
 	return contains(msg, "check constraint") || contains(msg, "violates")
 }

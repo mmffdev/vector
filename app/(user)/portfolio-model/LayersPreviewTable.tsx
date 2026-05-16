@@ -1,7 +1,7 @@
 "use client";
 
 import InlineEditField from "@/app/components/InlineEditField";
-import { type LayerDTO } from "./LayersTable";
+import { type LayerDTO } from "./page";
 
 interface Props {
   layers: LayerDTO[];

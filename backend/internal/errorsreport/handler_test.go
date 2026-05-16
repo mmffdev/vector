@@ -18,7 +18,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/models"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // Smoke tests follow the same skip-on-unreachable discipline as
@@ -28,7 +28,7 @@ import (
 
 // withUser injects a fake user into the context so handlers can be
 // invoked without minting a real JWT.
-func withUser(u *models.User) func(http.Handler) http.Handler {
+func withUser(u *roletypes.User) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithUserForTest(r.Context(), u)
@@ -37,7 +37,7 @@ func withUser(u *models.User) func(http.Handler) http.Handler {
 	}
 }
 
-func newRouter(h *Handler, u *models.User) http.Handler {
+func newRouter(h *Handler, u *roletypes.User) http.Handler {
 	r := chi.NewRouter()
 	r.Use(withUser(u))
 	r.Post("/api/errors/report", h.Report)
@@ -116,7 +116,7 @@ func TestReport_UnknownCode(t *testing.T) {
 func TestReport_MissingCode(t *testing.T) {
 	// No DB needed — we reject before the lookup.
 	h := NewHandler(NewService(nil, nil))
-	user := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser, IsActive: true}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser, IsActive: true}
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -133,7 +133,7 @@ func TestReport_MissingCode(t *testing.T) {
 func TestReport_OversizeContext(t *testing.T) {
 	// No DB needed — we reject before the lookup.
 	h := NewHandler(NewService(nil, nil))
-	user := &models.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: models.RoleUser, IsActive: true}
+	user := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser, IsActive: true}
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -194,7 +194,7 @@ func testLibraryROPool(t *testing.T) *pgxpool.Pool {
 // testVectorPool returns a pool + an authenticated user from any role.
 // We pick the first active user; error reporting is generic across
 // padmin/gadmin/user, so role doesn't matter here.
-func testVectorPool(t *testing.T) (*pgxpool.Pool, *models.User) {
+func testVectorPool(t *testing.T) (*pgxpool.Pool, *roletypes.User) {
 	t.Helper()
 	loadEnv()
 	dsn := fmt.Sprintf(
@@ -214,7 +214,7 @@ func testVectorPool(t *testing.T) (*pgxpool.Pool, *models.User) {
 		t.Skipf("cannot ping mmff_vector: %v", err)
 	}
 
-	var u models.User
+	var u roletypes.User
 	err = pool.QueryRow(context.Background(), `
 		SELECT id, subscription_id, email, role, is_active
 		FROM users

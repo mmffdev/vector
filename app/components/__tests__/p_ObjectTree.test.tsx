@@ -62,7 +62,9 @@ const FIXTURE: WorkItem[] = Array.from({ length: 5 }, (_, i) => ({
   flow_state_id: "fs-1",
   flow_state_name: "Backlog",
   flow_state_code: "backlog",
-  priority: "medium",
+  // PLA-0055 / story 00595+00597 — priority is now a UUID FK + joined ref.
+  priority_id: "44444444-4444-4444-4444-444444444444",
+  priority: { id: "44444444-4444-4444-4444-444444444444", name: "Medium", slot: "pri_medium", sort_order: 2 },
   story_points: i === 0 ? null : (i + 1) * 2,
   rollup_points: null,
   // PLA-0021 / 00458 — first fixture row carries a real sprint ref so the
@@ -110,10 +112,28 @@ vi.mock("@/app/components/work-items-tree-config", async () => {
     ...actual,
     useArtefactItemsWindow: stub,
     useWorkItemsWindow: stub,
-    WorkItemsPanelHeader: () => <header data-testid="wi-panel-head" />,
     WorkItemsFilterChips: () => <div data-testid="wi-filter-chips" />,
   };
 });
+
+// PLA-0055 / story 00598+00599 — PriorityCell pulls options from the
+// catalogue. Mock the provider so the inline-edit renders without a
+// real fetch.
+vi.mock("@/app/contexts/ArtefactPriorityCatalogueContext", () => ({
+  useArtefactPriorityCatalogue: () => ({
+    workspaceId: "ws-A-uuid",
+    priorities: [
+      { id: "22222222-2222-2222-2222-222222222222", workspace_id: "ws-A-uuid", name: "Critical", slot: "pri_critical", sort_order: 0, colour: null, archived_at: null, created_at: "", updated_at: "" },
+      { id: "33333333-3333-3333-3333-333333333333", workspace_id: "ws-A-uuid", name: "High",     slot: "pri_high",     sort_order: 1, colour: null, archived_at: null, created_at: "", updated_at: "" },
+      { id: "44444444-4444-4444-4444-444444444444", workspace_id: "ws-A-uuid", name: "Medium",   slot: "pri_medium",   sort_order: 2, colour: null, archived_at: null, created_at: "", updated_at: "" },
+      { id: "55555555-5555-5555-5555-555555555555", workspace_id: "ws-A-uuid", name: "Low",      slot: "pri_low",      sort_order: 3, colour: null, archived_at: null, created_at: "", updated_at: "" },
+    ],
+    loading: false,
+    error: null,
+  }),
+  priorityCatalogueCacheKey: (id: string | null) =>
+    id == null ? "artefact-priorities::no-workspace" : `artefact-priorities::ws::${id}`,
+}));
 
 vi.mock("@/app/components/useWorkItemFlowStates", () => ({
   __esModule: true,
