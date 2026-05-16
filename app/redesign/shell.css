@@ -172,7 +172,7 @@
   gap: 4px;
   width: 100%;
   align-items: center;
-  /* Anchor for .nav-primary-rail-1__NavBuckets_TravelIndicator (absolute) — without this the bar
+  /* Anchor for .nav-travel-indicator (absolute) — without this the bar
      resolves against .nav-primary-rail-1 and lands outside the visible area. */
   position: relative;
 }
@@ -233,16 +233,16 @@
   border-radius: 2px;
 }
 
-/* ----- Travelling section indicator -----------------------------------
-   A single bar inside .nav-primary-rail-1__NavBuckets that bridges old→new active icons
-   on click, then contracts onto the target with an elastic settle.
-   IconRail measures offsetTop/offsetHeight of each section button and feeds
-   the bar two phases:
+/* ----- Travelling section indicator (shared by both nav rails) --------
+   A single bar inside a positioned container that bridges old→new active
+   targets on click, then contracts onto the target with an elastic settle.
+   useTravelIndicator() measures offsetTop/offsetHeight of each registered
+   target and feeds the bar two phases:
      • stretch — top/height transitions over 140ms linear (fast bridge).
      • settle  — top/height transitions over 520ms cubic-bezier overshoot
        so the contraction onto the target has a soft bounce.
    The bar uses inline top/height; the modifier class swaps timing. */
-.nav-primary-rail-1__NavBuckets_TravelIndicator {
+.nav-travel-indicator {
   position: absolute;
   left: 0;
   width: 3px;
@@ -251,15 +251,15 @@
   pointer-events: none;
   z-index: 1;
 }
-.nav-primary-rail-1__NavBuckets_TravelIndicator-idle {
+.nav-travel-indicator-idle {
   transition: none;
 }
-.nav-primary-rail-1__NavBuckets_TravelIndicator-stretch {
+.nav-travel-indicator-stretch {
   transition:
     top    140ms cubic-bezier(0.4, 0, 0.2, 1),
     height 140ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-.nav-primary-rail-1__NavBuckets_TravelIndicator-settle {
+.nav-travel-indicator-settle {
   transition:
     top    520ms cubic-bezier(0.34, 1.56, 0.64, 1),
     height 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -397,7 +397,12 @@
   padding-bottom: 12px;
 }
 
-.nav-primary-rail-2__PageList_Group { display: flex; flex-direction: column; }
+.nav-primary-rail-2__PageList_Group {
+  display: flex;
+  flex-direction: column;
+  /* Anchor for .nav-travel-indicator (absolute). */
+  position: relative;
+}
 .nav-primary-rail-2__PageList_Empty {
   margin: 0;
   padding: 8px 22px;

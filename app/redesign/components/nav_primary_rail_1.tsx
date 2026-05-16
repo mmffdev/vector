@@ -1,20 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import ProfilePillStack from "./nav_primary_rail_1_NavProfilePillStack";
-
-type IndicatorPhase = "idle" | "stretch" | "settle";
-
-interface IndicatorBox {
-  top: number;
-  height: number;
-}
+import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 
 export default function IconRail() {
   const { sections, activeSectionId, setActiveSectionId } = useShell();
@@ -24,56 +18,11 @@ export default function IconRail() {
   const initials = user ? user.email.slice(0, 2).toUpperCase() : "??";
 
   const listRef = useRef<HTMLUListElement>(null);
-  const buttonRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
-  const [indicator, setIndicator] = useState<IndicatorBox | null>(null);
-  const [phase, setPhase] = useState<IndicatorPhase>("idle");
-  const settleTimerRef = useRef<number | null>(null);
-
-  useLayoutEffect(() => {
-    if (accountActive) {
-      setIndicator(null);
-      setPhase("idle");
-      return;
-    }
-
-    const target = buttonRefs.current.get(activeSectionId);
-    const list = listRef.current;
-    if (!target || !list) return;
-
-    const INSET = 8;
-    const newBox: IndicatorBox = {
-      top: target.offsetTop + INSET,
-      height: target.offsetHeight - INSET * 2,
-    };
-
-    if (indicator === null) {
-      setIndicator(newBox);
-      setPhase("idle");
-      return;
-    }
-
-    const oldTop = indicator.top;
-    const oldBottom = indicator.top + indicator.height;
-    const newTop = newBox.top;
-    const newBottom = newBox.top + newBox.height;
-
-    const bridgeTop = Math.min(oldTop, newTop);
-    const bridgeBottom = Math.max(oldBottom, newBottom);
-
-    setIndicator({ top: bridgeTop, height: bridgeBottom - bridgeTop });
-    setPhase("stretch");
-
-    if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
-    settleTimerRef.current = window.setTimeout(() => {
-      setIndicator(newBox);
-      setPhase("settle");
-    }, 140);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSectionId, accountActive]);
-
-  useEffect(() => () => {
-    if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
-  }, []);
+  const { indicator, phase, setTarget } = useTravelIndicator(
+    listRef,
+    accountActive ? null : activeSectionId,
+    { inset: 8 },
+  );
 
   return (
     <nav id="nav-primary-rail-1" className="nav-primary-rail-1" aria-label="Primary navigation rail">
@@ -97,24 +46,14 @@ export default function IconRail() {
       <div id="nav-primary-rail-1__divider" className="nav-primary-rail-1__divider" aria-hidden />
 
       <ul id="nav-primary-rail-1__NavBuckets" className="nav-primary-rail-1__NavBuckets" ref={listRef}>
-        {indicator && !accountActive && (
-          <span
-            id="nav-primary-rail-1__NavBuckets_TravelIndicator"
-            className={`nav-primary-rail-1__NavBuckets_TravelIndicator nav-primary-rail-1__NavBuckets_TravelIndicator-${phase}`}
-            style={{ top: indicator.top, height: indicator.height }}
-            aria-hidden
-          />
-        )}
-        {sections.map((s, i) => {
+        <TravelIndicator id="nav-primary-rail-1__NavBuckets_TravelIndicator" indicator={indicator} phase={phase} />
+        {sections.map((s) => {
           const active = s.id === activeSectionId;
           return (
             <li key={s.id} id={`nav-primary-rail-1__NavBuckets_Items-${s.id}`} className="nav-primary-rail-1__NavBuckets_Items">
               <button
                 id={`nav-primary-rail-1__NavBuckets_Items_Button-${s.id}`}
-                ref={(el) => {
-                  if (el) buttonRefs.current.set(s.id, el);
-                  else buttonRefs.current.delete(s.id);
-                }}
+                ref={(el) => setTarget(s.id, el)}
                 type="button"
                 className={`nav-primary-rail-1__NavBuckets_Items_Button${active ? " is-active" : ""}`}
                 title={s.name}

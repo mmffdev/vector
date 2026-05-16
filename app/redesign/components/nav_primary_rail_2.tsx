@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useShell, type ShellPage } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
+import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 
 function formatNow(d: Date): string {
   const date = d.toLocaleDateString(undefined, {
@@ -31,6 +32,8 @@ export default function SectionFlyout() {
     return () => clearInterval(id);
   }, []);
 
+  const groupRef = useRef<HTMLDivElement>(null);
+
   if (!activeSection) return <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label="Section" />;
 
   const isActivePage = (href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -47,6 +50,48 @@ export default function SectionFlyout() {
     }
   }
 
+  // Pick the longest-matching page so nested children win over their parent.
+  let activeKey: string | null = null;
+  let bestLen = -1;
+  for (const p of activeSection.pages) {
+    if (isActivePage(p.href) && p.href.length > bestLen) {
+      activeKey = p.itemKey;
+      bestLen = p.href.length;
+    }
+  }
+
+  return (
+    <SectionFlyoutBody
+      activeSection={activeSection}
+      tops={tops}
+      childrenByParent={childrenByParent}
+      isActivePage={isActivePage}
+      activeKey={activeKey}
+      groupRef={groupRef}
+      now={now}
+    />
+  );
+}
+
+function SectionFlyoutBody({
+  activeSection,
+  tops,
+  childrenByParent,
+  isActivePage,
+  activeKey,
+  groupRef,
+  now,
+}: {
+  activeSection: NonNullable<ReturnType<typeof useShell>["activeSection"]>;
+  tops: ShellPage[];
+  childrenByParent: Map<string, ShellPage[]>;
+  isActivePage: (href: string) => boolean;
+  activeKey: string | null;
+  groupRef: React.RefObject<HTMLDivElement>;
+  now: Date;
+}) {
+  const { indicator, phase, setTarget } = useTravelIndicator(groupRef, activeKey, { inset: 4 });
+
   return (
     <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label={`${activeSection.name} pages`}>
       <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
@@ -56,18 +101,24 @@ export default function SectionFlyout() {
       </div>
 
       <div id="nav-primary-rail-2__PageList" className="nav-primary-rail-2__PageList">
-        <div id="nav-primary-rail-2__PageList_Group" className="nav-primary-rail-2__PageList_Group">
+        <div
+          id="nav-primary-rail-2__PageList_Group"
+          className="nav-primary-rail-2__PageList_Group"
+          ref={groupRef}
+        >
+          <TravelIndicator id="nav-primary-rail-2__PageList_Group_TravelIndicator" indicator={indicator} phase={phase} />
           {tops.map((p) => {
             const kids = childrenByParent.get(p.itemKey) ?? [];
             return (
               <div key={p.itemKey}>
-                <PageRow page={p} active={isActivePage(p.href)} />
+                <PageRow page={p} active={isActivePage(p.href)} setRef={setTarget} />
                 {kids.map((k) => (
                   <PageRow
                     key={k.itemKey}
                     page={k}
                     active={isActivePage(k.href)}
                     nested
+                    setRef={setTarget}
                   />
                 ))}
               </div>
@@ -83,13 +134,16 @@ function PageRow({
   page,
   active,
   nested = false,
+  setRef,
 }: {
   page: ShellPage;
   active: boolean;
   nested?: boolean;
+  setRef: (key: string, el: HTMLElement | null) => void;
 }) {
   return (
     <Link
+      ref={(el) => setRef(page.itemKey, el)}
       href={page.href}
       className={`nav-primary-rail-2__PageList_Group_Row${active ? " is-active" : ""}${nested ? " is-nested" : ""}`}
       aria-current={active ? "page" : undefined}
