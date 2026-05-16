@@ -1,0 +1,435 @@
+{
+  "id": "PLA-0055",
+  "title": "Tenant-customisable Priority — artefact_priorities table + UUID FK on artefacts + catalogue context + chip refactor",
+  "date_created": "2026-05-16",
+  "date_started": null,
+  "date_last_updated": "2026-05-16",
+  "date_finished": null,
+  "scope": "<p>Promote priority from a hardcoded 4-value TEXT enum (critical/high/medium/low) to a per-workspace, gadmin-CRUDable catalogue. Mirrors the artefact_types pattern: new <code>artefact_priorities</code> table keyed by workspace_id, <code>artefacts.priority</code> column migrated from TEXT to UUID FK, new CRUD endpoints, new frontend catalogue context, NavigationPie Priority chip refactored to enumerate from the catalogue and send UUIDs.</p><p><strong>Depends on PLA-0053</strong> for workspace_id JWT claim. <strong>Pattern-parallel to PLA-0054</strong> — Priority gets the same shape as Type (catalogue + UUID wire + chip refactor) but with its own table.</p><p><strong>What PLA-0055 builds:</strong></p><ol><li>DB: new <code>artefact_priorities</code> table per workspace (id, workspace_id, name, slot, sort_order, colour, archived_at). Seeded with the 4 system priorities per workspace (matching slots: <code>pri_critical</code>, <code>pri_high</code>, <code>pri_medium</code>, <code>pri_low</code>).</li><li>DB: migrate <code>artefacts.priority</code> TEXT column to <code>artefacts.priority_id UUID</code> FK; backfill from existing TEXT values via name match.</li><li>Backend: priorities CRUD endpoints (<code>GET/POST/PATCH/DELETE /_site/artefact-priorities</code>).</li><li>Backend: artefactitems handler accepts <code>?priority_id=&lt;uuid&gt;[,&lt;uuid&gt;...]</code>; drops <code>?priority=&lt;slug&gt;</code>. Service Filters change to <code>[]uuid.UUID</code>; SQL emits <code>WHERE priority_id = ANY($N::uuid[])</code>.</li><li>Frontend: ArtefactPriorityCatalogueProvider context + <code>usePriorityList</code> + <code>useDefaultPriority</code> hooks (parallel to ArtefactTypeCatalogue).</li><li>NavigationPie Priority chip: hardcoded <code>PRIORITY_CHIP_OPTIONS</code> deleted; options come from <code>usePriorityList()</code>; chip onChange writes UUIDs.</li><li>Test: tenant adds a custom priority ('Showstopper'); chip enumerates it without code change.</li></ol>",
+  "value": "<p>Per the user's 2026-05-16 framing: <em>'Priority is tenant-customisable — needs UUID + catalogue.'</em> Today the system locks priority to 4 fixed values; tenants who want a fifth (Showstopper, Blocker, Nice-to-have) cannot have one.</p><p>Three payoffs:</p><ul><li><strong>Tenant-defined priority vocabularies.</strong> Gadmin can add/rename/archive priority levels per workspace. Existing chip + table render the per-workspace list automatically.</li><li><strong>Pattern parity with artefact_type.</strong> Slot enum + catalogue context + chip refactor is the same shape we built for Type in PLA-0054. Future custom-enum work (sprints? labels? severities?) reuses the same pattern.</li><li><strong>Removes the last hardcoded chip option literal.</strong> After PLA-0054 deletes TYPE_CHIP_OPTIONS, PRIORITY_CHIP_OPTIONS is the only remaining hardcoded list in the chip code path. PLA-0055 closes it.</li></ul>",
+  "implementation_plan": [
+    "RED-GREEN PROTOCOL (HARD RULE): every implementation story below is red-first. For each: (1) write the failing test described in the story's primary AC, (2) commit red with `test(<area>): red — <story-id>`, (3) implement, (4) commit green with `feat|fix|refactor(<area>): <description> [<story-id>]`. Red commits route through the `<rg>` substrate (PLA-0051) so they appear in Tracker's /red-green dashboard. Dedicated TEST stories (story 7 here) cover cross-cutting integration assertions not bound to a single implementation.",
+    "TRACKER REGRESSION LIBRARY: every test written by this plan is registered in Tracker under group `frontend-priority-customisation` and becomes a permanent regression check. Future plans' Tracker runs re-execute this group's tests to confirm no regression. Red AND green commits both POST to Tracker (via `<rg>` / `rg-runner`); the green POST closes the cycle and locks the test into the library. The exact `rg-runner` invocation should be verified against `cmd/rg-runner --help` in the MMFFDev - Tracker project before the first story in this plan ships (TD-RG-RUNNER-DOCS if undocumented).",
+    "Phase 0 — Schema (stories 1, 2): new artefact_priorities table + migrate artefacts.priority text→UUID FK.",
+    "Phase 1 — Backend (stories 3, 4): CRUD endpoints + handler/service accept priority_id UUID.",
+    "Phase 2 — Frontend catalogue (story 5): ArtefactPriorityCatalogueProvider + hooks.",
+    "Phase 3 — Chip + tests (stories 6, 7): NavigationPie Priority refactor + tenant customisation integration."
+  ],
+  "areas_impacted": [
+    "SQL: new artefact_priorities table + artefacts.priority text→UUID FK migration.",
+    "API: priorities CRUD + artefactitems filter shape change.",
+    "UI: ArtefactPriorityCatalogueProvider context + Priority chip refactor."
+  ],
+  "feature_list": [
+    "artefact_priorities table per workspace + slot enum + seed",
+    "artefacts.priority_id UUID FK migration",
+    "Priorities CRUD: GET/POST/PATCH/DELETE /_site/artefact-priorities",
+    "Handler/service ?priority_id=<uuid>[,uuid...] multi-value",
+    "ArtefactPriorityCatalogueProvider + usePriorityList + useDefaultPriority",
+    "NavigationPie Priority chip catalogue-driven",
+    "Tenant adds Showstopper priority + chip enumerates it"
+  ],
+  "features_extended": [
+    "<strong>artefacts row shape</strong> — priority TEXT replaced by priority_id UUID FK.",
+    "<strong>WorkItemsFilters</strong> — priority field becomes UUID[]; filterQuery sends <code>?priority_id=&lt;uuids&gt;</code>.",
+    "<strong>NavigationPie</strong> — Priority chip consumes ArtefactPriorityCatalogueProvider."
+  ],
+  "features_removed": [
+    "PRIORITY_CHIP_OPTIONS hardcoded literal in work-items-tree-config.tsx",
+    "?priority=<slug> handler param (replaced by ?priority_id=<uuid>)",
+    "artefacts.priority TEXT column (replaced by priority_id UUID FK)"
+  ],
+  "work_item_backlog": [
+    {
+      "order": 1,
+      "title": "00594 — SQL: new artefact_priorities table per workspace + slot enum + seed 4 system priorities",
+      "story_id": "00594",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a backend engineer, I wish a per-workspace artefact_priorities table, so that priority becomes tenant-customisable while system slots stay stable.\n\nNew migration creates artefact_priorities (id UUID PK, workspace_id UUID FK, name TEXT, slot TEXT NULL with CHECK enumerating pri_critical/pri_high/pri_medium/pri_low, sort_order INT, colour TEXT, archived_at TIMESTAMPTZ NULL, created_at, updated_at). Unique partial index per (workspace_id, slot) where slot IS NOT NULL. Seeds 4 system priorities per existing workspace at migration time.\n\n**Feature membership:** Part of feature group F7 — Priority substrate. Tests for this story live in the feature-level test suite (see the `TEST(F7)` story in this plan). This story's green commit does not land until the F7 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by seed:** SELECT slot, COUNT(*) FROM artefact_priorities WHERE slot IS NOT NULL GROUP BY slot returns 4 rows × workspace_count.\n- **As Proven by FK constraint:** INSERT with workspace_id not in workspaces table is rejected.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-SQL-0024",
+        "EST-F3",
+        "RISK-LOW",
+        "PLA-0055",
+        "FEAT-7"
+      ],
+      "kind": "implementation",
+      "feature_id": "F7"
+    },
+    {
+      "order": 2,
+      "title": "00595 — SQL: migrate artefacts.priority TEXT → priority_id UUID FK (backfill from name match)",
+      "story_id": "00595",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a backend engineer, I wish artefacts.priority to be a UUID FK, so that priority filtering can clamp by ID and survive renames.\n\nMigration: ADD COLUMN priority_id UUID NULL, FK to artefact_priorities(id). Backfill: for each row, find the matching artefact_priorities row in the artefact's workspace by name. Verify zero NULLs post-backfill. DROP COLUMN artefacts.priority (the old TEXT field) in the same migration.\n\n**Feature membership:** Part of feature group F7 — Priority substrate. Tests for this story live in the feature-level test suite (see the `TEST(F7)` story in this plan). This story's green commit does not land until the F7 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by post-backfill query:** SELECT COUNT(*) FROM artefacts WHERE priority_id IS NULL returns 0 (every existing row matched).\n- **As Proven by orphan check:** SELECT COUNT(*) FROM artefacts a LEFT JOIN artefact_priorities p ON a.priority_id = p.id WHERE p.id IS NULL returns 0 (no dangling FK).\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-SQL-0024",
+        "EST-F8",
+        "RISK-HIGH",
+        "PLA-0055",
+        "FEAT-7"
+      ],
+      "kind": "implementation",
+      "feature_id": "F7"
+    },
+    {
+      "order": 3,
+      "title": "00596 — API: artefact_priorities CRUD endpoints (list/create/patch/archive)",
+      "story_id": "00596",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a gadmin, I wish to create/edit/archive priority levels in my workspace, so that the priority vocabulary matches how my team actually works.\n\nNew Go service artefactpriorities. Handler exposes GET (workspace-scoped list, excludes archived), POST (create), PATCH (rename + sort order), DELETE (soft-archive sets archived_at). Slot-bearing rows are protected: cannot delete a slotted row; cannot change its slot. Auth: gadmin only.\n\n**Feature membership:** Part of feature group F8 — Priority CRUD + UUID wire. Tests for this story live in the feature-level test suite (see the `TEST(F8)` story in this plan). This story's green commit does not land until the F8 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by handler test:** POST creates a new priority with slot=null (custom); GET reflects it.\n- **As Proven by handler test:** DELETE on a slotted row returns 403 (system row protection).\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-API-0030",
+        "EST-F5",
+        "RISK-MED",
+        "PLA-0055",
+        "FEAT-8"
+      ],
+      "kind": "implementation",
+      "feature_id": "F8"
+    },
+    {
+      "order": 4,
+      "title": "00597 — API: artefactitems handler ?priority_id=<uuid>[,uuid...] multi-value (drop slug path)",
+      "story_id": "00597",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a backend engineer, I wish artefactitems to filter by priority_id UUID, so that priority filtering survives renames and supports multi-select.\n\nHandler accepts ?priority_id=<uuid>[,<uuid>...] with comma-separated parsing + UUID validation. Service Filters change to PriorityIDs []uuid.UUID. SQL emits WHERE a.priority_id = ANY($N::uuid[]). Legacy ?priority=<slug> path removed.\n\n**Feature membership:** Part of feature group F8 — Priority CRUD + UUID wire. Tests for this story live in the feature-level test suite (see the `TEST(F8)` story in this plan). This story's green commit does not land until the F8 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by handler test:** GET /_site/work-items?priority_id=<u1>,<u2> returns union.\n- **As Proven by handler test:** GET /_site/work-items?priority=high returns 400 (legacy removed).\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-API-0030",
+        "EST-F3",
+        "RISK-MED",
+        "PLA-0055",
+        "FEAT-8"
+      ],
+      "kind": "implementation",
+      "feature_id": "F8"
+    },
+    {
+      "order": 5,
+      "title": "00598 — UI: ArtefactPriorityCatalogueProvider + usePriorityList + useDefaultPriority",
+      "story_id": "00598",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a frontend engineer, I wish a workspace-scoped priority catalogue context, so that chips and selectors render the per-workspace priority list without per-component fetches.\n\nNew ArtefactPriorityCatalogueProvider mounts in app/(user)/layout.tsx (alongside ArtefactTypeCatalogueProvider). Fetches /_site/artefact-priorities on mount + on workspace_id change. Exposes usePriorityList() (sorted, archived excluded) and useDefaultPriority() (the row with slot='pri_medium' or first by sort_order if no slot match).\n\n**Feature membership:** Part of feature group F9 — Priority catalogue + chip + tenant customisation. Tests for this story live in the feature-level test suite (see the `TEST(F9)` story in this plan). This story's green commit does not land until the F9 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by hook test:** useDefaultPriority() returns the pri_medium row if present, else the first by sort_order.\n- **As Proven by cache test:** two components calling usePriorityList trigger one fetch.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-ITM-PRI-0001",
+        "EST-F3",
+        "RISK-LOW",
+        "PLA-0055",
+        "FEAT-9"
+      ],
+      "kind": "implementation",
+      "feature_id": "F9"
+    },
+    {
+      "order": 6,
+      "title": "00599 — UI: NavigationPie Priority chip enumerates from catalogue + sends UUIDs (drop PRIORITY_CHIP_OPTIONS)",
+      "story_id": "00599",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a frontend engineer, I wish the Priority chip to enumerate from the live catalogue, so that custom priorities appear automatically.\n\nDeletes PRIORITY_CHIP_OPTIONS literal. Chip options come from usePriorityList(). WorkItemsFilters.priority becomes UUID[]; chip onChange writes UUIDs. localStorage state migration (already handled in PLA-0054) extends to the new UUID shape.\n\n**Feature membership:** Part of feature group F9 — Priority catalogue + chip + tenant customisation. Tests for this story live in the feature-level test suite (see the `TEST(F9)` story in this plan). This story's green commit does not land until the F9 test suite passes.\n\n## Acceptance Criteria\n\n- **As Proven by vitest:** Priority chip renders one segment per priority in the mocked catalogue.\n- **As Proven by vitest:** clicking a segment fires onChange with the priority UUID, not its slug.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-ITM-PRI-0001",
+        "EST-F3",
+        "RISK-LOW",
+        "PLA-0055",
+        "FEAT-9"
+      ],
+      "kind": "implementation",
+      "feature_id": "F9"
+    },
+    {
+      "order": 7,
+      "title": "00607 — TEST(F7): priority table + TEXT→UUID FK migration test suite",
+      "story_id": "00607",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F7 (Priority substrate), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00594, 00595.\n\nSingle Go test suite for the priority substrate slice — including the high-risk artefacts.priority TEXT → priority_id UUID FK migration.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (artefact_priorities table doesn't exist; artefacts.priority is TEXT). Commit: `test(priority): red — F7 substrate [00607]`. Register in Tracker under group `frontend-priority-customisation`, feature `F7`.\n2. **GREEN:** stories 00594 → 00595 land; suite passes after 00595.\n3. **REGRESSION LOCK:** suite stays in Tracker library. Critical for the high-risk migration.\n\n## Test scope\n\n- Migration applied: artefact_priorities exists with CHECK + unique partial index.\n- 4 system priorities seeded per workspace.\n- INSERT with non-existent workspace_id rejected (FK).\n- artefacts.priority_id is UUID FK; old TEXT priority column dropped.\n- Post-backfill: zero NULL priority_id; zero orphan FKs.\n- Idempotent: re-run migration is no-op.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** suite committed and failing on `main`.\n- **As Proven by green commit:** stories 00594–00595 land; suite green; pre/post migration snapshot diff matches expected.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-SQL-0024",
+        "EST-F5",
+        "RISK-HIGH",
+        "PLA-0055"
+      ],
+      "kind": "feature_test",
+      "feature_id": "F7",
+      "feature_name": "Priority substrate",
+      "tracker_group": "frontend-priority-customisation",
+      "covers": [
+        "00594",
+        "00595"
+      ]
+    },
+    {
+      "order": 8,
+      "title": "00608 — TEST(F8): priority CRUD + ?priority_id= filter integration suite",
+      "story_id": "00608",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F8 (Priority CRUD + UUID wire), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00596, 00597.\n\nSingle Go integration suite for the priority CRUD endpoints + handler UUID filter.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (endpoints don't exist; handler still accepts ?priority=high). Commit: `test(priority): red — F8 CRUD + wire [00608]`. Register in Tracker under group `frontend-priority-customisation`, feature `F8`.\n2. **GREEN:** stories 00596 → 00597 land; suite passes after 00597.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- GET /_site/artefact-priorities returns workspace-scoped, non-archived, sort_order.\n- POST creates custom priority; GET reflects it.\n- DELETE on slotted row returns 403.\n- ?priority_id=<uuid> filters correctly.\n- ?priority_id=<u1>,<u2> returns union.\n- ?priority=high returns 400 (legacy removed).\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** suite committed and failing on `main`.\n- **As Proven by green commit:** stories 00596–00597 land; suite green.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-API-0030",
+        "EST-F3",
+        "RISK-MED",
+        "PLA-0055"
+      ],
+      "kind": "feature_test",
+      "feature_id": "F8",
+      "feature_name": "Priority CRUD + UUID wire",
+      "tracker_group": "frontend-priority-customisation",
+      "covers": [
+        "00596",
+        "00597"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "00609 — TEST(F9): priority catalogue + chip + tenant Showstopper end-to-end suite",
+      "story_id": "00609",
+      "card_url": null,
+      "status": "todo",
+      "description": "## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F9 (Priority catalogue + chip + tenant customisation), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.\n\n**Covers stories:** 00598, 00599.\n\nSingle end-to-end suite (vitest + Go integration) for the priority catalogue + chip + tenant customisation slice.\n\n## Red-Green Protocol (HARD RULE)\n\n1. **RED:** write failing suite. Fails on `main` (catalogue provider doesn't exist; chip reads PRIORITY_CHIP_OPTIONS). Commit: `test(priority): red — F9 chip + customisation [00609]`. Register in Tracker under group `frontend-priority-customisation`, feature `F9`.\n2. **GREEN:** stories 00598 → 00599 land; suite passes after 00599.\n3. **REGRESSION LOCK:** suite stays in Tracker library.\n\n## Test scope\n\n- usePriorityList() returns workspace's priorities sorted by sort_order.\n- useDefaultPriority() returns pri_medium or first by sort_order.\n- Two consumers trigger one fetch (cache).\n- PRIORITY_CHIP_OPTIONS literal not present in work-items-tree-config.tsx.\n- Priority chip renders one segment per catalogue row.\n- Chip onChange fires with priority UUID.\n- POST custom 'Showstopper' priority → chip enumerates it after catalogue refresh.\n- Filter sends ?priority_id=<showstopper-uuid> on chip click.\n\n## Acceptance Criteria\n\n- **As Proven by red commit:** suite committed and failing on `main`.\n- **As Proven by green commit:** stories 00598–00599 land; suite green.\n- **As Proven by regression entry:** suite locked into Tracker library.\n\n---\n_Agent: stories | 2026-05-16 | 001_redesign_",
+      "tags": [
+        "AIGEN",
+        "PH-0005",
+        "FE-ITM-PRI-0001",
+        "EST-F3",
+        "RISK-LOW",
+        "PLA-0055"
+      ],
+      "kind": "feature_test",
+      "feature_id": "F9",
+      "feature_name": "Priority catalogue + chip + tenant customisation",
+      "tracker_group": "frontend-priority-customisation",
+      "covers": [
+        "00598",
+        "00599"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "order": 1,
+      "criterion": "artefact_priorities table exists with columns + CHECK + unique partial index",
+      "proven_by": "migration applied",
+      "story_id": "00594",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 2,
+      "criterion": "4 system priorities seeded per workspace",
+      "proven_by": "GROUP BY slot query",
+      "story_id": "00594",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 3,
+      "criterion": "INSERT with non-existent workspace_id rejected",
+      "proven_by": "FK constraint test",
+      "story_id": "00594",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 4,
+      "criterion": "artefacts.priority_id is UUID FK; old TEXT priority column dropped",
+      "proven_by": "migration applied",
+      "story_id": "00595",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 5,
+      "criterion": "every artefacts row has priority_id populated after backfill",
+      "proven_by": "post-backfill query",
+      "story_id": "00595",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 6,
+      "criterion": "no orphan priority_id (LEFT JOIN check returns 0)",
+      "proven_by": "orphan check",
+      "story_id": "00595",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 7,
+      "criterion": "GET /_site/artefact-priorities returns workspace-scoped non-archived rows by sort_order",
+      "proven_by": "handler test",
+      "story_id": "00596",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 8,
+      "criterion": "POST creates custom priority; GET reflects it",
+      "proven_by": "handler test",
+      "story_id": "00596",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 9,
+      "criterion": "DELETE on slotted row returns 403",
+      "proven_by": "system row protection test",
+      "story_id": "00596",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 10,
+      "criterion": "?priority_id=<uuid> returns rows matching priority",
+      "proven_by": "handler test",
+      "story_id": "00597",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 11,
+      "criterion": "?priority_id=<u1>,<u2> returns union",
+      "proven_by": "handler test",
+      "story_id": "00597",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 12,
+      "criterion": "?priority=high returns 400 (legacy removed)",
+      "proven_by": "handler test",
+      "story_id": "00597",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 13,
+      "criterion": "usePriorityList returns workspace's priorities sorted by sort_order",
+      "proven_by": "hook test",
+      "story_id": "00598",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 14,
+      "criterion": "useDefaultPriority returns pri_medium row or first by sort_order",
+      "proven_by": "hook test",
+      "story_id": "00598",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 15,
+      "criterion": "two components calling usePriorityList trigger one fetch",
+      "proven_by": "cache test",
+      "story_id": "00598",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 16,
+      "criterion": "PRIORITY_CHIP_OPTIONS removed from work-items-tree-config.tsx",
+      "proven_by": "code inspection",
+      "story_id": "00599",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 17,
+      "criterion": "Priority chip renders one segment per catalogue row",
+      "proven_by": "vitest",
+      "story_id": "00599",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 18,
+      "criterion": "chip onChange fires with priority UUID (not slug)",
+      "proven_by": "vitest",
+      "story_id": "00599",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 19,
+      "criterion": "POST custom priority returns 201 with UUID",
+      "proven_by": "integration test",
+      "story_id": "00600",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 20,
+      "criterion": "Priority chip enumerates custom priority after catalogue refresh",
+      "proven_by": "integration test",
+      "story_id": "00600",
+      "card_url": null,
+      "done": false
+    },
+    {
+      "order": 21,
+      "criterion": "filter sends ?priority_id=<custom-uuid> on chip click",
+      "proven_by": "filter behaviour test",
+      "story_id": "00600",
+      "card_url": null,
+      "done": false
+    }
+  ],
+  "risks": [
+    {
+      "impact": 3,
+      "risk": "artefacts.priority TEXT→UUID migration touches every artefacts row in every workspace; rollback is non-trivial.",
+      "mitigation": "Migration runs in a single transaction; pre-migration snapshot via pg_dump on the affected schema; down migration provided that re-creates TEXT column from priority_id lookup."
+    },
+    {
+      "impact": 2,
+      "risk": "Backfill misses an artefact whose priority TEXT doesn't match any seeded priority name (e.g. legacy 'Urgent' value).",
+      "mitigation": "Pre-migration audit query lists every distinct priority TEXT value; gadmin manually maps any non-standard values to a target priority before the migration runs."
+    },
+    {
+      "impact": 2,
+      "risk": "Slot-bearing-row protection (DELETE 403) prevents gadmin from removing the seeded system priorities; this is intentional but could surprise users expecting full control.",
+      "mitigation": "GET response includes a is_system boolean on each row; UI hides delete control on system rows + shows a tooltip explaining why."
+    }
+  ],
+  "references": [
+    {
+      "kind": "internal",
+      "label": "PLA-0053 (workspace foundation — dependency)",
+      "href": "dev/plans/PLA-0053.json"
+    },
+    {
+      "kind": "internal",
+      "label": "PLA-0054 (Type chip + catalogue — pattern parent)",
+      "href": "dev/plans/PLA-0054.json"
+    },
+    {
+      "kind": "internal",
+      "label": "System-vs-display layers rule",
+      "href": ".claude/memory/feedback_system_vs_display_layers.md"
+    }
+  ],
+  "tracker_group": "frontend-priority-customisation"
+}

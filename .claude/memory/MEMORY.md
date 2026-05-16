@@ -10,6 +10,7 @@
 - [Stories all layers before starting](feedback_stories_all_layers.md) — Decompose across backend, frontend, migration, tests before /stories; never one layer at a time.
 - [Stories acceptance system — 7 gates, Fibonacci, risk](feedback_stories_system.md) — Hard gates: AIGEN+phase+feature+EST+RISK+description; F21+ auto-splits; 85%/90% confidence thresholds.
 - [All stories MUST go through /stories shortcut](feedback_stories_shortcut_mandatory.md) — No exceptions, no direct Planka writes; every story routes through the 7-gate skill.
+- [Feature-driven testing SOP — tests live at feature level, Tracker = regression library](feedback_feature_driven_testing_sop.md) — Every story → FEAT-N; every feature → one feature_test suite with red/green/regression-lock AC; plan declares tracker_group; enforced by /stories Steps 1.b, 3, 5, 6.5.d, 6.6.
 - [Never change passwords (HARD RULE)](feedback_never_change_passwords.md) — Never touch password_hash/email/role/is_active on gadmin@/padmin@/cookra@/user@; ask Rick or use claude@ test account.
 - [Backend pinned to dev (HARD RULE)](feedback_dev_only.md) — Env permanently dev; staging/prod refusing stubs; revert any non-dev marker silently.
 - [Always recommend the safest, best approach](feedback_safety_first.md) — Lead with ranked safest-first recommendation; never neutral A/B/C menus.

@@ -16,11 +16,60 @@ const PLAN_TOC: Array<{ id: string; label: string }> = [
   { id: "implementation-plan", label: "3.0.1 Implementation Plan" },
   { id: "areas-impacted", label: "5.0.1 Areas Impacted" },
   { id: "feature-list", label: "6.0.1 Feature List" },
+  { id: "feature-coverage", label: "6.3.1 Feature Coverage" },
   { id: "work-item-backlog", label: "7.0.1 Work Item Backlog" },
   { id: "acceptance-criteria", label: "8.0.1 Acceptance Criteria" },
   { id: "risks", label: "9.0.1 Risks" },
   { id: "references", label: "10.0.1 References" },
 ];
+
+type FeatureRow = {
+  id: string;
+  name: string;
+  test_story_id: string | null;
+  test_title: string | null;
+  covers: string[];
+};
+
+/** Derive feature groups from a plan's work_item_backlog. Reads feature_test
+ * entries first (canonical source), then falls back to FEAT-N tags on
+ * implementation stories so plans authored before TD-PLANDOC-FEATURE-SOP
+ * closure still render meaningfully. */
+function deriveFeatures(plan: PlanDoc): FeatureRow[] {
+  const byId = new Map<string, FeatureRow>();
+
+  for (const wi of plan.work_item_backlog) {
+    if (wi.kind === "feature_test" && wi.feature_id) {
+      byId.set(wi.feature_id, {
+        id: wi.feature_id,
+        name: wi.feature_name ?? wi.feature_id,
+        test_story_id: wi.story_id,
+        test_title: wi.title,
+        covers: Array.isArray(wi.covers) ? [...wi.covers] : [],
+      });
+    }
+  }
+
+  // Backfill: any FEAT-N tag on an implementation story whose covers list
+  // doesn't already include it gets added.
+  for (const wi of plan.work_item_backlog) {
+    if (wi.kind === "feature_test") continue;
+    const fid = wi.feature_id ?? (wi.tags ?? []).find(t => /^FEAT-\d+$/.test(t))?.replace("FEAT-", "F");
+    if (!fid || !wi.story_id) continue;
+    let row = byId.get(fid);
+    if (!row) {
+      row = { id: fid, name: fid, test_story_id: null, test_title: null, covers: [] };
+      byId.set(fid, row);
+    }
+    if (!row.covers.includes(wi.story_id)) row.covers.push(wi.story_id);
+  }
+
+  return [...byId.values()].sort((a, b) => {
+    const ai = parseInt(a.id.replace(/^F/, ""), 10);
+    const bi = parseInt(b.id.replace(/^F/, ""), 10);
+    return (isFinite(ai) ? ai : 999) - (isFinite(bi) ? bi : 999);
+  });
+}
 
 function statusPillVariant(status: string): string {
   switch (status) {
@@ -97,6 +146,8 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
     };
   }, []);
 
+  const features = deriveFeatures(plan);
+
   return (
     <div className="dui-doc dui-doc--wide" ref={bodyRef}>
       <div className="dui-meta-strip">
@@ -115,6 +166,10 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
         <div className="dui-meta-strip__cell">
           <span className="dui-meta-strip__label">Date Finished</span>
           <span className="dui-meta-strip__value">{fmtDate(plan.date_finished)}</span>
+        </div>
+        <div className="dui-meta-strip__cell">
+          <span className="dui-meta-strip__label">Tracker Group</span>
+          <span className="dui-meta-strip__value">{plan.tracker_group ?? "—"}</span>
         </div>
       </div>
 
@@ -171,33 +226,75 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
       </section>
 
       <section>
+        <h3 id="feature-coverage">6.3.1 Feature Coverage</h3>
+        {features.length === 0 ? (
+          <p>No feature groups declared (plan predates the Red-Green Feature-Driven SOP, or migration script not yet run).</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Name</th>
+                <th>Test Story</th>
+                <th>Covers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {features.map(f => (
+                <tr key={f.id}>
+                  <td><span className="dui-pill dui-pill--neutral">{f.id}</span></td>
+                  <td>{f.name}</td>
+                  <td>{f.test_story_id ?? <span className="dui-pill dui-pill--fail">no test</span>}</td>
+                  <td>{f.covers.length === 0 ? "—" : f.covers.join(", ")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section>
         <h3 id="work-item-backlog">7.0.1 Work Item Backlog</h3>
         <table>
           <thead>
             <tr>
               <th>#</th>
+              <th>Kind</th>
+              <th>Feat</th>
               <th>Title</th>
               <th>Story</th>
               <th>Status</th>
-              <th>Notes</th>
+              <th>Tags</th>
             </tr>
           </thead>
           <tbody>
-            {plan.work_item_backlog.map(item => (
-              <tr key={item.order}>
-                <td>{item.order}</td>
-                <td>{item.title}</td>
-                <td>
-                  {item.story_id
-                    ? (item.card_url
-                        ? <a href={item.card_url} target="_blank" rel="noreferrer">{item.story_id}</a>
-                        : item.story_id)
-                    : "—"}
-                </td>
-                <td><span className={`dui-pill ${statusPillVariant(item.status)}`}>{item.status}</span></td>
-                <td>{item.notes ?? ""}</td>
-              </tr>
-            ))}
+            {plan.work_item_backlog.map(item => {
+              const isTest = item.kind === "feature_test";
+              const featLabel = item.feature_id
+                ?? (item.tags ?? []).find(t => /^FEAT-\d+$/.test(t))?.replace("FEAT-", "F")
+                ?? "—";
+              return (
+                <tr key={item.order}>
+                  <td>{item.order}</td>
+                  <td>
+                    <span className={`dui-pill ${isTest ? "dui-pill--warn" : "dui-pill--neutral"}`}>
+                      {isTest ? "test" : "impl"}
+                    </span>
+                  </td>
+                  <td>{featLabel}</td>
+                  <td>{item.title}</td>
+                  <td>
+                    {item.story_id
+                      ? (item.card_url
+                          ? <a href={item.card_url} target="_blank" rel="noreferrer">{item.story_id}</a>
+                          : item.story_id)
+                      : "—"}
+                  </td>
+                  <td><span className={`dui-pill ${statusPillVariant(item.status)}`}>{item.status}</span></td>
+                  <td>{(item.tags ?? []).join(", ") || (item.notes ?? "")}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>

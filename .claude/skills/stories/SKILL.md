@@ -31,8 +31,11 @@ Every work-item entry created by `/stories` MUST end the run carrying ALL of:
 6. **Risk tag** — `RISK-LOW` / `RISK-MED` / `RISK-HIGH`
 7. **Plan tag** — `PLA-NNNN` (4-digit zero-padded; the plan this story belongs to — see Step −1 and Step 6.5)
 8. **Description** — User story format with 3+ "As Proven by" acceptance criteria
+9. **Feature membership tag** — `FEAT-N` (e.g., `FEAT-1`) — applies to implementation stories; references the feature group proposed in Step 1.b and approved by the user. Feature_test stories carry `feature_id` as a first-class schema field instead.
 
-A work-item missing any of (1)–(8) at end of run is a **defect**. The run **fails** regardless of which steps "succeeded". You MUST:
+Plus a top-level plan field: every plan declares **`tracker_group`** (kebab `<scope>-<plan-slug>`, e.g. `backend-workspace-foundation`). Every feature_test work item registers under this group in Tracker's regression library. See Step 6.5.a.
+
+A work-item missing any of (1)–(9), or a plan missing `tracker_group`, is a **defect**. The run **fails** regardless of which steps "succeeded". You MUST:
 
 - **Run Step −1 BEFORE Step 0.** Step −1 produces the `PLA-NNNN` plan ID and decides whether this work merges into an existing plan or creates a new one.
 - **Run Step 0 BEFORE writing any work item.** Step 0 produces the story IDs and tags every entry depends on.
@@ -113,8 +116,10 @@ This step gates everything. Do not skip any sub-step.
 4. **Determine phase tag** (e.g., `PH-0005`). Read `docs/c_story_index.md` for active phase. Record `PH_TAG`.
 5. **Determine feature area tag.** Read `docs/c_feature_areas.md`. Tag format is `FE-AAA-0001` (single domain) or `FE-AAA-BBB-0001` (domain + sub-domain). If a matching tag exists in a prior plan, reuse it. If not, propose the new tag name to the user; on approval, record `FE_TAG`.
 6. **Confirm `PLAN_ID`** is set from Step −1.e. If not, return to Step −1 — the plan tag is mandatory and must be present on every work item.
+7. **Allocate feature_ids `F1..Fk` from the grouping** proposed in Step 1.b and approved by the user. Record `FEAT_TAGS = {story_id → "FEAT-N"}` for every implementation story. Record `FEATURES = [{id: "F1", name, covers: [story_id, ...]}, ...]`. Feature_test stories carry `feature_id` as a schema field (Step 5) — they do NOT take a `FEAT-N` tag.
+8. **Confirm `TRACKER_GROUP`** is set on the plan (Step −1.a draft or Step 6.5.a). Format: `<scope>-<plan-slug>` where scope ∈ {`backend`, `frontend`, `fullstack`, `db`}. If not, decide it now from the plan's title and dominant area_impacted. **The group MUST already exist in Tracker** (provision via Tracker's UI or API) before any feature_test commit ships, otherwise `rg-runner` errors with `group not found`. See Step 5.d.
 
-**Self-check:** Can you state exact values for `STORY_IDS`, `PH_TAG`, `FE_TAG`, and `PLAN_ID` before proceeding? If any is "I'll figure it out later", stop and complete it now.
+**Self-check:** Can you state exact values for `STORY_IDS`, `PH_TAG`, `FE_TAG`, `PLAN_ID`, `FEATURES`, `FEAT_TAGS`, and `TRACKER_GROUP` before proceeding? If any is "I'll figure it out later", stop and complete it now.
 
 ---
 
@@ -131,17 +136,38 @@ From the user's input, extract discrete, shippable user-facing units. One work i
 
 **Don't over-split:** If two adjacent items can't be observed as done independently, merge them.
 
-Present a numbered list for user approval:
+### 1.a — Numbered story list
+
+Present a numbered list for user approval. Annotate each line with its proposed feature group `[F<N>]` (assigned in Step 1.b):
 
 ```
-1. <Story title>
+1. <Story title>  [F1]
    AC: <one-line acceptance criterion>
 
-2. <Story title>
+2. <Story title>  [F1]
+   AC: <one-line acceptance criterion>
+
+3. <Story title>  [F2]
    AC: <one-line acceptance criterion>
 ```
 
-Ask: "Approve all, or specify which numbers to create (e.g., 1,3,5)?"
+### 1.b — Propose feature grouping (BLOCKING)
+
+A **feature** is the smallest vertical slice that can be regression-tested end-to-end and observed as one thing being done (e.g. "workspace clamp end-to-end" = JWT claim + resolver + schema + two services; a single test suite proves all of it together). Every implementation story belongs to exactly one feature group; each feature group earns exactly one `feature_test` work item in Step 5.
+
+Cluster the stories from 1.a into feature groups. Then render:
+
+```
+Proposed feature groups:
+  F1 — <feature name>: stories 1, 2
+  F2 — <feature name>: stories 3
+```
+
+**Single-story features are valid** — when a story is its own observable slice (a docs page, a standalone migration with no service consumer yet, a one-shot infra change), the feature group is 1 story and the feature_test is calibrated to what's observable for that slice (a migration smoke, a build check, etc.). There is **no exemption mechanism**; every story belongs to a feature.
+
+Ask: "Approve all stories and the proposed grouping, or revise? (e.g. 'approve all', 'create 1,3,5', 'move story 3 to F1')."
+
+Record the approved grouping in Step 0 sub-step 7 as `FEATURES = [{id, name, covers}, ...]`.
 
 ---
 
@@ -171,6 +197,7 @@ Before writing ANY work item, assess 85%+ confidence on these criteria. If ANY c
 - [ ] **Feature area assigned** (85%+): One of: POR, LIB, ITM, DAT, UI, UX, SEC, GOV, AUD, RED, RUL, API, SQL, DCR, ALG, DEV.
 - [ ] **Estimation assigned** (85%+): F0–F13 (Fibonacci). If calculated as F21+, proceed to Step 4 (automatic split).
 - [ ] **Risk assigned** (85%+): RISK-LOW, RISK-MED, or RISK-HIGH. Brief justification required if RISK-HIGH.
+- [ ] **Feature membership** (85%+): implementation story carries a valid `FEAT-N` tag pointing to an approved feature group in `FEATURES` (Step 0 sub-step 7). NOT "no group", NOT "TBD", NOT "we'll figure it out". Feature_test stories are exempt from this check — they carry `feature_id` as a schema field instead.
 
 **If ANY criterion < 85%:**
 - Output: `⚠ Story N: [REPLAN REQUIRED] — <specific reason>`
@@ -227,7 +254,9 @@ If user approves: treat the list as a new Step 1 input and re-run Steps 1–4 on
 
 ## Step 5 — Compose Work Items
 
-For each story passing Steps 0–4, compose a `work_item_backlog` entry that will be persisted by Step 6.5:
+For each story passing Steps 0–4, compose a `work_item_backlog` entry that will be persisted by Step 6.5. Two shapes are supported: **implementation** (default) and **feature_test**.
+
+### 5.a — Implementation work item
 
 ```json
 {
@@ -236,12 +265,14 @@ For each story passing Steps 0–4, compose a `work_item_backlog` entry that wil
   "story_id": "NNNNN",
   "card_url": null,
   "status": "todo",
-  "description": "<see description format below>",
-  "tags": ["AIGEN", "PH-NNNN", "FE-AAA-NNNN", "EST-F#", "RISK-LOW|MED|HIGH", "PLA-NNNN"]
+  "kind": "implementation",
+  "feature_id": "F<N>",
+  "description": "<see implementation description format below>",
+  "tags": ["AIGEN", "PH-NNNN", "FE-AAA-NNNN", "EST-F#", "RISK-LOW|MED|HIGH", "PLA-NNNN", "FEAT-N"]
 }
 ```
 
-Description format (string field):
+Implementation description format:
 
 ```
 ## As a <role>, I wish <action>, so that <benefit>
@@ -258,15 +289,114 @@ Description format (string field):
 _Agent: stories | <DATE> | <BRANCH>_
 ```
 
-Required tags on every entry (6 mandatory + 1 optional):
+### 5.b — Feature_test work item (one per feature group)
+
+```json
+{
+  "order": <1-based ordinal in this run; MUST be the lowest in this feature group>,
+  "title": "NNNNN — TEST(F<N>): <suite name>",
+  "story_id": "NNNNN",
+  "card_url": null,
+  "status": "todo",
+  "kind": "feature_test",
+  "feature_id": "F<N>",
+  "feature_name": "<feature name approved in Step 1.b>",
+  "covers": ["<story_id>", "<story_id>", "..."],
+  "tracker_group": "<TRACKER_GROUP from Step 0 sub-step 8>",
+  "description": "<see feature_test canonical description below>",
+  "tags": ["AIGEN", "PH-NNNN", "FE-AAA-NNNN", "EST-F#", "RISK-LOW|MED", "PLA-NNNN"]
+}
+```
+
+**Red-green ordering rule:** the feature_test entry's `order` value MUST be lower than every implementation story it covers. The red commit for the suite ships before any implementation story in the group; each covered implementation story's `status` may not flip to `completed` until the suite is green for that story's assertions.
+
+Feature_test canonical description (use verbatim — only the bracketed `<...>` fields change):
+
+```
+## As a backend/frontend engineer, I wish a single feature-level test suite covering feature F<N> (<feature name>), so that the suite becomes a permanent regression check in Tracker's library and meaningful end-to-end coverage replaces per-story plumbing tests.
+
+**Covers stories:** <story_id>, <story_id>, ...
+
+<one-paragraph description of the suite scope>
+
+## Red-Green Protocol (HARD RULE)
+
+1. **RED:** write the failing suite below. Test must fail on `main` because <reason>. Commit: `test(<area>): red — F<N> <name> [<test-story-id>]`. Register in Tracker under group `<tracker_group>`, feature `F<N>`.
+2. **GREEN:** stories <covered-ids> land in order; each implementation moves the needle on this suite. The final covered story's green commit must turn this suite green.
+3. **REGRESSION LOCK:** suite stays in Tracker library; future plans' Tracker runs re-execute it on every push.
+
+## Test scope (one suite, multiple assertions)
+
+- <observable assertion 1>
+- <observable assertion 2>
+- ...
+
+## Acceptance Criteria
+
+- **As Proven by RED commit:** suite committed and failing on `main`; Tracker dashboard `<tracker_group>/F<N>` shows status=fail.
+- **As Proven by GREEN commit:** after covered stories merge, the suite passes; Tracker run = pass.
+- **As Proven by regression entry:** suite registered in Tracker's library so future plans' runs re-execute it.
+
+---
+_Agent: stories | <DATE> | <BRANCH>_
+```
+
+### 5.c — Mandatory tags
+
+**Implementation stories** carry 7 mandatory + 1 optional:
 
 1. `AIGEN`
 2. `PH-NNNN` (from Step 0: `PH_TAG`)
 3. `FE-AAA-NNNN` or `FE-AAA-BBB-NNNN` (from Step 0: `FE_TAG`)
 4. `EST-F#` (Fibonacci F0–F13)
 5. `RISK-LOW` / `RISK-MED` / `RISK-HIGH`
-6. `PLA-NNNN` (from Step −1.e: `PLAN_ID`) — the plan this entry belongs to
-7. `MULTI-AGENT` (optional) — only when the story qualifies as parallel-safe: touches only its own files, no migrations on shared tables, no shared service state, not blocked by another card in this batch. When in doubt, leave it off — false positives cause merge conflicts.
+6. `PLA-NNNN` (from Step −1.e: `PLAN_ID`)
+7. `FEAT-N` (from Step 0 sub-step 7: `FEAT_TAGS[story_id]`)
+8. `MULTI-AGENT` (optional) — only when the story qualifies as parallel-safe: touches only its own files, no migrations on shared tables, no shared service state, not blocked by another card in this batch. When in doubt, leave it off — false positives cause merge conflicts.
+
+**Feature_test stories** carry 6 mandatory (no `FEAT-N` — the `feature_id` schema field is canonical): `AIGEN`, `PH-NNNN`, `FE-AAA-NNNN`, `EST-F#`, `RISK-LOW|MED`, `PLA-NNNN`.
+
+### 5.d — rg-runner contract (verified 2026-05-16)
+
+The runner lives at `backend/cmd/rg-runner` in the sibling `MMFFDev - Tracker` repo. Its model:
+
+- **Groups are defined in Tracker** (not on the command line). Each group carries a `framework` (`go` or `vitest`) and the test-selector config that resolves which test files belong to it. Before the first feature_test commit in a plan, the `tracker_group` value declared in Step 0 sub-step 8 / Step 6.5.a MUST already exist as a group in Tracker — provision it via Tracker's UI or API. If it doesn't, `rg-runner` errors with `group not found` and lists available slugs.
+- **The runner takes a group slug + a target project path**. It spawns the group's framework against `-target` (e.g. `go test -json ./...` or `vitest --reporter=json`), parses results as they stream, and POSTs each test outcome to Tracker. Red/green is derived per-test from the result stream — there is no `--status`/`--story`/`--commit` flag.
+- **Auth is via project-clamped PAT.** `RG_API_KEY=trk_xxx` (see `.claude/memory/project_tracker_rg_api_key.md`); `project_id` is inherited from the key, so no `--project` flag.
+
+**Verified flags** (`rg-runner --help` as of 2026-05-16):
+
+| Flag | Env fallback | Purpose |
+|---|---|---|
+| `-api-key <token>` | `RG_API_KEY` | Tracker PAT |
+| `-target <path>` | `RG_TARGET` | absolute path to the project codebase under test |
+| `-group <slug>` | — | group slug to run, or `all` for every group visible to the key |
+| `-tracker-url <url>` | `RG_TRACKER_URL` | Tracker base URL (default `http://localhost:5102`) |
+| `-force` | — | cancel any in-flight run before starting |
+| `-dry-run` | — | resolve group + print run command without executing |
+
+**Canonical invocations.**
+
+Single-group run (per feature, e.g. after a green commit on PLA-0053 F1):
+
+```
+RG_API_KEY=trk_xxx \
+  go run /path/to/MMFFDev\ -\ Tracker/backend/cmd/rg-runner \
+  -group backend-workspace-foundation \
+  -target /path/to/MMFFDev\ -\ Vector
+```
+
+Regression sweep (every Tracker-registered group for this project's PAT):
+
+```
+RG_API_KEY=trk_xxx rg-runner -group all -target /path/to/MMFFDev\ -\ Vector
+```
+
+**Red-green mapping.** The runner does not POST a "red commit" or "green commit" event — those concepts live at the commit/Tracker-dashboard level. The protocol the skill enforces is:
+
+1. **RED:** commit the failing test suite first (`test(<area>): red — F<N> <name> [<test-story-id>]`); then run `rg-runner -group <slug> -target .` locally. The run row in Tracker shows the suite at `status=fail` because the implementation hasn't landed.
+2. **GREEN:** after every covered implementation story lands, run `rg-runner -group <slug>` again. The run row in Tracker shows the suite at `status=pass`. The green commit's message includes the implementation story id (`feat(<area>): <description> [<story-id>]`).
+3. **REGRESSION LOCK:** the group stays registered in Tracker; future plans' rerun (`rg-runner -group all`) re-executes the suite on every push.
 
 ---
 
@@ -291,6 +421,7 @@ Construct a `PlanDoc` (schema in [`app/api/dev/plans/route.ts`](../../../app/api
 
 - `id` — `PLAN_ID` from Step −1.e (or the merged plan's existing id).
 - `title` — drafted in Step −1.a.
+- `tracker_group` — `TRACKER_GROUP` from Step 0 sub-step 8 (kebab `<scope>-<plan-slug>`; e.g. `backend-workspace-foundation`). Mandatory on every new plan. Two active plans MUST NOT declare the same `tracker_group` unless deliberately co-shipping (Step −1.c will warn).
 - `date_created` — today's date `YYYY-MM-DD` (preserve existing if merging).
 - `date_started` — `null` (set when the first work item flips to `doing`).
 - `date_last_updated` — today's date for both new and merge cases.
@@ -349,29 +480,59 @@ Before continuing to Step 7, verify:
 
 - [ ] `dev/plans/<PLAN_ID>.json` exists and parses as JSON.
 - [ ] Every story composed in Step 5 appears in `work_item_backlog`.
-- [ ] Every work item carries the full mandatory tag set (AIGEN, PH-, FE-, EST-F#, RISK-, PLA-).
+- [ ] Every implementation work item carries the full mandatory tag set (AIGEN, PH-, FE-, EST-F#, RISK-, PLA-, **FEAT-N**).
+- [ ] Every feature_test work item carries `kind: "feature_test"`, `feature_id`, `feature_name`, non-empty `covers`, and matches the plan's `tracker_group`.
+- [ ] Every approved feature group in `FEATURES` has **exactly one** `feature_test` work item.
+- [ ] Every `feature_test` description contains the 3 mandatory AC (RED commit, GREEN commit, regression-lock).
+- [ ] Plan declares `tracker_group` and it follows the `<scope>-<plan-slug>` convention.
 - [ ] `docs/c_plan_index.md` "Last issued" matches the highest plan ID on disk.
 
-If any check fails: fix it now. Do not proceed to Step 7 with a half-written plan.
+If any check fails: fix it now. Do not proceed to Step 6.6 / 7 with a half-written plan.
+
+---
+
+## Step 6.6 — Feature-test parity check (BLOCKING)
+
+Cross-validate the work_item_backlog against the approved `FEATURES` set. The skill **rejects the run** on any of the following:
+
+- A feature group in `FEATURES` has no `feature_test` work item.
+- A feature group has more than one `feature_test` work item.
+- A `feature_test` `covers` entry refers to a `story_id` that does not appear in this run AND is not already `status: "completed"` in the merged target plan. (Feature tests CANNOT be authored in isolation — every covered story must be present in this `/stories` invocation or already shipped.)
+- A `feature_test` work item's `order` is not the lowest in its feature group's segment.
+- An implementation story's `FEAT-N` tag does not match any feature in `FEATURES`.
+
+On rejection: surface the specific defect (`⚠ feature group F2 has no feature_test`) and STOP. Do not write the report. Do not flip `status: "todo"` on any story. The plan file remains on disk but is flagged as inconsistent.
 
 ---
 
 ## Step 7 — Report
 
-Print a summary. Each created work item line MUST list its actual tags. Lead with the plan written/merged in Step 6.5:
+Print a summary. Each created work item line MUST list its actual tags. Lead with the plan written/merged in Step 6.5 and the feature-coverage block:
 
 ```
 Plan: PLA-0001 — <plan title> (dev/plans/PLA-0001.json)
   • new | merged into existing
+  • Tracker group: backend-workspace-foundation
+  • Feature groups: 2 | feature tests: 2 | impl stories: 6
   • work items: N | acceptance criteria: M
 
+Feature coverage:
+  F1 — Workspace clamp end-to-end       (test 00601 covers 00575, 00576, 00577, 00578, 00579)
+  F2 — Frontend workspace awareness     (test 00602 covers 00580)
+
 Wrote N stories to PLA-0001 (phase PH-0005, feature FE-DEV-0001):
-  ✓ 00050 — <title>  [AIGEN, PH-0005, FE-DEV-0001, EST-F3, RISK-MED, PLA-0001]
-  ✓ 00051 — <title>  [AIGEN, PH-0005, FE-DEV-0001, EST-F5, RISK-MED, PLA-0001, MULTI-AGENT]
-  ✓ 00052 — <title>  [AIGEN, PH-0005, FE-DEV-0001, EST-F2, RISK-LOW, PLA-0001]
+  ✓ 00575 — <title>  [AIGEN, PH-0005, FE-SEC-0013, EST-F5, RISK-MED, PLA-0001, FEAT-1]
+  ✓ 00580 — <title>  [AIGEN, PH-0005, FE-UI-0020, EST-F2, RISK-LOW, PLA-0001, FEAT-2]
+  ✓ 00601 — TEST(F1): workspace clamp end-to-end integration suite  [feature_test, F1, covers 5]
+  ✓ 00602 — TEST(F2): useActiveWorkspace + per-workspace cache key vitest suite  [feature_test, F2, covers 1]
   ✗ <title> — skipped (duplicate of 00018 in PLA-0007)
 
 View: Dev Setup → Plans tab → PLA-0001
 ```
 
-If any work item ended Step 6.5.d missing tags, surface with `⚠ 00050 — <title> — MISSING [EST-F3]` so the human can intervene. **Do NOT report success while any work item is under-tagged.**
+Warning conditions (surface before the "View:" line; do NOT report success while any apply):
+
+- `⚠ 00050 — <title> — MISSING [EST-F3]` — work item under-tagged.
+- `⚠ feature group F<N> has no feature_test` — parity-check failure from Step 6.6 (this should already have stopped the run; if it surfaces here something has gone wrong).
+- `⚠ feature_test 00601 covers story_id 00999 not present in run or completed elsewhere` — orphan cover.
+- `⚠ implementation story 00050 tag FEAT-9 does not match any feature in FEATURES` — tag drift.

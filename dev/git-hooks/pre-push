@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
-# git pre-push hook — Channel A of backup-on-push.
+# git pre-push hook — Channel A of backup-on-push + soft regression rerun.
 # Tracked source; .git/hooks/pre-push is a symlink to this file.
-# Never blocks the push: downstream script always exits 0, but we also
-# guard with `|| true` so any accidental non-zero never stops git.
+# Never blocks the push: every downstream script runs in fail-open mode,
+# and we also guard each invocation with `|| true` so any accidental
+# non-zero never stops git.
 
-"$(git rev-parse --show-toplevel)/dev/scripts/backup-on-push.sh" --channel git || true
+ROOT="$(git rev-parse --show-toplevel)"
+
+# Channel A — backup before push.
+"$ROOT/dev/scripts/backup-on-push.sh" --channel git || true
+
+# Red-Green regression rerun — best effort. Streams test results to Tracker
+# under every group visible to RG_API_KEY (project-clamped to Vector).
+# Skipped silently if RG_API_KEY is unset or Tracker is unreachable.
+# Set SKIP_RG_RERUN=1 to bypass entirely; set RG_GROUP=<slug> to scope.
+"$ROOT/dev/scripts/rg-rerun.sh" --soft || true
+
 exit 0

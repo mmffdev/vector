@@ -9,6 +9,14 @@ export type PlanWorkItem = {
   card_url: string | null;
   status: "todo" | "doing" | "completed" | "blocked" | string;
   notes?: string;
+  description?: string;
+  tags?: string[];
+  /** Red-Green Feature-Driven SOP fields — see .claude/skills/stories/SKILL.md §5 */
+  kind?: "implementation" | "feature_test";
+  feature_id?: string;
+  feature_name?: string;
+  covers?: string[];
+  tracker_group?: string;
 };
 
 export type PlanAcceptance = {
@@ -50,6 +58,8 @@ export type PlanDoc = {
   acceptance_criteria: PlanAcceptance[];
   risks: PlanRisk[];
   references: PlanReference[];
+  /** Red-Green Feature-Driven SOP — kebab `<scope>-<plan-slug>`, e.g. `backend-workspace-foundation`. */
+  tracker_group?: string;
 };
 
 export type PlanMeta = Pick<
