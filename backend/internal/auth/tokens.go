@@ -28,6 +28,9 @@ type AccessClaims struct {
 // pre-mig-017 tokens kept verifying. Refresh-token rotation has long
 // since drained every live token; the natural unmarshal of AccessClaims
 // is authoritative again.
+//
+// Contract is now pinned by tokens_test.go (TestAccessClaims_*) — any
+// future reintroduction of dual-accept will fail there before merge.
 
 func SignAccessToken(u *roletypes.User) (string, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
