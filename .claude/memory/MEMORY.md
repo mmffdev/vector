@@ -60,6 +60,7 @@
 - [No new PLA plans in solo-dev mode](feedback_no_new_pla_plans.md) — New work = sub-item in Vector_Scope.md; 53 existing PLA files preserved as archaeology; c_plan_index.md frozen at PLA-0055.
 - [Retros auto-only in solo-dev mode](feedback_retros_auto_only.md) — Loop-detector auto-retro stays as safety rail; manual <r> warns + offers lessons.md one-liner.
 - [Scratch outside the repo](feedback_scratch_outside_repo.md) — Design exploration, screenshots, ad-hoc seed dumps live in ~/Vector-scratch/, not the working tree.
+- [WIP cap = 5 themes in Vector_Scope.md](feedback_wip_cap_5.md) — Adding a new theme = swap; touching a parked theme = swap; SessionStart hook warns at 6+.
 
 ### Rules
 
