@@ -59,6 +59,7 @@
 - [Solo-dev mode (since 2026-05-17)](feedback_solo_dev_mode.md) — WIP cap 5, stories=title+AC, no new PLAs, indexes frozen, retros auto-only; hard rails unchanged; flips to prod-ready when first external user or launch date is set.
 - [No new PLA plans in solo-dev mode](feedback_no_new_pla_plans.md) — New work = sub-item in Vector_Scope.md; 53 existing PLA files preserved as archaeology; c_plan_index.md frozen at PLA-0055.
 - [Retros auto-only in solo-dev mode](feedback_retros_auto_only.md) — Loop-detector auto-retro stays as safety rail; manual <r> warns + offers lessons.md one-liner.
+- [Scratch outside the repo](feedback_scratch_outside_repo.md) — Design exploration, screenshots, ad-hoc seed dumps live in ~/Vector-scratch/, not the working tree.
 
 ### Rules
 
