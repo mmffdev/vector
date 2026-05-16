@@ -1,4 +1,6 @@
 - [User background and expertise](user_background.md) — UX/Art History degree, 20+ years Agile Coach & transformation lead; no formal engineering training.
+- [Stakeholder foundation mode — recommend right architecture, not minimum patch](user_stakeholder_foundation_mode.md) — Sole stakeholder, no deadline. Default to "do it right" over "ship today"; Option B over Option A.
+- [Design conversation IS the iteration loop](user_design_collaboration_mode.md) — Push and pull on ideas before coding; converge then build. Long-form architecture discussions are the work, not preamble to it.
 - [Read source when stuck or flying blind](feedback_read_source_when_stuck.md) — If a fix doesn't work, STOP and read 100–200 lines of source before grepping/curling/blaming cache; source is truth.
 - [Empirical blast-radius before any change](feedback_empirical_blast_radius.md) — Never rely on a prior agent's summary; read the actual workflow/script/snapshot files yourself before recommending or making cross-cutting changes.
 - [Deferrals always go in the tech-debt register](feedback_deferrals_register.md) — When I defer work ("hold until", "out of scope", "needs its own plan", "follow-up"), file it in docs/c_tech_debt.md with severity + trigger BEFORE the commit that creates the deferral. Spoken deferrals decay; register entries persist.
@@ -21,6 +23,7 @@
 - [Never assume a database (HARD RULE)](feedback_never_assume_database.md) — Always trace handler → main.go pool → routing doc before any psql query; no "probably lives in X".
 - [DB routing — service → pool → DB → tables](reference_db_routing_doc.md) — Canonical map at `docs/c_c_db_routing.md`; pool/DB/table for every Go service.
 - [Never wipe uncommitted](feedback_never_wipe_uncommitted.md) — Do not run destructive git clean; always preserve local work.
+- [Never git stash, period](feedback_never_git_stash.md) — Never run `git stash`/`stash pop`/`stash drop`; on 2026-05-16 a stash --include-untracked nuked hours of Rick's in-flight work across 17 files. Use surgical `git checkout <ref> -- <path>` or copy-to-/tmp instead.
 - [CSS canonical — buttons, tables, inline styles, tokens](css_canonical.md) — `.btn` + variant on every button; `tree_accordion-dense__*` for every table; no inline `style={{}}`; `--accent`/`--accent-ink` for interactive state, never `--brand`.
 - [CSS/HTML naming convention — hierarchical semantic pattern](css_naming_convention.md) — `root__Container_Child_leaf`; `__` once at root boundary, `_` for deeper nesting, `-` for modifiers only; propose full TSX+CSS chain before writing any class name.
 - [Test accounts — Claude-owned + human-owned](test_accounts.md) — All test logins (claude@, claude_N_test@, gadmin/padmin/user@) consolidated; HARD RULE on human accounts.
@@ -50,6 +53,8 @@
 - [Dev Setup page — route + source](reference_dev_page.md) — Route `/dev` → `app/(user)/dev/page.tsx` re-exports `dev/pages/DevPage.tsx`; rail cog icon links here.
 - [Tracker <rg> API key (Vector-clamped)](project_tracker_rg_api_key.md) — `trk_d6fd154a…` plaintext for rg-runner POSTs to Tracker; project_id auto-resolves from key.
 - [Workspace scope is invisible to the user](project_workspace_scope_invisible.md) — Backend-only mechanism: no URL params, no pickers, no UUIDs in client code; UI labels + permissions are the only legitimate signals.
+- [URL is path-only — no query state of any kind](feedback_url_is_path_only.md) — Generalises workspace rule: no `?type=`, `?status=`, `?sort=`, `?vid=`, nothing. Filters/sort live in React state or backend prefs.
+- [System layers vs display layers — never cross](feedback_system_vs_display_layers.md) — UUIDs/slots/URLs are project-locked + invisible; catalogue names/labels are tenant-free + visible. No display string is ever an identifier; no system identifier is ever user-facing.
 
 ### Rules
 
