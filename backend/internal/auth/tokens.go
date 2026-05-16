@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -24,25 +23,11 @@ type AccessClaims struct {
 	jwt.RegisteredClaims
 }
 
-// UnmarshalJSON accepts both `subscription_id` (new) and `tenant_id`
-// (legacy) for one release grace period so tokens issued by the
-// pre-rename build still verify. Prefer subscription_id when both
-// are present. After the grace period this whole method can go and
-// the struct's natural unmarshal will resume.
-func (c *AccessClaims) UnmarshalJSON(data []byte) error {
-	type alias AccessClaims
-	aux := struct {
-		LegacyTenantID string `json:"tenant_id"`
-		*alias
-	}{alias: (*alias)(c)}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-	if c.SubscriptionID == "" && aux.LegacyTenantID != "" {
-		c.SubscriptionID = aux.LegacyTenantID
-	}
-	return nil
-}
+// (Removed 2026-05-16 — TD-LIB-001.) A bespoke UnmarshalJSON used to
+// accept the legacy `tenant_id` claim alongside `subscription_id` so
+// pre-mig-017 tokens kept verifying. Refresh-token rotation has long
+// since drained every live token; the natural unmarshal of AccessClaims
+// is authoritative again.
 
 func SignAccessToken(u *roletypes.User) (string, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
