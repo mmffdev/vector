@@ -13790,3 +13790,111 @@ input[type="reset"] {
   margin-left: 8px;
   vertical-align: middle;
 }
+
+/* ─── <NavigationPie> ───────────────────────────────────────────────────────
+   Multi-select filter primitive: option segments around the chip as a
+   full-circle pie. White = unselected, --ink (black) = selected. Click
+   toggles immediately; no batched commit.
+*/
+.navigation-pie__Chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.navigation-pie__Chip:hover {
+  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
+}
+.navigation-pie__Chip-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent-ink, var(--ink));
+}
+.navigation-pie__Chip-open {
+  border-color: var(--ink);
+  /* When the pie is open, the chip needs to sit on top of the pie's hub
+     so it visually occupies the empty middle. Slightly bumped z keeps the
+     chip clickable even when an SVG segment is layered nearby. */
+  position: relative;
+  z-index: 2147483003;
+  box-shadow: 0 0 0 3px var(--surface, #fff);
+}
+.navigation-pie__Chip_icon {
+  color: var(--ink-subtle);
+  display: inline-flex;
+}
+.navigation-pie__Chip-active .navigation-pie__Chip_icon {
+  color: var(--accent);
+}
+.navigation-pie__Chip_label {
+  white-space: nowrap;
+}
+.navigation-pie__Chip_count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ink, #111);
+  color: var(--surface, #fff);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.navigation-pie__Pop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483000;
+  animation: navigation-pie-in 220ms ease-out both;
+}
+
+@keyframes navigation-pie-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.navigation-pie__Pop_segment {
+  fill: var(--surface, #fff);
+  stroke: color-mix(in srgb, var(--ink) 18%, transparent);
+  stroke-width: 1.5;
+  transition: fill 120ms ease;
+}
+.navigation-pie__Pop_segment:hover {
+  fill: color-mix(in srgb, var(--ink) 6%, var(--surface, #fff));
+}
+.navigation-pie__Pop_segment-selected {
+  fill: var(--ink, #111);
+  stroke: var(--ink, #111);
+}
+.navigation-pie__Pop_segment-selected:hover {
+  fill: color-mix(in srgb, var(--ink) 90%, white);
+}
+
+.navigation-pie__Pop_label {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink, #111);
+  white-space: nowrap;
+  user-select: none;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--surface, #fff) 90%, transparent);
+}
+.navigation-pie__Pop_label-selected {
+  color: var(--surface, #fff);
+  font-weight: 600;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--ink, #111) 60%, transparent);
+}

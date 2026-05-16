@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Panel from "@/app/components/Panel";
+import NavigationPie from "@/app/components/NavigationPie";
 
 /* ─── TOC data ─────────────────────────────────────────────────────── */
 
@@ -38,6 +39,14 @@ const COMPONENTS: TocEntry[] = [
       { id: "panel-improvements",    label: "Improvements" },
       { id: "panel-extensions",      label: "Extensions" },
       { id: "panel-cross-component", label: "Cross-component usage" },
+    ],
+  },
+  {
+    slug: "navigation-pie",
+    label: "NavigationPie",
+    h2s: [
+      { id: "navigation-pie-synopsis", label: "Synopsis" },
+      { id: "navigation-pie-playground", label: "Playground" },
     ],
   },
 ];
@@ -602,6 +611,70 @@ export default function DevComponentsPanel() {
             </div>
           </section>
         </article>
+
+        {/* ══════════════════════════════════════════════════════
+            NAVIGATION PIE
+        ══════════════════════════════════════════════════════ */}
+        <article style={{ marginTop: "var(--space-6)" }}>
+          <h1 className="dui-doc__h1" id="navigation-pie">NavigationPie</h1>
+          <p className="dui-doc__lead">
+            <code>app/components/NavigationPie.tsx</code> — multi-select filter primitive. Options
+            render as wedges of a full circle around a central chip; click a wedge to toggle
+            white ↔ filled. Singleton popover: only one open at a time; rollover onto another
+            chip dismisses; ESC and leave-circle commit.
+          </p>
+
+          <section id="navigation-pie-synopsis">
+            <h2 className="dui-doc__h2">Synopsis</h2>
+            <p className="dui-doc__p">
+              Chip-driven popover. Click the chip → pie opens; click a wedge → <code>onChange</code> fires
+              with the new selection (no batched commit). Pointer-leave-circle, ESC, or
+              click-chip-again all dismiss. Only one navigation-pie/starburst popover open at a time.
+            </p>
+            <pre className="dui-doc__code">{`<NavigationPie
+  label="Status"
+  options={[
+    { value: "open", label: "Open" },
+    { value: "in_progress", label: "In progress" },
+    { value: "done", label: "Done" },
+  ]}
+  selected={selected}
+  onChange={setSelected}
+/>`}</pre>
+          </section>
+
+          <section id="navigation-pie-playground">
+            <h2 className="dui-doc__h2">Playground</h2>
+            <NavigationPiePlayground />
+          </section>
+        </article>
+      </div>
+    </div>
+  );
+}
+
+function NavigationPiePlayground() {
+  const [selected, setSelected] = useState<string[]>([]);
+  const OPTS = [
+    { value: "open",        label: "Open" },
+    { value: "in_progress", label: "In progress" },
+    { value: "in_review",   label: "In review" },
+    { value: "done",        label: "Done" },
+    { value: "cancelled",   label: "Cancelled" },
+  ];
+  return (
+    <div className="dui-cat__section">
+      <div className="dui-cat__demo-label">Live</div>
+      <div className="dui-cat__demo">
+        <NavigationPie
+          label="Status"
+          options={OPTS}
+          selected={selected}
+          onChange={setSelected}
+        />
+      </div>
+      <div className="dui-cat__demo-label" style={{ marginTop: "var(--space-3)" }}>
+        Selection: {selected.length === 0 ? "(none)" : selected.join(", ")}
       </div>
     </div>
   );
