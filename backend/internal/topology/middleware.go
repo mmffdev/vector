@@ -315,6 +315,15 @@ func (l PoolWorkspaceLookup) HasActiveRole(ctx context.Context, workspaceID, use
 //
 // MUST run after RequireAuth. Mount alongside (or in place of) the
 // per-node ClampMiddleware on every list endpoint that reads org_nodes.
+// PLA-0053 / story 00576 (2026-05-16): resolution source changed from
+// `?ws=<slug|uuid>` URL parameter to the JWT workspace_id claim. The
+// URL surface was dropped to honour feedback_url_is_path_only (no URL
+// state of any kind). Legacy tokens that predate PLA-0053 carry no
+// workspace_id claim and fall back to FirstLiveWorkspace below.
+//
+// The companion workspace switcher (topology) now POSTs to
+// /_site/auth/switch-workspace to re-issue the JWT instead of
+// toggling ?ws= in the address bar.
 func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -325,26 +334,20 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 			}
 
 			var workspaceID uuid.UUID
-			ref := r.URL.Query().Get("ws")
-			if ref == "" {
+			if u.WorkspaceID != uuid.Nil {
+				// JWT carries the workspace_id claim — use it directly.
+				// Skips the FirstLiveWorkspace DB lookup. Role check
+				// below still runs so a forged claim (or a token
+				// issued before role-revocation) can't reach a
+				// workspace the actor has no active role on.
+				workspaceID = u.WorkspaceID
+			} else {
+				// Legacy-token rollout window: JWT predates PLA-0053
+				// and carries no workspace_id. Fall back to the
+				// subscription's first live workspace.
 				id, err := lookup.FirstLiveWorkspace(r.Context(), u.SubscriptionID)
 				if errors.Is(err, ErrNoWorkspace) {
 					writeWorkspaceClampError(w, http.StatusForbidden, "no_workspace")
-					return
-				}
-				if err != nil {
-					http.Error(w, "internal error", http.StatusInternalServerError)
-					return
-				}
-				workspaceID = id
-			} else {
-				// `?ws=<ref>` accepts either a UUID (canonical) or a
-				// slug (human-friendly URL). Slug existed first; UUID
-				// support was added so the frontend's switcher can
-				// pass the stable id regardless of slug churn.
-				id, err := lookup.ResolveRef(r.Context(), u.SubscriptionID, ref)
-				if errors.Is(err, ErrWorkspaceNotFound) {
-					writeWorkspaceClampError(w, http.StatusNotFound, "workspace_not_found")
 					return
 				}
 				if err != nil {
@@ -356,8 +359,9 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 
 			// AC#3: an actor asking for a workspace they have no role on
 			// gets 403, not 200-empty. The check applies to BOTH the
-			// slug-resolved and first-live paths so a tenant where the
-			// actor has zero grants still cannot read by accident.
+			// JWT-resolved and first-live paths so a tenant where the
+			// actor has zero grants still cannot read by accident, and
+			// a forged JWT claim can't bypass authorization.
 			has, err := lookup.HasActiveRole(r.Context(), workspaceID, u.ID)
 			if err != nil {
 				http.Error(w, "internal error", http.StatusInternalServerError)
