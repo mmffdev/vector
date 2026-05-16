@@ -7,7 +7,7 @@
 // WorkItemsTree.tsx wires these into ResourceTree props.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag, MdClose } from "react-icons/md";
+import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -17,6 +17,7 @@ import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
 import OwnerChip from "@/app/components/OwnerChip";
+import NavigationPie from "@/app/components/NavigationPie";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
   PrimaryCellTreeLines,
@@ -514,19 +515,30 @@ export function WorkItemsPanelHeader() {
 
 // ─── Filter state (URL-backed) ────────────────────────────────────────────────
 
+// Multi-value chips (NavigationPie): URL stores comma-joined lists per param.
+// `?type=epic,story` → ["epic","story"]. Backend currently only honours the
+// first value (see TD-FILTER-MULTI) — see filterQuery() in
+// useArtefactItemsWindow for the single-value cap until the artefactitems
+// handler learns `?item_type=a,b`.
 export interface WorkItemsFilters {
-  type: string | null;
-  status: string | null;
-  priority: string | null;
-  owner_id: string | null;
+  type: string[];
+  status: string[];
+  priority: string[];
+  owner_id: string[];
 }
 
 export const EMPTY_FILTERS: WorkItemsFilters = {
-  type: null,
-  status: null,
-  priority: null,
-  owner_id: null,
+  type: [],
+  status: [],
+  priority: [],
+  owner_id: [],
 };
+
+function readMulti(search: URLSearchParams, key: string): string[] {
+  const raw = search.get(key);
+  if (!raw) return [];
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
 
 // Single source of truth: URL search params. Each filter maps to one param
 // of the same name (so the URL stays human-readable). All updates route
@@ -544,21 +556,26 @@ export function useWorkItemsFilters(): {
 
   const filters = useMemo<WorkItemsFilters>(
     () => ({
-      type: search.get("type"),
-      status: search.get("status"),
-      priority: search.get("priority"),
-      owner_id: search.get("owner_id"),
+      type: readMulti(search, "type"),
+      status: readMulti(search, "status"),
+      priority: readMulti(search, "priority"),
+      owner_id: readMulti(search, "owner_id"),
     }),
     [search],
   );
 
-  const hasAny = !!(filters.type || filters.status || filters.priority || filters.owner_id);
+  const hasAny =
+    filters.type.length > 0 ||
+    filters.status.length > 0 ||
+    filters.priority.length > 0 ||
+    filters.owner_id.length > 0;
 
   const setFilter = useCallback(
     <K extends keyof WorkItemsFilters>(key: K, value: WorkItemsFilters[K]) => {
       const next = new URLSearchParams(search.toString());
-      if (value == null || value === "") next.delete(key);
-      else next.set(key, String(value));
+      const list = (value as unknown as string[]) ?? [];
+      if (list.length === 0) next.delete(key);
+      else next.set(key, list.join(","));
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
@@ -645,102 +662,52 @@ const PRIORITY_CHIP_OPTIONS = [
   { value: "low", label: "Low" },
 ];
 
-function FilterChip({
-  icon,
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | null;
-  options: { value: string; label: string }[];
-  onChange: (next: string | null) => void;
-}) {
-  const active = !!value;
-  const display = active ? (options.find((o) => o.value === value)?.label ?? value!) : label;
-  return (
-    <span
-      className={
-        "tree_accordion-dense__filterbar-chip" +
-        (active ? " tree_accordion-dense__filterbar-chip--active" : "")
-      }
-    >
-      <span className="tree_accordion-dense__filterbar-chip-icon">{icon}</span>
-      <span className="tree_accordion-dense__filterbar-chip-label">{display}</span>
-      <select
-        className="tree_accordion-dense__filterbar-chip-select"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-        aria-label={`Filter by ${label}`}
-      >
-        <option value="">All {label.toLowerCase()}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      {active && (
-        <button
-          type="button"
-          className="tree_accordion-dense__filterbar-chip-clear"
-          onClick={(e) => { e.stopPropagation(); onChange(null); }}
-          aria-label={`Clear ${label.toLowerCase()} filter`}
-        >
-          <MdClose size={12} />
-        </button>
-      )}
-    </span>
-  );
-}
-
 // Controlled filter chips. State lives in URL via useWorkItemsFilters().
-// Owner chip is a "Mine" toggle that filters to the current user — full
-// owner-picker UI requires a /api/users endpoint with users.list permission
-// (deferred to a Wave-4 Owner-column story).
+// Type / Status / Priority are multi-select NavigationPie chips; Owner
+// remains a single-toggle "Mine" chip until the user-picker story lands.
 export function WorkItemsFilterChips() {
   const { user } = useAuth();
   const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters();
   const meId = user?.id ?? null;
-  const ownerIsMe = !!filters.owner_id && filters.owner_id === meId;
+  const ownerIsMe = filters.owner_id.length > 0 && filters.owner_id[0] === meId;
 
   return (
     <>
-      <FilterChip
-        icon={<MdTune size={14} />}
+      <NavigationPie
         label="Type"
-        value={filters.type}
+        icon={<MdTune size={14} />}
         options={TYPE_CHIP_OPTIONS}
+        selected={filters.type}
         onChange={(v) => setFilter("type", v)}
       />
-      <FilterChip
-        icon={<MdOutlineCheckBox size={14} />}
+      <NavigationPie
         label="Status"
-        value={filters.status}
+        icon={<MdOutlineCheckBox size={14} />}
         options={STATUS_CHIP_OPTIONS}
+        selected={filters.status}
         onChange={(v) => setFilter("status", v)}
       />
-      <FilterChip
-        icon={<MdFlag size={14} />}
+      <NavigationPie
         label="Priority"
-        value={filters.priority}
+        icon={<MdFlag size={14} />}
         options={PRIORITY_CHIP_OPTIONS}
+        selected={filters.priority}
         onChange={(v) => setFilter("priority", v)}
       />
       <button
         type="button"
         className={
-          "tree_accordion-dense__filterbar-chip" +
-          (ownerIsMe ? " tree_accordion-dense__filterbar-chip--active" : "")
+          "navigation-pie__Chip" +
+          (ownerIsMe ? " navigation-pie__Chip-active" : "")
         }
-        onClick={() => setFilter("owner_id", ownerIsMe ? null : meId)}
+        onClick={() => setFilter("owner_id", ownerIsMe ? [] : (meId ? [meId] : []))}
         disabled={!meId}
         aria-pressed={ownerIsMe}
       >
-        <span className="tree_accordion-dense__filterbar-chip-icon">
+        <span className="navigation-pie__Chip_icon">
           <MdOutlinePerson size={14} />
         </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">
+        <span className="navigation-pie__Chip_label">
           {ownerIsMe ? "Mine" : "Owner"}
         </span>
       </button>
@@ -798,13 +765,23 @@ export function useArtefactItemsWindow(
   const [loadingWindow, setLoadingWindow] = useState(false);
 
   const filterQuery = useMemo(() => {
+    // TD-FILTER-MULTI: artefactitems handler reads each filter as a single
+    // string; multi-value selection from the Starburst chip is capped to
+    // the first selected value here. Lift this cap once the backend accepts
+    // `?item_type=epic,story` (split → ANY($1)).
     const parts: string[] = [];
-    if (filters.type) parts.push(`item_type=${encodeURIComponent(filters.type)}`);
-    if (filters.status) parts.push(`status=${encodeURIComponent(filters.status)}`);
-    if (filters.priority) parts.push(`priority=${encodeURIComponent(filters.priority)}`);
-    if (filters.owner_id) parts.push(`owner_id=${encodeURIComponent(filters.owner_id)}`);
+    if (filters.type[0])     parts.push(`item_type=${encodeURIComponent(filters.type[0])}`);
+    if (filters.status[0])   parts.push(`status=${encodeURIComponent(filters.status[0])}`);
+    if (filters.priority[0]) parts.push(`priority=${encodeURIComponent(filters.priority[0])}`);
+    if (filters.owner_id[0]) parts.push(`owner_id=${encodeURIComponent(filters.owner_id[0])}`);
     return parts.length ? `&${parts.join("&")}` : "";
   }, [filters.type, filters.status, filters.priority, filters.owner_id]);
+
+  // Use `&` to append pagination/sort/filter if resourceUrl already carries a
+  // querystring (e.g. "/work-items?item_type=risk" from p_wizard_risks.json),
+  // otherwise start a fresh one with `?`. Without this the page collapses to
+  // 0 rows because the backend sees `item_type=risk?limit=25`.
+  const sep = resourceUrl.includes("?") ? "&" : "?";
 
   const refetchWindow = useCallback(async () => {
     setLoadingWindow(true);
@@ -816,7 +793,7 @@ export function useArtefactItemsWindow(
       if (pageSize === "all") {
         const CHUNK = 1000;
         const first = await apiSite<{ items: WorkItem[]; total: number }>(
-          `${resourceUrl}?limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
+          `${resourceUrl}${sep}limit=${CHUNK}&offset=0${sortQuery}${filterQuery}`,
         );
         const totalRoots = first.total ?? first.items.length;
         if (totalRoots <= first.items.length) {
@@ -829,7 +806,7 @@ export function useArtefactItemsWindow(
         const rest = await Promise.all(
           offsets.map((o) =>
             apiSite<{ items: WorkItem[]; total: number }>(
-              `${resourceUrl}?limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
+              `${resourceUrl}${sep}limit=${CHUNK}&offset=${o}${sortQuery}${filterQuery}`,
             ),
           ),
         );
@@ -839,14 +816,14 @@ export function useArtefactItemsWindow(
       }
       const offset = pageIndex * pageSize;
       const res = await apiSite<{ items: WorkItem[]; total: number }>(
-        `${resourceUrl}?limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
+        `${resourceUrl}${sep}limit=${pageSize}&offset=${offset}${sortQuery}${filterQuery}`,
       );
       setWindowRoots(res.items);
       setTotal(res.total ?? res.items.length);
     } finally {
       setLoadingWindow(false);
     }
-  }, [resourceUrl, pageSize, pageIndex, sortKey, sortDir, filterQuery]);
+  }, [resourceUrl, sep, pageSize, pageIndex, sortKey, sortDir, filterQuery]);
 
   useEffect(() => { void refetchWindow(); }, [refetchWindow]);
 

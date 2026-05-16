@@ -99,9 +99,16 @@ export default function ObjectTree({
 
   // Filter or sort changes invalidate the page offset — page 5 of an
   // unfiltered/default-sorted set is meaningless on a filtered/resorted set.
+  // Multi-value filters are arrays; join to a stable string so identity
+  // churn from `useMemo` doesn't fire this effect every render.
+  const filterFingerprint =
+    filters.type.join(",") + "|" +
+    filters.status.join(",") + "|" +
+    filters.priority.join(",") + "|" +
+    filters.owner_id.join(",");
   useEffect(() => {
     setPageIndex(0);
-  }, [filters.type, filters.status, filters.priority, filters.owner_id, sortKey, sortDir]);
+  }, [filterFingerprint, sortKey, sortDir]);
 
   // resourceUrl resolution order:
   //   1. wizardConfig.resourceUrl (sidecar JSON — preferred path, PLA-0037)
