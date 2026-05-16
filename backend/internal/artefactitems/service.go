@@ -297,13 +297,32 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 	if err := rows.Err(); err != nil {
 		return WorkItemsSummary{ByType: map[string]int{}}, err
 	}
+	return out, nil
+}
 
-	// Back-compat: fill the fixed work-only fields from ByType. Outside
-	// scope="work" these stay 0 (the keys won't exist in the map).
-	out.Epics = out.ByType["epic"]
-	out.Stories = out.ByType["story"]
-	out.Tasks = out.ByType["task"]
-	out.Defects = out.ByType["defect"]
+// SummariseRisks (PLA-0052 Story 10) returns severity × likelihood aggregates
+// for the /risk page header. JWT-scoped to subscription. Risk artefacts only
+// (artefacts_types_name='Risk'). Reads risk_impact + risk_probability from
+// artefacts_fields_values; null/missing values are excluded from buckets but
+// still counted in Total.
+func (s *Service) SummariseRisks(ctx context.Context, subscriptionID uuid.UUID) (RisksSummary, error) {
+	var out RisksSummary
+	if s.vectorArtefactsPool == nil {
+		return out, nil
+	}
+	row := s.vectorArtefactsPool.QueryRow(ctx, sqlSummariseRisks, subscriptionID)
+	err := row.Scan(
+		&out.Total, &out.Open,
+		&out.BySeverity.Critical, &out.BySeverity.High, &out.BySeverity.Medium, &out.BySeverity.Low,
+		&out.ByLikelihood.High, &out.ByLikelihood.Medium, &out.ByLikelihood.Low,
+		// matrix[severity_row][likelihood_col]
+		&out.Matrix[0][0], &out.Matrix[0][1], &out.Matrix[0][2], // severity=high
+		&out.Matrix[1][0], &out.Matrix[1][1], &out.Matrix[1][2], // severity=medium
+		&out.Matrix[2][0], &out.Matrix[2][1], &out.Matrix[2][2], // severity=low
+	)
+	if err != nil {
+		return RisksSummary{}, err
+	}
 	return out, nil
 }
 
@@ -845,10 +864,12 @@ func buildOrderBy(sort, dir string) string {
 	}
 	switch sort {
 	case "item_type":
-		return fmt.Sprintf(`CASE lower(at.artefacts_types_name)
-			WHEN 'epic' THEN 1 WHEN 'story' THEN 2
-			WHEN 'defect' THEN 3 WHEN 'task' THEN 4
-			ELSE 99 END ASC, a.number %s`, d)
+		// TD-WORKITEMS-GENERIC pay-down (2026-05-16): sort by the type's
+		// own `artefacts_types_sort_order` column (seeded per type) instead
+		// of a hardcoded CASE WHEN that grew a line for every new type.
+		// Adding a new artefact type now requires only the seed migration —
+		// no Go change.
+		return fmt.Sprintf(`at.artefacts_types_sort_order ASC NULLS LAST, a.number %s`, d)
 	case "title":
 		return fmt.Sprintf("a.title %s, a.number ASC", d)
 	case "status":

@@ -321,23 +321,57 @@ type BulkFailure struct {
 }
 
 // WorkItemsSummary is the wire shape for GET /samantha/v2/{work-items,
-// portfolio-items}/summary. The fixed fields (Total/Epics/Stories/Tasks/
-// Defects/Blocked) are retained for backward compatibility with the v2
-// work-items page summary header. ByType is the scope-agnostic bucket map
-// keyed on `lower(artefacts_types.name)` and is populated for every scope —
-// portfolio/strategy consumers (themes, objectives, business epics, …)
-// read from ByType because they have no static field analogue.
+// portfolio-items}/summary.
 //
-// B21 (PLA-0037): added ByType so the same summary endpoint serves both
-// scopes. The fixed work-only fields stay zero outside scope="work".
+// History: previously carried fixed-shape fields (Epics/Stories/Tasks/
+// Defects, plus Risks per PLA-0052) alongside ByType. That fixed shape
+// was TD-WORKITEMS-GENERIC: every new artefact type forced a 4-file Go
+// change. Paid down 2026-05-16 by deleting the fixed fields entirely;
+// callers now read ByType[<lowercased type name>] for every type
+// (work-items page, portfolio-items page, etc.). Blocked stays because
+// it's a status flag, not a type; Total is the cross-cutting aggregate.
+//
+// Adding a new artefact type now requires only: (a) seed the type row,
+// (b) front-end reads ByType['<name>']. No Go change.
 type WorkItemsSummary struct {
 	Total   int            `json:"total"`
-	Epics   int            `json:"epics"`
-	Stories int            `json:"stories"`
-	Tasks   int            `json:"tasks"`
-	Defects int            `json:"defects"`
 	Blocked int            `json:"blocked"`
 	ByType  map[string]int `json:"by_type"`
+}
+
+// RisksSummary is the wire shape for GET /_site/risks/summary (PLA-0052
+// Story 10). Severity × likelihood matrix aggregator for the /risk page
+// header. Frontend-only consumer for now; public surface (/samantha/v2)
+// deferred until n8n needs it.
+//
+// Matrix layout (3×3, severity rows × likelihood columns):
+//
+//	            likelihood=high  likelihood=medium  likelihood=low
+//	severity=high   matrix[0][0]   matrix[0][1]       matrix[0][2]
+//	severity=medium matrix[1][0]   matrix[1][1]       matrix[1][2]
+//	severity=low    matrix[2][0]   matrix[2][1]       matrix[2][2]
+//
+// "critical" severity is reported via BySeverity.Critical but does not
+// participate in the 3×3 matrix; the UI shows critical as a separate banner.
+type RisksSummary struct {
+	Total        int                  `json:"total"`
+	Open         int                  `json:"open"`
+	BySeverity   RisksSummaryBySev    `json:"by_severity"`
+	ByLikelihood RisksSummaryByLik    `json:"by_likelihood"`
+	Matrix       [3][3]int            `json:"matrix"`
+}
+
+type RisksSummaryBySev struct {
+	Critical int `json:"critical"`
+	High     int `json:"high"`
+	Medium   int `json:"medium"`
+	Low      int `json:"low"`
+}
+
+type RisksSummaryByLik struct {
+	High   int `json:"high"`
+	Medium int `json:"medium"`
+	Low    int `json:"low"`
 }
 
 // UpsertFieldValueInput holds the value to write for one field on a work item.
@@ -370,7 +404,7 @@ var validFieldTypes = map[string]bool{
 // B21 (PLA-0037): introduced when artefactitems became scope-parameterised.
 var validItemTypesByScope = map[string]map[string]bool{
 	"work": {
-		"epic": true, "story": true, "task": true, "defect": true, "portfolio item": true,
+		"epic": true, "story": true, "task": true, "defect": true, "risk": true, "portfolio item": true,
 	},
 	// "strategy": nil — DB row lookup is authoritative, no static allow-list.
 }

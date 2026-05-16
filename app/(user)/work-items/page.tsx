@@ -22,13 +22,13 @@ export default function WorkItemsPage() {
   useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  // TD-WORKITEMS-GENERIC pay-down (2026-05-16): backend dropped the fixed
+  // per-type fields on /work-items/summary; everything ships via by_type.
+  // Frontend reads by_type[<lowercased type name>] for per-type counts.
   const [summary, setSummary] = useState<{
     total: number;
-    epics: number;
-    stories: number;
-    tasks: number;
-    defects: number;
     blocked: number;
+    by_type: Record<string, number>;
   } | null>(null);
 
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
@@ -50,11 +50,8 @@ export default function WorkItemsPage() {
     const qs = params.toString();
     return apiSite<{
       total: number;
-      epics: number;
-      stories: number;
-      tasks: number;
-      defects: number;
       blocked: number;
+      by_type: Record<string, number>;
     }>(`/work-items/summary${qs ? "?" + qs : ""}`)
       .then((r) => setSummary(r))
       .catch(() => setSummary(null));
@@ -78,12 +75,13 @@ export default function WorkItemsPage() {
   useRefetchOnPush({ topic, refetch });
 
   const summaryCells = useMemo(() => {
-    const s = summary ?? { total: 0, epics: 0, stories: 0, tasks: 0, defects: 0, blocked: 0 };
+    const s = summary ?? { total: 0, blocked: 0, by_type: {} };
+    const byType = s.by_type ?? {};
     return [
       { label: "TOTAL ITEMS", value: s.total },
-      { label: "EPICS", value: s.epics },
-      { label: "TASKS", value: s.tasks },
-      { label: "DEFECTS", value: s.defects, tone: "warning" as const },
+      { label: "EPICS", value: byType.epic ?? 0 },
+      { label: "TASKS", value: byType.task ?? 0 },
+      { label: "DEFECTS", value: byType.defect ?? 0, tone: "warning" as const },
       { label: "BLOCKED", value: s.blocked, tone: "warning" as const, glyph: "issue" as const },
     ];
   }, [summary]);

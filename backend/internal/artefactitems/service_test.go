@@ -120,15 +120,22 @@ func mainPool(t *testing.T) *pgxpool.Pool {
 
 // pickTestSubscription returns a subscription_id that has all four work
 // artefacts_types (epic/story/task/defect) in vector_artefacts.
-// Uses a well-known fixture sub if present; falls back to any sub with ≥4 types.
+// Uses the live dev fixture sub if present; falls back to any sub with ≥4 types.
+//
+// Column names updated 2026-05-16 (PLA-0052 Story 8) for the post-RF1.4.4
+// prefix convention. Was: subscription_id/scope/archived_at;
+// now: artefacts_types_id_subscription/artefacts_types_scope/artefacts_types_archived_at.
 func pickTestSubscription(t *testing.T, va *pgxpool.Pool) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
-	// Try the standard fixture subscription first.
-	const fixtureSub = "4dbcef71-f9d2-48e5-b19c-1bafc1767c67"
+	// Try the dev system subscription first — where mig 010 / 071 seed live.
+	const fixtureSub = "00000000-0000-0000-0000-000000000001"
 	var n int
 	_ = va.QueryRow(ctx,
-		`SELECT COUNT(*) FROM artefacts_types WHERE subscription_id=$1 AND scope='work' AND archived_at IS NULL`,
+		`SELECT COUNT(*) FROM artefacts_types
+		 WHERE artefacts_types_id_subscription=$1
+		   AND artefacts_types_scope='work'
+		   AND artefacts_types_archived_at IS NULL`,
 		fixtureSub).Scan(&n)
 	if n >= 4 {
 		id, _ := uuid.Parse(fixtureSub)
@@ -138,9 +145,9 @@ func pickTestSubscription(t *testing.T, va *pgxpool.Pool) uuid.UUID {
 	// Fall back: pick any sub with all four types.
 	var subID uuid.UUID
 	err := va.QueryRow(ctx, `
-		SELECT subscription_id FROM artefacts_types
-		WHERE scope='work' AND archived_at IS NULL
-		GROUP BY subscription_id
+		SELECT artefacts_types_id_subscription FROM artefacts_types
+		WHERE artefacts_types_scope='work' AND artefacts_types_archived_at IS NULL
+		GROUP BY artefacts_types_id_subscription
 		HAVING COUNT(*) >= 4
 		LIMIT 1`,
 	).Scan(&subID)
@@ -152,21 +159,24 @@ func pickTestSubscription(t *testing.T, va *pgxpool.Pool) uuid.UUID {
 
 // defaultFlowStateIDForType returns the is_initial flow_state for the given
 // item_type within the given subscription. Skips if not found.
+//
+// Column names updated 2026-05-16 (PLA-0052 Story 8) for the post-RF1.4.4
+// prefix convention.
 func defaultFlowStateIDForType(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType string) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
 	var id uuid.UUID
 	err := va.QueryRow(ctx, `
-		SELECT fs.id FROM flows_states fs
-		JOIN flows f ON f.id = fs.flow_id
-		JOIN artefacts_types at ON at.id = f.artefact_type_id
-		WHERE at.subscription_id = $1
-		  AND lower(at.name) = $2
-		  AND at.scope = 'work'
-		  AND f.is_default = TRUE
-		  AND f.archived_at IS NULL
-		  AND fs.is_initial = TRUE
-		  AND fs.archived_at IS NULL
+		SELECT fs.flows_states_id FROM flows_states fs
+		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		JOIN artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
+		WHERE at.artefacts_types_id_subscription = $1
+		  AND lower(at.artefacts_types_name) = $2
+		  AND at.artefacts_types_scope = 'work'
+		  AND f.flows_is_default = TRUE
+		  AND f.flows_archived_at IS NULL
+		  AND fs.flows_states_is_initial = TRUE
+		  AND fs.flows_states_archived_at IS NULL
 		LIMIT 1`,
 		subID, itemType,
 	).Scan(&id)
@@ -185,8 +195,11 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 
 	var atID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT id FROM artefacts_types
-		WHERE subscription_id=$1 AND scope='work' AND lower(name)=$2 AND archived_at IS NULL
+		SELECT artefacts_types_id FROM artefacts_types
+		WHERE artefacts_types_id_subscription=$1
+		  AND artefacts_types_scope='work'
+		  AND lower(artefacts_types_name)=$2
+		  AND artefacts_types_archived_at IS NULL
 		LIMIT 1`, subID, itemType,
 	).Scan(&atID); err != nil {
 		t.Skipf("no artefact_type %s for sub %s: %v", itemType, subID, err)
@@ -685,7 +698,10 @@ func TestArchiveWorkItem_CrossTenantBlocked(t *testing.T) {
 }
 
 // TestSummariseWorkItems_CountsWorkScoped verifies that Summary returns
-// non-negative counts and Total == Epics+Stories+Tasks+Defects is plausible.
+// non-negative counts and ΣByType <= Total. Post-TD-WORKITEMS-GENERIC
+// pay-down, all per-type counts live in the ByType map (no fixed-shape
+// fields), so adding a new artefact type doesn't require updating this
+// test — it sums whatever types the subscription has rows for.
 func TestSummariseWorkItems_CountsWorkScoped(t *testing.T) {
 	va := vaPool(t)
 	sub := pickTestSubscription(t, va)
@@ -698,9 +714,15 @@ func TestSummariseWorkItems_CountsWorkScoped(t *testing.T) {
 	if summary.Total < 0 {
 		t.Errorf("total < 0: %d", summary.Total)
 	}
-	subtotal := summary.Epics + summary.Stories + summary.Tasks + summary.Defects
+	subtotal := 0
+	for _, n := range summary.ByType {
+		if n < 0 {
+			t.Errorf("ByType bucket count < 0: %d", n)
+		}
+		subtotal += n
+	}
 	if subtotal > summary.Total {
-		t.Errorf("subtypes sum %d > total %d", subtotal, summary.Total)
+		t.Errorf("ΣByType (%d) > Total (%d)", subtotal, summary.Total)
 	}
 }
 
