@@ -498,6 +498,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
+> Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -798,6 +802,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
+> Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -877,6 +885,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -979,6 +988,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -1272,6 +1282,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
 > Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
 > Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1420,6 +1431,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
+> Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1701,6 +1716,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -1800,6 +1818,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -1873,6 +1894,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2626,6 +2650,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -2673,6 +2698,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 - **B8.8** Cursor-based pagination on list endpoints `[P2]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
+> Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
@@ -2754,6 +2780,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2941,6 +2969,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3623,6 +3652,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -3833,6 +3864,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -3897,6 +3930,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
 > Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -4010,6 +4045,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2f905e5` (2026-05-16): docs(tech-debt): file 3 more TDs from regression-triage pass
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -4104,6 +4141,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4240,6 +4278,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -4320,6 +4360,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -4494,6 +4535,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2f905e5` (2026-05-16): docs(tech-debt): file 3 more TDs from regression-triage pass
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -4613,6 +4655,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -4678,6 +4722,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
 > Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -4828,6 +4874,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -4859,6 +4907,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
 > Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -5058,6 +5107,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -5103,6 +5153,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
 > Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
 > Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
+> Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
