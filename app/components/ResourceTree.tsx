@@ -28,6 +28,7 @@ import React, {
 import {
   MdOutlineArrowForwardIos,
   MdSearch,
+  MdSettings,
   MdUnfoldMore,
   MdExpandLess,
   MdExpandMore,
@@ -247,6 +248,96 @@ function SortIcon({
       {active && dir === "asc" && <MdExpandLess size={16} />}
       {active && dir === "desc" && <MdExpandMore size={16} />}
     </button>
+  );
+}
+
+// ─── Cog-menu cell ────────────────────────────────────────────────────────────
+
+// Renders the gear button + dropdown menu for a single row. Anchored to its
+// own <td> so the menu position follows the row. ESC + outside-click dismiss.
+
+function CogMenuCell({
+  rowId,
+  items,
+  open,
+  onOpenChange,
+}: {
+  rowId: string;
+  items: MenuItem[];
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}) {
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onOpenChange(false);
+        btnRef.current?.focus();
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (menuRef.current?.contains(t)) return;
+      if (btnRef.current?.contains(t)) return;
+      onOpenChange(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [open, onOpenChange]);
+
+  return (
+    <td
+      className="tree_accordion-dense__cell tree_accordion-dense__cell--cog"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        ref={btnRef}
+        type="button"
+        className="tree_accordion-dense__cog-btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Row actions"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenChange(!open);
+        }}
+        data-row-id={rowId}
+      >
+        <MdSettings size={14} aria-hidden="true" />
+      </button>
+      {open && items.length > 0 && (
+        <div
+          ref={menuRef}
+          role="menu"
+          className="tree_accordion-dense__cog-menu"
+        >
+          {items.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="menuitem"
+              className="tree_accordion-dense__cog-menu-item"
+              disabled={item.disabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                item.onSelect();
+                onOpenChange(false);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </td>
   );
 }
 
@@ -655,9 +746,10 @@ function ResourceTreeImpl<T>({
   sort,
   dnd,
   selection,
+  cogMenu,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
-  // (cogMenu / patch / tone are accepted to keep the surface contract; column
+  // (patch / tone are accepted to keep the surface contract; column
   // renderers consume them via closures.)
   // Selection
   selectedId = null,
@@ -680,6 +772,7 @@ function ResourceTreeImpl<T>({
   const [childMap, setChildMap] = useState<Record<string, T[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [cogMenuOpenId, setCogMenuOpenId] = useState<string | null>(null);
 
   // ── DnD rank (opt-in via `dnd` prop) ─────────────────────────────────────
   // Parent owns `roots`. While a drop is in flight we shadow it with a local
@@ -794,15 +887,17 @@ function ResourceTreeImpl<T>({
   );
 
   // ── Column resize ────────────────────────────────────────────────────────
-  // Lead columns (selection checkbox + DnD drag handle) sit before the user
-  // columns so colgroup / thead / tbody share the same column count and the
-  // resize maths line up with the rendered DOM. Order is: selection → DnD →
-  // user-columns; consumers can enable either, both, or neither.
+  // Lead columns (selection checkbox + DnD drag handle + cog-menu) sit before
+  // the user columns so colgroup / thead / tbody share the same column count
+  // and the resize maths line up with the rendered DOM. Order is:
+  // selection → DnD → cog → user-columns; consumers can enable any subset.
   const SELECTION_COL_WIDTH = 28;
   const DRAG_COL_WIDTH = 22;
+  const COG_COL_WIDTH = 32;
   const selectionOffset = selection ? 1 : 0;
   const dndOffset = dnd ? 1 : 0;
-  const leadOffset = selectionOffset + dndOffset;
+  const cogOffset = cogMenu ? 1 : 0;
+  const leadOffset = selectionOffset + dndOffset + cogOffset;
   const primaryColIdx = leadOffset;
 
   // ID column width tracks the deepest currently-visible row so tree-line
@@ -838,16 +933,18 @@ function ResourceTreeImpl<T>({
     const lead: Array<number | null> = [];
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
+    if (cogMenu) lead.push(COG_COL_WIDTH);
     return [...lead, ...userWidths];
-  }, [columns, dnd, selection, dynamicIdColWidth]);
+  }, [columns, dnd, selection, cogMenu, dynamicIdColWidth]);
   const minWidthsArr = useMemo<number[]>(() => {
     const userMins = columns.map((c) => c.minWidth ?? 40);
     userMins[0] = dynamicIdColWidth;
     const lead: number[] = [];
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
+    if (cogMenu) lead.push(COG_COL_WIDTH);
     return [...lead, ...userMins];
-  }, [columns, dnd, selection, dynamicIdColWidth]);
+  }, [columns, dnd, selection, cogMenu, dynamicIdColWidth]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1172,6 +1269,14 @@ function ResourceTreeImpl<T>({
                 onClick={(e) => e.stopPropagation()}
               />
             )}
+            {cogMenu && (
+              <CogMenuCell
+                rowId={id}
+                items={cogMenu(item)}
+                open={cogMenuOpenId === id}
+                onOpenChange={(next) => setCogMenuOpenId(next ? id : null)}
+              />
+            )}
             {columns.map((col) => {
               const cellClass =
                 "tree_accordion-dense__cell" +
@@ -1309,6 +1414,13 @@ function ResourceTreeImpl<T>({
                 <th
                   key="__drag"
                   className="tree_accordion-dense__th tree_accordion-dense__th--drag"
+                  aria-hidden="true"
+                />
+              )}
+              {cogMenu && (
+                <th
+                  key="__cog"
+                  className="tree_accordion-dense__th tree_accordion-dense__th--cog"
                   aria-hidden="true"
                 />
               )}

@@ -9020,6 +9020,13 @@ input[type="reset"] {
   user-select: none;
 }
 
+/* Inside the dense tree, the drag cell shares the row gridline with the
+   other cells — match the catalog cell's border-bottom so the row border
+   is unbroken across the drag column. */
+.tree_accordion-dense__table .drag-handle-cell {
+  border-bottom: 1px solid var(--border);
+}
+
 .drag-handle-cell:active {
   cursor: grabbing;
 }
@@ -9048,6 +9055,83 @@ input[type="reset"] {
 
 .drag-row--drop-below {
   box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+/* ── Cog-menu column (per-row actions: edit, duplicate, move, split, delete) ── */
+.tree_accordion-dense__th--cog,
+.tree_accordion-dense__cell--cog {
+  width: 32px;
+  text-align: center;
+  padding-left: 2px;
+  padding-right: 2px;
+  position: relative;
+  overflow: visible;
+  box-sizing: border-box;
+}
+.tree_accordion-dense__cog-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 120ms ease, background 120ms ease;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+.tree_accordion-dense__cell--cog:hover .tree_accordion-dense__cog-btn,
+.tree_accordion-dense__cog-btn:hover,
+.tree_accordion-dense__cog-btn:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  outline: none;
+}
+.tree_accordion-dense__cog-btn[aria-expanded="true"] {
+  opacity: 1;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.tree_accordion-dense__cog-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  min-width: 140px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.tree_accordion-dense__cog-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tree_accordion-dense__cog-menu-item:hover:not(:disabled),
+.tree_accordion-dense__cog-menu-item:focus-visible {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  outline: none;
+}
+.tree_accordion-dense__cog-menu-item:disabled {
+  color: var(--ink-subtle);
+  cursor: not-allowed;
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -11709,6 +11793,16 @@ input[type="reset"] {
  * shout when there's nothing to act on.
  * ─────────────────────────────────────────────────────────────────── */
 
+.page-summary-panel {
+  /* Sticky so the page scrolls UNDER the stats strip and keeps it visible.
+     Bleed into the scroll-root's 30px top padding (.rd-shell__main-body)
+     so the bar locks flush against the breadcrumb chrome with no gap. */
+  position: sticky;
+  top: -30px;
+  z-index: 30;
+  background: var(--surface);
+}
+
 .page-summary-panel .panel__body {
   padding: 0;
 }
@@ -11801,9 +11895,12 @@ input[type="reset"] {
 /* Panel header — numbered badge + title + subtitle */
 .tree_accordion-dense__panel-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 4px 0 12px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
 }
 .tree_accordion-dense__panel-head-num {
   flex-shrink: 0;
@@ -11847,8 +11944,7 @@ input[type="reset"] {
   gap: 8px;
   padding: 10px 12px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: none;
   margin-bottom: 12px;
 }
 .tree_accordion-dense__filterbar-search {
@@ -12009,7 +12105,15 @@ input[type="reset"] {
    and background so the component does not depend on the global .table-wrap
    primitive (which has overflow:hidden and would clip the sticky header). */
 .tree_accordion-dense__scroll {
-  max-height: min(80vh, 720px);
+  /* Fill the viewport from the table's top edge down to the bottom
+     pagination bar. The dvh unit tracks browser chrome (mobile address bar)
+     and the reserved chrome cushion accounts for: top nav (~44px),
+     breadcrumbs/heading (~64px), summary strip (~80px), panel-head
+     (~52px), filter bar (~52px), top pagination (~36px), bottom
+     pagination (~36px). Tune --tree-chrome to retune without touching the
+     calc. */
+  --tree-chrome: 360px;
+  max-height: calc(100dvh - var(--tree-chrome));
   overflow-x: hidden; /* Rally-style: table fills container, never wider */
   overflow-y: auto;
   border: 1px solid var(--border);
@@ -12271,6 +12375,8 @@ input[type="reset"] {
 .tree_accordion-dense__cell--selection input[type="checkbox"] {
   margin: 0;
   cursor: pointer;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 /* Summary cell inner: tree indent → expander → type-badge → title */
@@ -12456,9 +12562,12 @@ input[type="reset"] {
   border-bottom: 0;
 }
 /* Bottom bar sits flush below the table; the scroll container owns the
-   shared divider, so we drop our top border. */
+   shared divider, so we drop our top border. The bottom corners match
+   the outer panel radius so the row flows into the panel border. */
 .tree_accordion-dense__pagination--bottom {
   border-top: 0;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 .tree_accordion-dense__pagination-info {
   flex: 0 0 auto;
@@ -13274,8 +13383,10 @@ input[type="reset"] {
 }
 
 .flow-rules__rail-row {
-  display: grid;
-  grid-template-columns: 22px 10px 1fr;
+  /* Flex so the row sizes to whatever lead chrome the caller renders
+     (StateRail emits just dot+name; CircularAdditor adds an index pill).
+     Fixed-width lead elements + flex-grow name handles both cases. */
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   width: 100%;
@@ -13336,6 +13447,8 @@ input[type="reset"] {
 }
 
 .flow-rules__rail-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -7,6 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import BulkActionBar from "@/app/components/BulkActionBar";
+import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import {
@@ -149,6 +150,19 @@ export default function ObjectTree({
     [setSort],
   );
 
+  // Per-row cog-menu items. Wiring deferred — handlers log for now; the
+  // visual surface and dropdown behaviour are the contract for this card.
+  const buildCogMenu = useCallback(
+    (row: WorkItem) => [
+      { key: "edit",      label: "Edit",      onSelect: () => console.log("edit", row.id) },
+      { key: "duplicate", label: "Duplicate", onSelect: () => console.log("duplicate", row.id) },
+      { key: "move",      label: "Move",      onSelect: () => console.log("move", row.id) },
+      { key: "split",     label: "Split",     onSelect: () => console.log("split", row.id) },
+      { key: "delete",    label: "Delete",    onSelect: () => console.log("delete", row.id) },
+    ],
+    [],
+  );
+
   // Build config based on mode or accept from wizardConfig (p_wizard.json).
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
     if (wizardConfig) {
@@ -182,7 +196,11 @@ export default function ObjectTree({
 
   return (
     <div>
-      {config.panelHeader}
+      {config.panelHeader && (
+        <Panel name="panel_head" helpable={false} border={{ type: "none" }} margin={["0", "0", "0", "0"]}>
+          {config.panelHeader}
+        </Panel>
+      )}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
       <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
       <ResourceTree<WorkItem>
@@ -199,6 +217,7 @@ export default function ObjectTree({
         sort={{ key: sortKey, dir: sortDir, onChange: handleSortChange }}
         {...(config.dndEnabled && { dnd: { resourceType: config.dndResourceType } })}
         selection={{ mode: "multi", selectedIds, onSelectionChange: setSelectedIds }}
+        cogMenu={buildCogMenu}
         selectedId={selectedId}
         onSelect={onSelect}
         pageIndex={pageIndex}
