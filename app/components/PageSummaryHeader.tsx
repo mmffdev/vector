@@ -66,7 +66,7 @@ export default function PageSummaryHeader({
   name = "page_summary",
 }: PageSummaryHeaderProps) {
   return (
-    <Panel name={name} className="page-summary-panel">
+    <Panel name={name} className="page-summary-panel" helpable={false}>
       <div
         className="page-summary"
         role="group"
