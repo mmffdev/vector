@@ -15,7 +15,6 @@ backend/.env.production
 .env.local
 .env*.local
 dev/remote_setup.html
-.claude/settings.json
 .claude/settings.json.bak
 .claude/worktrees/
 .claude/handoffs/*.tar.gz
