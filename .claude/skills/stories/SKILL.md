@@ -1,10 +1,56 @@
 ---
 name: stories
-description: 7-gate story acceptance system; Fibonacci estimation (F0–F13); auto-split F21+; AIGEN + phase + feature + EST + RISK tags.
+description: Story creation. Solo-dev mode (default) — title + acceptance criteria, written as a one-line entry into Vector_Scope.md. Prod-ready mode (--full) — original 7-gate flow with Fibonacci, phase/feature/EST/RISK tags, PLA plan files.
 allowed-tools: Bash, Read, Write, Edit
 ---
 
 # /stories
+
+Two modes since 2026-05-17. Pick by flag.
+
+| Mode | Trigger | Output | When |
+|---|---|---|---|
+| **Solo-dev** (default) | `/stories` with no flag | One-line entry appended to `Vector_Scope.md` under the relevant theme; carries title + 1–3 AC | Solo hobby work, fast capture, no governance overhead |
+| **Prod-ready** | `/stories --full` | Full 7-gate flow → `dev/plans/PLA-NNNN.json` + index update + Tracker group provisioning | First external user committed OR launch dated; see [[solo-dev-mode]] |
+
+---
+
+## Solo-dev mode (default)
+
+A story is title + acceptance criteria (the red-green test). Nothing else mandatory. Skill behaviour:
+
+1. **Parse the user's request** into discrete user-observable units. Split-rules still apply (no "and", no mixed layers, no vague verbs like "refactor"/"improve") — but apply judgement, don't run a checklist.
+
+2. **For each story, produce:**
+   - **Title** — one short imperative line.
+   - **AC** — at least one observable assertion ("page renders X", "endpoint returns Y", "table shows Z"). 1–3 lines. No 7-gate filing.
+
+3. **Find the right theme in `Vector_Scope.md`.** The 5 themes currently live are RF1, FLOW1, F1, B18.7, FE-POR-0002 (per [[solo-dev-mode]]). If the story doesn't fit any of them, **stop and ask** — solo-dev mode is intentionally narrow; a story that doesn't fit an in-flight theme either belongs in the Parked section (rare; needs a swap) or is scope creep. Don't invent a new top-level area in solo-dev mode.
+
+4. **Append** one new sub-item under the chosen theme, format:
+   ```
+   - 🔵 IN FLIGHT **<REF>.<next-sub-id>** <Title>. AC: <one-line>. `[P2]`
+   ```
+   Where `<REF>` is the theme ref (`RF1.1`, `FE-POR-0002.2`, etc.) and `<next-sub-id>` is the next integer in that subsection.
+
+5. **Report** what was appended, the new ref, and a one-line edit-the-AC-here pointer. No plan JSON. No Tracker. No commit (user commits when they're ready).
+
+**Hard rules in solo-dev mode (the only ones that survive):**
+
+- Title must be specific (no "refactor"/"improve"/"fix"/"handle"/"support" without a noun + verb pair).
+- AC must be verifiable (starts with an observable verb).
+- One story = one user-observable unit (split-rules still apply).
+- If a story would touch a parked theme, surface the conflict — don't paper over it.
+
+Everything else (PLA allocation, Fibonacci, RISK, FEAT, Tracker groups, feature_test parity, 95% confidence on the plan, 85% confidence on the gate) is **off by default**. Re-enable with `--full`.
+
+**Why this mode exists:** in a solo hobby project the 7 gates were imposing the friction of a 20-person team without the payoff. The forcing function is shipping, not paperwork. Process surfaces what the work is, doesn't define it.
+
+---
+
+## Prod-ready mode (`--full` flag)
+
+The original 7-gate system below. Re-activated when prod-ready mode flips (first external user committed OR launch dated). Until then, only invoke with explicit `--full`.
 
 Turn a plan or work description into shippable user stories with a 7-gate acceptance system. Stories are persisted as entries in a `PLA-NNNN.json` plan file under `dev/plans/`. The Plans tab renders the file. Backlog management lives in plan JSON only — no external kanban.
 
