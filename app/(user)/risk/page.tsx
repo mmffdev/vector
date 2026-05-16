@@ -87,12 +87,13 @@ export default function RiskPage() {
 
   const summaryCells = useMemo(() => {
     const s = summary ?? EMPTY_SUMMARY;
-    // TD-SUMMARY-TONE paid down 2026-05-16: Critical now uses the `danger`
-    // tone, distinct from the `warning` amber on Open / High Sev / High Lik.
+    // PageSummaryHeader's SummaryCellTone is currently `neutral | warning`
+    // only — critical-severity is collapsed into the same warning tone for
+    // now. When the Page Summary Header gains a `danger` tone, split it out.
     return [
       { label: "TOTAL RISKS", value: s.total },
       { label: "OPEN",        value: s.open,                 tone: "warning" as const, glyph: "issue" as const },
-      { label: "CRITICAL",    value: s.by_severity.critical, tone: "danger"  as const, glyph: "issue" as const },
+      { label: "CRITICAL",    value: s.by_severity.critical, tone: "warning" as const, glyph: "issue" as const },
       { label: "HIGH SEV",    value: s.by_severity.high,     tone: "warning" as const },
       { label: "HIGH LIK",    value: s.by_likelihood.high,   tone: "warning" as const },
     ];

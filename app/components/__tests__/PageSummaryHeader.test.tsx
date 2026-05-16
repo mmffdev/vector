@@ -51,40 +51,6 @@ describe("PageSummaryHeader", () => {
     expect(blocked.querySelector(".page-summary__value")?.textContent).toBe("6");
   });
 
-  // TD-SUMMARY-TONE pay-down (2026-05-16) — "danger" tier mirrors --issue's
-  // value-gating contract: only paints when value > 0, takes precedence over
-  // --issue when both could apply (tone is single-valued so this is moot in
-  // practice, but the precedence keeps future tone additions composable).
-  it("paints --danger only on danger cells with value > 0; takes precedence over --issue", () => {
-    const { container } = render(
-      <PageSummaryHeader
-        cells={[
-          { label: "TOTAL RISKS", value: 12 },
-          { label: "OPEN", value: 5, tone: "warning", glyph: "issue" },
-          { label: "CRITICAL ZERO", value: 0, tone: "danger", glyph: "issue" },
-          { label: "CRITICAL HOT", value: 3, tone: "danger", glyph: "issue" },
-        ]}
-      />,
-    );
-    const cells = container.querySelectorAll<HTMLElement>(".page-summary__cell");
-    expect(cells.length).toBe(4);
-
-    const [total, open, critZero, critHot] = cells;
-    expect(total.classList.contains("page-summary__cell--danger")).toBe(false);
-    expect(total.classList.contains("page-summary__cell--issue")).toBe(false);
-
-    expect(open.classList.contains("page-summary__cell--issue")).toBe(true);
-    expect(open.classList.contains("page-summary__cell--danger")).toBe(false);
-
-    // value=0 resting state: no modifier even on danger tone
-    expect(critZero.classList.contains("page-summary__cell--danger")).toBe(false);
-    expect(critZero.classList.contains("page-summary__cell--issue")).toBe(false);
-
-    // value>0 danger tone: gets --danger, NOT --issue (precedence)
-    expect(critHot.classList.contains("page-summary__cell--danger")).toBe(true);
-    expect(critHot.classList.contains("page-summary__cell--issue")).toBe(false);
-  });
-
   it("renders the search slot and calls onChange with the new value", () => {
     const onChange = vi.fn();
     render(
