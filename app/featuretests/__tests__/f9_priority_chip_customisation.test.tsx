@@ -23,6 +23,31 @@ vi.mock("@/app/contexts/AuthContext", () => ({
   useAuth: () => mockAuthState,
 }));
 
+// Mock the priority catalogue's hook so the chip-options hook sees a
+// known set including a tenant-added 'Showstopper' row (slot=null).
+// Provider export is preserved via importActual so the "module
+// exports provider" assertion still passes.
+vi.mock("@/app/contexts/ArtefactPriorityCatalogueContext", async () => {
+  const actual = await vi.importActual<typeof import("@/app/contexts/ArtefactPriorityCatalogueContext")>(
+    "@/app/contexts/ArtefactPriorityCatalogueContext",
+  );
+  return {
+    ...actual,
+    useArtefactPriorityCatalogue: () => ({
+      workspaceId: "ws-A-uuid",
+      priorities: [
+        { id: "11111111-1111-1111-1111-111111111111", workspace_id: "ws-A-uuid", name: "Showstopper", slot: null,           sort_order: -1, colour: null, archived_at: null, created_at: "", updated_at: "" },
+        { id: "22222222-2222-2222-2222-222222222222", workspace_id: "ws-A-uuid", name: "Critical",    slot: "pri_critical", sort_order: 0,  colour: null, archived_at: null, created_at: "", updated_at: "" },
+        { id: "33333333-3333-3333-3333-333333333333", workspace_id: "ws-A-uuid", name: "High",        slot: "pri_high",     sort_order: 1,  colour: null, archived_at: null, created_at: "", updated_at: "" },
+        { id: "44444444-4444-4444-4444-444444444444", workspace_id: "ws-A-uuid", name: "Medium",      slot: "pri_medium",   sort_order: 2,  colour: null, archived_at: null, created_at: "", updated_at: "" },
+        { id: "55555555-5555-5555-5555-555555555555", workspace_id: "ws-A-uuid", name: "Low",         slot: "pri_low",      sort_order: 3,  colour: null, archived_at: null, created_at: "", updated_at: "" },
+      ],
+      loading: false,
+      error: null,
+    }),
+  };
+});
+
 beforeEach(() => {
   mockAuthState.user = {
     id: "u1",

@@ -19,6 +19,7 @@ import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
 import OwnerChip from "@/app/components/OwnerChip";
 import NavigationPie from "@/app/components/NavigationPie";
 import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
+import { usePriorityChipOptions } from "@/app/hooks/usePriorityChipOptions";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
   PrimaryCellTreeLines,
@@ -651,15 +652,12 @@ export function useWorkItemsSort(): {
 // `?flow_state_id=<uuid>[,<uuid>]` backend param without breaking;
 // the kind values are deliberately wrapped at the request layer.
 //
-// Priority stays a project-locked text enum (multi-value).
+// PLA-0055 / story 00599 — Priority chip options come from
+// usePriorityChipOptions (per-workspace artefact_priorities catalogue).
+// Hardcoded PRIORITY_CHIP_OPTIONS was deleted as part of this story;
+// tenant-added custom priorities now appear in the chip with no code
+// change.
 const STATUS_CHIP_OPTIONS_TRANSITIONAL: { value: string; label: string }[] = [];
-
-const PRIORITY_CHIP_OPTIONS = [
-  { value: "critical", label: "Critical" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
 
 // Controlled filter chips. State lives in URL via useWorkItemsFilters().
 // Type / Status / Priority are multi-select NavigationPie chips; Owner
@@ -673,6 +671,9 @@ export function WorkItemsFilterChips() {
   // PLA-0054 / story 00590 — Type options sourced from the workspace
   // catalogue. Values are artefact_type UUIDs.
   const typeOptions = useChipTypeOptions("work");
+  // PLA-0055 / story 00599 — Priority options sourced from the
+  // workspace artefact_priorities catalogue. Values are UUIDs.
+  const priorityOptions = usePriorityChipOptions();
 
   return (
     <>
@@ -693,7 +694,7 @@ export function WorkItemsFilterChips() {
       <NavigationPie
         label="Priority"
         icon={<MdFlag size={14} />}
-        options={PRIORITY_CHIP_OPTIONS}
+        options={priorityOptions}
         selected={filters.priority}
         onChange={(v) => setFilter("priority", v)}
       />
@@ -778,7 +779,7 @@ export function useArtefactItemsWindow(
     const parts: string[] = [];
     if (filters.type.length)     parts.push(`item_type_id=${filters.type.map(encodeURIComponent).join(",")}`);
     if (filters.status.length)   parts.push(`flow_state_id=${filters.status.map(encodeURIComponent).join(",")}`);
-    if (filters.priority.length) parts.push(`priority=${filters.priority.map(encodeURIComponent).join(",")}`);
+    if (filters.priority.length) parts.push(`priority_id=${filters.priority.map(encodeURIComponent).join(",")}`);
     if (filters.owner_id.length) parts.push(`owner_id=${filters.owner_id.map(encodeURIComponent).join(",")}`);
     return parts.length ? `&${parts.join("&")}` : "";
   }, [filters.type, filters.status, filters.priority, filters.owner_id]);

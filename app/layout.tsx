@@ -7,6 +7,7 @@ import { AuthProvider } from "@/app/contexts/AuthContext";
 import { PageAccessProvider } from "@/app/contexts/PageAccessContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
 import { ArtefactTypeCatalogueProvider } from "@/app/contexts/ArtefactTypeCatalogueContext";
+import { ArtefactPriorityCatalogueProvider } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import { Toaster } from "@/app/components/Toaster";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
 import AddressDevtool from "@/app/components/AddressDevtool";
@@ -53,11 +54,13 @@ export default function RootLayout({
         <DevTabProvider>
           <AuthProvider>
             <ArtefactTypeCatalogueProvider>
-              <PageAccessProvider>
-                {children}
-                <AddressDevtool />
-                <AddressAnchorResolver />
-              </PageAccessProvider>
+              <ArtefactPriorityCatalogueProvider>
+                <PageAccessProvider>
+                  {children}
+                  <AddressDevtool />
+                  <AddressAnchorResolver />
+                </PageAccessProvider>
+              </ArtefactPriorityCatalogueProvider>
             </ArtefactTypeCatalogueProvider>
           </AuthProvider>
         </DevTabProvider>
