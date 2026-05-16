@@ -11,6 +11,28 @@ Honest retrospective on the **last segment** of work since the most recent "go" 
 
 ## Behaviour
 
+**Solo-dev mode triage (since 2026-05-17).** Before running the 7-gate flow, branch by trigger mode:
+
+- **`--auto-loop`** → loop-detector circuit breaker fired. Run the full retro immediately — this path is **always on**, both modes. The loop detector is a safety rail.
+- **Manual `<r>` invocation in solo-dev mode** → warn the user this is heavyweight for a solo hobby project and offer the lightweight alternative:
+
+  ```
+  Solo-dev mode is active. A full retro writes RETRO-NNN.json, updates the ledger,
+  may auto-promote findings to S1 tech debt, and bumps three docs. For a solo session
+  that's a lot of paperwork for one observation.
+
+  Lightweight option: append a one-line entry to lessons.md at repo root
+  (date + observation + 1-line takeaway). Pick:
+    [1] full retro (the original flow below)
+    [2] lessons.md one-liner (recommended for solo)
+    [3] cancel
+  ```
+
+  Wait for the user's pick. `[2]` writes one line to root `lessons.md` and exits.
+  `[1]` proceeds to step 1 below. `[3]` exits cleanly.
+
+If the user passes `--full` explicitly, skip the warning and proceed straight to step 1.
+
 1. Read `.claude/commands/c_retro.md` for the full protocol — gates, tables, ledger contract, reversal validation, sync function with self-check.
 2. Determine trigger mode:
    - `--auto-loop` → invoked by the loop detector hook (sentinel file `/tmp/.claude-retro-loop-trigger` exists). Honest assessment lead-in = "Loop detected". Do NOT clear the sentinel until the retro JSON is written and the ledger is updated.

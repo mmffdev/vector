@@ -1,5 +1,11 @@
 # Retro Index
 
+## FROZEN — solo-dev mode (since 2026-05-17)
+
+**Counter paused at `RETRO-000`.** Manual `<r>` is downgraded in solo-dev mode — the skill warns and offers a one-line entry to root [`lessons.md`](../lessons.md) instead. The loop-detector auto-retro (`<r> --auto-loop`) remains always-on as a safety rail; if it ever fires, RETRO-001 will land here. Re-activates when prod-ready mode flips. See [`.claude/memory/feedback_solo_dev_mode.md`](../.claude/memory/feedback_solo_dev_mode.md).
+
+---
+
 **Last issued:** `RETRO-000`
 
 ## Format
