@@ -56,6 +56,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 	"github.com/mmffdev/vector-backend/internal/artefactitems"
+	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -558,6 +559,7 @@ func main() {
 	// Artefact-types settings handler (Customisation page).
 	// Serves GET + PATCH for name/prefix/description/colour on all live types.
 	artefactTypesH := artefacttypes.NewHandler(artefacttypes.NewService(vaPool))
+	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
 
 	// PLA-0053 / story 00578: hoist the workspace-clamp lookup once so
 	// every route group that needs the JWT-anchored workspace clamp
@@ -1241,6 +1243,16 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 		artefactTypesH.Mount(r)
+	})
+
+	// PLA-0055 / story 00596 — per-workspace priorities CRUD. Same
+	// auth/clamp shape as /artefact-types: every read narrows to the
+	// JWT-resolved workspace via WorkspaceClampMiddleware.
+	r.Route("/artefact-priorities", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+		artefactPrioritiesH.Mount(r)
 	})
 
 	// ---- /portfolio-models ----

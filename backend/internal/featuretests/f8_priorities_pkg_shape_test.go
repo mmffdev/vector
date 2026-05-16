@@ -1,18 +1,10 @@
-//go:build f8_priorities_pkg
-// +build f8_priorities_pkg
-
-// F8 — artefactpriorities package shape (compile-time). Gated behind
-// `f8_priorities_pkg` build tag.
+// F8 — artefactpriorities package shape. Promoted to the default test
+// set once story 00596 created the artefactpriorities Go package.
 //
-// Story 00596 creates a new Go package
-// `backend/internal/artefactpriorities/` with NewService + NewHandler
-// + the Priority DTO. Until that package exists, the imports below
-// are compile errors that would block every other test in the
-// featuretests package.
-//
-// Tag OFF on main: this file is excluded; the rest of the suite builds
-// and runs. Implementer of story 00596 removes the tag once the
-// package lands.
+// History: this file was gated behind the `f8_priorities_pkg` build
+// tag while the package did not exist (importing it was a compile
+// error that would have blocked every test in the featuretests
+// package). Tag removed now that the package ships.
 //
 // Tracker group: `frontend-priority-customisation`, feature `F8`.
 
