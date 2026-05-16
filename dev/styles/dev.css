@@ -300,6 +300,26 @@
   background: var(--success-bg);
 }
 
+/* Neutral numeric input — same shape as .dev-confirm-input but without the
+   danger framing. Use when the field is a parameter, not a destructive
+   confirmation. */
+.dev-num-input {
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono, monospace);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+  width: 6rem;
+  transition: border-color 0.15s ease;
+}
+.dev-num-input:focus {
+  border-color: var(--accent);
+}
+
 .dev-confirm-hint {
   font-size: var(--text-xs);
   color: var(--ink-muted);

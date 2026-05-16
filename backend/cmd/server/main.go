@@ -978,6 +978,7 @@ func main() {
 				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
 				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
 				r.Post("/dev/master-reset", devResetH.MasterReset)
+				r.Post("/dev/seed-risks", devResetH.SeedRisks)
 			})
 		})
 

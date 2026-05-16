@@ -398,6 +398,15 @@ export const admin = {
    *  Does NOT touch users, roles, permissions, pages, or nav prefs. */
   devMasterReset: () =>
     apiSite<{ success: boolean; message: string }>("/admin/dev/master-reset", { method: "POST" }),
+
+  /** gadmin-only (dev): seed N Risk artefacts (default 200) into the caller's
+   *  subscription, assigned to assignee_id (default: caller). Defined in
+   *  backend/internal/portfoliomodels/dev_reset.go (SeedRisks). */
+  devSeedRisks: (params: { count?: number; assignee_id?: string } = {}) =>
+    apiSite<{ success: boolean; inserted: number; message: string }>(
+      "/admin/dev/seed-risks",
+      { method: "POST", body: JSON.stringify(params) },
+    ),
 };
 
 // Pages: app/(user)/portfolio-model/page.tsx (padmin — list + adopt),

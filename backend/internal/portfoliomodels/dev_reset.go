@@ -1,5 +1,6 @@
 // Dev reset handlers — POST /_site/admin/dev/adoption-reset
 //                       POST /_site/admin/dev/master-reset
+//                       POST /_site/admin/dev/seed-risks
 //
 // Gadmin-only tools for resetting a subscription's data in dev/staging.
 // Hard deletes only — no audit trail for these dev-only operations.
@@ -9,6 +10,7 @@ package portfoliomodels
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -105,6 +107,78 @@ func (h *DevResetHandler) MasterReset(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Master reset complete. Tenant data cleared and testbed defaults applied.",
+	})
+}
+
+// SeedRisks — POST /_site/admin/dev/seed-risks
+//
+// Inserts N Risk artefacts assigned to the chosen user (default: the caller).
+// Mirrors db/vector_artefacts/dev-seeds/seed_risks.sql. Returns the number
+// of rows inserted plus the resolved risk type / workspace ids for sanity.
+//
+// Body (all optional):
+//   { "count": 200, "assignee_id": "<uuid>" }
+//
+// Defaults: count=200; assignee_id = caller's user id.
+func (h *DevResetHandler) SeedRisks(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if h.VAPool == nil {
+		http.Error(w, "vector_artefacts pool unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Count      int     `json:"count"`
+		AssigneeID *string `json:"assignee_id"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+	if body.Count <= 0 {
+		body.Count = 200
+	}
+	if body.Count > 5000 {
+		body.Count = 5000
+	}
+
+	assignee := u.ID
+	if body.AssigneeID != nil && *body.AssigneeID != "" {
+		parsed, perr := uuid.Parse(*body.AssigneeID)
+		if perr != nil {
+			http.Error(w, "invalid assignee_id", http.StatusBadRequest)
+			return
+		}
+		assignee = parsed
+	}
+
+	ctx := r.Context()
+
+	// Resolve workspace_id + risk artefact type for this subscription.
+	var workspaceID, riskTypeID uuid.UUID
+	if err := h.VAPool.QueryRow(ctx, sqlResolveRiskTypeForSubscription, u.SubscriptionID).
+		Scan(&riskTypeID, &workspaceID); err != nil {
+		http.Error(w, fmt.Sprintf("no Risk artefact type for subscription: %v", err), http.StatusNotFound)
+		return
+	}
+
+	var inserted int
+	if err := h.VAPool.QueryRow(ctx, sqlSeedRisks, u.SubscriptionID, workspaceID, riskTypeID, assignee, body.Count).
+		Scan(&inserted); err != nil {
+		http.Error(w, fmt.Sprintf("seed-risks failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":      true,
+		"inserted":     inserted,
+		"workspace_id": workspaceID,
+		"risk_type_id": riskTypeID,
+		"assignee_id":  assignee,
+		"message":      fmt.Sprintf("Inserted %d risk(s) assigned to %s.", inserted, assignee),
 	})
 }
 

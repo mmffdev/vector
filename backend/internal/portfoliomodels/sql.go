@@ -521,6 +521,78 @@ const sqlInsertTestbedRootTopologyNode = `
 // starter strategy artefacts. Idempotent via ON CONFLICT inside the fn.
 const sqlSeedDevStrategyArtefactsFn = `SELECT seed_dev_strategy_artefacts($1, $2)`
 
+// sqlResolveRiskTypeForSubscription — returns the live Risk artefact_type_id
+// and its workspace_id for a given subscription. Used by SeedRisks.
+const sqlResolveRiskTypeForSubscription = `
+		SELECT artefacts_types_id, artefacts_types_id_workspace
+		  FROM artefacts_types
+		 WHERE artefacts_types_id_subscription = $1
+		   AND artefacts_types_scope = 'work'
+		   AND lower(artefacts_types_name) = 'risk'
+		   AND artefacts_types_archived_at IS NULL
+		 ORDER BY artefacts_types_created_at
+		 LIMIT 1
+	`
+
+// sqlSeedRisks — bulk-inserts $5 Risk artefacts for ($1 subscription,
+// $2 workspace, $3 risk_type_id, $4 assignee). Round-robins over the default
+// Risk flow's states and the four priority levels. Mirrors
+// db/vector_artefacts/dev-seeds/seed_risks.sql. Returns row count.
+const sqlSeedRisks = `
+		WITH default_flow AS (
+		  SELECT flows_id FROM flows
+		   WHERE flows_id_artefact_type = $3
+		     AND flows_is_default = TRUE
+		     AND flows_archived_at IS NULL
+		   LIMIT 1
+		),
+		flow_states AS (
+		  SELECT array_agg(flows_states_id ORDER BY flows_states_sort_order) AS states
+		    FROM flows_states
+		   WHERE flows_states_id_flow = (SELECT flows_id FROM default_flow)
+		     AND flows_states_archived_at IS NULL
+		),
+		existing AS (
+		  SELECT COALESCE(MAX(number), 0) AS max_num
+		    FROM artefacts
+		   WHERE artefact_type_id = $3 AND subscription_id = $1
+		),
+		seq AS (SELECT generate_series(1, $5::int) AS n),
+		ins AS (
+		  INSERT INTO artefacts (
+		    subscription_id, workspace_id, artefact_type_id, number, title, description,
+		    flow_state_id, created_by_user_id, assigned_to_user_id, owned_by_user_id, priority
+		  )
+		  SELECT
+		    $1, $2, $3,
+		    e.max_num + s.n,
+		    CASE (s.n % 10)
+		      WHEN 0 THEN 'Unencrypted data at rest in audit logs'
+		      WHEN 1 THEN 'Single point of failure in payment gateway'
+		      WHEN 2 THEN 'Vendor dependency on legacy CMS'
+		      WHEN 3 THEN 'Insufficient capacity for peak season traffic'
+		      WHEN 4 THEN 'Stale credentials in CI environment'
+		      WHEN 5 THEN 'Regulatory exposure from GDPR retention gap'
+		      WHEN 6 THEN 'Key person dependency in platform team'
+		      WHEN 7 THEN 'Backup restore not tested in 12 months'
+		      WHEN 8 THEN 'Third-party SDK with known CVE'
+		      ELSE      'Privileged access without quarterly review'
+		    END || ' (#' || (e.max_num + s.n)::text || ')',
+		    'Auto-seeded risk. Severity/likelihood vary to populate the dashboard matrix.',
+		    (SELECT states[1 + ((s.n - 1) % cardinality(states))] FROM flow_states),
+		    $4, $4, $4,
+		    CASE (s.n % 4)
+		      WHEN 0 THEN 'critical'
+		      WHEN 1 THEN 'high'
+		      WHEN 2 THEN 'medium'
+		      ELSE      'low'
+		    END
+		  FROM seq s, existing e
+		  RETURNING 1
+		)
+		SELECT count(*) FROM ins
+	`
+
 const sqlDeleteRolesWorkspacesForSubscription = `
 		DELETE FROM users_roles_workspaces
 		 WHERE users_roles_workspaces_id_workspace IN (

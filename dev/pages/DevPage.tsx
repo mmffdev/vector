@@ -30,6 +30,22 @@ export default function DevSetupPage() {
   const [masterResetResult, setMasterResetResult] = useState<{ success: boolean; message: string } | null>(null);
   const [fieldsProbe, setFieldsProbe] = useState<{ ok: boolean; message: string } | null>(null);
   const [fieldsProbeLoading, setFieldsProbeLoading] = useState(false);
+  const [seedRisksCount, setSeedRisksCount] = useState(200);
+  const [seedRisksLoading, setSeedRisksLoading] = useState(false);
+  const [seedRisksResult, setSeedRisksResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const handleSeedRisks = async () => {
+    setSeedRisksLoading(true);
+    setSeedRisksResult(null);
+    try {
+      const res = await admin.devSeedRisks({ count: seedRisksCount });
+      setSeedRisksResult({ ok: true, message: res.message ?? `Inserted ${res.inserted} risk(s).` });
+    } catch (error: unknown) {
+      setSeedRisksResult({ ok: false, message: error instanceof Error ? error.message : "Seed failed." });
+    } finally {
+      setSeedRisksLoading(false);
+    }
+  };
 
   const cancelReset = () => { setResetConfirm(false); setResetConfirmText(""); };
   const cancelMasterReset = () => { setMasterResetConfirm(false); setMasterResetConfirmText(""); };
@@ -183,6 +199,38 @@ export default function DevSetupPage() {
           {masterResetResult && (
             <div className={`dev-alert dev-alert--${masterResetResult.success ? "success" : "error"}`}>
               {masterResetResult.message}
+            </div>
+          )}
+        </Panel>
+
+        <Panel name="dev_seed_risks" title="Seed Risks">
+          <p className="dev-p">
+            Inserts N Risk artefacts into <code>vector_artefacts.artefacts</code> for the current
+            subscription, assigned to you. Each batch round-robins across the default Risk flow's
+            states and the four priority levels so the <code>/risk</code> dashboard fills with
+            varied data. Mirrors <code>db/vector_artefacts/dev-seeds/seed_risks.sql</code>.
+          </p>
+          <div className="dev-btn-group">
+            <input
+              type="number"
+              min={1}
+              max={5000}
+              value={seedRisksCount}
+              onChange={(e) => setSeedRisksCount(Math.max(1, Math.min(5000, Number(e.target.value) || 0)))}
+              className="dev-num-input"
+              disabled={seedRisksLoading}
+            />
+            <button
+              onClick={handleSeedRisks}
+              disabled={seedRisksLoading}
+              className="dev-btn dev-btn--primary"
+            >
+              {seedRisksLoading ? "Seeding..." : `Seed ${seedRisksCount} risks`}
+            </button>
+          </div>
+          {seedRisksResult && (
+            <div className={`dev-alert dev-alert--${seedRisksResult.ok ? "success" : "error"}`}>
+              {seedRisksResult.message}
             </div>
           )}
         </Panel>
