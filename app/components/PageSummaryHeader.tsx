@@ -24,7 +24,12 @@ import { ReactNode } from "react";
 import { TbAlertTriangle } from "react-icons/tb";
 import Panel from "@/app/components/Panel";
 
-export type SummaryCellTone = "neutral" | "warning";
+// TD-SUMMARY-TONE pay-down (2026-05-16) — "danger" tone added so the most
+// urgent cell on a summary strip can stand out from the amber "warning"
+// tier. Used by /risk page (PLA-0052) for the Critical-severity cell.
+// Render via .page-summary__cell--danger CSS modifier; same value-gating
+// rule as --issue (only paints when value > 0).
+export type SummaryCellTone = "neutral" | "warning" | "danger";
 export type SummaryCellGlyph = "issue";
 
 export interface SummaryCell {
@@ -53,6 +58,12 @@ function cellIsIssue(cell: SummaryCell): boolean {
   return Number.isFinite(n) && n > 0;
 }
 
+function cellIsDanger(cell: SummaryCell): boolean {
+  if (cell.tone !== "danger") return false;
+  const n = typeof cell.value === "number" ? cell.value : Number(cell.value);
+  return Number.isFinite(n) && n > 0;
+}
+
 function renderGlyph(glyph: SummaryCellGlyph | undefined): ReactNode {
   if (glyph === "issue") {
     return <TbAlertTriangle className="page-summary__glyph" aria-hidden="true" />;
@@ -75,9 +86,12 @@ export default function PageSummaryHeader({
       >
         {cells.map((cell) => {
           const issue = cellIsIssue(cell);
-          const cellClass = issue
-            ? "page-summary__cell page-summary__cell--issue"
-            : "page-summary__cell";
+          const danger = cellIsDanger(cell);
+          const cellClass = danger
+            ? "page-summary__cell page-summary__cell--danger"
+            : issue
+              ? "page-summary__cell page-summary__cell--issue"
+              : "page-summary__cell";
           return (
             <div key={cell.label} className={cellClass}>
               <span className="tile__label page-summary__label">

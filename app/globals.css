@@ -11750,6 +11750,18 @@ input[type="reset"] {
   color: var(--status-warning);
 }
 
+/* TD-SUMMARY-TONE (2026-05-16) — "danger" tier sits above "warning" for the
+   most-urgent cell on the strip (e.g. Critical-severity Risks on /risk).
+   Same value-gating contract as --issue: only paints when value > 0, so
+   resting state stays neutral. */
+.page-summary__cell--danger .page-summary__value {
+  color: var(--status-danger);
+}
+
+.page-summary__cell--danger .page-summary__glyph {
+  color: var(--status-danger);
+}
+
 .page-summary__glyph {
   width: 14px;
   height: 14px;
