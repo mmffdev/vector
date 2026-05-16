@@ -1,8 +1,12 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-14 (RF1.4.4 + RF1.5 + RF1.6 ✅ shipped end-to-end same day; TD-NAME-001 closed; `lint:column-prefix-convention` hard gate; `artefactitemsv2` renamed to `artefactitems` per v-suffix-with-meaning rule reversal — v1 obj_* substrate retired)
-**Doc version:** 2.20
+**Last updated:** 2026-05-17 (solo-dev mode established — WIP-capped at 5; FE-POR-0003 parked; ★ forcing function = FE-POR-0002 Chrome Scope Picker)
+**Doc version:** 2.21
+
+> **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, B18.7, FE-POR-0002. Everything else parks below.
+>
+> **★ FORCING FUNCTION:** [FE-POR-0002 Chrome Scope Picker](#fe-por-0002-chrome-scope-picker-pla-0042) — the daily-use slice. Everything else justifies itself against keeping this healthy.
 
 ---
 
@@ -24,8 +28,7 @@
 
 - [FE-GOV-0003. Flow-State Descriptions &amp; Per-State Exit Rules (PLA-0040)](#fe-gov-0003-flow-state-descriptions--per-state-exit-rules-pla-0040)
 - [FE-GOV-0004. Orbit View Transition Editor &amp; Artefact-Move Enforcement (PLA-0041)](#fe-gov-0004-orbit-view-transition-editor--artefact-move-enforcement-pla-0041)
-- [FE-POR-0002. Chrome Scope Picker (PLA-0042)](#fe-por-0002-chrome-scope-picker-pla-0042)
-- [FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)](#fe-por-0003-topology-scope-clamp-on-artefact-reads-pla-0043)
+- [FE-POR-0002. Chrome Scope Picker (PLA-0042)](#fe-por-0002-chrome-scope-picker-pla-0042) ★ **FORCING FUNCTION**
 
 **M — v2 Migration** *(build order: easiest → hardest)*
 
@@ -60,6 +63,10 @@
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 - [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
 - [B22. Transport Segregation via Shared Service Core (PLA-0039)](#b22-transport-segregation-via-shared-service-core-pla-0039)
+
+**Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
+
+- [FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)](#fe-por-0003-topology-scope-clamp-on-artefact-reads-pla-0043) — parked 2026-05-17
 
 ---
 
@@ -504,6 +511,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `f18809e` (2026-05-17): feat(memory): establish solo-dev mode marker [solo-dev]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1446,6 +1454,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `f18809e` (2026-05-17): feat(memory): establish solo-dev mode marker [solo-dev]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1835,6 +1844,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `f18809e` (2026-05-17): feat(memory): establish solo-dev mode marker [solo-dev]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -5471,9 +5481,9 @@ Governance surface: stand up a **new 3rd-level secondary-nav page** at `/workspa
 
 ---
 
-## FE-POR-0002. Chrome Scope Picker (PLA-0042)
+## FE-POR-0002. Chrome Scope Picker (PLA-0042) ★ FORCING FUNCTION
 
-Chrome-level scope picker mounted at the start of `.page-header__left` (Rally / Linear convention; see research paper [R051](dev/research/R051.json)). Lets a logged-in user pick between the topology nodes they hold a live grant on — `admin | editor | viewer` rows from `topology_role_grants` — so the active scope follows them across pages. **Iteration 1 (this entry):** picker UI + `ScopeContext` + URL `?scope=<node_id>` + localStorage persistence; no read-path wiring yet (picking a scope persists the choice but does not narrow backlogs / portfolios / dashboards). **Iteration 2 (separate plan):** wire `activeNodeId` into work-items / portfolio-items / dashboard reads as a `?scope=` server filter — every consuming endpoint gets a clamp parameter, and the backend has to decide how scope clamps stack with workspace clamps. Plan: `dev/plans/PLA-0042.md`. `[P2]` 🔵 IN FLIGHT
+Chrome-level scope picker mounted at the start of `.page-header__left` (Rally / Linear convention; see research paper [R051](dev/research/R051.json)). Lets a logged-in user pick between the topology nodes they hold a live grant on — `admin | editor | viewer` rows from `topology_role_grants` — so the active scope follows them across pages. **Iteration 1 (this entry):** picker UI + `ScopeContext` + URL `?scope=<node_id>` + localStorage persistence; no read-path wiring yet (picking a scope persists the choice but does not narrow backlogs / portfolios / dashboards). **Iteration 2 (separate plan):** wire `activeNodeId` into work-items / portfolio-items / dashboard reads as a `?scope=` server filter — every consuming endpoint gets a clamp parameter, and the backend has to decide how scope clamps stack with workspace clamps. Plan: `dev/plans/PLA-0042.md`. `[P2]` 🔵 IN FLIGHT ★ FORCING FUNCTION (solo-dev mode, since 2026-05-17)
 
 ### FE-POR-0002.1 Backend — `GET /api/topology/grants/me`
 
@@ -5503,7 +5513,13 @@ Chrome-level scope picker mounted at the start of `.page-header__left` (Rally / 
 
 ---
 
-## FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)
+# Parked — solo-dev mode (since 2026-05-17)
+
+Items below were in-flight when solo-dev mode was established 2026-05-17 but exceed the WIP-cap of 5. **Content preserved verbatim** — every sub-item, every commit ref, every priority tag. To unpark, swap with a live item (cap stays at 5). Re-activation in prod-ready mode unparks all. See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md).
+
+---
+
+## FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043) — parked 2026-05-17
 
 Iteration-2 follow-up to PLA-0042: the chrome picker writes `?scope=<topology_node_id>` to the URL, this plan teaches the **read path** to honour it. Artefacts gain a nullable `topology_node_id` FK on `vector_artefacts.artefacts`; backend services clamp list reads to "this node + every descendant" via a recursive-CTE helper; grants inherit DOWN only (a grant on a parent reaches descendants; a grant on a child never reaches its parent); gadmin bypass preserved. Stacks with the existing workspace clamp — both must pass.
 
