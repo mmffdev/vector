@@ -37,8 +37,9 @@ type FeatureRow = {
  * closure still render meaningfully. */
 function deriveFeatures(plan: PlanDoc): FeatureRow[] {
   const byId = new Map<string, FeatureRow>();
+  const backlog = Array.isArray(plan.work_item_backlog) ? plan.work_item_backlog : [];
 
-  for (const wi of plan.work_item_backlog) {
+  for (const wi of backlog) {
     if (wi.kind === "feature_test" && wi.feature_id) {
       byId.set(wi.feature_id, {
         id: wi.feature_id,
@@ -52,7 +53,7 @@ function deriveFeatures(plan: PlanDoc): FeatureRow[] {
 
   // Backfill: any FEAT-N tag on an implementation story whose covers list
   // doesn't already include it gets added.
-  for (const wi of plan.work_item_backlog) {
+  for (const wi of backlog) {
     if (wi.kind === "feature_test") continue;
     const fid = wi.feature_id ?? (wi.tags ?? []).find(t => /^FEAT-\d+$/.test(t))?.replace("FEAT-", "F");
     if (!fid || !wi.story_id) continue;
@@ -197,31 +198,31 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
       <section>
         <h3 id="implementation-plan">3.0.1 Implementation Plan</h3>
         <ol>
-          {plan.implementation_plan.map((step, i) => <li key={i}>{step}</li>)}
+          {(plan.implementation_plan ?? []).map((step, i) => <li key={i}>{step}</li>)}
         </ol>
       </section>
 
       <section>
         <h3 id="areas-impacted">5.0.1 Areas Impacted</h3>
         <ul>
-          {plan.areas_impacted.map((a, i) => <li key={i}>{a}</li>)}
+          {(plan.areas_impacted ?? []).map((a, i) => <li key={i}>{a}</li>)}
         </ul>
       </section>
 
       <section>
         <h3 id="feature-list">6.0.1 Feature List</h3>
-        {plan.feature_list.length === 0 ? <p>—</p> : (
-          <ul>{plan.feature_list.map((f, i) => <li key={i}>{f}</li>)}</ul>
+        {(plan.feature_list ?? []).length === 0 ? <p>—</p> : (
+          <ul>{(plan.feature_list ?? []).map((f, i) => <li key={i}>{f}</li>)}</ul>
         )}
 
         <h3>6.1.1 Features: Extended</h3>
-        {plan.features_extended.length === 0 ? <p>—</p> : (
-          <ul>{plan.features_extended.map((f, i) => <li key={i} dangerouslySetInnerHTML={{ __html: f }} />)}</ul>
+        {(plan.features_extended ?? []).length === 0 ? <p>—</p> : (
+          <ul>{(plan.features_extended ?? []).map((f, i) => <li key={i} dangerouslySetInnerHTML={{ __html: f }} />)}</ul>
         )}
 
         <h3>6.2.1 Features: Removed</h3>
-        {plan.features_removed.length === 0 ? <p>—</p> : (
-          <ul>{plan.features_removed.map((f, i) => <li key={i}>{f}</li>)}</ul>
+        {(plan.features_removed ?? []).length === 0 ? <p>—</p> : (
+          <ul>{(plan.features_removed ?? []).map((f, i) => <li key={i}>{f}</li>)}</ul>
         )}
       </section>
 
@@ -268,7 +269,7 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
             </tr>
           </thead>
           <tbody>
-            {plan.work_item_backlog.map(item => {
+            {(plan.work_item_backlog ?? []).map(item => {
               const isTest = item.kind === "feature_test";
               const featLabel = item.feature_id
                 ?? (item.tags ?? []).find(t => /^FEAT-\d+$/.test(t))?.replace("FEAT-", "F")
@@ -312,7 +313,7 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
             </tr>
           </thead>
           <tbody>
-            {plan.acceptance_criteria.map(ac => (
+            {(plan.acceptance_criteria ?? []).map(ac => (
               <tr key={ac.order}>
                 <td>{ac.order}</td>
                 <td>{ac.done ? "[X]" : "[ ]"}</td>
@@ -342,7 +343,7 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
             </tr>
           </thead>
           <tbody>
-            {[...plan.risks].sort((a, b) => b.impact - a.impact).map((r, i) => (
+            {[...(plan.risks ?? [])].sort((a, b) => b.impact - a.impact).map((r, i) => (
               <tr key={i}>
                 <td>{r.impact}</td>
                 <td>{r.risk}</td>
@@ -356,7 +357,7 @@ function PlanBody({ plan }: { plan: PlanDoc }) {
       <section>
         <h3 id="references">10.0.1 References</h3>
         <ul>
-          {plan.references.map((r, i) => (
+          {(plan.references ?? []).map((r, i) => (
             <li key={i}>
               <span>{r.kind === "external" ? "↗" : "→"}</span>{" "}
               <a href={r.href} target={r.kind === "external" ? "_blank" : undefined} rel="noreferrer">{r.label}</a>
@@ -380,9 +381,12 @@ function PlanItem({ meta }: { meta: PlanMeta }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/dev/plans?sync=${encodeURIComponent(meta.id)}`);
+      const res = await fetch(`/api/dev/plans?id=${encodeURIComponent(meta.id)}`);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const data = await res.json();
+      if (!data || typeof data !== "object" || typeof (data as any).id !== "string") {
+        throw new Error("plan response missing id — API returned unexpected shape");
+      }
       setPlan(data as PlanDoc);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load plan.");
