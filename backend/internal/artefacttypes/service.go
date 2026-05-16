@@ -35,7 +35,7 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 	}
 	const q = `
 		SELECT
-			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour,
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
 			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
 		FROM artefacts_types
@@ -60,7 +60,7 @@ func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspace
 	}
 	const q = `
 		SELECT
-			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour,
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
 			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
 		FROM artefacts_types
@@ -85,7 +85,7 @@ func (s *Service) queryArtefactTypes(ctx context.Context, q string, args ...any)
 		var t ArtefactType
 		if err := rows.Scan(
 			&t.ID, &t.Scope, &t.Source, &t.Name, &t.Prefix,
-			&t.Description, &t.Colour,
+			&t.Description, &t.Colour, &t.Slot,
 			&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 			&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
@@ -179,7 +179,7 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 		SET %s
 		WHERE artefacts_types_id = $1 AND artefacts_types_id_subscription = $2 AND artefacts_types_archived_at IS NULL
 		RETURNING
-			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour,
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
 			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at`,
 		strings.Join(setClauses, ", "),
@@ -188,7 +188,7 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 	var t ArtefactType
 	err := s.pool.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Scope, &t.Source, &t.Name, &t.Prefix,
-		&t.Description, &t.Colour,
+		&t.Description, &t.Colour, &t.Slot,
 		&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 		&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
 	)

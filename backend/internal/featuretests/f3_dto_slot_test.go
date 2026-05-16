@@ -1,24 +1,10 @@
-//go:build f3_dto_landed
-// +build f3_dto_landed
-
-// F3 — DTO Slot field assertion. Gated behind `f3_dto_landed` build tag.
+// F3 — DTO Slot field assertion. Promoted to the default test set
+// once story 00584 added artefacttypes.ArtefactType.Slot.
 //
-// Why a separate file with a build tag:
-// Story 00584 adds a `Slot *string` field to artefacttypes.ArtefactType.
-// Until that field exists, referencing `t.Slot` is a compile error that
-// would block EVERY test in the featuretests package — F1, F2, the other
-// F3 tests, all of them. The compile failure IS the red signal we want
-// for story 00584, but it should not break green tests for other features.
-//
-// On main: tag OFF, this file is excluded, the rest of the package builds
-// and runs. Trying to run F3-DTO explicitly via
-//   go test -tags f3_dto_landed ./internal/featuretests/...
-// fails to compile — that IS the RED signal.
-//
-// When story 00584 lands and the DTO has Slot:
-//   1. The implementer removes the `//go:build f3_dto_landed` lines.
-//   2. This file joins the default test set and the runtime assertion
-//      becomes the GREEN gate.
+// History: this file was gated behind the `f3_dto_landed` build tag
+// while the Slot field did not exist (a `t.Slot` reference would have
+// blocked every test in the featuretests package from compiling). The
+// tag is removed now that the DTO carries the field.
 //
 // Tracker group: `frontend-chip-foundation`, feature `F3`.
 
@@ -73,15 +59,11 @@ func TestF3_DTO_IncludesSlot(t *testing.T) {
 }
 
 // f3TypeHasSlot reports whether the ArtefactType DTO exposes a non-empty
-// Slot field. The reference to `t.Slot` is what makes this file fail to
-// compile on main — story 00584 adds the field and unblocks it.
+// Slot field. The slot is the project-locked handle the catalogue uses
+// to resolve types across gadmin renames.
 func f3TypeHasSlot(t artefacttypes.ArtefactType) bool {
 	if t.Slot == nil {
 		return false
 	}
 	return *t.Slot != ""
 }
-
-// silence unused-import vet noise if the test body is ever stubbed out.
-var _ = context.Background
-var _ = time.Now
