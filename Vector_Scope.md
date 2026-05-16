@@ -261,6 +261,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b4627dd` (2026-05-14): docs(PLA-0048 / RF1.4.4): file TD-NAME-001 for deferred column-prefix sweeps [RF1.4.4]
 > Commit `b343d51` (2026-05-16): feat(NavigationPie): full-circle pie filter primitive + dev showcase
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -280,6 +283,17 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -462,6 +476,28 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -557,6 +593,30 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -578,6 +638,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
 - **FLOW1.2.4** Pull-surface query helper — canonical filter `is_pullable=true OR kind IN ('in_progress','done','accepted')` for team boards `[P2]`
 - **FLOW1.2.5** PO-backlog query helper — `kind='backlog' OR (kind='todo' AND is_pullable=false)` for PO grooming views `[P2]`
 > Last checked: 2026-05-10 — service.go validKinds includes "backlog"; types.go FlowState/PatchStateInput/CreateStateInput carry IsPullable; listByScope SELECT + scan + PatchFlowState UPDATE/RETURNING + CreateState INSERT/RETURNING all wire fs.is_pullable through. `go build ./internal/flows/... ./cmd/server/...` clean.
@@ -718,6 +780,24 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -743,6 +823,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -752,6 +833,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8cdb4a9` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_roles_workspaces (§2.3) [RF1.4.4.users_roles_workspaces]
 > Commit `c7f74bc` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_nav family — TD-NAME-001 CLOSED [RF1.4.4.users_nav]
 > Commit `d28b2f5` (2026-05-14): refactor(nav): final bucket reshape per Rick's locked spec (mig 192)
+> Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -793,6 +876,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -805,6 +889,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
@@ -854,6 +939,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -882,6 +968,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9d5408f` (2026-05-14): refactor(PLA-0048 / RF1.4.2.master_record): rename + column-prefix [RF1.4.2.master_record]
 > Commit `0f6a8a2` (2026-05-14): refactor(PLA-0048 / RF1.4.2.artefacts): pluralise artefacts_* family [RF1.4.2.artefacts]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -889,6 +978,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -901,6 +991,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `f573da8` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix artefacts_types (§2.3) [RF1.4.4.artefacts_types]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 ---
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
@@ -943,6 +1034,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
 > Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1007,6 +1101,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -1047,6 +1146,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1095,6 +1198,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1140,6 +1247,31 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b343d51` (2026-05-16): feat(NavigationPie): full-circle pie filter primitive + dev showcase
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1270,6 +1402,24 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1308,6 +1458,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
 > Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1408,6 +1559,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -1468,6 +1627,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `dcd0863` (2026-05-14): refactor(nav): collapse admin_settings + lazy-seeded admin groups into 3 tag buckets
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -1532,6 +1693,14 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -1614,6 +1783,23 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -1680,6 +1866,13 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2027,6 +2220,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -2202,6 +2396,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -2222,6 +2418,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -2279,6 +2479,21 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -2303,6 +2518,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -2323,12 +2542,14 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `07ffd7c` (2026-05-14): refactor(PLA-0048 / RF1.4.2.timeboxes): rename timebox_* tables + column-prefix [RF1.4.2.timeboxes]
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
   >
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -2403,6 +2624,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `74e54f8` (2026-05-16): memory: add foundation-mode, design-collab, URL-path-only, system-vs-display rules + git stash ban
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -2453,6 +2676,7 @@ Full lifecycle management for tasks, bugs, epics.
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
+> Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -2519,6 +2743,17 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2701,6 +2936,11 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `d00e3d1` (2026-05-14): chore(PLA-0048 / RF1.4.4): ship lint:column-prefix-convention (warn-only) [RF1.4.4]
 > Commit `7773c95` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix users_sessions (§2.3) [RF1.4.4.users_sessions]
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -2716,6 +2956,11 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 - ✅ **B15.4** `<TimeboxManager>` — sprints + releases surface `[P2]`
 > Commit `86008f6` (2026-05-12): chore(lint): add lint:page-description + lint:h2-panel-only
 > Commit `32002b3` (2026-05-12): docs(R054): Rally user-to-project assignment UX research
@@ -2821,6 +3066,13 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `c479ee4` (2026-05-14): refactor(PLA-0048 / RF1.4.2.users[B]): rename auth-core tables to users_* [RF1.4.2.users]
 > Commit `93d26b8` (2026-05-14): refactor(PLA-0048 / RF1.4.3): route renames — singular→plural workspace routes [RF1.4.3]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
@@ -3121,6 +3373,30 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -3204,6 +3480,28 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `6f51bd0` (2026-05-16): feat(redesign): swap V text brand for /logo-vector.png in primary rail
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -3247,6 +3545,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -3312,6 +3614,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -3401,6 +3712,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -3497,6 +3816,23 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -3558,6 +3894,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -3646,6 +3985,31 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `2f905e5` (2026-05-16): docs(tech-debt): file 3 more TDs from regression-triage pass
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -3726,6 +4090,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -3797,6 +4175,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -3849,6 +4236,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -3921,6 +4312,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `955d421` (2026-05-16): chore(claude): un-gitignore .claude/settings.json — single-user multi-machine sync
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
+> Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -3977,6 +4376,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -4006,6 +4406,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39ac522` (2026-05-15): feat(roles): PLA-0049 Phase 0 — grp_* role rename + UUID-keyed page grants [PLA-0049]
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `fd1042e` (2026-05-15): feat(PLA-0032): Story 00565b — rename Go package tenantmasterrecord → workspacemasterrecord [PLA-0032]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -4064,6 +4467,33 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `b343d51` (2026-05-16): feat(NavigationPie): full-circle pie filter primitive + dev showcase
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `2f905e5` (2026-05-16): docs(tech-debt): file 3 more TDs from regression-triage pass
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -4152,6 +4582,37 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `b343d51` (2026-05-16): feat(NavigationPie): full-circle pie filter primitive + dev showcase
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -4191,6 +4652,32 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `b343d51` (2026-05-16): feat(NavigationPie): full-circle pie filter primitive + dev showcase
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
+> Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -4248,6 +4735,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `206b5e2` (2026-05-16): docs(tech-debt): file 6 TD entries from backend test-failure inventory
+> Commit `2f905e5` (2026-05-16): docs(tech-debt): file 3 more TDs from regression-triage pass
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -4317,6 +4812,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `0bab39c` (2026-05-16): refactor(work-items): chip swap StarburstFilter → NavigationPie + multi-value filter shape
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `44f56a1` (2026-05-16): chore(claude): post-edit lint hook, dev-env lockdown, postgres MCP wrapper
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -4347,6 +4858,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bccde30` (2026-05-13): fix(PLA-0039): wire portfolio-model layer PATCH end-to-end + checkpoint in-flight work [FE-POR-0003]
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -4373,6 +4885,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `7ed1728` (2026-05-16): feat(skill): add <tests> shortcut for Tracker red-green test queries
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -4423,6 +4941,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -4450,6 +4982,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b6bf20` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix flows family (7 tables) [RF1.4.4.flows]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -4498,6 +5033,31 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `0681a60` (2026-05-16): feat(dev): seed N Risk artefacts via POST /admin/dev/seed-risks
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `8b39c59` (2026-05-16): feat(stories): red-green feature-driven testing SOP + tracker rg-rerun wiring
+> Commit `dbab228` (2026-05-16): test(workspace): red — F1 workspace clamp via JWT + rebuild PLA-0053 around existing substrate [00601]
+> Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `65b0be1` (2026-05-16): chore(workspace): close-out 00577 — artefact_types.workspace_id substrate already shipped via PLA-0026 [00577]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `ce816f9` (2026-05-16): feat(workspace): artefacttypes + artefactitems services clamp by workspace_id from JWT context [00579]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `0465562` (2026-05-16): feat(workspace): useActiveWorkspace hook + workspace_id on /me payload [00580]
+> Commit `f50f4c3` (2026-05-16): feat(stories): auto-provision tracker groups via rg-runner -create-if-missing
+> Commit `f944e5a` (2026-05-16): test(artefacttypes): red — F3 slot substrate [00603]
+> Commit `454004c` (2026-05-16): test(artefactitems): red — F4 UUID wire end-to-end [00604]
+> Commit `162d382` (2026-05-16): test(catalogue): red — F5 catalogue + chip + localStorage + sidecar [00605]
+> Commit `3f4009c` (2026-05-16): test(chip): red — F6 Status context + rename invariance [00606]
+> Commit `09f9fdb` (2026-05-16): feat(vector_artefacts): green — slot enum substrate on artefacts_types [00582]
+> Commit `35ecd8d` (2026-05-16): feat(vector_artefacts): green — backfill artefacts_types_slot per workspace [00583]
+> Commit `862f375` (2026-05-16): feat(artefacttypes): green — DTO surfaces Slot field [00584]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
+> Commit `146430c` (2026-05-16): test(priority): red — F7 substrate [00607]
+> Commit `cb77d87` (2026-05-16): test(priority): red — F8 CRUD + UUID wire [00608]
+> Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
+> Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
+> Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
+> Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
+> Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
+> Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -4540,6 +5100,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7e632d9` (2026-05-14): refactor(nav): remove tab menus from /work-items and /portfolio-items
 > Commit `481bf54` (2026-05-15): feat(PLA-0032): vocab rename master_record_tenants → master_record_workspaces (atomic cutover) [PLA-0032]
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
+> Commit `57fda4e` (2026-05-16): feat(workspace): WorkspaceClampMiddleware reads JWT claim, drops ?ws= URL surface [00576]
+> Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
+> Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -4560,6 +5123,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9a38482` (2026-05-15): feat(grid): PLA-0049 Phase 1 — bucket toggle + avatar floor + audit + auto-seed [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
