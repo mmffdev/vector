@@ -1,5 +1,11 @@
 # Plan Index
 
+## FROZEN — solo-dev mode (since 2026-05-17)
+
+**Counter paused at `PLA-0055`.** No new PLA files in solo-dev mode; new work lands as one-line sub-items in `Vector_Scope.md` via `/stories` (default mode). All 53 existing files preserved as archaeology. Re-activates when prod-ready mode flips. See [`.claude/memory/feedback_no_new_pla_plans.md`](../.claude/memory/feedback_no_new_pla_plans.md) and the bridge document [`.claude/scratch/correction-prompt.md`](../.claude/scratch/correction-prompt.md).
+
+---
+
 **Last issued:** `PLA-0055`
 
 ## Format

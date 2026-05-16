@@ -57,6 +57,7 @@
 - [URL is path-only — no query state of any kind](feedback_url_is_path_only.md) — Generalises workspace rule: no `?type=`, `?status=`, `?sort=`, `?vid=`, nothing. Filters/sort live in React state or backend prefs.
 - [System layers vs display layers — never cross](feedback_system_vs_display_layers.md) — UUIDs/slots/URLs are project-locked + invisible; catalogue names/labels are tenant-free + visible. No display string is ever an identifier; no system identifier is ever user-facing.
 - [Solo-dev mode (since 2026-05-17)](feedback_solo_dev_mode.md) — WIP cap 5, stories=title+AC, no new PLAs, indexes frozen, retros auto-only; hard rails unchanged; flips to prod-ready when first external user or launch date is set.
+- [No new PLA plans in solo-dev mode](feedback_no_new_pla_plans.md) — New work = sub-item in Vector_Scope.md; 53 existing PLA files preserved as archaeology; c_plan_index.md frozen at PLA-0055.
 
 ### Rules
 
