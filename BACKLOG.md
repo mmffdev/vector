@@ -5,6 +5,7 @@
 ---
 
 ### VECTOR
+- 2026-05-16 — URL-state purge: move work-items + risk filter/sort off `useSearchParams` to component state (or `users_view_prefs` backend pref if cross-device persistence wanted). Drives the new "URL is path-only" rule (feedback_url_is_path_only). Current bug: NavigationPie chip writes URL but tree doesn't refetch — fix arrives with the move. Companion: TD-FILTER-MULTI backend pay-down so multi-select sends `?item_type=epic,story` and returns the matching set.
 - 2026-04-25 — API Framework & Docs, user scripted apps that run in Vector
 - 2026-04-25 — Vector Test Cases
 - 2026-04-25 — Tooling Integration - User Integrations and Reporting patchways and hooks, Jenkins etc.
