@@ -46,6 +46,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming reference + state classes.
 - **Naming conventions (HARD RULE — load before any new package/table/route/column)** → [`docs/c_c_naming_conventions.md`](../docs/c_c_naming_conventions.md) — canonical spec; deviation needs a `TD-*` entry.
 - **Backlog (`<backlog>`)** → [`.claude/commands/c_backlog.md`](commands/c_backlog.md) — opens root [`BACKLOG.md`](../BACKLOG.md); Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).
+- **Tracker tests (`<tests>`)** → [`.claude/commands/c_tests.md`](commands/c_tests.md) — query Tracker red-green tests for this project; default = current/recent work, flags `-g/-p/-G/-r/-f`.
 - **DB routing (HARD RULE — load before any psql)** → [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) — service → pool → DB → tables map.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
