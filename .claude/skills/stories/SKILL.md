@@ -117,7 +117,29 @@ This step gates everything. Do not skip any sub-step.
 5. **Determine feature area tag.** Read `docs/c_feature_areas.md`. Tag format is `FE-AAA-0001` (single domain) or `FE-AAA-BBB-0001` (domain + sub-domain). If a matching tag exists in a prior plan, reuse it. If not, propose the new tag name to the user; on approval, record `FE_TAG`.
 6. **Confirm `PLAN_ID`** is set from Step −1.e. If not, return to Step −1 — the plan tag is mandatory and must be present on every work item.
 7. **Allocate feature_ids `F1..Fk` from the grouping** proposed in Step 1.b and approved by the user. Record `FEAT_TAGS = {story_id → "FEAT-N"}` for every implementation story. Record `FEATURES = [{id: "F1", name, covers: [story_id, ...]}, ...]`. Feature_test stories carry `feature_id` as a schema field (Step 5) — they do NOT take a `FEAT-N` tag.
-8. **Confirm `TRACKER_GROUP`** is set on the plan (Step −1.a draft or Step 6.5.a). Format: `<scope>-<plan-slug>` where scope ∈ {`backend`, `frontend`, `fullstack`, `db`}. If not, decide it now from the plan's title and dominant area_impacted. **The group MUST already exist in Tracker** (provision via Tracker's UI or API) before any feature_test commit ships, otherwise `rg-runner` errors with `group not found`. See Step 5.d.
+8. **Allocate `TRACKER_GROUPS` and provision them.** Tracker groups carry a single `framework` (`go` | `vitest` | `playwright` | `selenium` | `mixed`), so a plan whose feature_tests span multiple frameworks needs **one group per framework**. Decide the set now:
+
+   - **Single-framework plan** (e.g. all-Go backend slice): `TRACKER_GROUPS = [{slug: "<scope>-<plan-slug>", framework: "<framework>", pkg|paths: <selector>}]`.
+   - **Multi-framework plan** (Go + vitest, e.g. PLA-0054 where TEST(F3) is Go and TEST(F4–F6) are vitest): `TRACKER_GROUPS = [{slug: "<plan-slug>-go", framework: "go", pkg: "<patterns>"}, {slug: "<plan-slug>-vitest", framework: "vitest", paths: "<globs>"}]`. Each feature_test work item in Step 5.b declares its own `tracker_group` matching its framework.
+   - **Naming convention:** single-framework → `<scope>-<plan-slug>`; per-framework split → `<plan-slug>-<framework>`.
+
+   **Then provision each group via `rg-runner -create-if-missing`** so the skill (not the operator) does the plumbing:
+
+   ```
+   RG_API_KEY=trk_xxx go run /path/to/MMFFDev\ -\ Tracker/backend/cmd/rg-runner \
+     -create-if-missing \
+     -group <slug> \
+     -framework <go|vitest> \
+     -pkg './internal/foo/... ./internal/bar/...'   # go only
+     -paths 'app/components/__tests__/**/*.test.{ts,tsx}'  # vitest only
+     -dry-run -target <REPO_ROOT>
+   ```
+
+   The runner is idempotent — an existing group is reused as-is (config not overwritten). `-dry-run` ensures the provisioning step does not actually execute tests. Run once per group in `TRACKER_GROUPS`.
+
+   **Soft-fail conditions:** if `RG_API_KEY` is unset or Tracker is unreachable, surface a warning ("could not provision tracker_group(s) — `<slugs>`; confirm before the first feature_test commit") and proceed with plan authoring. Plan authoring does not block on Tracker being down.
+
+   See Step 5.d for the runtime contract.
 
 **Self-check:** Can you state exact values for `STORY_IDS`, `PH_TAG`, `FE_TAG`, `PLAN_ID`, `FEATURES`, `FEAT_TAGS`, and `TRACKER_GROUP` before proceeding? If any is "I'll figure it out later", stop and complete it now.
 
@@ -360,7 +382,7 @@ _Agent: stories | <DATE> | <BRANCH>_
 
 The runner lives at `backend/cmd/rg-runner` in the sibling `MMFFDev - Tracker` repo. Its model:
 
-- **Groups are defined in Tracker** (not on the command line). Each group carries a `framework` (`go` or `vitest`) and the test-selector config that resolves which test files belong to it. Before the first feature_test commit in a plan, the `tracker_group` value declared in Step 0 sub-step 8 / Step 6.5.a MUST already exist as a group in Tracker — provision it via Tracker's UI or API. If it doesn't, `rg-runner` errors with `group not found` and lists available slugs.
+- **Groups live in Tracker** (slug + framework + test-selector config). The skill provisions groups itself in Step 0 sub-step 8 via `rg-runner -create-if-missing`, so no manual UI step is needed before authoring or before the first feature_test commit. Existing groups are reused as-is (idempotent).
 - **The runner takes a group slug + a target project path**. It spawns the group's framework against `-target` (e.g. `go test -json ./...` or `vitest --reporter=json`), parses results as they stream, and POSTs each test outcome to Tracker. Red/green is derived per-test from the result stream — there is no `--status`/`--story`/`--commit` flag.
 - **Auth is via project-clamped PAT.** `RG_API_KEY=trk_xxx` (see `.claude/memory/project_tracker_rg_api_key.md`); `project_id` is inherited from the key, so no `--project` flag.
 

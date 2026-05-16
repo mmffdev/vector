@@ -26,7 +26,7 @@ The first principle drove the new `feature_test` work-item kind. The second drov
 - A feature_test that cannot be paired with at least one implementation story in the same `/stories` invocation is rejected at Step 6.6 — feature tests cannot be authored in isolation.
 - Long-lived red commits (red landed, implementation never followed) must carry a TD-RED-<story_id> entry (S2) with trigger "close when feature ships OR delete suite on date X if descoped". Orphan red runs pollute the regression library.
 
-**Open verification (TD-RG-RUNNER-DOCS):** the exact `cmd/rg-runner` flag syntax lives in the sibling `MMFFDev - Tracker` repo and was not verifiable from this repo when the SOP shipped. Confirm against `cmd/rg-runner --help` before the first feature_test commit and patch SKILL.md §5.d with the verified command.
+**Tracker group provisioning is automatic.** Step 0 sub-step 8 of the skill calls `rg-runner -create-if-missing -group <slug> -framework <go|vitest> -pkg|-paths <selector> -dry-run -target <REPO>` to provision the group(s) in Tracker if they don't exist. Idempotent (existing groups reused as-is). Soft-fails when `RG_API_KEY` is unset or Tracker is unreachable — plan authoring is never blocked on Tracker being down. Multi-framework plans (e.g. PLA-0054 with Go + vitest feature_tests) get **one group per framework**, named `<plan-slug>-<framework>`; each `feature_test` work item declares its own `tracker_group`.
 
 **Related:**
 - [[feedback_red_green_always]] — red-green-refactor is non-negotiable; this SOP encodes the discipline at the feature level.
