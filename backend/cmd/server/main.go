@@ -1276,8 +1276,10 @@ func main() {
 		r.Use(userWriteLimiter)
 		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
 			Get("/", portfolioModelsH.List)
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
+		r.With(
+			auth.RequirePermission(permResolver, permissions.PortfolioList),
+			topology.WorkspaceClampMiddleware(workspaceLookup),
+		).Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
 		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
 		r.Get("/{id}", portfolioModelsH.GetByModelID)
 		r.With(

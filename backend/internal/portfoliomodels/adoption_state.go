@@ -52,6 +52,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/topology"
 )
 
 // AdoptionStateHandler reads adoption status from the new substrate.
@@ -104,27 +105,26 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Resolve workspace_id for this subscription. Mirrors the
-	// adoption-saga's resolveWorkspaceID() convention (lowest-id live
-	// workspace). Multi-workspace subscriptions are out of scope for
-	// the cutover — adoption is per-tenant today.
+	// Resolve workspace_id: JWT-anchored claim wins (WorkspaceClampMiddleware);
+	// fall back to first-live-workspace for legacy callers without the clamp.
 	var workspaceID uuid.UUID
-	err := h.VectorPool.QueryRow(r.Context(), sqlSelectFirstLiveWorkspaceForSubscription,
-		u.SubscriptionID,
-	).Scan(&workspaceID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		// No workspace for this subscription — there is nothing to adopt
-		// against yet. Treat as notStarted rather than 404 so the UI
-		// surfaces a clean empty state.
-		writeJSON(w, http.StatusOK, adoptionStateDTO{
-			Status:  statusNotStarted,
-			Adopted: false,
-		})
-		return
-	}
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+	if id, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+		workspaceID = id
+	} else {
+		err := h.VectorPool.QueryRow(r.Context(), sqlSelectFirstLiveWorkspaceForSubscription,
+			u.SubscriptionID,
+		).Scan(&workspaceID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusOK, adoptionStateDTO{
+				Status:  statusNotStarted,
+				Adopted: false,
+			})
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// VA pool optional — without it we cannot inspect the new substrate.
@@ -152,10 +152,10 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 		adoptedAt       *time.Time
 		adoptedByUserID *uuid.UUID
 	)
-	err = h.VAPool.QueryRow(r.Context(), sqlSelectAdoptionStateForWorkspace,
+	vaErr := h.VAPool.QueryRow(r.Context(), sqlSelectAdoptionStateForWorkspace,
 		workspaceID,
 	).Scan(&hasMaster, &hasStrategyType, &modelID, &adoptedAt, &adoptedByUserID)
-	if err != nil {
+	if vaErr != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
