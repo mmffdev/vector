@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useShell, type ShellPage } from "../ShellContext";
+import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 
@@ -23,7 +24,7 @@ function formatNow(d: Date): string {
 }
 
 export default function SectionFlyout() {
-  const { activeSection } = useShell();
+  const { activeSection, bookmarkPages } = useShell();
   const pathname = usePathname() ?? "";
   const [now, setNow] = useState<Date>(() => new Date());
 
@@ -33,6 +34,7 @@ export default function SectionFlyout() {
   }, []);
 
   const groupRef = useRef<HTMLDivElement>(null);
+  const bookmarkGroupRef = useRef<HTMLDivElement>(null);
 
   if (!activeSection) return <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label="Section" />;
 
@@ -51,9 +53,10 @@ export default function SectionFlyout() {
   }
 
   // Pick the longest-matching page so nested children win over their parent.
+  // Also check bookmark pages so the indicator works there too.
   let activeKey: string | null = null;
   let bestLen = -1;
-  for (const p of activeSection.pages) {
+  for (const p of [...activeSection.pages, ...bookmarkPages]) {
     if (isActivePage(p.href) && p.href.length > bestLen) {
       activeKey = p.itemKey;
       bestLen = p.href.length;
@@ -65,9 +68,11 @@ export default function SectionFlyout() {
       activeSection={activeSection}
       tops={tops}
       childrenByParent={childrenByParent}
+      bookmarkPages={bookmarkPages}
       isActivePage={isActivePage}
       activeKey={activeKey}
       groupRef={groupRef}
+      bookmarkGroupRef={bookmarkGroupRef}
       now={now}
     />
   );
@@ -77,20 +82,25 @@ function SectionFlyoutBody({
   activeSection,
   tops,
   childrenByParent,
+  bookmarkPages,
   isActivePage,
   activeKey,
   groupRef,
+  bookmarkGroupRef,
   now,
 }: {
   activeSection: NonNullable<ReturnType<typeof useShell>["activeSection"]>;
   tops: ShellPage[];
   childrenByParent: Map<string, ShellPage[]>;
+  bookmarkPages: ShellPage[];
   isActivePage: (href: string) => boolean;
   activeKey: string | null;
   groupRef: React.RefObject<HTMLDivElement>;
+  bookmarkGroupRef: React.RefObject<HTMLDivElement>;
   now: Date;
 }) {
   const { indicator, phase, setTarget } = useTravelIndicator(groupRef, activeKey, { inset: 4 });
+  const { indicator: bmIndicator, phase: bmPhase, setTarget: bmSetTarget } = useTravelIndicator(bookmarkGroupRef, activeKey, { inset: 4 });
 
   return (
     <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label={`${activeSection.name} pages`}>
@@ -125,6 +135,23 @@ function SectionFlyoutBody({
             );
           })}
         </div>
+
+        {bookmarkPages.length > 0 && (
+          <div className="nav-primary-rail-2__BookmarkBucket">
+            <div className="nav-primary-rail-2__BookmarkBucket_Divider" aria-hidden />
+            <span className="nav-primary-rail-2__BookmarkBucket_Label">Bookmarks</span>
+            <div className="nav-primary-rail-2__PageList_Group" ref={bookmarkGroupRef}>
+              <TravelIndicator
+                id="nav-primary-rail-2__BookmarkBucket_TravelIndicator"
+                indicator={bmIndicator}
+                phase={bmPhase}
+              />
+              {bookmarkPages.map((p) => (
+                <PageRow key={p.itemKey} page={p} active={isActivePage(p.href)} setRef={bmSetTarget} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -141,17 +168,64 @@ function PageRow({
   nested?: boolean;
   setRef: (key: string, el: HTMLElement | null) => void;
 }) {
+  const { isPinnable, isPageBookmarked, bookmarkPage, unbookmarkPage } = useNavPrefs();
+  const [busy, setBusy] = useState(false);
+  const pinnable = isPinnable(page.itemKey);
+  const bookmarked = pinnable && isPageBookmarked(page.itemKey);
+
+  const onBookmark = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (bookmarked) await unbookmarkPage(page.itemKey);
+      else await bookmarkPage(page.itemKey);
+    } catch (err) {
+      console.error("[bookmark:error]", page.itemKey, err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <Link
-      ref={(el) => setRef(page.itemKey, el)}
-      href={page.href}
+    <div
+      ref={(el) => setRef(page.itemKey, el as HTMLElement | null)}
       className={`nav-primary-rail-2__PageList_Group_Row${active ? " is-active" : ""}${nested ? " is-nested" : ""}`}
-      aria-current={active ? "page" : undefined}
     >
-      <span className="nav-primary-rail-2__PageList_Group_Row_Icon">
-        <NavIcon iconKey={page.icon} />
-      </span>
-      <span className="nav-primary-rail-2__PageList_Group_Row_Label">{page.name}</span>
-    </Link>
+      <Link
+        href={page.href}
+        className="nav-primary-rail-2__PageList_Group_Row_Link"
+        aria-current={active ? "page" : undefined}
+      >
+        <span className="nav-primary-rail-2__PageList_Group_Row_Icon">
+          <NavIcon iconKey={page.icon} />
+        </span>
+        <span className="nav-primary-rail-2__PageList_Group_Row_Label">{page.name}</span>
+      </Link>
+      {pinnable && (
+        <span
+          role="button"
+          className={`nav-primary-rail-2__PageList_Group_Row_Bookmark${bookmarked ? " is-bookmarked" : ""}`}
+          onClick={onBookmark}
+          aria-pressed={bookmarked}
+          aria-label={bookmarked ? `Remove ${page.name} from bookmarks` : `Bookmark ${page.name}`}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill={bookmarked ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
+        </span>
+      )}
+    </div>
   );
 }

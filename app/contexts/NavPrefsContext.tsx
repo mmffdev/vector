@@ -30,6 +30,7 @@ export interface PrefRow {
   item_key: string;
   position: number;
   is_start_page: boolean;
+  is_bookmark: boolean;
   parent_item_key: string | null;
   group_id: string | null;
   icon_override: string | null;
@@ -130,6 +131,9 @@ interface NavPrefsState {
   isBookmarked: (kind: EntityKind, id: string) => boolean;
   bookmark: (kind: EntityKind, id: string) => Promise<void>;
   unbookmark: (kind: EntityKind, id: string) => Promise<void>;
+  isPageBookmarked: (key: string) => boolean;
+  bookmarkPage: (key: string) => Promise<void>;
+  unbookmarkPage: (key: string) => Promise<void>;
 
   // Phase 5 — profile slice
   profiles: NavProfile[];
@@ -391,11 +395,33 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     [refetch],
   );
 
+  const isPageBookmarked = useCallback(
+    (key: string): boolean => prefs.some((p) => p.item_key === key && p.is_bookmark),
+    [prefs],
+  );
+
+  const bookmarkPage = useCallback(
+    async (key: string) => {
+      await api("/nav/page-bookmark", { method: "POST", body: JSON.stringify({ page_key: key }) });
+      await refetch();
+    },
+    [refetch],
+  );
+
+  const unbookmarkPage = useCallback(
+    async (key: string) => {
+      await api("/nav/page-bookmark", { method: "DELETE", body: JSON.stringify({ page_key: key }) });
+      await refetch();
+    },
+    [refetch],
+  );
+
   const value: NavPrefsState = {
     prefs, customGroups, catalogue, tags, profileGroups, loading, error,
     refetch, patchCatalogueEntry, save, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
     isBookmarked, bookmark, unbookmark,
+    isPageBookmarked, bookmarkPage, unbookmarkPage,
     profiles, activeProfileId,
     setActiveProfile, createProfile, renameProfile, deleteProfile, reorderProfiles,
     setProfileGroups,

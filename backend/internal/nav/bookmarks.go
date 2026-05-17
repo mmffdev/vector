@@ -35,6 +35,8 @@ var (
 	ErrEntityNotFound    = polymorphicrefs.ErrEntityNotFound
 	ErrEntityArchived    = polymorphicrefs.ErrEntityArchived
 	ErrBookmarkCap       = errors.New("bookmark cap reached")
+	ErrPageNotFound      = errors.New("page not found or not pinnable")
+	ErrStaticBookmarkCap = errors.New("static bookmark cap reached")
 )
 
 // Bookmarks owns the bookmark lifecycle: pin, unpin, list. It coexists
@@ -50,10 +52,11 @@ type Bookmarks struct {
 	Pool     *pgxpool.Pool
 	Registry *CachedRegistry
 	Refs     *polymorphicrefs.Service
+	Svc      *Service
 }
 
-func NewBookmarks(pool *pgxpool.Pool, registry *CachedRegistry) *Bookmarks {
-	return &Bookmarks{Pool: pool, Registry: registry, Refs: polymorphicrefs.New(pool)}
+func NewBookmarks(pool *pgxpool.Pool, registry *CachedRegistry, svc *Service) *Bookmarks {
+	return &Bookmarks{Pool: pool, Registry: registry, Refs: polymorphicrefs.New(pool), Svc: svc}
 }
 
 // itemKey returns the canonical item_key / pages.key_enum for an entity.
@@ -144,6 +147,11 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	}
 	key := itemKey(kind, entityID)
 
+	profileID, err := b.Svc.ResolveProfile(ctx, userID, callerSubscription, nil)
+	if err != nil {
+		return "", err
+	}
+
 	tx, err := b.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return "", err
@@ -170,7 +178,7 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// so the cap survives entity bookmarks landing in different tag
 	// groups (e.g. product → 'strategic', portfolio → 'bookmarks').
 	var current int
-	if err := tx.QueryRow(ctx, sqlCountUserEntityBookmarks, userID, callerSubscription).Scan(&current); err != nil {
+	if err := tx.QueryRow(ctx, sqlCountUserEntityBookmarks, userID, callerSubscription, profileID).Scan(&current); err != nil {
 		return "", err
 	}
 	if current >= MaxPinned {
@@ -216,19 +224,17 @@ func (b *Bookmarks) Pin(ctx context.Context, userID, callerSubscription uuid.UUI
 	// keeps the global position contiguity invariant intact (validated
 	// elsewhere on bulk replace).
 	var nextPos int
-	if err := tx.QueryRow(ctx, sqlNextUserNavPrefPosition, userID, callerSubscription).Scan(&nextPos); err != nil {
+	if err := tx.QueryRow(ctx, sqlNextUserNavPrefPosition, userID, callerSubscription, profileID).Scan(&nextPos); err != nil {
 		return "", err
 	}
 
 	// Idempotent: ON CONFLICT (user, tenant, profile, item_key) DO NOTHING
 	// means a second pin is a no-op rather than an error — friendlier UX
 	// and matches what the caller probably expected.
-	tag, err := tx.Exec(ctx, sqlInsertUserNavPrefBookmark,
-		userID, callerSubscription, key, nextPos)
-	if err != nil {
+	if _, err = tx.Exec(ctx, sqlInsertUserNavPrefBookmark,
+		userID, callerSubscription, profileID, key, nextPos); err != nil {
 		return "", err
 	}
-	_ = tag
 
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
@@ -255,6 +261,11 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 	}
 	key := itemKey(kind, entityID)
 
+	profileID, err := b.Svc.ResolveProfile(ctx, userID, callerSubscription, nil)
+	if err != nil {
+		return err
+	}
+
 	tx, err := b.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -264,7 +275,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 	// Find position of the row we're removing so we can compact later.
 	var removed *int
 	if err := tx.QueryRow(ctx, sqlSelectUserNavPrefPositionByKey,
-		userID, callerSubscription, key).Scan(&removed); err != nil {
+		userID, callerSubscription, profileID, key).Scan(&removed); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return tx.Commit(ctx) // not pinned — nothing to do
 		}
@@ -272,7 +283,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 	}
 
 	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefByKey,
-		userID, callerSubscription, key); err != nil {
+		userID, callerSubscription, profileID, key); err != nil {
 		return err
 	}
 
@@ -282,7 +293,7 @@ func (b *Bookmarks) Unpin(ctx context.Context, userID, callerSubscription uuid.U
 	// shift commits cleanly without temp positions.
 	if removed != nil {
 		if _, err := tx.Exec(ctx, sqlCompactUserNavPrefPositionsAbove,
-			userID, callerSubscription, *removed); err != nil {
+			userID, callerSubscription, profileID, *removed); err != nil {
 			return err
 		}
 	}
@@ -297,8 +308,100 @@ func (b *Bookmarks) IsPinned(ctx context.Context, userID, callerSubscription uui
 		return false, ErrUnknownEntityKind
 	}
 	key := itemKey(kind, entityID)
+	profileID, err := b.Svc.ResolveProfile(ctx, userID, callerSubscription, nil)
+	if err != nil {
+		return false, err
+	}
 	var n int
-	err := b.Pool.QueryRow(ctx, sqlCountUserNavPrefByKey,
-		userID, callerSubscription, key).Scan(&n)
+	err = b.Pool.QueryRow(ctx, sqlCountUserNavPrefByKey,
+		userID, callerSubscription, profileID, key).Scan(&n)
 	return n > 0, err
+}
+
+// PageBookmarks handles bookmark lifecycle for static pages (kind='static',
+// pinnable=true). Parallel to Bookmarks but without entity-ref lookups.
+type PageBookmarks struct {
+	Pool     *pgxpool.Pool
+	Registry *CachedRegistry
+	Svc      *Service
+}
+
+func NewPageBookmarks(pool *pgxpool.Pool, registry *CachedRegistry, svc *Service) *PageBookmarks {
+	return &PageBookmarks{Pool: pool, Registry: registry, Svc: svc}
+}
+
+// PinPage adds a static page to the user's bookmarks. Idempotent (ON CONFLICT DO NOTHING).
+func (b *PageBookmarks) PinPage(ctx context.Context, userID, callerSubscription uuid.UUID, pageKey string) error {
+	profileID, err := b.Svc.ResolveProfile(ctx, userID, callerSubscription, nil)
+	if err != nil {
+		return err
+	}
+
+	tx, err := b.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// Validate page exists, is static, pinnable, and visible to this subscription.
+	var foundKey string
+	err = tx.QueryRow(ctx, sqlSelectStaticPageForBookmark, pageKey, callerSubscription).Scan(&foundKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrPageNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	// Serialise concurrent pins for this user.
+	if _, err = tx.Exec(ctx, sqlPgAdvisoryXactLockForPin, userID); err != nil {
+		return err
+	}
+
+	// Cap check.
+	var count int
+	if err = tx.QueryRow(ctx, sqlCountUserStaticBookmarks, userID, callerSubscription, profileID).Scan(&count); err != nil {
+		return err
+	}
+	if count >= MaxPinned {
+		return ErrStaticBookmarkCap
+	}
+
+	// Next position.
+	var nextPos int
+	if err = tx.QueryRow(ctx, sqlNextUserNavPrefPosition, userID, callerSubscription, profileID).Scan(&nextPos); err != nil {
+		return err
+	}
+
+	// Insert — idempotent via ON CONFLICT DO NOTHING.
+	if _, err = tx.Exec(ctx, sqlInsertUserNavPrefBookmark, userID, callerSubscription, profileID, pageKey, nextPos); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	b.Registry.Load(ctx) //nolint:errcheck
+	return nil
+}
+
+// UnpinPage removes a static page from the user's bookmarks. Idempotent (no-op if not pinned).
+func (b *PageBookmarks) UnpinPage(ctx context.Context, userID, callerSubscription uuid.UUID, pageKey string) error {
+	profileID, err := b.Svc.ResolveProfile(ctx, userID, callerSubscription, nil)
+	if err != nil {
+		return err
+	}
+
+	tx, err := b.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err = tx.Exec(ctx, sqlClearPageBookmarkFlag, userID, callerSubscription, profileID, pageKey); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }

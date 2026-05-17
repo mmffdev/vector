@@ -450,3 +450,159 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 		t.Fatal("grp_global should see workspace-settings entry")
 	}
 }
+
+// TestPageBookmarks_PinUnpin verifies the full lifecycle:
+//   - PinPage inserts a pref row with is_bookmark=true
+//   - GetPrefs returns that row with IsBookmark=true
+//   - UnpinPage removes it (idempotent second call is a no-op)
+//   - PinPage on a non-pinnable key returns ErrPageNotFound
+func TestPageBookmarks_PinUnpin(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	subscriptionID, userID, _, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	ctx := context.Background()
+	reg := NewCachedRegistry(pool, 60*time.Second)
+	if _, err := reg.Load(ctx); err != nil {
+		t.Fatalf("registry load: %v", err)
+	}
+	svc := New(pool, reg)
+	pb := NewPageBookmarks(pool, reg, svc)
+
+	// "dashboard" is kind='static' and pinnable=true in the system pages.
+	t.Run("pin dashboard", func(t *testing.T) {
+		if err := pb.PinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
+			t.Fatalf("PinPage: %v", err)
+		}
+	})
+
+	t.Run("prefs row has is_bookmark=true", func(t *testing.T) {
+		profileID, err := svc.ResolveProfile(ctx, userID, subscriptionID, nil)
+		if err != nil {
+			t.Fatalf("ResolveProfile: %v", err)
+		}
+		var isBookmark bool
+		err = pool.QueryRow(ctx,
+			`SELECT users_nav_prefs_is_bookmark FROM users_nav_prefs
+			 WHERE users_nav_prefs_id_user=$1
+			   AND users_nav_prefs_id_subscription=$2
+			   AND users_nav_prefs_id_profile=$3
+			   AND users_nav_prefs_item_key='dashboard'`,
+			userID, subscriptionID, profileID,
+		).Scan(&isBookmark)
+		if err != nil {
+			t.Fatalf("query pref row: %v", err)
+		}
+		if !isBookmark {
+			t.Fatal("want is_bookmark=true, got false")
+		}
+	})
+
+	t.Run("GetPrefs row carries IsBookmark=true", func(t *testing.T) {
+		rows, err := svc.GetPrefs(ctx, userID, subscriptionID, roletypes.RoleUser, uuid.Nil)
+		if err != nil {
+			t.Fatalf("GetPrefs: %v", err)
+		}
+		var found bool
+		for _, r := range rows {
+			if r.ItemKey == "dashboard" && r.IsBookmark {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("dashboard row with IsBookmark=true not found in GetPrefs output")
+		}
+	})
+
+	t.Run("pin is idempotent", func(t *testing.T) {
+		if err := pb.PinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
+			t.Fatalf("second PinPage: %v", err)
+		}
+	})
+
+	t.Run("unpin dashboard", func(t *testing.T) {
+		if err := pb.UnpinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
+			t.Fatalf("UnpinPage: %v", err)
+		}
+	})
+
+	t.Run("unpin is idempotent", func(t *testing.T) {
+		if err := pb.UnpinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
+			t.Fatalf("second UnpinPage: %v", err)
+		}
+	})
+
+	t.Run("unknown key returns ErrPageNotFound", func(t *testing.T) {
+		err := pb.PinPage(ctx, userID, subscriptionID, "does-not-exist")
+		if !errors.Is(err, ErrPageNotFound) {
+			t.Fatalf("want ErrPageNotFound, got %v", err)
+		}
+	})
+}
+
+// TestPageBookmarks_PinExistingSectionPref covers the case where the page is
+// already in the user's section nav prefs (is_bookmark=FALSE). PinPage must
+// flip the flag to TRUE rather than silently doing nothing (ON CONFLICT DO UPDATE).
+// UnpinPage must flip it back to FALSE without deleting the row.
+func TestPageBookmarks_PinExistingSectionPref(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
+	defer cleanup()
+
+	ctx := context.Background()
+	reg := NewCachedRegistry(pool, 60*time.Second)
+	if _, err := reg.Load(ctx); err != nil {
+		t.Fatalf("registry load: %v", err)
+	}
+	svc := New(pool, reg)
+	pb := NewPageBookmarks(pool, reg, svc)
+
+	// Put "dashboard" into section prefs first (is_bookmark=FALSE).
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
+		{ItemKey: "dashboard", Position: 0},
+	}, nil, nil, nil); err != nil {
+		t.Fatalf("ReplacePrefs: %v", err)
+	}
+
+	profileID, err := svc.ResolveProfile(ctx, userID, subscriptionID, nil)
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+
+	checkBookmark := func(want bool) {
+		t.Helper()
+		var isBookmark bool
+		var rowExists bool
+		err := pool.QueryRow(ctx,
+			`SELECT users_nav_prefs_is_bookmark FROM users_nav_prefs
+			 WHERE users_nav_prefs_id_user=$1 AND users_nav_prefs_id_subscription=$2
+			   AND users_nav_prefs_id_profile=$3 AND users_nav_prefs_item_key='dashboard'`,
+			userID, subscriptionID, profileID,
+		).Scan(&isBookmark)
+		rowExists = err == nil
+		if !rowExists {
+			t.Fatalf("pref row missing — want is_bookmark=%v", want)
+		}
+		if isBookmark != want {
+			t.Fatalf("want is_bookmark=%v, got %v", want, isBookmark)
+		}
+	}
+
+	checkBookmark(false) // section pref, not yet bookmarked
+
+	t.Run("pin flips existing row to is_bookmark=true", func(t *testing.T) {
+		if err := pb.PinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
+			t.Fatalf("PinPage: %v", err)
+		}
+		checkBookmark(true)
+	})
+
+	t.Run("unpin clears flag without deleting row", func(t *testing.T) {
+		if err := pb.UnpinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
+			t.Fatalf("UnpinPage: %v", err)
+		}
+		checkBookmark(false) // row still exists, just no longer bookmarked
+	})
+}

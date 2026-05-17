@@ -42,6 +42,7 @@ export interface ShellSection {
 
 interface ShellState {
   sections: ShellSection[];
+  bookmarkPages: ShellPage[];
   activeSectionId: string;
   setActiveSectionId: (id: string) => void;
   activeSection: ShellSection | undefined;
@@ -201,6 +202,16 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     return out;
   }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById]);
 
+  const bookmarkPages = useMemo<ShellPage[]>(() => {
+    const result: ShellPage[] = [];
+    for (const p of prefs) {
+      if (!p.is_bookmark) continue;
+      const page = projectPref(p, catalogueByKey);
+      if (page) result.push(page);
+    }
+    return result.sort((a, b) => a.position - b.position);
+  }, [prefs, catalogueByKey]);
+
   const urlSection = sectionForPath(sections, pathname);
 
   // Track the section the rail is currently "showing". Defaults to the URL's
@@ -228,6 +239,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     <ShellContext.Provider
       value={{
         sections,
+        bookmarkPages,
         activeSectionId,
         setActiveSectionId,
         activeSection,

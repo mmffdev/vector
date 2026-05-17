@@ -18,13 +18,14 @@ import (
 )
 
 type Handler struct {
-	Svc         *Service
-	Bookmarks   *Bookmarks
-	CustomPages *custompages.Service
+	Svc          *Service
+	Bookmarks    *Bookmarks
+	PageBookmarks *PageBookmarks
+	CustomPages  *custompages.Service
 }
 
-func NewHandler(s *Service, b *Bookmarks, cp *custompages.Service) *Handler {
-	return &Handler{Svc: s, Bookmarks: b, CustomPages: cp}
+func NewHandler(s *Service, b *Bookmarks, pb *PageBookmarks, cp *custompages.Service) *Handler {
+	return &Handler{Svc: s, Bookmarks: b, PageBookmarks: pb, CustomPages: cp}
 }
 
 type catalogueResp struct {
@@ -321,6 +322,47 @@ func (h *Handler) UnpinBookmark(w http.ResponseWriter, r *http.Request) {
 		default:
 			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type pageBookmarkReq struct {
+	PageKey string `json:"page_key"`
+}
+
+// POST /api/nav/page-bookmark — bookmark a static page. Idempotent.
+func (h *Handler) PinPageBookmark(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req pageBookmarkReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
+		return
+	}
+	if err := h.PageBookmarks.PinPage(r.Context(), u.ID, u.SubscriptionID, req.PageKey); err != nil {
+		switch {
+		case errors.Is(err, ErrPageNotFound):
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
+		case errors.Is(err, ErrStaticBookmarkCap):
+			httperr.Write(w, r, http.StatusConflict, usermessages.LimitReached)
+		default:
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /api/nav/page-bookmark — remove a static page bookmark. Idempotent.
+func (h *Handler) UnpinPageBookmark(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	var req pageBookmarkReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
+		return
+	}
+	if err := h.PageBookmarks.UnpinPage(r.Context(), u.ID, u.SubscriptionID, req.PageKey); err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

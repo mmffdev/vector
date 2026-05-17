@@ -64,6 +64,7 @@ type PrefRow struct {
 	ItemKey       string  `json:"item_key"`
 	Position      int     `json:"position"`
 	IsStartPage   bool    `json:"is_start_page"`
+	IsBookmark    bool    `json:"is_bookmark"`
 	ParentItemKey *string `json:"parent_item_key"`
 	GroupID       *string `json:"group_id"`       // nil means "use registry tag group"
 	IconOverride  *string `json:"icon_override"`  // nil means "use registry default"
@@ -173,7 +174,7 @@ func (s *Service) GetPrefsForProfile(ctx context.Context, userID, subscriptionID
 		var parent *string
 		var groupID *uuid.UUID
 		var iconOverride *string
-		if err := rows.Scan(&p.ItemKey, &p.Position, &p.IsStartPage, &parent, &groupID, &iconOverride); err != nil {
+		if err := rows.Scan(&p.ItemKey, &p.Position, &p.IsStartPage, &p.IsBookmark, &parent, &groupID, &iconOverride); err != nil {
 			return nil, err
 		}
 		p.ParentItemKey = parent

@@ -191,7 +191,8 @@ func main() {
 		bootstatus.Set("nav_registry", true, "")
 	}
 	navSvc := nav.New(pool, navRegistry)
-	navBookmarks := nav.NewBookmarks(pool, navRegistry)
+	navBookmarks := nav.NewBookmarks(pool, navRegistry, navSvc)
+	navPageBookmarks := nav.NewPageBookmarks(pool, navRegistry, navSvc)
 	customPagesSvc := custompages.New(pool)
 	customPagesH := custompages.NewHandler(customPagesSvc)
 
@@ -206,7 +207,7 @@ func main() {
 		os.Getenv("CI_SERVICE_TOKEN"),
 		os.Getenv("CUSTOM_APP_TOKEN"),
 	)
-	navH := nav.NewHandler(navSvc, navBookmarks, customPagesSvc)
+	navH := nav.NewHandler(navSvc, navBookmarks, navPageBookmarks, customPagesSvc)
 	navEntitiesSvc := nav.NewEntitiesService(pool)
 	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc, auditLog)
@@ -402,6 +403,9 @@ func main() {
 	// "topology-handoff" event (story 00283).
 	orgDesignSvc = topology.New(pool, vaPool).WithNotifier(topology.HubNotifier{Hub: rtHub})
 	orgDesignH = topology.NewHandler(orgDesignSvc).WithAudit(auditLog)
+
+	// Wire topology seeder so every new workspace gets a root topology node.
+	workspacesSvc.WithTopologySeeder(orgDesignSvc)
 
 	// PLA-0043 — attach the topology resolver to the v2 work/portfolio
 	// services so ?scope=<id> on /work-items can resolve to "this node
@@ -839,6 +843,8 @@ func main() {
 		r.Post("/bookmark", navH.PinBookmark)
 		r.Delete("/bookmark", navH.UnpinBookmark)
 		r.Get("/bookmark/check", navH.CheckBookmark)
+		r.Post("/page-bookmark", navH.PinPageBookmark)
+		r.Delete("/page-bookmark", navH.UnpinPageBookmark)
 		r.Get("/entities", navEntitiesH.List)
 
 		r.Get("/profiles", navH.ListProfiles)
@@ -996,6 +1002,7 @@ func main() {
 				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
 				r.Post("/dev/master-reset", devResetH.MasterReset)
 				r.Post("/dev/seed-risks", devResetH.SeedRisks)
+				r.Post("/dev/seed-workspace", devResetH.SeedWorkspace)
 			})
 		})
 

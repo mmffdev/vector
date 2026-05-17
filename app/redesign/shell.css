@@ -421,14 +421,12 @@
 .nav-primary-rail-2__PageList_Group_Row {
   display: flex;
   align-items: center;
-  gap: 10px;
   height: 32px;
-  padding: 0 22px;
   color: var(--ink-muted);
-  text-decoration: none;
   font-size: 13px;
   font-weight: 400;
   transition: background 150ms ease, color 150ms ease;
+  cursor: pointer;
 }
 .nav-primary-rail-2__PageList_Group_Row:hover {
   background: var(--surface-sunken);
@@ -439,9 +437,22 @@
   color: var(--ink);
   font-weight: 500;
 }
+.nav-primary-rail-2__PageList_Group_Row_Link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  height: 100%;
+  padding: 0 0 0 22px;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
 .nav-primary-rail-2__PageList_Group_Row.is-nested {
-  padding-left: 38px;
   position: relative;
+}
+.nav-primary-rail-2__PageList_Group_Row.is-nested .nav-primary-rail-2__PageList_Group_Row_Link {
+  padding-left: 38px;
 }
 /* Vertical spine connecting nested rows under their parent. Drawn as a
    pseudo-element so consecutive nested rows form one continuous line
@@ -456,10 +467,8 @@
   bottom: 0;
   width: 1px;
   background: var(--border);
+  pointer-events: none;
 }
-/* Last nested row in a group: spine stops at the row's vertical centre
-   so it terminates into the horizontal connector glyph (elbow shape).
-   The +sibling check identifies "no more nested rows after me." */
 .nav-primary-rail-2__PageList_Group_Row.is-nested:not(:has(+ .is-nested))::before {
   bottom: 50%;
 }
@@ -481,6 +490,52 @@
   border-radius: 50%;
   background: var(--ink-faint);
   flex-shrink: 0;
+}
+
+/* ── Bookmark button (inline in each Row) ── */
+.nav-primary-rail-2__PageList_Group_Row_Bookmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: opacity 150ms ease, color 150ms ease;
+  position: relative;
+  z-index: 2;
+}
+.nav-primary-rail-2__PageList_Group_Row_Bookmark.is-bookmarked {
+  color: var(--accent);
+}
+.nav-primary-rail-2__PageList_Group_Row_Bookmark:hover {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
+/* ── Bookmark bucket (Rail 2 bottom section) ── */
+.nav-primary-rail-2__BookmarkBucket {
+  display: flex;
+  flex-direction: column;
+}
+.nav-primary-rail-2__BookmarkBucket_Divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 22px 8px;
+}
+.nav-primary-rail-2__BookmarkBucket_Label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-subtle);
+  padding: 0 22px 4px;
+  font-weight: 600;
 }
 
 .nav-primary-rail-2__Seg {
