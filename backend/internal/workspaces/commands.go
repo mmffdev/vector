@@ -101,6 +101,24 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workspace, error)
 		return Workspace{}, err
 	}
 
+	// Seed root topology node on vaPool (separate tx — cross-DB, non-atomic).
+	// Failure is non-fatal: the workspace row exists; topology seed can be
+	// retried via the dev seed script or a future repair job.
+	if s.topoSeeder != nil && s.VAPool != nil {
+		if vaTx, err := s.VAPool.Begin(ctx); err == nil {
+			if seedErr := s.topoSeeder.SeedRootNode(ctx, w.ID, in.SubscriptionID, w.Name, vaTx); seedErr != nil {
+				_ = vaTx.Rollback(ctx)
+			} else {
+				_ = vaTx.Commit(ctx)
+			}
+		}
+	}
+
+	// Seed 5 default work types on vaPool (non-atomic, non-fatal).
+	if s.atSeeder != nil {
+		_ = s.atSeeder.SeedDefaultWorkspaceTypes(ctx, in.SubscriptionID, w.ID)
+	}
+
 	wid := w.ID.String()
 	s.auditLog(ctx, audit.Entry{
 		UserID:         &in.ActorID,

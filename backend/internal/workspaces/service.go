@@ -29,10 +29,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
+
+// TopologySeeder is the subset of topology.Service used to seed a root
+// topology node after a workspace is created. Defined as an interface so
+// workspaces.Service does not import topology.Service directly (cycle guard).
+// SeedRootNode must execute against a pgx.Tx targeting the vector_artefacts DB.
+type TopologySeeder interface {
+	SeedRootNode(ctx context.Context, workspaceID, subscriptionID uuid.UUID, name string, tx pgx.Tx) error
+}
+
+// ArtefactTypeSeeder is the subset of artefacttypes.Service used to seed
+// default work types after a workspace is created. Defined as an interface
+// so workspaces.Service does not import artefacttypes directly (cycle guard).
+type ArtefactTypeSeeder interface {
+	SeedDefaultWorkspaceTypes(ctx context.Context, subscriptionID, workspaceID uuid.UUID) error
+}
 
 // Role is the closed vocabulary for workspace_roles.role.
 // Mirrored by the CHECK constraint in migration 098.
@@ -117,10 +133,12 @@ type PermissionResolver interface {
 // or unit tests) the scan is a no-op — the cross-DB guard is
 // disabled by definition. Reads are not gated on this field.
 type Service struct {
-	Pool   *pgxpool.Pool
-	Audit  *audit.Logger
-	Perms  PermissionResolver
-	VAPool *pgxpool.Pool
+	Pool           *pgxpool.Pool
+	Audit          *audit.Logger
+	Perms          PermissionResolver
+	VAPool         *pgxpool.Pool
+	topoSeeder     TopologySeeder
+	atSeeder       ArtefactTypeSeeder
 }
 
 // New constructs a Service. Audit and Perms may be nil in tests; the
@@ -130,6 +148,22 @@ type Service struct {
 // DB is configured).
 func New(pool *pgxpool.Pool, a *audit.Logger, p PermissionResolver) *Service {
 	return &Service{Pool: pool, Audit: a, Perms: p}
+}
+
+// WithTopologySeeder wires in the topology seeder so Create auto-seeds a root
+// topology node in vector_artefacts after each new workspace is committed.
+// Optional — nil disables the seed (tests, environments without vaPool).
+func (s *Service) WithTopologySeeder(ts TopologySeeder) *Service {
+	s.topoSeeder = ts
+	return s
+}
+
+// WithArtefactTypeSeeder wires in the artefact-type seeder so Create
+// auto-seeds the 5 default work types after each new workspace is committed.
+// Optional — nil disables the seed (tests, environments without vaPool).
+func (s *Service) WithArtefactTypeSeeder(as ArtefactTypeSeeder) *Service {
+	s.atSeeder = as
+	return s
 }
 
 // WithVAPool attaches an optional vector_artefacts pgxpool to the

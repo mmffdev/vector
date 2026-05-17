@@ -562,7 +562,9 @@ func main() {
 
 	// Artefact-types settings handler (Customisation page).
 	// Serves GET + PATCH for name/prefix/description/colour on all live types.
-	artefactTypesH := artefacttypes.NewHandler(artefacttypes.NewService(vaPool))
+	artefactTypesSvc := artefacttypes.NewService(vaPool)
+	workspacesSvc.WithArtefactTypeSeeder(artefactTypesSvc)
+	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc)
 	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
 
 	// PLA-0053 / story 00578: hoist the workspace-clamp lookup once so

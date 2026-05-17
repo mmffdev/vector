@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import InlineEditField from "@/app/components/InlineEditField";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
@@ -235,6 +236,7 @@ function TypeRow({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function CustomisationPage() {
   const { full } = usePageTitle();
+  const workspaceId = useActiveWorkspace();
   const [types, setTypes] = useState<ArtefactType[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -248,7 +250,7 @@ export default function CustomisationPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, workspaceId]);
 
   const onPatched = useCallback((updated: ArtefactType) => {
     setTypes((prev) => prev?.map((t) => (t.id === updated.id ? updated : t)) ?? null);
