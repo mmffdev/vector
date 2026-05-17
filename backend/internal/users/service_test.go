@@ -276,7 +276,7 @@ func insertSession(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) {
 	t.Helper()
 	hash := uuid.NewString()
 	_, err := pool.Exec(context.Background(), `
-		INSERT INTO users_sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+		INSERT INTO users_sessions (users_sessions_id_user, users_sessions_token_hash, users_sessions_expires_at, users_sessions_ip_address, users_sessions_user_agent)
 		VALUES ($1, $2, NOW() + INTERVAL '1 hour', '127.0.0.1', 'test')`,
 		userID, hash,
 	)
@@ -289,7 +289,7 @@ func sessionRevoked(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) bool {
 	t.Helper()
 	var revoked bool
 	if err := pool.QueryRow(context.Background(),
-		`SELECT revoked FROM users_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+		`SELECT users_sessions_revoked FROM users_sessions WHERE users_sessions_id_user = $1 ORDER BY users_sessions_created_at DESC LIMIT 1`,
 		userID,
 	).Scan(&revoked); err != nil {
 		t.Fatalf("read session.revoked: %v", err)

@@ -80,18 +80,17 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole roletype
 	// touch only one place. PLA-0007 G4 retires the enum entirely.
 	u := &roletypes.User{}
 	err = pgx.BeginTxFunc(ctx, s.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		roleStr := string(in.Role)
 		// The legacy `role` enum column only knows ('user','padmin','gadmin');
 		// codes outside that set (team_lead, external, future custom roles)
 		// are pinned to 'user' in the enum and carried by role_id. The
 		// Z-migration that drops users.role retires this branch — same
 		// pattern as migration 095. PLA-0007 G4 follow-up.
-		legacyRole := roleStr
+		legacyRole := string(in.Role)
 		if legacyRole != string(roletypes.RoleUser) && legacyRole != string(roletypes.RolePAdmin) && legacyRole != string(roletypes.RoleGAdmin) {
 			legacyRole = string(roletypes.RoleUser)
 		}
 		if err := tx.QueryRow(ctx, sqlInsertUser,
-			in.SubscriptionID, email, hash, legacyRole, roleStr,
+			in.SubscriptionID, email, hash, legacyRole, legacyRoleToGrpCode(in.Role),
 		).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &u.AuthMethod, &u.ForcePasswordChange, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return err
 		}
@@ -184,8 +183,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		// subquery against the roles table so the structured side stays
 		// authoritative. Both columns must move together until the Z
 		// migration drops users.role.
-		roleStr := string(*in.Role)
-		legacyRole := roleStr
+		legacyRole := string(*in.Role)
 		if legacyRole != string(roletypes.RoleUser) && legacyRole != string(roletypes.RolePAdmin) && legacyRole != string(roletypes.RoleGAdmin) {
 			legacyRole = string(roletypes.RoleUser)
 		}
@@ -193,7 +191,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		args = append(args, legacyRole)
 		i++
 		sets = append(sets, fmt.Sprintf(sqlUpdateUserRoleIDFragmentTemplate, "$"+itoa(i)))
-		args = append(args, roleStr)
+		args = append(args, legacyRoleToGrpCode(*in.Role))
 		i++
 	}
 	if in.IsActive != nil {
@@ -360,6 +358,25 @@ func (s *Service) FindByID(ctx context.Context, id, actorTenant uuid.UUID) (*rol
 		return nil, ErrNotFound
 	}
 	return u, err
+}
+
+// legacyRoleToGrpCode maps the legacy users.role enum value to the
+// users_roles.users_roles_code that PLA-0049 Phase 0 introduced. The
+// subquery in sqlInsertUser / sqlUpdateUserRoleIDFragmentTemplate looks up
+// by code; passing the legacy enum string returns NULL → NOT NULL violation.
+// Codes outside the three coarse buckets pass through unchanged (e.g.
+// future grp_* custom roles) so Service.Create with a grp_* value also works.
+func legacyRoleToGrpCode(role roletypes.Role) string {
+	switch role {
+	case roletypes.RoleGAdmin:
+		return "grp_global"
+	case roletypes.RolePAdmin:
+		return "grp_portfolio"
+	case roletypes.RoleUser:
+		return "grp_team_member"
+	default:
+		return string(role)
+	}
 }
 
 func strPtr(s string) *string    { return &s }
