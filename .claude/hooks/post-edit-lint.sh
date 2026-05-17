@@ -97,7 +97,7 @@ wait
 # fixed-string match on the repo-relative path is enough.
 VIOLATIONS=""
 for L in "${SCRIPTS[@]}"; do
-  HITS=$(grep -F -- "$REL" "$TMPDIR/$L" 2>/dev/null || true)
+  HITS=$(grep -F -- "$REL" "$TMPDIR/$L" 2>/dev/null | grep -v "^\[lint:" || true)
   if [[ -n "$HITS" ]]; then
     VIOLATIONS+=$'\n--- lint:'"${L//_/-}"$'\n'
     VIOLATIONS+="$HITS"$'\n'
