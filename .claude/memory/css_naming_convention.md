@@ -54,9 +54,20 @@ Applies to: all divs, sections, containers, cards, modals, forms, inputs, button
 
 ---
 
-## MANDATORY PROPOSAL STEP — fires before writing any DOM element
+## Proposal step — narrow trigger
 
-Before writing a single class name or ID to any `.tsx`, `.jsx`, or `.css` file:
+The proposal-before-write step fires in **only two situations**:
+
+1. **Introducing a new root-block name** — a class chain whose root segment doesn't already exist in the codebase. Confirmation needed because the root sets the prefix for every descendant.
+2. **Renaming an existing chain** — the current names don't fit the convention and need to be migrated.
+
+It does **NOT** fire when:
+
+- Adding a new `_child` or `__Container_leaf` under an existing root-block.
+- Editing the body (CSS properties) of an already-named selector.
+- Routine refactors that keep the same root prefix.
+
+When the trigger fires, do this:
 
 1. Output the full proposed naming chain from root to leaf
 2. Show **both surfaces simultaneously** — TSX structure AND CSS selectors
@@ -83,4 +94,4 @@ CSS:
 Does this naming structure look right before I apply it?
 ```
 
-Do not write a single class name to a file without completing this step first.
+For routine additions under an existing root-block, apply the pattern silently — no proposal step.

@@ -25,6 +25,19 @@ The entries below are the **always-relevant** memories: incident-earned safety, 
 - [Design conversation IS the iteration loop](user_design_collaboration_mode.md) — Push and pull on ideas before coding; converge then build. Long-form architecture discussions are the work, not preamble to it.
 - [Always recommend the safest, best approach](feedback_safety_first.md) — Lead with ranked safest-first recommendation; never neutral A/B/C menus.
 
+### CSS conventions (every CSS/JSX edit)
+
+- [CSS canonical — buttons, tables, inline styles, tokens](css_canonical.md) — `.btn` + variant on every button; `tree_accordion-dense__*` for every table; no inline `style={{}}`; `--accent`/`--accent-ink` for interactive state, never `--brand`.
+- [CSS/HTML naming convention](css_naming_convention.md) — `root-block__Container_Child_leaf` pattern; confirmation step fires only when introducing a NEW root-block or renaming an existing chain; routine additions under an existing root don't trigger.
+
+### Test surface (whenever logging in or creating accounts)
+
+- [Test accounts — Claude-owned + human-owned](test_accounts.md) — Use claude@/claude_N_test@ for testing; HARD RULE on human accounts (gadmin/padmin/user@).
+
+### Stories (when creating any story)
+
+- [All stories MUST go through /stories shortcut](feedback_stories_shortcut_mandatory.md) — No exceptions, no direct Planka writes; every story routes through the skill (solo-dev mode = title + AC only).
+
 ### Critical workflow rules (apply every task)
 
 - [Read source when stuck or flying blind](feedback_read_source_when_stuck.md) — If a fix doesn't work, STOP and read 100–200 lines of source before grepping/curling/blaming cache; source is truth.

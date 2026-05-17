@@ -6,7 +6,6 @@ Entries below are **not loaded into every session.** They live here so you can g
 
 - [Stories all layers before starting](feedback_stories_all_layers.md) — Decompose across backend, frontend, migration, tests before /stories; never one layer at a time.
 - [Stories acceptance system — 7 gates, Fibonacci, risk](feedback_stories_system.md) — Hard gates: AIGEN+phase+feature+EST+RISK+description; F21+ auto-splits; 85%/90% confidence thresholds.
-- [All stories MUST go through /stories shortcut](feedback_stories_shortcut_mandatory.md) — No exceptions, no direct Planka writes; every story routes through the 7-gate skill.
 - [Feature-driven testing SOP — tests live at feature level, Tracker = regression library](feedback_feature_driven_testing_sop.md) — Every story → FEAT-N; every feature → one feature_test suite with red/green/regression-lock AC.
 - [Push migrations + commits often, don't stack](feedback_push_often.md) — Push migrations as they land; backfill `schema_migrations` immediately if applied via raw psql.
 - [Research-paper writer = Sonnet, investigators = Opus](feedback_research_paper_writer_model.md) — `<addpaper>` / `/research --page` writer agent on Sonnet; scan/audit agents on Opus.
@@ -21,8 +20,6 @@ Entries below are **not loaded into every session.** They live here so you can g
 - [Pages default to full screen](feedback_pages_fullscreen.md) — All new pages full screen by default; no max-width unless specified.
 - [No browser alert/confirm/prompt — in-page UI only](feedback_no_browser_alerts.md) — Never window.alert/confirm/prompt; pick form by context.
 - [Helper icon — always wire through `<Panel>`](feedback_helper_icon.md) — Never render inline TbHelpHexagon + popover; wrap host block in `<Panel name="..." title="...">` so help ties into Page Help admin via the addressable substrate.
-- [CSS canonical — buttons, tables, inline styles, tokens](css_canonical.md) — `.btn` + variant on every button; `tree_accordion-dense__*` for every table; no inline `style={{}}`; `--accent`/`--accent-ink` for interactive state, never `--brand`.
-- [CSS/HTML naming convention — hierarchical semantic pattern](css_naming_convention.md) — `root__Container_Child_leaf`; full spec — read this file when introducing a new root-block. Pattern enforcement lives in CLAUDE.md.
 - [Vector Design System](reference_design_system.md) — `/MMFFDev - Vector Assets/Vector Design System/`; skill `/vector-design`; Satoshi font, warm neutrals.
 
 ### Routing / data / boundaries
@@ -34,7 +31,6 @@ Entries below are **not loaded into every session.** They live here so you can g
 - [Table names use domain prefix for transparency](feedback_table_naming_prefixes.md) — New tables MUST carry their substrate prefix (e.g. `artefact_*`); generic names like `field_library` rejected.
 - [DB migrations — file-based ordered SQL only](project_db_migrations.md) — `db/<dbname>/schema/NNN_*.sql` per DB; runner `backend/cmd/migrate`.
 - [Shared cross-runtime methods home (PLA-0045)](feedback_shared_methods_home.md) — `app/lib/shared/<domain>/` (TS) + `backend/internal/shared/<domain>/` (Go) + `dev/fixtures/shared/<domain>/`.
-- [Test accounts — Claude-owned + human-owned](test_accounts.md) — All test logins (claude@, claude_N_test@, gadmin/padmin/user@) consolidated.
 
 ### Architecture / project state
 
