@@ -48,6 +48,10 @@ interface ShellState {
   activeSection: ShellSection | undefined;
   /** True when the account flyout should render instead of the section flyout. */
   isAccountActive: boolean;
+  /** True when the workspace scope panel is open in Rail 2. */
+  isScopeOpen: boolean;
+  toggleScopeOpen: () => void;
+  closeScopePanel: () => void;
 }
 
 const ShellContext = createContext<ShellState | null>(null);
@@ -219,6 +223,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   // flyout while staying on another section's page). When the URL changes to
   // a page in a different section, the override resets to follow the URL.
   const [manualSectionId, setManualSectionId] = useState<string>("");
+  const [isScopeOpen, setIsScopeOpen] = useState(false);
 
   useEffect(() => {
     if (urlSection) setManualSectionId(urlSection.id);
@@ -233,7 +238,11 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveSectionId = useCallback((id: string) => {
     setManualSectionId(id);
+    setIsScopeOpen(false); // clicking any section icon collapses the scope panel
   }, []);
+
+  const toggleScopeOpen = useCallback(() => setIsScopeOpen((v) => !v), []);
+  const closeScopePanel = useCallback(() => setIsScopeOpen(false), []);
 
   return (
     <ShellContext.Provider
@@ -244,6 +253,9 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
         setActiveSectionId,
         activeSection,
         isAccountActive,
+        isScopeOpen,
+        toggleScopeOpen,
+        closeScopePanel,
       }}
     >
       {children}

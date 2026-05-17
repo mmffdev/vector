@@ -10,6 +10,8 @@
   --accent-ink:    var(--brand-product-contrast);
   --accent-muted:  rgba(26, 26, 26, 0.06);
   --accent-border: rgba(26, 26, 26, 0.20);
+  /* Canonical colour for all tree connectors (T / elbow SVG paths) */
+  --tree-connector: var(--border);
 }
 
 /* Dark theme lives in app/styles/primitives.css */

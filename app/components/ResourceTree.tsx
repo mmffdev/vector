@@ -608,7 +608,7 @@ function TreeLines({
         <path
           key={`t${i}`}
           d={d}
-          stroke="var(--ink-subtle)"
+          stroke="var(--tree-connector)"
           strokeWidth="1.25"
           fill="none"
           strokeLinecap="round"
@@ -618,7 +618,7 @@ function TreeLines({
         <path
           key={`c${i}`}
           d={d}
-          stroke="var(--ink-subtle)"
+          stroke="var(--tree-connector)"
           strokeWidth="1.25"
           fill="none"
           strokeLinecap="round"

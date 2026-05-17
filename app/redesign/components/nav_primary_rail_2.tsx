@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useShell, type ShellPage } from "../ShellContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
+import { useScope } from "@/app/contexts/ScopeContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
+import ScopeTreePanel from "@/app/components/ScopeTreePanel";
 
 function formatNow(d: Date): string {
   const date = d.toLocaleDateString(undefined, {
@@ -101,12 +103,16 @@ function SectionFlyoutBody({
 }) {
   const { indicator, phase, setTarget } = useTravelIndicator(groupRef, activeKey, { inset: 4 });
   const { indicator: bmIndicator, phase: bmPhase, setTarget: bmSetTarget } = useTravelIndicator(bookmarkGroupRef, activeKey, { inset: 4 });
+  const { activeGrant } = useScope();
+  const scopeLabel = activeGrant
+    ? (activeGrant.label_override?.trim() || activeGrant.name)
+    : null;
 
   return (
     <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label={`${activeSection.name} pages`}>
       <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
       <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
-        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">{activeSection.name}</h3>
+        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">{scopeLabel ?? activeSection.name}</h3>
         <p id="nav-primary-rail-2__SectionHeader_Clock" className="nav-primary-rail-2__SectionHeader_Clock" aria-live="off">{formatNow(now)}</p>
       </div>
 
@@ -152,6 +158,39 @@ function SectionFlyoutBody({
             </div>
           </div>
         )}
+      </div>
+    </aside>
+  );
+}
+
+/** Scope panel — replaces the normal SectionFlyout when isScopeOpen=true. */
+export function ScopeFlyout() {
+  const { activeSection } = useShell();
+  const { activeGrant } = useScope();
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const scopeLabel = activeGrant
+    ? (activeGrant.label_override?.trim() || activeGrant.name)
+    : null;
+
+  return (
+    <aside id="nav-primary-rail-2" className="nav-primary-rail-2 nav-primary-rail-2--scope" aria-label="Workspace scope">
+      <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
+      <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
+        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">
+          {scopeLabel ?? activeSection?.name ?? "Workspace"}
+        </h3>
+        <p id="nav-primary-rail-2__SectionHeader_Clock" className="nav-primary-rail-2__SectionHeader_Clock" aria-live="off">
+          {formatNow(now)}
+        </p>
+      </div>
+      <div className="nav-primary-rail-2__ScopeBody vector-scroll">
+        <ScopeTreePanel />
       </div>
     </aside>
   );

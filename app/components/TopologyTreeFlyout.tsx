@@ -661,7 +661,7 @@ function TreeRow({
                 aria-hidden="true"
               >
                 {paths.map((d, i) => (
-                  <path key={`r${i}`} d={d} stroke="var(--border)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  <path key={`r${i}`} d={d} stroke="var(--tree-connector)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
                 ))}
               </svg>
             );
@@ -723,10 +723,10 @@ function TreeRow({
                 aria-hidden="true"
               >
                 {throughPaths.map((d, i) => (
-                  <path key={`t${i}`} d={d} stroke="var(--border)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  <path key={`t${i}`} d={d} stroke="var(--tree-connector)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
                 ))}
                 {paths.map((d, i) => (
-                  <path key={`c${i}`} d={d} stroke="var(--border)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  <path key={`c${i}`} d={d} stroke="var(--tree-connector)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
                 ))}
               </svg>
             );

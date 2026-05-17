@@ -95,7 +95,7 @@ function Spine({
   const W = depth * STEP;
   const H = ROW_H;
   const MID = H / 2;
-  const stroke = "var(--ink-subtle)";
+  const stroke = "var(--tree-connector)";
   const sw = "1.5";
 
   const paths: string[] = [];

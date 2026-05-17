@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Pencil, Settings } from "lucide-react";
+import { Bell, Globe, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
@@ -11,7 +11,7 @@ import ProfilePillStack from "./nav_primary_rail_1_NavProfilePillStack";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 
 export default function IconRail() {
-  const { sections, activeSectionId, setActiveSectionId } = useShell();
+  const { sections, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen } = useShell();
   const { user } = useAuth();
   const router = useRouter();
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
@@ -44,6 +44,19 @@ export default function IconRail() {
       </div>
 
       <div id="nav-primary-rail-1__divider" className="nav-primary-rail-1__divider" aria-hidden />
+
+      <button
+        id="nav-primary-rail-1__ScopeToggle"
+        type="button"
+        className={`nav-primary-rail-1__ScopeToggle${isScopeOpen ? " is-active" : ""}`}
+        title="Workspace scope"
+        aria-label="Toggle workspace scope"
+        aria-pressed={isScopeOpen}
+        onClick={toggleScopeOpen}
+      >
+        <Globe size={20} strokeWidth={1.75} />
+        <span className="nav-primary-rail-1__NavBuckets_Items_Button_Label">Workspace</span>
+      </button>
 
       <ul id="nav-primary-rail-1__NavBuckets" className="nav-primary-rail-1__NavBuckets" ref={listRef}>
         <TravelIndicator id="nav-primary-rail-1__NavBuckets_TravelIndicator" indicator={indicator} phase={phase} />

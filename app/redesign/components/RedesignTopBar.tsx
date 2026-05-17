@@ -7,7 +7,6 @@ import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { workspacesApi } from "@/app/lib/workspacesApi";
 import { useEffect, useState } from "react";
-import ScopePicker from "@/app/components/ScopePicker";
 
 function useWorkspaceName(workspaceId: string | null): string | null {
   const [name, setName] = useState<string | null>(null);
@@ -37,7 +36,6 @@ export default function RedesignTopBar() {
 
   return (
     <div className="nav-top-bar" role="banner">
-      <ScopePicker />
       {workspaceName && (
         <span className="nav-top-bar__WorkspaceToken" title={`Active workspace: ${workspaceName}`}>
           {workspaceName}

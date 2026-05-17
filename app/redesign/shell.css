@@ -5,7 +5,7 @@
    ============================================================ */
 
 .rd-shell {
-  --rd-rail-w: 70px;
+  --rd-rail-w: 80px;
   --nav-primary-rail-2-w: 240px;
   --rd-radius-md: 10px;
   --rd-radius-sm: 6px;
@@ -15,6 +15,11 @@
   min-height: 100vh;
   background: var(--canvas);
   color: var(--ink);
+}
+
+/* Scope panel open — widen Rail 2 to fit the tree list */
+.rd-shell--scope-open {
+  --nav-primary-rail-2-w: 320px;
 }
 
 /* -------- Icon rail -------- */
@@ -184,10 +189,8 @@
 
 .nav-primary-rail-1__NavBuckets_Items_Button {
   position: relative;
-  /* Fill the rail width so the label has the full 100px (minus
-     small side padding) to wrap into — avoids labels like "User
-     Management" hitting the button edge and breaking onto 3 lines. */
-  width: 100%;
+  width: calc(100% - 10px);
+  margin: 0 5px;
   min-height: 56px;
   padding: 6px 4px 6px;
   border-radius: var(--rd-radius-md);
@@ -220,6 +223,40 @@
   color: var(--ink);
 }
 .nav-primary-rail-1__NavBuckets_Items_Button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Workspace / scope toggle — same shape as NavBuckets_Items_Button but
+   sits above the section list as a persistent first item */
+.nav-primary-rail-1__ScopeToggle {
+  position: relative;
+  width: calc(100% - 10px);
+  margin: 0 5px;
+  min-height: 56px;
+  padding: 6px 4px 6px;
+  border-radius: var(--rd-radius-md);
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  box-sizing: border-box;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-primary-rail-1__ScopeToggle:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.nav-primary-rail-1__ScopeToggle.is-active {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.nav-primary-rail-1__ScopeToggle:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -355,7 +392,7 @@
      pad-top is 44 → title margin-top = -24 places group top at 20.
      Bottom margin is 0 so the clock sits flush directly below — the
      clock owns the bottom margin that pushes the list down. */
-  margin: -24px 0 0;
+  margin: -28px 0 4px;
   padding: 0 22px;
   color: var(--ink);
   letter-spacing: -0.01em;
@@ -369,7 +406,8 @@
        28 (1 pill) + 12 (gap + divider-mt) + 1 (divider) +
        8 (divider-mb + gap) + 6 (section pt) + 10 (½ 20px icon) = 129px.
      Flyout title top = 44 − 24 = 20px; title ≈ 19px; clock ≈ 12px;
-     first row half-height = 16px → gap needed = 129 − (20+19+12+16) = 62px − 1px (divider offset) = 61px. */
+     first row half-height = 16px → gap needed = 129 − (20+19+12+16) = 62px − 1px (divider offset) = 61px.
+     When scope label is present the label takes up ~18px, so margin reduces to 43px. */
   margin: 0 0 61px;
   padding: 0 22px;
   font-size: 10px;
@@ -377,6 +415,23 @@
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+}
+
+/* When scope label present, reduce clock bottom margin so total stays aligned */
+.nav-primary-rail-2__SectionHeader:has(.nav-primary-rail-2__SectionHeader_Scope)
+  .nav-primary-rail-2__SectionHeader_Clock {
+  margin-bottom: 8px;
+}
+
+.nav-primary-rail-2__SectionHeader_Scope {
+  margin: 0 0 43px;
+  padding: 0 22px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #3a6dff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-primary-rail-2__SectionDivider {
@@ -652,4 +707,76 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* -------- Scope panel (Rail 2 alternate) -------- */
+.nav-primary-rail-2--scope {
+  /* Override width is handled by --nav-primary-rail-2-w via rd-shell--scope-open */
+}
+
+/* Pull the tree body up so its top aligns with Rail 1 top */
+.nav-primary-rail-2--scope .nav-primary-rail-2__ScopeBody {
+  margin-top: 2px;
+}
+
+.nav-primary-rail-2__ScopeBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 16px;
+}
+
+/* -------- Inline scope tree panel -------- */
+.scope-tree-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0 5px;
+}
+
+.scope-tree-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  padding: 0 12px 0 0;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  line-height: 32px;
+}
+.scope-tree-panel__row:hover {
+  background: var(--surface-sunken);
+}
+.scope-tree-panel__row.is-active {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-weight: 600;
+  border-radius: var(--rd-radius-md, 10px);
+}
+.scope-tree-panel__row--workspace {
+  padding-left: 12px;
+  background: var(--surface-sunken);
+  border-radius: var(--rd-radius-md, 10px);
+}
+.scope-tree-panel__spine {
+  flex-shrink: 0;
+  display: block;
+}
+.scope-tree-panel__row-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 4px;
+}
+.scope-tree-panel__status {
+  padding: 16px 22px;
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.scope-tree-panel__status--error {
+  color: var(--danger-1, #e35);
 }
