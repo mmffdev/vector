@@ -548,9 +548,10 @@ const sqlListMyGrants = `
 		 ORDER BY n.sort_order, n.name
 	`
 
-// sqlListMyGrantsGadmin synthesises an admin grant on every live node
-// in the subscription. The synthetic GrantID is the node ID (React-key
-// only — see ListMyGrants doc for why this is safe).
+// sqlListMyGrantsGadmin synthesises an admin grant on every live node in the
+// subscription. The scope picker's buildTree reconstructs the hierarchy from
+// parent_id so the user sees workspaces with their children nested beneath.
+// Archived nodes are excluded at all levels.
 const sqlListMyGrantsGadmin = `
 		SELECT n.id, n.workspace_id, n.parent_id,
 		       n.name, n.label_override, n.colour, n.icon,
