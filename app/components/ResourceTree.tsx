@@ -166,6 +166,7 @@ export interface ResourceTreeProps<T> {
   getChildrenCount: (row: T) => number;
   fetchChildren: (parentId: string) => Promise<T[]>;
   patch: (id: string, patch: Record<string, unknown>) => Promise<T>;
+  getRowClass?: (row: T) => string | undefined;
 
   // ── Set 2: Scaffold ──
   columns: ColumnDef<T>[];
@@ -583,17 +584,16 @@ function TreeLines({
     }
   });
 
-  // Own connector. A last-sibling with no visible children is a clean elbow.
-  // Otherwise it's a T (├) so the parent's vertical continues through.
-  const renderAsLast = isLast && !hasVisibleChildren;
-  if (renderAsLast) {
+  // Last-sibling always gets an elbow (└─). Non-last gets a T (├─).
+  // Expanded nodes add a child-drop stub at childLineX regardless.
+  if (isLast) {
     paths.push(`M${lineX} 0 L${lineX} ${MID} L${W} ${MID}`);
   } else {
     paths.push(`M${lineX} 0 L${lineX} ${H}`);
     paths.push(`M${lineX} ${MID} L${W} ${MID}`);
-    if (hasVisibleChildren) {
-      paths.push(`M${childLineX} ${MID + 6} L${childLineX} ${H}`);
-    }
+  }
+  if (hasVisibleChildren) {
+    paths.push(`M${childLineX} ${MID + 6} L${childLineX} ${H}`);
   }
 
   return (
@@ -608,7 +608,7 @@ function TreeLines({
         <path
           key={`t${i}`}
           d={d}
-          stroke="var(--border)"
+          stroke="var(--ink-subtle)"
           strokeWidth="1.25"
           fill="none"
           strokeLinecap="round"
@@ -618,7 +618,7 @@ function TreeLines({
         <path
           key={`c${i}`}
           d={d}
-          stroke="var(--border)"
+          stroke="var(--ink-subtle)"
           strokeWidth="1.25"
           fill="none"
           strokeLinecap="round"
@@ -739,6 +739,8 @@ function ResourceTreeImpl<T>({
   getParentId,
   getChildrenCount,
   fetchChildren,
+  patch,
+  getRowClass,
   // Scaffold
   columns,
   rowHeight = DEFAULT_ROW_H,
@@ -1232,12 +1234,14 @@ function ResourceTreeImpl<T>({
       };
 
       const dndProps = dnd ? composeRowProps(id) : null;
+      const extraClass = getRowClass?.(item);
       const baseRowClass =
         "tree_accordion-dense__row" +
         (depth === 0
           ? " tree_accordion-dense__row--epic"
           : " tree_accordion-dense__row--child") +
-        (selectedId === id ? " tree_accordion-dense__row--selected" : "");
+        (selectedId === id ? " tree_accordion-dense__row--selected" : "") +
+        (extraClass ? ` ${extraClass}` : "");
       const rowClass = dndProps?.className
         ? `${baseRowClass} ${dndProps.className}`
         : baseRowClass;

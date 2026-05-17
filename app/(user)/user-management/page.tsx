@@ -10,7 +10,7 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
-import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/app/(user)/workspace-settings/_shared";
+import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/app/(user)/_shared";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
 

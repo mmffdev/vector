@@ -18,7 +18,7 @@ export default function AdminRedirect() {
 
   useEffect(() => {
     if (!user) return;
-    if (canAdminWorkspace) router.replace("/workspace-settings");
+    if (canAdminWorkspace) router.replace("/workspace-admin");
     else if (canEditPortfolioModel) router.replace("/portfolio-settings");
     else router.replace("/dashboard");
   }, [user, canAdminWorkspace, canEditPortfolioModel, router]);

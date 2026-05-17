@@ -318,7 +318,7 @@ export default function WorkspaceDetailsPage() {
   const { full } = usePageTitle();
 
   useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-settings");
+    if (user && !canAccess) router.replace("/workspace-admin");
   }, [user, canAccess, router]);
 
   if (!user || !canAccess) return null;

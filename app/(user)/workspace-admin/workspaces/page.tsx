@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { MdOutlineEdit } from "react-icons/md";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
-import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
-import { Modal } from "@/app/(user)/workspace-settings/_shared";
+import { admin } from "@/app/lib/apiSite";
+import { Modal } from "@/app/(user)/_shared";
+import PageDescription from "@/app/components/PageDescription";
 
 function ArchivedWorkspacesSection({
   rows,
@@ -323,7 +324,7 @@ export default function WorkspacesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-settings");
+    if (user && !canAccess) router.replace("/workspace-admin");
   }, [user, canAccess, router]);
 
   if (!user || !canAccess) return null;
@@ -382,20 +383,26 @@ export default function WorkspacesPage() {
     await Promise.all([load(), loadArchived()]);
   }
 
+  async function seedWorkspace() {
+    await admin.devSeedWorkspace();
+    emitWorkspacesChanged();
+    await load();
+  }
+
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Create and manage workspaces within this tenant." />
-      <Panel
-        name="panel_workspaces_header"
-        className="page-panel-heading"
-        title="Workspaces"
-        description="Create new workspaces, rename existing ones, and manage archived workspaces."
-      />
+      <PageDescription>
+        Create new workspaces, rename existing ones, and manage archived workspaces.
+      </PageDescription>
     <div>
       <div className="toolbar">
         <div className="toolbar__meta">
           {rows ? `${rows.length} workspace${rows.length === 1 ? "" : "s"}` : "Loading…"}
         </div>
+        <button onClick={seedWorkspace} className="btn">
+          Seed workspace
+        </button>
         <button onClick={() => setShowCreate(true)} className="btn btn--primary">
           + New workspace
         </button>

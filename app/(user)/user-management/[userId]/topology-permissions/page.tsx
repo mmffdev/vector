@@ -26,7 +26,7 @@ import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import type { AdminUser } from "@/app/(user)/workspace-settings/_shared";
+import type { AdminUser } from "@/app/(user)/_shared";
 
 export default function TopologyPermissionsPage() {
   const { full } = usePageTitle();
