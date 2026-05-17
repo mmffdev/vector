@@ -53,6 +53,34 @@ Users with `auth_method = 'ldap'` have certain profile fields (email, display na
 
 Postgres is bound to loopback on the host. Laptop reach is via SSH tunnel only (see [c_postgresql.md](c_postgresql.md)). Any change that exposes `5432` to the public internet is a severity-**high** flag, no exceptions.
 
+### 8. Shell-injection — argv-based exec only
+
+Any code that spawns a subprocess MUST use an argv-based API; never interpolate untrusted input into a shell string. Pattern lifted from ruflo's 3.6.25 audit (their 28-witness regression set).
+
+**Current Vector surfaces:**
+
+- **Node** — only [`app/api/dev/go-test/route.ts`](../app/api/dev/go-test/route.ts) uses `child_process`. Dev-only route, but still apply the rule.
+- **Go** — `exec.Command` appears in `backend/internal/topology/boundary_test.go` and `backend/internal/addressables/boundary_test.go`. Test files only — not a runtime surface, but the pattern stays the same.
+
+#### Anti-patterns
+
+| Bad | Good | Why |
+|---|---|---|
+| `execSync(\`gh pr view ${prNumber}\`)` | `execFileSync('gh', ['pr', 'view', String(prNumber)], { shell: false })` | Template literals inside a shell string are command injection; argv with `shell: false` is safe |
+| `function fetch(prNumber: number)` then passing user input | Validate at the boundary: `if (!Number.isInteger(n) || n < 0) throw …` | TypeScript casts do NOT run at runtime — `"1; rm -rf /"` slips through `as number` |
+| `spawn(cmd, args, { env: process.env })` with user-controlled env | Whitelist env: drop `LD_PRELOAD`, `NODE_OPTIONS`, `DYLD_*` before passing | Loader-hijack env vars compromise the child regardless of the command |
+| `exec(\`npm install ${pkg}\`)` | Regex-gate `pkg` against `/^@?[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)?(@[a-z0-9._-]+)?$/i` then `execFileSync` | Untrusted package specs flow straight into npm's argv parser |
+| Go: `exec.Command("sh", "-c", "find " + dir)` | `exec.Command("find", dir)` | Same rule: argv arg, no shell layer |
+
+#### Rule
+
+- **Node:** `execFileSync` / `spawn` with `{ shell: false }` only. `execSync`/`exec` are banned in any code path that takes external input.
+- **Go:** `exec.Command(name, args...)` — never pass `sh -c "..."` with interpolated values.
+- **Numeric IDs from external input** (URL params, JSON body, MCP arguments): validate with `Number.isInteger` + range check; never trust TypeScript types.
+- **Subprocess env**: strip loader-hijack vars (`LD_PRELOAD`, `NODE_OPTIONS`, `DYLD_*`) before spawning. Pass an explicit allowlist when possible.
+
+Severity: **high** if the spawn is reachable by `padmin` or below; **med** if `gadmin`-only; **low** if confined to test files or dev-only routes behind `gadmin` auth.
+
 ## What "Trust No One" does NOT cover
 
 SoW §6 is explicit: "Trust No One" applies to **auth, authz, and data access**. It does NOT apply to product configuration. Admins can add portfolio layers, rename states, change tags — these are trusted configuration operations that do not require secondary approval. Do not over-apply Zero Trust to config UX (it makes the product unusable).
