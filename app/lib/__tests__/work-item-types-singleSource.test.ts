@@ -25,9 +25,11 @@ import { ITEM_TYPES, CORE_FIELDS } from "@/app/lib/work-item-types";
 // cfaa26c).
 
 const REPO = resolve(__dirname, "../../..");
+// Formerly checked two pages (workspace-admin + the now-deleted
+// workspace-settings/workspace-settings duplicate). Duplicate removed
+// 2026-05-17; single canonical path remains.
 const PAGES = [
   "app/(user)/workspace-admin/custom-fields/work-items/page.tsx",
-  "app/(user)/workspace-settings/workspace-settings/custom-fields/work-items/page.tsx",
 ];
 
 function readPage(rel: string): string {

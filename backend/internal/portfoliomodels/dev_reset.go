@@ -184,6 +184,103 @@ func (h *DevResetHandler) SeedRisks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SeedWorkspace — POST /_site/admin/dev/seed-workspace
+//
+// Inserts a fresh workspace + root topology node for the caller's subscription.
+// Each call produces a distinct workspace (random UUID). Name defaults to
+// "Dev Workspace <timestamp>"; override via body { "name": "..." }.
+// Mirrors dev/scripts/seed_workspace.go — used by the Workspaces admin UI button.
+func (h *DevResetHandler) SeedWorkspace(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if h.VAPool == nil {
+		http.Error(w, "vector_artefacts pool unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Name string `json:"name"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+	if body.Name == "" {
+		body.Name = "Dev Workspace " + uuid.NewString()[:8]
+	}
+
+	ctx := r.Context()
+
+	// Insert workspace on mmff_vector.
+	var workspaceID uuid.UUID
+	err := h.VectorPool.QueryRow(ctx, sqlDevSeedWorkspace,
+		u.SubscriptionID,
+		body.Name,
+		devWorkspaceSlug(body.Name),
+		u.ID,
+	).Scan(&workspaceID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("insert workspace: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Grant the caller admin access so the workspace clamp middleware lets them in.
+	if _, err := h.VectorPool.Exec(ctx, sqlDevSeedWorkspaceCreatorGrant,
+		u.SubscriptionID, workspaceID, u.ID,
+	); err != nil {
+		http.Error(w, fmt.Sprintf("insert workspace grant: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Seed root topology node on vector_artefacts.
+	vaTx, err := h.VAPool.Begin(ctx)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("begin va tx: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if seedErr := h.TopologySvc.SeedRootNode(ctx, workspaceID, u.SubscriptionID, body.Name, vaTx); seedErr != nil {
+		_ = vaTx.Rollback(ctx)
+		http.Error(w, fmt.Sprintf("seed topology root: %v", seedErr), http.StatusInternalServerError)
+		return
+	}
+	if err := vaTx.Commit(ctx); err != nil {
+		http.Error(w, fmt.Sprintf("commit va tx: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":      true,
+		"workspace_id": workspaceID,
+		"name":         body.Name,
+	})
+}
+
+// devWorkspaceSlug converts a name to a slug safe for the workspace slug CHECK constraint.
+func devWorkspaceSlug(name string) string {
+	slug := make([]byte, 0, len(name))
+	for _, c := range []byte(name) {
+		switch {
+		case c >= 'A' && c <= 'Z':
+			slug = append(slug, c+32)
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9':
+			slug = append(slug, c)
+		default:
+			if len(slug) > 0 && slug[len(slug)-1] != '-' {
+				slug = append(slug, '-')
+			}
+		}
+	}
+	for len(slug) > 0 && slug[len(slug)-1] == '-' {
+		slug = slug[:len(slug)-1]
+	}
+	if len(slug) == 0 {
+		return "dev-workspace"
+	}
+	return string(slug)
+}
+
 // ─── private ─────────────────────────────────────────────────────────────────
 
 // resetAdoptionTables — adoption-only clear (used by ResetAdoptionState).

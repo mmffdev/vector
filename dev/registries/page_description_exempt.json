@@ -204,6 +204,6 @@
     {
       "path": "app/(user)/workspace-settings/workspace-settings/workspaces/page.tsx",
       "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
-    }
+    },
   ]
 }

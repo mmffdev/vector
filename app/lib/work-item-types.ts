@@ -32,19 +32,20 @@ export type ItemTypeKey = typeof ITEM_TYPES[number]["key"];
 // covered before they add a custom field on top.
 export interface CoreField {
   name:   string;
+  label:  string;
   type:   string;
   source: string;
   note?:  string;
 }
 
 export const CORE_FIELDS: CoreField[] = [
-  { name: "title",                       type: "text", source: "artefacts.title" },
-  { name: "description",                 type: "text", source: "artefacts.description" },
-  { name: "priority",                    type: "enum", source: "artefacts.priority",                       note: "critical / high / medium / low" },
-  { name: "story_points",                type: "int",  source: "artefacts.story_points" },
-  { name: "due_date",                    type: "date", source: "artefacts.due_date" },
-  { name: "artefacts_id_timebox_sprint", type: "uuid", source: "artefacts.artefacts_id_timebox_sprint" },
-  { name: "parent_artefact_id",          type: "uuid", source: "artefacts.parent_artefact_id" },
-  { name: "position",                    type: "int",  source: "artefacts.position",                      note: "rank within current scope (backlog or sprint)" },
-  { name: "flow_state_id",               type: "uuid", source: "artefacts.flow_state_id",                 note: "current state via flow_states.kind" },
+  { name: "title",                       label: "Title",        type: "text", source: "artefacts.title" },
+  { name: "description",                 label: "Description",  type: "text", source: "artefacts.description" },
+  { name: "priority",                    label: "Priority",     type: "enum", source: "artefacts.priority",                       note: "critical / high / medium / low" },
+  { name: "story_points",                label: "Story Points", type: "int",  source: "artefacts.story_points" },
+  { name: "due_date",                    label: "Due Date",     type: "date", source: "artefacts.due_date" },
+  { name: "artefacts_id_timebox_sprint", label: "Sprint",       type: "uuid", source: "artefacts.artefacts_id_timebox_sprint" },
+  { name: "parent_artefact_id",          label: "Parent",       type: "uuid", source: "artefacts.parent_artefact_id" },
+  { name: "position",                    label: "Position",     type: "int",  source: "artefacts.position",                      note: "rank within current scope (backlog or sprint)" },
+  { name: "flow_state_id",               label: "Flow State",   type: "uuid", source: "artefacts.flow_state_id",                 note: "current state via flow_states.kind" },
 ];

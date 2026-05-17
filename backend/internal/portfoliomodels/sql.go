@@ -583,3 +583,17 @@ const sqlDeleteRolesWorkspacesForSubscription = `
 	`
 
 const sqlDeleteAllWorkspacesForSubscription = `DELETE FROM master_record_workspaces WHERE subscription_id = $1`
+
+const sqlDevSeedWorkspace = `
+	INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
+	VALUES ($1, $2, $3, '', $4)
+	RETURNING id`
+
+const sqlDevSeedWorkspaceCreatorGrant = `
+	INSERT INTO users_roles_workspaces (
+		users_roles_workspaces_id_subscription,
+		users_roles_workspaces_id_workspace,
+		users_roles_workspaces_id_user,
+		users_roles_workspaces_role,
+		users_roles_workspaces_id_user_granted_by
+	) VALUES ($1, $2, $3, 'admin', $3)`

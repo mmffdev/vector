@@ -90,7 +90,11 @@
       "Bash(cp \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/memory/MEMORY.md\" \"/Users/rick/.claude/projects/-Users-rick-Documents-MMFFDev---Projects-MMFFDev---Vector/memory/MEMORY.md\")",
       "WebFetch(domain:docs.broadcom.com)",
       "Bash(mkdir -p \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills/search\")",
-      "Edit(/.claude/skills/search/**)"
+      "Edit(/.claude/skills/search/**)",
+      "mcp__github__get_label",
+      "mcp__github__create_or_update_file",
+      "Bash(mkdir -p \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills/treelist\")",
+      "Edit(/.claude/skills/treelist/**)"
     ],
     "additionalDirectories": [
       "/Users/rick/.claude",

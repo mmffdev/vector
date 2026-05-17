@@ -291,7 +291,7 @@ export const customPages = {
     apiSite<void>(`/custom-pages/${id}`, { method: "DELETE" }),
 };
 
-// Pages: app/lib/workspacesApi.ts (shared helper), app/(user)/workspace-settings/ (settings shell),
+// Pages: app/lib/workspacesApi.ts (shared helper),
 //        gadmin workspace management UI
 // ─── Workspaces  (/workspaces) ────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ export const workspaces = {
     apiSite<void>(`/workspaces/${id}/restore`, { method: "POST" }),
 };
 
-// Pages: app/(user)/workspace-settings/webhooks/page.tsx, WebhookForm.tsx
+// Pages: app/(user)/vector-admin/api-manager/webhooks/page.tsx, WebhookForm.tsx
 // ─── Webhooks  (/workspaces/{workspaceId}/webhooks) ──────────────────────────
 
 export interface Webhook {
@@ -359,7 +359,7 @@ export const webhooks = {
     apiSite<void>(`/workspaces/${workspaceId}/webhooks/${webhookId}`, { method: "DELETE" }),
 };
 
-// Pages: app/(user)/workspace-settings/users/page.tsx (user management),
+// Pages: app/(user)/user-management/page.tsx (user management),
 //        app/(user)/admin/api-keys/page.tsx (API key issuance),
 //        dev/pages/DevPage.tsx (devAdoptionReset, devMasterReset — gadmin dev only)
 // ─── Admin  (/admin) ─────────────────────────────────────────────────────────
@@ -405,6 +405,15 @@ export const admin = {
   devSeedRisks: (params: { count?: number; assignee_id?: string } = {}) =>
     apiSite<{ success: boolean; inserted: number; message: string }>(
       "/admin/dev/seed-risks",
+      { method: "POST", body: JSON.stringify(params) },
+    ),
+
+  /** gadmin-only (dev): insert a fresh workspace + root topology node for the
+   *  caller's subscription. Each call produces a distinct workspace (random UUID).
+   *  Defined in backend/internal/portfoliomodels/dev_reset.go (SeedWorkspace). */
+  devSeedWorkspace: (params: { name?: string } = {}) =>
+    apiSite<{ success: boolean; workspace_id: string; name: string }>(
+      "/admin/dev/seed-workspace",
       { method: "POST", body: JSON.stringify(params) },
     ),
 };
@@ -499,7 +508,7 @@ export const portfolio = {
     }),
 };
 
-// Pages: app/(user)/workspace-settings/workspace-settings/flow-states/page.tsx
+// Pages: app/(user)/workspace-admin/flow-states/page.tsx
 // Lib:   app/lib/flowStatesApi.ts
 // ─── Flows  (/flows, /flow-states) ───────────────────────────────────────────
 
@@ -677,7 +686,7 @@ export const flowStateExitRules = {
     apiSite<void>(`/flow-state-exit-rules/${ruleId}`, { method: "DELETE" }),
 };
 
-// Pages: app/lib/fieldsApi.ts (shared helper), app/(user)/workspace-settings/fields/ (field admin)
+// Pages: app/lib/fieldsApi.ts (shared helper), app/(user)/workspace-admin/custom-fields/
 // ─── Workspace fields  (/workspace/{id}/fields) ──────────────────────────────
 
 export const workspaceFields = {
@@ -924,7 +933,7 @@ export const topology = {
 };
 
 // Pages: app/(user)/admin/roles/page.tsx (gadmin role management),
-//        app/(user)/workspace-settings/users/page.tsx (role assignment to users),
+//        app/(user)/user-management/page.tsx (role assignment to users),
 //        app/(user)/topology/ (node role grants)
 // ─── Roles  (/roles) ─────────────────────────────────────────────────────────
 
