@@ -128,20 +128,22 @@ export default function RiskPage() {
         />
         <PageSummaryHeader cells={summaryCells} />
 
-        <ObjectTree
-          title="Risk register"
-          addressableName="risk_grid_tree_ll"
-          subtitleBadge="RSK"
-          subtitle="Risk register"
-          description="Identify, score, mitigate. Severity × likelihood drives the matrix above."
-          selectedId={selectedItem?.id ?? null}
-          onSelect={setSelectedItem}
-          onPatched={(body) => {
-            const needsRefetch = "status" in body || "title" in body;
-            if (needsRefetch) void refetch();
-          }}
-          wizardConfig={wizardConfig}
-        />
+        {types.length > 0 && (
+          <ObjectTree
+            title="Risk register"
+            addressableName="risk_grid_tree_ll"
+            subtitleBadge="RSK"
+            subtitle="Risk register"
+            description="Identify, score, mitigate. Severity × likelihood drives the matrix above."
+            selectedId={selectedItem?.id ?? null}
+            onSelect={setSelectedItem}
+            onPatched={(body) => {
+              const needsRefetch = "status" in body || "title" in body;
+              if (needsRefetch) void refetch();
+            }}
+            wizardConfig={wizardConfig}
+          />
+        )}
       </>
     </PageContent>
   );
