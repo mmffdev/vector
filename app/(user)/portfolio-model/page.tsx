@@ -37,11 +37,11 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { portfolio as portfolioApi } from "@/app/lib/apiSite/index";
 import { notify } from "@/app/lib/toast";
 import { useHintOnce } from "@/app/lib/hints";
-import { workspacesApi } from "@/app/lib/workspacesApi";
 import WizardModelCardList from "./WizardModelCardList";
 import AdoptionOverlay, {
   type AdoptionDoneEvent,
@@ -148,6 +148,7 @@ type StateView =
 export default function PortfolioModelPage() {
   const { full } = usePageTitle();
   const { user, loading: authLoading } = useAuth();
+  const activeWorkspaceId = useActiveWorkspace();
   const canEditModel = useHasPermission("portfolio.model.edit");
   const router = useRouter();
   const [view, setView] = useState<StateView>({ kind: "loading" });
@@ -190,8 +191,9 @@ export default function PortfolioModelPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || !canEditModel) return;
+    if (!activeWorkspaceId) return;
     void fetchAdoptionState();
-  }, [authLoading, user, canEditModel, fetchAdoptionState]);
+  }, [authLoading, user, canEditModel, activeWorkspaceId, fetchAdoptionState]);
 
   // Step 3 — fetch the bundle preview when adopted. Kept as a separate
   // effect so re-rendering the preview after onDone doesn't re-fetch
@@ -207,20 +209,11 @@ export default function PortfolioModelPage() {
   // BundleView's master-record-driven render.
   useEffect(() => {
     if (view.kind !== "adopted") return;
+    if (!activeWorkspaceId) return;
     let cancelled = false;
     (async () => {
       try {
-        // Resolve the caller's live workspace. The frontend has no
-        // shared current-workspace context yet (S3 deferred — see PLA-
-        // 0026 follow-ups); per the per-tenant cutover, padmins have
-        // exactly one live workspace today, so first-row is correct.
-        const workspaces = await workspacesApi.list();
-        if (cancelled) return;
-        if (workspaces.length === 0) {
-          setView({ kind: "missing-bundle" });
-          return;
-        }
-        const workspaceId = workspaces[0].id;
+        const workspaceId = activeWorkspaceId;
 
         const mr = await apiSite<MasterRecordDTO>(
           `/portfolio/master_record?workspace_id=${encodeURIComponent(workspaceId)}`,
@@ -262,7 +255,7 @@ export default function PortfolioModelPage() {
     return () => {
       cancelled = true;
     };
-  }, [view]);
+  }, [view, activeWorkspaceId]);
 
   // Wizard → overlay handoff (Step 4).
   const handleAdoptStarted = useCallback(
