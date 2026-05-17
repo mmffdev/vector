@@ -1,0 +1,56 @@
+name: Bug Report
+description: Something isn't working correctly
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Fill in as much detail as you can — the more context, the faster the fix.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How bad is this?
+      options:
+        - "critical — crash, data loss, or security issue"
+        - "high — major feature broken, no workaround"
+        - "medium — feature degraded, workaround exists"
+        - "low — minor / cosmetic / edge case"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: Tell us what you see…
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to reproduce the bug.
+      placeholder: |
+        1. Go to …
+        2. Click on …
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, error messages, console output, browser/OS version — anything relevant.
