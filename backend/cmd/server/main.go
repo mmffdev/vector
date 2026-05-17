@@ -1080,6 +1080,7 @@ func main() {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
+			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 			r.Use(httprate.LimitByIP(60, time.Minute))
 			r.Get("/", flowsH.List)
 			// Per-flow state + transition management.

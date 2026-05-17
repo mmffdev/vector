@@ -27,16 +27,24 @@ import type {
   ResetApplyResult,
 } from "@/app/lib/apiSite/index";
 
-// Module-level cache so layout + page both resolve from the same in-flight request.
+// Module-level cache keyed by workspace ID so switching workspace busts it.
+let _cacheKey: string | null = null;
 let _cache: FlowsResponse | null = null;
 let _promise: Promise<FlowsResponse> | null = null;
 
 function invalidate() {
+  _cacheKey = null;
   _cache = null;
   _promise = null;
 }
 
-async function list(): Promise<FlowsResponse> {
+async function list(workspaceId?: string): Promise<FlowsResponse> {
+  const key = workspaceId ?? "";
+  if (key !== _cacheKey) {
+    _cacheKey = key;
+    _cache = null;
+    _promise = null;
+  }
   if (_cache) return _cache;
   if (!_promise) {
     _promise = flowsApi.list().then((r) => {

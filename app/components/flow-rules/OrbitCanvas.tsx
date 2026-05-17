@@ -74,7 +74,7 @@ export default function OrbitCanvas({ focused, orbiting, rules, busyKey, onToggl
       >
         <defs>
           <marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border)" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink)" />
           </marker>
         </defs>
         {positions.map(({ state, x, y, angle }) => {
@@ -87,7 +87,7 @@ export default function OrbitCanvas({ focused, orbiting, rules, busyKey, onToggl
             <line
               key={`arrow-${state.id}`}
               x1={sx} y1={sy} x2={tx} y2={ty}
-              stroke="var(--border)"
+              stroke="var(--ink)"
               strokeWidth={1}
               markerEnd={`url(#${markerId})`}
             />

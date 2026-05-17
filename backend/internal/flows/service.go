@@ -36,22 +36,23 @@ func New(vaPool, mainPool *pgxpool.Pool) *Service {
 	return &Service{vaPool: vaPool, mainPool: mainPool}
 }
 
-// ListBySubscription returns every flow for the subscription, each with its
+// ListByWorkspace returns every flow for the workspace, each with its
 // states ordered by sort_order. Archived flows and states are excluded.
-func (s *Service) ListBySubscription(ctx context.Context, subscriptionID string) (*ListResponse, error) {
-	work, err := s.listByScope(ctx, subscriptionID, "work")
+// subscriptionID is the tenancy gate; workspaceID narrows to the active workspace.
+func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspaceID string) (*ListResponse, error) {
+	work, err := s.listByScope(ctx, subscriptionID, workspaceID, "work")
 	if err != nil {
 		return nil, fmt.Errorf("flows: list work scope: %w", err)
 	}
-	strategy, err := s.listByScope(ctx, subscriptionID, "strategy")
+	strategy, err := s.listByScope(ctx, subscriptionID, workspaceID, "strategy")
 	if err != nil {
 		return nil, fmt.Errorf("flows: list strategy scope: %w", err)
 	}
 	return &ListResponse{Work: work, Strategy: strategy}, nil
 }
 
-func (s *Service) listByScope(ctx context.Context, subscriptionID, scope string) ([]FlowGroup, error) {
-	rows, err := s.vaPool.Query(ctx, sqlListFlowsByScope, subscriptionID, scope)
+func (s *Service) listByScope(ctx context.Context, subscriptionID, workspaceID, scope string) ([]FlowGroup, error) {
+	rows, err := s.vaPool.Query(ctx, sqlListFlowsByScope, subscriptionID, workspaceID, scope)
 	if err != nil {
 		return nil, err
 	}

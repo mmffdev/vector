@@ -644,16 +644,26 @@ input[type="reset"] {
 .scope-picker__item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 0;
   width: 100%;
-  padding: 6px 12px;
+  /* No left padding — spine SVG provides indent for child rows;
+     workspace rows get padding via the --workspace modifier below */
+  padding: 0 12px 0 0;
+  height: 32px;
   background: transparent;
   border: 0;
   text-align: left;
   font-size: 13px;
   color: var(--ink);
   cursor: pointer;
+  line-height: 32px;
+}
+
+/* Workspace rows (depth 0): no spine SVG, so add left padding directly */
+.scope-picker__item--workspace {
+  padding-left: 12px;
+  background: var(--surface-sunken);
+  font-weight: 600;
 }
 
 .scope-picker__item:hover {
@@ -666,11 +676,18 @@ input[type="reset"] {
   font-weight: 600;
 }
 
+.scope-picker__spine {
+  flex-shrink: 0;
+  display: block;
+  /* No gap between spine and label — spine horizontal arm ends flush */
+}
+
 .scope-picker__item-name {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-left: 4px;
 }
 
 .scope-picker__item-role {
@@ -679,15 +696,8 @@ input[type="reset"] {
   color: var(--ink-subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  padding-left: 8px;
 }
-
-.scope-picker__item--d0 { padding-left: 12px; }
-.scope-picker__item--d1 { padding-left: 26px; }
-.scope-picker__item--d2 { padding-left: 40px; }
-.scope-picker__item--d3 { padding-left: 54px; }
-.scope-picker__item--d4 { padding-left: 68px; }
-.scope-picker__item--d5 { padding-left: 82px; }
-.scope-picker__item--d6 { padding-left: 96px; }
 
 .scope-picker__error,
 .scope-picker__empty {

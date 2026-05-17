@@ -11,6 +11,7 @@ import Panel from "@/app/components/Panel";
 import OrbitView from "@/app/components/flow-rules/OrbitView";
 import { flowStatesApi, type FlowGroup, type FlowTransition, type FlowsResponse } from "@/app/lib/flowStatesApi";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { useTenantName } from "@/app/contexts/TenantContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
@@ -75,28 +76,30 @@ function TypeSection({
 
 export default function TransitionRulesPage() {
   const { user } = useAuth();
+  const activeWorkspaceId = useActiveWorkspace();
   const canManageFlows = useHasPermission("flows.manage");
   const router = useRouter();
   const workspaceName = useTenantName() || "ACME Bank Workspace";
   const { full } = usePageTitle();
 
   useEffect(() => {
-    if (user && !canManageFlows) router.replace("/workspace-settings");
+    if (user && !canManageFlows) router.replace("/workspace-admin");
   }, [user, canManageFlows, router]);
 
   const [data, setData]   = useState<FlowsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setData(null);
     setError(null);
     try {
-      setData(await flowStatesApi.list());
+      setData(await flowStatesApi.list(activeWorkspaceId ?? undefined));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load transition rules.");
     }
-  }, []);
+  }, [activeWorkspaceId]);
 
-  useEffect(() => { if (user && canManageFlows) load(); }, [user, canManageFlows, load]);
+  useEffect(() => { if (user && canManageFlows) load(); }, [user, canManageFlows, load, activeWorkspaceId]);
 
   const handleReplaceGroup = useCallback((flowId: string, transitions: FlowTransition[]) => {
     setData((prev) => {

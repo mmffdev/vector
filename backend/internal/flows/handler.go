@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
@@ -21,11 +22,17 @@ func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
 
 // GET /api/flows
 //
-// Returns every flow row for the caller's subscription, grouped by target
-// (system / tenant / portfolio). Caller must have flows.manage.
+// Returns every flow row for the caller's active workspace, grouped by scope
+// (work / strategy). Caller must have flows.manage. WorkspaceClampMiddleware
+// must be applied on the route so topology.WorkspaceIDFromCtx is populated.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	out, err := h.Svc.ListBySubscription(r.Context(), u.SubscriptionID.String())
+	wsID, ok := topology.WorkspaceIDFromCtx(r.Context())
+	if !ok {
+		httperr.Write(w, r, http.StatusBadRequest, "active workspace not set")
+		return
+	}
+	out, err := h.Svc.ListByWorkspace(r.Context(), u.SubscriptionID.String(), wsID.String())
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return

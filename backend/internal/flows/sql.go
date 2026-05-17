@@ -16,8 +16,9 @@ package flows
 
 // ── service.go: listing + read ─────────────────────────────────────────────
 
-// sqlListFlowsByScope returns every flow and its states for a
-// subscription, scoped by artefact-type scope ('work' or 'strategy').
+// sqlListFlowsByScope returns every flow and its states for a workspace,
+// scoped by artefact-type scope ('work' or 'strategy').
+// $1=subscriptionID, $2=workspaceID, $3=scope.
 // Joins flows → artefacts_types → flows_states; the listByScope helper
 // then de-duplicates flows in Go.
 const sqlListFlowsByScope = `
@@ -40,7 +41,8 @@ const sqlListFlowsByScope = `
 		JOIN artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
 		JOIN flows_states    fs ON fs.flows_states_id_flow = f.flows_id AND fs.flows_states_archived_at IS NULL
 		WHERE at.artefacts_types_id_subscription = $1
-		  AND at.artefacts_types_scope = $2
+		  AND at.artefacts_types_id_workspace = $2
+		  AND at.artefacts_types_scope = $3
 		  AND at.artefacts_types_archived_at IS NULL
 		  AND f.flows_archived_at IS NULL
 		ORDER BY at.artefacts_types_name, f.flows_is_default DESC, fs.flows_states_sort_order;
