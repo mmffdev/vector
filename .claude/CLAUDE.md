@@ -43,6 +43,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 - **Styling / CSS (HARD RULE)** → [`docs/css-guide.md`](../docs/css-guide.md) — catalog class first; no inline `style={{}}`.
 - **Dev-UI primitives (HARD RULE — `/dev` pages)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — `.dui-*` catalog only.
+- **Accessibility (WCAG 2.2 AA)** → [`docs/c_accessibility.md`](../docs/c_accessibility.md) — target sizes, contrast, focus, modal traps; pre-launch checklist.
 - **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming reference + state classes.
 - **Naming conventions (HARD RULE — load before any new package/table/route/column)** → [`docs/c_c_naming_conventions.md`](../docs/c_c_naming_conventions.md) — canonical spec; deviation needs a `TD-*` entry.
 - **Backlog (`<backlog>`)** → [`.claude/commands/c_backlog.md`](commands/c_backlog.md) — opens root [`BACKLOG.md`](../BACKLOG.md); Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).

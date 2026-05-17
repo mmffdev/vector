@@ -251,6 +251,127 @@ The legacy `.table` / `.table-wrap` / `.table__head` / `.table__row` / `.table__
 
 When writing a new component, default to `13px` if no larger size fits the context. Never use `0.7rem`, `0.75rem`, or similar values that may compute below 13px without checking.
 
+## Visual polish — interaction details
+
+Cross-cutting rules every catalog component observes. These are about how the UI *feels*, separate from structural rules above.
+
+### Concentric radius
+
+For nested rounded surfaces (panel inside card, button inside toolbar), the parent radius MUST equal the child radius plus the padding between them:
+
+```text
+outer radius = inner radius + padding
+```
+
+If the padding is large enough that the math produces an awkward outer curve, treat the layers as separate surfaces (zero radius on one of them) rather than forcing the formula. The point is optical coherence, not formula worship.
+
+Vector currently uses `--radius-sm` / `--radius-md` set to `0` (flat look). When/if rounded surfaces return, this rule applies to every nested pair.
+
+### Text wrapping
+
+| Surface | Rule |
+|---|---|
+| Page headings (`<PageDescription>` titles, `<h2>` inside `<Panel>`) | `text-wrap: balance` — distributes lines evenly so a heading never ends with a single orphan word |
+| Short body (panel descriptions, list items, captions, hints, table cells) | `text-wrap: pretty` — avoids orphans on the last line |
+| Long prose, code blocks, preformatted content | Neither — default wrapping |
+
+### Tabular numerals
+
+**HARD RULE:** Any UI surface that displays *changing* numbers (counters, timers, prices, percentages, dashboard counts, work-item IDs in `.tree_accordion-dense__cell--mono`) MUST use `font-variant-numeric: tabular-nums`. Without it, digits have variable widths and the column jitters as the value updates.
+
+```css
+.tree_accordion-dense__cell--mono,
+.metric__value,
+.timer__display {
+  font-variant-numeric: tabular-nums;
+}
+```
+
+### Image outlines
+
+Any `<img>` rendered on `var(--surface)` MUST carry a subtle inset outline so its edges don't blur into the surface in either theme:
+
+```css
+img {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
+
+:root[data-theme="dark"] img {
+  outline-color: rgba(255, 255, 255, 0.1);
+}
+```
+
+Use neutral alpha only. **Never** tint image outlines with `--accent` or `--brand`.
+
+### Transitions
+
+**HARD RULE — no `transition: all`.** Always list the changed properties explicitly:
+
+```css
+/* Bad */
+.btn { transition: all 0.15s ease; }
+
+/* Good */
+.btn {
+  transition-property: background-color, color, border-color, transform;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+```
+
+Same applies to `will-change`: **never `will-change: all`.** Set it only on the specific compositor-friendly properties that genuinely need pre-promotion (`transform`, `opacity`, `filter`).
+
+### Motion defaults
+
+- **Enter animations:** combine `opacity` + small `translateY` (≤ 8px). Reserve keyframes for one-shot staged sequences; use CSS transitions for everything else (transitions can retarget when the user changes intent mid-motion).
+- **Exit animations:** shorter and quieter than enter — typically 120ms vs 200ms.
+- **Press feedback:** `transform: scale(0.97)` on `:active` for tactile buttons.
+- **`prefers-reduced-motion`:** every non-essential animation MUST collapse to a non-moving transition (opacity only, or zero duration) under this media query.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .modal,
+  .anav__item {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}
+```
+
+### Hit areas
+
+**HARD RULE:** Every interactive element MUST have a hit area of **≥ 24×24 CSS pixels** (WCAG 2.2 SC 2.5.8). Vector's `.btn` size ladder passes natively except `.btn--micro` (20×20), which is allowed only in dense rows where vertical spacing satisfies the SC 2.5.8 exception.
+
+When a visible icon is smaller than the required hit area, expand via a pseudo-element rather than outer padding (which disrupts adjacent layout):
+
+```css
+.btn--micro {
+  position: relative;
+}
+.btn--micro::before {
+  content: "";
+  position: absolute;
+  inset: -4px;          /* total ≥ 28×28 */
+}
+```
+
+See [docs/c_accessibility.md](c_accessibility.md) for the full a11y rules; this section covers the CSS expression.
+
+### Review output
+
+When reviewing a polish pass, report changes as a before/after table:
+
+| Principle | Before | After |
+|---|---|---|
+| Concentric radius | Parent + child both `--radius-md` | Parent `+8px`, child `--radius-md` |
+| Tabular numerals | Counter shifts as digits change | Added `font-variant-numeric: tabular-nums` |
+| Transition scope | `transition: all` on `.btn` | Explicit `transition-property` list |
+| Hit area | 20×20 icon button with no expansion | Added `::before { inset: -4px }` for ≥28×28 |
+
+Include file paths and line ranges where the change applies. Omit principles you checked but did not change — silence means "passed".
+
 ## Tokens (CSS variables)
 
 All defined in `:root[data-theme="light"]` and `:root[data-theme="dark"]` in `globals.css`.
