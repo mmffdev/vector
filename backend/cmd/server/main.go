@@ -1280,10 +1280,14 @@ func main() {
 			Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
 		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
 		r.Get("/{id}", portfolioModelsH.GetByModelID)
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Post("/{id}/adopt", portfolioAdoptH.Adopt)
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
+		r.With(
+			auth.RequirePermission(permResolver, permissions.PortfolioList),
+			topology.WorkspaceClampMiddleware(workspaceLookup),
+		).Post("/{id}/adopt", portfolioAdoptH.Adopt)
+		r.With(
+			auth.RequirePermission(permResolver, permissions.PortfolioList),
+			topology.WorkspaceClampMiddleware(workspaceLookup),
+		).Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
 	})
 
 	// ---- /workspace-settings ----

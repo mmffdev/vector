@@ -63,6 +63,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/portfolio"
+	"github.com/mmffdev/vector-backend/internal/topology"
 )
 
 // Adoption error codes — must match the seed in
@@ -442,12 +443,14 @@ func (o *Orchestrator) Adopt(
 // writes use this to address artefacts_types per workspace; the legacy
 // mirror path is unaffected.
 //
-// We pick the lowest-id live workspace deterministically. Multi-
-// workspace subscriptions are out of scope for the cutover — adoption
-// is per-tenant today, and the saga writes ONE strategy hierarchy per
-// subscription. The first-workspace pick matches migration 019's
-// fdw_workspaces backfill convention.
+// Context is checked first: if WorkspaceClampMiddleware has already
+// seeded a workspace_id (normal request path), that value is returned
+// directly. The DB fallback (first-live-workspace) exists for orphan-sub
+// fixtures and pre-clamp callers only.
 func (o *Orchestrator) resolveWorkspaceID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	if id, ok := topology.WorkspaceIDFromCtx(ctx); ok {
+		return id, nil
+	}
 	var ws uuid.UUID
 	err := o.VectorPool.QueryRow(ctx, sqlSelectFirstLiveWorkspaceForSubscription,
 		subscriptionID,
