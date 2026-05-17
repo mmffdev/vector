@@ -16,15 +16,15 @@
 //     search={{ value, onChange, placeholder: "Search…" }}
 //   />
 //
-// Tone "warning" paints amber via .page-summary__cell--issue, but ONLY
-// when value > 0 — resting cells (zero defects, zero blocked) stay
-// neutral so the strip doesn't shout when there's nothing to act on.
+// Tone "warning" paints amber via .page-summary__cell--issue; tone
+// "danger" paints red via .page-summary__cell--critical. Both only
+// activate when value > 0 — resting cells stay neutral.
 
 import { ReactNode } from "react";
 import { TbAlertTriangle } from "react-icons/tb";
 import Panel from "@/app/components/Panel";
 
-export type SummaryCellTone = "neutral" | "warning";
+export type SummaryCellTone = "neutral" | "warning" | "danger";
 export type SummaryCellGlyph = "issue";
 
 export interface SummaryCell {
@@ -47,10 +47,11 @@ interface PageSummaryHeaderProps {
   name?: string;
 }
 
-function cellIsIssue(cell: SummaryCell): boolean {
-  if (cell.tone !== "warning") return false;
+function cellModifier(cell: SummaryCell): string | null {
+  if (cell.tone !== "warning" && cell.tone !== "danger") return null;
   const n = typeof cell.value === "number" ? cell.value : Number(cell.value);
-  return Number.isFinite(n) && n > 0;
+  if (!Number.isFinite(n) || n === 0) return null;
+  return cell.tone === "danger" ? "page-summary__cell--critical" : "page-summary__cell--issue";
 }
 
 function renderGlyph(glyph: SummaryCellGlyph | undefined): ReactNode {
@@ -74,9 +75,9 @@ export default function PageSummaryHeader({
         data-cells={cells.length}
       >
         {cells.map((cell) => {
-          const issue = cellIsIssue(cell);
-          const cellClass = issue
-            ? "page-summary__cell page-summary__cell--issue"
+          const modifier = cellModifier(cell);
+          const cellClass = modifier
+            ? `page-summary__cell ${modifier}`
             : "page-summary__cell";
           return (
             <div key={cell.label} className={cellClass}>

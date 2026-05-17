@@ -11851,6 +11851,10 @@ input[type="reset"] {
   color: var(--status-warning);
 }
 
+.page-summary__cell--critical .page-summary__value {
+  color: var(--status-danger);
+}
+
 .page-summary__glyph {
   width: 14px;
   height: 14px;
@@ -12668,6 +12672,17 @@ input[type="reset"] {
 }
 
 /* Colour picker trigger (swatch button) */
+.at-tree__scope-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+/* Flat (non-hierarchical) ResourceTree variant — no expand toggle, no item count */
+.at-tree__flat-wrap .tree_accordion-dense__th-toggle,
+.at-tree__flat-wrap .tree_accordion-dense__filterbar-count {
+  display: none;
+}
+
 .at-colour-picker {
   position: relative;
   display: inline-block;
@@ -12690,10 +12705,7 @@ input[type="reset"] {
 
 /* Popover */
 .at-colour-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 200;
+  z-index: 9999;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -13518,7 +13530,7 @@ input[type="reset"] {
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ink);
   cursor: pointer;
   padding: 0;
   transition: border-color 150ms ease;
@@ -14013,6 +14025,47 @@ input[type="reset"] {
   user-select: none;
   text-shadow: 0 1px 2px color-mix(in srgb, var(--surface, #fff) 90%, transparent);
 }
+/* ── Custom fields tree ─────────────────────────────────────────────────────── */
+.cf-type-heading__prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+.cf-tree__type-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+.cf-tree__wrap .tree_accordion-dense__th-toggle {
+  display: none;
+}
+.cf-tree__section-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.cf-tree__empty-hint {
+  font-style: italic;
+}
+.cf-tree__row--action > .tree_accordion-dense__cell {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.cf-tree__row--action > .tree_accordion-dense__cell:last-child {
+  text-align: right;
+}
+
 .navigation-pie__Pop_label-selected {
   color: var(--surface, #fff);
   font-weight: 600;
