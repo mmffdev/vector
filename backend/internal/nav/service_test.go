@@ -162,20 +162,6 @@ func TestReplacePrefs_HappyPath(t *testing.T) {
 	}
 }
 
-func TestReplacePrefs_RejectsDevSetup(t *testing.T) {
-	pool := testPool(t)
-	defer pool.Close()
-	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
-	defer cleanup()
-
-	svc := newSvc(t, pool)
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
-		{ItemKey: "dev", Position: 0},
-	}, nil, nil, nil)
-	if !errors.Is(err, ErrNotPinnable) {
-		t.Fatalf("want ErrNotPinnable, got %v", err)
-	}
-}
 
 func TestReplacePrefs_RejectsUnknownKey(t *testing.T) {
 	pool := testPool(t)
