@@ -46,6 +46,9 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Backlog (`<backlog>`)** → [`.claude/commands/c_backlog.md`](commands/c_backlog.md) — opens root [`BACKLOG.md`](../BACKLOG.md); Rick-owned module roadmap (VECTOR, ORIGO, SIGMA, FLUX, SPINE, OPERATOR PLATFORM).
 - **Tracker tests (`<tests>`)** → [`.claude/commands/c_tests.md`](commands/c_tests.md) — query Tracker red-green tests for this project; default = current/recent work, flags `-g/-p/-G/-r/-f`.
 - **DB routing** → [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) — service → pool → DB → tables map (referenced by the "Never assume a database" hard rule above).
+- **SQL cookbook** → [`docs/c_sql_cookbook.md`](../docs/c_sql_cookbook.md) — curated `psql` queries that worked; append non-trivial queries before moving on.
+- **Bash cookbook** → [`docs/c_bash_cookbook.md`](../docs/c_bash_cookbook.md) — curated shell commands that worked; append non-trivial commands (non-obvious flag/path/env) before moving on.
+- **`<cookbook>` skill** → [`.claude/commands/c_cookbook.md`](commands/c_cookbook.md) — safety-net harvester: scans `~/.psql_history` since last run, drafts novel queries to `c_sql_cookbook_staging.md` for curation. Inline cookbooking is still the primary discipline.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
 - **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.

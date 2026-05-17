@@ -47,6 +47,7 @@ The entries below are the **always-relevant** memories: incident-earned safety, 
 - [Red-green-refactor is non-negotiable](feedback_red_green_always.md) — Always write the failing test FIRST; never refactor/delete and verify after. No exceptions for "obvious" or "mechanical" changes.
 - [No hardcoded order/list from DB data](feedback_no_hardcoded_order_from_db_data.md) — Never invent an order/mapping in TSX or Go when the data is DB-driven; if the column doesn't carry the signal, STOP and surface the gap.
 - [Bracket-tag commits with scope ref](feedback_scope_commit_bracket_ref.md) — Always include `[B19.1.4]` (or `[solo-dev]` in current mode) in commit subject; otherwise scope-commit-note hook can't match → Unmatched.
+- [Cookbook every non-trivial SQL + bash](feedback_cookbooks.md) — Append novel psql queries to `docs/c_sql_cookbook.md` and novel bash commands to `docs/c_bash_cookbook.md` before moving on; stop re-deriving same incantations.
 
 ### Rules
 
