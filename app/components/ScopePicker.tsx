@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useScope } from "@/app/contexts/ScopeContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import type { MyGrant } from "@/app/lib/topologyApi";
 
 interface TreeRow {
@@ -59,6 +60,7 @@ function ChevronIcon() {
 
 export default function ScopePicker() {
   const { grants, activeNodeId, activeGrant, loading, error, setActiveNodeId } = useScope();
+  const { user, switchWorkspace } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -158,15 +160,13 @@ export default function ScopePicker() {
                   aria-selected={isActive}
                   className={`scope-picker__item scope-picker__item--d${indent}${isActive ? " is-active" : ""}`}
                   onClick={() => {
-                    console.log("[ScopePicker] selected", {
-                      node_id: grant.node_id,
-                      name: labelOf(grant),
-                      role: grant.role,
-                      workspace_id: grant.workspace_id,
-                      parent_id: grant.parent_id,
-                      depth,
-                    });
-                    setActiveNodeId(grant.node_id);
+                    const select = async () => {
+                      if (grant.workspace_id && grant.workspace_id !== user?.workspace_id) {
+                        await switchWorkspace(grant.workspace_id);
+                      }
+                      setActiveNodeId(grant.node_id);
+                    };
+                    void select();
                     setOpen(false);
                   }}
                 >
