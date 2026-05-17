@@ -55,7 +55,7 @@ func NewFDWSubscriptionResolver(pool *pgxpool.Pool) *FDWSubscriptionResolver {
 func (r *FDWSubscriptionResolver) SubscriptionFor(ctx context.Context, workspaceID uuid.UUID) (uuid.UUID, error) {
 	var subID uuid.UUID
 	err := r.Pool.QueryRow(ctx,
-		`SELECT subscription_id FROM fdw_workspaces WHERE id = $1`,
+		sqlSelectSubscriptionByWorkspace,
 		workspaceID,
 	).Scan(&subID)
 	if err != nil {
@@ -92,7 +92,7 @@ func NewFDWActiveWorkspaceResolver(pool *pgxpool.Pool) *FDWActiveWorkspaceResolv
 func (r *FDWActiveWorkspaceResolver) ActiveWorkspaceFor(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
 	var wsID uuid.UUID
 	err := r.Pool.QueryRow(ctx,
-		`SELECT id FROM fdw_workspaces WHERE subscription_id = $1 ORDER BY id LIMIT 1`,
+		sqlSelectActiveWorkspaceBySubscription,
 		subscriptionID,
 	).Scan(&wsID)
 	if err != nil {
@@ -117,25 +117,9 @@ func NewPGTenantDefaultsReader(pool *pgxpool.Pool) *PGTenantDefaultsReader {
 	return &PGTenantDefaultsReader{Pool: pool}
 }
 
-const sqlTenantDefaultsSelect = `
-	SELECT master_record_tenants_data_region,
-	       master_record_tenants_timezone,
-	       master_record_tenants_date_format,
-	       master_record_tenants_datetime_format,
-	       master_record_tenants_workdays,
-	       master_record_tenants_week_start,
-	       master_record_tenants_rank_method,
-	       master_record_tenants_build_changeset_tracking,
-	       master_record_tenants_primary_contact_email,
-	       master_record_tenants_description,
-	       master_record_tenants_notes,
-	       master_record_tenants_archived_at
-	  FROM master_record_tenants
-	 WHERE master_record_tenants_id_subscription = $1`
-
 func (r *PGTenantDefaultsReader) Get(ctx context.Context, subscriptionID uuid.UUID) (*tenantSettings, error) {
 	var t tenantSettings
-	err := r.Pool.QueryRow(ctx, sqlTenantDefaultsSelect, subscriptionID).Scan(
+	err := r.Pool.QueryRow(ctx, sqlSelectTenantDefaults, subscriptionID).Scan(
 		&t.DataRegion, &t.Timezone, &t.DateFormat, &t.DatetimeFormat,
 		&t.Workdays, &t.WeekStart, &t.RankMethod, &t.BuildChangesetTracking,
 		&t.PrimaryContactEmail, &t.Description, &t.Notes,

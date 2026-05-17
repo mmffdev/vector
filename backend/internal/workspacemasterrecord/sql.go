@@ -37,3 +37,36 @@ const sqlSelectTenantSettings = `
 // the comma-separated `col = $N` SET clause; %d holds the $N for the
 // WHERE master_record_workspaces_id_workspace bind.
 const sqlUpdateTenantTemplate = `UPDATE master_record_workspaces SET %s WHERE master_record_workspaces_id_workspace = $%d`
+
+// ── inheritance_wiring.go ─────────────────────────────────────────────────────
+
+// sqlSelectSubscriptionByWorkspace resolves the subscription_id that
+// owns a given workspace via the fdw_workspaces FDW shadow.
+// Used by FDWSubscriptionResolver.SubscriptionFor.
+const sqlSelectSubscriptionByWorkspace = `SELECT subscription_id FROM fdw_workspaces WHERE id = $1`
+
+// sqlSelectActiveWorkspaceBySubscription returns the workspace_id
+// owned by a given subscription. LIMIT 1 + ORDER BY id keeps the
+// choice deterministic under the single-workspace assumption (mig 067).
+// Used by FDWActiveWorkspaceResolver.ActiveWorkspaceFor.
+const sqlSelectActiveWorkspaceBySubscription = `SELECT id FROM fdw_workspaces WHERE subscription_id = $1 ORDER BY id LIMIT 1`
+
+// sqlSelectTenantDefaults reads every NULL-aware inheritable column from
+// master_record_tenants for a given subscription. Pointer-typed scan in
+// PGTenantDefaultsReader.Get preserves NULL vs zero-value distinction
+// that the merge logic requires.
+const sqlSelectTenantDefaults = `
+	SELECT master_record_tenants_data_region,
+	       master_record_tenants_timezone,
+	       master_record_tenants_date_format,
+	       master_record_tenants_datetime_format,
+	       master_record_tenants_workdays,
+	       master_record_tenants_week_start,
+	       master_record_tenants_rank_method,
+	       master_record_tenants_build_changeset_tracking,
+	       master_record_tenants_primary_contact_email,
+	       master_record_tenants_description,
+	       master_record_tenants_notes,
+	       master_record_tenants_archived_at
+	  FROM master_record_tenants
+	 WHERE master_record_tenants_id_subscription = $1`
