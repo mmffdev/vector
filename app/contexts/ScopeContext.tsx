@@ -24,6 +24,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { topologyApi, type MyGrant } from "@/app/lib/topologyApi";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
+import { WORKSPACES_CHANGED_EVENT } from "@/app/lib/workspacesApi";
 
 const STORAGE_KEY = "vector.scope.activeNodeId";
 
@@ -97,9 +98,18 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [authLoading, reload]);
 
+  // Reload grants whenever a workspace is created, archived, or restored.
+  useEffect(() => {
+    function onWorkspacesChanged() { void reload(); }
+    window.addEventListener(WORKSPACES_CHANGED_EVENT, onWorkspacesChanged);
+    return () => window.removeEventListener(WORKSPACES_CHANGED_EVENT, onWorkspacesChanged);
+  }, [reload]);
+
   // Resolve the active scope each time grants land or the URL changes.
   // Precedence: ?scope=<id> → localStorage → null. Falls back to null
   // if the id no longer matches a live grant (grant revoked, node archived).
+  // If the previously active node is gone (workspace archived), clear
+  // localStorage and strip the scope param so the user lands clean.
   useEffect(() => {
     if (grants.length === 0) {
       setActiveNodeIdState(null);
@@ -109,8 +119,17 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     const storedId = readStoredId();
     const candidate = urlId ?? storedId;
     const match = candidate && grants.find((g) => g.node_id === candidate);
+    if (candidate && !match) {
+      // Previously active node no longer in grants — clear stale storage
+      // and strip the scope param (next effect cycle will land with null).
+      writeStoredId(null);
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.delete("scope");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
     setActiveNodeIdState(match ? match.node_id : null);
-  }, [grants, searchParams]);
+  }, [grants, searchParams, pathname, router]);
 
   const setActiveNodeId = useCallback(
     (id: string | null) => {

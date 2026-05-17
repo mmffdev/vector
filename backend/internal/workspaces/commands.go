@@ -256,6 +256,12 @@ func (s *Service) Rename(ctx context.Context, subscriptionID, workspaceID uuid.U
 		return err
 	}
 
+	// Sync the topology root node name in vector_artefacts (non-fatal;
+	// the workspace row is already committed).
+	if s.VAPool != nil {
+		_, _ = s.VAPool.Exec(ctx, sqlRenameTopologyRootNode, name, workspaceID)
+	}
+
 	wid := workspaceID.String()
 	s.auditLog(ctx, audit.Entry{
 		UserID:         &actorID,
@@ -317,6 +323,12 @@ func (s *Service) Archive(ctx context.Context, subscriptionID, workspaceID, acto
 		return err
 	}
 
+	// Archive topology nodes in vector_artefacts so grants/me stops returning
+	// them. Non-fatal: workspace row is already committed.
+	if s.VAPool != nil {
+		_, _ = s.VAPool.Exec(ctx, sqlArchiveTopologyNodes, workspaceID)
+	}
+
 	wid := workspaceID.String()
 	s.auditLog(ctx, audit.Entry{
 		UserID:         &actorID,
@@ -374,6 +386,12 @@ func (s *Service) Restore(ctx context.Context, subscriptionID, workspaceID, acto
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
+	}
+
+	// Restore topology nodes in vector_artefacts so the workspace re-appears
+	// in grants/me. Non-fatal: workspace row is already committed.
+	if s.VAPool != nil {
+		_, _ = s.VAPool.Exec(ctx, sqlRestoreTopologyNodes, workspaceID)
 	}
 
 	wid := workspaceID.String()
