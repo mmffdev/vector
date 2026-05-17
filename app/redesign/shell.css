@@ -647,6 +647,8 @@
   text-align: left;
   cursor: pointer;
   font-family: inherit;
+  gap: 10px;
+  padding: 0 0 0 22px;
 }
 .nav-primary-rail-2__PageList_Group_Row-danger { color: var(--ink-muted); }
 .nav-primary-rail-2__PageList_Group_Row-danger:hover {
@@ -742,13 +744,14 @@
   background: transparent;
   border: 0;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink);
   cursor: pointer;
   line-height: 32px;
 }
 .scope-tree-panel__row:hover {
   background: var(--surface-sunken);
+  border-radius: var(--rd-radius-md, 10px);
 }
 .scope-tree-panel__row.is-active {
   background: var(--surface-sunken);
@@ -760,6 +763,10 @@
   padding-left: 12px;
   background: var(--surface-sunken);
   border-radius: var(--rd-radius-md, 10px);
+  margin-top: 2px;
+}
+.scope-tree-panel__row--workspace:first-child {
+  margin-top: 0;
 }
 .scope-tree-panel__spine {
   flex-shrink: 0;

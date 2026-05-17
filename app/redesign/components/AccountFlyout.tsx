@@ -78,15 +78,21 @@ export default function AccountFlyout() {
         {avatarMenuPages.length > 0 && (
           <div className="nav-primary-rail-2__PageList_Group">
             {avatarMenuPages.map((entry) => (
-              <Link
+              <div
                 key={entry.key}
-                href={entry.href}
                 className={`nav-primary-rail-2__PageList_Group_Row${isActivePage(entry.href) ? " is-active" : ""}`}
-                aria-current={isActivePage(entry.href) ? "page" : undefined}
               >
-                <IconFor iconKey={entry.icon} />
-                <span className="nav-primary-rail-2__PageList_Group_Row_Label">{entry.label}</span>
-              </Link>
+                <Link
+                  href={entry.href}
+                  className="nav-primary-rail-2__PageList_Group_Row_Link"
+                  aria-current={isActivePage(entry.href) ? "page" : undefined}
+                >
+                  <span className="nav-primary-rail-2__PageList_Group_Row_Icon">
+                    <IconFor iconKey={entry.icon} />
+                  </span>
+                  <span className="nav-primary-rail-2__PageList_Group_Row_Label">{entry.label}</span>
+                </Link>
+              </div>
             ))}
           </div>
         )}
