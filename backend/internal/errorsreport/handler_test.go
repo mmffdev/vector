@@ -104,12 +104,14 @@ func TestReport_UnknownCode(t *testing.T) {
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status: want 400, got %d", resp.StatusCode)
 	}
-	var out map[string]string
+	var out struct {
+		Detail string `json:"detail"`
+	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if out["error"] != "unknown_error_code" {
-		t.Errorf("error body: want unknown_error_code, got %q", out["error"])
+	if out.Detail != "unknown_error_code" {
+		t.Errorf("error body: want detail=unknown_error_code, got %q", out.Detail)
 	}
 }
 
