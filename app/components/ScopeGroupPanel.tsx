@@ -46,7 +46,7 @@ function flattenGrants(grants: MyGrant[]): Row[] {
 // ── Spine SVG (T / elbow connectors) ─────────────────────────────────────────
 
 const STEP = 16;
-const ROW_H = 34;
+const ROW_H = 32;
 const LINE_X = 8;
 
 function Spine({ depth, isLast, ancestorMoreChildren }: {
