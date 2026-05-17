@@ -787,3 +787,80 @@
 .scope-tree-panel__status--error {
   color: var(--danger-1, #e35);
 }
+
+/* ── Grouped scope panel (ScopeGroupPanel / ScopeFlyout2) ── */
+.scope-group-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 10px 16px;
+}
+.scope-group-panel__ws-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  background: var(--surface-raised, var(--surface-2));
+  border: none;
+  border-radius: var(--rd-radius-md, 8px);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease;
+  margin-top: 8px;
+}
+.scope-group-panel__ws-row:first-child {
+  margin-top: 0;
+}
+.scope-group-panel__ws-row:hover {
+  background: var(--surface-hover);
+}
+.scope-group-panel__ws-row.is-active {
+  background: var(--accent-subtle, color-mix(in srgb, var(--accent) 12%, transparent));
+  color: var(--accent);
+}
+.scope-group-panel__child-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px 0 4px;
+  background: none;
+  border: none;
+  border-radius: var(--rd-radius-sm, 5px);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease, color 120ms ease;
+}
+.scope-group-panel__child-row:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+.scope-group-panel__child-row.is-active {
+  color: var(--accent);
+  font-weight: 500;
+}
+.scope-group-panel__row-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 6px;
+}
+.scope-group-panel__spine {
+  flex-shrink: 0;
+}
+.scope-group-panel__status {
+  padding: 16px 22px;
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.scope-group-panel__status--error {
+  color: var(--danger-1, #e35);
+}

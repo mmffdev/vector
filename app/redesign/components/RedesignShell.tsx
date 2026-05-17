@@ -4,7 +4,7 @@ import "../shell.css";
 import { ShellProvider, useShell } from "../ShellContext";
 import { ViewportSlot } from "@/app/contexts/DomRegistryContext";
 import IconRail from "./nav_primary_rail_1";
-import SectionFlyout, { ScopeFlyout } from "./nav_primary_rail_2";
+import SectionFlyout, { ScopeFlyout2 } from "./nav_primary_rail_2";
 import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
 
@@ -12,7 +12,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
   const { isAccountActive, isScopeOpen } = useShell();
 
   function rail2() {
-    if (isScopeOpen) return <ScopeFlyout />;
+    if (isScopeOpen) return <ScopeFlyout2 />;
     if (isAccountActive) return <AccountFlyout />;
     return <SectionFlyout />;
   }

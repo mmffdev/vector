@@ -2,28 +2,29 @@
 
 // PLA-0042 — Scope picker substrate. Holds the user's live grants
 // (the topology nodes they hold a role on) and the currently active
-// scope. Active scope is persisted to the URL (`?scope=<node_id>`)
-// so deep-links round-trip, and to localStorage as the fallback the
-// next time the user lands without a scope query.
+// scope. Active scope is persisted server-side via PUT /api/me/active-scope
+// so it survives across devices and sessions. localStorage is the
+// optimistic read-before-network cache. Node IDs never appear in the URL.
 //
+// Precedence on load: server profile → localStorage fallback → null.
 // This context is read-only from the perspective of grant data: the
 // authoritative list comes from GET /api/topology/grants/me. The user
 // changes their *active* scope via setActiveNodeId; admins change the
 // grant list itself via the topology editor.
 
-import {
+import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { topologyApi, type MyGrant } from "@/app/lib/topologyApi";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { WORKSPACES_CHANGED_EVENT } from "@/app/lib/workspacesApi";
 
 const STORAGE_KEY = "vector.scope.activeNodeId";
@@ -61,14 +62,13 @@ function writeStoredId(id: string | null) {
 
 export function ScopeProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const [grants, setGrants] = useState<MyGrant[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeNodeId, setActiveNodeIdState] = useState<string | null>(null);
+  // Track whether we've done the initial server-profile seed for this session.
+  const profileSeededRef = useRef(false);
 
   const reload = useCallback(async () => {
     if (!user) {
@@ -92,9 +92,10 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  // Initial + on user change.
+  // Initial + on user change — reset seed flag so the new user's profile is read.
   useEffect(() => {
     if (authLoading) return;
+    profileSeededRef.current = false;
     void reload();
   }, [authLoading, reload]);
 
@@ -105,44 +106,54 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(WORKSPACES_CHANGED_EVENT, onWorkspacesChanged);
   }, [reload]);
 
-  // Resolve the active scope each time grants land or the URL changes.
-  // Precedence: ?scope=<id> → localStorage → null. Falls back to null
-  // if the id no longer matches a live grant (grant revoked, node archived).
-  // If the previously active node is gone (workspace archived), clear
-  // localStorage and strip the scope param so the user lands clean.
+  // Resolve the active scope each time grants land.
+  // First load: seed from server profile (fallback: localStorage).
+  // Subsequent reloads (panel open, workspace change): validate current
+  // activeNodeId against the new grant list only — no extra server round-trip.
   useEffect(() => {
     if (grants.length === 0) {
       setActiveNodeIdState(null);
       return;
     }
-    const urlId = searchParams?.get("scope") ?? null;
-    const storedId = readStoredId();
-    const candidate = urlId ?? storedId;
-    const match = candidate && grants.find((g) => g.node_id === candidate);
-    if (candidate && !match) {
-      // Previously active node no longer in grants — clear stale storage
-      // and strip the scope param (next effect cycle will land with null).
-      writeStoredId(null);
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      params.delete("scope");
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    }
-    setActiveNodeIdState(match ? match.node_id : null);
-  }, [grants, searchParams, pathname, router]);
 
-  const setActiveNodeId = useCallback(
-    (id: string | null) => {
-      setActiveNodeIdState(id);
-      writeStoredId(id);
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      if (id) params.set("scope", id);
-      else params.delete("scope");
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    },
-    [pathname, router, searchParams],
-  );
+    if (!profileSeededRef.current) {
+      // First grants load — read the server profile to pick the right node.
+      profileSeededRef.current = true;
+      const seed = async () => {
+        let candidate: string | null = null;
+        try {
+          const resp = await apiSite<{ node_id: string | null }>("/me/active-scope");
+          candidate = resp.node_id ?? readStoredId();
+        } catch {
+          candidate = readStoredId();
+        }
+        const match = candidate ? grants.find((g) => g.node_id === candidate) : null;
+        if (candidate && !match) {
+          writeStoredId(null);
+          apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: null }) }).catch(() => {});
+        }
+        const resolved = match ? match.node_id : null;
+        setActiveNodeIdState(resolved);
+        if (resolved) writeStoredId(resolved);
+      };
+      void seed();
+    } else {
+      // Subsequent reloads — just validate against the refreshed grant list.
+      setActiveNodeIdState((prev) => {
+        if (!prev) return null;
+        const still = grants.find((g) => g.node_id === prev);
+        if (!still) { writeStoredId(null); return null; }
+        return prev;
+      });
+    }
+  }, [grants]);
+
+  const setActiveNodeId = useCallback((id: string | null) => {
+    setActiveNodeIdState(id);
+    writeStoredId(id);
+    // Fire-and-forget — failure is non-fatal; localStorage is the fallback.
+    apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: id }) }).catch(() => {});
+  }, []);
 
   const activeGrant = useMemo(
     () => grants.find((g) => g.node_id === activeNodeId) ?? null,

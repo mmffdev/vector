@@ -116,6 +116,23 @@ const sqlSelectUserThemePack = `SELECT theme_pack FROM users WHERE id = $1`
 // is bumped for cache-bust on the read side.
 const sqlUpdateUserThemePack = `UPDATE users SET theme_pack = $1, updated_at = NOW() WHERE id = $2`
 
+// sqlSelectUserActiveScope reads the user's last-selected scope node ID.
+const sqlSelectUserActiveScope = `SELECT active_scope_node_id FROM users WHERE id = $1`
+
+// sqlUpdateUserActiveScope persists the active scope node ID. NULL clears it.
+const sqlUpdateUserActiveScope = `UPDATE users SET active_scope_node_id = $1, updated_at = NOW() WHERE id = $2`
+
+// sqlUserHasGrantOnNode confirms the caller holds at least one active grant on
+// the target topology node. Used to gate SetActiveScope — a user must not be
+// able to store an arbitrary node ID they have no access to.
+const sqlUserHasGrantOnNode = `
+	SELECT EXISTS(
+		SELECT 1 FROM users_roles_topology_nodes
+		 WHERE users_roles_topology_nodes_id_topology_node = $1
+		   AND users_roles_topology_nodes_id_user = $2
+		   AND users_roles_topology_nodes_revoked_at IS NULL
+	)`
+
 // ── handler.go (post-reset email lookup) ───────────────────────────────────
 
 // sqlSelectUserEmailByID is the lean email-only lookup after

@@ -9,6 +9,7 @@ import { useScope } from "@/app/contexts/ScopeContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 import ScopeTreePanel from "@/app/components/ScopeTreePanel";
+import ScopeGroupPanel from "@/app/components/ScopeGroupPanel";
 
 function formatNow(d: Date): string {
   const date = d.toLocaleDateString(undefined, {
@@ -163,7 +164,43 @@ function SectionFlyoutBody({
   );
 }
 
-/** Scope panel — replaces the normal SectionFlyout when isScopeOpen=true. */
+/** Grouped scope panel — replaces the normal SectionFlyout when isScopeOpen=true. */
+export function ScopeFlyout2() {
+  const { activeSection } = useShell();
+  const { activeGrant, reload } = useScope();
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Refresh grants each time the panel opens so the list is current.
+  useEffect(() => { void reload(); }, [reload]);
+
+  const scopeLabel = activeGrant
+    ? (activeGrant.label_override?.trim() || activeGrant.name)
+    : null;
+
+  return (
+    <aside id="nav-primary-rail-2" className="nav-primary-rail-2 nav-primary-rail-2--scope" aria-label="Workspace scope">
+      <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
+      <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
+        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">
+          {scopeLabel ?? activeSection?.name ?? "Workspace"}
+        </h3>
+        <p id="nav-primary-rail-2__SectionHeader_Clock" className="nav-primary-rail-2__SectionHeader_Clock" aria-live="off">
+          {formatNow(now)}
+        </p>
+      </div>
+      <div className="nav-primary-rail-2__ScopeBody vector-scroll">
+        <ScopeGroupPanel />
+      </div>
+    </aside>
+  );
+}
+
+/** @deprecated use ScopeFlyout2 */
 export function ScopeFlyout() {
   const { activeSection } = useShell();
   const { activeGrant } = useScope();

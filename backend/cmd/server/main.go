@@ -823,6 +823,9 @@ func main() {
 		r.Get("/theme-pack", usersH.GetThemePack)
 		r.Put("/theme-pack", usersH.SetThemePack)
 
+		r.Get("/active-scope", usersH.GetActiveScope)
+		r.Put("/active-scope", usersH.SetActiveScope)
+
 		// PLA-0049 Phase 0.5.3: per-user page-access set + global version.
 		// Drives usePageAccess() in the frontend; client polls/re-fetches
 		// when the version bumps.

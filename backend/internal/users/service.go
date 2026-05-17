@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	ErrDuplicateEmail = errors.New("user with that email already exists in tenant")
-	ErrNotFound       = errors.New("not found")
+	ErrDuplicateEmail  = errors.New("user with that email already exists in tenant")
+	ErrNotFound        = errors.New("not found")
+	ErrScopeNotGranted = errors.New("user holds no grant on the requested scope node")
 	// ErrRoleCeiling is returned when the actor tries to act on a target
 	// whose current role outranks them, OR tries to assign a role that
 	// outranks them. Maps to HTTP 403. See feedback_role_ceiling.md.

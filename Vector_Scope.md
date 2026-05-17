@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-17 (FE-POR-0002 ★ FORCING FUNCTION complete — all 11 sub-items done; .3.4 mounted in RedesignTopBar.tsx)
-**Doc version:** 2.25
+**Last updated:** 2026-05-18 (B16.7 backend security audit added)
+**Doc version:** 2.26
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, B18.7, FE-POR-0002. Everything else parks below.
 >
@@ -3109,6 +3109,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   > `docs/c_security.md` — Trust-No-One checklist document confirmed
   > Last checked: 2026-05-08
   >
+- **B16.7** Backend security audit — systematic pass of all ~1300 routes against the backend validation checklist (`docs/c_c_backend_validation.md`): tenant_id from session only, user_id/role from session only, every payload resource ID re-verified against DB before write, permission check before every data-modifying operation, cross-tenant lookups return 404 not 403, errors flow through `errors_codes`. Required for SOC 2 / FedRAMP / PCI-DSS procurement audit readiness. Triggered by discovery that `SetActiveScope` was writing an arbitrary node_id without confirming the caller held a grant on that node. `[P1]`
 
 ---
 

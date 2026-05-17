@@ -60,20 +60,22 @@ function readCookie(name: string): string | null {
 }
 
 // PLA-0043 — When a GET targets an artefact-list route (work-items or
-// portfolio-items) and the browser URL carries ?scope=<uuid>, forward
-// it onto the API call so the backend can clamp reads to that
-// topology subtree. Non-GET requests and non-artefact paths are
-// untouched. If the caller already specified ?scope= in the path we
-// don't double up. SSR (no window) is a no-op.
+// portfolio-items), forward the active scope node ID so the backend can
+// clamp reads to that topology subtree. Scope is read from localStorage
+// (never from the URL — node IDs must not appear in GET params).
 function withForwardedScope(path: string, method: string): string {
   if (method !== "GET") return path;
   if (typeof window === "undefined") return path;
   if (!/(^|\/)(work-items|portfolio-items)(\?|\/|$)/.test(path)) return path;
-  const scope = new URLSearchParams(window.location.search).get("scope");
-  if (!scope) return path;
   if (path.includes("scope=")) return path;
-  const sep = path.includes("?") ? "&" : "?";
-  return path + sep + "scope=" + encodeURIComponent(scope);
+  try {
+    const scope = window.localStorage.getItem("vector.scope.activeNodeId");
+    if (!scope) return path;
+    const sep = path.includes("?") ? "&" : "?";
+    return path + sep + "scope=" + encodeURIComponent(scope);
+  } catch {
+    return path;
+  }
 }
 
 async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> {
